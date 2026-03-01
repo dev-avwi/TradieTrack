@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries } from "@/lib/queryClient";
+import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries, getSessionToken } from "@/lib/queryClient";
 import { useMemo } from "react";
 import { partitionByRecent } from "@shared/dateUtils";
 import { trackEvent } from "@/lib/analytics";
@@ -161,9 +161,66 @@ export function useRecordPayment() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data: any, variables: RecordPaymentData) => {
       safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices", variables.invoiceId, "payments"] });
       trackEvent('payment_received');
+    },
+  });
+}
+
+export function usePaymentRecords(invoiceId: string) {
+  return useQuery({
+    queryKey: ["/api/invoices", invoiceId, "payments"],
+    queryFn: async () => {
+      const headers: HeadersInit = {};
+      const token = getSessionToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const response = await fetch(`/api/invoices/${invoiceId}/payments`, {
+        credentials: 'include',
+        headers,
+      });
+      if (!response.ok) throw new Error('Failed to fetch payment records');
+      return response.json();
+    },
+    enabled: !!invoiceId,
+  });
+}
+
+export function useVoidPayment() {
+  return useMutation({
+    mutationFn: async ({ invoiceId, paymentId }: { invoiceId: string; paymentId: string }) => {
+      const response = await apiRequest("DELETE", `/api/invoices/${invoiceId}/payments/${paymentId}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to void payment');
+      }
+      return response.json();
+    },
+    onSuccess: (_data: any, variables: { invoiceId: string; paymentId: string }) => {
+      safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices", variables.invoiceId] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices", variables.invoiceId, "payments"] });
+    },
+  });
+}
+
+export function useUpdateMilestones() {
+  return useMutation({
+    mutationFn: async ({ invoiceId, milestones, retentionPercent }: { invoiceId: string; milestones?: any[]; retentionPercent?: number }) => {
+      const response = await apiRequest("PATCH", `/api/invoices/${invoiceId}/milestones`, {
+        milestones,
+        retentionPercent,
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update milestones');
+      }
+      return response.json();
+    },
+    onSuccess: (_data: any, variables: { invoiceId: string }) => {
+      safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices", variables.invoiceId] });
     },
   });
 }

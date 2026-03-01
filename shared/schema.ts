@@ -900,6 +900,10 @@ export const invoices = pgTable("invoices", {
   lockedAt: timestamp("locked_at"),
   lockedReason: text("locked_reason"),
   calculationHash: text("calculation_hash"),
+  retentionPercent: decimal("retention_percent", { precision: 5, scale: 2 }),
+  retentionAmount: decimal("retention_amount", { precision: 10, scale: 2 }),
+  amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default('0.00'),
+  paymentMilestones: jsonb("payment_milestones"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -4061,3 +4065,35 @@ export const jobRequests = pgTable("job_requests", {
 export const insertJobRequestSchema = createInsertSchema(jobRequests).omit({ id: true, createdAt: true, updatedAt: true, reviewedAt: true, jobId: true });
 export type InsertJobRequest = z.infer<typeof insertJobRequestSchema>;
 export type JobRequest = typeof jobRequests.$inferSelect;
+
+// Saved Filters - User-saved filter presets for jobs list
+export const savedFilters = pgTable("saved_filters", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  filters: jsonb("filters").notNull(),
+  entityType: text("entity_type").notNull().default('jobs'),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSavedFilterSchema = createInsertSchema(savedFilters).omit({ id: true, createdAt: true });
+export type InsertSavedFilter = z.infer<typeof insertSavedFilterSchema>;
+export type SavedFilter = typeof savedFilters.$inferSelect;
+
+// Payment Records - Track partial/progress payments against invoices
+export const paymentRecords = pgTable("payment_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  method: text("method").notNull().default('cash'),
+  reference: text("reference"),
+  note: text("note"),
+  recordedBy: varchar("recorded_by"),
+  paidAt: timestamp("paid_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPaymentRecordSchema = createInsertSchema(paymentRecords).omit({ id: true, createdAt: true });
+export type InsertPaymentRecord = z.infer<typeof insertPaymentRecordSchema>;
+export type PaymentRecord = typeof paymentRecords.$inferSelect;

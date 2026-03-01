@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { 
@@ -26,13 +26,19 @@ import {
   X,
   Loader2,
   MessageSquare,
-  Pencil
+  Pencil,
+  SlidersHorizontal,
+  Save,
+  ChevronDown,
+  BookmarkCheck,
+  Filter
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
@@ -42,6 +48,14 @@ import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useJobs, useUpdateJob, useArchiveJob, useUnarchiveJob, useDeleteJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
 import { useAppMode } from "@/hooks/use-app-mode";
@@ -70,12 +84,39 @@ interface Job {
   clientId?: string;
   clientName?: string;
   address?: string;
+  assignedTo?: string;
   scheduledAt?: string;
   status: JobStatus;
   requiresInspection?: boolean;
   inspectionCompletedAt?: string;
   isXeroImport?: boolean;
   xeroJobId?: string;
+}
+
+interface AdvancedFilters {
+  statuses: string[];
+  dateFrom: string;
+  dateTo: string;
+  assignedTo: string;
+  clientId: string;
+  suburb: string;
+}
+
+const emptyAdvancedFilters: AdvancedFilters = {
+  statuses: [],
+  dateFrom: '',
+  dateTo: '',
+  assignedTo: '',
+  clientId: '',
+  suburb: '',
+};
+
+interface SavedFilter {
+  id: string;
+  name: string;
+  filters: AdvancedFilters;
+  entityType: string;
+  createdAt: string;
 }
 
 interface WorkPageProps {
@@ -98,6 +139,10 @@ export default function WorkPage({
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [pendingStatus, setPendingStatus] = useState<JobStatus | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(emptyAdvancedFilters);
+  const [saveFilterName, setSaveFilterName] = useState("");
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [location, navigate] = useLocation();
   const searchParams = useSearch();
 
@@ -119,6 +164,79 @@ export default function WorkPage({
   const deleteJobMutation = useDeleteJob();
   const { actionPermissions } = useAppMode();
   const canCreateJobs = actionPermissions.canCreateJobs;
+
+  const { data: clientsList = [] } = useQuery<any[]>({ queryKey: ['/api/clients'] });
+  const { data: teamMembersList = [] } = useQuery<any[]>({ queryKey: ['/api/team/members'] });
+  const { data: savedFiltersList = [], isLoading: savedFiltersLoading } = useQuery<SavedFilter[]>({ queryKey: ['/api/saved-filters'] });
+
+  const saveFilterMutation = useMutation({
+    mutationFn: async ({ name, filters }: { name: string; filters: AdvancedFilters }) => {
+      const res = await apiRequest('POST', '/api/saved-filters', { name, filters, entityType: 'jobs' });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/saved-filters'] });
+      toast({ title: "Filter Saved", description: `"${saveFilterName}" has been saved.` });
+      setSaveDialogOpen(false);
+      setSaveFilterName("");
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save filter", variant: "destructive" });
+    },
+  });
+
+  const deleteFilterMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest('DELETE', `/api/saved-filters/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/saved-filters'] });
+      toast({ title: "Filter Deleted" });
+    },
+  });
+
+  const hasAdvancedFilters = useMemo(() => {
+    return advancedFilters.statuses.length > 0 ||
+      advancedFilters.dateFrom !== '' ||
+      advancedFilters.dateTo !== '' ||
+      advancedFilters.assignedTo !== '' ||
+      advancedFilters.clientId !== '' ||
+      advancedFilters.suburb !== '';
+  }, [advancedFilters]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (advancedFilters.statuses.length > 0) count++;
+    if (advancedFilters.dateFrom || advancedFilters.dateTo) count++;
+    if (advancedFilters.assignedTo) count++;
+    if (advancedFilters.clientId) count++;
+    if (advancedFilters.suburb) count++;
+    return count;
+  }, [advancedFilters]);
+
+  const handleClearAdvanced = useCallback(() => {
+    setAdvancedFilters(emptyAdvancedFilters);
+  }, []);
+
+  const handleLoadSavedFilter = useCallback((sf: SavedFilter) => {
+    setAdvancedFilters(sf.filters as AdvancedFilters);
+    setAdvancedOpen(true);
+    setActiveFilter('all');
+  }, []);
+
+  const handleSaveFilter = useCallback(() => {
+    if (!saveFilterName.trim()) return;
+    saveFilterMutation.mutate({ name: saveFilterName.trim(), filters: advancedFilters });
+  }, [saveFilterName, advancedFilters]);
+
+  const toggleStatus = useCallback((status: string) => {
+    setAdvancedFilters(prev => ({
+      ...prev,
+      statuses: prev.statuses.includes(status)
+        ? prev.statuses.filter(s => s !== status)
+        : [...prev.statuses, status],
+    }));
+  }, []);
 
   const { data: jobRequests = [], isLoading: isLoadingRequests } = useQuery<any[]>({
     queryKey: ['/api/job-requests'],
@@ -252,6 +370,27 @@ export default function WorkPage({
         ? (job.requiresInspection && !job.inspectionCompletedAt)
         : job.status === activeFilter;
 
+      if (hasAdvancedFilters) {
+        if (advancedFilters.statuses.length > 0 && !advancedFilters.statuses.includes(job.status)) return false;
+        if (advancedFilters.dateFrom) {
+          const from = new Date(advancedFilters.dateFrom);
+          const d = job.scheduledAt ? new Date(job.scheduledAt) : null;
+          if (!d || d < from) return false;
+        }
+        if (advancedFilters.dateTo) {
+          const to = new Date(advancedFilters.dateTo);
+          to.setHours(23, 59, 59, 999);
+          const d = job.scheduledAt ? new Date(job.scheduledAt) : null;
+          if (!d || d > to) return false;
+        }
+        if (advancedFilters.assignedTo && job.assignedTo !== advancedFilters.assignedTo) return false;
+        if (advancedFilters.clientId && job.clientId !== advancedFilters.clientId) return false;
+        if (advancedFilters.suburb) {
+          const lower = advancedFilters.suburb.toLowerCase();
+          if (!(job.address || '').toLowerCase().includes(lower)) return false;
+        }
+      }
+
       return matchesSearch && matchesFilter;
     });
 
@@ -269,7 +408,7 @@ export default function WorkPage({
       }
       return bDate - aDate;
     });
-  }, [jobs, searchTerm, activeFilter]);
+  }, [jobs, searchTerm, activeFilter, advancedFilters, hasAdvancedFilters]);
 
   const handleStatusChange = (job: Job, newStatus: JobStatus) => {
     setSelectedJob(job);
@@ -648,23 +787,273 @@ export default function WorkPage({
         placeholder="Search jobs by title, client, or address..."
       />
 
-      <FilterChips 
-        chips={[
-          { id: 'all', label: 'All', count: stats.total, icon: <Briefcase className="h-3 w-3" /> },
-          { id: 'requests', label: 'Requests', count: stats.requests, icon: <ClipboardList className="h-3 w-3" /> },
-          { id: 'pending', label: 'Pending', count: stats.pending, icon: <Hourglass className="h-3 w-3" /> },
-          { id: 'scheduled', label: 'Scheduled', count: stats.scheduled, icon: <Calendar className="h-3 w-3" /> },
-          { id: 'in_progress', label: 'In Progress', count: stats.inProgress, icon: <Play className="h-3 w-3" /> },
-          { id: 'done', label: 'Completed', count: stats.done, icon: <CheckCircle className="h-3 w-3" /> },
-          { id: 'invoiced', label: 'Invoiced', count: stats.invoiced, icon: <Receipt className="h-3 w-3" /> },
-          { id: 'today', label: 'Today', count: jobs.filter(j => j.scheduledAt && isToday(parseISO(j.scheduledAt))).length, icon: <Calendar className="h-3 w-3" /> },
-          { id: 'inspection', label: 'Inspection', count: stats.inspection, icon: <Search className="h-3 w-3" /> },
-          { id: 'archived', label: 'Archived', count: stats.archived, icon: <Archive className="h-3 w-3" /> },
-        ]}
-        activeId={activeFilter}
-        onSelect={setActiveFilter}
-      />
+      <div className="flex items-center gap-2 flex-wrap">
+        <FilterChips 
+          chips={[
+            { id: 'all', label: 'All', count: stats.total, icon: <Briefcase className="h-3 w-3" /> },
+            { id: 'requests', label: 'Requests', count: stats.requests, icon: <ClipboardList className="h-3 w-3" /> },
+            { id: 'pending', label: 'Pending', count: stats.pending, icon: <Hourglass className="h-3 w-3" /> },
+            { id: 'scheduled', label: 'Scheduled', count: stats.scheduled, icon: <Calendar className="h-3 w-3" /> },
+            { id: 'in_progress', label: 'In Progress', count: stats.inProgress, icon: <Play className="h-3 w-3" /> },
+            { id: 'done', label: 'Completed', count: stats.done, icon: <CheckCircle className="h-3 w-3" /> },
+            { id: 'invoiced', label: 'Invoiced', count: stats.invoiced, icon: <Receipt className="h-3 w-3" /> },
+            { id: 'today', label: 'Today', count: jobs.filter(j => j.scheduledAt && isToday(parseISO(j.scheduledAt))).length, icon: <Calendar className="h-3 w-3" /> },
+            { id: 'inspection', label: 'Inspection', count: stats.inspection, icon: <Search className="h-3 w-3" /> },
+            { id: 'archived', label: 'Archived', count: stats.archived, icon: <Archive className="h-3 w-3" /> },
+          ]}
+          activeId={activeFilter}
+          onSelect={setActiveFilter}
+          className="flex-1"
+        />
 
+        <div className="flex items-center gap-1">
+          <Button
+            variant={advancedOpen || hasAdvancedFilters ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAdvancedOpen(!advancedOpen)}
+            className={cn("rounded-lg gap-1.5", hasAdvancedFilters && "text-white")}
+            style={hasAdvancedFilters ? { backgroundColor: 'hsl(var(--trade))' } : {}}
+            data-testid="btn-advanced-filters"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Filters</span>
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                {activeFilterCount}
+              </Badge>
+            )}
+          </Button>
+
+          {savedFiltersList.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-lg gap-1.5" data-testid="btn-saved-filters">
+                  <BookmarkCheck className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Saved</span>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {savedFiltersList.map((sf) => (
+                  <DropdownMenuItem key={sf.id} className="flex items-center justify-between gap-2">
+                    <button
+                      className="flex-1 text-left text-sm truncate"
+                      onClick={() => handleLoadSavedFilter(sf)}
+                    >
+                      {sf.name}
+                    </button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteFilterMutation.mutate(sf.id);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </div>
+
+      {advancedOpen && (
+        <Card className="overflow-visible" style={{ borderRadius: '12px' }}>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Advanced Filters</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {hasAdvancedFilters && (
+                  <Button variant="ghost" size="sm" onClick={handleClearAdvanced} className="text-xs gap-1 rounded-lg">
+                    <X className="h-3 w-3" />
+                    Clear All
+                  </Button>
+                )}
+                {hasAdvancedFilters && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSaveDialogOpen(true)}
+                    className="text-xs gap-1 rounded-lg"
+                  >
+                    <Save className="h-3 w-3" />
+                    Save
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Status</Label>
+                <div className="flex flex-wrap gap-1">
+                  {(['pending', 'scheduled', 'in_progress', 'done', 'invoiced'] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => toggleStatus(s)}
+                      className={cn(
+                        "px-2 py-1 rounded-md text-xs border transition-colors",
+                        advancedFilters.statuses.includes(s)
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-border hover-elevate"
+                      )}
+                    >
+                      {{ pending: 'Pending', scheduled: 'Scheduled', in_progress: 'In Progress', done: 'Completed', invoiced: 'Invoiced' }[s]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Scheduled From</Label>
+                <Input
+                  type="date"
+                  value={advancedFilters.dateFrom}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                  className="h-9"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Scheduled To</Label>
+                <Input
+                  type="date"
+                  value={advancedFilters.dateTo}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                  className="h-9"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Assigned To</Label>
+                <Select
+                  value={advancedFilters.assignedTo || '_all'}
+                  onValueChange={(v) => setAdvancedFilters(prev => ({ ...prev, assignedTo: v === '_all' ? '' : v }))}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="All team members" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">All team members</SelectItem>
+                    {teamMembersList.map((m: any) => (
+                      <SelectItem key={m.id} value={m.id}>{m.name || m.email || 'Unnamed'}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Client</Label>
+                <Select
+                  value={advancedFilters.clientId || '_all'}
+                  onValueChange={(v) => setAdvancedFilters(prev => ({ ...prev, clientId: v === '_all' ? '' : v }))}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="All clients" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">All clients</SelectItem>
+                    {clientsList.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name || 'Unnamed'}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Address / Suburb</Label>
+                <Input
+                  value={advancedFilters.suburb}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, suburb: e.target.value }))}
+                  placeholder="e.g. Richmond, NSW..."
+                  className="h-9"
+                />
+              </div>
+            </div>
+
+            {hasAdvancedFilters && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {advancedFilters.statuses.map((s) => (
+                  <Badge key={s} variant="secondary" className="gap-1 text-xs">
+                    {{ pending: 'Pending', scheduled: 'Scheduled', in_progress: 'In Progress', done: 'Completed', invoiced: 'Invoiced' }[s] || s}
+                    <button onClick={() => toggleStatus(s)}><X className="h-3 w-3" /></button>
+                  </Badge>
+                ))}
+                {advancedFilters.dateFrom && (
+                  <Badge variant="secondary" className="gap-1 text-xs">
+                    From: {advancedFilters.dateFrom}
+                    <button onClick={() => setAdvancedFilters(prev => ({ ...prev, dateFrom: '' }))}><X className="h-3 w-3" /></button>
+                  </Badge>
+                )}
+                {advancedFilters.dateTo && (
+                  <Badge variant="secondary" className="gap-1 text-xs">
+                    To: {advancedFilters.dateTo}
+                    <button onClick={() => setAdvancedFilters(prev => ({ ...prev, dateTo: '' }))}><X className="h-3 w-3" /></button>
+                  </Badge>
+                )}
+                {advancedFilters.assignedTo && (
+                  <Badge variant="secondary" className="gap-1 text-xs">
+                    Assigned: {teamMembersList.find((m: any) => m.id === advancedFilters.assignedTo)?.name || advancedFilters.assignedTo}
+                    <button onClick={() => setAdvancedFilters(prev => ({ ...prev, assignedTo: '' }))}><X className="h-3 w-3" /></button>
+                  </Badge>
+                )}
+                {advancedFilters.clientId && (
+                  <Badge variant="secondary" className="gap-1 text-xs">
+                    Client: {clientsList.find((c: any) => c.id === advancedFilters.clientId)?.name || advancedFilters.clientId}
+                    <button onClick={() => setAdvancedFilters(prev => ({ ...prev, clientId: '' }))}><X className="h-3 w-3" /></button>
+                  </Badge>
+                )}
+                {advancedFilters.suburb && (
+                  <Badge variant="secondary" className="gap-1 text-xs">
+                    Suburb: {advancedFilters.suburb}
+                    <button onClick={() => setAdvancedFilters(prev => ({ ...prev, suburb: '' }))}><X className="h-3 w-3" /></button>
+                  </Badge>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Save Filter Dialog */}
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Save Filter</DialogTitle>
+            <DialogDescription>
+              Name this filter combination to quickly recall it later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input
+              value={saveFilterName}
+              onChange={(e) => setSaveFilterName(e.target.value)}
+              placeholder="e.g. This week's scheduled jobs"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSaveFilter(); }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handleSaveFilter}
+              disabled={!saveFilterName.trim() || saveFilterMutation.isPending}
+              className="text-white"
+              style={{ backgroundColor: 'hsl(var(--trade))' }}
+            >
+              {saveFilterMutation.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+              Save Filter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Job Request Cards */}
       {(activeFilter === 'requests' || (activeFilter === 'all' && pendingRequests.length > 0)) && (

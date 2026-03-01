@@ -10,7 +10,7 @@ import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, Externa
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
-import { useMarkInvoicePaid, useRecordPayment } from "@/hooks/use-invoices";
+import { useMarkInvoicePaid, useRecordPayment, usePaymentRecords, useVoidPayment, useUpdateMilestones } from "@/hooks/use-invoices";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,9 +61,15 @@ export default function InvoiceDetailView({
   const [paymentPlanFrequency, setPaymentPlanFrequency] = useState<'weekly' | 'fortnightly' | 'monthly'>('fortnightly');
   const [sendingReceipt, setSendingReceipt] = useState(false);
   const [includeLabourLines, setIncludeLabourLines] = useState(false);
+  const [paymentAmountStr, setPaymentAmountStr] = useState('');
+  const [showMilestonesDialog, setShowMilestonesDialog] = useState(false);
+  const [milestonePreset, setMilestonePreset] = useState<string>('custom');
+  const [retentionPercentStr, setRetentionPercentStr] = useState('');
   const { data: businessSettings } = useBusinessSettings();
   const markPaidMutation = useMarkInvoicePaid();
   const recordPaymentMutation = useRecordPayment();
+  const voidPaymentMutation = useVoidPayment();
+  const updateMilestonesMutation = useUpdateMilestones();
   const { data: integrationHealth } = useIntegrationHealth();
   const stripeConnected = isStripeReady(integrationHealth);
   const [, navigate] = useLocation();
@@ -95,6 +101,10 @@ export default function InvoiceDetailView({
   });
 
   const hasLabourLines = invoice?.lineItems?.some((item: any) => item.description?.startsWith('Labour —') || item.description?.startsWith('Labour -'));
+
+  const { data: paymentData, refetch: refetchPayments } = usePaymentRecords(invoiceId);
+  const paymentRecordsList = paymentData?.records || [];
+  const paymentSummary = paymentData?.summary;
 
   const { data: client } = useQuery({
     queryKey: ['/api/clients', invoice?.clientId],
@@ -428,19 +438,30 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
     }
   };
 
-  // Record payment and mark invoice as paid
   const handleRecordPayment = async () => {
     if (!invoice) return;
     
+    const invoiceTotal = parseFloat(invoice.total || '0');
+    const retentionAmt = parseFloat(invoice.retentionAmount || '0');
+    const previouslyPaid = parseFloat(invoice.amountPaid || '0');
+    const effectiveTotal = invoiceTotal - retentionAmt;
+    const remaining = Math.max(0, effectiveTotal - previouslyPaid);
+    const paymentAmount = paymentAmountStr ? parseFloat(paymentAmountStr) : remaining;
+    
+    if (Number.isNaN(paymentAmount) || paymentAmount <= 0) {
+      toast({ title: "Invalid amount", description: "Please enter a valid payment amount", variant: "destructive" });
+      return;
+    }
+    
     try {
-      await recordPaymentMutation.mutateAsync({
+      const result = await recordPaymentMutation.mutateAsync({
         invoiceId: invoice.id,
-        amount: parseFloat(invoice.total || '0'),
+        amount: paymentAmount,
         paymentMethod,
         reference: paymentReference || undefined,
         notes: paymentNotes || undefined,
       });
-      const amount = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoice.total || '0'));
+      const formattedAmount = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(paymentAmount);
       const methodLabels: Record<string, string> = {
         cash: 'Cash',
         bank_transfer: 'Bank Transfer',
@@ -449,18 +470,17 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
         other: 'Other'
       };
       toast({
-        title: "Payment recorded",
-        description: `${invoice.number} - ${amount} received via ${methodLabels[paymentMethod]}`,
+        title: result.isFullyPaid ? "Invoice fully paid" : "Progress payment recorded",
+        description: `${invoice.number} - ${formattedAmount} received via ${methodLabels[paymentMethod]}`,
       });
       setShowRecordPaymentDialog(false);
-      // Reset form
       setPaymentMethod('cash');
       setPaymentReference('');
       setPaymentNotes('');
-      // Refetch invoice to update status
+      setPaymentAmountStr('');
       refetchInvoice();
-      // Call legacy callback if provided
-      if (onMarkPaid) onMarkPaid(invoice.id);
+      refetchPayments();
+      if (result.isFullyPaid && onMarkPaid) onMarkPaid(invoice.id);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -762,10 +782,10 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 Send Invoice
               </Button>
             )}
-            {(invoice.status === 'sent' || invoice.status === 'overdue') && (
+            {(invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'partially_paid') && (
               <Button onClick={() => setShowRecordPaymentDialog(true)} data-testid="button-record-payment">
                 <DollarSign className="h-4 w-4 mr-2" />
-                Record Payment
+                {invoice.status === 'partially_paid' ? 'Record Next Payment' : 'Record Payment'}
               </Button>
             )}
             {isDemoUser && invoice.status !== 'paid' && (
@@ -1058,6 +1078,36 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                     Simulate Payment
                   </Button>
                 )}
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {invoice.status !== 'paid' && (
+          <Card className="mb-6 no-print">
+            <div className="p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <DollarSign className="h-5 w-5 text-primary shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-semibold">Payment Milestones & Retention</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {invoice.paymentMilestones && Array.isArray(invoice.paymentMilestones) && invoice.paymentMilestones.length > 0
+                      ? `${(invoice.paymentMilestones as any[]).length} milestones defined`
+                      : 'Define progress payment stages for this invoice'}
+                    {parseFloat(invoice.retentionPercent || '0') > 0 && ` | ${invoice.retentionPercent}% retention held`}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setRetentionPercentStr(invoice.retentionPercent || '');
+                    setShowMilestonesDialog(true);
+                  }}
+                  data-testid="button-setup-milestones"
+                >
+                  <CalendarClock className="h-4 w-4 mr-2" />
+                  {invoice.paymentMilestones && (invoice.paymentMilestones as any[]).length > 0 ? 'Edit Milestones' : 'Set Up Milestones'}
+                </Button>
               </div>
             </div>
           </Card>
@@ -1448,8 +1498,109 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                       {formatCurrency(total)}
                     </span>
                   </div>
+                  {parseFloat(invoice.retentionAmount || '0') > 0 && (
+                    <div className="flex justify-between py-2 border-b border-gray-200">
+                      <span className="text-gray-600">Retention ({invoice.retentionPercent || '0'}%)</span>
+                      <span className="font-semibold text-amber-600">-{formatCurrency(parseFloat(invoice.retentionAmount || '0'))}</span>
+                    </div>
+                  )}
+                  {parseFloat(invoice.amountPaid || '0') > 0 && (
+                    <div className="flex justify-between py-2 border-b border-gray-200">
+                      <span className="text-gray-600">Amount Paid</span>
+                      <span className="font-semibold text-green-600">-{formatCurrency(parseFloat(invoice.amountPaid || '0'))}</span>
+                    </div>
+                  )}
+                  {(parseFloat(invoice.amountPaid || '0') > 0 || parseFloat(invoice.retentionAmount || '0') > 0) && invoice.status !== 'paid' && (
+                    <div className="flex justify-between py-2 mt-1" style={{ borderTop: `2px solid ${primaryColor}` }}>
+                      <span className="text-lg font-bold" style={{ color: primaryColor }}>Balance Due</span>
+                      <span className="text-lg font-bold" style={{ color: primaryColor }}>
+                        {formatCurrency(Math.max(0, total - parseFloat(invoice.retentionAmount || '0') - parseFloat(invoice.amountPaid || '0')))}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {paymentRecordsList.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <Receipt className="h-4 w-4" style={{ color: primaryColor }} />
+                    Payment History
+                  </h3>
+                  <div className="relative pl-6 space-y-0">
+                    <div className="absolute left-2.5 top-1 bottom-1 w-px" style={{ backgroundColor: `${primaryColor}30` }} />
+                    {paymentRecordsList.map((record: any, idx: number) => {
+                      const methodLabels: Record<string, string> = {
+                        cash: 'Cash', bank_transfer: 'Bank Transfer', cheque: 'Cheque', card: 'Card', other: 'Other'
+                      };
+                      return (
+                        <div key={record.id} className="relative flex items-start gap-3 py-2.5">
+                          <div 
+                            className="absolute -left-3.5 top-3 w-2.5 h-2.5 rounded-full border-2 bg-white"
+                            style={{ borderColor: primaryColor }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <span className="font-semibold text-sm text-green-700">
+                                  {formatCurrency(parseFloat(record.amount || '0'))}
+                                </span>
+                                <span className="text-xs text-gray-500 ml-2">
+                                  via {methodLabels[record.method] || record.method}
+                                </span>
+                              </div>
+                              <span className="text-xs text-gray-400">
+                                {record.paidAt ? new Date(record.paidAt).toLocaleDateString('en-AU', {
+                                  day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                                }) : ''}
+                              </span>
+                            </div>
+                            {record.reference && (
+                              <div className="text-xs text-gray-500 mt-0.5">Ref: {record.reference}</div>
+                            )}
+                            {record.note && (
+                              <div className="text-xs text-gray-500 mt-0.5">{record.note}</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {invoice.paymentMilestones && Array.isArray(invoice.paymentMilestones) && invoice.paymentMilestones.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <CalendarClock className="h-4 w-4" style={{ color: primaryColor }} />
+                    Payment Milestones
+                  </h3>
+                  <div className="space-y-2">
+                    {(invoice.paymentMilestones as any[]).map((milestone: any, idx: number) => {
+                      const milestoneAmount = (total * (milestone.percent || 0)) / 100;
+                      const amountPaid = parseFloat(invoice.amountPaid || '0');
+                      const isMilestonePaid = amountPaid >= (invoice.paymentMilestones as any[]).slice(0, idx + 1).reduce((sum: number, m: any) => sum + (total * (m.percent || 0)) / 100, 0);
+                      return (
+                        <div key={idx} className="flex flex-wrap items-center justify-between gap-2 py-2 px-3 rounded-md bg-gray-50">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${isMilestonePaid ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                              {isMilestonePaid ? <Check className="w-3 h-3" /> : (idx + 1)}
+                            </div>
+                            <span className="text-sm font-medium">{milestone.label}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">{milestone.percent}%</span>
+                            <span className="text-sm font-semibold">{formatCurrency(milestoneAmount)}</span>
+                            <Badge variant={isMilestonePaid ? 'default' : 'outline'} className="text-xs">
+                              {isMilestonePaid ? 'Paid' : 'Pending'}
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Bank Transfer Details - show when bank details are configured */}
               {(businessSettings?.bankBsb || businessSettings?.bankAccountNumber || businessSettings?.bankAccountName) && (
@@ -1687,6 +1838,7 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
             setPaymentMethod('cash');
             setPaymentReference('');
             setPaymentNotes('');
+            setPaymentAmountStr('');
           }
         }}>
           <DialogContent className="sm:max-w-md">
@@ -1696,7 +1848,7 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 Record Payment
               </DialogTitle>
               <DialogDescription>
-                Record a payment received in person - no processing fees!
+                Record a full or partial payment - no processing fees!
               </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
@@ -1706,16 +1858,55 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                   <div className="font-medium">{client?.name || 'Unknown'}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xl font-bold" style={{ color: 'hsl(var(--trade))' }}>
-                    {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoice.total || '0'))}
-                  </div>
-                  <Badge variant="secondary" className="text-xs mt-1">
-                    You keep 100%
-                  </Badge>
+                  {(() => {
+                    const invTotal = parseFloat(invoice.total || '0');
+                    const retAmt = parseFloat(invoice.retentionAmount || '0');
+                    const prevPaid = parseFloat(invoice.amountPaid || '0');
+                    const balanceDue = Math.max(0, invTotal - retAmt - prevPaid);
+                    return (
+                      <>
+                        <div className="text-xl font-bold" style={{ color: 'hsl(var(--trade))' }}>
+                          {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(balanceDue)}
+                        </div>
+                        {prevPaid > 0 && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(prevPaid)} already paid
+                          </div>
+                        )}
+                        <Badge variant="secondary" className="text-xs mt-1">
+                          {balanceDue < invTotal ? 'Balance Due' : 'You keep 100%'}
+                        </Badge>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
               
               <div className="space-y-3">
+                <div>
+                  <Label htmlFor="payment-amount" className="text-sm font-medium">Payment Amount</Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                    <Input 
+                      id="payment-amount"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      placeholder={(() => {
+                        const invTotal = parseFloat(invoice.total || '0');
+                        const retAmt = parseFloat(invoice.retentionAmount || '0');
+                        const prevPaid = parseFloat(invoice.amountPaid || '0');
+                        return Math.max(0, invTotal - retAmt - prevPaid).toFixed(2);
+                      })()}
+                      value={paymentAmountStr}
+                      onChange={(e) => setPaymentAmountStr(e.target.value)}
+                      className="pl-7"
+                      data-testid="input-payment-amount"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Leave blank to pay the full remaining balance</p>
+                </div>
+                
                 <div>
                   <Label htmlFor="payment-method" className="text-sm font-medium">Payment Method</Label>
                   <Select 
@@ -1800,6 +1991,147 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           includeBeforePhotos={includeBeforePhotos}
           includeAfterPhotos={includeAfterPhotos}
         />
+      )}
+
+      {/* Milestones & Retention Dialog */}
+      {invoice && (
+        <Dialog open={showMilestonesDialog} onOpenChange={setShowMilestonesDialog}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CalendarClock className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                Payment Milestones & Retention
+              </DialogTitle>
+              <DialogDescription>
+                Define progress payment stages and retention for construction/trade invoices.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-5">
+              <div>
+                <Label className="text-sm font-medium">Milestone Preset</Label>
+                <Select
+                  value={milestonePreset}
+                  onValueChange={(value) => {
+                    setMilestonePreset(value);
+                  }}
+                >
+                  <SelectTrigger className="mt-1" data-testid="select-milestone-preset">
+                    <SelectValue placeholder="Choose a preset" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="custom">Custom</SelectItem>
+                    <SelectItem value="deposit-balance">50% Deposit / 50% Completion</SelectItem>
+                    <SelectItem value="three-stage">30% Deposit / 40% Progress / 30% Completion</SelectItem>
+                    <SelectItem value="four-stage">25% Deposit / 25% Lockup / 25% Fixout / 25% Completion</SelectItem>
+                    <SelectItem value="construction">10% Deposit / 30% Slab / 30% Frame / 30% Completion</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">Retention Percentage</Label>
+                <div className="relative mt-1">
+                  <Input 
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="100"
+                    placeholder="e.g. 5"
+                    value={retentionPercentStr}
+                    onChange={(e) => setRetentionPercentStr(e.target.value)}
+                    data-testid="input-retention-percent"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Common in construction: hold back 5-10% until defect period ends
+                </p>
+              </div>
+
+              {retentionPercentStr && parseFloat(retentionPercentStr) > 0 && (
+                <div className="p-3 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <div className="flex justify-between text-sm">
+                    <span>Invoice Total</span>
+                    <span className="font-medium">{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoice.total || '0'))}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span>Retention ({retentionPercentStr}%)</span>
+                    <span className="font-medium text-amber-600">-{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoice.total || '0') * parseFloat(retentionPercentStr) / 100)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1 pt-1 border-t border-amber-200 dark:border-amber-700">
+                    <span className="font-semibold">Payable Now</span>
+                    <span className="font-semibold">{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoice.total || '0') * (1 - parseFloat(retentionPercentStr) / 100))}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setShowMilestonesDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  const presetMap: Record<string, any[]> = {
+                    'deposit-balance': [
+                      { label: 'Deposit', percent: 50 },
+                      { label: 'Completion', percent: 50 },
+                    ],
+                    'three-stage': [
+                      { label: 'Deposit', percent: 30 },
+                      { label: 'Progress', percent: 40 },
+                      { label: 'Completion', percent: 30 },
+                    ],
+                    'four-stage': [
+                      { label: 'Deposit', percent: 25 },
+                      { label: 'Lockup', percent: 25 },
+                      { label: 'Fixout', percent: 25 },
+                      { label: 'Completion', percent: 25 },
+                    ],
+                    'construction': [
+                      { label: 'Deposit', percent: 10 },
+                      { label: 'Slab Complete', percent: 30 },
+                      { label: 'Frame Complete', percent: 30 },
+                      { label: 'Completion', percent: 30 },
+                    ],
+                  };
+                  const milestones = presetMap[milestonePreset] || (invoice.paymentMilestones as any[]) || [];
+                  const retPct = retentionPercentStr ? parseFloat(retentionPercentStr) : undefined;
+                  
+                  updateMilestonesMutation.mutate({
+                    invoiceId: invoice.id,
+                    milestones: milestones.length > 0 ? milestones : undefined,
+                    retentionPercent: retPct,
+                  }, {
+                    onSuccess: () => {
+                      setShowMilestonesDialog(false);
+                      refetchInvoice();
+                      toast({
+                        title: "Milestones updated",
+                        description: "Payment milestones and retention settings saved.",
+                      });
+                    },
+                    onError: (error: any) => {
+                      toast({
+                        title: "Error",
+                        description: error.message || "Failed to save milestones",
+                        variant: "destructive",
+                      });
+                    }
+                  });
+                }}
+                disabled={updateMilestonesMutation.isPending}
+                data-testid="button-save-milestones"
+              >
+                {updateMilestonesMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4 mr-2" />
+                )}
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
 
       <Dialog open={showVersionsDialog} onOpenChange={setShowVersionsDialog}>

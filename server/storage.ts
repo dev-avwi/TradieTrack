@@ -328,6 +328,12 @@ import {
   jobRequests,
   type JobRequest,
   type InsertJobRequest,
+  savedFilters,
+  type SavedFilter,
+  type InsertSavedFilter,
+  paymentRecords,
+  type PaymentRecord,
+  type InsertPaymentRecord,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -514,6 +520,11 @@ export interface IStorage {
   createInvoiceLineItem(lineItem: InsertInvoiceLineItem, userId?: string): Promise<InvoiceLineItem>;
   updateInvoiceLineItem(id: string, lineItem: Partial<InsertInvoiceLineItem>, userId?: string): Promise<InvoiceLineItem | undefined>;
   deleteInvoiceLineItem(id: string, userId?: string): Promise<boolean>;
+
+  // Payment Records (progress/partial payments against invoices)
+  getPaymentRecords(invoiceId: string): Promise<PaymentRecord[]>;
+  createPaymentRecord(record: InsertPaymentRecord): Promise<PaymentRecord>;
+  deletePaymentRecord(id: string): Promise<boolean>;
 
   // Payment Requests (phone-to-phone payments)
   getPaymentRequests(userId: string): Promise<PaymentRequest[]>;
@@ -1026,6 +1037,11 @@ export interface IStorage {
   deleteJobRequest(id: string, clientId: string): Promise<boolean>;
   getJobRequestsByClient(clientId: string): Promise<JobRequest[]>;
   getJobRequestsByClientForUser(userId: string, clientId: string): Promise<any[]>;
+
+  // Saved Filters
+  getSavedFilters(userId: string, entityType?: string): Promise<SavedFilter[]>;
+  createSavedFilter(filter: InsertSavedFilter): Promise<SavedFilter>;
+  deleteSavedFilter(id: string, userId: string): Promise<boolean>;
 }
 
 // Initialize database connection using standard pg driver
@@ -2509,6 +2525,21 @@ export class PostgresStorage implements IStorage {
     }
     const result = await db.delete(invoiceLineItems).where(eq(invoiceLineItems.id, id));
     return result.rowCount > 0;
+  }
+
+  // Payment Records (progress/partial payments)
+  async getPaymentRecords(invoiceId: string): Promise<PaymentRecord[]> {
+    return await db.select().from(paymentRecords).where(eq(paymentRecords.invoiceId, invoiceId)).orderBy(desc(paymentRecords.paidAt));
+  }
+
+  async createPaymentRecord(record: InsertPaymentRecord): Promise<PaymentRecord> {
+    const [created] = await db.insert(paymentRecords).values(record).returning();
+    return created;
+  }
+
+  async deletePaymentRecord(id: string): Promise<boolean> {
+    const result = await db.delete(paymentRecords).where(eq(paymentRecords.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Payment Requests (phone-to-phone payments)
@@ -7683,6 +7714,24 @@ Thank you for your prompt attention to this matter.`,
 
   async getJobRequestsByClient(clientId: string): Promise<JobRequest[]> {
     return await db.select().from(jobRequests).where(eq(jobRequests.clientId, clientId)).orderBy(desc(jobRequests.createdAt));
+  }
+
+  async getSavedFilters(userId: string, entityType?: string): Promise<SavedFilter[]> {
+    const conditions = [eq(savedFilters.userId, userId)];
+    if (entityType) {
+      conditions.push(eq(savedFilters.entityType, entityType));
+    }
+    return await db.select().from(savedFilters).where(and(...conditions)).orderBy(desc(savedFilters.createdAt));
+  }
+
+  async createSavedFilter(filter: InsertSavedFilter): Promise<SavedFilter> {
+    const [result] = await db.insert(savedFilters).values(filter).returning();
+    return result;
+  }
+
+  async deleteSavedFilter(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(savedFilters).where(and(eq(savedFilters.id, id), eq(savedFilters.userId, userId))).returning();
+    return result.length > 0;
   }
 }
 

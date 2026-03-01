@@ -111,6 +111,9 @@ import {
   jobAssignmentRequests,
   timeEntries,
   userRoles,
+  // Saved filters
+  insertSavedFilterSchema,
+  savedFilters,
   // Time entry edit audit trail
   timeEntryEdits,
   insertTimeEntryEditSchema,
@@ -11866,6 +11869,53 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Saved Filters CRUD
+  app.get("/api/saved-filters", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const entityType = (req.query.entityType as string) || 'jobs';
+      const filters = await storage.getSavedFilters(userId, entityType);
+      res.json(filters);
+    } catch (error) {
+      console.error("Error fetching saved filters:", error);
+      res.status(500).json({ error: "Failed to fetch saved filters" });
+    }
+  });
+
+  app.post("/api/saved-filters", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { name, filters, entityType } = req.body;
+      if (!name || !filters) {
+        return res.status(400).json({ error: "Name and filters are required" });
+      }
+      const saved = await storage.createSavedFilter({
+        userId,
+        name,
+        filters,
+        entityType: entityType || 'jobs',
+      });
+      res.status(201).json(saved);
+    } catch (error) {
+      console.error("Error creating saved filter:", error);
+      res.status(500).json({ error: "Failed to create saved filter" });
+    }
+  });
+
+  app.delete("/api/saved-filters/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const success = await storage.deleteSavedFilter(req.params.id, userId);
+      if (!success) {
+        return res.status(404).json({ error: "Saved filter not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting saved filter:", error);
+      res.status(500).json({ error: "Failed to delete saved filter" });
+    }
+  });
+
   // Jobs Routes
   app.get("/api/jobs", requireAuth, async (req: any, res) => {
     try {
@@ -11887,6 +11937,57 @@ Be specific about materials, colors, and features that would be included.`
           job.status !== 'done' && 
           job.status !== 'invoiced'
         );
+      }
+
+      // Server-side filtering params
+      const statusFilter = req.query.status as string | undefined;
+      if (statusFilter) {
+        const statuses = statusFilter.split(',').map((s: string) => s.trim());
+        jobs = jobs.filter(job => statuses.includes(job.status));
+      }
+
+      const dateFrom = req.query.dateFrom as string | undefined;
+      const dateTo = req.query.dateTo as string | undefined;
+      if (dateFrom) {
+        const from = new Date(dateFrom);
+        jobs = jobs.filter(job => {
+          const d = job.scheduledAt ? new Date(job.scheduledAt) : job.createdAt ? new Date(job.createdAt) : null;
+          return d && d >= from;
+        });
+      }
+      if (dateTo) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999);
+        jobs = jobs.filter(job => {
+          const d = job.scheduledAt ? new Date(job.scheduledAt) : job.createdAt ? new Date(job.createdAt) : null;
+          return d && d <= to;
+        });
+      }
+
+      const assignedTo = req.query.assignedTo as string | undefined;
+      if (assignedTo) {
+        jobs = jobs.filter(job => job.assignedTo === assignedTo);
+      }
+
+      const clientId = req.query.clientId as string | undefined;
+      if (clientId) {
+        jobs = jobs.filter(job => job.clientId === clientId);
+      }
+
+      const searchText = req.query.search as string | undefined;
+      if (searchText) {
+        const lower = searchText.toLowerCase();
+        jobs = jobs.filter(job =>
+          (job.title || '').toLowerCase().includes(lower) ||
+          (job.address || '').toLowerCase().includes(lower) ||
+          (job.description || '').toLowerCase().includes(lower)
+        );
+      }
+
+      const suburb = req.query.suburb as string | undefined;
+      if (suburb) {
+        const lower = suburb.toLowerCase();
+        jobs = jobs.filter(job => (job.address || '').toLowerCase().includes(lower));
       }
       
       const totalCount = jobs.length;
@@ -12804,6 +12905,219 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error) {
       console.error("Error fetching job:", error);
       res.status(500).json({ error: "Failed to fetch job" });
+    }
+  });
+
+  app.get("/api/jobs/:id/suggest-assignee", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const job = await storage.getJob(req.params.id, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      const members = await storage.getTeamMembers(effectiveUserId);
+      const activeMembers = members.filter((m: any) => m.isActive && m.inviteStatus === 'accepted' && m.memberId);
+
+      const ownerUser = await storage.getUser(effectiveUserId);
+      const allCandidates: Array<{ id: string; memberId: string; name: string; isOwner: boolean }> = [];
+
+      if (ownerUser) {
+        allCandidates.push({
+          id: effectiveUserId,
+          memberId: effectiveUserId,
+          name: [ownerUser.firstName, ownerUser.lastName].filter(Boolean).join(' ') || ownerUser.email || 'Owner',
+          isOwner: true,
+        });
+      }
+      for (const m of activeMembers) {
+        allCandidates.push({
+          id: m.id,
+          memberId: m.memberId!,
+          name: [m.firstName, m.lastName].filter(Boolean).join(' ') || m.email,
+          isOwner: false,
+        });
+      }
+
+      const allJobs = await storage.getJobs(effectiveUserId);
+
+      const jobDate = job.scheduledAt ? new Date(job.scheduledAt) : new Date();
+      const dayStart = new Date(jobDate);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(jobDate);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const weekStart = new Date(dayStart);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      const jobLat = job.latitude ? parseFloat(String(job.latitude)) : null;
+      const jobLng = job.longitude ? parseFloat(String(job.longitude)) : null;
+
+      const jobTitle = (job.title || '').toLowerCase();
+
+      const suggestions = await Promise.all(allCandidates.map(async (candidate) => {
+        let availabilityScore = 100;
+        let skillScore = 50;
+        let proximityScore = 50;
+        let workloadScore = 100;
+
+        const availabilityDetails: string[] = [];
+        const skillDetails: string[] = [];
+        const proximityDetails: string[] = [];
+        const workloadDetails: string[] = [];
+
+        const memberDayJobs = allJobs.filter((j: any) => {
+          if (!j.scheduledAt) return false;
+          const jDate = new Date(j.scheduledAt);
+          const matchesDay = jDate >= dayStart && jDate <= dayEnd;
+          const isAssigned = candidate.isOwner
+            ? (!j.assignedTo || j.assignedTo === candidate.memberId)
+            : (j.assignedTo === candidate.memberId || j.assignedTo === candidate.id);
+          return matchesDay && isAssigned && j.id !== job.id;
+        });
+
+        if (memberDayJobs.length === 0) {
+          availabilityScore = 100;
+          availabilityDetails.push('No other jobs scheduled this day');
+        } else {
+          const jobStartHour = job.scheduledTime ? parseInt(job.scheduledTime.split(':')[0], 10) : 9;
+          const jobDuration = job.estimatedDuration || 60;
+          const jobEndMinute = jobStartHour * 60 + jobDuration;
+
+          let hasConflict = false;
+          for (const dj of memberDayJobs) {
+            const djStart = dj.scheduledTime ? parseInt(dj.scheduledTime.split(':')[0], 10) * 60 : 540;
+            const djEnd = djStart + (dj.estimatedDuration || 60);
+            if (jobStartHour * 60 < djEnd && jobEndMinute > djStart) {
+              hasConflict = true;
+              break;
+            }
+          }
+
+          if (hasConflict) {
+            availabilityScore = 10;
+            availabilityDetails.push(`Time conflict with ${memberDayJobs.length} job(s) on this day`);
+          } else {
+            availabilityScore = Math.max(40, 100 - memberDayJobs.length * 20);
+            availabilityDetails.push(`${memberDayJobs.length} other job(s) this day, no time conflict`);
+          }
+        }
+
+        if (!candidate.isOwner) {
+          try {
+            const skills = await db.select().from(teamMemberSkills)
+              .where(eq(teamMemberSkills.teamMemberId, candidate.id));
+
+            if (skills.length > 0) {
+              const skillNames = skills.map((s: any) => s.skillName.toLowerCase());
+              const match = skillNames.some((sn: string) =>
+                jobTitle.includes(sn) || sn.includes(jobTitle.split(' ')[0])
+              );
+              if (match) {
+                skillScore = 100;
+                skillDetails.push('Skills match job type');
+              } else {
+                skillScore = 40;
+                skillDetails.push('Has skills but no direct match');
+              }
+            } else {
+              skillScore = 50;
+              skillDetails.push('No skills on record');
+            }
+          } catch {
+            skillScore = 50;
+            skillDetails.push('Could not check skills');
+          }
+        } else {
+          skillScore = 70;
+          skillDetails.push('Business owner');
+        }
+
+        try {
+          const lastLoc = await storage.getLatestLocationForUser(candidate.memberId);
+          if (lastLoc && jobLat && jobLng) {
+            const memLat = parseFloat(String(lastLoc.latitude));
+            const memLng = parseFloat(String(lastLoc.longitude));
+            const distKm = haversineDistance(memLat, memLng, jobLat, jobLng);
+            if (distKm < 5) {
+              proximityScore = 100;
+              proximityDetails.push(`${distKm.toFixed(1)} km away`);
+            } else if (distKm < 15) {
+              proximityScore = 80;
+              proximityDetails.push(`${distKm.toFixed(1)} km away`);
+            } else if (distKm < 30) {
+              proximityScore = 60;
+              proximityDetails.push(`${distKm.toFixed(1)} km away`);
+            } else if (distKm < 60) {
+              proximityScore = 40;
+              proximityDetails.push(`${distKm.toFixed(1)} km away`);
+            } else {
+              proximityScore = 20;
+              proximityDetails.push(`${distKm.toFixed(1)} km away`);
+            }
+          } else {
+            proximityScore = 50;
+            proximityDetails.push('Location unknown');
+          }
+        } catch {
+          proximityScore = 50;
+          proximityDetails.push('Location unavailable');
+        }
+
+        const weekJobs = allJobs.filter((j: any) => {
+          if (!j.scheduledAt) return false;
+          const jDate = new Date(j.scheduledAt);
+          const isInWeek = jDate >= weekStart && jDate <= weekEnd;
+          const isAssigned = candidate.isOwner
+            ? (!j.assignedTo || j.assignedTo === candidate.memberId)
+            : (j.assignedTo === candidate.memberId || j.assignedTo === candidate.id);
+          return isInWeek && isAssigned && j.id !== job.id;
+        });
+
+        const weekJobCount = weekJobs.length;
+        workloadScore = Math.max(10, 100 - weekJobCount * 12);
+        if (weekJobCount === 0) {
+          workloadDetails.push('No other jobs this week');
+        } else {
+          workloadDetails.push(`${weekJobCount} job(s) this week`);
+        }
+
+        const totalScore = Math.round(
+          availabilityScore * 0.35 +
+          skillScore * 0.25 +
+          proximityScore * 0.20 +
+          workloadScore * 0.20
+        );
+
+        return {
+          teamMemberId: candidate.id,
+          memberId: candidate.memberId,
+          name: candidate.name,
+          isOwner: candidate.isOwner,
+          totalScore,
+          scores: {
+            availability: { score: availabilityScore, weight: 35, details: availabilityDetails },
+            skills: { score: skillScore, weight: 25, details: skillDetails },
+            proximity: { score: proximityScore, weight: 20, details: proximityDetails },
+            workload: { score: workloadScore, weight: 20, details: workloadDetails },
+          },
+        };
+      }));
+
+      suggestions.sort((a, b) => b.totalScore - a.totalScore);
+
+      res.json({
+        jobId: job.id,
+        jobTitle: job.title,
+        scheduledAt: job.scheduledAt,
+        suggestions,
+      });
+    } catch (error) {
+      console.error("Error suggesting assignees:", error);
+      res.status(500).json({ error: "Failed to suggest assignees" });
     }
   });
 
@@ -17853,7 +18167,6 @@ Be specific about materials, colors, and features that would be included.`
       const userContext = await getUserContext(req.userId);
       const { amount, paymentMethod, reference, notes, createReceipt = false } = req.body;
       
-      // Validate and parse amount with proper string handling
       const amountStr = String(amount || '').trim();
       if (!amountStr) {
         return res.status(400).json({ error: "Amount is required" });
@@ -17868,13 +18181,11 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(400).json({ error: `Payment method must be one of: ${validPaymentMethods.join(', ')}` });
       }
       
-      // Get invoice
       const invoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }
       
-      // Check if already paid (idempotency check)
       if (invoice.status === 'paid') {
         const paidDate = invoice.paidAt ? new Date(invoice.paidAt).toLocaleDateString('en-AU') : 'previously';
         return res.status(400).json({ 
@@ -17883,29 +18194,57 @@ Be specific about materials, colors, and features that would be included.`
         });
       }
       
-      // Log if payment amount differs from invoice total (allows partial or over-payments)
       const invoiceTotal = parseFloat(String(invoice.total || '0'));
-      if (parsedAmount !== invoiceTotal) {
-        console.log(`Manual payment: $${parsedAmount.toFixed(2)} recorded for invoice total $${invoiceTotal.toFixed(2)}`);
-      }
+      const retentionAmount = parseFloat(String(invoice.retentionAmount || '0'));
+      const previouslyPaid = parseFloat(String(invoice.amountPaid || '0'));
+      const effectiveTotal = invoiceTotal - retentionAmount;
+      const newTotalPaid = previouslyPaid + parsedAmount;
+      const outstandingBalance = Math.max(0, effectiveTotal - newTotalPaid);
+      const isFullyPaid = newTotalPaid >= effectiveTotal;
       
-      // Update invoice with payment details and lock it
-      const updatedInvoice = await storage.updateInvoice(req.params.id, userContext.effectiveUserId, {
-        status: 'paid',
+      if (parsedAmount !== invoiceTotal) {
+        console.log(`Payment: $${parsedAmount.toFixed(2)} recorded for invoice total $${invoiceTotal.toFixed(2)} (previously paid: $${previouslyPaid.toFixed(2)}, balance: $${outstandingBalance.toFixed(2)})`);
+      }
+
+      await storage.createPaymentRecord({
+        invoiceId: invoice.id,
+        userId: userContext.effectiveUserId,
+        amount: parsedAmount.toFixed(2),
+        method: paymentMethod,
+        reference: reference || null,
+        note: notes || null,
+        recordedBy: req.userId,
         paidAt: new Date(),
-        lockedAt: new Date(),
-        lockedReason: 'payment_received',
+      });
+      
+      const updateData: any = {
+        amountPaid: newTotalPaid.toFixed(2),
         paymentMethod: paymentMethod,
         paymentReference: reference || null,
-        notes: notes ? (invoice.notes ? `${invoice.notes}\n\nPayment notes: ${notes}` : `Payment notes: ${notes}`) : invoice.notes,
-      });
+      };
+
+      if (isFullyPaid) {
+        updateData.status = 'paid';
+        updateData.paidAt = new Date();
+        updateData.lockedAt = new Date();
+        updateData.lockedReason = 'payment_received';
+      } else if (newTotalPaid > 0) {
+        updateData.status = 'partially_paid';
+      }
+
+      if (notes) {
+        updateData.notes = invoice.notes 
+          ? `${invoice.notes}\n\nPayment notes: ${notes}` 
+          : `Payment notes: ${notes}`;
+      }
+      
+      const updatedInvoice = await storage.updateInvoice(req.params.id, userContext.effectiveUserId, updateData);
       
       if (!updatedInvoice) {
         return res.status(500).json({ error: "Failed to record payment" });
       }
       
-      // Update linked job status if applicable (best effort, don't fail if this errors)
-      if (invoice.jobId) {
+      if (isFullyPaid && invoice.jobId) {
         try {
           const job = await storage.getJob(invoice.jobId, userContext.effectiveUserId);
           if (job && job.status !== 'invoiced') {
@@ -17916,7 +18255,6 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
       
-      // Send push notification for payment received
       const amountInCents = Math.round(parsedAmount * 100);
       await notifyPaymentReceived(req.userId, amountInCents, invoice.number || `INV-${invoice.id}`, invoice.id);
 
@@ -17928,76 +18266,193 @@ Be specific about materials, colors, and features that would be included.`
         }
       } catch (e) { console.error('Owner SMS failed:', e); }
 
-      try {
-        const paymentClient = invoice.clientId ? await storage.getClient(invoice.clientId, userContext.effectiveUserId) : null;
-        await notifyInvoicePaid(storage, userContext.effectiveUserId, invoice, paymentClient?.name || 'Client');
-      } catch (notifErr) {
-        console.error('Failed to send invoice paid notification:', notifErr);
+      if (isFullyPaid) {
+        try {
+          const paymentClient = invoice.clientId ? await storage.getClient(invoice.clientId, userContext.effectiveUserId) : null;
+          await notifyInvoicePaid(storage, userContext.effectiveUserId, invoice, paymentClient?.name || 'Client');
+        } catch (notifErr) {
+          console.error('Failed to send invoice paid notification:', notifErr);
+        }
       }
       
-      // Trigger automation rules for payment received
-      processPaymentReceivedAutomation(req.userId, invoice.id)
-        .catch(err => console.error('[Automations] Error processing payment received:', err));
+      if (isFullyPaid) {
+        processPaymentReceivedAutomation(req.userId, invoice.id)
+          .catch(err => console.error('[Automations] Error processing payment received:', err));
+      }
       
-      // Only create receipt if explicitly requested (not automatic)
       let receiptId = null;
       if (createReceipt) {
         try {
           const receiptNumber = await storage.generateReceiptNumber(userContext.effectiveUserId);
-          const gstAmount = parsedAmount / 11; // GST = 1/11 of total (Australian standard)
+          const gstAmount = parsedAmount / 11;
           const subtotal = parsedAmount - gstAmount;
-          
-          // Get client info if available
-          let clientId = null;
-          if (invoice.clientId) {
-            clientId = invoice.clientId;
-          }
           
           const receipt = await storage.createReceipt({
             userId: userContext.effectiveUserId,
             receiptNumber,
             invoiceId: invoice.id,
             jobId: invoice.jobId,
-            clientId,
+            clientId: invoice.clientId || null,
             amount: parsedAmount.toFixed(2),
             gstAmount: gstAmount.toFixed(2),
             subtotal: subtotal.toFixed(2),
             paymentMethod: paymentMethod,
             paymentReference: reference || null,
-            description: `Payment for Invoice ${invoice.number || invoice.id.substring(0, 8).toUpperCase()}`,
+            description: `${isFullyPaid ? 'Final payment' : 'Progress payment'} for Invoice ${invoice.number || invoice.id.substring(0, 8).toUpperCase()}`,
             paidAt: new Date(),
           });
           
           receiptId = receipt.id;
           
-          // Log receipt creation activity using helper function
           await logActivity(
             userContext.effectiveUserId,
             'payment_received',
             `Receipt ${receiptNumber} created`,
-            `Payment of $${parsedAmount.toFixed(2)} received via ${paymentMethod}`,
+            `${isFullyPaid ? 'Final' : 'Progress'} payment of $${parsedAmount.toFixed(2)} received via ${paymentMethod}`,
             'invoice',
             invoice.id,
             { receiptNumber, receiptId: receipt.id, amount: parsedAmount.toFixed(2), invoiceId: invoice.id, jobId: invoice.jobId, paymentMethod }
           );
           
-          console.log(`✅ Created receipt ${receiptNumber} for invoice payment`);
+          console.log(`Created receipt ${receiptNumber} for invoice payment`);
         } catch (receiptError) {
           console.error('Failed to create receipt:', receiptError);
-          // Don't fail the payment if receipt creation fails
         }
       }
+      
+      const paymentRecordsList = await storage.getPaymentRecords(invoice.id);
       
       res.json({
         ...updatedInvoice,
         receiptId,
-        message: `Payment of $${parsedAmount.toFixed(2)} recorded via ${paymentMethod}${receiptId ? ' - Receipt created' : ''}`
+        paymentRecords: paymentRecordsList,
+        outstandingBalance: outstandingBalance.toFixed(2),
+        isFullyPaid,
+        message: `${isFullyPaid ? 'Final' : 'Progress'} payment of $${parsedAmount.toFixed(2)} recorded via ${paymentMethod}${receiptId ? ' - Receipt created' : ''}`
       });
     } catch (error) {
       console.error("Error recording payment:", error);
       res.status(500).json({ error: "Failed to record payment" });
     }
   };
+
+  // Get payment records for an invoice
+  app.get("/api/invoices/:id/payments", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const invoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      const records = await storage.getPaymentRecords(req.params.id);
+      const invoiceTotal = parseFloat(String(invoice.total || '0'));
+      const retentionAmount = parseFloat(String(invoice.retentionAmount || '0'));
+      const amountPaid = parseFloat(String(invoice.amountPaid || '0'));
+      const effectiveTotal = invoiceTotal - retentionAmount;
+      const outstandingBalance = Math.max(0, effectiveTotal - amountPaid);
+      
+      res.json({
+        records,
+        summary: {
+          invoiceTotal: invoiceTotal.toFixed(2),
+          retentionAmount: retentionAmount.toFixed(2),
+          retentionPercent: invoice.retentionPercent || '0',
+          effectiveTotal: effectiveTotal.toFixed(2),
+          amountPaid: amountPaid.toFixed(2),
+          outstandingBalance: outstandingBalance.toFixed(2),
+          isFullyPaid: amountPaid >= effectiveTotal,
+          paymentCount: records.length,
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching payment records:", error);
+      res.status(500).json({ error: "Failed to fetch payment records" });
+    }
+  });
+
+  // Delete a payment record (void/reverse a payment)
+  app.delete("/api/invoices/:id/payments/:paymentId", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const invoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      
+      const records = await storage.getPaymentRecords(req.params.id);
+      const record = records.find(r => r.id === req.params.paymentId);
+      if (!record) {
+        return res.status(404).json({ error: "Payment record not found" });
+      }
+      
+      await storage.deletePaymentRecord(req.params.paymentId);
+      
+      const deletedAmount = parseFloat(String(record.amount || '0'));
+      const previousPaid = parseFloat(String(invoice.amountPaid || '0'));
+      const newPaid = Math.max(0, previousPaid - deletedAmount);
+      const invoiceTotal = parseFloat(String(invoice.total || '0'));
+      const retentionAmount = parseFloat(String(invoice.retentionAmount || '0'));
+      const effectiveTotal = invoiceTotal - retentionAmount;
+      
+      const updateData: any = { amountPaid: newPaid.toFixed(2) };
+      if (newPaid <= 0) {
+        updateData.status = invoice.sentAt ? 'sent' : 'draft';
+        updateData.paidAt = null;
+        updateData.lockedAt = null;
+        updateData.lockedReason = null;
+      } else if (newPaid < effectiveTotal) {
+        updateData.status = 'partially_paid';
+        updateData.paidAt = null;
+        updateData.lockedAt = null;
+        updateData.lockedReason = null;
+      }
+      
+      await storage.updateInvoice(req.params.id, userContext.effectiveUserId, updateData);
+      
+      res.json({ message: `Payment of $${deletedAmount.toFixed(2)} voided`, newAmountPaid: newPaid.toFixed(2) });
+    } catch (error) {
+      console.error("Error deleting payment record:", error);
+      res.status(500).json({ error: "Failed to delete payment record" });
+    }
+  });
+
+  // Update payment milestones on an invoice
+  app.patch("/api/invoices/:id/milestones", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const invoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      
+      const { milestones, retentionPercent } = req.body;
+      
+      const updateData: any = {};
+      
+      if (milestones !== undefined) {
+        if (!Array.isArray(milestones)) {
+          return res.status(400).json({ error: "Milestones must be an array" });
+        }
+        updateData.paymentMilestones = milestones;
+      }
+      
+      if (retentionPercent !== undefined) {
+        const pct = parseFloat(String(retentionPercent));
+        if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+          return res.status(400).json({ error: "Retention percent must be between 0 and 100" });
+        }
+        updateData.retentionPercent = pct.toFixed(2);
+        const total = parseFloat(String(invoice.total || '0'));
+        updateData.retentionAmount = (total * pct / 100).toFixed(2);
+      }
+      
+      const updated = await storage.updateInvoice(req.params.id, userContext.effectiveUserId, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating milestones:", error);
+      res.status(500).json({ error: "Failed to update milestones" });
+    }
+  });
 
   // Record manual payment with details - RESTful alias endpoint
   app.post("/api/invoices/:id/payments", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), handleRecordPayment);
@@ -32266,6 +32721,154 @@ Respond with JSON in this format:
     } catch (error) {
       console.error("Error generating by-worker profitability:", error);
       res.status(500).json({ error: "Failed to generate by-worker report" });
+    }
+  });
+
+  app.get("/api/reports/profitability/by-job-type", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      if (!userContext.isOwner) {
+        return res.status(403).json({ error: 'Access denied - owners only' });
+      }
+      const effectiveUserId = userContext.effectiveUserId;
+      const { startDate, endDate } = req.query;
+
+      let allJobs = await storage.getJobs(effectiveUserId);
+      if (startDate) {
+        allJobs = allJobs.filter(j => new Date(j.createdAt!) >= new Date(startDate as string));
+      }
+      if (endDate) {
+        allJobs = allJobs.filter(j => new Date(j.createdAt!) <= new Date(endDate as string));
+      }
+
+      const allInvoices = await storage.getInvoices(effectiveUserId);
+      const allExpenses = await storage.getExpenses(effectiveUserId);
+
+      const typeMap: Record<string, {
+        jobType: string;
+        jobCount: number;
+        totalRevenue: number;
+        totalLabourCost: number;
+        totalMaterialCost: number;
+        totalExpenseCost: number;
+        totalCosts: number;
+        totalProfit: number;
+        totalHours: number;
+      }> = {};
+
+      await Promise.all(allJobs.map(async (job) => {
+        const jobType = job.title?.trim() || 'Uncategorised';
+
+        if (!typeMap[jobType]) {
+          typeMap[jobType] = { jobType, jobCount: 0, totalRevenue: 0, totalLabourCost: 0, totalMaterialCost: 0, totalExpenseCost: 0, totalCosts: 0, totalProfit: 0, totalHours: 0 };
+        }
+        const entry = typeMap[jobType];
+        entry.jobCount++;
+
+        const jobInvoices = allInvoices.filter(i => i.jobId === job.id && i.status === 'paid');
+        const revenue = jobInvoices.reduce((sum, i) => sum + parseFloat(i.total || '0'), 0);
+        entry.totalRevenue += revenue;
+
+        const jobExpenses = allExpenses.filter(e => e.jobId === job.id);
+        const expenseCost = jobExpenses.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
+        entry.totalExpenseCost += expenseCost;
+
+        const timeEntries = await storage.getTimeEntries(effectiveUserId, job.id);
+        const labourCost = timeEntries.filter(e => e.endTime).reduce((sum, e) => {
+          const hours = (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+          return sum + (hours * parseFloat(e.hourlyRate?.toString() || '0'));
+        }, 0);
+        entry.totalLabourCost += labourCost;
+
+        const hours = timeEntries.filter(e => e.endTime).reduce((sum, e) => {
+          return sum + (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+        }, 0);
+        entry.totalHours += hours;
+
+        let materialsCost = 0;
+        try {
+          const materials = await storage.getJobMaterials(job.id, effectiveUserId);
+          materialsCost = materials.reduce((sum, m) => sum + parseFloat(m.totalCost?.toString() || '0'), 0);
+        } catch (e) {}
+        entry.totalMaterialCost += materialsCost;
+
+        const costs = expenseCost + labourCost + materialsCost;
+        entry.totalCosts += costs;
+        entry.totalProfit += revenue - costs;
+      }));
+
+      const jobTypes = Object.values(typeMap).map(t => ({
+        ...t,
+        avgMargin: t.totalRevenue > 0 ? parseFloat(((t.totalProfit / t.totalRevenue) * 100).toFixed(1)) : 0,
+        totalHours: parseFloat(t.totalHours.toFixed(1)),
+      })).sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+      const best = jobTypes.length > 0 ? jobTypes.reduce((a, b) => a.avgMargin > b.avgMargin ? a : b) : null;
+      const worst = jobTypes.length > 0 ? jobTypes.reduce((a, b) => a.avgMargin < b.avgMargin ? a : b) : null;
+
+      let previousPeriodTypes: Record<string, { avgMargin: number }> = {};
+      if (startDate && endDate) {
+        const start = new Date(startDate as string);
+        const end = new Date(endDate as string);
+        const duration = end.getTime() - start.getTime();
+        const prevStart = new Date(start.getTime() - duration);
+        const prevEnd = new Date(start.getTime());
+
+        let prevJobs = await storage.getJobs(effectiveUserId);
+        prevJobs = prevJobs.filter(j => {
+          const d = new Date(j.createdAt!);
+          return d >= prevStart && d < prevEnd;
+        });
+
+        const prevTypeMap: Record<string, { revenue: number; costs: number }> = {};
+        await Promise.all(prevJobs.map(async (job) => {
+          const jobType = job.title?.trim() || 'Uncategorised';
+          if (!prevTypeMap[jobType]) prevTypeMap[jobType] = { revenue: 0, costs: 0 };
+
+          const jobInvoices = allInvoices.filter(i => i.jobId === job.id && i.status === 'paid');
+          const revenue = jobInvoices.reduce((sum, i) => sum + parseFloat(i.total || '0'), 0);
+          prevTypeMap[jobType].revenue += revenue;
+
+          const jobExpenses = allExpenses.filter(e => e.jobId === job.id);
+          const expenseCost = jobExpenses.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
+
+          const timeEntries = await storage.getTimeEntries(effectiveUserId, job.id);
+          const labourCost = timeEntries.filter(e => e.endTime).reduce((sum, e) => {
+            const hours = (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+            return sum + (hours * parseFloat(e.hourlyRate?.toString() || '0'));
+          }, 0);
+
+          let materialsCost = 0;
+          try {
+            const materials = await storage.getJobMaterials(job.id, effectiveUserId);
+            materialsCost = materials.reduce((sum, m) => sum + parseFloat(m.totalCost?.toString() || '0'), 0);
+          } catch (e) {}
+
+          prevTypeMap[jobType].costs += expenseCost + labourCost + materialsCost;
+        }));
+
+        for (const [type, data] of Object.entries(prevTypeMap)) {
+          previousPeriodTypes[type] = {
+            avgMargin: data.revenue > 0 ? parseFloat(((( data.revenue - data.costs) / data.revenue) * 100).toFixed(1)) : 0,
+          };
+        }
+      }
+
+      const jobTypesWithTrend = jobTypes.map(t => ({
+        ...t,
+        previousMargin: previousPeriodTypes[t.jobType]?.avgMargin ?? null,
+        marginChange: previousPeriodTypes[t.jobType] != null ? parseFloat((t.avgMargin - previousPeriodTypes[t.jobType].avgMargin).toFixed(1)) : null,
+      }));
+
+      res.json({
+        jobTypes: jobTypesWithTrend,
+        best: best ? { jobType: best.jobType, avgMargin: best.avgMargin } : null,
+        worst: worst ? { jobType: worst.jobType, avgMargin: worst.avgMargin } : null,
+      });
+    } catch (error) {
+      console.error("Error generating by-job-type profitability:", error);
+      res.status(500).json({ error: "Failed to generate by-job-type report" });
     }
   });
 

@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,20 @@ import {
   Users,
   HardHat,
   Calendar,
+  Layers,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
 
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(n);
@@ -77,6 +90,27 @@ interface WorkerProfitability {
   revenueGenerated: number;
 }
 
+interface JobTypeProfitability {
+  jobType: string;
+  jobCount: number;
+  totalRevenue: number;
+  totalLabourCost: number;
+  totalMaterialCost: number;
+  totalExpenseCost: number;
+  totalCosts: number;
+  totalProfit: number;
+  totalHours: number;
+  avgMargin: number;
+  previousMargin: number | null;
+  marginChange: number | null;
+}
+
+interface JobTypeReport {
+  jobTypes: JobTypeProfitability[];
+  best: { jobType: string; avgMargin: number } | null;
+  worst: { jobType: string; avgMargin: number } | null;
+}
+
 type DatePreset = "this_week" | "this_month" | "last_month" | "last_3_months" | "this_year" | "custom";
 
 const datePresets: { label: string; value: DatePreset }[] = [
@@ -132,6 +166,12 @@ function getMarginColor(margin: number) {
   if (margin > 15) return "text-green-600 dark:text-green-400";
   if (margin > 5) return "text-amber-600 dark:text-amber-400";
   return "text-red-600 dark:text-red-400";
+}
+
+function getMarginBarColor(margin: number) {
+  if (margin > 15) return "hsl(142.1 76.2% 36.3%)";
+  if (margin > 5) return "hsl(38 92% 50%)";
+  return "hsl(0 84.2% 60.2%)";
 }
 
 function MarginBadge({ margin }: { margin: number }) {
@@ -482,10 +522,222 @@ function ByWorkerView({ dateRange }: { dateRange: { startDate: string; endDate: 
   );
 }
 
+function ChartTooltipContent({ active, payload, label, formatter }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md border border-border bg-popover px-3 py-2 shadow-sm text-xs">
+      <p className="font-medium text-foreground mb-1 max-w-[200px] truncate">{label}</p>
+      {payload.map((p: any, i: number) => (
+        <p key={i} style={{ color: p.color }} className="font-semibold">
+          {formatter ? formatter(p.value) : p.value}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function MarginChart({ jobTypes }: { jobTypes: JobTypeProfitability[] }) {
+  const chartData = useMemo(() => {
+    return jobTypes
+      .slice(0, 10)
+      .map(t => ({
+        name: t.jobType.length > 20 ? t.jobType.substring(0, 18) + "..." : t.jobType,
+        fullName: t.jobType,
+        margin: t.avgMargin,
+      }));
+  }, [jobTypes]);
+
+  if (chartData.length === 0) return null;
+
+  return (
+    <Card>
+      <CardContent className="pt-4 pb-4">
+        <p className="text-xs font-medium text-muted-foreground mb-3">MARGIN % BY JOB TYPE</p>
+        <ResponsiveContainer width="100%" height={Math.max(180, chartData.length * 36)}>
+          <BarChart data={chartData} layout="vertical" barSize={20} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={120} />
+            <Tooltip content={<ChartTooltipContent formatter={(v: number) => `${v.toFixed(1)}%`} />} cursor={{ fill: "hsl(var(--muted) / 0.4)" }} />
+            <Bar dataKey="margin" radius={[0, 4, 4, 0]}>
+              {chartData.map((entry, i) => (
+                <Cell key={i} fill={getMarginBarColor(entry.margin)} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ByJobTypeView({ dateRange }: { dateRange: { startDate: string; endDate: string } | null }) {
+  const queryParams: Record<string, string> = {};
+  if (dateRange) {
+    queryParams.startDate = dateRange.startDate;
+    queryParams.endDate = dateRange.endDate;
+  }
+
+  const { data, isLoading } = useQuery<JobTypeReport>({
+    queryKey: ["/api/reports/profitability/by-job-type", queryParams],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <Card key={i}><CardContent className="pt-4 pb-4 space-y-2"><Skeleton className="h-4 w-48" /><Skeleton className="h-4 w-full" /></CardContent></Card>
+        ))}
+      </div>
+    );
+  }
+
+  const jobTypes = data?.jobTypes || [];
+  const best = data?.best;
+  const worst = data?.worst;
+
+  if (jobTypes.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Layers className="h-10 w-10 text-muted-foreground mb-3" />
+        <p className="text-muted-foreground">No job type data for this period.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {(best || worst) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {best && (
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1 flex-wrap">
+                  <TrendingUp className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                  Best Performing
+                </div>
+                <p className="text-sm font-medium truncate">{best.jobType}</p>
+                <p className="text-lg font-semibold text-green-600 dark:text-green-400">{best.avgMargin.toFixed(1)}% margin</p>
+              </CardContent>
+            </Card>
+          )}
+          {worst && best?.jobType !== worst?.jobType && (
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1 flex-wrap">
+                  <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                  Worst Performing
+                </div>
+                <p className="text-sm font-medium truncate">{worst.jobType}</p>
+                <p className="text-lg font-semibold text-red-600 dark:text-red-400">{worst.avgMargin.toFixed(1)}% margin</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      <MarginChart jobTypes={jobTypes} />
+
+      <div className="space-y-3">
+        <div className="hidden lg:block">
+          <div className="grid grid-cols-8 gap-2 px-4 py-2 text-xs font-medium text-muted-foreground">
+            <div className="col-span-2">Job Type</div>
+            <div className="text-right">Jobs</div>
+            <div className="text-right">Revenue</div>
+            <div className="text-right">Costs</div>
+            <div className="text-right">Profit</div>
+            <div className="text-right">Margin</div>
+            <div className="text-right">Trend</div>
+          </div>
+        </div>
+        {jobTypes.map((t) => (
+          <Card key={t.jobType}>
+            <CardContent className="pt-4 pb-4">
+              <div className="hidden lg:grid grid-cols-8 gap-2 items-center">
+                <div className="col-span-2 min-w-0">
+                  <p className="text-sm font-medium truncate">{t.jobType}</p>
+                  <p className="text-xs text-muted-foreground">{t.jobCount} job{t.jobCount !== 1 ? 's' : ''}</p>
+                </div>
+                <p className="text-sm text-right text-muted-foreground">{t.jobCount}</p>
+                <p className="text-sm text-right">{formatCurrency(t.totalRevenue)}</p>
+                <p className="text-sm text-right text-muted-foreground">{formatCurrency(t.totalCosts)}</p>
+                <p className={`text-sm text-right font-medium ${getMarginColor(t.avgMargin)}`}>{formatCurrency(t.totalProfit)}</p>
+                <div className="text-right"><MarginBadge margin={t.avgMargin} /></div>
+                <div className="text-right">
+                  {t.marginChange !== null ? (
+                    <div className="flex items-center justify-end gap-1">
+                      {t.marginChange >= 0 ? (
+                        <ArrowUpRight className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <ArrowDownRight className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                      )}
+                      <span className={`text-xs font-medium ${t.marginChange >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                        {t.marginChange >= 0 ? "+" : ""}{t.marginChange.toFixed(1)}%
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">--</span>
+                  )}
+                </div>
+              </div>
+              <div className="lg:hidden space-y-3">
+                <div className="flex items-start justify-between gap-2 flex-wrap">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{t.jobType}</p>
+                    <p className="text-xs text-muted-foreground">{t.jobCount} job{t.jobCount !== 1 ? 's' : ''}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <MarginBadge margin={t.avgMargin} />
+                    {t.marginChange !== null && (
+                      <div className="flex items-center gap-0.5">
+                        {t.marginChange >= 0 ? (
+                          <ArrowUpRight className="h-3 w-3 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <ArrowDownRight className="h-3 w-3 text-red-600 dark:text-red-400" />
+                        )}
+                        <span className={`text-xs ${t.marginChange >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                          {t.marginChange >= 0 ? "+" : ""}{t.marginChange.toFixed(1)}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Revenue</p>
+                    <p className="text-sm font-medium">{formatCurrency(t.totalRevenue)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Costs</p>
+                    <p className="text-sm text-muted-foreground">{formatCurrency(t.totalCosts)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Profit</p>
+                    <p className={`text-sm font-medium ${getMarginColor(t.avgMargin)}`}>{formatCurrency(t.totalProfit)}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ProfitabilityReportPage() {
   const [, navigate] = useLocation();
+  const searchParams = useSearch();
   const [activeTab, setActiveTab] = useState("by-job");
   const [datePreset, setDatePreset] = useState<DatePreset>("this_year");
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    const tabParam = params.get('tab');
+    if (tabParam && ["by-job", "by-job-type", "by-client", "by-worker"].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   const dateRange = getDateRange(datePreset);
 
@@ -547,6 +799,10 @@ export default function ProfitabilityReportPage() {
                   <Briefcase className="h-3.5 w-3.5" />
                   By Job
                 </TabsTrigger>
+                <TabsTrigger value="by-job-type" className="flex-1 sm:flex-initial gap-1.5">
+                  <Layers className="h-3.5 w-3.5" />
+                  By Job Type
+                </TabsTrigger>
                 <TabsTrigger value="by-client" className="flex-1 sm:flex-initial gap-1.5">
                   <Users className="h-3.5 w-3.5" />
                   By Client
@@ -559,6 +815,10 @@ export default function ProfitabilityReportPage() {
 
               <TabsContent value="by-job">
                 <ByJobView jobs={data.jobs} navigate={navigate} />
+              </TabsContent>
+
+              <TabsContent value="by-job-type">
+                <ByJobTypeView dateRange={dateRange} />
               </TabsContent>
 
               <TabsContent value="by-client">

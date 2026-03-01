@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
 type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
-type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'partial';
+type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'partial' | 'partially_paid';
 
 interface StatusBadgeProps {
   status: JobStatus | QuoteStatus | InvoiceStatus | string;
@@ -31,6 +31,7 @@ export default function StatusBadge({ status, className }: StatusBadgeProps) {
       paid: { label: 'Paid', variant: 'default', colorClass: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
       overdue: { label: 'Overdue', variant: 'destructive' },
       partial: { label: 'Partial', variant: 'outline', colorClass: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300' },
+      partially_paid: { label: 'Partially Paid', variant: 'outline', colorClass: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700' },
       processing: { label: 'Processing', variant: 'outline', colorClass: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-700' },
       pending_payment: { label: 'Pending Payment', variant: 'outline', colorClass: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700' },
     };

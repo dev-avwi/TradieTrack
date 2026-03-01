@@ -528,6 +528,28 @@ export default function Insights({ onNavigate }: InsightsProps) {
                 labourCost={profit?.labourCostThisMonth ?? 0}
                 materialCost={profit?.materialCostThisMonth ?? 0}
               />
+
+              <div
+                className="feed-card card-press cursor-pointer animate-fade-up stagger-delay-5"
+                style={{ opacity: 0 }}
+                onClick={() => onNavigate?.("/profitability-report?tab=by-job-type")}
+              >
+                <div className="p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="ios-label">MARGIN BY JOB TYPE</p>
+                      <p className="text-sm text-muted-foreground mt-1">See which types of jobs are most profitable</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: "hsl(var(--trade) / 0.1)" }}>
+                        <PieChart className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
