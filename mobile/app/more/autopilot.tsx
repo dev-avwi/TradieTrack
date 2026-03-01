@@ -217,6 +217,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: radius['2xl'],
     padding: spacing.md,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 88,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -255,8 +257,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.xl,
     gap: spacing.sm,
   },
@@ -287,8 +289,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   sectionTitle: {
     ...typography.label,
     color: colors.mutedForeground,
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
   },
   card: {
     backgroundColor: colors.card,
@@ -437,8 +439,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -448,17 +450,17 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...shadows.sm,
   },
   emptyIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   emptyTitle: {
     ...typography.cardTitle,
     color: colors.foreground,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     textAlign: 'center',
   },
   emptyDescription: {
@@ -467,7 +469,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     maxWidth: 280,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   emptyCta: {
     flexDirection: 'row',
@@ -1414,7 +1416,7 @@ export default function AutopilotScreen() {
   const renderEmptyState = (type: 'automations' | 'templates') => (
     <View style={styles.emptyContainer}>
       <View style={[styles.emptyIconContainer, { backgroundColor: colors.primaryLight || (colors.primary + '15') }]}>
-        <Feather name="zap" size={40} color={colors.primary} />
+        <Feather name="zap" size={28} color={colors.primary} />
       </View>
       <Text style={styles.emptyTitle}>
         {type === 'automations' ? 'Put Your Business on Autopilot' : 'No Templates Available'}
@@ -1533,7 +1535,7 @@ export default function AutopilotScreen() {
 
           {error && automations.length === 0 && (
             <View style={styles.errorContainer}>
-              <Feather name="alert-circle" size={40} color={colors.destructive} />
+              <Feather name="alert-circle" size={28} color={colors.destructive} />
               <Text style={styles.errorText}>{error}</Text>
               <TouchableOpacity
                 style={styles.retryButton}
@@ -1579,7 +1581,7 @@ export default function AutopilotScreen() {
               {activityLogs.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <View style={[styles.emptyIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-                    <Feather name="clock" size={40} color="#22c55e" />
+                    <Feather name="clock" size={28} color="#22c55e" />
                   </View>
                   <Text style={styles.emptyTitle}>No Activity Yet</Text>
                   <Text style={styles.emptyDescription}>
@@ -1668,14 +1670,6 @@ export default function AutopilotScreen() {
             </>
           )}
         </ScrollView>
-
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: colors.primary }]}
-          onPress={openCreateEditor}
-          activeOpacity={0.7}
-        >
-          <Feather name="plus" size={iconSizes['2xl']} color={colors.primaryForeground || '#fff'} />
-        </TouchableOpacity>
 
         {renderEditorModal()}
       </View>

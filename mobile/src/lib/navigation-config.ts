@@ -244,7 +244,7 @@ export const mainMenuItems: NavItem[] = [
     title: "Files",
     url: "/more/files",
     icon: "file",
-    description: "Licences, insurance & compliance docs",
+    description: "Photos, documents & compliance",
     color: "primary",
     bgColor: "primary",
     hideForStaff: false,
@@ -252,18 +252,7 @@ export const mainMenuItems: NavItem[] = [
     category: "work",
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
   },
-  {
-    title: "Compliance",
-    url: "/more/compliance",
-    icon: "shield",
-    description: "Licences, certifications & expiry tracking",
-    color: "primary",
-    bgColor: "primary",
-    hideForStaff: true,
-    showInMore: true,
-    category: "work",
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
-  },
+  // Compliance merged into Files page - no separate nav entry needed
   {
     title: "Manage Team",
     url: "/more/team-management",
@@ -825,16 +814,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     hideForStaff: false,
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
   },
-  { 
-    id: 'compliance',
-    title: 'Compliance', 
-    icon: 'shield', 
-    path: '/more/compliance',
-    matchPaths: ['/more/compliance'],
-    section: 'main',
-    hideForStaff: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
-  },
+  // Compliance merged into Files page - no separate sidebar entry needed
   { 
     id: 'communications',
     title: 'Communications', 

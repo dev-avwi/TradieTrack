@@ -503,7 +503,7 @@ function StatusSelector({
 }
 
 export default function CreateJobScreen() {
-  const params = useLocalSearchParams<{ clientId?: string }>();
+  const params = useLocalSearchParams<{ clientId?: string; recurring?: string }>();
   const { clients, fetchClients } = useClientsStore();
   const { fetchJobs } = useJobsStore();
   const { colors } = useTheme();
@@ -532,7 +532,7 @@ export default function CreateJobScreen() {
   const [isAddingClient, setIsAddingClient] = useState(false);
 
   // Recurring job state
-  const [isRecurring, setIsRecurring] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(params.recurring === 'true');
   const [recurrencePattern, setRecurrencePattern] = useState<'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly'>('monthly');
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [showRecurrenceOptions, setShowRecurrenceOptions] = useState(false);

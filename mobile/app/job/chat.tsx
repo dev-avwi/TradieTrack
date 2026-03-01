@@ -92,6 +92,20 @@ interface Invoice {
   status: string;
 }
 
+const AVATAR_COLORS = [
+  '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
+  '#f97316', '#eab308', '#22c55e', '#14b8a6',
+  '#06b6d4', '#3b82f6', '#a855f7', '#d946ef',
+];
+
+function getAvatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
@@ -102,211 +116,236 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.card,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+    gap: spacing.sm,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.sm,
   },
   headerIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.primary + '15',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.sm,
   },
   headerContent: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.subtitle,
     color: colors.foreground,
   },
   headerSubtitle: {
-    fontSize: 12,
+    ...typography.captionSmall,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  headerActionBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   messageBadge: {
-    backgroundColor: colors.muted,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    backgroundColor: colors.primary + '12',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: radius.full,
   },
   messageBadgeText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.mutedForeground,
+    ...typography.badge,
+    color: colors.primary,
   },
   internalBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.infoLight,
+    backgroundColor: colors.isDark ? colors.primary + '10' : colors.infoLight,
     paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingVertical: 8,
     gap: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   internalBannerIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: colors.info,
     alignItems: 'center',
     justifyContent: 'center',
   },
   internalBannerText: {
     flex: 1,
-    fontSize: 11,
-    color: colors.info,
-    fontWeight: '500',
+    ...typography.captionSmall,
+    color: colors.isDark ? colors.info : colors.mutedForeground,
   },
   contactClientBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-    gap: 4,
-  },
-  contactClientText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.primaryForeground,
-  },
-  participantsBanner: {
-    backgroundColor: colors.card,
-    padding: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  participantsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  participantsTitle: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.mutedForeground,
-  },
-  participantsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  participantChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.muted,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: radius.full,
     gap: 4,
   },
-  participantAvatar: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  participantInitials: {
-    fontSize: 9,
+  contactClientText: {
+    fontSize: 11,
     fontWeight: '600',
     color: colors.primaryForeground,
-  },
-  participantName: {
-    fontSize: 11,
-    color: colors.foreground,
-  },
-  participantRole: {
-    fontSize: 10,
-    color: colors.mutedForeground,
   },
   messagesContainer: {
     flex: 1,
   },
   messagesContent: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingTop: spacing.sm,
     paddingBottom: 100,
+  },
+  dateSeparator: {
+    alignItems: 'center',
+    marginVertical: spacing.lg,
+  },
+  dateSeparatorLine: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  },
+  dateSeparatorPill: {
+    backgroundColor: colors.card,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  dateSeparatorText: {
+    ...typography.captionSmall,
+    fontWeight: '500',
+    color: colors.mutedForeground,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
+    paddingHorizontal: spacing.xl,
   },
-  emptyIcon: {
-    opacity: 0.3,
-    marginBottom: spacing.sm,
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.primary + '10',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
   },
   emptyText: {
-    fontSize: 15,
-    fontWeight: '500',
+    ...typography.cardTitle,
     color: colors.foreground,
+    textAlign: 'center',
   },
   emptySubtext: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 4,
+    marginTop: 6,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   systemMessage: {
     alignItems: 'center',
     paddingVertical: spacing.sm,
+    marginVertical: spacing.xs,
+  },
+  systemMessagePill: {
+    backgroundColor: colors.muted,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    borderRadius: radius.full,
   },
   systemMessageText: {
-    fontSize: 12,
+    ...typography.captionSmall,
     color: colors.mutedForeground,
     fontStyle: 'italic',
   },
   messageRow: {
-    marginBottom: spacing.sm,
+    flexDirection: 'row',
+    marginBottom: spacing.xs,
+    paddingHorizontal: 2,
   },
   messageRowOwn: {
-    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
   },
   messageRowOther: {
-    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+  },
+  messageRowGroupStart: {
+    marginTop: spacing.md,
+  },
+  avatarContainer: {
+    width: 30,
+    marginRight: 8,
+    alignSelf: 'flex-end',
+  },
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  avatarSpacer: {
+    width: 30,
+    marginRight: 8,
+  },
+  messageBubbleWrapper: {
+    maxWidth: '75%',
   },
   messageSender: {
-    fontSize: 11,
-    fontWeight: '500',
+    ...typography.captionSmall,
+    fontWeight: '600',
     color: colors.mutedForeground,
-    marginBottom: 2,
-    marginLeft: 4,
+    marginBottom: 3,
+    marginLeft: 2,
   },
   messageBubble: {
-    maxWidth: '80%',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
   },
   messageBubbleOwn: {
     backgroundColor: colors.primary,
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 6,
   },
   messageBubbleOther: {
-    backgroundColor: colors.muted,
-    borderBottomLeftRadius: 4,
+    backgroundColor: colors.card,
+    borderBottomLeftRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
   messageText: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.body,
+    lineHeight: 21,
   },
   messageTextOwn: {
     color: colors.primaryForeground,
@@ -314,13 +353,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   messageTextOther: {
     color: colors.foreground,
   },
-  messageTime: {
-    fontSize: 10,
+  messageFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
     marginTop: 4,
   },
+  messageTime: {
+    fontSize: 10,
+    fontWeight: '400',
+  },
   messageTimeOwn: {
-    color: colors.primaryForeground + '80',
-    textAlign: 'right',
+    color: colors.primaryForeground + '70',
   },
   messageTimeOther: {
     color: colors.mutedForeground,
@@ -338,83 +383,91 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   attachmentDoc: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.sm,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: radius.md,
     gap: 6,
+    marginTop: 6,
   },
   attachmentDocText: {
-    fontSize: 12,
+    flex: 1,
+    fontSize: 13,
     fontWeight: '500',
   },
   smsBubbleOwn: {
     backgroundColor: colors.success,
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 6,
   },
   smsBubbleOther: {
-    backgroundColor: colors.infoLight,
-    borderBottomLeftRadius: 4,
+    backgroundColor: colors.isDark ? colors.successLight : '#e8f5e9',
+    borderBottomLeftRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.isDark ? colors.success + '30' : '#c8e6c9',
   },
-  smsIndicator: {
+  smsTypeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    marginTop: 2,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+    marginLeft: 4,
   },
-  smsIndicatorText: {
+  smsTypeBadgeText: {
     fontSize: 9,
     fontWeight: '600',
-    color: colors.mutedForeground,
+    letterSpacing: 0.3,
   },
   composerContainer: {
-    paddingTop: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
+    paddingTop: 10,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.card,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
   composerRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   attachButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   composerInputWrapper: {
     flex: 1,
-    backgroundColor: colors.muted,
-    borderRadius: 20,
-    borderWidth: 1,
+    backgroundColor: colors.background,
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     overflow: 'hidden',
   },
   composerInput: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: Platform.OS === 'ios' ? 10 : 8,
-    fontSize: 15,
+    ...typography.body,
     color: colors.foreground,
     maxHeight: 100,
-    minHeight: 36,
+    minHeight: 38,
   },
   sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   sendButtonDisabled: {
-    opacity: 0.4,
+    opacity: 0.35,
   },
   modalOverlay: {
     flex: 1,
@@ -432,12 +485,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: spacing.md,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   modalTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   modalCloseBtn: {
@@ -453,7 +505,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: '30%',
     alignItems: 'center',
     padding: spacing.md,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     backgroundColor: colors.muted,
   },
   attachmentOptionIcon: {
@@ -465,7 +517,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.sm,
   },
   attachmentOptionText: {
-    fontSize: 12,
+    ...typography.captionSmall,
     fontWeight: '500',
     color: colors.foreground,
     textAlign: 'center',
@@ -493,12 +545,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   documentTitle: {
-    fontSize: 14,
+    ...typography.caption,
     fontWeight: '500',
     color: colors.foreground,
   },
   documentMeta: {
-    fontSize: 12,
+    ...typography.captionSmall,
     color: colors.mutedForeground,
     marginTop: 2,
   },
@@ -791,17 +843,25 @@ export default function JobChatScreen() {
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    return date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
 
-    if (diffDays === 0) {
-      return date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
-    } else if (diffDays === 1) {
-      return 'Yesterday ' + date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
-    } else {
-      return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) + ' ' +
-        date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
-    }
+  const formatDateSeparator = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffDays = Math.floor((today.getTime() - msgDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return date.toLocaleDateString('en-AU', { weekday: 'long' });
+    return date.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: diffDays > 365 ? 'numeric' : undefined });
+  };
+
+  const getDateKey = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
   };
 
   const getInitials = (name: string) => {
@@ -909,6 +969,127 @@ export default function JobChatScreen() {
     );
   };
 
+  const renderMessages = () => {
+    if (allMessages.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconCircle}>
+            <Feather name="message-circle" size={32} color={colors.primary} />
+          </View>
+          <Text style={styles.emptyText}>No messages yet</Text>
+          <Text style={styles.emptySubtext}>
+            Start a conversation with your team about this job
+          </Text>
+        </View>
+      );
+    }
+
+    const elements: JSX.Element[] = [];
+    let lastDateKey = '';
+    let lastSenderId = '';
+
+    allMessages.forEach((msg, index) => {
+      const currentDateKey = getDateKey(msg.createdAt);
+      if (currentDateKey !== lastDateKey) {
+        elements.push(
+          <View key={`date-${currentDateKey}`} style={styles.dateSeparator}>
+            <View style={styles.dateSeparatorLine} />
+            <View style={styles.dateSeparatorPill}>
+              <Text style={styles.dateSeparatorText}>{formatDateSeparator(msg.createdAt)}</Text>
+            </View>
+          </View>
+        );
+        lastDateKey = currentDateKey;
+        lastSenderId = '';
+      }
+
+      if (msg.isSystem) {
+        elements.push(
+          <View key={msg.id} style={styles.systemMessage}>
+            <View style={styles.systemMessagePill}>
+              <Text style={styles.systemMessageText}>{msg.message}</Text>
+            </View>
+          </View>
+        );
+        lastSenderId = '';
+        return;
+      }
+
+      const own = msg.isOwn;
+      const isSms = msg.type === 'sms';
+      const senderId = own ? '__own__' : msg.senderName;
+      const isGroupStart = senderId !== lastSenderId;
+      const showAvatar = !own && isGroupStart;
+      lastSenderId = senderId;
+
+      const bubbleStyle = isSms
+        ? (own ? styles.smsBubbleOwn : styles.smsBubbleOther)
+        : (own ? styles.messageBubbleOwn : styles.messageBubbleOther);
+
+      const smsTextColorOther = colors.isDark ? colors.foreground : '#2e7d32';
+
+      elements.push(
+        <View
+          key={msg.id}
+          style={[
+            styles.messageRow,
+            own ? styles.messageRowOwn : styles.messageRowOther,
+            isGroupStart && styles.messageRowGroupStart,
+          ]}
+        >
+          {!own && (
+            showAvatar ? (
+              <View style={styles.avatarContainer}>
+                <View style={[styles.avatar, { backgroundColor: getAvatarColor(msg.senderName) }]}>
+                  <Text style={styles.avatarText}>{getInitials(msg.senderName)}</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.avatarSpacer} />
+            )
+          )}
+          <View style={styles.messageBubbleWrapper}>
+            {!own && isGroupStart && (
+              <Text style={styles.messageSender}>{msg.senderName}</Text>
+            )}
+            <View style={[styles.messageBubble, bubbleStyle]}>
+              <Text style={[
+                styles.messageText,
+                own ? styles.messageTextOwn : styles.messageTextOther,
+                isSms && !own && { color: smsTextColorOther },
+              ]}>
+                {isSms ? formatMessageText(msg.message) : msg.message}
+              </Text>
+              {msg.type === 'chat' && renderAttachment(msg.originalMessage)}
+              <View style={styles.messageFooter}>
+                <Text style={[styles.messageTime, own ? styles.messageTimeOwn : styles.messageTimeOther]}>
+                  {formatTime(msg.createdAt)}
+                </Text>
+                {isSms && (
+                  <View style={[styles.smsTypeBadge, own && { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+                    <Feather
+                      name="smartphone"
+                      size={8}
+                      color={own ? colors.primaryForeground + '90' : colors.mutedForeground}
+                    />
+                    <Text style={[
+                      styles.smsTypeBadgeText,
+                      { color: own ? colors.primaryForeground + '90' : colors.mutedForeground },
+                    ]}>
+                      SMS
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+        </View>
+      );
+    });
+
+    return elements;
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
@@ -929,42 +1110,42 @@ export default function JobChatScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <View style={styles.headerCard}>
-          {/* Android: Show custom back button in header card */}
           {!isIOS && (
             <TouchableOpacity 
               style={styles.backButton} 
               onPress={() => router.back()}
             >
-              <Feather name="chevron-left" size={24} color={colors.foreground} />
+              <Feather name="chevron-left" size={22} color={colors.foreground} />
             </TouchableOpacity>
           )}
           <View style={styles.headerIconContainer}>
-            <Feather name="message-circle" size={20} color={colors.primary} />
+            <Feather name="message-circle" size={18} color={colors.primary} />
           </View>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Job Chat</Text>
+            <Text style={styles.headerTitle} numberOfLines={1}>Job Chat</Text>
             <Text style={styles.headerSubtitle} numberOfLines={1}>{job?.title}</Text>
           </View>
-          <View style={styles.messageBadge}>
-            <Text style={styles.messageBadgeText}>
-              {allMessages.length} {allMessages.length === 1 ? 'message' : 'messages'}
-            </Text>
+          <View style={styles.headerActions}>
+            <View style={styles.messageBadge}>
+              <Text style={styles.messageBadgeText}>
+                {allMessages.length}
+              </Text>
+            </View>
+            {client && (
+              <TouchableOpacity style={styles.headerActionBtn} onPress={handleContactClient}>
+                <Feather name="phone" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
         <View style={styles.internalBanner}>
           <View style={styles.internalBannerIcon}>
-            <Feather name="users" size={12} color={colors.primaryForeground} />
+            <Feather name="lock" size={11} color={colors.white} />
           </View>
           <Text style={styles.internalBannerText}>
-            Messages about this job. Your team can see and reply here.{smsMessages.length > 0 ? ' SMS messages with the client are shown here too.' : ''}
+            Internal team chat{smsMessages.length > 0 ? ' \u00B7 SMS messages included' : ''}
           </Text>
-          {client && (
-            <TouchableOpacity style={styles.contactClientBtn} onPress={handleContactClient}>
-              <Feather name="phone" size={12} color={colors.primaryForeground} />
-              <Text style={styles.contactClientText}>Contact Client</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         <ScrollView
@@ -976,51 +1157,7 @@ export default function JobChatScreen() {
           }
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
         >
-          {allMessages.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Feather name="message-circle" size={48} color={colors.mutedForeground} style={styles.emptyIcon} />
-              <Text style={styles.emptyText}>No messages yet</Text>
-              <Text style={styles.emptySubtext}>Send a message to get things moving</Text>
-            </View>
-          ) : (
-            allMessages.map((msg) => {
-              if (msg.isSystem) {
-                return (
-                  <View key={msg.id} style={styles.systemMessage}>
-                    <Text style={styles.systemMessageText}>{msg.message}</Text>
-                  </View>
-                );
-              }
-
-              const own = msg.isOwn;
-              const isSms = msg.type === 'sms';
-              const bubbleStyle = isSms
-                ? (own ? styles.smsBubbleOwn : styles.smsBubbleOther)
-                : (own ? styles.messageBubbleOwn : styles.messageBubbleOther);
-              return (
-                <View key={msg.id} style={[styles.messageRow, own ? styles.messageRowOwn : styles.messageRowOther]}>
-                  {!own && <Text style={styles.messageSender}>{msg.senderName}</Text>}
-                  <View style={[styles.messageBubble, bubbleStyle]}>
-                    <Text style={[styles.messageText, own ? styles.messageTextOwn : styles.messageTextOther]}>
-                      {isSms ? formatMessageText(msg.message) : msg.message}
-                    </Text>
-                    {msg.type === 'chat' && renderAttachment(msg.originalMessage)}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: own ? 'flex-end' : 'flex-start', gap: 4 }}>
-                      <Text style={[styles.messageTime, own ? styles.messageTimeOwn : styles.messageTimeOther]}>
-                        {formatTime(msg.createdAt)}
-                      </Text>
-                      {isSms && (
-                        <View style={styles.smsIndicator}>
-                          <Feather name="smartphone" size={10} color={own ? colors.primaryForeground + '80' : colors.mutedForeground} />
-                          <Text style={[styles.smsIndicatorText, own ? { color: colors.primaryForeground + '80' } : {}]}>SMS</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </View>
-              );
-            })
-          )}
+          {renderMessages()}
         </ScrollView>
 
         <View style={[styles.composerContainer, { paddingBottom: bottomNavHeight + spacing.xs }]}>
@@ -1052,7 +1189,7 @@ export default function JobChatScreen() {
               {isSending ? (
                 <ActivityIndicator size={16} color={colors.primaryForeground} />
               ) : (
-                <Feather name="send" size={18} color={colors.primaryForeground} />
+                <Feather name="send" size={16} color={colors.primaryForeground} />
               )}
             </TouchableOpacity>
           </View>

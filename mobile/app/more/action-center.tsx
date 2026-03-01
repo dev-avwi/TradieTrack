@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -316,6 +316,9 @@ export default function ActionCenterScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
 
+  const scrollViewRef = useRef<ScrollView>(null);
+  const sectionYPositions = useRef<Record<string, number>>({});
+
   const [data, setData] = useState<ActionCenterData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -392,6 +395,13 @@ export default function ActionCenterScreen() {
     }
   };
 
+  const scrollToSection = useCallback((priority: string) => {
+    const y = sectionYPositions.current[priority];
+    if (y !== undefined && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y, animated: true });
+    }
+  }, []);
+
   const PRIORITY_CONFIG = getPriorityConfig(colors);
   const CATEGORY_COLORS = getCategoryColors(colors);
 
@@ -405,7 +415,7 @@ export default function ActionCenterScreen() {
 
     return (
       <View style={styles.statsRow}>
-        <TouchableOpacity style={[styles.statCard, { backgroundColor: colorWithOpacity(colors.destructive, 0.04) }]} onPress={() => {}} activeOpacity={0.7}>
+        <TouchableOpacity style={[styles.statCard, { backgroundColor: colorWithOpacity(colors.destructive, 0.04) }]} onPress={() => scrollToSection('fix_now')} activeOpacity={0.7}>
           <View style={[styles.statIconContainer, { backgroundColor: colorWithOpacity(colors.destructive, 0.12) }]}>
             <Feather name="alert-triangle" size={16} color={colors.destructive} />
           </View>
@@ -413,7 +423,7 @@ export default function ActionCenterScreen() {
           <Text style={styles.statLabel}>Fix Now</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.statCard} onPress={() => {}} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.statCard} onPress={() => scrollToSection('this_week')} activeOpacity={0.7}>
           <View style={[styles.statIconContainer, { backgroundColor: colorWithOpacity(colors.warning, 0.12) }]}>
             <Feather name="clock" size={16} color={colors.warning} />
           </View>
@@ -421,7 +431,7 @@ export default function ActionCenterScreen() {
           <Text style={styles.statLabel}>This Week</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.statCard} onPress={() => {}} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.statCard} onPress={() => scrollToSection('suggestions')} activeOpacity={0.7}>
           <View style={[styles.statIconContainer, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
             <Feather name="zap" size={16} color={colors.success} />
           </View>
@@ -480,7 +490,12 @@ export default function ActionCenterScreen() {
     const config = PRIORITY_CONFIG[priority];
 
     return (
-      <View style={styles.sectionContainer}>
+      <View
+        style={styles.sectionContainer}
+        onLayout={(e) => {
+          sectionYPositions.current[priority] = e.nativeEvent.layout.y;
+        }}
+      >
         <View style={styles.sectionHeader}>
           <View style={[styles.sectionDot, { backgroundColor: config.color }]} />
           <Text style={styles.sectionTitle}>{config.sectionLabel}</Text>
@@ -523,6 +538,7 @@ export default function ActionCenterScreen() {
           </View>
         ) : (
           <ScrollView
+            ref={scrollViewRef}
             style={styles.scrollView}
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
