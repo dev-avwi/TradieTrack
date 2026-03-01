@@ -114,8 +114,8 @@ function ActionCardSkeleton() {
 function LoadingSkeleton() {
   return (
     <div className="section-gap">
-      <div className="grid grid-cols-3 gap-3">
-        {[0, 1, 2].map((i) => (
+      <div className="grid grid-cols-4 gap-3">
+        {[0, 1, 2, 3].map((i) => (
           <div key={i} className="feed-card animate-pulse p-4 space-y-2">
             <div className="h-10 w-10 rounded-xl bg-muted" />
             <div className="h-8 w-12 rounded bg-muted" />
@@ -261,7 +261,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
         <div className="section-gap">
           {data && (
             <div className="animate-fade-up">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 {sectionConfig.map((section, idx) => {
                   const count = data.summary[section.countKey];
                   const SectionIcon = section.icon;
@@ -283,13 +283,25 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                     </div>
                   );
                 })}
+                <div
+                  className="feed-card card-press p-4 animate-fade-up stagger-delay-4"
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                    style={{ backgroundColor: "hsl(221.2 83.2% 53.3% / 0.1)" }}
+                  >
+                    <ClipboardList className="h-5 w-5" style={{ color: "hsl(221.2 83.2% 53.3%)" }} />
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{pendingRequests.length}</p>
+                  <p className="ios-label mt-1">REQUESTS</p>
+                </div>
               </div>
             </div>
           )}
 
-          {data && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start animate-fade-up stagger-delay-4">
-              {sectionConfig.map((section, sectionIdx) => {
+          {(data || pendingRequests.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-start animate-fade-up stagger-delay-4">
+              {data && sectionConfig.map((section, sectionIdx) => {
                 const items = data.sections[section.key];
                 const count = data.summary[section.countKey];
                 if (!items || items.length === 0) return null;
@@ -380,104 +392,91 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                   </div>
                 );
               })}
-            </div>
-          )}
 
-          {pendingRequests.length > 0 && (
-            <div className="animate-fade-up stagger-delay-5">
-              <div className="flex items-center gap-2.5 mb-3">
-                <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: "hsl(221.2 83.2% 53.3%)" }}
-                />
-                <p className="ios-label">CLIENT REQUESTS</p>
-                <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs">
-                  {pendingRequests.length}
-                </Badge>
-              </div>
-
-              <div className="feed-gap">
-                {pendingRequests.map((request, idx) => {
-                  const urgency = urgencyConfig[request.urgency] || urgencyConfig.normal;
-                  return (
+              {pendingRequests.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 mb-1">
                     <div
-                      key={request.id}
-                      className={`animate-fade-up stagger-delay-${Math.min(idx + 1, 8)}`}
-                    >
-                      <div className="flex rounded-2xl overflow-hidden">
-                        <div className="w-1 flex-shrink-0" style={{ backgroundColor: "hsl(221.2 83.2% 53.3%)" }} />
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: "hsl(221.2 83.2% 53.3%)" }}
+                    />
+                    <p className="ios-label">CLIENT REQUESTS</p>
+                    <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs">
+                      {pendingRequests.length}
+                    </Badge>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    {pendingRequests.map((request, idx) => {
+                      const urgency = urgencyConfig[request.urgency] || urgencyConfig.normal;
+                      return (
                         <div
-                          className="feed-card card-press flex-1 rounded-l-none cursor-pointer"
-                          onClick={() => {
-                            setSelectedRequest(request);
-                            setRequestDialogOpen(true);
-                          }}
+                          key={request.id}
+                          className="flex rounded-2xl overflow-hidden"
                         >
-                          <div className="p-4">
-                            <div className="flex flex-col gap-3">
-                              <div className="flex items-start justify-between gap-3 flex-wrap">
-                                <div className="flex items-center gap-2.5">
-                                  <div
-                                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                                    style={{ backgroundColor: "hsl(221.2 83.2% 53.3% / 0.1)" }}
-                                  >
-                                    <ClipboardList className="h-4 w-4" style={{ color: "hsl(221.2 83.2% 53.3%)" }} />
+                          <div className="w-1 flex-shrink-0" style={{ backgroundColor: "hsl(221.2 83.2% 53.3%)" }} />
+                          <div
+                            className="feed-card card-press flex-1 rounded-l-none cursor-pointer"
+                            onClick={() => {
+                              setSelectedRequest(request);
+                              setRequestDialogOpen(true);
+                            }}
+                          >
+                            <div className="p-3">
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-start justify-between gap-2 flex-wrap">
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                                      style={{ backgroundColor: "hsl(221.2 83.2% 53.3% / 0.1)" }}
+                                    >
+                                      <ClipboardList className="h-3.5 w-3.5" style={{ color: "hsl(221.2 83.2% 53.3%)" }} />
+                                    </div>
+                                    <p className="text-sm font-semibold text-foreground leading-snug">
+                                      {request.title}
+                                    </p>
                                   </div>
-                                  <p className="text-sm font-semibold text-foreground">
-                                    {request.title}
-                                  </p>
+                                  <Badge
+                                    variant={urgency.variant}
+                                    className={`no-default-hover-elevate no-default-active-elevate text-xs ${request.urgency === "urgent" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25" : ""}`}
+                                  >
+                                    {urgency.label}
+                                  </Badge>
                                 </div>
-                                <Badge
-                                  variant={urgency.variant}
-                                  className={`no-default-hover-elevate no-default-active-elevate text-xs ${request.urgency === "urgent" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25" : ""}`}
-                                >
-                                  {urgency.label}
-                                </Badge>
-                              </div>
-                              {request.description && (
-                                <p className="ios-caption line-clamp-2">
-                                  {request.description}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-3 flex-wrap ios-caption">
-                                {request.createdAt && (
-                                  <span>{formatRelativeTime(request.createdAt)}</span>
+                                {request.description && (
+                                  <p className="ios-caption line-clamp-2">
+                                    {request.description}
+                                  </p>
                                 )}
-                                {request.preferredDate && (
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {formatDate(request.preferredDate)}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  disabled={updateRequestMutation.isPending}
-                                  onClick={(e) => { e.stopPropagation(); updateRequestMutation.mutate({ id: request.id, status: "accepted" }); }}
-                                >
-                                  <Check className="h-3.5 w-3.5 mr-1" />
-                                  Accept
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={updateRequestMutation.isPending}
-                                  onClick={(e) => { e.stopPropagation(); updateRequestMutation.mutate({ id: request.id, status: "declined" }); }}
-                                >
-                                  <X className="h-3.5 w-3.5 mr-1" />
-                                  Decline
-                                </Button>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    disabled={updateRequestMutation.isPending}
+                                    onClick={(e) => { e.stopPropagation(); updateRequestMutation.mutate({ id: request.id, status: "accepted" }); }}
+                                  >
+                                    <Check className="h-3.5 w-3.5 mr-1" />
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={updateRequestMutation.isPending}
+                                    onClick={(e) => { e.stopPropagation(); updateRequestMutation.mutate({ id: request.id, status: "declined" }); }}
+                                  >
+                                    <X className="h-3.5 w-3.5 mr-1" />
+                                    Decline
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
