@@ -165,7 +165,7 @@ export default function WorkPage({
   const unarchiveJobMutation = useUnarchiveJob();
   const deleteJobMutation = useDeleteJob();
   const { actionPermissions } = useAppMode();
-  const canCreateJobs = actionPermissions.canCreateJobs;
+  const canCreateJobs = actionPermissions?.canCreateJobs ?? true;
 
   const { data: clientsList = [] } = useQuery<any[]>({ queryKey: ['/api/clients'] });
   const { data: teamMembersList = [] } = useQuery<any[]>({ queryKey: ['/api/team/members'] });
@@ -198,7 +198,8 @@ export default function WorkPage({
   });
 
   const hasAdvancedFilters = useMemo(() => {
-    return advancedFilters.statuses.length > 0 ||
+    const statuses = advancedFilters?.statuses || [];
+    return statuses.length > 0 ||
       advancedFilters.dateFrom !== '' ||
       advancedFilters.dateTo !== '' ||
       advancedFilters.assignedTo !== '' ||
@@ -208,7 +209,7 @@ export default function WorkPage({
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    if (advancedFilters.statuses.length > 0) count++;
+    if ((advancedFilters?.statuses || []).length > 0) count++;
     if (advancedFilters.dateFrom || advancedFilters.dateTo) count++;
     if (advancedFilters.assignedTo) count++;
     if (advancedFilters.clientId) count++;
@@ -221,7 +222,15 @@ export default function WorkPage({
   }, []);
 
   const handleLoadSavedFilter = useCallback((sf: SavedFilter) => {
-    setAdvancedFilters(sf.filters as AdvancedFilters);
+    const loaded = sf.filters || {};
+    setAdvancedFilters({
+      statuses: Array.isArray(loaded.statuses) ? loaded.statuses : [],
+      dateFrom: loaded.dateFrom || '',
+      dateTo: loaded.dateTo || '',
+      assignedTo: loaded.assignedTo || '',
+      clientId: loaded.clientId || '',
+      suburb: loaded.suburb || '',
+    });
     setAdvancedOpen(true);
     setActiveFilter('all');
   }, []);
@@ -232,12 +241,15 @@ export default function WorkPage({
   }, [saveFilterName, advancedFilters]);
 
   const toggleStatus = useCallback((status: string) => {
-    setAdvancedFilters(prev => ({
-      ...prev,
-      statuses: prev.statuses.includes(status)
-        ? prev.statuses.filter(s => s !== status)
-        : [...prev.statuses, status],
-    }));
+    setAdvancedFilters(prev => {
+      const statuses = Array.isArray(prev.statuses) ? prev.statuses : [];
+      return {
+        ...prev,
+        statuses: statuses.includes(status)
+          ? statuses.filter(s => s !== status)
+          : [...statuses, status],
+      };
+    });
   }, []);
 
   const { data: jobRequests = [], isLoading: isLoadingRequests } = useQuery<any[]>({
@@ -373,7 +385,8 @@ export default function WorkPage({
         : job.status === activeFilter;
 
       if (hasAdvancedFilters) {
-        if (advancedFilters.statuses.length > 0 && !advancedFilters.statuses.includes(job.status)) return false;
+        const statuses = advancedFilters?.statuses || [];
+        if (statuses.length > 0 && !statuses.includes(job.status)) return false;
         if (advancedFilters.dateFrom) {
           const from = new Date(advancedFilters.dateFrom);
           const d = job.scheduledAt ? new Date(job.scheduledAt) : null;
@@ -917,7 +930,7 @@ export default function WorkPage({
                       onClick={() => toggleStatus(s)}
                       className={cn(
                         "px-2 py-1 rounded-md text-xs border transition-colors",
-                        advancedFilters.statuses.includes(s)
+                        (advancedFilters?.statuses || []).includes(s)
                           ? "bg-primary text-primary-foreground border-primary"
                           : "bg-background border-border hover-elevate"
                       )}
@@ -997,7 +1010,7 @@ export default function WorkPage({
 
             {hasAdvancedFilters && (
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {advancedFilters.statuses.map((s) => (
+                {(advancedFilters?.statuses || []).map((s) => (
                   <Badge key={s} variant="secondary" className="gap-1 text-xs">
                     {{ pending: 'Pending', scheduled: 'Scheduled', in_progress: 'In Progress', done: 'Completed', invoiced: 'Invoiced' }[s] || s}
                     <button onClick={() => toggleStatus(s)}><X className="h-3 w-3" /></button>
