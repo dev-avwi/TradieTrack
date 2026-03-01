@@ -234,10 +234,16 @@ export default function JobDetailView({
   const [newJobTitle, setNewJobTitle] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteRole, setInviteRole] = useState<'subcontractor' | 'viewer'>('subcontractor');
-  const [invitePermissions, setInvitePermissions] = useState<string[]>(['view_job', 'add_notes']);
-  const [inviteExpiry, setInviteExpiry] = useState<'never' | '7days' | '30days'>('never');
+  const [invitePermissions, setInvitePermissions] = useState<string[]>(['view_job', 'add_notes', 'add_photos', 'update_status']);
+  const [inviteExpiry, setInviteExpiry] = useState<'never' | '7days' | '30days'>('30days');
   const [generatedInviteLink, setGeneratedInviteLink] = useState<string | null>(null);
   const [copiedInvite, setCopiedInvite] = useState(false);
+  const [inviteContactName, setInviteContactName] = useState('');
+  const [inviteContactPhone, setInviteContactPhone] = useState('');
+  const [inviteContactEmail, setInviteContactEmail] = useState('');
+  const [inviteSendSms, setInviteSendSms] = useState(false);
+  const [inviteSendEmail, setInviteSendEmail] = useState(false);
+  const [inviteSendResults, setInviteSendResults] = useState<{ sms?: boolean; email?: boolean } | null>(null);
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [showAddMaterial, setShowAddMaterial] = useState(false);
   const [showAssignEquipment, setShowAssignEquipment] = useState(false);
@@ -1017,23 +1023,21 @@ export default function JobDetailView({
     deleteJobMutation.mutate();
   };
 
-  // Job Invites
-  interface JobInviteData {
+  interface SubTokenData {
     id: string;
-    inviteCode: string;
-    email: string | null;
-    role: string;
+    token: string;
+    contactName: string | null;
+    contactPhone: string | null;
+    contactEmail: string | null;
     permissions: string[];
     expiresAt: string | null;
-    usedAt: string | null;
-    usedBy: number | null;
     status: string;
+    acceptedAt: string | null;
     createdAt: string;
-    inviteLink?: string;
   }
 
-  const { data: jobInvites, refetch: refetchInvites } = useQuery<JobInviteData[]>({
-    queryKey: ['/api/jobs', jobId, 'invites'],
+  const { data: subTokens, refetch: refetchSubTokens } = useQuery<SubTokenData[]>({
+    queryKey: ['/api/jobs', jobId, 'subcontractor-tokens'],
     enabled: !!jobId && !isTradie,
   });
 
@@ -1045,19 +1049,29 @@ export default function JobDetailView({
           ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
       
-      const response = await apiRequest("POST", `/api/jobs/${jobId}/invites`, {
-        role: inviteRole,
+      const response = await apiRequest("POST", `/api/jobs/${jobId}/subcontractor-token`, {
+        contactName: inviteContactName || null,
+        contactPhone: inviteContactPhone || null,
+        contactEmail: inviteContactEmail || null,
         permissions: invitePermissions,
         expiresAt,
+        sendViaSms: inviteSendSms && !!inviteContactPhone,
+        sendViaEmail: inviteSendEmail && !!inviteContactEmail,
       });
       return response.json();
     },
     onSuccess: (data) => {
-      setGeneratedInviteLink(data.inviteLink);
-      refetchInvites();
+      setGeneratedInviteLink(data.webLink);
+      setInviteSendResults(data.sendResults || null);
+      refetchSubTokens();
+      const sentMethods: string[] = [];
+      if (data.sendResults?.sms) sentMethods.push('SMS');
+      if (data.sendResults?.email) sentMethods.push('email');
       toast({
         title: "Invite Created",
-        description: "Share the link with your subcontractor",
+        description: sentMethods.length > 0 
+          ? `Invite sent via ${sentMethods.join(' and ')}` 
+          : "Copy the link to share with your subcontractor",
       });
     },
     onError: () => {
@@ -1070,11 +1084,11 @@ export default function JobDetailView({
   });
 
   const revokeInviteMutation = useMutation({
-    mutationFn: async (inviteId: string) => {
-      return await apiRequest("DELETE", `/api/jobs/${jobId}/invites/${inviteId}`);
+    mutationFn: async (tokenId: string) => {
+      return await apiRequest("DELETE", `/api/jobs/${jobId}/subcontractor-tokens/${tokenId}`);
     },
     onSuccess: () => {
-      refetchInvites();
+      refetchSubTokens();
       toast({
         title: "Invite Revoked",
         description: "The invite link is no longer valid",
@@ -1099,9 +1113,15 @@ export default function JobDetailView({
 
   const handleOpenInviteModal = () => {
     setGeneratedInviteLink(null);
+    setInviteSendResults(null);
     setInviteRole('subcontractor');
-    setInvitePermissions(['view_job', 'add_notes']);
-    setInviteExpiry('never');
+    setInvitePermissions(['view_job', 'add_notes', 'add_photos', 'update_status']);
+    setInviteExpiry('30days');
+    setInviteContactName('');
+    setInviteContactPhone('');
+    setInviteContactEmail('');
+    setInviteSendSms(false);
+    setInviteSendEmail(false);
     setShowInviteModal(true);
   };
 
@@ -2220,53 +2240,46 @@ export default function JobDetailView({
                   </div>
                   <div className="space-y-3">
                     <p className="text-xs text-muted-foreground">
-                      Share a link to give subcontractors access to this job
+                      Invite subcontractors via SMS or email — they'll get a restricted portal view for this job only
                     </p>
 
-                    {jobInvites && jobInvites.length > 0 && (
+                    {subTokens && subTokens.filter(t => t.status === 'pending' || t.status === 'accepted').length > 0 && (
                       <div className="space-y-2">
-                        {jobInvites.filter(inv => inv.status === 'pending' || inv.status === 'accepted').map((invite) => (
-                          <div key={invite.id} className="flex items-center justify-between gap-2 p-2 rounded-md border text-sm">
+                        {subTokens.filter(t => t.status === 'pending' || t.status === 'accepted').map((tk) => (
+                          <div key={tk.id} className="flex items-center justify-between gap-2 p-2 rounded-md border text-sm">
                             <div className="flex items-center gap-2 min-w-0">
-                              {invite.status === 'accepted' ? (
+                              {tk.status === 'accepted' ? (
                                 <Check className="h-4 w-4 text-green-600 shrink-0" />
                               ) : (
                                 <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                               )}
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <Badge variant={invite.status === 'accepted' ? 'default' : 'secondary'} className="text-xs">
-                                    {invite.status === 'accepted' ? 'Accepted' : 'Pending'}
+                                  <Badge variant={tk.status === 'accepted' ? 'default' : 'secondary'} className="text-xs">
+                                    {tk.status === 'accepted' ? 'Accepted' : 'Pending'}
                                   </Badge>
-                                  <span className="text-xs text-muted-foreground capitalize">{invite.role}</span>
+                                  {tk.contactName && (
+                                    <span className="text-xs font-medium">{tk.contactName}</span>
+                                  )}
                                 </div>
-                                {invite.status === 'pending' && invite.inviteCode && (
-                                  <div className="flex items-center gap-1 mt-1">
-                                    <Link2 className="h-3 w-3 text-muted-foreground shrink-0" />
-                                    <span className="text-xs text-muted-foreground truncate max-w-[180px]">
-                                      {`${window.location.origin}/invite/${invite.inviteCode}`}
-                                    </span>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="shrink-0"
-                                      onClick={async () => {
-                                        const link = `${window.location.origin}/invite/${invite.inviteCode}`;
-                                        await navigator.clipboard.writeText(link);
-                                        toast({ title: "Copied", description: "Invite link copied to clipboard" });
-                                      }}
-                                    >
-                                      <Copy className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                )}
+                                <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                  {tk.contactPhone && (
+                                    <span className="text-xs text-muted-foreground">{tk.contactPhone}</span>
+                                  )}
+                                  {tk.contactEmail && (
+                                    <span className="text-xs text-muted-foreground">{tk.contactEmail}</span>
+                                  )}
+                                  {!tk.contactName && !tk.contactPhone && !tk.contactEmail && (
+                                    <span className="text-xs text-muted-foreground">Link only</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                            {invite.status === 'pending' && (
+                            {tk.status === 'pending' && (
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => revokeInviteMutation.mutate(invite.id)}
+                                onClick={() => revokeInviteMutation.mutate(tk.id)}
                                 disabled={revokeInviteMutation.isPending}
                               >
                                 <X className="h-4 w-4" />
@@ -3682,14 +3695,34 @@ export default function JobDetailView({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-primary" />
-              Invite to Job
+              Invite Subcontractor
             </DialogTitle>
           </DialogHeader>
           
           {generatedInviteLink ? (
             <div className="space-y-4 py-4">
+              {inviteSendResults && (inviteSendResults.sms || inviteSendResults.email) && (
+                <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-md">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm font-medium">
+                    <Check className="h-4 w-4" />
+                    Invite sent
+                    {inviteSendResults.sms && inviteSendResults.email ? ' via SMS and email' :
+                     inviteSendResults.sms ? ' via SMS' : ' via email'}
+                  </div>
+                </div>
+              )}
+              {inviteSendResults && ((inviteSendResults.sms === false && inviteSendSms) || (inviteSendResults.email === false && inviteSendEmail)) && (
+                <div className="p-3 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                  <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 text-sm">
+                    <AlertTriangle className="h-4 w-4" />
+                    {inviteSendResults.sms === false && inviteSendSms ? 'SMS delivery failed. ' : ''}
+                    {inviteSendResults.email === false && inviteSendEmail ? 'Email delivery failed. ' : ''}
+                    You can still share the link below.
+                  </div>
+                </div>
+              )}
               <div className="p-4 bg-muted rounded-md">
-                <p className="text-sm text-muted-foreground mb-2">Share this link:</p>
+                <p className="text-sm text-muted-foreground mb-2">Portal link:</p>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -3701,75 +3734,85 @@ export default function JobDetailView({
                     {copiedInvite ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1"
-                  onClick={async () => {
-                    const smsBody = encodeURIComponent(`You've been invited to a job. View details here: ${generatedInviteLink}`);
-                    window.open(`sms:?body=${smsBody}`, '_self');
-                  }}
-                >
-                  <Phone className="h-3 w-3" />
-                  SMS
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1"
-                  onClick={async () => {
-                    const subject = encodeURIComponent('Job Invitation');
-                    const body = encodeURIComponent(`You've been invited to a job. View details and respond here:\n\n${generatedInviteLink}`);
-                    window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
-                  }}
-                >
-                  <Mail className="h-3 w-3" />
-                  Email
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1"
-                  onClick={handleCopyInviteLink}
-                >
-                  {copiedInvite ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                  Copy
-                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  This link opens a restricted portal — subcontractors can only see this specific job
+                </p>
               </div>
 
               <div className="text-sm text-muted-foreground space-y-1">
-                <p><strong>Role:</strong> {inviteRole === 'subcontractor' ? 'Subcontractor' : 'Viewer'}</p>
+                {inviteContactName && <p><strong>Name:</strong> {inviteContactName}</p>}
                 <p><strong>Expires:</strong> {inviteExpiry === 'never' ? 'Never' : inviteExpiry === '7days' ? 'In 7 days' : 'In 30 days'}</p>
               </div>
 
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={() => setGeneratedInviteLink(null)}
+                onClick={() => { setGeneratedInviteLink(null); setInviteSendResults(null); }}
               >
-                Create Another Invite
+                Invite Another
               </Button>
             </div>
           ) : (
             <div className="space-y-4 py-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Role</label>
-                <Select value={inviteRole} onValueChange={(v: 'subcontractor' | 'viewer') => setInviteRole(v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="subcontractor">Subcontractor</SelectItem>
-                    <SelectItem value="viewer">Viewer</SelectItem>
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium mb-1.5 block">Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Dave's Electrical"
+                  value={inviteContactName}
+                  onChange={(e) => setInviteContactName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
+                />
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">Permissions</label>
+                <label className="text-sm font-medium mb-1.5 block">Mobile Number</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="tel"
+                    placeholder="04XX XXX XXX"
+                    value={inviteContactPhone}
+                    onChange={(e) => setInviteContactPhone(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-md border border-input bg-background text-sm"
+                  />
+                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={inviteSendSms}
+                      onChange={(e) => setInviteSendSms(e.target.checked)}
+                      disabled={!inviteContactPhone}
+                      className="rounded border-input"
+                    />
+                    <span className="text-xs text-muted-foreground">Send SMS</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Email</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="email"
+                    placeholder="subbie@example.com"
+                    value={inviteContactEmail}
+                    onChange={(e) => setInviteContactEmail(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-md border border-input bg-background text-sm"
+                  />
+                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={inviteSendEmail}
+                      onChange={(e) => setInviteSendEmail(e.target.checked)}
+                      disabled={!inviteContactEmail}
+                      className="rounded border-input"
+                    />
+                    <span className="text-xs text-muted-foreground">Send Email</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Permissions</label>
                 <div className="space-y-2">
                   {[
                     { id: 'view_job', label: 'View Job Details' },
@@ -3792,40 +3835,40 @@ export default function JobDetailView({
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">Expires</label>
+                <label className="text-sm font-medium mb-1.5 block">Expires</label>
                 <Select value={inviteExpiry} onValueChange={(v: 'never' | '7days' | '30days') => setInviteExpiry(v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="never">Never</SelectItem>
-                    <SelectItem value="7days">In 7 days</SelectItem>
                     <SelectItem value="30days">In 30 days</SelectItem>
+                    <SelectItem value="7days">In 7 days</SelectItem>
+                    <SelectItem value="never">Never</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
           )}
 
-          {/* Existing invites list */}
-          {jobInvites && jobInvites.length > 0 && !generatedInviteLink && (
+          {subTokens && subTokens.filter(t => t.status === 'pending').length > 0 && !generatedInviteLink && (
             <div className="border-t pt-4">
               <p className="text-sm font-medium mb-2">Active Invites</p>
               <div className="space-y-2 max-h-40 overflow-y-auto">
-                {jobInvites.filter(i => i.status === 'pending').map((invite) => (
-                  <div key={invite.id} className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
+                {subTokens.filter(t => t.status === 'pending').map((tk) => (
+                  <div key={tk.id} className="flex items-center justify-between gap-2 p-2 bg-muted rounded-md text-sm">
                     <div>
-                      <span className="font-medium capitalize">{invite.role}</span>
-                      <span className="text-muted-foreground ml-2">
-                        {invite.expiresAt 
-                          ? `Expires ${format(new Date(invite.expiresAt), 'MMM d')}`
-                          : 'No expiry'}
-                      </span>
+                      <span className="font-medium">{tk.contactName || 'Unnamed'}</span>
+                      {tk.contactPhone && <span className="text-muted-foreground ml-2">{tk.contactPhone}</span>}
+                      {tk.expiresAt && (
+                        <span className="text-muted-foreground ml-2">
+                          Expires {format(new Date(tk.expiresAt), 'MMM d')}
+                        </span>
+                      )}
                     </div>
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      onClick={() => revokeInviteMutation.mutate(invite.id)}
+                      onClick={() => revokeInviteMutation.mutate(tk.id)}
                       disabled={revokeInviteMutation.isPending}
                     >
                       <X className="h-4 w-4 text-destructive" />
@@ -3848,7 +3891,12 @@ export default function JobDetailView({
                 {createInviteMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating...
+                    {(inviteSendSms || inviteSendEmail) ? 'Sending...' : 'Creating...'}
+                  </>
+                ) : (inviteSendSms || inviteSendEmail) ? (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Invite
                   </>
                 ) : (
                   <>

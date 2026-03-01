@@ -3904,10 +3904,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       const { jobId } = req.params;
-      const { contactPhone, contactName, contactEmail, permissions, expiresAt } = req.body;
+      const { contactPhone, contactName, contactEmail, permissions, expiresAt, sendViaSms, sendViaEmail } = req.body;
 
       const job = await storage.getJob(jobId, userId);
       if (!job) return res.status(404).json({ error: 'Job not found' });
+
+      const businessSettings = await storage.getBusinessSettings(userId);
+      const businessName = businessSettings?.companyName || 'Your contractor';
 
       const token = randomBytes(32).toString('hex');
       const tokenData = {
@@ -3924,10 +3927,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const created = await storage.createSubcontractorToken(tokenData);
       const baseUrl = getProductionBaseUrl(req);
+      const webLink = `${baseUrl}/s/${created.token}`;
 
-      res.json({ ...created, webLink: `${baseUrl}/s/${created.token}` });
+      const sendResults: { sms?: boolean; email?: boolean } = {};
+      const recipientName = contactName || 'there';
+
+      if (sendViaSms && contactPhone) {
+        try {
+          const smsMessage = `Hi ${recipientName}, ${businessName} has invited you to work on a job: "${job.title}". View details and respond here: ${webLink}`;
+          const { sendSMS: twilioSend } = await import('./twilioClient');
+          const smsResult = await twilioSend({
+            to: contactPhone,
+            body: smsMessage,
+          });
+          sendResults.sms = smsResult.success;
+        } catch (smsErr: any) {
+          console.error('Failed to send subcontractor invite SMS:', smsErr);
+          sendResults.sms = false;
+        }
+      }
+
+      if (sendViaEmail && contactEmail) {
+        try {
+          const { sendEmail: emailSend } = await import('./emailService');
+          await emailSend({
+            to: contactEmail,
+            subject: `Job Invitation from ${businessName}`,
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #1a1a2e;">You're Invited to a Job</h2>
+                <p>Hi ${recipientName},</p>
+                <p><strong>${businessName}</strong> has invited you to work on the following job:</p>
+                <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                  <p style="margin: 0 0 8px;"><strong>Job:</strong> ${job.title}</p>
+                  ${job.address ? `<p style="margin: 0;"><strong>Location:</strong> ${job.address}</p>` : ''}
+                </div>
+                <p>Click the button below to view the job details and accept the invitation:</p>
+                <div style="text-align: center; margin: 24px 0;">
+                  <a href="${webLink}" style="background: #3b82f6; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">View Job Details</a>
+                </div>
+                <p style="color: #6b7280; font-size: 14px;">If you have any questions, please contact ${businessName} directly.</p>
+              </div>
+            `,
+          });
+          sendResults.email = true;
+        } catch (emailErr: any) {
+          console.error('Failed to send subcontractor invite email:', emailErr);
+          sendResults.email = false;
+        }
+      }
+
+      res.json({ ...created, webLink, sendResults });
     } catch (error: any) {
       console.error('Error creating subcontractor token:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/jobs/:jobId/subcontractor-tokens", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      const job = await storage.getJob(jobId, userId);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
+      const tokens = await storage.getSubcontractorTokensByJobId(jobId);
+      res.json(tokens);
+    } catch (error: any) {
+      console.error('Error getting subcontractor tokens:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/jobs/:jobId/subcontractor-tokens/:tokenId", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, tokenId } = req.params;
+      const job = await storage.getJob(jobId, userId);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
+      await db.execute(sql`UPDATE subcontractor_tokens SET status = 'revoked', revoked_at = NOW() WHERE id = ${tokenId} AND job_id = ${jobId}`);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error revoking subcontractor token:', error);
       res.status(500).json({ error: error.message });
     }
   });
