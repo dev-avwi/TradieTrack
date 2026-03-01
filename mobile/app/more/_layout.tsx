@@ -17,6 +17,7 @@ export default function MoreLayout() {
     <Stack
       screenOptions={{
         ...navigationConfig,
+        headerShown: false,
         headerBackVisible: false,
         headerLeft: isIOS ? () => <IOSBackButton /> : undefined,
         headerTitle: '',
@@ -28,9 +29,6 @@ export default function MoreLayout() {
         freezeOnBlur: true,
       }}
     >
-      {/* Hide header for screens with custom headers */}
-      <Stack.Screen name="quote" options={{ headerShown: false }} />
-      <Stack.Screen name="invoice" options={{ headerShown: false }} />
     </Stack>
   );
 }
