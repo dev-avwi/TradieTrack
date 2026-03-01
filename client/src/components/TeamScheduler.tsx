@@ -6,6 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
@@ -169,6 +179,14 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
     typeof window !== 'undefined' && localStorage.getItem('team-scheduler-onboarding-dismissed') === 'true'
   );
   const [suggestJobId, setSuggestJobId] = useState<string | null>(null);
+  const [conflictWarning, setConflictWarning] = useState<{
+    jobId: string;
+    scheduledAt: string;
+    scheduledTime: string;
+    assignedTo: string;
+    memberName: string;
+    existingJobs: string[];
+  } | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -348,21 +366,51 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
     setDragOverCell(null);
   };
 
+  const getMemberDisplayName = useCallback((memberId: string): string => {
+    const member = displayMembers.find(m => m.memberId === memberId);
+    return member?.name || 'Team Member';
+  }, [displayMembers]);
+
+  const checkAndSchedule = useCallback((jobId: string, memberId: string, date: Date, hour: number, jobDurationMinutes?: number) => {
+    const scheduledDate = new Date(date);
+    scheduledDate.setHours(hour, 0, 0, 0);
+    const timeStr = hourToTimeStr(hour);
+
+    const existingJobs = getJobsForMemberAndDay(memberId, date);
+    const dropDuration = Math.max(1, Math.ceil((jobDurationMinutes || 60) / 60));
+    const conflicting = existingJobs.filter(j => {
+      if (j.id === jobId) return false;
+      const jStart = parseTimeToHour(j.scheduledTime);
+      const jDuration = Math.ceil((j.estimatedDuration || 60) / 60);
+      const jEnd = jStart + jDuration;
+      return hour < jEnd && (hour + dropDuration) > jStart;
+    });
+
+    if (conflicting.length > 0) {
+      setConflictWarning({
+        jobId,
+        scheduledAt: scheduledDate.toISOString(),
+        scheduledTime: timeStr,
+        assignedTo: memberId,
+        memberName: getMemberDisplayName(memberId),
+        existingJobs: conflicting.map(j => j.title || 'Untitled Job'),
+      });
+      return;
+    }
+
+    rescheduleJobMutation.mutate({
+      jobId,
+      scheduledAt: scheduledDate.toISOString(),
+      scheduledTime: timeStr,
+      assignedTo: memberId,
+    });
+  }, [getJobsForMemberAndDay, getMemberDisplayName, rescheduleJobMutation]);
+
   const handleDropOnHour = (e: React.DragEvent, memberId: string, date: Date, hour: number) => {
     e.preventDefault();
     setDragOverCell(null);
     if (!draggedJob) return;
-
-    const scheduledDate = new Date(date);
-    scheduledDate.setHours(hour, 0, 0, 0);
-
-    rescheduleJobMutation.mutate({
-      jobId: draggedJob.job.id,
-      scheduledAt: scheduledDate.toISOString(),
-      scheduledTime: hourToTimeStr(hour),
-      assignedTo: memberId,
-    });
-
+    checkAndSchedule(draggedJob.job.id, memberId, date, hour, draggedJob.job.estimatedDuration);
     setDraggedJob(null);
   };
 
@@ -370,17 +418,7 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
     e.preventDefault();
     setDragOverCell(null);
     if (!draggedJob) return;
-
-    const scheduledDate = new Date(date);
-    scheduledDate.setHours(9, 0, 0, 0);
-
-    rescheduleJobMutation.mutate({
-      jobId: draggedJob.job.id,
-      scheduledAt: scheduledDate.toISOString(),
-      scheduledTime: '09:00',
-      assignedTo: memberId,
-    });
-
+    checkAndSchedule(draggedJob.job.id, memberId, date, 9, draggedJob.job.estimatedDuration);
     setDraggedJob(null);
   };
 
@@ -650,6 +688,49 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
           onClose={() => setSuggestJobId(null)}
         />
       )}
+
+      <AlertDialog open={!!conflictWarning} onOpenChange={() => setConflictWarning(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Schedule Conflict Detected
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  <span className="font-medium text-foreground">{conflictWarning?.memberName}</span> already has {conflictWarning?.existingJobs.length === 1 ? 'a job' : 'jobs'} scheduled at this time:
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  {conflictWarning?.existingJobs.map((name, i) => (
+                    <li key={i} className="text-sm font-medium text-foreground">{name}</li>
+                  ))}
+                </ul>
+                <p className="text-sm">Do you want to schedule this job anyway? This will create a double-booking.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => {
+                if (conflictWarning) {
+                  rescheduleJobMutation.mutate({
+                    jobId: conflictWarning.jobId,
+                    scheduledAt: conflictWarning.scheduledAt,
+                    scheduledTime: conflictWarning.scheduledTime,
+                    assignedTo: conflictWarning.assignedTo,
+                  });
+                }
+                setConflictWarning(null);
+              }}
+            >
+              Schedule Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

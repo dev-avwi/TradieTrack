@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Plus, Users, Phone, Mail, MapPin, Briefcase, LayoutGrid, List, MoreVertical, FileText, MessageCircle, Trash2 } from "lucide-react";
+import { Plus, Users, Phone, Mail, MapPin, Briefcase, LayoutGrid, List, MoreVertical, FileText, MessageCircle, Trash2, Download } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -268,6 +268,16 @@ export default function ClientsList({
                 <List className="h-4 w-4" />
               </Button>
             </div>
+            <Button 
+              variant="outline"
+              size="icon"
+              onClick={() => window.open('/api/export/clients', '_blank')}
+              data-testid="button-export-clients"
+              style={{ borderRadius: '12px' }}
+              title="Export Clients to CSV"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
             <Button 
               onClick={onCreateClient} 
               data-testid="button-create-client"

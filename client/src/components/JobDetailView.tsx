@@ -250,6 +250,7 @@ export default function JobDetailView({
   const [materialQty, setMaterialQty] = useState('1');
   const [materialUnit, setMaterialUnit] = useState('each');
   const [materialUnitCost, setMaterialUnitCost] = useState('');
+  const [materialUnitPrice, setMaterialUnitPrice] = useState('');
   const [materialSupplier, setMaterialSupplier] = useState('');
   const [materialTrackingNumber, setMaterialTrackingNumber] = useState('');
   const [materialTrackingCarrier, setMaterialTrackingCarrier] = useState('');
@@ -919,6 +920,7 @@ export default function JobDetailView({
       setMaterialQty('1');
       setMaterialUnit('each');
       setMaterialUnitCost('');
+      setMaterialUnitPrice('');
       setMaterialSupplier('');
       setMaterialTrackingNumber('');
       setMaterialTrackingCarrier('');
@@ -3000,7 +3002,7 @@ export default function JobDetailView({
                     </Select>
                     {!isTradie && (
                       <Input
-                        placeholder="$ Cost"
+                        placeholder="$ Cost (internal)"
                         type="number"
                         step="0.01"
                         value={materialUnitCost}
@@ -3008,6 +3010,26 @@ export default function JobDetailView({
                       />
                     )}
                   </div>
+                  {!isTradie && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="$ Sell Price (client)"
+                        type="number"
+                        step="0.01"
+                        value={materialUnitPrice}
+                        onChange={(e) => setMaterialUnitPrice(e.target.value)}
+                      />
+                      <div className="flex items-center text-xs text-muted-foreground px-2">
+                        {materialUnitCost && materialUnitPrice && parseFloat(materialUnitPrice) > 0 ? (
+                          <span className={parseFloat(materialUnitPrice) > parseFloat(materialUnitCost) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                            Margin: {(((parseFloat(materialUnitPrice) - parseFloat(materialUnitCost)) / parseFloat(materialUnitPrice)) * 100).toFixed(1)}%
+                          </span>
+                        ) : materialUnitCost && !materialUnitPrice ? (
+                          <span>Enter sell price to see margin</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  )}
                   <Input
                     placeholder="Supplier (optional)"
                     value={materialSupplier}
@@ -3072,6 +3094,7 @@ export default function JobDetailView({
                           quantity: materialQty || '1',
                           unit: materialUnit,
                           unitCost: materialUnitCost || '0',
+                          unitPrice: materialUnitPrice || '0',
                           supplier: materialSupplier || undefined,
                           trackingNumber: materialTrackingNumber || undefined,
                           trackingCarrier: materialTrackingCarrier || undefined,
@@ -3119,9 +3142,19 @@ export default function JobDetailView({
                             <span>{mat.quantity} {mat.unit}</span>
                             {mat.supplier && <span>from {mat.supplier}</span>}
                             {!isTradie && mat.totalCost && parseFloat(mat.totalCost) > 0 && (
-                              <span className="font-medium">${parseFloat(mat.totalCost).toFixed(2)}</span>
+                              <span className="font-medium">Cost: ${parseFloat(mat.totalCost).toFixed(2)}</span>
                             )}
-                            {!isTradie && mat.markupPercent && parseFloat(mat.markupPercent) > 0 && (
+                            {!isTradie && mat.unitPrice && parseFloat(mat.unitPrice) > 0 && (
+                              <span className="font-medium text-green-700 dark:text-green-400">
+                                Price: ${(parseFloat(mat.unitPrice) * parseFloat(mat.quantity || '1')).toFixed(2)}
+                              </span>
+                            )}
+                            {!isTradie && mat.unitPrice && parseFloat(mat.unitPrice) > 0 && mat.unitCost && parseFloat(mat.unitCost) > 0 && (
+                              <span className={parseFloat(mat.unitPrice) > parseFloat(mat.unitCost) ? 'text-green-600 dark:text-green-400 font-medium' : 'text-red-600 dark:text-red-400 font-medium'}>
+                                {(((parseFloat(mat.unitPrice) - parseFloat(mat.unitCost)) / parseFloat(mat.unitPrice)) * 100).toFixed(0)}% margin
+                              </span>
+                            )}
+                            {!isTradie && (!mat.unitPrice || parseFloat(mat.unitPrice) === 0) && mat.markupPercent && parseFloat(mat.markupPercent) > 0 && (
                               <span className="text-muted-foreground">+{parseFloat(mat.markupPercent).toFixed(0)}% markup</span>
                             )}
                           </div>
@@ -3215,13 +3248,32 @@ export default function JobDetailView({
                 </div>
               )}
 
-              {!isTradie && jobMaterials.length > 0 && (
-                <div className="flex items-center justify-end pt-2 border-t">
-                  <span className="text-sm font-medium">
-                    Materials Total: ${jobMaterials.reduce((sum, m) => sum + (parseFloat(m.totalCost) || 0), 0).toFixed(2)}
-                  </span>
-                </div>
-              )}
+              {!isTradie && jobMaterials.length > 0 && (() => {
+                const totalCost = jobMaterials.reduce((sum, m) => sum + (parseFloat(m.totalCost) || 0), 0);
+                const totalPrice = jobMaterials.reduce((sum, m) => {
+                  const up = parseFloat(m.unitPrice || '0');
+                  const qty = parseFloat(m.quantity || '1');
+                  return sum + (up > 0 ? up * qty : 0);
+                }, 0);
+                const profit = totalPrice - totalCost;
+                return (
+                  <div className="flex items-center justify-between pt-2 border-t gap-3 flex-wrap">
+                    <span className="text-sm font-medium">
+                      Cost: ${totalCost.toFixed(2)}
+                    </span>
+                    {totalPrice > 0 && (
+                      <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                        Revenue: ${totalPrice.toFixed(2)}
+                      </span>
+                    )}
+                    {totalPrice > 0 && (
+                      <span className={`text-sm font-semibold ${profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        Profit: ${profit.toFixed(2)} ({totalPrice > 0 ? ((profit / totalPrice) * 100).toFixed(0) : 0}%)
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
 

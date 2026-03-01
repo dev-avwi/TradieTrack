@@ -31,7 +31,8 @@ import {
   Save,
   ChevronDown,
   BookmarkCheck,
-  Filter
+  Filter,
+  Download
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -40,6 +41,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
 import { SearchBar, FilterChips } from "@/components/ui/filter-chips";
@@ -858,6 +860,21 @@ export default function WorkPage({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-lg"
+                onClick={() => window.open('/api/export/jobs', '_blank')}
+                data-testid="btn-export-jobs"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Export Jobs to CSV</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 

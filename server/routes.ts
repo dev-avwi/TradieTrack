@@ -29050,11 +29050,14 @@ Respond with JSON in this format:
 
       const quantity = parseFloat(String(parsed.quantity || '1'));
       const unitCost = parseFloat(String(parsed.unitCost || '0'));
+      const unitPrice = parseFloat(String(parsed.unitPrice || '0'));
       const totalCost = (quantity * unitCost).toFixed(2);
+      const totalPrice = (quantity * unitPrice).toFixed(2);
 
       const material = await storage.createJobMaterial({
         ...parsed,
         totalCost,
+        totalPrice,
       });
 
       res.status(201).json(material);
