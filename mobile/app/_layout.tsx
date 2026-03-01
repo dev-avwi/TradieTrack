@@ -10,7 +10,7 @@ import "../global.css";
 import { useNotifications, useOfflineStorage, useLocationTracking, useStripeTerminal } from '../src/hooks/useServices';
 import { isTapToPayAvailable } from '../src/lib/stripe-terminal';
 import notificationService from '../src/lib/notifications';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { ThemeProvider, useTheme } from '../src/lib/theme';
 import { BottomNav, getBottomNavHeight } from '../src/components/BottomNav';
 import { SidebarNav, getSidebarWidth } from '../src/components/SidebarNav';
@@ -285,8 +285,9 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isOnline, offlineInitialized]);
   
-  // Show FAB for all authenticated users - permissions are checked within FloatingActionButton
-  const showFab = true;
+  const pathname = usePathname();
+  const isChatScreen = pathname?.includes('/chat') || pathname?.includes('/direct-messages') || pathname?.includes('/sms-conversation') || pathname?.includes('/team-chat');
+  const showFab = !isChatScreen;
   const isTeamOwner = isOwner() && hasActiveTeam();
 
   // Unauthenticated: render children with safe area padding (no header/nav)
