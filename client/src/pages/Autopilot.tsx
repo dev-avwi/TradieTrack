@@ -30,6 +30,7 @@ import {
   Mail,
   MessageSquare,
   Activity,
+  Truck,
 } from "lucide-react";
 
 interface AutopilotProps {
@@ -56,6 +57,8 @@ interface AutomationSettings {
   gpsAutoCheckInEnabled?: boolean;
   autoCheckInOnArrival?: boolean;
   autoCheckOutOnDeparture?: boolean;
+  technicianEnRouteEnabled?: boolean;
+  technicianEnRouteChannel?: string;
   autoInvoiceOnComplete?: boolean;
   autoReviewRequest?: boolean;
   autoReviewRequestType?: string;
@@ -77,7 +80,7 @@ const TEMPLATE_VARIABLES: Record<string, string[]> = {
   reviewRequestMessage: ["{client}", "{business}"],
 };
 
-type AutomationField = "quoteFollowUpEnabled" | "jobReminderEnabled" | "invoiceReminderEnabled" | "photoRequirementsEnabled" | "gpsAutoCheckInEnabled" | "autoInvoiceOnComplete" | "autoReviewRequest";
+type AutomationField = "quoteFollowUpEnabled" | "jobReminderEnabled" | "invoiceReminderEnabled" | "photoRequirementsEnabled" | "gpsAutoCheckInEnabled" | "technicianEnRouteEnabled" | "autoInvoiceOnComplete" | "autoReviewRequest";
 
 const ENABLE_DEFAULTS: Partial<Record<AutomationField, Partial<AutomationSettings>>> = {
   quoteFollowUpEnabled: { quoteFollowUpDays: 3, quoteFollowUpType: "email", quoteFollowUpMessage: DEFAULT_MESSAGES.quoteFollowUpMessage },
@@ -85,6 +88,7 @@ const ENABLE_DEFAULTS: Partial<Record<AutomationField, Partial<AutomationSetting
   invoiceReminderEnabled: { invoiceReminderDaysBeforeDue: 3, invoiceOverdueReminderDays: 7, invoiceReminderType: "email", invoiceReminderMessage: DEFAULT_MESSAGES.invoiceReminderMessage },
   photoRequirementsEnabled: { requirePhotoBeforeStart: true, requirePhotoAfterComplete: true },
   gpsAutoCheckInEnabled: { autoCheckInOnArrival: true, autoCheckOutOnDeparture: true },
+  technicianEnRouteEnabled: { technicianEnRouteChannel: "sms" },
   autoReviewRequest: { autoReviewRequestType: "email", reviewRequestMessage: DEFAULT_MESSAGES.reviewRequestMessage },
 };
 
@@ -103,6 +107,7 @@ const FIELD_TO_API_TYPE: Record<AutomationField, string> = {
   invoiceReminderEnabled: "invoice_reminder",
   photoRequirementsEnabled: "photo_requirement",
   gpsAutoCheckInEnabled: "gps_checkin",
+  technicianEnRouteEnabled: "tech_en_route",
   autoInvoiceOnComplete: "auto_invoice",
   autoReviewRequest: "review_request",
 };
@@ -295,6 +300,14 @@ const automations: AutomationConfig[] = [
     icon: MapPin,
     color: "270 70% 60%",
     category: "fieldwork",
+  },
+  {
+    field: "technicianEnRouteEnabled",
+    title: "Technician On Their Way",
+    subtitle: "Notifies client when tech starts driving to job site",
+    icon: Truck,
+    color: "200 80% 50%",
+    category: "communications",
   },
   {
     field: "autoInvoiceOnComplete",
@@ -535,6 +548,22 @@ function InlineSettings({
             onCheckedChange={(checked) => onUpdate({ autoCheckOutOnDeparture: checked })}
           />
         </div>
+      </div>
+    );
+  }
+
+  if (field === "technicianEnRouteEnabled") {
+    const channel = settings.technicianEnRouteChannel ?? "sms";
+    return (
+      <div className="flex flex-col gap-3 pt-3 border-t border-border/50">
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Notification channel</Label>
+          <ChannelSelector value={channel} onChange={(v) => onUpdate({ technicianEnRouteChannel: v })} />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          When a technician starts driving to a job, the client receives an automatic notification.
+          Only sent once per job per trip.
+        </p>
       </div>
     );
   }

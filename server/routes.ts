@@ -214,6 +214,9 @@ function chatRateLimiterMiddleware(req: any, res: any, next: any) {
 // In-memory IP-based rate limiter for public portal messages (10 messages per minute per IP)
 const portalIpRateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
+// In-memory dedup for "Technician on their way" notifications (prevents re-sending per job per driving session)
+const enRouteNotifSent = new Map<string, number>(); // key: `${userId}-${jobId}`, value: timestamp
+
 function portalIpRateLimiterMiddleware(req: any, res: any, next: any) {
   const ip = req.ip || req.connection?.remoteAddress || 'unknown';
   const now = Date.now();
@@ -17463,6 +17466,141 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Batch create invoices from multiple completed jobs
+  app.post("/api/invoices/batch", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { jobIds } = req.body;
+      
+      if (!Array.isArray(jobIds) || jobIds.length === 0) {
+        return res.status(400).json({ error: 'jobIds array is required' });
+      }
+      if (jobIds.length > 50) {
+        return res.status(400).json({ error: 'Maximum 50 jobs per batch' });
+      }
+      
+      const business = await storage.getBusinessSettings(userContext.effectiveUserId);
+      const gstEnabled = business?.gstEnabled ?? true;
+      const results: Array<{ jobId: string; invoiceId?: string; invoiceNumber?: string; total?: string; error?: string }> = [];
+      
+      for (const jobId of jobIds) {
+        try {
+          const job = await storage.getJob(jobId, userContext.effectiveUserId);
+          if (!job) {
+            results.push({ jobId, error: 'Job not found' });
+            continue;
+          }
+          if (job.status !== 'done') {
+            results.push({ jobId, error: `Job status is "${job.status}", expected "done"` });
+            continue;
+          }
+          
+          let lineItems: Array<{ description: string; quantity: string; unitPrice: string; total: string }> = [];
+          
+          // Try to get line items from linked quote first
+          const quotes = await storage.getQuotes(userContext.effectiveUserId);
+          const linkedQuote = quotes.find(q => q.jobId === jobId && (q.status === 'accepted' || q.status === 'sent'));
+          if (linkedQuote) {
+            const quoteWithItems = await storage.getQuoteWithLineItems(linkedQuote.id, userContext.effectiveUserId);
+            if (quoteWithItems?.lineItems?.length) {
+              lineItems = quoteWithItems.lineItems.map((li: any) => ({
+                description: li.description || li.title || 'Service',
+                quantity: (li.quantity || '1').toString(),
+                unitPrice: (li.unitPrice || '0').toString(),
+                total: (parseFloat(li.quantity || '1') * parseFloat(li.unitPrice || '0')).toFixed(2),
+              }));
+            }
+          }
+          
+          // If no quote line items, create a default line item from job
+          if (lineItems.length === 0) {
+            const hourlyRate = business?.hourlyRate ? parseFloat(business.hourlyRate) : 85;
+            const timeEntries = await storage.getTimeEntries(userContext.effectiveUserId, jobId);
+            const totalHours = timeEntries.reduce((sum: number, te: any) => {
+              if (te.duration) return sum + parseFloat(te.duration) / 3600;
+              return sum;
+            }, 0);
+            
+            if (totalHours > 0) {
+              lineItems.push({
+                description: `Labour - ${job.title || 'Job'}`,
+                quantity: totalHours.toFixed(2),
+                unitPrice: hourlyRate.toFixed(2),
+                total: (totalHours * hourlyRate).toFixed(2),
+              });
+            } else {
+              lineItems.push({
+                description: job.title || 'Service',
+                quantity: '1',
+                unitPrice: '0.00',
+                total: '0.00',
+              });
+            }
+          }
+          
+          let subtotalCents = 0;
+          for (const item of lineItems) {
+            subtotalCents += Math.round(parseFloat(item.quantity) * parseFloat(item.unitPrice) * 100);
+          }
+          const subtotal = subtotalCents / 100;
+          const gstAmount = gstEnabled ? Math.round(subtotalCents * 0.1) / 100 : 0;
+          const total = Math.round((subtotal + gstAmount) * 100) / 100;
+          
+          const invoiceNumber = await storage.generateInvoiceNumber(userContext.effectiveUserId);
+          
+          const invoice = await storage.createInvoice({
+            userId: userContext.effectiveUserId,
+            clientId: job.clientId,
+            jobId: jobId,
+            number: invoiceNumber,
+            title: job.title || 'Invoice',
+            description: job.description || '',
+            status: 'draft',
+            subtotal: subtotal.toFixed(2),
+            gstAmount: gstAmount.toFixed(2),
+            total: total.toFixed(2),
+            issueDate: new Date(),
+            dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+            allowOnlinePayment: true,
+            documentTemplate: business?.documentTemplate || 'professional',
+          });
+          
+          for (const item of lineItems) {
+            await storage.createInvoiceLineItem({
+              invoiceId: invoice.id,
+              description: item.description,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              total: item.total,
+            }, userContext.effectiveUserId);
+          }
+          
+          await storage.updateJob(jobId, userContext.effectiveUserId, { status: 'invoiced' });
+          
+          results.push({ jobId, invoiceId: invoice.id, invoiceNumber, total: total.toFixed(2) });
+        } catch (jobErr: any) {
+          results.push({ jobId, error: jobErr.message });
+        }
+      }
+      
+      const successCount = results.filter(r => r.invoiceId).length;
+      const totalAmount = results.reduce((sum, r) => sum + parseFloat(r.total || '0'), 0);
+      
+      res.json({
+        results,
+        summary: {
+          total: jobIds.length,
+          success: successCount,
+          failed: jobIds.length - successCount,
+          totalAmount: totalAmount.toFixed(2),
+        }
+      });
+    } catch (error: any) {
+      console.error("Error batch creating invoices:", error);
+      res.status(500).json({ error: "Failed to batch create invoices" });
+    }
+  });
+
   // Update invoice (team-aware) with locking enforcement and audit trail
   app.patch("/api/invoices/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
@@ -29662,6 +29800,53 @@ Respond with JSON in this format:
           }
         }
       }
+
+        // "Technician on their way" notification to client
+        const newStatus = speed > 5 ? 'driving' : activityType === 'working' ? 'working' : 'online';
+        if (newStatus === 'driving' && currentJobId) {
+          try {
+            const enRouteKey = `${userId}-${currentJobId}`;
+            const lastSent = enRouteNotifSent.get(enRouteKey);
+            const now = Date.now();
+            if (!lastSent || (now - lastSent) > 60 * 60 * 1000) {
+              const autoSettings = await storage.getAutomationSettings(userContext.effectiveUserId);
+              if (autoSettings?.technicianEnRouteEnabled) {
+                const job = await storage.getJob(currentJobId);
+                if (job?.clientId) {
+                  const client = await storage.getClient(job.clientId);
+                  const techUser = await storage.getUser(userId);
+                  const techName = techUser?.fullName || techUser?.username || 'Your technician';
+                  if (client?.phone) {
+                    const { sendSmsToClient } = await import('./services/smsService');
+                    const jobAddress = job.address || 'your job site';
+                    const msg = `Hi ${client.name || 'there'}, ${techName} is on their way to ${jobAddress}. They should arrive shortly.`;
+                    await sendSmsToClient({
+                      businessOwnerId: userContext.effectiveUserId,
+                      clientId: job.clientId,
+                      clientPhone: client.phone,
+                      clientName: client.name || 'Client',
+                      senderUserId: userId,
+                      message: msg,
+                      jobId: currentJobId,
+                    }).catch(e => console.warn('[EnRoute] SMS failed:', e.message));
+                    enRouteNotifSent.set(enRouteKey, now);
+                    console.log(`[EnRoute] Sent "on their way" notification for job ${currentJobId}`);
+                    try {
+                      await storage.logAutomationProcessed(
+                        "technician_en_route",
+                        "job",
+                        currentJobId,
+                        "success",
+                      );
+                    } catch {}
+                  }
+                }
+              }
+            }
+          } catch (enRouteErr: any) {
+            console.warn('[EnRoute] Notification error:', enRouteErr.message);
+          }
+        }
       
       res.json({ success: true });
     } catch (error: any) {

@@ -113,6 +113,17 @@ export const ROLE_TEMPLATES = {
     ],
     description: 'Basic access to assigned jobs - can add photos, notes, and track time',
   },
+  SUBCONTRACTOR: {
+    name: 'Subcontractor',
+    permissions: [
+      PERMISSIONS.READ_JOBS,
+      PERMISSIONS.READ_CLIENTS,
+      PERMISSIONS.READ_TIME_ENTRIES, PERMISSIONS.WRITE_TIME_ENTRIES,
+      PERMISSIONS.WRITE_JOB_NOTES,
+      PERMISSIONS.WRITE_JOB_MEDIA,
+    ],
+    description: 'External subcontractor - only sees assigned jobs, no financial data',
+  },
 };
 
 export interface UserContext {
@@ -122,6 +133,8 @@ export interface UserContext {
   businessOwnerId: string | null;
   permissions: Permission[];
   teamMemberId: string | null;
+  roleName?: string;
+  isSubcontractor?: boolean;
   ownerSubscriptionValid?: boolean;
   ownerSubscriptionError?: string;
 }
@@ -165,6 +178,7 @@ export async function getUserContext(userId: string): Promise<UserContext> {
       ownerSubscriptionError = 'Business owner account not found';
     }
     
+    const roleName = role?.name || '';
     return {
       userId,
       isOwner: false,
@@ -172,6 +186,8 @@ export async function getUserContext(userId: string): Promise<UserContext> {
       businessOwnerId: teamMembership.businessOwnerId,
       permissions,
       teamMemberId: teamMembership.id,
+      roleName,
+      isSubcontractor: roleName.toLowerCase() === 'subcontractor',
       ownerSubscriptionValid,
       ownerSubscriptionError,
     };

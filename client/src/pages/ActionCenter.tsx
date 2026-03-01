@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
-import type { JobRequest } from "@shared/schema";
+import type { JobRequest, Job, Client } from "@shared/schema";
 import {
   AlertTriangle,
   Clock,
@@ -24,6 +25,9 @@ import {
   FileText,
   MessageSquare,
   Zap,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
 } from "lucide-react";
 
 interface ActionItem {
@@ -168,6 +172,8 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
   const { toast } = useToast();
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [uninvoicedExpanded, setUninvoicedExpanded] = useState(false);
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
 
   const { data, isLoading } = useQuery<ActionCenterData>({
     queryKey: ["/api/bi/action-center"],
@@ -175,6 +181,77 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
 
   const { data: pendingRequests = [], isLoading: requestsLoading } = useQuery<JobRequest[]>({
     queryKey: ["/api/job-requests", { status: "pending" }],
+  });
+
+  const { data: allJobs = [] } = useQuery<Job[]>({
+    queryKey: ["/api/jobs"],
+    enabled: uninvoicedExpanded,
+  });
+
+  const { data: allClients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+    enabled: uninvoicedExpanded,
+  });
+
+  const { data: allInvoices = [] } = useQuery<any[]>({
+    queryKey: ["/api/invoices"],
+    enabled: uninvoicedExpanded,
+  });
+
+  const uninvoicedJobs = useMemo(() => {
+    if (!uninvoicedExpanded) return [];
+    const invoicedJobIds = new Set(allInvoices.filter((inv: any) => inv.jobId).map((inv: any) => inv.jobId));
+    return allJobs.filter((j) => j.status === "done" && !invoicedJobIds.has(j.id));
+  }, [allJobs, allInvoices, uninvoicedExpanded]);
+
+  const clientMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allClients.forEach((c) => map.set(c.id, c.name));
+    return map;
+  }, [allClients]);
+
+  const toggleJobSelection = (jobId: string) => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(jobId)) {
+        next.delete(jobId);
+      } else {
+        next.add(jobId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedJobIds.size === uninvoicedJobs.length) {
+      setSelectedJobIds(new Set());
+    } else {
+      setSelectedJobIds(new Set(uninvoicedJobs.map((j) => j.id)));
+    }
+  };
+
+  const batchInvoiceMutation = useMutation({
+    mutationFn: async (jobIds: string[]) => {
+      const res = await apiRequest("POST", "/api/invoices/batch", { jobIds });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Invoices created",
+        description: `Created ${data.summary.success} invoices totaling $${Number(data.summary.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      });
+      setSelectedJobIds(new Set());
+      setUninvoicedExpanded(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/bi/action-center"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"], exact: false });
+    },
+    onError: () => {
+      toast({
+        title: "Failed to create invoices",
+        variant: "destructive",
+      });
+    },
   });
 
   const updateRequestMutation = useMutation({
@@ -322,16 +399,17 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                     <div className="flex flex-col gap-2">
                       {items.map((action, idx) => {
                         const CategoryIcon = getCategoryIcon(action.category);
+                        const isUninvoiced = action.id === "revenue-leak-uninvoiced";
                         return (
                           <div
                             key={action.id}
-                            className="flex rounded-2xl overflow-hidden"
+                            className="flex rounded-2xl overflow-visible"
                           >
-                            <div className="w-1 flex-shrink-0" style={{ backgroundColor: section.accentColor }} />
+                            <div className="w-1 flex-shrink-0 rounded-l-2xl" style={{ backgroundColor: section.accentColor }} />
                             <div
-                              className="feed-card card-press flex-1 rounded-l-none cursor-pointer"
+                              className={`feed-card flex-1 rounded-l-none ${isUninvoiced ? "" : "card-press cursor-pointer"}`}
                               style={{ backgroundColor: getCategoryTint(action.category) }}
-                              onClick={() => navigate(action.ctaUrl)}
+                              onClick={isUninvoiced ? undefined : () => navigate(action.ctaUrl)}
                             >
                               <div className="p-3">
                                 <div className="flex flex-col gap-2">
@@ -369,19 +447,112 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                                       {action.impact}
                                     </p>
                                   )}
-                                  <div>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate(action.ctaUrl);
-                                      }}
-                                    >
-                                      {action.cta}
-                                      <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                                    </Button>
-                                  </div>
+                                  {isUninvoiced ? (
+                                    <div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setUninvoicedExpanded(!uninvoicedExpanded);
+                                          if (!uninvoicedExpanded) {
+                                            setSelectedJobIds(new Set());
+                                          }
+                                        }}
+                                      >
+                                        {action.cta}
+                                        {uninvoicedExpanded ? (
+                                          <ChevronUp className="h-3.5 w-3.5 ml-1" />
+                                        ) : (
+                                          <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                                        )}
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigate(action.ctaUrl);
+                                        }}
+                                      >
+                                        {action.cta}
+                                        <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                  {isUninvoiced && uninvoicedExpanded && (
+                                    <div className="border-t border-border pt-3 mt-1">
+                                      {uninvoicedJobs.length === 0 ? (
+                                        <div className="flex items-center justify-center py-4">
+                                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                          <span className="ml-2 text-sm text-muted-foreground">Loading jobs...</span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-col gap-2">
+                                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                              <Checkbox
+                                                checked={selectedJobIds.size === uninvoicedJobs.length && uninvoicedJobs.length > 0}
+                                                onCheckedChange={toggleSelectAll}
+                                              />
+                                              <span className="text-xs font-medium text-muted-foreground">
+                                                Select All ({uninvoicedJobs.length})
+                                              </span>
+                                            </label>
+                                            <Button
+                                              size="sm"
+                                              variant="default"
+                                              disabled={selectedJobIds.size === 0 || batchInvoiceMutation.isPending}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                batchInvoiceMutation.mutate(Array.from(selectedJobIds));
+                                              }}
+                                            >
+                                              {batchInvoiceMutation.isPending ? (
+                                                <>
+                                                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                                                  Processing...
+                                                </>
+                                              ) : (
+                                                <>
+                                                  Generate {selectedJobIds.size} Invoice{selectedJobIds.size !== 1 ? "s" : ""}
+                                                </>
+                                              )}
+                                            </Button>
+                                          </div>
+                                          <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+                                            {uninvoicedJobs.map((job) => (
+                                              <label
+                                                key={job.id}
+                                                className="flex items-center gap-2 p-2 rounded-lg hover-elevate cursor-pointer"
+                                              >
+                                                <Checkbox
+                                                  checked={selectedJobIds.has(job.id)}
+                                                  onCheckedChange={() => toggleJobSelection(job.id)}
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                  <p className="text-sm font-medium text-foreground truncate">
+                                                    {job.title}
+                                                  </p>
+                                                  {job.clientId && clientMap.get(job.clientId) && (
+                                                    <p className="text-xs text-muted-foreground truncate">
+                                                      {clientMap.get(job.clientId)}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                                <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs flex-shrink-0">
+                                                  Done
+                                                </Badge>
+                                              </label>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>

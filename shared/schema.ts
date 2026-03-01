@@ -165,6 +165,17 @@ export const ROLE_PRESETS = {
     description: 'Full access - manages team, views reports, assigns jobs',
     permissions: ALL_WORKER_PERMISSIONS,
   },
+  subcontractor: {
+    label: 'Subcontractor',
+    description: 'External sub - only sees assigned jobs, no financial data',
+    permissions: [
+      WORKER_PERMISSIONS.UPDATE_JOB_STATUS,
+      WORKER_PERMISSIONS.TIME_TRACKING,
+      WORKER_PERMISSIONS.GPS_CHECKIN,
+      WORKER_PERMISSIONS.TEAM_CHAT,
+      WORKER_PERMISSIONS.VIEW_CLIENTS,
+    ],
+  },
 } as const;
 
 // Permission categories for organized UI display
@@ -3593,6 +3604,8 @@ export const automationSettings = pgTable("automation_settings", {
   autoCheckInOnArrival: boolean("auto_check_in_on_arrival").default(false),
   autoCheckOutOnDeparture: boolean("auto_check_out_on_departure").default(false),
   gpsAutoCheckInEnabled: boolean("gps_auto_check_in_enabled").default(false),
+  technicianEnRouteEnabled: boolean("technician_en_route_enabled").default(false),
+  technicianEnRouteChannel: text("technician_en_route_channel").default('sms'),
   // Daily Summary Email
   dailySummaryEnabled: boolean("daily_summary_enabled").default(false),
   dailySummaryTime: text("daily_summary_time").default('18:00'), // HH:mm format
