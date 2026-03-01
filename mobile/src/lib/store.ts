@@ -2054,10 +2054,32 @@ interface ClientReport {
 
 type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
 
+interface JobTypeProfitability {
+  jobType: string;
+  jobCount: number;
+  totalRevenue: number;
+  totalLabourCost: number;
+  totalMaterialCost: number;
+  totalExpenseCost: number;
+  totalCosts: number;
+  totalProfit: number;
+  totalHours: number;
+  avgMargin: number;
+  previousMargin: number | null;
+  marginChange: number | null;
+}
+
+interface ProfitabilityByJobTypeReport {
+  jobTypes: JobTypeProfitability[];
+  best: { jobType: string; avgMargin: number } | null;
+  worst: { jobType: string; avgMargin: number } | null;
+}
+
 interface ReportsState {
   summary: ReportSummary | null;
   revenueReport: RevenueReport | null;
   clientReport: ClientReport | null;
+  profitabilityReport: ProfitabilityByJobTypeReport | null;
   period: ReportPeriod;
   isLoading: boolean;
   error: string | null;
@@ -2066,6 +2088,7 @@ interface ReportsState {
   fetchSummary: () => Promise<void>;
   fetchRevenueReport: (year?: number) => Promise<void>;
   fetchClientReport: (limit?: number) => Promise<void>;
+  fetchProfitabilityReport: () => Promise<void>;
   fetchAllReports: () => Promise<void>;
 }
 
@@ -2100,6 +2123,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
   summary: null,
   revenueReport: null,
   clientReport: null,
+  profitabilityReport: null,
   period: 'month',
   isLoading: false,
   error: null,
@@ -2187,6 +2211,33 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
     }
   },
 
+  fetchProfitabilityReport: async () => {
+    set({ isLoading: true, error: null });
+    
+    const isOnline = useOfflineStore.getState().isOnline;
+    if (!isOnline) {
+      set({ isLoading: false, error: 'Reports require an internet connection' });
+      return;
+    }
+    
+    const { period } = get();
+    const { startDate, endDate } = getDateRangeForPeriod(period);
+    
+    try {
+      const response = await api.get<ProfitabilityByJobTypeReport>(`/api/reports/profitability/by-job-type?startDate=${startDate}&endDate=${endDate}`);
+      
+      if (response.error) {
+        set({ isLoading: false, error: 'Failed to load profitability report' });
+        return;
+      }
+      
+      set({ profitabilityReport: response.data, isLoading: false, error: null });
+    } catch (e) {
+      console.log('[ReportsStore] Error fetching profitability report:', e);
+      set({ isLoading: false, error: 'Failed to load profitability report' });
+    }
+  },
+
   fetchAllReports: async () => {
     set({ isLoading: true, error: null });
     
@@ -2201,16 +2252,18 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
     const currentYear = new Date().getFullYear();
     
     try {
-      const [summaryRes, revenueRes, clientRes] = await Promise.all([
+      const [summaryRes, revenueRes, clientRes, profitabilityRes] = await Promise.all([
         api.get<ReportSummary>(`/api/reports/summary?startDate=${startDate}&endDate=${endDate}`),
         api.get<RevenueReport>(`/api/reports/revenue?year=${currentYear}`),
         api.get<ClientReport>('/api/reports/clients?limit=5'),
+        api.get<ProfitabilityByJobTypeReport>(`/api/reports/profitability/by-job-type?startDate=${startDate}&endDate=${endDate}`),
       ]);
       
       set({
         summary: summaryRes.data || null,
         revenueReport: revenueRes.data || null,
         clientReport: clientRes.data || null,
+        profitabilityReport: profitabilityRes.data || null,
         isLoading: false,
         error: null,
       });

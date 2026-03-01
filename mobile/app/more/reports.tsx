@@ -20,7 +20,7 @@ import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, comp
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
-type ReportTab = 'overview' | 'revenue' | 'clients' | 'export';
+type ReportTab = 'overview' | 'revenue' | 'clients' | 'profitability' | 'export';
 
 const PERIODS: { key: ReportPeriod; label: string }[] = [
   { key: 'week', label: 'This Week' },
@@ -33,6 +33,7 @@ const REPORT_TABS: { key: ReportTab; label: string; icon: string }[] = [
   { key: 'overview', label: 'Overview', icon: 'bar-chart-2' },
   { key: 'revenue', label: 'Revenue', icon: 'dollar-sign' },
   { key: 'clients', label: 'Clients', icon: 'users' },
+  { key: 'profitability', label: 'Profit', icon: 'trending-up' },
   { key: 'export', label: 'Export', icon: 'share' },
 ];
 
@@ -581,6 +582,7 @@ export default function ReportsScreen() {
     summary, 
     revenueReport, 
     clientReport,
+    profitabilityReport,
     period, 
     setPeriod,
     fetchAllReports, 
@@ -1104,6 +1106,103 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                   </View>
                   <Text style={styles.emptyTitle}>No Client Data</Text>
                   <Text style={styles.emptyText}>No client data available yet</Text>
+                </View>
+              )}
+            </>
+          )}
+
+          {activeReportTab === 'profitability' && (
+            <>
+              {profitabilityReport && profitabilityReport.jobTypes.length > 0 ? (
+                <>
+                  {(profitabilityReport.best || profitabilityReport.worst) && (
+                    <View style={styles.statsRow}>
+                      {profitabilityReport.best && (
+                        <View style={[styles.statCard, { borderColor: colors.success, borderWidth: 1 }]}>
+                          <View style={styles.statHeader}>
+                            <View style={[styles.statIconContainer, { backgroundColor: colors.successLight }]}>
+                              <Feather name="trending-up" size={20} color={colors.success} />
+                            </View>
+                          </View>
+                          <Text style={[styles.statValue, { color: colors.success }]}>{profitabilityReport.best.avgMargin.toFixed(1)}%</Text>
+                          <Text style={styles.statTitle}>BEST PERFORMER</Text>
+                          <Text style={styles.statSubValue} numberOfLines={1}>{profitabilityReport.best.jobType}</Text>
+                        </View>
+                      )}
+                      {profitabilityReport.worst && (
+                        <View style={[styles.statCard, { borderColor: colors.destructive, borderWidth: 1 }]}>
+                          <View style={styles.statHeader}>
+                            <View style={[styles.statIconContainer, { backgroundColor: colors.destructiveLight }]}>
+                              <Feather name="trending-down" size={20} color={colors.destructive} />
+                            </View>
+                          </View>
+                          <Text style={[styles.statValue, { color: colors.destructive }]}>{profitabilityReport.worst.avgMargin.toFixed(1)}%</Text>
+                          <Text style={styles.statTitle}>WORST PERFORMER</Text>
+                          <Text style={styles.statSubValue} numberOfLines={1}>{profitabilityReport.worst.jobType}</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  <Text style={styles.sectionTitle}>PROFITABILITY BY JOB TYPE</Text>
+                  {profitabilityReport.jobTypes.map((jt, index) => {
+                    const marginColor = jt.avgMargin > 15 ? colors.success : jt.avgMargin > 5 ? colors.warning : colors.destructive;
+                    const marginBg = jt.avgMargin > 15 ? colors.successLight : jt.avgMargin > 5 ? colors.warningLight : colors.destructiveLight;
+                    return (
+                      <View key={jt.jobType + index} style={styles.clientCard}>
+                        <View style={[styles.clientRank, { backgroundColor: marginBg }]}>
+                          <Text style={[styles.clientRankText, { color: marginColor }]}>{index + 1}</Text>
+                        </View>
+                        <View style={styles.clientInfo}>
+                          <Text style={styles.clientName} numberOfLines={1}>{jt.jobType}</Text>
+                          <Text style={styles.clientMeta}>
+                            {jt.jobCount} job{jt.jobCount !== 1 ? 's' : ''}  {jt.totalHours > 0 ? `${jt.totalHours}h` : ''}
+                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs }}>
+                            <Text style={[styles.clientMeta, { color: colors.foreground, fontWeight: '500' }]}>
+                              Rev: {formatCurrency(jt.totalRevenue)}
+                            </Text>
+                            <Text style={[styles.clientMeta, { color: colors.mutedForeground }]}>
+                              Cost: {formatCurrency(jt.totalCosts)}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={[styles.clientRevenue, { color: marginColor, fontWeight: '700' }]}>{jt.avgMargin.toFixed(1)}%</Text>
+                          <Text style={[styles.clientMeta, { color: jt.totalProfit >= 0 ? colors.success : colors.destructive }]}>
+                            {formatCurrency(jt.totalProfit)}
+                          </Text>
+                          {jt.marginChange !== null && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                              <Feather 
+                                name={jt.marginChange >= 0 ? 'arrow-up' : 'arrow-down'} 
+                                size={10} 
+                                color={jt.marginChange >= 0 ? colors.success : colors.destructive} 
+                              />
+                              <Text style={{ fontSize: 10, color: jt.marginChange >= 0 ? colors.success : colors.destructive }}>
+                                {Math.abs(jt.marginChange).toFixed(1)}%
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </>
+              ) : profitabilityReport && profitabilityReport.jobTypes.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <View style={styles.emptyIconContainer}>
+                    <Feather name="trending-up" size={40} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={styles.emptyTitle}>No Profitability Data</Text>
+                  <Text style={styles.emptyText}>
+                    Complete jobs with invoices and time tracking to see profitability by job type.
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={styles.loadingText}>Loading profitability data...</Text>
                 </View>
               )}
             </>

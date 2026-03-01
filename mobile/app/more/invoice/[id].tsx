@@ -93,8 +93,46 @@ export default function InvoiceDetailScreen() {
   const [sendModalDefaultTab, setSendModalDefaultTab] = useState<'email' | 'sms'>('email');
   const [showReceiptSendModal, setShowReceiptSendModal] = useState(false);
   const [receiptSendModalDefaultTab, setReceiptSendModalDefaultTab] = useState<'email' | 'sms'>('email');
+  const [showMilestonesModal, setShowMilestonesModal] = useState(false);
+  const [milestonePreset, setMilestonePreset] = useState<string>('custom');
+  const [retentionPercentStr, setRetentionPercentStr] = useState('');
+  const [isSavingMilestones, setIsSavingMilestones] = useState(false);
+  const [paymentRecords, setPaymentRecords] = useState<any[]>([]);
+  const [paymentSummary, setPaymentSummary] = useState<any>(null);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
+
+  const MILESTONE_PRESETS = [
+    { id: 'custom', label: 'Custom' },
+    { id: 'deposit-balance', label: '50% Deposit / 50% Completion' },
+    { id: 'three-stage', label: '30% / 40% / 30%' },
+    { id: 'four-stage', label: '25% x 4 Stages' },
+    { id: 'construction', label: '10% / 30% / 30% / 30%' },
+  ] as const;
+
+  const PRESET_MAP: Record<string, { label: string; percent: number }[]> = {
+    'deposit-balance': [
+      { label: 'Deposit', percent: 50 },
+      { label: 'Completion', percent: 50 },
+    ],
+    'three-stage': [
+      { label: 'Deposit', percent: 30 },
+      { label: 'Progress', percent: 40 },
+      { label: 'Completion', percent: 30 },
+    ],
+    'four-stage': [
+      { label: 'Deposit', percent: 25 },
+      { label: 'Lockup', percent: 25 },
+      { label: 'Fixout', percent: 25 },
+      { label: 'Completion', percent: 25 },
+    ],
+    'construction': [
+      { label: 'Deposit', percent: 10 },
+      { label: 'Slab Complete', percent: 30 },
+      { label: 'Frame Complete', percent: 30 },
+      { label: 'Completion', percent: 30 },
+    ],
+  };
   
   const PAYMENT_METHODS = [
     { id: 'cash', label: 'Cash', icon: 'dollar-sign' },
@@ -269,6 +307,25 @@ export default function InvoiceDetailScreen() {
     } catch (err) {
       console.log('Could not fetch linked receipt:', err);
       setLinkedReceipt(null);
+    }
+    
+    // Fetch payment records for payment history timeline
+    try {
+      const paymentsResponse = await fetch(`${API_URL}/api/invoices/${id}/payments`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (paymentsResponse.ok) {
+        const paymentsData = await paymentsResponse.json();
+        setPaymentRecords(paymentsData.records || []);
+        setPaymentSummary(paymentsData.summary || null);
+      } else {
+        setPaymentRecords([]);
+        setPaymentSummary(null);
+      }
+    } catch (err) {
+      console.log('Could not fetch payment records:', err);
+      setPaymentRecords([]);
+      setPaymentSummary(null);
     }
     
     setIsLoading(false);
@@ -1327,6 +1384,43 @@ ${businessName}`;
       Alert.alert('Error', 'Failed to send payment link. Please try again.');
     } finally {
       setIsSendingPaymentLinkEmail(false);
+    }
+  };
+
+  const handleSaveMilestones = async () => {
+    if (!invoice || isSavingMilestones) return;
+    
+    setIsSavingMilestones(true);
+    try {
+      const milestones = PRESET_MAP[milestonePreset] || (invoice.paymentMilestones as any[]) || [];
+      const retPct = retentionPercentStr ? parseFloat(retentionPercentStr) : undefined;
+      
+      const authToken = await api.getToken();
+      const response = await fetch(`${API_URL}/api/invoices/${invoice.id}/milestones`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          milestones: milestones.length > 0 ? milestones : undefined,
+          retentionPercent: retPct,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update milestones');
+      }
+      
+      setShowMilestonesModal(false);
+      await loadData();
+      Alert.alert('Success', 'Payment milestones and retention settings saved.');
+    } catch (error: any) {
+      console.log('Error saving milestones:', error);
+      Alert.alert('Error', error.message || 'Failed to save milestones');
+    } finally {
+      setIsSavingMilestones(false);
     }
   };
 
@@ -2446,6 +2540,16 @@ ${businessName}`;
               <Text style={styles.totalLabel2}>Total</Text>
               <Text style={styles.totalValue}>{formatCurrency(invoice.total)}</Text>
             </View>
+            {parseFloat(invoice.retentionAmount || '0') > 0 && (
+              <View style={styles.amountRow}>
+                <Text style={[styles.amountLabel, { color: colors.warning }]}>
+                  Retention ({invoice.retentionPercent || '0'}%)
+                </Text>
+                <Text style={[styles.amountValue, { color: colors.warning }]}>
+                  -{formatCurrency(parseFloat(invoice.retentionAmount || '0'))}
+                </Text>
+              </View>
+            )}
             {invoice.amountPaid > 0 && (
               <>
                 <View style={styles.amountRow}>
@@ -2458,12 +2562,225 @@ ${businessName}`;
                 <View style={styles.amountRow}>
                   <Text style={[styles.totalLabel2, { color: colors.warning }]}>Balance Due</Text>
                   <Text style={[styles.totalValue, { color: colors.warning }]}>
-                    {formatCurrency(amountDue)}
+                    {formatCurrency(Math.max(0, invoice.total - parseFloat(invoice.retentionAmount || '0') - (invoice.amountPaid || 0)))}
                   </Text>
                 </View>
               </>
             )}
           </View>
+
+          {/* Payment Milestones & Retention - Only for unpaid invoices */}
+          {invoice.status !== 'paid' && (
+            <>
+              <Text style={styles.sectionTitle}>Payment Milestones & Retention</Text>
+              <View style={styles.card}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                    <Feather name="calendar" size={20} color={colors.primary} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>
+                        Milestones & Retention
+                      </Text>
+                      <Text style={{ fontSize: 13, color: colors.mutedForeground, marginTop: 2 }}>
+                        {invoice.paymentMilestones && Array.isArray(invoice.paymentMilestones) && invoice.paymentMilestones.length > 0
+                          ? `${invoice.paymentMilestones.length} milestones defined`
+                          : 'Define progress payment stages'}
+                        {parseFloat(invoice.retentionPercent || '0') > 0 && ` | ${invoice.retentionPercent}% retention`}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      paddingVertical: 10,
+                      paddingHorizontal: 14,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: colors.primary,
+                      backgroundColor: colors.card,
+                    }}
+                    onPress={() => {
+                      setRetentionPercentStr(invoice.retentionPercent || '');
+                      setMilestonePreset('custom');
+                      setShowMilestonesModal(true);
+                    }}
+                  >
+                    <Feather name="edit-2" size={14} color={colors.primary} />
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: colors.primary }}>
+                      {invoice.paymentMilestones && (invoice.paymentMilestones as any[]).length > 0 ? 'Edit' : 'Set Up'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Display existing milestones */}
+                {invoice.paymentMilestones && Array.isArray(invoice.paymentMilestones) && invoice.paymentMilestones.length > 0 && (
+                  <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border }}>
+                    {(invoice.paymentMilestones as any[]).map((milestone: any, idx: number) => {
+                      const milestoneAmount = (invoice.total * (milestone.percent || 0)) / 100;
+                      const amountPaidSoFar = invoice.amountPaid || 0;
+                      const cumulativeTarget = (invoice.paymentMilestones as any[])
+                        .slice(0, idx + 1)
+                        .reduce((sum: number, m: any) => sum + (invoice.total * (m.percent || 0)) / 100, 0);
+                      const isMilestonePaid = amountPaidSoFar >= cumulativeTarget;
+                      
+                      return (
+                        <View key={idx} style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingVertical: 10,
+                          paddingHorizontal: 12,
+                          backgroundColor: isMilestonePaid ? colors.successLight : colors.background,
+                          borderRadius: 8,
+                          marginBottom: 6,
+                          gap: 8,
+                        }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                            <View style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: 12,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: isMilestonePaid ? colors.success : colors.muted,
+                            }}>
+                              {isMilestonePaid ? (
+                                <Feather name="check" size={14} color={colors.white} />
+                              ) : (
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.mutedForeground }}>{idx + 1}</Text>
+                              )}
+                            </View>
+                            <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>{milestone.label}</Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ fontSize: 13, color: colors.mutedForeground }}>{milestone.percent}%</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{formatCurrency(milestoneAmount)}</Text>
+                            <View style={{
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                              borderRadius: 10,
+                              backgroundColor: isMilestonePaid ? colors.success : colors.muted,
+                            }}>
+                              <Text style={{ fontSize: 11, fontWeight: '600', color: isMilestonePaid ? colors.white : colors.mutedForeground }}>
+                                {isMilestonePaid ? 'Paid' : 'Pending'}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            </>
+          )}
+
+          {/* Payment History Timeline */}
+          {paymentRecords.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Payment History</Text>
+              <View style={styles.card}>
+                {paymentSummary && (
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    paddingBottom: 12,
+                    marginBottom: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
+                  }}>
+                    <Text style={{ fontSize: 14, color: colors.mutedForeground }}>
+                      {paymentRecords.length} payment{paymentRecords.length !== 1 ? 's' : ''} recorded
+                    </Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: colors.success }}>
+                      {formatCurrency(paymentSummary.totalPaid || 0)}
+                    </Text>
+                  </View>
+                )}
+                {paymentRecords.map((record: any, idx: number) => {
+                  const methodLabels: Record<string, string> = {
+                    cash: 'Cash',
+                    bank_transfer: 'Bank Transfer',
+                    cheque: 'Cheque',
+                    card: 'Card',
+                    stripe: 'Online (Stripe)',
+                    tap_to_pay: 'Tap to Pay',
+                    on_site: 'On-Site',
+                    other: 'Other',
+                  };
+                  const methodIcons: Record<string, string> = {
+                    cash: 'dollar-sign',
+                    bank_transfer: 'briefcase',
+                    cheque: 'file-text',
+                    card: 'credit-card',
+                    stripe: 'globe',
+                    tap_to_pay: 'smartphone',
+                    on_site: 'map-pin',
+                    other: 'more-horizontal',
+                  };
+                  return (
+                    <View key={record.id || idx} style={styles.timelineItem}>
+                      <View style={styles.timelineIndicator}>
+                        <View style={[styles.timelineDot, { backgroundColor: record.voided ? colors.destructive : colors.success }]} />
+                        {idx < paymentRecords.length - 1 && <View style={styles.timelineLine} />}
+                      </View>
+                      <View style={[styles.timelineContent, { paddingBottom: idx < paymentRecords.length - 1 ? 16 : 4 }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.timelineLabel, record.voided && { textDecorationLine: 'line-through', color: colors.mutedForeground }]}>
+                              {formatCurrency(record.amount)}
+                            </Text>
+                            <Text style={styles.timelineDate}>
+                              {record.paidAt ? formatDate(record.paidAt) : formatDate(record.createdAt)}
+                            </Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Feather 
+                              name={(methodIcons[record.paymentMethod] || 'dollar-sign') as any} 
+                              size={12} 
+                              color={colors.mutedForeground} 
+                            />
+                            <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                              {methodLabels[record.paymentMethod] || record.paymentMethod}
+                            </Text>
+                          </View>
+                        </View>
+                        {record.reference && (
+                          <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                            Ref: {record.reference}
+                          </Text>
+                        )}
+                        {record.note && (
+                          <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                            {record.note}
+                          </Text>
+                        )}
+                        {record.voided && (
+                          <View style={{ 
+                            flexDirection: 'row', 
+                            alignItems: 'center', 
+                            gap: 4, 
+                            marginTop: 4,
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            backgroundColor: colors.destructiveLight,
+                            borderRadius: 6,
+                            alignSelf: 'flex-start',
+                          }}>
+                            <Feather name="x-circle" size={10} color={colors.destructive} />
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.destructive }}>Voided</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          )}
 
           {/* Payment Info - Show when already paid */}
           {invoice.status === 'paid' && (
@@ -2941,6 +3258,156 @@ ${businessName}`;
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Milestones & Retention Modal */}
+      <Modal
+        visible={showMilestonesModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowMilestonesModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.paymentMethodModalContent}>
+            <View style={styles.shareSheetHandle} />
+            <Text style={styles.shareSheetTitle}>Payment Milestones</Text>
+            <Text style={styles.shareSheetSubtitle}>
+              Define progress payment stages and retention for construction/trade invoices
+            </Text>
+
+            <ScrollView style={styles.paymentMethodScrollContent}>
+              <Text style={styles.paymentMethodSectionTitle}>Milestone Preset</Text>
+              <View style={styles.paymentMethodOptions}>
+                {MILESTONE_PRESETS.map((preset) => (
+                  <TouchableOpacity
+                    key={preset.id}
+                    style={[
+                      styles.paymentMethodOption,
+                      milestonePreset === preset.id && styles.paymentMethodOptionSelected,
+                    ]}
+                    onPress={() => setMilestonePreset(preset.id)}
+                  >
+                    <View style={[
+                      styles.paymentMethodIcon,
+                      milestonePreset === preset.id && styles.paymentMethodIconSelected,
+                    ]}>
+                      <Feather
+                        name={preset.id === 'custom' ? 'sliders' : 'layers'}
+                        size={18}
+                        color={milestonePreset === preset.id ? colors.white : colors.primary}
+                      />
+                    </View>
+                    <Text style={[
+                      styles.paymentMethodLabel,
+                      milestonePreset === preset.id && styles.paymentMethodLabelSelected,
+                    ]}>
+                      {preset.label}
+                    </Text>
+                    {milestonePreset === preset.id && (
+                      <Feather name="check-circle" size={20} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {milestonePreset !== 'custom' && PRESET_MAP[milestonePreset] && (
+                <View style={{ marginTop: 12, padding: 12, backgroundColor: colors.background, borderRadius: 10 }}>
+                  {PRESET_MAP[milestonePreset].map((m, i) => (
+                    <View key={i} style={{ 
+                      flexDirection: 'row', 
+                      justifyContent: 'space-between', 
+                      paddingVertical: 6,
+                      borderBottomWidth: i < PRESET_MAP[milestonePreset].length - 1 ? 1 : 0,
+                      borderBottomColor: colors.border,
+                    }}>
+                      <Text style={{ fontSize: 14, color: colors.foreground }}>{m.label}</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{m.percent}%</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <Text style={styles.paymentMethodSectionTitle}>Retention Percentage</Text>
+              <TextInput
+                style={styles.paymentReferenceInput}
+                placeholder="e.g. 5"
+                placeholderTextColor={colors.mutedForeground}
+                value={retentionPercentStr}
+                onChangeText={setRetentionPercentStr}
+                keyboardType="decimal-pad"
+              />
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 6 }}>
+                Common in construction: hold back 5-10% until defect period ends
+              </Text>
+
+              {retentionPercentStr && parseFloat(retentionPercentStr) > 0 && (
+                <View style={{
+                  marginTop: 12,
+                  padding: 12,
+                  backgroundColor: colors.warningLight,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: colors.warning,
+                }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                    <Text style={{ fontSize: 14, color: colors.foreground }}>Invoice Total</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>
+                      {formatCurrency(invoice?.total || 0)}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                    <Text style={{ fontSize: 14, color: colors.warning }}>
+                      Retention ({retentionPercentStr}%)
+                    </Text>
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: colors.warning }}>
+                      -{formatCurrency((invoice?.total || 0) * parseFloat(retentionPercentStr) / 100)}
+                    </Text>
+                  </View>
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    justifyContent: 'space-between', 
+                    paddingTop: 8,
+                    marginTop: 4,
+                    borderTopWidth: 1,
+                    borderTopColor: colors.warning,
+                  }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>Payable Now</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
+                      {formatCurrency((invoice?.total || 0) * (1 - parseFloat(retentionPercentStr) / 100))}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={styles.paymentMethodActions}>
+              <TouchableOpacity
+                style={styles.paymentMethodCancelButton}
+                onPress={() => {
+                  setShowMilestonesModal(false);
+                  setMilestonePreset('custom');
+                  setRetentionPercentStr('');
+                }}
+              >
+                <Text style={styles.paymentMethodCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.paymentMethodConfirmButton, { backgroundColor: colors.primary }, isSavingMilestones && styles.buttonDisabled]}
+                onPress={handleSaveMilestones}
+                disabled={isSavingMilestones}
+              >
+                {isSavingMilestones ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <>
+                    <Feather name="check" size={18} color={colors.white} />
+                    <Text style={styles.paymentMethodConfirmText}>Save Milestones</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Payment Method Selection Modal */}

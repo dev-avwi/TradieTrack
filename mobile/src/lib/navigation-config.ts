@@ -206,6 +206,17 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
+    title: "Calculators",
+    url: "/more/calculators",
+    icon: "sliders",
+    description: "Trade calculators for quoting",
+    color: "primary",
+    bgColor: "primary",
+    showInMore: true,
+    category: "work",
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff'],
+  },
+  {
     title: "Equipment",
     url: "/more/equipment",
     icon: "tool",
@@ -738,6 +749,15 @@ export const sidebarMainItems: SidebarNavItem[] = [
     section: 'main',
     hideForStaff: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  { 
+    id: 'calculators',
+    title: 'Calculators', 
+    icon: 'sliders', 
+    path: '/more/calculators',
+    matchPaths: ['/more/calculators'],
+    section: 'main',
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff'],
   },
   { 
     id: 'equipment',

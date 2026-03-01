@@ -397,6 +397,59 @@ const createStyles = (colors: ThemeColors, isTabletDevice: boolean = false, resp
     paddingVertical: 4,
     borderRadius: radius.lg,
   },
+  conflictBanner: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    backgroundColor: '#FEF2F2',
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    gap: spacing.sm,
+  },
+  conflictBannerDark: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  conflictBannerContent: {
+    flex: 1,
+  },
+  conflictBannerTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#DC2626',
+    marginBottom: 2,
+  },
+  conflictBannerText: {
+    fontSize: 12,
+    color: '#B91C1C',
+  },
+  conflictDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+    marginTop: 2,
+  },
+  conflictJobCard: {
+    borderLeftColor: '#EF4444',
+  },
+  conflictJobBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.md,
+    gap: 4,
+    marginTop: spacing.xs,
+  },
+  conflictJobBadgeText: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+    color: '#DC2626',
+  },
 });
 
 export default function CalendarScreen() {
@@ -475,6 +528,38 @@ export default function CalendarScreen() {
     });
   };
 
+  const getConflictsForDate = (date: Date) => {
+    const dateJobs = getJobsForDate(date);
+    if (dateJobs.length < 2) return [];
+
+    const conflicts: { jobA: typeof dateJobs[0]; jobB: typeof dateJobs[0] }[] = [];
+
+    for (let i = 0; i < dateJobs.length; i++) {
+      for (let j = i + 1; j < dateJobs.length; j++) {
+        const a = dateJobs[i];
+        const b = dateJobs[j];
+        if (!a.scheduledAt || !b.scheduledAt) continue;
+
+        const aStart = new Date(a.scheduledAt).getTime();
+        const aDuration = (a.estimatedDuration || 60) * 60 * 1000;
+        const aEnd = aStart + aDuration;
+
+        const bStart = new Date(b.scheduledAt).getTime();
+        const bDuration = (b.estimatedDuration || 60) * 60 * 1000;
+        const bEnd = bStart + bDuration;
+
+        if (aStart < bEnd && bStart < aEnd) {
+          conflicts.push({ jobA: a, jobB: b });
+        }
+      }
+    }
+    return conflicts;
+  };
+
+  const hasConflictsOnDate = (date: Date) => {
+    return getConflictsForDate(date).length > 0;
+  };
+
   const goToPrevious = () => {
     const newDate = new Date(currentDate);
     if (viewMode === 'week') {
@@ -528,6 +613,16 @@ export default function CalendarScreen() {
   const weekDates = getWeekDates(currentDate);
   const monthDates = getMonthDates(currentDate);
   const selectedDateJobs = getJobsForDate(selectedDate);
+  const selectedDateConflicts = getConflictsForDate(selectedDate);
+
+  const conflictingJobIds = useMemo(() => {
+    const ids = new Set<string>();
+    selectedDateConflicts.forEach(c => {
+      ids.add(c.jobA.id);
+      ids.add(c.jobB.id);
+    });
+    return ids;
+  }, [selectedDateConflicts]);
 
   const formatTime = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -623,6 +718,20 @@ export default function CalendarScreen() {
                 </Text>
               </View>
 
+              {selectedDateConflicts.length > 0 && (
+                <View style={styles.conflictBanner}>
+                  <Feather name="alert-triangle" size={20} color="#EF4444" />
+                  <View style={styles.conflictBannerContent}>
+                    <Text style={styles.conflictBannerTitle}>
+                      Schedule Conflict{selectedDateConflicts.length > 1 ? 's' : ''}
+                    </Text>
+                    <Text style={styles.conflictBannerText}>
+                      {selectedDateConflicts.length} overlapping job{selectedDateConflicts.length > 1 ? 's' : ''} detected today
+                    </Text>
+                  </View>
+                </View>
+              )}
+
               {selectedDateJobs.length === 0 ? (
                 <View style={styles.noJobsCard}>
                   <Feather name="sun" size={32} color={colors.mutedForeground} />
@@ -632,7 +741,7 @@ export default function CalendarScreen() {
                 selectedDateJobs.map(job => (
                   <TouchableOpacity
                     key={job.id}
-                    style={styles.jobCard}
+                    style={[styles.jobCard, conflictingJobIds.has(job.id) && styles.conflictJobCard]}
                     activeOpacity={0.7}
                     onPress={() => router.push(`/job/${job.id}`)}
                   >
@@ -645,6 +754,12 @@ export default function CalendarScreen() {
                     </View>
                     <View style={styles.jobCardContent}>
                       <Text style={styles.jobTitle}>{job.title}</Text>
+                      {conflictingJobIds.has(job.id) && (
+                        <View style={styles.conflictJobBadge}>
+                          <Feather name="alert-triangle" size={11} color="#DC2626" />
+                          <Text style={styles.conflictJobBadgeText}>Overlapping</Text>
+                        </View>
+                      )}
                       {getClientName(job.clientId) && (
                         <View style={styles.jobDetailRow}>
                           <Feather name="user" size={12} color={colors.mutedForeground} />
@@ -693,7 +808,12 @@ export default function CalendarScreen() {
                         {date.getDate()}
                       </Text>
                       {dateJobs.length > 0 && (
-                        <View style={styles.jobDot} />
+                        <View style={{ flexDirection: 'row', gap: 3, alignItems: 'center' }}>
+                          <View style={styles.jobDot} />
+                          {hasConflictsOnDate(date) && (
+                            <View style={styles.conflictDot} />
+                          )}
+                        </View>
                       )}
                     </TouchableOpacity>
                   );
@@ -771,6 +891,20 @@ export default function CalendarScreen() {
                 )}
               </View>
 
+              {selectedDateConflicts.length > 0 && (
+                <View style={styles.conflictBanner}>
+                  <Feather name="alert-triangle" size={20} color="#EF4444" />
+                  <View style={styles.conflictBannerContent}>
+                    <Text style={styles.conflictBannerTitle}>
+                      Schedule Conflict{selectedDateConflicts.length > 1 ? 's' : ''}
+                    </Text>
+                    <Text style={styles.conflictBannerText}>
+                      {selectedDateConflicts.length} overlapping job{selectedDateConflicts.length > 1 ? 's' : ''} on this day
+                    </Text>
+                  </View>
+                </View>
+              )}
+
               {selectedDateJobs.length === 0 ? (
                 <View style={styles.noJobsCard}>
                   <Feather name="calendar" size={32} color={colors.mutedForeground} />
@@ -780,7 +914,7 @@ export default function CalendarScreen() {
                 selectedDateJobs.map(job => (
                   <TouchableOpacity
                     key={job.id}
-                    style={styles.jobCard}
+                    style={[styles.jobCard, conflictingJobIds.has(job.id) && styles.conflictJobCard]}
                     activeOpacity={0.7}
                     onPress={() => router.push(`/job/${job.id}`)}
                   >
@@ -793,6 +927,12 @@ export default function CalendarScreen() {
                     </View>
                     <View style={styles.jobCardContent}>
                       <Text style={styles.jobTitle}>{job.title}</Text>
+                      {conflictingJobIds.has(job.id) && (
+                        <View style={styles.conflictJobBadge}>
+                          <Feather name="alert-triangle" size={11} color="#DC2626" />
+                          <Text style={styles.conflictJobBadgeText}>Overlapping</Text>
+                        </View>
+                      )}
                       {getClientName(job.clientId) && (
                         <View style={styles.jobDetailRow}>
                           <Feather name="user" size={12} color={colors.mutedForeground} />

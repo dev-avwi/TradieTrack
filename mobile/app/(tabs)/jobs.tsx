@@ -9,7 +9,12 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  Alert
+  Alert,
+  Modal,
+  Animated,
+  TouchableWithoutFeedback,
+  Dimensions,
+  Platform,
 } from 'react-native';
 
 import { router, useFocusEffect } from 'expo-router';
@@ -26,6 +31,32 @@ import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { getJobUrgency, type JobUrgency } from '../../src/lib/jobUrgency';
 import UsageLimitBanner from '../../src/components/UsageLimitBanner';
 import { QuickActionSheet, type QuickAction } from '../../src/components/QuickActionSheet';
+
+interface AdvancedFilters {
+  statuses: string[];
+  dateFrom: string;
+  dateTo: string;
+  assignedTo: string;
+  clientId: string;
+  suburb: string;
+}
+
+const emptyAdvancedFilters: AdvancedFilters = {
+  statuses: [],
+  dateFrom: '',
+  dateTo: '',
+  assignedTo: '',
+  clientId: '',
+  suburb: '',
+};
+
+interface SavedFilter {
+  id: string;
+  name: string;
+  filters: AdvancedFilters;
+  entityType: string;
+  createdAt: string;
+}
 
 const navigateToCreateJob = () => {
   router.push('/more/create-job');
@@ -294,6 +325,101 @@ export default function JobsScreen() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [actionSheetJob, setActionSheetJob] = useState<any>(null);
 
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(emptyAdvancedFilters);
+  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
+  const [savedFiltersLoading, setSavedFiltersLoading] = useState(false);
+  const [saveFilterName, setSaveFilterName] = useState('');
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [savingFilter, setSavingFilter] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+
+  const hasAdvancedFilters = useMemo(() => {
+    return advancedFilters.statuses.length > 0 ||
+      advancedFilters.dateFrom !== '' ||
+      advancedFilters.dateTo !== '' ||
+      advancedFilters.assignedTo !== '' ||
+      advancedFilters.clientId !== '' ||
+      advancedFilters.suburb !== '';
+  }, [advancedFilters]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (advancedFilters.statuses.length > 0) count++;
+    if (advancedFilters.dateFrom || advancedFilters.dateTo) count++;
+    if (advancedFilters.assignedTo) count++;
+    if (advancedFilters.clientId) count++;
+    if (advancedFilters.suburb) count++;
+    return count;
+  }, [advancedFilters]);
+
+  const fetchSavedFilters = useCallback(async () => {
+    setSavedFiltersLoading(true);
+    const response = await api.get<SavedFilter[]>('/api/saved-filters?entityType=jobs');
+    if (response.data) {
+      setSavedFilters(response.data);
+    }
+    setSavedFiltersLoading(false);
+  }, []);
+
+  const fetchTeamMembers = useCallback(async () => {
+    const response = await api.get<any[]>('/api/team/members');
+    if (response.data) {
+      setTeamMembers(response.data);
+    }
+  }, []);
+
+  const handleSaveFilter = useCallback(async () => {
+    if (!saveFilterName.trim()) return;
+    setSavingFilter(true);
+    const response = await api.post<SavedFilter>('/api/saved-filters', {
+      name: saveFilterName.trim(),
+      filters: advancedFilters,
+      entityType: 'jobs',
+    });
+    if (response.data) {
+      setSavedFilters(prev => [...prev, response.data!]);
+      Alert.alert('Saved', `"${saveFilterName}" has been saved.`);
+    } else {
+      Alert.alert('Error', 'Failed to save filter.');
+    }
+    setSavingFilter(false);
+    setSaveDialogOpen(false);
+    setSaveFilterName('');
+  }, [saveFilterName, advancedFilters]);
+
+  const handleDeleteSavedFilter = useCallback(async (id: string, name: string) => {
+    Alert.alert('Delete Filter', `Delete "${name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await api.delete(`/api/saved-filters/${id}`);
+          setSavedFilters(prev => prev.filter(f => f.id !== id));
+        },
+      },
+    ]);
+  }, []);
+
+  const handleLoadSavedFilter = useCallback((sf: SavedFilter) => {
+    setAdvancedFilters(sf.filters as AdvancedFilters);
+    setActiveFilter('all');
+  }, []);
+
+  const handleClearAdvanced = useCallback(() => {
+    setAdvancedFilters(emptyAdvancedFilters);
+  }, []);
+
+  const toggleStatus = useCallback((status: string) => {
+    setAdvancedFilters(prev => ({
+      ...prev,
+      statuses: prev.statuses.includes(status)
+        ? prev.statuses.filter(s => s !== status)
+        : [...prev.statuses, status],
+    }));
+  }, []);
+
   const handleSortChange = useCallback((field: SortField) => {
     if (sortField === field) {
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -322,8 +448,8 @@ export default function JobsScreen() {
   );
 
   const refreshData = useCallback(async () => {
-    await Promise.all([fetchJobs(), fetchClients()]);
-  }, [fetchJobs, fetchClients]);
+    await Promise.all([fetchJobs(), fetchClients(), fetchSavedFilters(), fetchTeamMembers()]);
+  }, [fetchJobs, fetchClients, fetchSavedFilters, fetchTeamMembers]);
 
   const handleQuickAction = useCallback(async (action: string, jobId: string) => {
     if (action === 'schedule') {
@@ -443,15 +569,40 @@ export default function JobsScreen() {
       (getClientName(job.clientId)?.toLowerCase().includes(searchLower))
     );
 
-    if (activeFilter === 'all') {
-      return filterBySearch(jobs);
-    }
-    
+    let baseJobs = jobs;
     if (activeFilter === 'recurring') {
-      return filterBySearch(jobs.filter(job => job.isRecurring));
+      baseJobs = jobs.filter(job => job.isRecurring);
+    } else if (activeFilter !== 'all') {
+      baseJobs = jobs.filter(job => job.status === activeFilter);
     }
-    
-    return filterBySearch(jobs.filter(job => job.status === activeFilter));
+
+    let filtered = filterBySearch(baseJobs);
+
+    if (hasAdvancedFilters) {
+      filtered = filtered.filter(job => {
+        if (advancedFilters.statuses.length > 0 && !advancedFilters.statuses.includes(job.status)) return false;
+        if (advancedFilters.dateFrom) {
+          const from = new Date(advancedFilters.dateFrom);
+          const d = (job as any).scheduledAt ? new Date((job as any).scheduledAt) : null;
+          if (!d || d < from) return false;
+        }
+        if (advancedFilters.dateTo) {
+          const to = new Date(advancedFilters.dateTo);
+          to.setHours(23, 59, 59, 999);
+          const d = (job as any).scheduledAt ? new Date((job as any).scheduledAt) : null;
+          if (!d || d > to) return false;
+        }
+        if (advancedFilters.assignedTo && (job as any).assignedTo !== advancedFilters.assignedTo) return false;
+        if (advancedFilters.clientId && job.clientId !== advancedFilters.clientId) return false;
+        if (advancedFilters.suburb) {
+          const lower = advancedFilters.suburb.toLowerCase();
+          if (!(job.address || '').toLowerCase().includes(lower)) return false;
+        }
+        return true;
+      });
+    }
+
+    return filtered;
   };
 
   const filteredJobs = getFilteredJobs();
@@ -568,16 +719,266 @@ export default function JobsScreen() {
 
       <UsageLimitBanner />
 
-      <View style={styles.searchBar}>
-        <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search jobs, clients, addresses..."
-          placeholderTextColor={colors.mutedForeground}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+      <View style={styles.searchRow}>
+        <View style={[styles.searchBar, { flex: 1, marginBottom: 0 }]}>
+          <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search jobs, clients, addresses..."
+            placeholderTextColor={colors.mutedForeground}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={[
+            styles.advancedFilterBtn,
+            (advancedOpen || hasAdvancedFilters) && styles.advancedFilterBtnActive,
+          ]}
+          onPress={() => setAdvancedOpen(prev => !prev)}
+        >
+          <Feather name="sliders" size={iconSizes.md} color={(advancedOpen || hasAdvancedFilters) ? colors.white : colors.mutedForeground} />
+          {activeFilterCount > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
+
+      {savedFilters.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: spacing.sm }}
+          contentContainerStyle={{ gap: spacing.xs }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginRight: spacing.xs }}>
+            <Feather name="bookmark" size={iconSizes.sm} color={colors.mutedForeground} />
+            <Text style={{ ...typography.captionSmall, color: colors.mutedForeground }}>Saved:</Text>
+          </View>
+          {savedFilters.map((sf) => (
+            <TouchableOpacity
+              key={sf.id}
+              activeOpacity={0.7}
+              style={styles.savedFilterChip}
+              onPress={() => handleLoadSavedFilter(sf)}
+              onLongPress={() => handleDeleteSavedFilter(sf.id, sf.name)}
+            >
+              <Text style={styles.savedFilterChipText} numberOfLines={1}>{sf.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
+      {advancedOpen && (
+        <View style={styles.advancedPanel}>
+          <View style={styles.advancedPanelHeader}>
+            <Text style={styles.advancedPanelTitle}>Advanced Filters</Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {hasAdvancedFilters && (
+                <TouchableOpacity onPress={() => setSaveDialogOpen(true)} activeOpacity={0.7}>
+                  <Feather name="save" size={iconSizes.md} color={colors.primary} />
+                </TouchableOpacity>
+              )}
+              {hasAdvancedFilters && (
+                <TouchableOpacity onPress={handleClearAdvanced} activeOpacity={0.7}>
+                  <Text style={{ ...typography.captionSmall, color: colors.destructive }}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          <Text style={styles.advancedLabel}>Status</Text>
+          <View style={styles.advancedStatusRow}>
+            {(['pending', 'scheduled', 'in_progress', 'done', 'invoiced'] as const).map((s) => {
+              const labels: Record<string, string> = { pending: 'Pending', scheduled: 'Scheduled', in_progress: 'In Progress', done: 'Completed', invoiced: 'Invoiced' };
+              const isSelected = advancedFilters.statuses.includes(s);
+              return (
+                <TouchableOpacity
+                  key={s}
+                  activeOpacity={0.7}
+                  style={[styles.advancedStatusChip, isSelected && styles.advancedStatusChipActive]}
+                  onPress={() => toggleStatus(s)}
+                >
+                  <Text style={[styles.advancedStatusChipText, isSelected && styles.advancedStatusChipTextActive]}>
+                    {labels[s]}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={styles.advancedLabel}>Date Range</Text>
+          <View style={styles.advancedDateRow}>
+            <TouchableOpacity
+              style={[styles.advancedDateInput, { flex: 1 }]}
+              activeOpacity={0.7}
+              onPress={() => {
+                const today = new Date().toISOString().split('T')[0];
+                setAdvancedFilters(prev => ({ ...prev, dateFrom: prev.dateFrom ? '' : today }));
+              }}
+            >
+              <Feather name="calendar" size={12} color={colors.mutedForeground} />
+              <Text style={styles.advancedDateText} numberOfLines={1}>
+                {advancedFilters.dateFrom || 'From'}
+              </Text>
+              {advancedFilters.dateFrom ? (
+                <TouchableOpacity onPress={() => setAdvancedFilters(prev => ({ ...prev, dateFrom: '' }))}>
+                  <Feather name="x" size={12} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              ) : null}
+            </TouchableOpacity>
+            <Text style={{ color: colors.mutedForeground }}>-</Text>
+            <TouchableOpacity
+              style={[styles.advancedDateInput, { flex: 1 }]}
+              activeOpacity={0.7}
+              onPress={() => {
+                const nextWeek = new Date();
+                nextWeek.setDate(nextWeek.getDate() + 7);
+                setAdvancedFilters(prev => ({ ...prev, dateTo: prev.dateTo ? '' : nextWeek.toISOString().split('T')[0] }));
+              }}
+            >
+              <Feather name="calendar" size={12} color={colors.mutedForeground} />
+              <Text style={styles.advancedDateText} numberOfLines={1}>
+                {advancedFilters.dateTo || 'To'}
+              </Text>
+              {advancedFilters.dateTo ? (
+                <TouchableOpacity onPress={() => setAdvancedFilters(prev => ({ ...prev, dateTo: '' }))}>
+                  <Feather name="x" size={12} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              ) : null}
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.advancedLabel}>Assigned To</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
+            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+              <TouchableOpacity
+                style={[styles.advancedStatusChip, !advancedFilters.assignedTo && styles.advancedStatusChipActive]}
+                activeOpacity={0.7}
+                onPress={() => setAdvancedFilters(prev => ({ ...prev, assignedTo: '' }))}
+              >
+                <Text style={[styles.advancedStatusChipText, !advancedFilters.assignedTo && styles.advancedStatusChipTextActive]}>All</Text>
+              </TouchableOpacity>
+              {teamMembers.map((m: any) => (
+                <TouchableOpacity
+                  key={m.id}
+                  style={[styles.advancedStatusChip, advancedFilters.assignedTo === m.id && styles.advancedStatusChipActive]}
+                  activeOpacity={0.7}
+                  onPress={() => setAdvancedFilters(prev => ({ ...prev, assignedTo: prev.assignedTo === m.id ? '' : m.id }))}
+                >
+                  <Text style={[styles.advancedStatusChipText, advancedFilters.assignedTo === m.id && styles.advancedStatusChipTextActive]} numberOfLines={1}>
+                    {m.name || m.email || 'Unnamed'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          <Text style={styles.advancedLabel}>Client</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
+            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+              <TouchableOpacity
+                style={[styles.advancedStatusChip, !advancedFilters.clientId && styles.advancedStatusChipActive]}
+                activeOpacity={0.7}
+                onPress={() => setAdvancedFilters(prev => ({ ...prev, clientId: '' }))}
+              >
+                <Text style={[styles.advancedStatusChipText, !advancedFilters.clientId && styles.advancedStatusChipTextActive]}>All</Text>
+              </TouchableOpacity>
+              {clients.map((c: any) => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[styles.advancedStatusChip, advancedFilters.clientId === c.id && styles.advancedStatusChipActive]}
+                  activeOpacity={0.7}
+                  onPress={() => setAdvancedFilters(prev => ({ ...prev, clientId: prev.clientId === c.id ? '' : c.id }))}
+                >
+                  <Text style={[styles.advancedStatusChipText, advancedFilters.clientId === c.id && styles.advancedStatusChipTextActive]} numberOfLines={1}>
+                    {c.name || 'Unnamed'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          <Text style={styles.advancedLabel}>Address / Suburb</Text>
+          <View style={styles.advancedSuburbInput}>
+            <TextInput
+              style={styles.advancedSuburbTextInput}
+              placeholder="e.g. Richmond, NSW..."
+              placeholderTextColor={colors.mutedForeground}
+              value={advancedFilters.suburb}
+              onChangeText={(text) => setAdvancedFilters(prev => ({ ...prev, suburb: text }))}
+            />
+            {advancedFilters.suburb ? (
+              <TouchableOpacity onPress={() => setAdvancedFilters(prev => ({ ...prev, suburb: '' }))}>
+                <Feather name="x" size={14} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {hasAdvancedFilters && (
+            <View style={styles.advancedActiveFilters}>
+              {advancedFilters.statuses.map((s) => {
+                const labels: Record<string, string> = { pending: 'Pending', scheduled: 'Scheduled', in_progress: 'In Progress', done: 'Completed', invoiced: 'Invoiced' };
+                return (
+                  <View key={s} style={styles.activeFilterTag}>
+                    <Text style={styles.activeFilterTagText}>{labels[s] || s}</Text>
+                    <TouchableOpacity onPress={() => toggleStatus(s)}>
+                      <Feather name="x" size={10} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+              {advancedFilters.dateFrom ? (
+                <View style={styles.activeFilterTag}>
+                  <Text style={styles.activeFilterTagText}>From: {advancedFilters.dateFrom}</Text>
+                  <TouchableOpacity onPress={() => setAdvancedFilters(prev => ({ ...prev, dateFrom: '' }))}>
+                    <Feather name="x" size={10} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              {advancedFilters.dateTo ? (
+                <View style={styles.activeFilterTag}>
+                  <Text style={styles.activeFilterTagText}>To: {advancedFilters.dateTo}</Text>
+                  <TouchableOpacity onPress={() => setAdvancedFilters(prev => ({ ...prev, dateTo: '' }))}>
+                    <Feather name="x" size={10} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              {advancedFilters.assignedTo ? (
+                <View style={styles.activeFilterTag}>
+                  <Text style={styles.activeFilterTagText}>
+                    Assigned: {teamMembers.find(m => m.id === advancedFilters.assignedTo)?.name || 'Team member'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setAdvancedFilters(prev => ({ ...prev, assignedTo: '' }))}>
+                    <Feather name="x" size={10} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              {advancedFilters.clientId ? (
+                <View style={styles.activeFilterTag}>
+                  <Text style={styles.activeFilterTagText}>
+                    Client: {clients.find((c: any) => c.id === advancedFilters.clientId)?.name || 'Client'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setAdvancedFilters(prev => ({ ...prev, clientId: '' }))}>
+                    <Feather name="x" size={10} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              {advancedFilters.suburb ? (
+                <View style={styles.activeFilterTag}>
+                  <Text style={styles.activeFilterTagText}>Suburb: {advancedFilters.suburb}</Text>
+                  <TouchableOpacity onPress={() => setAdvancedFilters(prev => ({ ...prev, suburb: '' }))}>
+                    <Feather name="x" size={10} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+            </View>
+          )}
+        </View>
+      )}
 
       <ScrollView 
         horizontal 
@@ -715,7 +1116,7 @@ export default function JobsScreen() {
         </View>
       )}
     </View>
-  ), [jobs.length, viewMode, searchQuery, activeFilter, statusCounts, colors, styles, sortField, sortDirection, sortedJobs.length]);
+  ), [jobs.length, viewMode, searchQuery, activeFilter, statusCounts, colors, styles, sortField, sortDirection, sortedJobs.length, advancedOpen, advancedFilters, hasAdvancedFilters, activeFilterCount, savedFilters, teamMembers, clients, saveDialogOpen]);
 
   const listEmptyComponent = useMemo(() => {
     if (isLoading) {
@@ -732,13 +1133,13 @@ export default function JobsScreen() {
         </View>
         <Text style={styles.emptyStateTitle}>No jobs found</Text>
         <Text style={styles.emptyStateSubtitle}>
-          {searchQuery || activeFilter !== 'all'
+          {searchQuery || activeFilter !== 'all' || hasAdvancedFilters
             ? 'Try adjusting your search or filters'
             : 'Create your first job to get started'}
         </Text>
       </View>
     );
-  }, [isLoading, searchQuery, activeFilter, colors, styles]);
+  }, [isLoading, searchQuery, activeFilter, hasAdvancedFilters, colors, styles]);
 
   const renderItem = useCallback(({ item: job }: { item: any }) => {
     const jobWithClient = { ...job, clientName: job.clientName || getClientName(job.clientId) };
@@ -796,6 +1197,55 @@ export default function JobsScreen() {
         subtitle={actionSheetJob?.address?.split(',')[0]}
         actions={actionSheetJob ? buildJobActions(actionSheetJob) : []}
       />
+
+      <Modal
+        visible={saveDialogOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSaveDialogOpen(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setSaveDialogOpen(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Save Filter</Text>
+                <Text style={styles.modalSubtitle}>Name this filter combination to quickly recall it later.</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="e.g. This week's scheduled jobs"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={saveFilterName}
+                  onChangeText={setSaveFilterName}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleSaveFilter}
+                />
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalCancelBtn}
+                    onPress={() => setSaveDialogOpen(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalSaveBtn, (!saveFilterName.trim() || savingFilter) && { opacity: 0.5 }]}
+                    onPress={handleSaveFilter}
+                    disabled={!saveFilterName.trim() || savingFilter}
+                    activeOpacity={0.7}
+                  >
+                    {savingFilter ? (
+                      <ActivityIndicator size="small" color={colors.white} />
+                    ) : (
+                      <Text style={styles.modalSaveText}>Save Filter</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -867,6 +1317,12 @@ const createStyles = (colors: ThemeColors, contentWidth: number, horizontalPaddi
     fontWeight: '600',
   },
 
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -883,6 +1339,221 @@ const createStyles = (colors: ThemeColors, contentWidth: number, horizontalPaddi
     flex: 1,
     ...typography.body,
     color: colors.foreground,
+  },
+  advancedFilterBtn: {
+    width: sizes.searchBarHeight,
+    height: sizes.searchBarHeight,
+    borderRadius: radius.lg,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  advancedFilterBtnActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: colors.destructive,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  filterBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  savedFilterChip: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  savedFilterChipText: {
+    ...typography.captionSmall,
+    fontWeight: '500',
+    color: colors.primary,
+  },
+  advancedPanel: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  advancedPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  advancedPanelTitle: {
+    ...typography.bodySemibold,
+    color: colors.foreground,
+  },
+  advancedLabel: {
+    ...typography.captionSmall,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    marginBottom: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  advancedStatusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  advancedStatusChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.background,
+  },
+  advancedStatusChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  advancedStatusChipText: {
+    ...typography.captionSmall,
+    color: colors.foreground,
+  },
+  advancedStatusChipTextActive: {
+    color: colors.white,
+  },
+  advancedDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  advancedDateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
+  },
+  advancedDateText: {
+    ...typography.captionSmall,
+    color: colors.foreground,
+    flex: 1,
+  },
+  advancedSuburbInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: Platform.OS === 'ios' ? spacing.sm : 0,
+    marginBottom: spacing.sm,
+  },
+  advancedSuburbTextInput: {
+    flex: 1,
+    ...typography.captionSmall,
+    color: colors.foreground,
+  },
+  advancedActiveFilters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  activeFilterTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.muted,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    gap: spacing.xs,
+  },
+  activeFilterTagText: {
+    ...typography.captionSmall,
+    color: colors.foreground,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  modalContent: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+    ...shadows.lg,
+  },
+  modalTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    marginBottom: spacing.xs,
+  },
+  modalSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginBottom: spacing.lg,
+  },
+  modalInput: {
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    ...typography.body,
+    color: colors.foreground,
+    marginBottom: spacing.lg,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'flex-end',
+  },
+  modalCancelBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  modalCancelText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  modalSaveBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+  },
+  modalSaveText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.white,
   },
 
   filtersScroll: {
