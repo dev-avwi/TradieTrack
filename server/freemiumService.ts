@@ -1,4 +1,5 @@
-import { storage } from "./storage";
+import { storage, db } from "./storage";
+import { sql } from "drizzle-orm";
 
 // Beta mode - set to true during beta phase (first 10 users get lifetime free with testimonial)
 export const IS_BETA = true;
@@ -9,6 +10,60 @@ export const BETA_CONFIG = {
   requiresTestimonialConsent: true,
   betaEndDate: null as Date | null, // Set to a date to auto-end beta
 };
+
+/**
+ * Count business owner signups (excluding demo account and team member accounts).
+ * A "business owner" is a user who is NOT referenced as a memberId in team_members.
+ */
+export async function getBetaBusinessCount(): Promise<number> {
+  const result = await db.execute(sql`
+    SELECT COUNT(DISTINCT u.id) as count
+    FROM users u
+    WHERE u.email != 'demo@jobrunner.com.au'
+    AND u.id NOT IN (
+      SELECT tm.member_id FROM team_members tm WHERE tm.invite_status = 'accepted'
+    )
+  `);
+  const rows = result.rows || result;
+  return parseInt(String((rows as any[])[0]?.count || '0'), 10);
+}
+
+/**
+ * Get the next beta cohort number for a new business owner.
+ */
+export async function getNextBetaCohortNumber(): Promise<number> {
+  const result = await db.execute(sql`
+    SELECT COALESCE(MAX(beta_cohort_number), 0) + 1 as next_number FROM users
+  `);
+  const rows = result.rows || result;
+  return parseInt(String((rows as any[])[0]?.next_number || '1'), 10);
+}
+
+/**
+ * Assign beta cohort number and lifetime access to a newly registered business owner.
+ * Should be called right after createUser for non-team-member signups.
+ */
+export async function assignBetaCohort(userId: string): Promise<{ cohortNumber: number; lifetimeAccess: boolean }> {
+  const cohortNumber = await getNextBetaCohortNumber();
+  const lifetimeAccess = cohortNumber <= BETA_CONFIG.maxLifetimeUsers;
+
+  await storage.updateUser(userId, {
+    betaUser: true,
+    betaCohortNumber: cohortNumber,
+    betaLifetimeAccess: lifetimeAccess,
+  } as any);
+
+  console.log(`[Beta] Assigned cohort #${cohortNumber} to user ${userId}. Lifetime access: ${lifetimeAccess}`);
+  return { cohortNumber, lifetimeAccess };
+}
+
+/**
+ * Check if a user has beta lifetime access (survives IS_BETA being turned off).
+ */
+export async function hasBetaLifetimeAccess(userId: string): Promise<boolean> {
+  const user = await storage.getUserById(userId);
+  return user?.betaLifetimeAccess === true;
+}
 
 export interface FreemiumLimits {
   jobsPerMonth: number;
@@ -101,7 +156,7 @@ export class FreemiumService {
       const usageInfo = await this.getUserUsageCounts(userId);
       
       // Beta mode: all users get unlimited access
-      if (IS_BETA) {
+      if (IS_BETA || user.betaLifetimeAccess) {
         return {
           canCreate: true,
           usageInfo: {
@@ -283,6 +338,11 @@ export class FreemiumService {
         return false;
       }
 
+      // Beta lifetime users keep full access forever
+      if (user.betaLifetimeAccess) {
+        return true;
+      }
+
       const tier = user.subscriptionTier || 'free';
       const limits = SUBSCRIPTION_LIMITS[tier];
       return limits[feature] === true || limits[feature] === -1;
@@ -297,7 +357,7 @@ export class FreemiumService {
    * Get full usage information for billing display
    */
   static async getFullUsageInfo(userId: string): Promise<FullUsageInfo> {
-    // Beta mode: everything is unlimited
+    // Beta mode or beta lifetime users: everything is unlimited
     if (IS_BETA) {
       return {
         jobs: { used: 0, limit: -1, remaining: -1 },
@@ -313,6 +373,18 @@ export class FreemiumService {
       const user = await storage.getUserById(userId);
       if (!user) {
         throw new Error('User not found');
+      }
+
+      // Beta lifetime users get unlimited access forever
+      if (user.betaLifetimeAccess) {
+        return {
+          jobs: { used: 0, limit: -1, remaining: -1 },
+          invoices: { used: 0, limit: -1, remaining: -1 },
+          quotes: { used: 0, limit: -1, remaining: -1 },
+          clients: { used: 0, limit: -1, remaining: -1 },
+          templates: { used: 0, limit: -1, remaining: -1 },
+          isUnlimited: true
+        };
       }
 
       const tier = user.subscriptionTier || 'free';

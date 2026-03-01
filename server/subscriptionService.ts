@@ -77,6 +77,23 @@ export async function getUserUsageStatus(userId: string): Promise<UsageStatus> {
   if (!user) {
     throw new Error('User not found');
   }
+
+  // Beta lifetime users get full access forever (even after IS_BETA is turned off)
+  if (user.betaLifetimeAccess) {
+    return {
+      tier: 'beta' as SubscriptionTier,
+      isTrialActive: false,
+      trialDaysRemaining: null,
+      usage: {
+        jobs: { used: 0, limit: -1, remaining: -1 },
+        invoices: { used: 0, limit: -1, remaining: -1 },
+        quotes: { used: 0, limit: -1, remaining: -1 },
+      },
+      canCreate: { job: true, invoice: true, quote: true },
+      features: TIER_LIMITS.pro.features as unknown as string[],
+      upgradeRequired: false,
+    };
+  }
   
   await resetUsageIfNeeded(userId, user);
   
@@ -148,6 +165,10 @@ export async function checkCanCreateJob(userId: string): Promise<LimitCheckResul
   if (!user) {
     return { allowed: false, reason: 'User not found' };
   }
+
+  if (user.betaLifetimeAccess) {
+    return { allowed: true };
+  }
   
   await resetUsageIfNeeded(userId, user);
   
@@ -181,6 +202,10 @@ export async function checkCanCreateInvoice(userId: string): Promise<LimitCheckR
   if (!user) {
     return { allowed: false, reason: 'User not found' };
   }
+
+  if (user.betaLifetimeAccess) {
+    return { allowed: true };
+  }
   
   await resetUsageIfNeeded(userId, user);
   
@@ -213,6 +238,10 @@ export async function checkCanCreateQuote(userId: string): Promise<LimitCheckRes
   const user = await storage.getUser(userId);
   if (!user) {
     return { allowed: false, reason: 'User not found' };
+  }
+
+  if (user.betaLifetimeAccess) {
+    return { allowed: true };
   }
   
   await resetUsageIfNeeded(userId, user);

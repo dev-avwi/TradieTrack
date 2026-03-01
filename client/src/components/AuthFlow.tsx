@@ -60,6 +60,14 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
   const [currentScreenshot, setCurrentScreenshot] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const autoRotateRef = useRef<NodeJS.Timeout | null>(null);
+  const [betaStatus, setBetaStatus] = useState<{ spotsRemaining: number; businessSignups: number; maxLifetimeSpots: number } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/beta/status')
+      .then(res => res.json())
+      .then(data => setBetaStatus(data))
+      .catch(() => {});
+  }, []);
   
   // Preload all screenshot images to prevent flash/glitch during transitions
   useEffect(() => {
@@ -375,7 +383,11 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                 <p className="text-gray-600 dark:text-gray-400 text-lg">
                   {authMode === 'login' 
                     ? 'Sign in to manage your trade business' 
-                    : 'First 10 users get lifetime free access!'}
+                    : betaStatus && betaStatus.spotsRemaining > 0
+                      ? `${betaStatus.spotsRemaining} of ${betaStatus.maxLifetimeSpots} lifetime free spots remaining!`
+                      : betaStatus && betaStatus.spotsRemaining <= 0
+                        ? 'Beta spots filled! Sign up for a free trial instead.'
+                        : 'First 10 users get lifetime free access!'}
                 </p>
               </motion.div>
             </AnimatePresence>

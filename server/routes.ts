@@ -694,6 +694,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Public beta status endpoint - shows signup count for landing/auth pages
+  app.get("/api/beta/status", async (req: any, res) => {
+    try {
+      const { getBetaBusinessCount, IS_BETA, BETA_CONFIG } = await import('./freemiumService');
+      const businessCount = await getBetaBusinessCount();
+      const spotsRemaining = Math.max(0, BETA_CONFIG.maxLifetimeUsers - businessCount);
+      
+      res.json({
+        isBeta: IS_BETA,
+        maxLifetimeSpots: BETA_CONFIG.maxLifetimeUsers,
+        businessSignups: businessCount,
+        spotsRemaining,
+        betaFull: spotsRemaining <= 0,
+      });
+    } catch (error: any) {
+      console.error('Error getting beta status:', error);
+      res.json({
+        isBeta: true,
+        maxLifetimeSpots: 10,
+        businessSignups: 0,
+        spotsRemaining: 10,
+        betaFull: false,
+      });
+    }
+  });
+
   // Public bug report endpoint - allows tradies to report issues even when having problems
   app.post("/api/bug-reports", async (req: any, res) => {
     try {
@@ -2853,6 +2879,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await AuthService.register(cleanUserData);
       
       if (result.success) {
+        // Assign beta cohort number for business owner signups
+        try {
+          const { assignBetaCohort } = await import('./freemiumService');
+          const betaResult = await assignBetaCohort(result.user.id);
+          console.log(`[Beta] New business signup: cohort #${betaResult.cohortNumber}, lifetime: ${betaResult.lifetimeAccess}`);
+        } catch (betaError) {
+          console.error('Failed to assign beta cohort:', betaError);
+        }
+
         // Seed default templates and safety forms for new user (non-blocking)
         try {
           await storage.seedDefaultBusinessTemplates(result.user.id);
@@ -2861,21 +2896,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.seedDefaultSafetyForms(result.user.id);
         } catch (templateError) {
           console.error('Failed to seed default templates:', templateError);
-          // Don't fail registration if template seeding fails
         }
 
         // Generate and send email verification token (non-blocking)
-        // Welcome email will be sent after verification, not here
         try {
           const verificationToken = await AuthService.createEmailVerificationToken(result.user.id);
           await sendEmailVerificationEmail(result.user, verificationToken);
         } catch (emailError) {
           console.error('Failed to send verification email:', emailError);
-          // Don't fail registration if email fails - user can resend later
         }
 
         // Do NOT auto-login - user must verify email first
-        // They will be redirected to /verify-email-pending page
         res.json({ 
           success: true, 
           message: 'Registration successful! Please check your email to verify your account.'
@@ -3418,6 +3449,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           emailVerified: true
         });
         isNewUser = true;
+
+        // Assign beta cohort for new Google signups
+        try {
+          const { assignBetaCohort } = await import('./freemiumService');
+          await assignBetaCohort(user.id);
+        } catch (betaErr) {
+          console.error('Failed to assign beta cohort (Google):', betaErr);
+        }
       } else {
         // Existing user found - link Google ID if not already linked
         console.log(`✅ Existing Google user found for mobile: ${email}`);
@@ -3554,6 +3593,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           emailVerified: true
         });
         isNewUser = true;
+
+        // Assign beta cohort for new Apple signups
+        try {
+          const { assignBetaCohort } = await import('./freemiumService');
+          await assignBetaCohort(user.id);
+        } catch (betaErr) {
+          console.error('Failed to assign beta cohort (Apple):', betaErr);
+        }
       } else {
         // Existing user found
         console.log(`✅ Existing Apple user found: ${user.email}`);
@@ -3740,6 +3787,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           emailVerified: true,
         });
         isNewUser = true;
+
+        try {
+          const { assignBetaCohort } = await import('./freemiumService');
+          await assignBetaCohort(user.id);
+        } catch (betaErr) {
+          console.error('Failed to assign beta cohort (Apple Web):', betaErr);
+        }
       }
 
       req.session.userId = user.id;
@@ -4087,6 +4141,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalBillableUsers,
         isBeta: IS_BETA,
         betaUser: user?.betaUser || false,
+        betaLifetimeAccess: user?.betaLifetimeAccess || false,
+        betaCohortNumber: user?.betaCohortNumber || null,
         canUpgrade,
         canDowngrade,
       });

@@ -41,6 +41,8 @@ interface SubscriptionStatus {
   totalBillableUsers?: number;
   isBeta?: boolean;
   betaUser?: boolean;
+  betaLifetimeAccess?: boolean;
+  betaCohortNumber?: number | null;
   canUpgrade: boolean;
   canDowngrade: boolean;
 }

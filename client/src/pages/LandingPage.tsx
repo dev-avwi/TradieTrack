@@ -99,6 +99,14 @@ export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [showAppPopup, setShowAppPopup] = useState(false);
   const [mockupMode, setMockupMode] = useState<'mobile' | 'web'>('mobile');
+  const [betaStatus, setBetaStatus] = useState<{ spotsRemaining: number; maxLifetimeSpots: number } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/beta/status')
+      .then(res => res.json())
+      .then(data => setBetaStatus(data))
+      .catch(() => {});
+  }, []);
 
   // Show mobile app popup after a short delay on first visit
   useEffect(() => {
@@ -430,7 +438,7 @@ export default function LandingPage() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-accent"></span>
                 </span>
                 <span className="text-sm font-medium text-orange-700">
-                  Beta: First 10 users get lifetime free access
+                  {betaStatus && betaStatus.spotsRemaining > 0 ? `Beta: ${betaStatus.spotsRemaining} of ${betaStatus.maxLifetimeSpots} lifetime free spots remaining` : 'Beta: First 10 users get lifetime free access'}
                 </span>
               </div>
             </div>
@@ -842,7 +850,7 @@ export default function LandingPage() {
           <AnimatedSection delay={400} className="text-center mt-10">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-full px-5 py-2.5 mb-4">
               <span className="text-sm font-semibold text-green-700">
-                Beta Special: First 10 users get lifetime free access in exchange for a testimonial
+                {betaStatus && betaStatus.spotsRemaining > 0 ? `Beta Special: ${betaStatus.spotsRemaining} lifetime free spots remaining in exchange for a testimonial` : 'All features unlocked during beta. Start your free trial today.'}
               </span>
             </div>
             <p className="text-sm text-gray-500">All features unlocked during beta. No credit card required.</p>
