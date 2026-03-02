@@ -11784,9 +11784,9 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  app.get("/api/reports/equipment-utilisation", requireAuth, async (req: any, res) => {
+  app.get("/api/reports/equipment-utilisation", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_REPORTS), async (req: any, res) => {
     try {
-      const userContext = await getUserContext(req.userId);
+      const userContext = req.userContext || await getUserContext(req.userId);
       const now = new Date();
       const defaultStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
@@ -21906,15 +21906,14 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  app.post("/api/templates", requireAuth, async (req: any, res) => {
+  app.post("/api/templates", requireAuth, createPermissionMiddleware(PERMISSIONS.MANAGE_TEMPLATES), async (req: any, res) => {
     try {
       const data = insertDocumentTemplateSchema.parse(req.body);
-      const template = await storage.createDocumentTemplate({ ...data, userId: req.userId });
+      const effectiveUserId = req.userContext?.effectiveUserId || req.userId;
+      const template = await storage.createDocumentTemplate({ ...data, userId: effectiveUserId });
       
       // Broadcast template change for cross-device sync
-      // Get business owner ID (for team members, use owner's ID; for owners, use their own ID)
-      const teamMembership = await storage.getTeamMembershipByMemberId(req.userId);
-      const businessId = teamMembership?.ownerId || req.userId;
+      const businessId = effectiveUserId;
       const { broadcastTemplateChange } = await import('./websocket');
       broadcastTemplateChange(businessId, 'created', {
         templateId: template.id,
@@ -21932,7 +21931,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  app.patch("/api/templates/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/templates/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.MANAGE_TEMPLATES), async (req: any, res) => {
     try {
       const data = insertDocumentTemplateSchema.partial().parse(req.body);
       const template = await storage.updateDocumentTemplate(req.params.id, data);
@@ -21958,7 +21957,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  app.delete("/api/templates/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/templates/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.MANAGE_TEMPLATES), async (req: any, res) => {
     try {
       await storage.deleteDocumentTemplate(req.params.id);
       
@@ -22314,7 +22313,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // PATCH /api/templates/:id/set-default - Set a template as the default
-  app.patch("/api/templates/:id/set-default", requireAuth, async (req: any, res) => {
+  app.patch("/api/templates/:id/set-default", requireAuth, createPermissionMiddleware(PERMISSIONS.MANAGE_TEMPLATES), async (req: any, res) => {
     try {
       const template = await storage.getDocumentTemplate(req.params.id);
       
@@ -24677,9 +24676,9 @@ Respond with JSON in this format:
   });
 
   // Expense Reports
-  app.get("/api/reports/expenses", requireAuth, async (req: any, res) => {
+  app.get("/api/reports/expenses", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_REPORTS), async (req: any, res) => {
     try {
-      const userId = req.userId!;
+      const userId = req.userContext?.effectiveUserId || req.userId!;
       const { period = 'month', startDate, endDate, groupBy = 'category' } = req.query;
       
       let dateFilter: { startDate?: string; endDate?: string } = {};
@@ -24763,9 +24762,9 @@ Respond with JSON in this format:
   });
 
   // Enterprise-grade time reporting endpoints
-  app.get("/api/time-tracking/reports/payroll", requireAuth, async (req: any, res) => {
+  app.get("/api/time-tracking/reports/payroll", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_REPORTS), async (req: any, res) => {
     try {
-      const userId = req.userId!;
+      const userId = req.userContext?.effectiveUserId || req.userId!;
       const { startDate, endDate, format = 'summary' } = req.query;
       
       if (!startDate || !endDate) {
@@ -25195,9 +25194,9 @@ Respond with JSON in this format:
   });
 
   // Invite a new team member
-  app.post("/api/team/members/invite", requireAuth, async (req: any, res) => {
+  app.post("/api/team/members/invite", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId!;
+      const userId = req.userContext?.effectiveUserId || req.userId!;
       
       // Validate request data - omit fields that the server provides
       const inviteRequestSchema = insertTeamMemberSchema.omit({
@@ -25697,7 +25696,7 @@ Respond with JSON in this format:
   });
 
   // Create a new user role
-  app.post("/api/team/roles", requireAuth, async (req: any, res) => {
+  app.post("/api/team/roles", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const roleData = insertUserRoleSchema.parse(req.body);
       const newRole = await storage.createUserRole(roleData);
@@ -25709,7 +25708,7 @@ Respond with JSON in this format:
   });
 
   // Update a user role
-  app.patch("/api/team/roles/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/team/roles/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const roleId = req.params.id;
       const { name, description } = req.body;
@@ -33229,9 +33228,9 @@ Respond with JSON in this format:
   });
 
   // Get business performance summary
-  app.get("/api/reports/summary", requireAuth, async (req: any, res) => {
+  app.get("/api/reports/summary", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_REPORTS), async (req: any, res) => {
     try {
-      const userId = req.userId!;
+      const userId = req.userContext?.effectiveUserId || req.userId!;
       const { startDate, endDate } = req.query;
       
       const start = startDate ? new Date(startDate as string) : new Date(new Date().getFullYear(), 0, 1);
@@ -33321,9 +33320,9 @@ Respond with JSON in this format:
   });
   
   // Get monthly revenue breakdown
-  app.get("/api/reports/revenue", requireAuth, async (req: any, res) => {
+  app.get("/api/reports/revenue", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_REPORTS), async (req: any, res) => {
     try {
-      const userId = req.userId!;
+      const userId = req.userContext?.effectiveUserId || req.userId!;
       const { year } = req.query;
       
       const targetYear = year ? parseInt(year as string) : new Date().getFullYear();
@@ -33376,9 +33375,9 @@ Respond with JSON in this format:
   });
   
   // Get top clients report
-  app.get("/api/reports/clients", requireAuth, async (req: any, res) => {
+  app.get("/api/reports/clients", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_REPORTS), async (req: any, res) => {
     try {
-      const userId = req.userId!;
+      const userId = req.userContext?.effectiveUserId || req.userId!;
       const { limit } = req.query;
       
       const [clients, invoices, jobs] = await Promise.all([
@@ -33655,9 +33654,9 @@ Respond with JSON in this format:
   });
 
   // Create automation
-  app.post("/api/automations", requireAuth, async (req: any, res) => {
+  app.post("/api/automations", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId!;
+      const userId = req.userContext?.effectiveUserId || req.userId!;
       const { name, description, isActive, trigger, actions } = req.body;
       
       // Basic validation
@@ -33688,9 +33687,9 @@ Respond with JSON in this format:
   });
 
   // Update automation
-  app.patch("/api/automations/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/automations/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId!;
+      const userId = req.userContext?.effectiveUserId || req.userId!;
       const { id } = req.params;
       
       const automation = await storage.updateAutomation(id, userId, req.body);
@@ -33707,9 +33706,9 @@ Respond with JSON in this format:
   });
 
   // Delete automation
-  app.delete("/api/automations/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/automations/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId!;
+      const userId = req.userContext?.effectiveUserId || req.userId!;
       const { id } = req.params;
       
       const deleted = await storage.deleteAutomation(id, userId);
