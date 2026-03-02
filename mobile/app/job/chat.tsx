@@ -116,24 +116,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.card,
     paddingHorizontal: spacing.md,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
     gap: spacing.sm,
   },
   backButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary + '15',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.primary + '12',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -141,11 +141,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    ...typography.subtitle,
+    fontSize: 15,
+    fontWeight: '600',
     color: colors.foreground,
+    letterSpacing: -0.2,
   },
   headerSubtitle: {
-    ...typography.captionSmall,
+    fontSize: 12,
+    fontWeight: '400',
     color: colors.mutedForeground,
     marginTop: 1,
   },
@@ -155,42 +158,44 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 6,
   },
   headerActionBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
   },
   messageBadge: {
-    backgroundColor: colors.primary + '12',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    backgroundColor: colors.primary + '10',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: radius.full,
   },
   messageBadgeText: {
-    ...typography.badge,
+    fontSize: 11,
+    fontWeight: '600',
     color: colors.primary,
   },
   internalBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.isDark ? colors.primary + '10' : colors.infoLight,
+    backgroundColor: colors.isDark ? colors.primary + '08' : colors.infoLight,
     paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    paddingVertical: 6,
     gap: spacing.sm,
   },
   internalBannerIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: colors.info,
     alignItems: 'center',
     justifyContent: 'center',
   },
   internalBannerText: {
     flex: 1,
-    ...typography.captionSmall,
+    fontSize: 11,
+    fontWeight: '500',
     color: colors.isDark ? colors.info : colors.mutedForeground,
   },
   contactClientBtn: {
@@ -215,59 +220,81 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.lg,
   },
   dateSeparator: {
     alignItems: 'center',
-    marginVertical: spacing.lg,
+    marginVertical: spacing.xl,
   },
   dateSeparatorLine: {
     position: 'absolute',
     top: '50%',
-    left: 0,
-    right: 0,
+    left: spacing.xl,
+    right: spacing.xl,
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
   },
   dateSeparatorPill: {
-    backgroundColor: colors.card,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
+    backgroundColor: colors.isDark ? colors.muted : colors.card,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
     borderRadius: radius.full,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
   dateSeparatorText: {
-    ...typography.captionSmall,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
     color: colors.mutedForeground,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing['2xl'],
   },
   emptyIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.primary + '10',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primary + '0A',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.primary + '15',
   },
   emptyText: {
-    ...typography.cardTitle,
+    fontSize: 18,
+    fontWeight: '600',
     color: colors.foreground,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
   emptySubtext: {
-    ...typography.caption,
+    fontSize: 14,
+    fontWeight: '400',
     color: colors.mutedForeground,
-    marginTop: 6,
+    marginTop: 8,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  emptyHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.xl,
+    backgroundColor: colors.muted,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+  },
+  emptyHintText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.mutedForeground,
   },
   systemMessage: {
     alignItems: 'center',
@@ -277,17 +304,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   systemMessagePill: {
     backgroundColor: colors.muted,
     paddingHorizontal: spacing.md,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: radius.full,
   },
   systemMessageText: {
-    ...typography.captionSmall,
+    fontSize: 12,
+    fontWeight: '400',
     color: colors.mutedForeground,
     fontStyle: 'italic',
   },
   messageRow: {
     flexDirection: 'row',
-    marginBottom: spacing.xs,
+    marginBottom: 3,
     paddingHorizontal: 2,
   },
   messageRowOwn: {
@@ -300,54 +328,55 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.md,
   },
   avatarContainer: {
-    width: 30,
+    width: 32,
     marginRight: 8,
     alignSelf: 'flex-end',
   },
   avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: '#ffffff',
   },
   avatarSpacer: {
-    width: 30,
+    width: 32,
     marginRight: 8,
   },
   messageBubbleWrapper: {
-    maxWidth: '75%',
+    maxWidth: '78%',
   },
   messageSender: {
-    ...typography.captionSmall,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.mutedForeground,
     marginBottom: 3,
-    marginLeft: 2,
+    marginLeft: 4,
   },
   messageBubble: {
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 18,
+    borderRadius: 20,
   },
   messageBubbleOwn: {
     backgroundColor: colors.primary,
     borderBottomRightRadius: 6,
   },
   messageBubbleOther: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.isDark ? colors.muted : colors.card,
     borderBottomLeftRadius: 6,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
   messageText: {
-    ...typography.body,
-    lineHeight: 21,
+    fontSize: 15,
+    fontWeight: '400',
+    lineHeight: 22,
   },
   messageTextOwn: {
     color: colors.primaryForeground,
@@ -359,7 +388,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 4,
+    gap: 5,
     marginTop: 4,
   },
   messageTime: {
@@ -385,7 +414,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   attachmentDoc: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: 'rgba(0,0,0,0.06)',
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: radius.md,
@@ -415,7 +444,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: radius.full,
-    marginLeft: 4,
   },
   smsTypeBadgeText: {
     fontSize: 9,
@@ -423,7 +451,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     letterSpacing: 0.3,
   },
   composerContainer: {
-    paddingTop: 10,
+    paddingTop: spacing.sm,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.card,
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -435,9 +463,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.sm,
   },
   attachButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
@@ -453,23 +481,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   composerInput: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
-    ...typography.body,
+    paddingVertical: Platform.OS === 'ios' ? 11 : 9,
+    fontSize: 15,
+    fontWeight: '400',
     color: colors.foreground,
     maxHeight: 100,
-    minHeight: 38,
+    minHeight: 40,
   },
   sendButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 1,
   },
   sendButtonDisabled: {
-    opacity: 0.35,
+    opacity: 0.3,
   },
   modalOverlay: {
     flex: 1,
@@ -976,12 +1005,16 @@ export default function JobChatScreen() {
       return (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconCircle}>
-            <Feather name="message-circle" size={32} color={colors.primary} />
+            <Feather name="message-circle" size={34} color={colors.primary} />
           </View>
           <Text style={styles.emptyText}>No messages yet</Text>
           <Text style={styles.emptySubtext}>
             Start a conversation with your team about this job
           </Text>
+          <View style={styles.emptyHint}>
+            <Feather name="arrow-down" size={14} color={colors.mutedForeground} />
+            <Text style={styles.emptyHintText}>Type below to get started</Text>
+          </View>
         </View>
       );
     }
@@ -1117,11 +1150,11 @@ export default function JobChatScreen() {
               style={styles.backButton} 
               onPress={() => router.back()}
             >
-              <Feather name="chevron-left" size={22} color={colors.foreground} />
+              <Feather name="chevron-left" size={20} color={colors.foreground} />
             </TouchableOpacity>
           )}
           <View style={styles.headerIconContainer}>
-            <Feather name="message-circle" size={18} color={colors.primary} />
+            <Feather name="message-circle" size={16} color={colors.primary} />
           </View>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle} numberOfLines={1}>Job Chat</Text>
@@ -1135,7 +1168,7 @@ export default function JobChatScreen() {
             </View>
             {client && (
               <TouchableOpacity style={styles.headerActionBtn} onPress={handleContactClient}>
-                <Feather name="phone" size={16} color={colors.foreground} />
+                <Feather name="phone" size={15} color={colors.foreground} />
               </TouchableOpacity>
             )}
           </View>
@@ -1143,7 +1176,7 @@ export default function JobChatScreen() {
 
         <View style={styles.internalBanner}>
           <View style={styles.internalBannerIcon}>
-            <Feather name="lock" size={11} color={colors.white} />
+            <Feather name="lock" size={10} color={colors.white} />
           </View>
           <Text style={styles.internalBannerText}>
             Internal team chat{smsMessages.length > 0 ? ' \u00B7 SMS messages included' : ''}

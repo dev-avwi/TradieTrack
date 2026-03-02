@@ -215,10 +215,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.md,
+    padding: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 88,
+    minHeight: 80,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -246,7 +246,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     padding: spacing.xs,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     marginTop: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -257,10 +257,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
     borderRadius: radius.xl,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   activeTab: {
     backgroundColor: colors.primary + '15',
@@ -289,8 +289,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   sectionTitle: {
     ...typography.label,
     color: colors.mutedForeground,
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
   },
   card: {
     backgroundColor: colors.card,
@@ -439,23 +439,23 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
     borderColor: colors.cardBorder,
     marginBottom: spacing.sm,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
     ...shadows.sm,
   },
   emptyIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   emptyTitle: {
     ...typography.cardTitle,
@@ -467,7 +467,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
     maxWidth: 280,
     marginBottom: spacing.sm,
   },
@@ -487,17 +487,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   templateGrid: {
     gap: spacing.sm,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 100,
-    right: spacing.lg,
-    width: sizes.fabSize,
-    height: sizes.fabSize,
-    borderRadius: sizes.fabSize / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.lg,
   },
   modalOverlay: {
     flex: 1,
@@ -1416,7 +1405,7 @@ export default function AutopilotScreen() {
   const renderEmptyState = (type: 'automations' | 'templates') => (
     <View style={styles.emptyContainer}>
       <View style={[styles.emptyIconContainer, { backgroundColor: colors.primaryLight || (colors.primary + '15') }]}>
-        <Feather name="zap" size={28} color={colors.primary} />
+        <Feather name="zap" size={22} color={colors.primary} />
       </View>
       <Text style={styles.emptyTitle}>
         {type === 'automations' ? 'Put Your Business on Autopilot' : 'No Templates Available'}
@@ -1581,7 +1570,7 @@ export default function AutopilotScreen() {
               {activityLogs.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <View style={[styles.emptyIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-                    <Feather name="clock" size={28} color="#22c55e" />
+                    <Feather name="clock" size={22} color="#22c55e" />
                   </View>
                   <Text style={styles.emptyTitle}>No Activity Yet</Text>
                   <Text style={styles.emptyDescription}>
