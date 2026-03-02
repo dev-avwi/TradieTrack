@@ -361,11 +361,14 @@ export default function SendDocumentModal({
       let errorMessage = "Couldn't connect to the server. Check your internet and try again.";
       let errorTitle = "Connection error";
       try {
-        const parsed = JSON.parse(error.message);
+        const rawMsg = error.message || '';
+        const jsonStr = rawMsg.replace(/^\d{3}:\s*/, '');
+        const parsed = JSON.parse(jsonStr);
         if (parsed.title) errorTitle = parsed.title;
         if (parsed.message) errorMessage = parsed.message;
+        if (parsed.fix) errorMessage = parsed.fix;
       } catch {
-        if (error.message && !error.message.includes('<!DOCTYPE')) {
+        if (error.message && !error.message.includes('<!DOCTYPE') && !error.message.match(/^\d{3}:\s*\{/)) {
           errorMessage = error.message;
         }
       }
