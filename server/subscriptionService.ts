@@ -137,7 +137,7 @@ export async function getUserUsageStatus(userId: string): Promise<UsageStatus> {
   const canCreateQuote = quotesLimit === -1 || quotesUsed < quotesLimit;
   
   return {
-    tier: effectiveTier === 'pro' && isTrialActive ? 'trial' : effectiveTier,
+    tier: (effectiveTier === 'pro' || effectiveTier === 'team') && isTrialActive ? 'trial' : effectiveTier,
     isTrialActive,
     trialDaysRemaining,
     usage: {

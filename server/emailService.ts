@@ -1,6 +1,6 @@
 import sgMail from '@sendgrid/mail';
+import { sendViaGmailAPI, isGmailConnected } from './gmailClient';
 
-// Replit SendGrid Connector - fetches fresh credentials on each use
 let connectorFromEmail: string | null = null;
 
 export async function getSendGridCredentials(): Promise<{ apiKey: string; email: string }> {
@@ -51,6 +51,37 @@ export async function sendViaSendGrid(emailData: any): Promise<void> {
     emailData.from.email = connectorFromEmail;
   }
   await sgMail.send(emailData);
+}
+
+export async function sendSystemEmail(emailData: any): Promise<void> {
+  try {
+    await sendViaSendGrid(emailData);
+    return;
+  } catch (sgError: any) {
+    console.warn(`⚠️ SendGrid failed for system email to ${emailData.to}, trying Gmail fallback: ${sgError.message}`);
+  }
+
+  const gmailConnected = await isGmailConnected();
+  if (gmailConnected) {
+    try {
+      const result = await sendViaGmailAPI({
+        to: emailData.to,
+        subject: emailData.subject,
+        html: emailData.html,
+        fromName: emailData.from?.name || PLATFORM_FROM_NAME,
+        replyTo: emailData.replyTo || PLATFORM_REPLY_TO_EMAIL,
+      });
+      if (result.success) {
+        console.log(`✅ System email sent via Gmail fallback to ${emailData.to}`);
+        return;
+      }
+      throw new Error(result.error || 'Gmail send failed');
+    } catch (gmailError: any) {
+      console.error(`❌ Gmail fallback also failed: ${gmailError.message}`);
+    }
+  }
+
+  throw new Error('All email sending methods failed for system email');
 }
 
 const initializeSendGrid = () => {
@@ -588,7 +619,7 @@ export const createReceiptEmailHtml = (invoice: any, client: any, business: any)
 
 // Send quote email
 export const sendQuoteEmail = async (quote: any, client: any, business: any = {}, acceptanceUrl?: string | null, pdfBuffer?: Buffer) => {
-  const sendGridInitialized = initializeSendGrid();
+
 
   if (!client.email) {
     throw new Error('Client email address is required');
@@ -607,7 +638,7 @@ export const sendQuoteEmail = async (quote: any, client: any, business: any = {}
       }];
     }
     
-    await sendViaSendGrid(emailData);
+    await sendSystemEmail(emailData);
     
     return { success: true, message: 'Quote sent successfully' };
   } catch (error: any) {
@@ -622,7 +653,7 @@ export const sendQuoteEmail = async (quote: any, client: any, business: any = {}
 
 // Send invoice email
 export const sendInvoiceEmail = async (invoice: any, client: any, business: any = {}, paymentUrl?: string | null, pdfBuffer?: Buffer) => {
-  const sendGridInitialized = initializeSendGrid();
+
 
   if (!client.email) {
     throw new Error('Client email address is required');
@@ -641,11 +672,7 @@ export const sendInvoiceEmail = async (invoice: any, client: any, business: any 
       }];
     }
     
-    if (sendGridInitialized) {
-      await sendViaSendGrid(emailData);
-    } else {
-      await mockEmailService.send(emailData);
-    }
+    await sendSystemEmail(emailData);
     
     return { success: true, message: 'Invoice sent successfully' };
   } catch (error: any) {
@@ -664,7 +691,7 @@ export const sendInvoiceEmail = async (invoice: any, client: any, business: any 
  * `sendReceiptEmailWithPdf` which handles PDF generation internally.
  */
 export const sendReceiptEmail = async (invoice: any, client: any, business: any = {}, pdfBuffer?: Buffer, receiptNumber?: string) => {
-  const sendGridInitialized = initializeSendGrid();
+
 
   if (!client.email) {
     throw new Error('Client email address is required');
@@ -686,11 +713,7 @@ export const sendReceiptEmail = async (invoice: any, client: any, business: any 
       }];
     }
     
-    if (sendGridInitialized) {
-      await sendViaSendGrid(emailData);
-    } else {
-      await mockEmailService.send(emailData);
-    }
+    await sendSystemEmail(emailData);
     
     return { success: true, message: 'Receipt sent successfully' };
   } catch (error: any) {
@@ -983,7 +1006,7 @@ const createJobConfirmationEmail = (job: any, client: any, business: any) => {
 
 // Send job confirmation email
 export const sendJobConfirmationEmail = async (job: any, client: any, business: any = {}) => {
-  const sendGridInitialized = initializeSendGrid();
+
 
   if (!client.email) {
     throw new Error('Client email address is required');
@@ -992,11 +1015,7 @@ export const sendJobConfirmationEmail = async (job: any, client: any, business: 
   try {
     const emailData = createJobConfirmationEmail(job, client, business);
     
-    if (sendGridInitialized) {
-      await sendViaSendGrid(emailData);
-    } else {
-      await mockEmailService.send(emailData);
-    }
+    await sendSystemEmail(emailData);
     
     return { success: true, message: 'Job confirmation sent successfully' };
   } catch (error: any) {
@@ -1124,7 +1143,7 @@ export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => 
   };
 
   try {
-    await sendViaSendGrid(emailData);
+    await sendSystemEmail(emailData);
     return { success: true, messageId: `sg_${Date.now()}` };
   } catch (error: any) {
     if (error.response) {
@@ -1139,8 +1158,7 @@ export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => 
 
 // Send login code email for passwordless authentication
 export const sendLoginCodeEmail = async (email: string, code: string) => {
-  const sendGridEnabled = initializeSendGrid();
-  const emailService = sendGridEnabled ? sgMail : mockEmailService;
+
   
   const emailData = {
     to: email,
@@ -1184,7 +1202,7 @@ export const sendLoginCodeEmail = async (email: string, code: string) => {
   };
   
   try {
-    await emailService.send(emailData);
+    await sendSystemEmail(emailData);
     console.log(`✅ Login code email sent to ${email}`);
   } catch (error) {
     console.error('Failed to send login code email:', error);
@@ -1194,34 +1212,21 @@ export const sendLoginCodeEmail = async (email: string, code: string) => {
 
 // Send email verification email
 export const sendEmailVerificationEmail = async (user: any, verificationToken: string) => {
-  if (!initializeSendGrid()) {
-    throw new Error('SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable.');
-  }
-
   if (!user.email) {
     throw new Error('User email address is required');
   }
 
   try {
     const emailData = createEmailVerificationEmail(user, verificationToken);
-    await sendViaSendGrid(emailData);
+    await sendSystemEmail(emailData);
     return { success: true, message: 'Verification email sent successfully' };
   } catch (error: any) {
     console.error('Error sending verification email:', error);
-    // Sanitize error message for client response
-    if (error.message?.includes('SendGrid') || error.response?.body) {
-      throw new Error('Email service error. Please check your configuration.');
-    }
     throw new Error('Email sending failed. Please try again.');
   }
 };
 
-// Send password reset email
 export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
-  if (!initializeSendGrid()) {
-    throw new Error('SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable.');
-  }
-
   if (!user.email) {
     throw new Error('User email address is required');
   }
@@ -1285,26 +1290,18 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
   };
 
   try {
-    await sendViaSendGrid(emailData);
+    await sendSystemEmail(emailData);
     console.log('Password reset email sent successfully to:', user.email);
     return { success: true, message: 'Password reset email sent successfully' };
   } catch (error: any) {
     console.error('Error sending password reset email:', error);
-    // Log full SendGrid error details
-    if (error.response?.body?.errors) {
-      console.error('SendGrid error details:', JSON.stringify(error.response.body.errors, null, 2));
-    }
-    if (error.message?.includes('SendGrid') || error.response?.body) {
-      throw new Error('Email service error. Please check your configuration.');
-    }
     throw new Error('Email sending failed. Please try again.');
   }
 };
 
 // Payment success email
 export async function sendPaymentSuccessEmail(user: any, businessSettings: any, plan: string): Promise<void> {
-  const sendGridEnabled = initializeSendGrid();
-  const emailService = sendGridEnabled ? sgMail : mockEmailService;
+
 
   const emailData = {
     to: user.email || businessSettings.email,
@@ -1346,7 +1343,7 @@ export async function sendPaymentSuccessEmail(user: any, businessSettings: any, 
   };
 
   try {
-    await emailService.send(emailData);
+    await sendSystemEmail(emailData);
     console.log('✅ Payment success email sent to:', user.email);
   } catch (error) {
     console.error('❌ Failed to send payment success email:', error);
@@ -1356,8 +1353,7 @@ export async function sendPaymentSuccessEmail(user: any, businessSettings: any, 
 
 // Payment failed email
 export async function sendPaymentFailedEmail(user: any, businessSettings: any): Promise<void> {
-  const sendGridEnabled = initializeSendGrid();
-  const emailService = sendGridEnabled ? sgMail : mockEmailService;
+
 
   const emailData = {
     to: user.email || businessSettings.email,
@@ -1394,7 +1390,7 @@ export async function sendPaymentFailedEmail(user: any, businessSettings: any): 
   };
 
   try {
-    await emailService.send(emailData);
+    await sendSystemEmail(emailData);
     console.log('✅ Payment failed email sent to:', user.email);
   } catch (error) {
     console.error('❌ Failed to send payment failed email:', error);
@@ -1415,7 +1411,7 @@ interface PaymentRequestEmailParams {
 
 export async function sendPaymentRequestEmail(params: PaymentRequestEmailParams): Promise<void> {
   const { to, businessName, businessEmail, amount, description, paymentUrl, reference } = params;
-  const emailService = isSendGridConfigured ? sgMail : mockEmailService;
+
 
   const emailData = {
     to,
@@ -1475,7 +1471,7 @@ export async function sendPaymentRequestEmail(params: PaymentRequestEmailParams)
   };
 
   try {
-    await emailService.send(emailData);
+    await sendSystemEmail(emailData);
     console.log('✅ Payment request email sent to:', to);
   } catch (error) {
     console.error('❌ Failed to send payment request email:', error);
@@ -1489,7 +1485,7 @@ export async function sendWelcomeEmail(
   businessName?: string,
   baseUrl?: string
 ): Promise<{ success: boolean; error?: string; mock?: boolean }> {
-  const emailService = isSendGridConfigured ? sgMail : mockEmailService;
+
   const userName = user.firstName || user.email.split('@')[0];
   const displayBusinessName = businessName || 'your business';
   const effectiveBaseUrl = baseUrl || getBaseUrl();
@@ -1609,7 +1605,7 @@ export async function sendWelcomeEmail(
   };
 
   try {
-    await emailService.send(emailData);
+    await sendSystemEmail(emailData);
     console.log('✅ Welcome email sent to:', user.email);
     return { success: true, mock: !isSendGridConfigured };
   } catch (error: any) {
@@ -1627,7 +1623,7 @@ export async function sendTestEmail(
   toEmail: string, 
   businessName: string
 ): Promise<{ success: boolean; error?: string; mock?: boolean }> {
-  const emailService = isSendGridConfigured ? sgMail : mockEmailService;
+
 
   const emailData = {
     to: toEmail,
@@ -1672,7 +1668,7 @@ export async function sendTestEmail(
   };
 
   try {
-    await emailService.send(emailData);
+    await sendSystemEmail(emailData);
     console.log('✅ Test email sent to:', toEmail);
     return { success: true, mock: !isSendGridConfigured };
   } catch (error: any) {
@@ -1695,7 +1691,7 @@ export async function sendTeamInviteEmail(
   inviteToken: string,
   baseUrl: string
 ): Promise<{ success: boolean; error?: string; mock?: boolean }> {
-  const emailService = isSendGridConfigured ? sgMail : mockEmailService;
+
   const displayName = inviteeName || inviteeEmail.split('@')[0];
   const acceptUrl = `${baseUrl}/accept-invite/${inviteToken}`;
   const smartAppLink = `${baseUrl}/open-app/accept-invite/${inviteToken}`;
@@ -1768,7 +1764,7 @@ export async function sendTeamInviteEmail(
   };
 
   try {
-    await emailService.send(emailData);
+    await sendSystemEmail(emailData);
     console.log('✅ Team invite email sent to:', inviteeEmail);
     return { success: true, mock: !isSendGridConfigured };
   } catch (error: any) {
@@ -1793,7 +1789,7 @@ export async function sendJobAssignmentEmail(
   baseUrl: string,
   jobId: string
 ): Promise<{ success: boolean; error?: string; mock?: boolean }> {
-  const emailService = isSendGridConfigured ? sgMail : mockEmailService;
+
   const displayName = assigneeName || assigneeEmail.split('@')[0];
   const jobUrl = `${baseUrl}/jobs/${jobId}`;
   const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleDateString('en-AU', {
@@ -1855,7 +1851,7 @@ export async function sendJobAssignmentEmail(
   };
 
   try {
-    await emailService.send(emailData);
+    await sendSystemEmail(emailData);
     console.log('✅ Job assignment email sent to:', assigneeEmail);
     return { success: true, mock: !isSendGridConfigured };
   } catch (error: any) {
@@ -1879,7 +1875,7 @@ export async function sendJobCompletionNotificationEmail(
   baseUrl: string,
   jobId: string
 ): Promise<{ success: boolean; error?: string; mock?: boolean }> {
-  const emailService = isSendGridConfigured ? sgMail : mockEmailService;
+
   const displayName = ownerName || ownerEmail.split('@')[0];
   const jobUrl = `${baseUrl}/jobs/${jobId}`;
   const formattedDate = completedAt.toLocaleDateString('en-AU', {
@@ -1942,7 +1938,7 @@ export async function sendJobCompletionNotificationEmail(
   };
 
   try {
-    await emailService.send(emailData);
+    await sendSystemEmail(emailData);
     console.log('✅ Job completion notification sent to:', ownerEmail);
     return { success: true, mock: !isSendGridConfigured };
   } catch (error: any) {
@@ -1993,7 +1989,7 @@ export async function sendEmailWithAttachment(params: EmailWithAttachmentParams)
   }
   
   try {
-    await sendViaSendGrid(emailData);
+    await sendSystemEmail(emailData);
     console.log('✅ Email with attachment sent to:', params.to);
   } catch (error: any) {
     console.error('❌ Failed to send email with attachment:', error);
@@ -2151,8 +2147,7 @@ export async function sendQuoteEmailWithTemplate(
   acceptanceUrl?: string | null,
   pdfBuffer?: Buffer
 ): Promise<{ success: boolean; message: string; usedTemplate?: boolean }> {
-  const sendGridInitialized = initializeSendGrid();
-  const emailService = sendGridInitialized ? sgMail : mockEmailService;
+
 
   if (!client.email) {
     throw new Error('Client email address is required');
@@ -2187,7 +2182,7 @@ export async function sendQuoteEmailWithTemplate(
       }];
     }
 
-    await emailService.send(emailData);
+    await sendSystemEmail(emailData);
     
     return { 
       success: true, 
@@ -2215,8 +2210,7 @@ export async function sendInvoiceEmailWithTemplate(
   paymentUrl?: string | null,
   pdfBuffer?: Buffer
 ): Promise<{ success: boolean; message: string; usedTemplate?: boolean }> {
-  const sendGridInitialized = initializeSendGrid();
-  const emailService = sendGridInitialized ? sgMail : mockEmailService;
+
 
   if (!client.email) {
     throw new Error('Client email address is required');
@@ -2251,7 +2245,7 @@ export async function sendInvoiceEmailWithTemplate(
       }];
     }
 
-    await emailService.send(emailData);
+    await sendSystemEmail(emailData);
     
     return { 
       success: true, 
@@ -2555,8 +2549,7 @@ export function createDailySummaryEmail(data: DailySummaryData): { to: string; f
 }
 
 export async function sendDailySummaryEmail(summaryData: DailySummaryData): Promise<{ success: boolean; message: string }> {
-  const sendGridInitialized = initializeSendGrid();
-  const emailService = sendGridInitialized ? sgMail : mockEmailService;
+
 
   if (!summaryData.business.email) {
     throw new Error('Business email address is required');
@@ -2564,7 +2557,7 @@ export async function sendDailySummaryEmail(summaryData: DailySummaryData): Prom
 
   try {
     const emailData = createDailySummaryEmail(summaryData);
-    await emailService.send(emailData);
+    await sendSystemEmail(emailData);
     
     console.log(`📧 Daily summary sent to ${summaryData.business.email}`);
     
