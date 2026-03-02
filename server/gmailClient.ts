@@ -130,7 +130,9 @@ function createRawMessage(options: {
   const boundary = `boundary_${Date.now()}`;
   const { to, subject, html, text, fromEmail, fromName, replyTo, attachments } = options;
 
-  const fromHeader = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
+  const fromHeader = fromName 
+    ? `=?UTF-8?B?${Buffer.from(fromName).toString('base64')}?= <${fromEmail}>` 
+    : fromEmail;
 
   let message = [
     `From: ${fromHeader}`,

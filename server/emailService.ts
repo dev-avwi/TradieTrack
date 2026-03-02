@@ -64,13 +64,22 @@ export async function sendSystemEmail(emailData: any): Promise<void> {
   const gmailConnected = await isGmailConnected();
   if (gmailConnected) {
     try {
-      const result = await sendViaGmailAPI({
+      const gmailOptions: any = {
         to: emailData.to,
         subject: emailData.subject,
         html: emailData.html,
         fromName: emailData.from?.name || PLATFORM_FROM_NAME,
         replyTo: emailData.replyTo || PLATFORM_REPLY_TO_EMAIL,
-      });
+      };
+      if (emailData.attachments && emailData.attachments.length > 0) {
+        gmailOptions.attachments = emailData.attachments.map((att: any) => ({
+          filename: att.filename || att.fileName || 'attachment',
+          content: Buffer.isBuffer(att.content) ? att.content : Buffer.from(att.content, 'base64'),
+          contentType: att.type || att.contentType || 'application/octet-stream',
+        }));
+      }
+      console.log(`[Gmail Fallback] Sending to ${emailData.to} with fromName: "${gmailOptions.fromName}", attachments: ${gmailOptions.attachments?.length || 0}`);
+      const result = await sendViaGmailAPI(gmailOptions);
       if (result.success) {
         console.log(`✅ System email sent via Gmail fallback to ${emailData.to}`);
         return;
