@@ -1386,8 +1386,8 @@ ${businessName}`;
                       <Text style={styles.linkedDocLabel}>Job</Text>
                       <Text style={styles.linkedDocTitle} numberOfLines={1}>{linkedJob.title}</Text>
                     </View>
-                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedJob.status === 'completed' ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.1)' }]}>
-                      <Text style={[styles.linkedDocStatusText, { color: linkedJob.status === 'completed' ? '#22c55e' : '#3b82f6' }]}>
+                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedJob.status === 'completed' ? colors.successLight : colors.infoLight }]}>
+                      <Text style={[styles.linkedDocStatusText, { color: linkedJob.status === 'completed' ? colors.success : colors.info }]}>
                         {linkedJob.status.charAt(0).toUpperCase() + linkedJob.status.slice(1)}
                       </Text>
                     </View>
@@ -1399,22 +1399,22 @@ ${businessName}`;
                     style={[styles.linkedDocRow, linkedJob && styles.linkedDocRowBorder]}
                     onPress={() => router.push(`/more/invoice/${linkedInvoice.id}`)}
                   >
-                    <View style={[styles.linkedDocIcon, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
-                      <Feather name="file-text" size={18} color="#f59e0b" />
+                    <View style={[styles.linkedDocIcon, { backgroundColor: colors.warningLight }]}>
+                      <Feather name="file-text" size={18} color={colors.warning} />
                     </View>
                     <View style={styles.linkedDocInfo}>
                       <Text style={styles.linkedDocLabel}>Invoice</Text>
                       <Text style={styles.linkedDocTitle}>{linkedInvoice.invoiceNumber || `Invoice #${linkedInvoice.id.slice(0,6)}`}</Text>
                     </View>
                     <View style={[styles.linkedDocStatus, { 
-                      backgroundColor: linkedInvoice.status === 'paid' ? 'rgba(34,197,94,0.1)' : 
-                                       linkedInvoice.status === 'overdue' ? 'rgba(239,68,68,0.1)' : 
-                                       'rgba(59,130,246,0.1)' 
+                      backgroundColor: linkedInvoice.status === 'paid' ? colors.successLight : 
+                                       linkedInvoice.status === 'overdue' ? colors.destructiveLight : 
+                                       colors.infoLight 
                     }]}>
                       <Text style={[styles.linkedDocStatusText, { 
-                        color: linkedInvoice.status === 'paid' ? '#22c55e' : 
-                               linkedInvoice.status === 'overdue' ? '#ef4444' : 
-                               '#3b82f6' 
+                        color: linkedInvoice.status === 'paid' ? colors.success : 
+                               linkedInvoice.status === 'overdue' ? colors.destructive : 
+                               colors.info 
                       }]}>
                         {linkedInvoice.status.charAt(0).toUpperCase() + linkedInvoice.status.slice(1)}
                       </Text>

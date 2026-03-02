@@ -1829,14 +1829,14 @@ ${businessName}`;
             {/* Send Email - for draft/sent/overdue */}
             {(invoice.status === 'draft' || invoice.status === 'sent' || invoice.status === 'overdue') && (
               <TouchableOpacity 
-                style={[styles.primaryActionButton, { backgroundColor: '#007AFF' }]}
+                style={[styles.primaryActionButton, { backgroundColor: colors.info }]}
                 onPress={handleSend}
                 disabled={isSendingInvoice}
               >
                 {isSendingInvoice ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={colors.white} />
                 ) : (
-                  <Feather name="mail" size={20} color="#FFFFFF" />
+                  <Feather name="mail" size={20} color={colors.white} />
                 )}
                 <Text style={styles.primaryActionText}>
                   {isSendingInvoice ? 'Sending...' : 'Send Email'}
@@ -1847,14 +1847,14 @@ ${businessName}`;
             {/* Payment Link - for sent/overdue */}
             {(invoice.status === 'sent' || invoice.status === 'overdue') && (
               <TouchableOpacity 
-                style={[styles.primaryActionButton, { backgroundColor: '#34C759' }]}
+                style={[styles.primaryActionButton, { backgroundColor: colors.success }]}
                 onPress={sharePaymentLink}
                 disabled={isGeneratingPaymentLink}
               >
                 {isGeneratingPaymentLink ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={colors.white} />
                 ) : (
-                  <Feather name="link" size={20} color="#FFFFFF" />
+                  <Feather name="link" size={20} color={colors.white} />
                 )}
                 <Text style={styles.primaryActionText}>Payment Link</Text>
               </TouchableOpacity>
@@ -1863,11 +1863,11 @@ ${businessName}`;
             {/* Record Payment - for sent/overdue */}
             {(invoice.status === 'sent' || invoice.status === 'overdue') && (
               <TouchableOpacity 
-                style={[styles.primaryActionButton, { backgroundColor: '#FF9500' }]}
+                style={[styles.primaryActionButton, { backgroundColor: colors.warning }]}
                 onPress={handleMarkPaid}
               >
-                <Feather name="dollar-sign" size={20} color="#FFFFFF" />
-                <Text style={styles.primaryActionText}>Record Paid</Text>
+                <Feather name="dollar-sign" size={20} color={colors.warningForeground} />
+                <Text style={[styles.primaryActionText, { color: colors.warningForeground }]}>Record Paid</Text>
               </TouchableOpacity>
             )}
 
@@ -1876,14 +1876,14 @@ ${businessName}`;
               <>
                 {/* Send Receipt - for paid invoices */}
                 <TouchableOpacity 
-                  style={[styles.primaryActionButton, { backgroundColor: '#007AFF' }]}
+                  style={[styles.primaryActionButton, { backgroundColor: colors.info }]}
                   onPress={handleSendReceipt}
                   disabled={isSendingReceipt || !client?.email}
                 >
                   {isSendingReceipt ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator size="small" color={colors.white} />
                   ) : (
-                    <Feather name="mail" size={20} color="#FFFFFF" />
+                    <Feather name="mail" size={20} color={colors.white} />
                   )}
                   <Text style={styles.primaryActionText}>
                     {isSendingReceipt ? 'Sending...' : 'Send Receipt'}
@@ -1893,10 +1893,10 @@ ${businessName}`;
                 {/* View Receipt - for paid invoices with linked receipt */}
                 {linkedReceipt && (
                   <TouchableOpacity 
-                    style={[styles.primaryActionButton, { backgroundColor: '#34C759' }]}
+                    style={[styles.primaryActionButton, { backgroundColor: colors.success }]}
                     onPress={() => router.push(`/more/receipt/${linkedReceipt.id}`)}
                   >
-                    <Feather name="file-text" size={20} color="#FFFFFF" />
+                    <Feather name="file-text" size={20} color={colors.white} />
                     <Text style={styles.primaryActionText}>View Receipt</Text>
                   </TouchableOpacity>
                 )}
@@ -1904,10 +1904,10 @@ ${businessName}`;
                 {/* Create Receipt - for paid invoices without linked receipt */}
                 {!linkedReceipt && (
                   <TouchableOpacity 
-                    style={[styles.primaryActionButton, { backgroundColor: '#34C759' }]}
+                    style={[styles.primaryActionButton, { backgroundColor: colors.success }]}
                     onPress={() => router.push(`/more/receipt/new?invoiceId=${id}`)}
                   >
-                    <Feather name="plus" size={20} color="#FFFFFF" />
+                    <Feather name="plus" size={20} color={colors.white} />
                     <Text style={styles.primaryActionText}>Create Receipt</Text>
                   </TouchableOpacity>
                 )}
@@ -2344,15 +2344,15 @@ ${businessName}`;
                     style={styles.linkedDocRow}
                     onPress={() => router.push(`/more/quote/${linkedQuote.id}`)}
                   >
-                    <View style={[styles.linkedDocIcon, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
-                      <Feather name="file" size={18} color="#3b82f6" />
+                    <View style={[styles.linkedDocIcon, { backgroundColor: colors.infoLight }]}>
+                      <Feather name="file" size={18} color={colors.info} />
                     </View>
                     <View style={styles.linkedDocInfo}>
                       <Text style={styles.linkedDocLabel}>Quote</Text>
                       <Text style={styles.linkedDocTitle}>{linkedQuote.quoteNumber || `Quote #${linkedQuote.id.slice(0,6)}`}</Text>
                     </View>
-                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedQuote.status === 'accepted' ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.1)' }]}>
-                      <Text style={[styles.linkedDocStatusText, { color: linkedQuote.status === 'accepted' ? '#22c55e' : '#3b82f6' }]}>
+                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedQuote.status === 'accepted' ? colors.successLight : colors.infoLight }]}>
+                      <Text style={[styles.linkedDocStatusText, { color: linkedQuote.status === 'accepted' ? colors.success : colors.info }]}>
                         {linkedQuote.status.charAt(0).toUpperCase() + linkedQuote.status.slice(1)}
                       </Text>
                     </View>
@@ -2371,8 +2371,8 @@ ${businessName}`;
                       <Text style={styles.linkedDocLabel}>Job</Text>
                       <Text style={styles.linkedDocTitle} numberOfLines={1}>{linkedJob.title}</Text>
                     </View>
-                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedJob.status === 'completed' ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.1)' }]}>
-                      <Text style={[styles.linkedDocStatusText, { color: linkedJob.status === 'completed' ? '#22c55e' : '#3b82f6' }]}>
+                    <View style={[styles.linkedDocStatus, { backgroundColor: linkedJob.status === 'completed' ? colors.successLight : colors.infoLight }]}>
+                      <Text style={[styles.linkedDocStatusText, { color: linkedJob.status === 'completed' ? colors.success : colors.info }]}>
                         {linkedJob.status.charAt(0).toUpperCase() + linkedJob.status.slice(1)}
                       </Text>
                     </View>
@@ -2384,15 +2384,15 @@ ${businessName}`;
                     style={[styles.linkedDocRow, (linkedQuote || linkedJob) && styles.linkedDocRowBorder]}
                     onPress={() => router.push(`/more/receipt/${linkedReceipt.id}`)}
                   >
-                    <View style={[styles.linkedDocIcon, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-                      <Feather name="check-circle" size={18} color="#22c55e" />
+                    <View style={[styles.linkedDocIcon, { backgroundColor: colors.successLight }]}>
+                      <Feather name="check-circle" size={18} color={colors.success} />
                     </View>
                     <View style={styles.linkedDocInfo}>
                       <Text style={styles.linkedDocLabel}>Receipt</Text>
                       <Text style={styles.linkedDocTitle}>{linkedReceipt.receiptNumber || `Receipt #${linkedReceipt.id.slice(0,6)}`}</Text>
                     </View>
-                    <View style={[styles.linkedDocStatus, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-                      <Text style={[styles.linkedDocStatusText, { color: '#22c55e' }]}>Paid</Text>
+                    <View style={[styles.linkedDocStatus, { backgroundColor: colors.successLight }]}>
+                      <Text style={[styles.linkedDocStatusText, { color: colors.success }]}>Paid</Text>
                     </View>
                     <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
                   </TouchableOpacity>
@@ -3238,8 +3238,8 @@ ${businessName}`;
                 style={styles.shareOption}
                 onPress={handleSaveToDevice}
               >
-                <View style={[styles.shareOptionIcon, { backgroundColor: '#fef3c7' }]}>
-                  <Feather name="download" size={22} color="#d97706" />
+                <View style={[styles.shareOptionIcon, { backgroundColor: colors.warningLight }]}>
+                  <Feather name="download" size={22} color={colors.warning} />
                 </View>
                 <Text style={styles.shareOptionText}>Save to Device</Text>
                 <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
@@ -3249,8 +3249,8 @@ ${businessName}`;
                 style={styles.shareOption}
                 onPress={handleSharePdf}
               >
-                <View style={[styles.shareOptionIcon, { backgroundColor: '#f3e8ff' }]}>
-                  <Feather name="printer" size={22} color="#9333ea" />
+                <View style={[styles.shareOptionIcon, { backgroundColor: colors.primaryLight }]}>
+                  <Feather name="printer" size={22} color={colors.primary} />
                 </View>
                 <Text style={styles.shareOptionText}>Print</Text>
                 <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
@@ -3660,7 +3660,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   primaryActionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.white,
   },
   quickActions: {
     flexDirection: 'row',
@@ -4694,10 +4694,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colors.foreground,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
     elevation: 3,
   },
   documentHeader: {

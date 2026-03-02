@@ -222,10 +222,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   emailIcon: {
-    backgroundColor: 'rgba(59,130,246,0.1)',
+    backgroundColor: colors.infoLight,
   },
   smsIcon: {
-    backgroundColor: 'rgba(34,197,94,0.1)',
+    backgroundColor: colors.successLight,
   },
   itemDetails: {
     flex: 1,
@@ -263,8 +263,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   itemTime: {
     fontSize: typographySizes.xs,
     color: colors.mutedForeground,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   itemMeta: {
     flexDirection: 'column',
@@ -404,23 +402,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 });
 
-const getStatusConfig = (status: string) => {
-  switch (status) {
-    case 'delivered':
-      return { label: 'Delivered', color: '#22c55e', bgColor: 'rgba(34,197,94,0.1)' };
-    case 'sent':
-      return { label: 'Sent', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' };
-    case 'failed':
-      return { label: 'Failed', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' };
-    case 'pending':
-      return { label: 'Pending', color: '#f59e0b', bgColor: 'rgba(245,158,11,0.1)' };
-    default:
-      return { label: status, color: '#6b7280', bgColor: 'rgba(107,114,128,0.1)' };
-  }
-};
-
 export default function CommunicationsScreen() {
   const { colors } = useTheme();
+  
+  const getStatusConfig = useCallback((status: string) => {
+    switch (status) {
+      case 'delivered':
+        return { label: 'Delivered', color: colors.success, bgColor: colors.successLight };
+      case 'sent':
+        return { label: 'Sent', color: colors.info, bgColor: colors.infoLight };
+      case 'failed':
+        return { label: 'Failed', color: colors.destructive, bgColor: colors.destructiveLight };
+      case 'pending':
+        return { label: 'Pending', color: colors.warning, bgColor: colors.warningLight };
+      default:
+        return { label: status, color: colors.mutedForeground, bgColor: colors.muted };
+    }
+  }, [colors]);
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const [activeTab, setActiveTab] = useState<TabType>('all');
@@ -611,7 +609,7 @@ export default function CommunicationsScreen() {
             <Feather 
               name={item.type === 'email' ? 'mail' : 'message-square'} 
               size={iconSizes.md} 
-              color={item.type === 'email' ? '#3b82f6' : '#22c55e'} 
+              color={item.type === 'email' ? colors.info : colors.success} 
             />
           </View>
           
@@ -701,18 +699,18 @@ export default function CommunicationsScreen() {
           <Text style={styles.statLabel}>Total</Text>
         </View>
         <View style={styles.statCard}>
-          <Feather name="mail" size={14} color={'#3b82f6'} style={{ marginBottom: 2 }} />
-          <Text style={[styles.statValue, { color: '#3b82f6' }]}>{stats.emails}</Text>
+          <Feather name="mail" size={14} color={colors.info} style={{ marginBottom: 2 }} />
+          <Text style={[styles.statValue, { color: colors.info }]}>{stats.emails}</Text>
           <Text style={styles.statLabel}>Emails</Text>
         </View>
         <View style={styles.statCard}>
-          <Feather name="message-square" size={14} color={'#22c55e'} style={{ marginBottom: 2 }} />
-          <Text style={[styles.statValue, { color: '#22c55e' }]}>{stats.sms}</Text>
+          <Feather name="message-square" size={14} color={colors.success} style={{ marginBottom: 2 }} />
+          <Text style={[styles.statValue, { color: colors.success }]}>{stats.sms}</Text>
           <Text style={styles.statLabel}>SMS</Text>
         </View>
         <View style={styles.statCard}>
-          <Feather name="check-circle" size={14} color={'#10b981'} style={{ marginBottom: 2 }} />
-          <Text style={[styles.statValue, { color: '#10b981' }]}>{stats.delivered}</Text>
+          <Feather name="check-circle" size={14} color={colors.success} style={{ marginBottom: 2 }} />
+          <Text style={[styles.statValue, { color: colors.success }]}>{stats.delivered}</Text>
           <Text style={styles.statLabel}>Delivered</Text>
         </View>
       </View>
@@ -811,7 +809,7 @@ export default function CommunicationsScreen() {
                     <Feather 
                       name={selectedItem.type === 'email' ? 'mail' : 'message-square'} 
                       size={iconSizes.md} 
-                      color={selectedItem.type === 'email' ? '#3b82f6' : '#22c55e'} 
+                      color={selectedItem.type === 'email' ? colors.info : colors.success} 
                     />
                   </View>
                   <Text style={styles.modalTitle}>
@@ -855,18 +853,18 @@ export default function CommunicationsScreen() {
                       </View>
                     </View>
                     <View style={styles.detailRow}>
-                      <Text style={{ color: colors.mutedForeground, fontSize: typography.sizes.sm }}>
+                      <Text style={{ color: colors.mutedForeground, fontSize: typographySizes.sm }}>
                         Sent at
                       </Text>
-                      <Text style={{ fontSize: typography.sizes.sm, color: colors.foreground }}>
+                      <Text style={{ fontSize: typographySizes.sm, color: colors.foreground }}>
                         {format(selectedItem.timestamp, 'h:mm:ss a')}
                       </Text>
                     </View>
                     <View style={styles.detailRow}>
-                      <Text style={{ color: colors.mutedForeground, fontSize: typography.sizes.sm }}>
+                      <Text style={{ color: colors.mutedForeground, fontSize: typographySizes.sm }}>
                         Provider
                       </Text>
-                      <Text style={{ fontSize: typography.sizes.sm, color: colors.foreground }}>
+                      <Text style={{ fontSize: typographySizes.sm, color: colors.foreground }}>
                         {selectedItem.type === 'email' ? 'SendGrid' : 'Twilio'}
                       </Text>
                     </View>

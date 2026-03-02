@@ -179,10 +179,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     overflow: 'hidden',
   },
   messageStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 2,
+    gap: 4,
+  },
+  messageStatusText: {
     fontSize: 10,
     color: colors.mutedForeground,
-    marginTop: 2,
-    textAlign: 'right',
+  },
+  messageStatusDelivered: {
+    color: colors.success,
   },
   composerContainer: {
     paddingTop: spacing.sm,
@@ -458,8 +466,17 @@ export default function SmsConversationScreen() {
                         {formatTime(msg.createdAt)}
                       </Text>
                     </View>
-                    {isOutbound && msg.status && msg.status !== 'sent' && (
-                      <Text style={styles.messageStatus}>{msg.status}</Text>
+                    {isOutbound && msg.status && (
+                      <View style={styles.messageStatus}>
+                        <Feather 
+                          name={msg.status === 'delivered' ? 'check-circle' : msg.status === 'failed' ? 'alert-circle' : 'check'} 
+                          size={10} 
+                          color={msg.status === 'delivered' ? colors.success : msg.status === 'failed' ? colors.destructive : colors.mutedForeground} 
+                        />
+                        <Text style={[styles.messageStatusText, msg.status === 'delivered' && styles.messageStatusDelivered]}>
+                          {msg.status === 'sent' ? 'Sent' : msg.status === 'delivered' ? 'Delivered' : msg.status === 'failed' ? 'Failed' : msg.status}
+                        </Text>
+                      </View>
                     )}
                   </View>
                 </View>

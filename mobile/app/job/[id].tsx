@@ -277,16 +277,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerUrgencyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
     borderWidth: 1,
     gap: 6,
   },
   headerUrgencyDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   headerUrgencyText: {
     fontSize: 12,
@@ -1287,8 +1287,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   photosEmptyText: {
     fontSize: 14,
     color: colors.mutedForeground,
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
   },
   photoActions: {
     flexDirection: 'row',
@@ -1498,8 +1498,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.sm,
     borderRadius: radius.lg,
-    gap: 3,
-    minHeight: 48,
+    gap: 4,
+    minHeight: 52,
   },
   tabActive: {
     backgroundColor: colors.primary,
@@ -1511,10 +1511,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 10,
+    fontWeight: '600',
     color: colors.mutedForeground,
-    letterSpacing: 0.1,
+    letterSpacing: 0.2,
   },
   tabLabelActive: {
     color: colors.primaryForeground,
@@ -4849,9 +4849,15 @@ export default function JobDetailScreen() {
                   ))}
                 </View>
               ) : (
-                <View style={{ alignItems: 'center', paddingVertical: spacing.md }}>
-                  <Text style={{ fontSize: 14, color: colors.mutedForeground }}>
+                <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+                  <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.invoiced}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
+                    <Feather name="users" size={24} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center' }}>
                     No subcontractors invited yet
+                  </Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center', paddingHorizontal: spacing.md }}>
+                    Share job access with external contractors
                   </Text>
                 </View>
               )}
@@ -5263,12 +5269,13 @@ export default function JobDetailScreen() {
           backgroundColor: colors.card,
           borderRadius: radius.xl,
           borderWidth: 1,
-          borderColor: colors.cardBorder,
+          borderColor: newMessage.trim() ? colors.primary : colors.cardBorder,
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.sm,
           alignItems: 'flex-end',
           marginBottom: spacing.md,
           minHeight: 52,
+          ...shadows.xs,
         }}>
           <TextInput
             style={{
@@ -6280,7 +6287,7 @@ export default function JobDetailScreen() {
           >
             <Feather 
               name={tab.icon} 
-              size={iconSizes.lg} 
+              size={iconSizes.xl} 
               color={activeTab === tab.id ? colors.primaryForeground : colors.mutedForeground} 
             />
             <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>
@@ -6605,8 +6612,13 @@ export default function JobDetailScreen() {
             <ScrollView style={styles.photosContainer}>
               {photos.length === 0 ? (
                 <View style={styles.photosEmpty}>
-                  <Feather name="image" size={48} color={colors.mutedForeground} />
+                  <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
+                    <Feather name="image" size={32} color={colors.mutedForeground} />
+                  </View>
                   <Text style={styles.photosEmptyText}>No photos or videos yet</Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', paddingHorizontal: spacing.lg }}>
+                    Use the Photos tab to capture before, during, and after shots
+                  </Text>
                 </View>
               ) : (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>

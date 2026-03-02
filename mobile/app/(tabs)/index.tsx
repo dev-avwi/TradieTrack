@@ -738,7 +738,9 @@ function KPICard({
   icon,
   iconBg,
   iconColor,
-  onPress
+  onPress,
+  trend,
+  trendLabel,
 }: { 
   title: string; 
   value: string | number; 
@@ -746,9 +748,20 @@ function KPICard({
   iconBg: string;
   iconColor: string;
   onPress?: () => void;
+  trend?: number;
+  trendLabel?: string;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  const hasTrend = trend !== undefined && trend !== null && isFinite(trend);
+  const trendUp = hasTrend && trend > 0;
+  const trendDown = hasTrend && trend < 0;
+  const trendColor = trendUp ? colors.success : trendDown ? colors.destructive : colors.mutedForeground;
+  const trendIcon: keyof typeof Feather.glyphMap = trendUp ? 'trending-up' : trendDown ? 'trending-down' : 'minus';
+  const trendText = hasTrend 
+    ? `${trendUp ? '+' : ''}${Math.round(trend)}%` 
+    : '';
   
   return (
     <TouchableOpacity
@@ -761,8 +774,19 @@ function KPICard({
           <Feather name={icon} size={20} color={iconColor} />
         </View>
         <View style={styles.kpiTextContainer}>
-          <Text style={styles.kpiValue}>{value}</Text>
+          <View style={styles.kpiValueRow}>
+            <Text style={styles.kpiValue}>{value}</Text>
+            {hasTrend && (
+              <View style={[styles.kpiTrendBadge, { backgroundColor: colorWithOpacity(trendColor, 0.12) }]}>
+                <Feather name={trendIcon} size={10} color={trendColor} />
+                <Text style={[styles.kpiTrendText, { color: trendColor }]}>{trendText}</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.kpiTitle}>{title}</Text>
+          {hasTrend && trendLabel ? (
+            <Text style={styles.kpiTrendLabel}>{trendLabel}</Text>
+          ) : null}
         </View>
       </View>
     </TouchableOpacity>
@@ -1898,6 +1922,16 @@ export default function DashboardScreen() {
   const outstandingAmount = formatCurrency(stats.outstandingAmount || 0);
   const paidLast30Days = formatCurrency(stats.paidLast30Days || 0);
 
+  const calcTrend = (current: number, previous: number): number | undefined => {
+    if (previous === 0 && current === 0) return undefined;
+    if (previous === 0) return 100;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const revenueTrend = calcTrend(stats.thisMonthRevenue, stats.lastMonthRevenue);
+  const jobsCompletedTrend = calcTrend(stats.thisMonthJobsCompleted, stats.lastMonthJobsCompleted);
+  const quotesTrend = calcTrend(stats.thisMonthQuotesSent, stats.lastMonthQuotesSent);
+
   // Calculate this week's jobs (next 7 days, excluding today) for staff
   const thisWeeksJobs = useMemo(() => {
     const activeJobs = todaysJobs.filter((job: any) => 
@@ -2007,6 +2041,8 @@ export default function DashboardScreen() {
             iconBg={colors.primaryLight}
             iconColor={colors.primary}
             onPress={() => router.push('/(tabs)/jobs')}
+            trend={!isStaffUser ? jobsCompletedTrend : undefined}
+            trendLabel={!isStaffUser ? "completed vs last mo" : undefined}
           />
           {isStaffUser ? (
             <>
@@ -2062,6 +2098,8 @@ export default function DashboardScreen() {
                   iconBg={colors.infoLight}
                   iconColor={colors.info}
                   onPress={() => router.push('/more/quotes')}
+                  trend={quotesTrend}
+                  trendLabel="vs last month"
                 />
               )}
               <KPICard
@@ -2071,6 +2109,8 @@ export default function DashboardScreen() {
                 iconBg={colors.successLight}
                 iconColor={colors.success}
                 onPress={() => router.push('/more/money-hub')}
+                trend={revenueTrend}
+                trendLabel="vs last month"
               />
             </>
           )}
@@ -2598,11 +2638,35 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   kpiTextContainer: {
     flex: 1,
   },
+  kpiValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flexWrap: 'wrap',
+  },
   kpiValue: {
     fontSize: 24,
     fontWeight: '700',
     color: colors.foreground,
     letterSpacing: -0.5,
+  },
+  kpiTrendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 1,
+    borderRadius: radius.xs,
+  },
+  kpiTrendText: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  kpiTrendLabel: {
+    fontSize: 10,
+    color: colors.mutedForeground,
+    marginTop: 1,
   },
   kpiTitle: {
     ...typography.label,

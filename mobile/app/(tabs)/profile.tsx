@@ -88,6 +88,45 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
     color: colors.primary,
   },
+  quickActionsContainer: {
+    marginBottom: spacing.lg,
+  },
+  quickActionsLabel: {
+    ...typography.label,
+    color: colors.mutedForeground,
+    marginBottom: spacing.sm,
+    paddingLeft: spacing.xs,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  quickActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  quickActionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
   categoryTabsContainer: {
     marginBottom: spacing.md,
   },
@@ -127,15 +166,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingLeft: spacing.xs,
   },
   sectionHeaderIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sectionTitle: {
-    ...typography.label,
+    ...typography.caption,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
     color: colors.mutedForeground,
+  },
+  sectionCount: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginLeft: 'auto' as any,
+    paddingRight: spacing.xs,
   },
   section: {
     backgroundColor: colors.card,
@@ -420,18 +468,29 @@ export default function MoreScreen() {
     router.push(item.url as any);
   };
 
+  const quickActions = useMemo(() => {
+    if (isStaff) return [];
+    const actions: { icon: keyof typeof Feather.glyphMap; label: string; route: string; bg: string; fg: string }[] = [];
+    actions.push({ icon: 'plus-circle', label: 'New Job', route: '/more/create-job', bg: colors.primaryLight, fg: colors.primary });
+    actions.push({ icon: 'file-text', label: 'Invoice', route: '/more/invoices', bg: colors.successLight, fg: colors.success });
+    actions.push({ icon: 'clock', label: 'Time', route: '/more/time-tracking', bg: colors.infoLight, fg: colors.info });
+    return actions;
+  }, [isStaff, colors]);
+
   const renderSectionHeader = (categoryKey: string) => {
     if (activeCategory !== 'all') return null;
     const meta = categoryMeta[categoryKey];
     if (!meta || !meta.label) return null;
     const colorVals = getColorValues(meta.colorKey, colors);
+    const itemCount = (categorizedItems[categoryKey] || []).length;
     
     return (
       <View style={styles.sectionHeaderRow}>
         <View style={[styles.sectionHeaderIcon, { backgroundColor: colorVals.bg }]}>
-          <Feather name={meta.icon} size={12} color={colorVals.fg} />
+          <Feather name={meta.icon} size={13} color={colorVals.fg} />
         </View>
         <Text style={styles.sectionTitle}>{meta.label}</Text>
+        <Text style={styles.sectionCount}>{itemCount}</Text>
       </View>
     );
   };
@@ -506,6 +565,27 @@ export default function MoreScreen() {
         </View>
         <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
       </TouchableOpacity>
+
+      {quickActions.length > 0 && (
+        <View style={styles.quickActionsContainer}>
+          <Text style={styles.quickActionsLabel}>Quick Actions</Text>
+          <View style={styles.quickActionsRow}>
+            {quickActions.map((action) => (
+              <TouchableOpacity
+                key={action.route}
+                style={styles.quickActionBtn}
+                activeOpacity={0.7}
+                onPress={() => router.push(action.route as any)}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: action.bg }]}>
+                  <Feather name={action.icon} size={iconSizes.lg} color={action.fg} />
+                </View>
+                <Text style={styles.quickActionText}>{action.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
 
       <View style={styles.categoryTabsContainer}>
         <ScrollView 

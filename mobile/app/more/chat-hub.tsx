@@ -302,16 +302,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   conversationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
+    paddingVertical: spacing.md,
     paddingHorizontal: pageShell.paddingHorizontal,
     backgroundColor: 'transparent',
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
+  conversationCardUnread: {
+    backgroundColor: colors.primaryLight,
+  },
   conversationAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -350,6 +353,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     flex: 1,
   },
+  conversationTitleUnread: {
+    fontWeight: '700',
+  },
   conversationTime: {
     ...typography.captionSmall,
     color: colors.mutedForeground,
@@ -362,6 +368,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   conversationLastMessage: {
     ...typography.caption,
     color: colors.mutedForeground,
+  },
+  conversationLastMessageUnread: {
+    color: colors.foreground,
+    fontWeight: '500',
   },
   conversationBadges: {
     flexDirection: 'row',
@@ -919,7 +929,7 @@ export default function ChatHubScreen() {
     return (
       <TouchableOpacity
         key={item.id}
-        style={styles.conversationCard}
+        style={[styles.conversationCard, item.unreadCount > 0 && styles.conversationCardUnread]}
         onPress={() => handleConversationPress(item)}
         activeOpacity={0.7}
       >
@@ -951,7 +961,7 @@ export default function ChatHubScreen() {
         
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
-            <Text style={styles.conversationTitle} numberOfLines={1}>
+            <Text style={[styles.conversationTitle, item.unreadCount > 0 && styles.conversationTitleUnread]} numberOfLines={1}>
               {item.title}
             </Text>
             {item.lastMessageTime && (
@@ -966,7 +976,7 @@ export default function ChatHubScreen() {
           )}
 
           {item.lastMessage && (
-            <Text style={styles.conversationLastMessage} numberOfLines={1}>
+            <Text style={[styles.conversationLastMessage, item.unreadCount > 0 && styles.conversationLastMessageUnread]} numberOfLines={1}>
               {item.lastMessage}
             </Text>
           )}

@@ -1626,6 +1626,11 @@ interface DashboardStats {
   unpaidInvoices: number;
   outstandingAmount: number;
   paidLast30Days: number;
+  lastMonthRevenue: number;
+  lastMonthJobsCompleted: number;
+  thisMonthJobsCompleted: number;
+  lastMonthQuotesSent: number;
+  thisMonthQuotesSent: number;
 }
 
 interface DashboardState {
@@ -1644,6 +1649,11 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     unpaidInvoices: 0,
     outstandingAmount: 0,
     paidLast30Days: 0,
+    lastMonthRevenue: 0,
+    lastMonthJobsCompleted: 0,
+    thisMonthJobsCompleted: 0,
+    lastMonthQuotesSent: 0,
+    thisMonthQuotesSent: 0,
   },
   isLoading: false,
 
@@ -1749,15 +1759,53 @@ export const useDashboardStore = create<DashboardState>((set) => ({
       })
       .reduce((sum, i) => sum + (i.total || 0), 0);
 
+    const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+    const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+
+    const lastMonthRevenue = invoices
+      .filter(i => {
+        if (i.status !== 'paid' || !i.paidAt) return false;
+        const paidDate = new Date(i.paidAt);
+        return paidDate.getMonth() === lastMonth && paidDate.getFullYear() === lastMonthYear;
+      })
+      .reduce((sum, i) => sum + (i.total || 0), 0);
+
+    const thisMonthJobsCompleted = jobs.filter(j => {
+      if (j.status !== 'done' && j.status !== 'invoiced') return false;
+      const scheduled = j.scheduledAt ? new Date(j.scheduledAt) : null;
+      return scheduled && scheduled.getMonth() === thisMonth && scheduled.getFullYear() === thisYear;
+    }).length;
+
+    const lastMonthJobsCompleted = jobs.filter(j => {
+      if (j.status !== 'done' && j.status !== 'invoiced') return false;
+      const scheduled = j.scheduledAt ? new Date(j.scheduledAt) : null;
+      return scheduled && scheduled.getMonth() === lastMonth && scheduled.getFullYear() === lastMonthYear;
+    }).length;
+
+    const thisMonthQuotesSent = quotes.filter(q => {
+      const created = q.createdAt ? new Date(q.createdAt) : null;
+      return created && created.getMonth() === thisMonth && created.getFullYear() === thisYear;
+    }).length;
+
+    const lastMonthQuotesSent = quotes.filter(q => {
+      const created = q.createdAt ? new Date(q.createdAt) : null;
+      return created && created.getMonth() === lastMonth && created.getFullYear() === lastMonthYear;
+    }).length;
+
     set({
       stats: {
         jobsToday,
         overdueJobs,
         pendingQuotes,
-        thisMonthRevenue: thisMonthRevenue / 100, // Convert cents to dollars
+        thisMonthRevenue: thisMonthRevenue / 100,
         unpaidInvoices,
-        outstandingAmount: outstandingAmount / 100, // Convert cents to dollars
-        paidLast30Days: paidLast30Days / 100, // Convert cents to dollars
+        outstandingAmount: outstandingAmount / 100,
+        paidLast30Days: paidLast30Days / 100,
+        lastMonthRevenue: lastMonthRevenue / 100,
+        lastMonthJobsCompleted,
+        thisMonthJobsCompleted,
+        lastMonthQuotesSent,
+        thisMonthQuotesSent,
       },
       isLoading: false,
     });

@@ -884,7 +884,7 @@ export default function TeamOperationsScreen() {
             onPress={() => setShowTimeOffModal(true)}
             activeOpacity={0.7}
           >
-            <Feather name="plus" size={18} color="#fff" />
+            <Feather name="plus" size={18} color={colors.primaryForeground} />
           </TouchableOpacity>
         </View>
 
@@ -988,10 +988,16 @@ export default function TeamOperationsScreen() {
           </View>
           <View style={styles.performanceInfo}>
             <Text style={styles.performanceName}>{member.firstName} {member.lastName}</Text>
-            <Text style={styles.performanceStats}>{member.completedJobs} done | {member.inProgressJobs} active</Text>
+            <Text style={styles.performanceStats}>{member.completedJobs} done | {member.inProgressJobs} active | {member.scheduledJobs} upcoming</Text>
           </View>
-          <View style={styles.performanceRate}>
-            <Text style={styles.performanceRateText}>{member.completionRate}%</Text>
+          <View style={[styles.performanceRate, {
+            backgroundColor: member.completionRate >= 75 ? `${colors.success}15` :
+              member.completionRate >= 50 ? `${colors.warning}15` : colors.muted,
+          }]}>
+            <Text style={[styles.performanceRateText, {
+              color: member.completionRate >= 75 ? colors.success :
+                member.completionRate >= 50 ? colors.warning : colors.foreground,
+            }]}>{member.completionRate}%</Text>
           </View>
         </View>
         );
@@ -1300,7 +1306,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     fontWeight: '500',
   },
   tabButtonTextActive: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '600',
   },
   scrollContent: {
@@ -1769,7 +1775,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     color: colors.mutedForeground,
   },
   memberChipTextActive: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '600',
   },
   availabilityList: {
@@ -1808,6 +1814,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadows.xs,
   },
   timeOffCard: {
     padding: spacing.md,
@@ -1859,7 +1866,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   },
   timeOffButtonText: {
     ...typography.caption,
-    color: '#ffffff',
+    color: colors.white,
     fontWeight: '600',
   },
   statsGrid: {
@@ -1869,7 +1876,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     marginTop: spacing.sm,
   },
   statCard: {
-    width: (contentWidth - responsivePadding * 2 - spacing.sm) / 2,
+    width: ((contentWidth - (isTabletDevice ? spacing.sm * 2 : responsivePadding * 2)) - spacing.sm) / 2,
     padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -2013,7 +2020,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     textTransform: 'capitalize',
   },
   reasonChipTextActive: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '600',
   },
   submitButton: {
@@ -2025,7 +2032,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   },
   submitButtonText: {
     ...typography.button,
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '600',
   },
   kpiStatsRow: {
