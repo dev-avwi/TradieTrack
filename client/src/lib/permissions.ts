@@ -136,6 +136,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Communications Hub - office admin handles communications
   { path: '/communications', label: 'Communications', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
   
+  // Inventory & Equipment (unified page)
+  { path: '/inventory', label: 'Inventory & Equipment', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+
   // Equipment (redirects to inventory page equipment tab)
   { path: '/equipment', label: 'Equipment', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
 
