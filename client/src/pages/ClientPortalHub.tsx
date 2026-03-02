@@ -868,7 +868,7 @@ export default function ClientPortalHub() {
               <Button
                 className="w-full bg-brand"
                 size="lg"
-                onClick={() => window.location.href = 'mailto:admin@avwebinnovation.com?subject=Quote%20Request'}
+                onClick={() => window.location.href = 'mailto:support@jobrunner.com.au?subject=Quote%20Request'}
               >
                 <Mail className="w-4 h-4 mr-2" />
                 Request a Quote

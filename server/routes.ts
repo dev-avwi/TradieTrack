@@ -818,16 +818,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (process.env.SENDGRID_API_KEY) {
         sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
         await sgMail.default.send({
-          to: 'admin@avwebinnovation.com',
+          to: 'support@jobrunner.com.au',
           from: {
-            email: 'mail@avwebinnovation.com',
+            email: 'noreply@jobrunner.com.au',
             name: 'JobRunner Bug Reports'
           },
-          replyTo: userEmail || 'admin@avwebinnovation.com',
+          replyTo: userEmail || 'support@jobrunner.com.au',
           subject: `[Bug Report] ${category || 'General'} - ${severity || 'Normal'}: ${description.substring(0, 50)}${description.length > 50 ? '...' : ''}`,
           html: emailHtml,
         });
-        console.log(`✅ Bug report sent to admin@avwebinnovation.com from ${userEmail || 'anonymous'}`);
+        console.log(`✅ Bug report sent to support@jobrunner.com.au from ${userEmail || 'anonymous'}`);
       } else {
         console.log('⚠️ Bug report received but SendGrid not configured - logging to console');
         console.log('Bug Report:', { category, severity, description, userEmail, userName });
@@ -840,7 +840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Failed to submit bug report:', error);
       res.status(500).json({ 
-        error: 'Failed to submit bug report. Please try again or email admin@avwebinnovation.com directly.' 
+        error: 'Failed to submit bug report. Please try again or email support@jobrunner.com.au directly.' 
       });
     }
   });
@@ -3146,7 +3146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // Debug logging for admin users
-      if (safeUser.email === 'admin@avwebinnovation.com' || safeUser.isPlatformAdmin) {
+      if (safeUser.email === 'admin@avwebinnovation.com' || safeUser.email === 'admin@jobrunner.com.au' || safeUser.isPlatformAdmin) {
         console.log('🔑 Admin user detected:', {
           email: safeUser.email,
           isPlatformAdmin: safeUser.isPlatformAdmin,
@@ -7461,7 +7461,7 @@ Be specific about materials, colors, and features that would be included.`
           
           <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
             <p style="margin: 0;">JobRunner - Making Australian tradies more professional</p>
-            <p style="margin: 5px 0 0 0;">Questions? Contact us at admin@avwebinnovation.com</p>
+            <p style="margin: 5px 0 0 0;">Questions? Contact us at support@jobrunner.com.au</p>
           </div>
         </body>
         </html>
