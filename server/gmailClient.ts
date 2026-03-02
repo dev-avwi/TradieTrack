@@ -306,6 +306,27 @@ function createRawMessageWithoutFrom(options: {
     .replace(/=+$/, '');
 }
 
+async function updateSendAsDisplayName(gmail: any, fromEmail: string, displayName: string): Promise<boolean> {
+  try {
+    await gmail.users.settings.sendAs.patch({
+      userId: 'me',
+      sendAsEmail: fromEmail,
+      requestBody: {
+        displayName: displayName,
+      },
+    });
+    console.log(`[Gmail] Updated sendAs display name to "${displayName}" for ${fromEmail}`);
+    return true;
+  } catch (error: any) {
+    if (error?.code === 403 || error?.status === 403) {
+      console.log(`[Gmail] Cannot update sendAs display name (insufficient permissions) — sender will show account default name`);
+    } else {
+      console.warn(`[Gmail] sendAs display name update failed:`, error?.message);
+    }
+    return false;
+  }
+}
+
 // Send email via Gmail API
 export async function sendViaGmailAPI(options: {
   to: string;
@@ -323,19 +344,15 @@ export async function sendViaGmailAPI(options: {
   try {
     const gmail = await getGmailClient();
     
-    // Try to get the authenticated user's email from multiple sources
     let fromEmail: string | null = null;
     
-    // 1. First try to get email from connection settings (no API call needed)
     fromEmail = getEmailFromConnectionSettings();
     
-    // 2. If not available, try the profile API
     if (!fromEmail) {
       try {
         const profile = await gmail.users.getProfile({ userId: 'me' });
         fromEmail = profile.data.emailAddress || null;
       } catch (profileError: any) {
-        // 403 is expected if the connector only has send permissions
         if (profileError?.code === 403 || profileError?.status === 403) {
           console.log('[Gmail] Profile API returned 403 - connector has send-only permissions, will try sending without explicit From');
         } else {
@@ -344,15 +361,15 @@ export async function sendViaGmailAPI(options: {
       }
     }
     
-    // 3. If we still don't have a from email, try using replyTo as the from address
-    // This ensures the display name (business name) shows correctly in the recipient's inbox
     if (!fromEmail && options.replyTo) {
       console.log(`[Gmail] Using replyTo as from email for display name: ${options.fromName || 'none'}`);
       fromEmail = options.replyTo;
     }
 
-    // 4. If we still don't have an email, try sending anyway
-    // Gmail API will use the authenticated user's email as the From address
+    if (options.fromName && fromEmail) {
+      await updateSendAsDisplayName(gmail, fromEmail, options.fromName);
+    }
+
     if (!fromEmail) {
       console.log(`[Gmail] No from email available, attempting send with auto-from (fromName: ${options.fromName || 'none'}, replyTo: ${options.replyTo || 'none'})`);
       const raw = createRawMessageWithoutFrom({
