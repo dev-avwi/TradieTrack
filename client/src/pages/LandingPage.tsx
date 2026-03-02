@@ -91,8 +91,8 @@ import jobMapScreenshot from "@assets/appstore_screenshots/05_job_map.png";
 import quotePreviewScreenshot from "@assets/appstore_screenshots/07_quote_preview.png";
 
 // Construction-themed environmental mockups for toggle section
-import macbookMockup from "@assets/mockuuups-macbook-construction.png";
-import iphoneMockup from "@assets/mockuuups-iphone-construction.png";
+import macbookMockup from "@assets/mockuuups-construction-themed-macbook-pro-mockup_(1)_1772460087144.jpeg";
+import iphoneMockup from "@assets/mockuuups-construction-project-with-an-iphone-15-pro-mockup_(_1772460073460.jpeg";
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
