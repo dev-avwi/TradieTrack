@@ -211,9 +211,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   messagesContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
-    paddingBottom: 100,
+    paddingBottom: spacing.md,
   },
   dateSeparator: {
     alignItems: 'center',
@@ -1155,7 +1157,11 @@ export default function JobChatScreen() {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+          onContentSizeChange={() => {
+            if (allMessages.length > 5) {
+              scrollRef.current?.scrollToEnd({ animated: false });
+            }
+          }}
         >
           {renderMessages()}
         </ScrollView>
