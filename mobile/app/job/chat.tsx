@@ -581,53 +581,51 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'center',
   },
   documentsList: {
-    padding: spacing.md,
-    gap: spacing.sm,
+    maxHeight: 400,
+    paddingBottom: spacing.sm,
   },
   documentItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    padding: spacing.md,
-    borderRadius: radius.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     gap: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   documentIcon: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   documentInfo: {
     flex: 1,
-    gap: 4,
+    gap: 2,
   },
   documentTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.foreground,
-    letterSpacing: -0.2,
   },
   documentMeta: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.foreground,
-    marginTop: 2,
   },
   documentStatusBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.full,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
     marginTop: 2,
   },
   documentStatusText: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   documentSendBtn: {
@@ -1426,17 +1424,19 @@ export default function JobChatScreen() {
                     onPress={() => handleSelectDocument('Quote', quote.id, quote.number || `Q-${quote.id.slice(0,6)}`)}
                   >
                     <View style={[styles.documentIcon, { backgroundColor: colors.infoLight }]}>
-                      <Feather name="file-text" size={22} color={colors.info} />
+                      <Feather name="file-text" size={20} color={colors.info} />
                     </View>
                     <View style={styles.documentInfo}>
-                      <Text style={styles.documentTitle}>{quote.number || `Quote #${quote.id.slice(0,6)}`}</Text>
-                      <Text style={styles.documentMeta}>${parseFloat(String(quote.total || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-                      <View style={[styles.documentStatusBadge, { backgroundColor: statusColors.bg }]}>
-                        <Text style={[styles.documentStatusText, { color: statusColors.text }]}>{quote.status}</Text>
+                      <Text style={styles.documentTitle} numberOfLines={1}>{quote.number || `Quote #${quote.id.slice(0,6)}`}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                        <Text style={styles.documentMeta}>${parseFloat(String(quote.total || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                        <View style={[styles.documentStatusBadge, { backgroundColor: statusColors.bg }]}>
+                          <Text style={[styles.documentStatusText, { color: statusColors.text }]}>{(quote.status || '').toUpperCase()}</Text>
+                        </View>
                       </View>
                     </View>
                     <View style={styles.documentSendBtn}>
-                      <Feather name="send" size={16} color={colors.primary} />
+                      <Feather name="send" size={14} color={colors.primary} />
                     </View>
                   </TouchableOpacity>
                 );
@@ -1450,17 +1450,19 @@ export default function JobChatScreen() {
                     onPress={() => handleSelectDocument('Invoice', invoice.id, invoice.number || `INV-${invoice.id.slice(0,6)}`)}
                   >
                     <View style={[styles.documentIcon, { backgroundColor: colors.warningLight }]}>
-                      <Feather name="dollar-sign" size={22} color={colors.warning} />
+                      <Feather name="dollar-sign" size={20} color={colors.warning} />
                     </View>
                     <View style={styles.documentInfo}>
-                      <Text style={styles.documentTitle}>{invoice.number || `Invoice #${invoice.id.slice(0,6)}`}</Text>
-                      <Text style={styles.documentMeta}>${parseFloat(String(invoice.total || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-                      <View style={[styles.documentStatusBadge, { backgroundColor: statusColors.bg }]}>
-                        <Text style={[styles.documentStatusText, { color: statusColors.text }]}>{invoice.status}</Text>
+                      <Text style={styles.documentTitle} numberOfLines={1}>{invoice.number || `Invoice #${invoice.id.slice(0,6)}`}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                        <Text style={styles.documentMeta}>${parseFloat(String(invoice.total || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                        <View style={[styles.documentStatusBadge, { backgroundColor: statusColors.bg }]}>
+                          <Text style={[styles.documentStatusText, { color: statusColors.text }]}>{(invoice.status || '').toUpperCase()}</Text>
+                        </View>
                       </View>
                     </View>
                     <View style={styles.documentSendBtn}>
-                      <Feather name="send" size={16} color={colors.primary} />
+                      <Feather name="send" size={14} color={colors.primary} />
                     </View>
                   </TouchableOpacity>
                 );
