@@ -1,28 +1,78 @@
 import sgMail from '@sendgrid/mail';
 
-// Initialize SendGrid with API key - REQUIRED for production
-const initializeSendGrid = () => {
+// Replit SendGrid Connector - fetches fresh credentials on each use
+let connectorFromEmail: string | null = null;
+
+export async function getSendGridCredentials(): Promise<{ apiKey: string; email: string }> {
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  const xReplitToken = process.env.REPL_IDENTITY
+    ? 'repl ' + process.env.REPL_IDENTITY
+    : process.env.WEB_REPL_RENEWAL
+    ? 'depl ' + process.env.WEB_REPL_RENEWAL
+    : null;
+
+  if (hostname && xReplitToken) {
+    try {
+      const res = await fetch(
+        'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=sendgrid',
+        { headers: { 'Accept': 'application/json', 'X-Replit-Token': xReplitToken } }
+      );
+      const data = await res.json();
+      const conn = data.items?.[0];
+      if (conn?.settings?.api_key && conn?.settings?.from_email) {
+        connectorFromEmail = conn.settings.from_email;
+        return { apiKey: conn.settings.api_key, email: conn.settings.from_email };
+      }
+    } catch (e) {
+      console.warn('⚠️ SendGrid connector fetch failed, falling back to env var');
+    }
+  }
+
   if (process.env.SENDGRID_API_KEY) {
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    console.log('✅ SendGrid initialized for email sending');
+    return { apiKey: process.env.SENDGRID_API_KEY, email: '' };
+  }
+
+  throw new Error('SendGrid not configured - no connector or API key available');
+}
+
+async function ensureSendGridReady(): Promise<boolean> {
+  try {
+    const { apiKey } = await getSendGridCredentials();
+    sgMail.setApiKey(apiKey);
     return true;
+  } catch {
+    return false;
   }
-  // In production, this is a critical error
-  if (process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT) {
-    console.error('❌ CRITICAL: SendGrid API key not configured - emails will fail');
-  } else {
-    console.log('⚠️ SendGrid API key not found - development mode, emails will fail with clear errors');
+}
+
+export async function sendViaSendGrid(emailData: any): Promise<void> {
+  await ensureSendGridReady();
+  if (emailData.from?.email === PLATFORM_FROM_EMAIL && connectorFromEmail) {
+    emailData.from.email = connectorFromEmail;
   }
-  return false;
+  await sgMail.send(emailData);
+}
+
+const initializeSendGrid = () => {
+  ensureSendGridReady().then(ok => {
+    if (ok) {
+      console.log('✅ SendGrid initialized for email sending');
+    } else {
+      console.log('⚠️ SendGrid not configured - will attempt connector on first send');
+    }
+  });
+  return true;
 };
 
-// Initialize on module load
 const isSendGridConfigured = initializeSendGrid();
 
-// Fallback service that returns clear failure - NO silent success in production
 const mockEmailService = {
   send: async (emailData: any) => {
-    const errorMsg = 'Email service not configured - SendGrid API key required';
+    const ok = await ensureSendGridReady();
+    if (ok) {
+      return sgMail.send(emailData);
+    }
+    const errorMsg = 'Email service not configured - SendGrid connection required';
     console.error(`❌ EMAIL FAILED: ${errorMsg}`);
     console.error(`   Recipient: ${emailData.to}`);
     console.error(`   Subject: ${emailData.subject}`);
@@ -557,11 +607,7 @@ export const sendQuoteEmail = async (quote: any, client: any, business: any = {}
       }];
     }
     
-    if (sendGridInitialized) {
-      await sgMail.send(emailData);
-    } else {
-      await mockEmailService.send(emailData);
-    }
+    await sendViaSendGrid(emailData);
     
     return { success: true, message: 'Quote sent successfully' };
   } catch (error: any) {
@@ -596,7 +642,7 @@ export const sendInvoiceEmail = async (invoice: any, client: any, business: any 
     }
     
     if (sendGridInitialized) {
-      await sgMail.send(emailData);
+      await sendViaSendGrid(emailData);
     } else {
       await mockEmailService.send(emailData);
     }
@@ -641,7 +687,7 @@ export const sendReceiptEmail = async (invoice: any, client: any, business: any 
     }
     
     if (sendGridInitialized) {
-      await sgMail.send(emailData);
+      await sendViaSendGrid(emailData);
     } else {
       await mockEmailService.send(emailData);
     }
@@ -947,7 +993,7 @@ export const sendJobConfirmationEmail = async (job: any, client: any, business: 
     const emailData = createJobConfirmationEmail(job, client, business);
     
     if (sendGridInitialized) {
-      await sgMail.send(emailData);
+      await sendViaSendGrid(emailData);
     } else {
       await mockEmailService.send(emailData);
     }
@@ -1056,44 +1102,31 @@ export interface EmailResult {
 // Send a generic email - used by notification service
 export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => {
   const { to, subject, text, html, replyTo, fromName } = options;
-  const sendGridEnabled = initializeSendGrid();
   
-  // Generate plain text from HTML if not provided
+  const sendGridReady = await ensureSendGridReady();
+  if (!sendGridReady) {
+    const errorMsg = 'Email service not configured. Please set up SendGrid in Settings > Integrations.';
+    console.error(`❌ EMAIL NOT SENT: ${errorMsg}`);
+    return { success: false, error: errorMsg, notConfigured: true };
+  }
+  
   const plainText = text || (html ? html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : 'Please view this email in an HTML-capable email client.');
-  
-  // Use custom fromName if provided (e.g., business name), otherwise use platform default
   const senderName = fromName || PLATFORM_FROM_NAME;
+  const fromEmail = connectorFromEmail || PLATFORM_FROM_EMAIL;
   
   const emailData = {
     to,
-    from: {
-      email: PLATFORM_FROM_EMAIL,
-      name: senderName
-    },
+    from: { email: fromEmail, name: senderName },
     subject,
     text: plainText,
     html: html || text || plainText,
     replyTo: replyTo || undefined
   };
 
-  // Return honest error if SendGrid is not configured
-  if (!sendGridEnabled) {
-    const errorMsg = 'Email service not configured. Please set up SendGrid in Settings > Integrations.';
-    console.error(`❌ EMAIL NOT SENT: ${errorMsg}`);
-    console.error(`   Would have sent to: ${to}`);
-    console.error(`   Subject: ${subject}`);
-    return { 
-      success: false, 
-      error: errorMsg,
-      notConfigured: true 
-    };
-  }
-
   try {
-    await sgMail.send(emailData);
+    await sendViaSendGrid(emailData);
     return { success: true, messageId: `sg_${Date.now()}` };
   } catch (error: any) {
-    // Log detailed SendGrid error response
     if (error.response) {
       console.error('Email send error - Status:', error.code);
       console.error('Email send error - Body:', JSON.stringify(error.response.body, null, 2));
@@ -1171,7 +1204,7 @@ export const sendEmailVerificationEmail = async (user: any, verificationToken: s
 
   try {
     const emailData = createEmailVerificationEmail(user, verificationToken);
-    await sgMail.send(emailData);
+    await sendViaSendGrid(emailData);
     return { success: true, message: 'Verification email sent successfully' };
   } catch (error: any) {
     console.error('Error sending verification email:', error);
@@ -1252,7 +1285,7 @@ export const sendPasswordResetEmail = async (user: any, resetToken: string) => {
   };
 
   try {
-    await sgMail.send(emailData);
+    await sendViaSendGrid(emailData);
     console.log('Password reset email sent successfully to:', user.email);
     return { success: true, message: 'Password reset email sent successfully' };
   } catch (error: any) {
@@ -1937,13 +1970,12 @@ interface EmailWithAttachmentParams {
 }
 
 export async function sendEmailWithAttachment(params: EmailWithAttachmentParams): Promise<void> {
-  const sendGridInitialized = initializeSendGrid();
-  const emailService = sendGridInitialized ? sgMail : mockEmailService;
+  const fromEmail = connectorFromEmail || PLATFORM_FROM_EMAIL;
   
   const emailData: any = {
     to: params.to,
     from: {
-      email: PLATFORM_FROM_EMAIL,
+      email: fromEmail,
       name: params.fromName || PLATFORM_FROM_NAME
     },
     replyTo: params.replyTo || PLATFORM_REPLY_TO_EMAIL,
@@ -1951,7 +1983,6 @@ export async function sendEmailWithAttachment(params: EmailWithAttachmentParams)
     html: params.html,
   };
   
-  // Add attachments if provided
   if (params.attachments && params.attachments.length > 0) {
     emailData.attachments = params.attachments.map(att => ({
       content: att.content.toString('base64'),
@@ -1962,7 +1993,7 @@ export async function sendEmailWithAttachment(params: EmailWithAttachmentParams)
   }
   
   try {
-    await emailService.send(emailData);
+    await sendViaSendGrid(emailData);
     console.log('✅ Email with attachment sent to:', params.to);
   } catch (error: any) {
     console.error('❌ Failed to send email with attachment:', error);
