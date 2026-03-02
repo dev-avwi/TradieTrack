@@ -77,6 +77,7 @@ import Automations from "@/pages/Automations";
 import RecurringJobs from "@/pages/RecurringJobs";
 import ServiceRemindersPage from "@/pages/ServiceReminders";
 import EquipmentPage from "@/pages/Equipment";
+import InventoryPage from "@/pages/InventoryPage";
 import RebatesPage from "@/pages/Rebates";
 import Leads from "@/pages/Leads";
 import AIVisualizationPage from "@/pages/AIVisualization";
@@ -703,6 +704,10 @@ function Router({
       
       <Route path="/service-reminders" component={() => (
         <ServiceRemindersPage />
+      )} />
+      
+      <Route path="/inventory" component={() => (
+        <InventoryPage />
       )} />
       
       <Route path="/equipment" component={() => (

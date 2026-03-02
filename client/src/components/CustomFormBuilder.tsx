@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -11,14 +11,16 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -63,8 +65,21 @@ import {
   Eye,
   ChevronLeft,
   Upload,
+  Download,
+  GitBranch,
+  Inbox,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
 } from "lucide-react";
-import type { CustomForm } from "@shared/schema";
+import type { CustomForm, FormSubmission } from "@shared/schema";
+import { format } from "date-fns";
+
+export interface ConditionalLogicRule {
+  fieldId: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'not_empty' | 'is_empty';
+  value: string;
+}
 
 export interface FormField {
   id: string;
@@ -79,6 +94,11 @@ export interface FormField {
     min?: number;
     max?: number;
     pattern?: string;
+  };
+  conditionalLogic?: {
+    enabled: boolean;
+    action: 'show' | 'hide';
+    rules: ConditionalLogicRule[];
   };
 }
 
@@ -105,7 +125,23 @@ const FORM_TYPES = [
   { value: 'inspection', label: 'Inspection', icon: Search },
 ];
 
-function PreviewField({ field }: { field: FormField }) {
+function PreviewField({ field, allFields, formData }: { field: FormField; allFields?: FormField[]; formData?: Record<string, any> }) {
+  if (field.conditionalLogic?.enabled && allFields && formData) {
+    const rulesMet = field.conditionalLogic.rules.every(rule => {
+      const val = formData[rule.fieldId];
+      switch (rule.operator) {
+        case 'equals': return String(val) === rule.value;
+        case 'not_equals': return String(val) !== rule.value;
+        case 'contains': return String(val || '').includes(rule.value);
+        case 'not_empty': return val !== undefined && val !== null && val !== '';
+        case 'is_empty': return val === undefined || val === null || val === '';
+        default: return true;
+      }
+    });
+    const shouldShow = field.conditionalLogic.action === 'show' ? rulesMet : !rulesMet;
+    if (!shouldShow) return null;
+  }
+
   if (field.type === 'section') {
     return (
       <div className="border-b pb-2 pt-4">
@@ -188,9 +224,12 @@ function PreviewField({ field }: { field: FormField }) {
 
   return (
     <div className="space-y-2">
-      <Label className="text-sm">
+      <Label className="text-sm flex items-center gap-1.5">
         {field.label}
-        {field.required && <span className="text-destructive ml-1">*</span>}
+        {field.required && <span className="text-destructive">*</span>}
+        {field.conditionalLogic?.enabled && (
+          <GitBranch className="h-3 w-3 text-muted-foreground" />
+        )}
       </Label>
       {field.description && (
         <p className="text-xs text-muted-foreground">{field.description}</p>
@@ -208,7 +247,7 @@ function FormPreview({ fields, formName, requiresSignature }: {
   return (
     <div className="p-4 lg:p-6">
       <div className="max-w-md mx-auto">
-        <Card className="rounded-2xl overflow-hidden shadow-lg">
+        <Card className="rounded-2xl overflow-visible shadow-lg">
           <CardHeader className="pb-4">
             <h2 className="text-lg font-semibold">{formName || 'Untitled Form'}</h2>
           </CardHeader>
@@ -254,6 +293,8 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
   const [showFieldDialog, setShowFieldDialog] = useState(false);
   const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit');
   const [addFieldSheetOpen, setAddFieldSheetOpen] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const { data: existingForm, isLoading } = useQuery<CustomForm>({
     queryKey: ['/api/custom-forms', formId],
@@ -348,11 +389,25 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
   };
 
   const deleteField = (fieldId: string) => {
-    setFields(fields.filter(f => f.id !== fieldId));
+    setFields(prev => {
+      const updated = prev.filter(f => f.id !== fieldId);
+      return updated.map(f => {
+        if (f.conditionalLogic?.rules.some(r => r.fieldId === fieldId)) {
+          return {
+            ...f,
+            conditionalLogic: {
+              ...f.conditionalLogic,
+              rules: f.conditionalLogic!.rules.filter(r => r.fieldId !== fieldId),
+            },
+          };
+        }
+        return f;
+      });
+    });
   };
 
   const duplicateField = (field: FormField) => {
-    const duplicate = { ...field, id: generateId(), label: `${field.label} (Copy)` };
+    const duplicate = { ...field, id: generateId(), label: `${field.label} (Copy)`, conditionalLogic: undefined };
     const index = fields.findIndex(f => f.id === field.id);
     const newFields = [...fields];
     newFields.splice(index + 1, 0, duplicate);
@@ -370,6 +425,35 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
     setFields(newFields);
   };
 
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (dragIndex === null || dragIndex === dropIndex) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const newFields = [...fields];
+    const [moved] = newFields.splice(dragIndex, 1);
+    newFields.splice(dropIndex, 0, moved);
+    setFields(newFields);
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
   const getFieldIcon = (type: FormField['type']) => {
     const fieldType = FIELD_TYPES.find(f => f.type === type);
     return fieldType ? fieldType.icon : Type;
@@ -385,7 +469,6 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Tab switcher visible below xl breakpoint (1280px) */}
       <div className="xl:hidden border-b-2 bg-card sticky top-0 z-10 shadow-sm">
         <Tabs value={mobileView} onValueChange={(v) => setMobileView(v as 'edit' | 'preview')} className="w-full">
           <TabsList className="grid w-full grid-cols-2 gap-1 p-1.5 bg-muted/60">
@@ -402,7 +485,6 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Edit panel: visible when editing (below xl) or always on xl+ */}
         <div className={`flex-1 overflow-auto p-4 xl:p-6 ${mobileView === 'preview' ? 'hidden xl:block' : ''}`}>
           <div className="space-y-6 max-w-3xl">
             <div className="flex items-center justify-between gap-4">
@@ -420,7 +502,7 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
               </Badge>
             </div>
 
-            <Card className="rounded-2xl overflow-hidden">
+            <Card className="rounded-2xl overflow-visible">
               <CardContent className="p-4 space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <FileText className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
@@ -483,7 +565,7 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl overflow-hidden">
+            <Card className="rounded-2xl overflow-visible">
               <CardContent className="p-4 space-y-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2 text-sm font-medium">
@@ -537,17 +619,25 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
                   <div className="space-y-2">
                     {fields.map((field, index) => {
                       const FieldIcon = getFieldIcon(field.type);
+                      const isDragOver = dragOverIndex === index && dragIndex !== index;
                       return (
                         <div
                           key={field.id}
-                          className="flex items-center gap-3 p-3 border rounded-xl bg-card hover-elevate cursor-pointer"
+                          draggable
+                          onDragStart={() => handleDragStart(index)}
+                          onDragOver={(e) => handleDragOver(e, index)}
+                          onDrop={(e) => handleDrop(e, index)}
+                          onDragEnd={handleDragEnd}
+                          className={`flex items-center gap-3 p-3 border rounded-xl bg-card hover-elevate cursor-pointer transition-all ${
+                            dragIndex === index ? 'opacity-50' : ''
+                          } ${isDragOver ? 'border-primary border-2' : ''}`}
                           onClick={() => {
                             setEditingField(field);
                             setShowFieldDialog(true);
                           }}
                           data-testid={`field-item-${field.id}`}
                         >
-                          <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                          <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0 cursor-grab active:cursor-grabbing" />
                           <div 
                             className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0"
                             style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}
@@ -559,6 +649,12 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
                               <span className="font-medium truncate">{field.label}</span>
                               {field.required && (
                                 <Badge variant="secondary" className="text-xs shrink-0">Required</Badge>
+                              )}
+                              {field.conditionalLogic?.enabled && (
+                                <Badge variant="outline" className="text-xs shrink-0">
+                                  <GitBranch className="h-3 w-3 mr-1" />
+                                  Conditional
+                                </Badge>
                               )}
                             </div>
                             <span className="text-sm text-muted-foreground capitalize">{field.type}</span>
@@ -597,7 +693,7 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
             </Card>
 
             <div className="hidden xl:block">
-              <Card className="rounded-2xl overflow-hidden">
+              <Card className="rounded-2xl overflow-visible">
                 <CardContent className="p-4 space-y-4">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <Plus className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
@@ -643,7 +739,6 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
           </div>
         </div>
 
-        {/* Preview panel: visible when previewing (below xl) or always on xl+ */}
         <div className={`xl:w-[400px] border-l bg-muted/30 overflow-auto ${mobileView === 'edit' ? 'hidden xl:block' : ''}`}>
           <FormPreview fields={fields} formName={formName} requiresSignature={requiresSignature} />
         </div>
@@ -651,6 +746,7 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
 
       <FieldEditDialog
         field={editingField}
+        allFields={fields}
         open={showFieldDialog}
         onOpenChange={setShowFieldDialog}
         onSave={updateField}
@@ -661,22 +757,26 @@ export function FormBuilder({ formId, onBack }: FormBuilderProps) {
 
 interface FieldEditDialogProps {
   field: FormField | null;
+  allFields: FormField[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (field: FormField) => void;
 }
 
-function FieldEditDialog({ field, open, onOpenChange, onSave }: FieldEditDialogProps) {
+function FieldEditDialog({ field, allFields, open, onOpenChange, onSave }: FieldEditDialogProps) {
   const [editedField, setEditedField] = useState<FormField | null>(null);
   const [newOption, setNewOption] = useState("");
 
   useEffect(() => {
     if (field) {
-      // Deep clone to avoid mutating original field data
       setEditedField({ 
         ...field, 
         options: field.options ? [...field.options] : undefined,
         validation: field.validation ? { ...field.validation } : undefined,
+        conditionalLogic: field.conditionalLogic ? {
+          ...field.conditionalLogic,
+          rules: field.conditionalLogic.rules.map(r => ({ ...r })),
+        } : undefined,
       });
     }
   }, [field]);
@@ -713,13 +813,71 @@ function FieldEditDialog({ field, open, onOpenChange, onSave }: FieldEditDialogP
     }
   };
 
+  const otherFields = allFields.filter(f => f.id !== editedField?.id && f.type !== 'section');
+
+  const toggleConditionalLogic = (enabled: boolean) => {
+    if (!editedField) return;
+    if (enabled) {
+      setEditedField({
+        ...editedField,
+        conditionalLogic: {
+          enabled: true,
+          action: 'show',
+          rules: [{ fieldId: otherFields[0]?.id || '', operator: 'equals', value: '' }],
+        },
+      });
+    } else {
+      setEditedField({
+        ...editedField,
+        conditionalLogic: undefined,
+      });
+    }
+  };
+
+  const updateConditionRule = (ruleIndex: number, updates: Partial<ConditionalLogicRule>) => {
+    if (!editedField?.conditionalLogic) return;
+    const newRules = [...editedField.conditionalLogic.rules];
+    newRules[ruleIndex] = { ...newRules[ruleIndex], ...updates };
+    setEditedField({
+      ...editedField,
+      conditionalLogic: { ...editedField.conditionalLogic, rules: newRules },
+    });
+  };
+
+  const addConditionRule = () => {
+    if (!editedField?.conditionalLogic) return;
+    setEditedField({
+      ...editedField,
+      conditionalLogic: {
+        ...editedField.conditionalLogic,
+        rules: [
+          ...editedField.conditionalLogic.rules,
+          { fieldId: otherFields[0]?.id || '', operator: 'equals' as const, value: '' },
+        ],
+      },
+    });
+  };
+
+  const removeConditionRule = (ruleIndex: number) => {
+    if (!editedField?.conditionalLogic) return;
+    const newRules = editedField.conditionalLogic.rules.filter((_, i) => i !== ruleIndex);
+    if (newRules.length === 0) {
+      setEditedField({ ...editedField, conditionalLogic: undefined });
+    } else {
+      setEditedField({
+        ...editedField,
+        conditionalLogic: { ...editedField.conditionalLogic, rules: newRules },
+      });
+    }
+  };
+
   if (!editedField) return null;
 
   const hasOptions = editedField.type === 'radio' || editedField.type === 'select';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl">
+      <DialogContent className="sm:max-w-lg rounded-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Field</DialogTitle>
         </DialogHeader>
@@ -812,6 +970,111 @@ function FieldEditDialog({ field, open, onOpenChange, onSave }: FieldEditDialogP
               />
             </div>
           )}
+
+          {editedField.type !== 'section' && otherFields.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <GitBranch className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                    <Label>Conditional Logic</Label>
+                  </div>
+                  <Switch
+                    checked={!!editedField.conditionalLogic?.enabled}
+                    onCheckedChange={toggleConditionalLogic}
+                    data-testid="switch-conditional-logic"
+                  />
+                </div>
+
+                {editedField.conditionalLogic?.enabled && (
+                  <div className="space-y-3 p-3 bg-muted/30 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={editedField.conditionalLogic.action}
+                        onValueChange={(v) => setEditedField({
+                          ...editedField,
+                          conditionalLogic: { ...editedField.conditionalLogic!, action: v as 'show' | 'hide' },
+                        })}
+                      >
+                        <SelectTrigger className="w-24">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="show">Show</SelectItem>
+                          <SelectItem value="hide">Hide</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-sm text-muted-foreground">this field when:</span>
+                    </div>
+
+                    {editedField.conditionalLogic.rules.map((rule, ruleIdx) => (
+                      <div key={ruleIdx} className="space-y-2 p-3 border rounded-lg bg-card">
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={rule.fieldId}
+                            onValueChange={(v) => updateConditionRule(ruleIdx, { fieldId: v })}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Select field" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {otherFields.map(f => (
+                                <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeConditionRule(ruleIdx)}
+                            className="shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={rule.operator}
+                            onValueChange={(v) => updateConditionRule(ruleIdx, { operator: v as ConditionalLogicRule['operator'] })}
+                          >
+                            <SelectTrigger className="w-36">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="equals">Equals</SelectItem>
+                              <SelectItem value="not_equals">Not Equals</SelectItem>
+                              <SelectItem value="contains">Contains</SelectItem>
+                              <SelectItem value="not_empty">Not Empty</SelectItem>
+                              <SelectItem value="is_empty">Is Empty</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {rule.operator !== 'not_empty' && rule.operator !== 'is_empty' && (
+                            <Input
+                              placeholder="Value"
+                              value={rule.value}
+                              onChange={(e) => updateConditionRule(ruleIdx, { value: e.target.value })}
+                              className="flex-1"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={addConditionRule}
+                      className="w-full rounded-lg"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Condition
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Cancel</Button>
@@ -822,16 +1085,155 @@ function FieldEditDialog({ field, open, onOpenChange, onSave }: FieldEditDialogP
   );
 }
 
+function SubmissionsViewer({ formId, formName, fields }: { formId: string; formName: string; fields: FormField[] }) {
+  const { data: submissions, isLoading } = useQuery<FormSubmission[]>({
+    queryKey: ['/api/custom-forms', formId, 'submissions'],
+  });
+
+  const [selectedSubmission, setSelectedSubmission] = useState<FormSubmission | null>(null);
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'approved': return <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />;
+      case 'rejected': return <XCircle className="h-4 w-4 text-destructive" />;
+      default: return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const exportSubmissions = () => {
+    if (!submissions || submissions.length === 0) return;
+
+    const headers = ['Submitted At', 'Status', ...fields.filter(f => f.type !== 'section').map(f => f.label)];
+    const rows = submissions.map(sub => {
+      const data = (sub.submissionData as Record<string, any>) || {};
+      return [
+        sub.submittedAt ? format(new Date(sub.submittedAt), 'yyyy-MM-dd HH:mm') : '',
+        sub.status || 'submitted',
+        ...fields.filter(f => f.type !== 'section').map(f => {
+          const val = data[f.id];
+          if (val === undefined || val === null) return '';
+          if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+          if (typeof val === 'string' && val.startsWith('data:')) return '[file]';
+          return String(val);
+        }),
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${formName.replace(/[^a-z0-9]/gi, '_')}_submissions.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!submissions || submissions.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Inbox className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+        <p className="text-muted-foreground">No submissions yet</p>
+        <p className="text-sm text-muted-foreground">Submissions will appear here when forms are filled out</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-sm text-muted-foreground">{submissions.length} submission{submissions.length !== 1 ? 's' : ''}</p>
+        <Button variant="outline" size="sm" onClick={exportSubmissions} className="rounded-xl">
+          <Download className="h-4 w-4 mr-1" />
+          Export CSV
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        {submissions.map(sub => (
+          <Card
+            key={sub.id}
+            className="p-3 hover-elevate cursor-pointer"
+            onClick={() => setSelectedSubmission(sub)}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                {getStatusIcon(sub.status || 'submitted')}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">
+                    {sub.submittedAt ? format(new Date(sub.submittedAt), 'dd MMM yyyy, h:mm a') : 'Unknown date'}
+                  </p>
+                  <p className="text-xs text-muted-foreground capitalize">{sub.status || 'submitted'}</p>
+                </div>
+              </div>
+              <Badge variant="secondary" className="text-xs capitalize">{sub.status || 'submitted'}</Badge>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={!!selectedSubmission} onOpenChange={() => setSelectedSubmission(null)}>
+        <DialogContent className="sm:max-w-lg rounded-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Submission Details</DialogTitle>
+            <DialogDescription>
+              {selectedSubmission?.submittedAt ? format(new Date(selectedSubmission.submittedAt), 'dd MMMM yyyy, h:mm a') : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedSubmission && (
+            <div className="space-y-4 py-4">
+              {fields.filter(f => f.type !== 'section').map(field => {
+                const data = (selectedSubmission.submissionData as Record<string, any>) || {};
+                const value = data[field.id];
+                return (
+                  <div key={field.id} className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{field.label}</Label>
+                    <div className="text-sm">
+                      {value === undefined || value === null || value === '' ? (
+                        <span className="text-muted-foreground italic">No response</span>
+                      ) : typeof value === 'boolean' ? (
+                        value ? 'Yes' : 'No'
+                      ) : typeof value === 'string' && value.startsWith('data:image') ? (
+                        <img src={value} alt={field.label} className="max-w-full h-auto rounded-lg max-h-40" />
+                      ) : (
+                        String(value)
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {selectedSubmission.notes && (
+                <div className="space-y-1 border-t pt-3">
+                  <Label className="text-xs text-muted-foreground">Review Notes</Label>
+                  <p className="text-sm">{selectedSubmission.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 interface FormListProps {
   onCreateNew: () => void;
   onEdit: (formId: string) => void;
+  onViewSubmissions?: (formId: string) => void;
   hideHeader?: boolean;
 }
 
-export function FormList({ onCreateNew, onEdit, hideHeader = false }: FormListProps) {
+export function FormList({ onCreateNew, onEdit, onViewSubmissions, hideHeader = false }: FormListProps) {
   const { toast } = useToast();
   
-  // Get user's trade type for filtering
   const { data: user } = useQuery<{ tradeType?: string }>({
     queryKey: ['/api/auth/me'],
   });
@@ -905,6 +1307,7 @@ export function FormList({ onCreateNew, onEdit, hideHeader = false }: FormListPr
           {forms.map(form => {
             const Icon = getFormTypeIcon(form.formType || 'general');
             const fieldCount = Array.isArray(form.fields) ? form.fields.length : 0;
+            const hasConditionalLogic = Array.isArray(form.fields) && (form.fields as FormField[]).some(f => f.conditionalLogic?.enabled);
             return (
               <Card 
                 key={form.id} 
@@ -927,8 +1330,15 @@ export function FormList({ onCreateNew, onEdit, hideHeader = false }: FormListPr
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(form.id); }}>
+                        <Edit2 className="h-4 w-4 mr-2" />
                         Edit Form
                       </DropdownMenuItem>
+                      {onViewSubmissions && (
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onViewSubmissions(form.id); }}>
+                          <Inbox className="h-4 w-4 mr-2" />
+                          View Submissions
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem 
                         onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(form.id); }}
                         className="text-destructive"
@@ -953,6 +1363,15 @@ export function FormList({ onCreateNew, onEdit, hideHeader = false }: FormListPr
                         Sign
                       </Badge>
                     )}
+                    {hasConditionalLogic && (
+                      <Badge variant="outline">
+                        <GitBranch className="h-3 w-3 mr-1" />
+                        Logic
+                      </Badge>
+                    )}
+                    {!form.isActive && (
+                      <Badge variant="destructive">Inactive</Badge>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -969,17 +1388,28 @@ interface CustomFormsPageProps {
 }
 
 export function CustomFormsPage({ hideHeader = false }: CustomFormsPageProps) {
-  const [view, setView] = useState<'list' | 'create' | 'edit'>('list');
+  const [view, setView] = useState<'list' | 'create' | 'edit' | 'submissions'>('list');
   const [editingFormId, setEditingFormId] = useState<string | null>(null);
+  const [submissionsFormId, setSubmissionsFormId] = useState<string | null>(null);
+
+  const { data: forms } = useQuery<CustomForm[]>({
+    queryKey: ['/api/custom-forms'],
+  });
 
   const handleEdit = (formId: string) => {
     setEditingFormId(formId);
     setView('edit');
   };
 
+  const handleViewSubmissions = (formId: string) => {
+    setSubmissionsFormId(formId);
+    setView('submissions');
+  };
+
   const handleBack = () => {
     setView('list');
     setEditingFormId(null);
+    setSubmissionsFormId(null);
   };
 
   if (view === 'create') {
@@ -990,5 +1420,34 @@ export function CustomFormsPage({ hideHeader = false }: CustomFormsPageProps) {
     return <FormBuilder formId={editingFormId} onBack={handleBack} />;
   }
 
-  return <FormList onCreateNew={() => setView('create')} onEdit={handleEdit} hideHeader={hideHeader} />;
+  if (view === 'submissions' && submissionsFormId) {
+    const form = forms?.find(f => f.id === submissionsFormId);
+    return (
+      <div className="space-y-6 p-4 xl:p-6">
+        <div className="flex items-center gap-3">
+          <Button type="button" variant="ghost" size="icon" onClick={handleBack} className="rounded-xl">
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-semibold">{form?.name || 'Form'} Submissions</h1>
+            <p className="text-sm text-muted-foreground">View and export form responses</p>
+          </div>
+        </div>
+        <SubmissionsViewer 
+          formId={submissionsFormId} 
+          formName={form?.name || 'Form'} 
+          fields={(form?.fields as FormField[]) || []} 
+        />
+      </div>
+    );
+  }
+
+  return (
+    <FormList 
+      onCreateNew={() => setView('create')} 
+      onEdit={handleEdit} 
+      onViewSubmissions={handleViewSubmissions}
+      hideHeader={hideHeader} 
+    />
+  );
 }

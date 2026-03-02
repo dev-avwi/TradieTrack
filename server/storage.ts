@@ -334,6 +334,15 @@ import {
   paymentRecords,
   type PaymentRecord,
   type InsertPaymentRecord,
+  suppliers,
+  purchaseOrders,
+  purchaseOrderItems,
+  type Supplier,
+  type InsertSupplier,
+  type PurchaseOrder,
+  type InsertPurchaseOrder,
+  type PurchaseOrderItem,
+  type InsertPurchaseOrderItem,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -667,6 +676,21 @@ export interface IStorage {
   
   getInventoryTransactions(userId: string, itemId?: string): Promise<InventoryTransaction[]>;
   createInventoryTransaction(transaction: InsertInventoryTransaction & { userId: string }): Promise<InventoryTransaction>;
+  
+  getSuppliers(userId: string): Promise<Supplier[]>;
+  getSupplier(id: string, userId: string): Promise<Supplier | undefined>;
+  createSupplier(supplier: InsertSupplier & { userId: string }): Promise<Supplier>;
+  updateSupplier(id: string, userId: string, supplier: Partial<InsertSupplier>): Promise<Supplier | undefined>;
+  deleteSupplier(id: string, userId: string): Promise<boolean>;
+  
+  getPurchaseOrders(userId: string): Promise<PurchaseOrder[]>;
+  getPurchaseOrder(id: string, userId: string): Promise<PurchaseOrder | undefined>;
+  createPurchaseOrder(po: InsertPurchaseOrder & { userId: string }): Promise<PurchaseOrder>;
+  updatePurchaseOrder(id: string, userId: string, po: Partial<InsertPurchaseOrder>): Promise<PurchaseOrder | undefined>;
+  deletePurchaseOrder(id: string, userId: string): Promise<boolean>;
+  
+  getPurchaseOrderItems(poId: string): Promise<PurchaseOrderItem[]>;
+  createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem>;
   
   // Team Management
   getUserRoles(): Promise<UserRole[]>;
@@ -3461,6 +3485,81 @@ export class PostgresStorage implements IStorage {
 
   async createInventoryTransaction(transaction: InsertInventoryTransaction & { userId: string }): Promise<InventoryTransaction> {
     const result = await db.insert(inventoryTransactions).values(transaction).returning();
+    return result[0];
+  }
+
+  async getSuppliers(userId: string): Promise<Supplier[]> {
+    return await db.select().from(suppliers)
+      .where(eq(suppliers.userId, userId))
+      .orderBy(suppliers.name);
+  }
+
+  async getSupplier(id: string, userId: string): Promise<Supplier | undefined> {
+    const result = await db.select().from(suppliers)
+      .where(and(eq(suppliers.id, id), eq(suppliers.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createSupplier(supplier: InsertSupplier & { userId: string }): Promise<Supplier> {
+    const result = await db.insert(suppliers).values(supplier).returning();
+    return result[0];
+  }
+
+  async updateSupplier(id: string, userId: string, supplier: Partial<InsertSupplier>): Promise<Supplier | undefined> {
+    const result = await db.update(suppliers)
+      .set({ ...supplier, updatedAt: new Date() })
+      .where(and(eq(suppliers.id, id), eq(suppliers.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async deleteSupplier(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(suppliers)
+      .where(and(eq(suppliers.id, id), eq(suppliers.userId, userId)));
+    return result.rowCount > 0;
+  }
+
+  async getPurchaseOrders(userId: string): Promise<PurchaseOrder[]> {
+    return await db.select().from(purchaseOrders)
+      .where(eq(purchaseOrders.userId, userId))
+      .orderBy(desc(purchaseOrders.orderDate));
+  }
+
+  async getPurchaseOrder(id: string, userId: string): Promise<PurchaseOrder | undefined> {
+    const result = await db.select().from(purchaseOrders)
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createPurchaseOrder(po: InsertPurchaseOrder & { userId: string }): Promise<PurchaseOrder> {
+    const result = await db.insert(purchaseOrders).values(po).returning();
+    return result[0];
+  }
+
+  async updatePurchaseOrder(id: string, userId: string, po: Partial<InsertPurchaseOrder>): Promise<PurchaseOrder | undefined> {
+    const result = await db.update(purchaseOrders)
+      .set({ ...po, updatedAt: new Date() })
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async deletePurchaseOrder(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(purchaseOrders)
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.userId, userId)));
+    return result.rowCount > 0;
+  }
+
+  async getPurchaseOrderItems(poId: string): Promise<PurchaseOrderItem[]> {
+    return await db.select().from(purchaseOrderItems)
+      .where(eq(purchaseOrderItems.poId, poId))
+      .orderBy(purchaseOrderItems.id);
+  }
+
+  async createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem> {
+    const result = await db.insert(purchaseOrderItems).values(item).returning();
     return result[0];
   }
 
