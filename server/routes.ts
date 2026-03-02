@@ -30990,9 +30990,9 @@ Respond with JSON in this format:
   app.get("/api/sms/status", requireAuth, async (req: any, res) => {
     try {
       const { getTwilioStatus } = await import('./services/smsService');
-      const { isTwilioAvailable } = await import('./twilioClient');
+      const { checkTwilioAvailability } = await import('./twilioClient');
       const basicStatus = getTwilioStatus();
-      const availability = await isTwilioAvailable();
+      const availability = await checkTwilioAvailability();
       
       // Return comprehensive status for UI
       res.json({
