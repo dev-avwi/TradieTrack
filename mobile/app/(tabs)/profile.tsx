@@ -22,13 +22,13 @@ import {
 } from '../../src/lib/navigation-config';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 
-const categoryMeta: Record<string, { icon: keyof typeof Feather.glyphMap; label: string; colorKey: string }> = {
-  featured: { icon: 'zap', label: 'Featured', colorKey: 'warning' },
-  work: { icon: 'briefcase', label: 'Work', colorKey: 'primary' },
-  money: { icon: 'dollar-sign', label: 'Money', colorKey: 'success' },
-  team: { icon: 'users', label: 'Team', colorKey: 'info' },
-  communication: { icon: 'message-circle', label: 'Comms', colorKey: 'info' },
-  settings: { icon: 'settings', label: 'Settings', colorKey: 'muted' },
+const categoryMeta: Record<string, { icon: keyof typeof Feather.glyphMap; label: string; colorKey: string; description?: string }> = {
+  featured: { icon: 'zap', label: 'Featured', colorKey: 'warning', description: 'Smart tools & automation' },
+  work: { icon: 'briefcase', label: 'Work', colorKey: 'primary', description: 'Jobs, scheduling & tracking' },
+  money: { icon: 'dollar-sign', label: 'Money', colorKey: 'success', description: 'Quotes, invoices & payments' },
+  team: { icon: 'users', label: 'Team', colorKey: 'info', description: 'Manage your crew' },
+  communication: { icon: 'message-circle', label: 'Comms', colorKey: 'info', description: 'Chat & messaging' },
+  settings: { icon: 'settings', label: 'Settings', colorKey: 'muted', description: 'Preferences & config' },
   legal: { icon: 'shield', label: 'Legal', colorKey: 'muted' },
   account: { icon: 'user', label: 'Account', colorKey: 'muted' },
   admin: { icon: 'shield', label: 'Admin', colorKey: 'destructive' },
@@ -163,24 +163,30 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
     marginBottom: spacing.sm,
     paddingLeft: spacing.xs,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
   },
   sectionHeaderIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: radius.md,
+    width: 34,
+    height: 34,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  sectionHeaderTextContainer: {
+    flex: 1,
+  },
   sectionTitle: {
-    ...typography.body,
+    ...typography.subtitle,
     fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
     color: colors.foreground,
+  },
+  sectionDescription: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 1,
   },
   sectionCount: {
     ...typography.captionSmall,
@@ -191,7 +197,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: 2,
     borderRadius: radius.full,
     overflow: 'hidden',
-    marginLeft: 'auto' as any,
   },
   section: {
     backgroundColor: colors.card,
@@ -205,6 +210,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   featuredSection: {
     borderColor: colors.warning,
     borderWidth: 1.5,
+    backgroundColor: colors.isDark 
+      ? `${colors.warningLight}` 
+      : colors.card,
   },
   menuItem: {
     flexDirection: 'row',
@@ -482,8 +490,11 @@ export default function MoreScreen() {
     actions.push({ icon: 'plus-circle', label: 'New Job', route: '/more/create-job', bg: colors.primaryLight, fg: colors.primary });
     actions.push({ icon: 'file-text', label: 'Invoice', route: '/more/invoices', bg: colors.successLight, fg: colors.success });
     actions.push({ icon: 'clock', label: 'Time', route: '/more/time-tracking', bg: colors.infoLight, fg: colors.info });
+    if (isOwner || isManager) {
+      actions.push({ icon: 'layout', label: 'Dispatch', route: '/more/dispatch-board', bg: colors.warningLight, fg: colors.warning });
+    }
     return actions;
-  }, [isStaff, colors]);
+  }, [isStaff, isOwner, isManager, colors]);
 
   const renderSectionHeader = (categoryKey: string) => {
     if (activeCategory !== 'all') return null;
@@ -495,9 +506,14 @@ export default function MoreScreen() {
     return (
       <View style={styles.sectionHeaderRow}>
         <View style={[styles.sectionHeaderIcon, { backgroundColor: colorVals.bg }]}>
-          <Feather name={meta.icon} size={15} color={colorVals.fg} />
+          <Feather name={meta.icon} size={16} color={colorVals.fg} />
         </View>
-        <Text style={[styles.sectionTitle, { color: colorVals.fg }]}>{meta.label}</Text>
+        <View style={styles.sectionHeaderTextContainer}>
+          <Text style={styles.sectionTitle}>{meta.label}</Text>
+          {meta.description && (
+            <Text style={styles.sectionDescription}>{meta.description}</Text>
+          )}
+        </View>
         <Text style={styles.sectionCount}>{itemCount}</Text>
       </View>
     );
@@ -513,7 +529,11 @@ export default function MoreScreen() {
         {renderSectionHeader(categoryKey)}
         <View style={[styles.section, isFeatured && styles.featuredSection]}>
           {items.map((item, index) => {
-            const colorValues = getColorValues(item.color, colors);
+            const isDispatch = item.url === '/more/dispatch-board';
+            const catMeta = categoryMeta[categoryKey];
+            const categoryColor = catMeta?.colorKey || 'primary';
+            const effectiveColor = isDispatch ? 'info' : (item.color !== 'primary' ? item.color : categoryColor) || 'primary';
+            const colorValues = getColorValues(effectiveColor, colors);
             const badgeColorValues = getBadgeColors(item.color, colors);
             const isLast = index === items.length - 1;
             
@@ -525,9 +545,9 @@ export default function MoreScreen() {
                 iconColor={colorValues.fg}
                 title={item.title}
                 subtitle={item.description}
-                badge={item.badge}
-                badgeBg={badgeColorValues.bg}
-                badgeColor={badgeColorValues.fg}
+                badge={isDispatch ? 'Key' : item.badge}
+                badgeBg={isDispatch ? colors.infoLight : badgeColorValues.bg}
+                badgeColor={isDispatch ? colors.info : badgeColorValues.fg}
                 onPress={() => handleNavItemPress(item)}
                 isLast={isLast}
               />

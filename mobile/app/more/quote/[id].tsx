@@ -1454,7 +1454,9 @@ ${businessName}`;
             </View>
           ) : (
             <View style={styles.emptyStateCard}>
-              <Feather name="inbox" size={32} color={colors.mutedForeground} />
+              <View style={styles.emptyStateIcon}>
+                <Feather name="inbox" size={24} color={colors.mutedForeground} />
+              </View>
               <Text style={styles.emptyStateText}>No line items added</Text>
               <Text style={styles.emptyStateSubtext}>Line items will appear here once added to the quote</Text>
             </View>
@@ -1506,7 +1508,9 @@ ${businessName}`;
                   By signing below, I accept this quote and authorise the work to proceed in accordance with the terms and conditions above.
                 </Text>
                 <View style={styles.signaturePlaceholder}>
-                  <Feather name="edit-3" size={16} color={colors.mutedForeground} />
+                  <View style={styles.signaturePlaceholderIcon}>
+                    <Feather name="edit-3" size={18} color={colors.mutedForeground} />
+                  </View>
                   <Text style={styles.signaturePlaceholderText}>Client signature area</Text>
                 </View>
               </View>
@@ -2005,19 +2009,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 36,
     fontWeight: '700',
     color: colors.foreground,
+    letterSpacing: -0.5,
   },
   totalLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.mutedForeground,
     marginTop: 4,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
   },
   quickActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
     marginBottom: 24,
   },
   quickAction: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '30%',
+    minWidth: 60,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2381,19 +2391,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center' as const,
-    gap: 8,
+    gap: 10,
+  },
+  emptyStateIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.muted,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    marginBottom: 4,
   },
   emptyStateText: {
     fontSize: 15,
     fontWeight: '600' as const,
     color: colors.foreground,
-    marginTop: 4,
   },
   emptyStateSubtext: {
     fontSize: 13,
     color: colors.mutedForeground,
     textAlign: 'center' as const,
     lineHeight: 18,
+    maxWidth: 240,
   },
   acceptanceCard: {
     backgroundColor: colors.card,
@@ -2412,14 +2431,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   signaturePlaceholder: {
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    gap: 8,
-    paddingVertical: 28,
+    gap: 10,
+    paddingVertical: 32,
     borderWidth: 1.5,
     borderColor: colors.border,
     borderStyle: 'dashed' as const,
     backgroundColor: colors.background,
     borderRadius: 10,
     marginTop: 8,
+  },
+  signaturePlaceholderIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.muted,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   signaturePlaceholderText: {
     fontSize: 13,
@@ -2445,24 +2472,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   signatureImageContainer: {
     marginBottom: 12,
+    backgroundColor: colors.background,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   signatureLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.successDark,
-    marginBottom: 8,
+    marginBottom: 10,
     textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     fontWeight: '600' as const,
   },
   signatureImage: {
     width: '100%' as const,
     height: 80,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   acceptedInfo: {
     fontSize: 13,
     color: colors.successDark,
+    marginTop: 4,
   },
   footerSection: {
     marginTop: 8,

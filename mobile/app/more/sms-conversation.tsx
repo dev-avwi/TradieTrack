@@ -91,7 +91,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   messagesContent: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    paddingBottom: 100,
+    paddingBottom: spacing['4xl'] * 2 + spacing.lg,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -133,17 +133,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '80%',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radius['2xl'],
   },
   messageBubbleOutbound: {
     backgroundColor: colors.primary,
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: radius.xs,
   },
   messageBubbleInbound: {
     backgroundColor: colors.muted,
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: radius.xs,
   },
   messageText: {
     ...typography.body,

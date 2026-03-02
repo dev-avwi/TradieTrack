@@ -350,6 +350,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   conversationAvatarText: {
     ...typography.button,
+    color: colors.primary,
+  },
+  conversationAvatarTextTeam: {
+    color: colors.info,
+  },
+  conversationAvatarTextClient: {
+    color: colors.success,
+  },
+  conversationAvatarTextDirect: {
+    color: colors.info,
+  },
+  conversationAvatarTextMember: {
     color: colors.foreground,
   },
   conversationContent: {
@@ -1253,7 +1265,7 @@ export default function ChatHubScreen() {
                 <Text style={styles.sectionCount}>{conversations.length} {conversations.length === 1 ? 'conversation' : 'conversations'}</Text>
               </View>
               {conversations.map(renderConversation)}
-              <View style={{ height: 100, paddingBottom: 100 }} />
+              <View style={{ height: spacing['4xl'] * 2 + spacing.lg }} />
             </>
           )}
         </ScrollView>

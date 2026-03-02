@@ -1489,6 +1489,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.xs,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    gap: 2,
     ...shadows.sm,
   },
   tab: {
@@ -1498,8 +1499,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.sm,
     borderRadius: radius.lg,
-    gap: 3,
-    minHeight: 48,
+    gap: 4,
+    minHeight: 52,
   },
   tabActive: {
     backgroundColor: colors.primary,
@@ -1511,10 +1512,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: colors.mutedForeground,
-    letterSpacing: 0.1,
+    letterSpacing: 0.2,
   },
   tabLabelActive: {
     color: colors.primaryForeground,
@@ -5636,8 +5637,8 @@ export default function JobDetailScreen() {
             </View>
           ) : (
             <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
-              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
-                <Feather name="edit-3" size={24} color={colors.mutedForeground} />
+              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+                <Feather name="edit-3" size={28} color={colors.mutedForeground} />
               </View>
               <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.xs }}>
                 No signatures yet
@@ -5912,8 +5913,8 @@ export default function JobDetailScreen() {
           </View>
         ) : (
           <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
-              <Feather name="mic" size={24} color={colors.mutedForeground} />
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+              <Feather name="mic" size={28} color={colors.mutedForeground} />
             </View>
             <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.xs }}>
               No voice notes yet
@@ -5957,8 +5958,8 @@ export default function JobDetailScreen() {
           <Text style={styles.notesText}>{job.notes}</Text>
         ) : (
           <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
-              <Feather name="file-text" size={24} color={colors.mutedForeground} />
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+              <Feather name="file-text" size={28} color={colors.mutedForeground} />
             </View>
             <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.xs }}>
               No notes yet

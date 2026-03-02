@@ -119,10 +119,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: colors.card,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     padding: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     alignItems: 'center',
   },
   statValue: {
@@ -145,12 +145,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: spacing.xs,
+    minHeight: 40,
   },
   tabActive: {
     backgroundColor: colors.primary,
@@ -167,7 +168,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.mutedForeground,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: radius.pill,
     minWidth: 20,
     alignItems: 'center',
   },
@@ -192,6 +193,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: spacing.sm,
   },
   searchInput: {
     flex: 1,
@@ -206,9 +208,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   itemCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     overflow: 'hidden',
   },
   itemContent: {
@@ -219,7 +221,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   itemIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: radius.md,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -274,7 +276,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   statusBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: radius.sm,
+    borderRadius: radius.pill,
   },
   statusText: {
     fontSize: typographySizes.xs,
@@ -283,7 +285,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   typeBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: radius.sm,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.background,
@@ -722,12 +724,18 @@ export default function CommunicationsScreen() {
         {(['all', 'email', 'sms'] as TabType[]).map((tab) => {
           const count = tab === 'all' ? stats.total : tab === 'email' ? stats.emails : stats.sms;
           const isActive = activeTab === tab;
+          const iconName = tab === 'all' ? 'inbox' : tab === 'email' ? 'mail' : 'message-square';
           return (
             <TouchableOpacity
               key={tab}
               style={[styles.tab, isActive && styles.tabActive]}
               onPress={() => setActiveTab(tab)}
             >
+              <Feather
+                name={iconName as any}
+                size={14}
+                color={isActive ? colors.primaryForeground : colors.mutedForeground}
+              />
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
                 {tab === 'all' ? 'All' : tab === 'email' ? 'Email' : 'SMS'}
               </Text>

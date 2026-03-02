@@ -2522,7 +2522,9 @@ ${businessName}`;
             </View>
           ) : (
             <View style={styles.emptyStateCard}>
-              <Feather name="inbox" size={32} color={colors.mutedForeground} />
+              <View style={styles.emptyStateIcon}>
+                <Feather name="inbox" size={24} color={colors.mutedForeground} />
+              </View>
               <Text style={styles.emptyStateText}>No line items added</Text>
               <Text style={styles.emptyStateSubtext}>Line items will appear here once added to the invoice</Text>
             </View>
@@ -3597,11 +3599,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 36,
     fontWeight: '700',
     color: colors.foreground,
+    letterSpacing: -0.5,
   },
   totalLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.mutedForeground,
     marginTop: 4,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
   },
   dueContainer: {
     flexDirection: 'row',
@@ -3680,11 +3685,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   quickActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
     marginBottom: 16,
   },
   quickAction: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '30%',
+    minWidth: 60,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
@@ -3811,8 +3819,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     height: 10,
     borderRadius: 5,
     marginTop: 5,
-    borderWidth: 2,
-    borderColor: colors.card,
   },
   timelineLine: {
     flex: 1,
@@ -4302,26 +4308,36 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center' as const,
-    gap: 8,
+    gap: 10,
+  },
+  emptyStateIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.muted,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    marginBottom: 4,
   },
   emptyStateText: {
     fontSize: 15,
     fontWeight: '600' as const,
     color: colors.foreground,
-    marginTop: 4,
   },
   emptyStateSubtext: {
     fontSize: 13,
     color: colors.mutedForeground,
     textAlign: 'center' as const,
     lineHeight: 18,
+    maxWidth: 240,
   },
   signatureImage: {
     width: '100%',
     height: 80,
     marginBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    padding: 8,
   },
   signatureDetails: {
     gap: 4,

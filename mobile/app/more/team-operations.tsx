@@ -1413,7 +1413,6 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   },
   memberInfo: {
     flex: 1,
-    marginLeft: spacing.md,
   },
   memberNameRow: {
     flexDirection: 'row',
@@ -1519,6 +1518,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    gap: spacing.md,
     ...shadows.sm,
   },
   activityIcon: {
@@ -1530,7 +1530,6 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   },
   activityContent: {
     flex: 1,
-    marginLeft: spacing.md,
   },
   activityTitle: {
     ...typography.cardTitle,
@@ -1878,9 +1877,12 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
   statCard: {
-    width: ((contentWidth - (isTabletDevice ? spacing.sm * 2 : responsivePadding * 2) - spacing.sm) / 2),
+    flexBasis: '48%',
+    flexGrow: 0,
+    flexShrink: 0,
     padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -1916,7 +1918,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    gap: spacing.xs,
+    gap: spacing.sm,
     ...shadows.sm,
   },
   performanceRank: {
@@ -1926,7 +1928,6 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.sm,
   },
   performanceRankText: {
     ...typography.caption,
@@ -1935,7 +1936,6 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   },
   performanceInfo: {
     flex: 1,
-    marginLeft: spacing.sm,
   },
   performanceName: {
     ...typography.cardTitle,
