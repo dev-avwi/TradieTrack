@@ -677,6 +677,7 @@ export interface IStorage {
   getTeamMembers(businessOwnerId: string): Promise<TeamMember[]>;
   getTeamMember(id: string, businessOwnerId: string): Promise<TeamMember | undefined>;
   getTeamMembershipByMemberId(memberId: string): Promise<TeamMember | undefined>;
+  getAllTeamMembershipsByMemberId(memberId: string): Promise<TeamMember[]>;
   getTeamMemberByUserIdAndBusiness(userId: string, businessOwnerId: string): Promise<TeamMember | undefined>;
   getTeamMemberByInviteToken(token: string): Promise<TeamMember | undefined>;
   getUserRole(id: string): Promise<UserRole | undefined>;
@@ -3514,6 +3515,16 @@ export class PostgresStorage implements IStorage {
       .where(and(eq(teamMembers.memberId, memberId), eq(teamMembers.isActive, true)))
       .limit(1);
     return result[0];
+  }
+
+  async getAllTeamMembershipsByMemberId(memberId: string): Promise<TeamMember[]> {
+    return await db.select().from(teamMembers)
+      .where(and(
+        eq(teamMembers.memberId, memberId),
+        eq(teamMembers.isActive, true),
+        eq(teamMembers.inviteStatus, 'accepted')
+      ))
+      .orderBy(teamMembers.createdAt);
   }
 
   async getTeamMemberByUserIdAndBusiness(userId: string, businessOwnerId: string): Promise<TeamMember | undefined> {

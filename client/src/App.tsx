@@ -105,6 +105,97 @@ import SubcontractorWebView from "@/pages/SubcontractorWebView";
 import FilesPage from "@/pages/Files";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
+function BusinessPicker({ userId }: { userId: string }) {
+  const { data: businessData } = useQuery({
+    queryKey: ['/api/auth/my-businesses'],
+    enabled: !!userId,
+  });
+  
+  const [isOpen, setIsOpen] = useState(false);
+  
+  if (!businessData?.businesses || businessData.businesses.length <= 1) {
+    return null;
+  }
+  
+  const currentBusiness = businessData.businesses.find(
+    (b: any) => b.businessOwnerId === businessData.activeBusinessId
+  ) || businessData.businesses[0];
+  
+  const handleSwitch = async (businessId: string) => {
+    try {
+      await apiRequest('POST', '/api/auth/switch-business', { businessId });
+      queryClient.clear();
+      window.location.reload();
+    } catch (err) {
+      console.error('Failed to switch business:', err);
+    }
+    setIsOpen(false);
+  };
+  
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border border-border bg-background hover-elevate"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/></svg>
+        <span className="max-w-[140px] truncate">{currentBusiness?.businessName}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+          <div className="absolute left-0 top-full mt-1 z-50 w-64 rounded-md border border-border bg-popover shadow-md">
+            <div className="p-1">
+              {businessData.businesses.map((b: any) => (
+                <button
+                  key={b.businessOwnerId}
+                  onClick={() => handleSwitch(b.businessOwnerId)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-sm hover-elevate ${
+                    b.businessOwnerId === businessData.activeBusinessId ? 'bg-accent text-accent-foreground' : ''
+                  }`}
+                >
+                  <div className="flex-1 text-left">
+                    <div className="font-medium truncate">{b.businessName}</div>
+                    <div className="text-xs text-muted-foreground">{b.roleName}</div>
+                  </div>
+                  {b.businessOwnerId === businessData.activeBusinessId && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function TrialBanner({ trialEndsAt, onUpgrade }: { trialEndsAt: string; onUpgrade: () => void }) {
+  const trialEnd = new Date(trialEndsAt);
+  const now = new Date();
+  const daysRemaining = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  
+  if (daysRemaining <= 0) return null;
+  
+  const urgentClass = daysRemaining <= 2 ? 'bg-destructive/10 border-destructive/20 text-destructive' : 'bg-primary/5 border-primary/10 text-primary';
+  
+  return (
+    <div className={`flex items-center justify-between gap-2 px-4 py-1.5 text-sm border-b ${urgentClass}`}>
+      <span className="font-medium">
+        Free trial: {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining
+      </span>
+      <button 
+        onClick={onUpgrade}
+        className="text-xs font-semibold underline underline-offset-2 hover:no-underline"
+      >
+        Upgrade Now
+      </button>
+    </div>
+  );
+}
+
 // Types for job completion
 interface JobPhoto {
   url: string;
@@ -1152,6 +1243,35 @@ function AppLayout() {
     );
   }
 
+  if (userCheck && !userCheck.isOwner && userCheck.ownerSubscriptionValid === false) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg>
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Subscription Inactive</h2>
+            <p className="text-muted-foreground">
+              {userCheck.ownerBusinessName 
+                ? `${userCheck.ownerBusinessName}'s JobRunner subscription is no longer active.`
+                : "Your employer's JobRunner subscription is no longer active."}
+            </p>
+            <p className="text-muted-foreground mt-2">
+              Please contact the business owner to restore access.
+            </p>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover-elevate h-10 px-4 py-2"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (userCheck && businessSettings === null && !isStaffOnOtherTeam && !userCheck.isPlatformAdmin) {
     // User exists but no business settings AND not staff on another team AND not a platform admin - show simple onboarding
     // Staff users (on someone else's team) skip onboarding - they use their employer's business settings
@@ -1224,8 +1344,14 @@ function AppLayout() {
                 onSettingsClick={() => setLocation('/settings')}
                 onLogoutClick={handleLogout}
               />
+              {/* Business Picker for multi-business users */}
+              {userCheck && !userCheck.isOwner && <BusinessPicker userId={userCheck.id} />}
               {/* Offline Indicator */}
               <OfflineIndicator />
+              {/* Trial Banner */}
+              {userCheck?.trialStatus === 'active' && userCheck?.trialEndsAt && (
+                <TrialBanner trialEndsAt={userCheck.trialEndsAt} onUpgrade={() => setLocation('/settings?tab=subscription')} />
+              )}
             </div>
             
             {/* Page Content - flex container for proper height context, z-index below header */}

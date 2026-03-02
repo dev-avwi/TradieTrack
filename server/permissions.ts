@@ -137,15 +137,24 @@ export interface UserContext {
   isSubcontractor?: boolean;
   ownerSubscriptionValid?: boolean;
   ownerSubscriptionError?: string;
+  ownerBusinessName?: string;
 }
 
 export async function getUserContext(userId: string): Promise<UserContext> {
-  const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+  const currentUser = await storage.getUser(userId);
+  const activeBusinessId = currentUser?.activeBusinessId;
+
+  let teamMembership;
+  if (activeBusinessId) {
+    teamMembership = await storage.getTeamMemberByUserIdAndBusiness(userId, activeBusinessId);
+  }
+  if (!teamMembership) {
+    teamMembership = await storage.getTeamMembershipByMemberId(userId);
+  }
   
   if (teamMembership && teamMembership.inviteStatus === 'accepted') {
     const role = await storage.getUserRole(teamMembership.roleId);
     
-    // Use custom permissions if enabled for this team member, otherwise use role defaults
     let permissions: Permission[];
     if (teamMembership.useCustomPermissions && teamMembership.customPermissions) {
       permissions = teamMembership.customPermissions as Permission[];
@@ -153,26 +162,29 @@ export async function getUserContext(userId: string): Promise<UserContext> {
       permissions = (role?.permissions as Permission[]) || [];
     }
     
-    // Check owner's subscription status for team member access
+    const ownerUser = await storage.getUser(teamMembership.businessOwnerId);
     const ownerBusinessSettings = await storage.getBusinessSettings(teamMembership.businessOwnerId);
     let ownerSubscriptionValid = true;
     let ownerSubscriptionError: string | undefined;
+    let ownerBusinessName: string | undefined;
     
-    if (ownerBusinessSettings) {
-      const subscriptionStatus = ownerBusinessSettings.subscriptionStatus;
-      const subscriptionTier = ownerBusinessSettings.subscriptionTier;
+    if (ownerUser) {
+      const ownerTier = ownerUser.subscriptionTier;
+      const ownerTrialStatus = ownerUser.trialStatus;
+      const ownerTrialEndsAt = ownerUser.trialEndsAt;
+      const subscriptionStatus = ownerBusinessSettings?.subscriptionStatus;
       
-      // Check if owner's subscription is canceled or on free tier
-      if (subscriptionStatus === 'canceled') {
+      const isTrialActive = ownerTrialStatus === 'active' && ownerTrialEndsAt && new Date(ownerTrialEndsAt) > new Date();
+      
+      if (subscriptionStatus === 'canceled' && !isTrialActive) {
         ownerSubscriptionValid = false;
-        ownerSubscriptionError = 'Business owner subscription is canceled';
-      } else if (subscriptionTier === 'free' || !subscriptionTier) {
+        ownerSubscriptionError = 'Business subscription has been canceled';
+      } else if (!isTrialActive && (ownerTier === 'free' || !ownerTier)) {
         ownerSubscriptionValid = false;
-        ownerSubscriptionError = 'Business owner does not have an active subscription';
-      } else if (subscriptionTier !== 'pro' && subscriptionTier !== 'team') {
-        ownerSubscriptionValid = false;
-        ownerSubscriptionError = 'Invalid subscription tier';
+        ownerSubscriptionError = 'Business does not have an active subscription';
       }
+      
+      ownerBusinessName = ownerBusinessSettings?.businessName || (ownerUser.firstName ? `${ownerUser.firstName} ${ownerUser.lastName || ''}`.trim() : undefined);
     } else {
       ownerSubscriptionValid = false;
       ownerSubscriptionError = 'Business owner account not found';
@@ -190,6 +202,7 @@ export async function getUserContext(userId: string): Promise<UserContext> {
       isSubcontractor: roleName.toLowerCase() === 'subcontractor',
       ownerSubscriptionValid,
       ownerSubscriptionError,
+      ownerBusinessName,
     };
   }
   
@@ -232,6 +245,13 @@ export function createPermissionMiddleware(requiredPermission: Permission | Perm
       const userContext = await getUserContext(req.userId);
       req.userContext = userContext;
       req.effectiveUserId = userContext.effectiveUserId;
+      
+      if (!userContext.isOwner && userContext.ownerSubscriptionValid === false) {
+        return res.status(403).json({
+          error: 'subscription_lapsed',
+          message: userContext.ownerSubscriptionError || 'Business subscription is not active',
+        });
+      }
       
       const permissions = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
       const hasAccess = hasAnyPermission(userContext, permissions);
@@ -289,7 +309,13 @@ export function ownerOrManagerOnly() {
       req.userContext = userContext;
       req.effectiveUserId = userContext.effectiveUserId;
       
-      // Check if owner or has MANAGE_TEAM permission (managers have this)
+      if (!userContext.isOwner && userContext.ownerSubscriptionValid === false) {
+        return res.status(403).json({
+          error: 'subscription_lapsed',
+          message: userContext.ownerSubscriptionError || 'Business subscription is not active',
+        });
+      }
+      
       const isOwnerOrManager = userContext.isOwner || 
         userContext.permissions.includes(PERMISSIONS.MANAGE_TEAM);
       

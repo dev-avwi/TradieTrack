@@ -2,7 +2,7 @@ import { storage } from './storage';
 import { TIER_LIMITS } from '@shared/schema';
 import { IS_BETA } from './freemiumService';
 
-export type SubscriptionTier = 'free' | 'pro' | 'trial' | 'beta';
+export type SubscriptionTier = 'free' | 'pro' | 'team' | 'trial' | 'beta';
 
 export interface UsageStatus {
   tier: SubscriptionTier;
@@ -30,6 +30,9 @@ export interface LimitCheckResult {
 }
 
 function getEffectiveTier(user: any): SubscriptionTier {
+  if (user.subscriptionTier === 'team') {
+    return 'team';
+  }
   if (user.subscriptionTier === 'pro') {
     return 'pro';
   }
@@ -37,7 +40,7 @@ function getEffectiveTier(user: any): SubscriptionTier {
   if (user.trialStatus === 'active' && user.trialEndsAt) {
     const trialEnd = new Date(user.trialEndsAt);
     if (trialEnd > new Date()) {
-      return 'pro'; // Trial users get Pro features
+      return user.subscriptionTier === 'team' ? 'team' : 'pro';
     }
   }
   
@@ -45,6 +48,9 @@ function getEffectiveTier(user: any): SubscriptionTier {
 }
 
 function getTierLimits(tier: SubscriptionTier) {
+  if (tier === 'team') {
+    return TIER_LIMITS.team;
+  }
   if (tier === 'pro' || tier === 'trial') {
     return TIER_LIMITS.pro;
   }

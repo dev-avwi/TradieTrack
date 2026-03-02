@@ -3155,11 +3155,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Get worker permission context
       const workerPermissionContext = await getWorkerPermissionContext(userId);
+      const userContext = await getUserContext(userId);
       
-      // Add permission context to response
-      const response = {
+      const response: any = {
         ...safeUser,
         workerPermissions: workerPermissionContext.permissions,
         isOwner: workerPermissionContext.isOwner,
@@ -3168,10 +3167,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessOwnerId: workerPermissionContext.businessOwnerId,
       };
       
+      if (!userContext.isOwner) {
+        response.ownerSubscriptionValid = userContext.ownerSubscriptionValid;
+        response.ownerSubscriptionError = userContext.ownerSubscriptionError;
+        response.ownerBusinessName = userContext.ownerBusinessName;
+      }
+      
       res.json(response);
     } catch (error) {
       console.error("Auth check error:", error);
       res.status(500).json({ error: "Failed to check authentication" });
+    }
+  });
+
+  app.get("/api/auth/my-businesses", async (req: any, res) => {
+    const effectiveUserId = req.userId || req.session?.userId;
+    
+    if (!effectiveUserId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const memberships = await storage.getAllTeamMembershipsByMemberId(effectiveUserId);
+      
+      const businesses = await Promise.all(memberships.map(async (m: any) => {
+        const ownerSettings = await storage.getBusinessSettings(m.businessOwnerId);
+        const ownerUser = await storage.getUser(m.businessOwnerId);
+        const role = m.roleId ? await storage.getUserRole(m.roleId) : null;
+        return {
+          businessOwnerId: m.businessOwnerId,
+          businessName: ownerSettings?.businessName || `${ownerUser?.firstName || ''} ${ownerUser?.lastName || ''}`.trim() || 'Unknown Business',
+          roleName: role?.name || 'Worker',
+          teamMemberId: m.id,
+        };
+      }));
+      
+      const user = await storage.getUser(effectiveUserId);
+      res.json({
+        businesses,
+        activeBusinessId: user?.activeBusinessId || (businesses.length > 0 ? businesses[0].businessOwnerId : null),
+      });
+    } catch (error) {
+      console.error("Get businesses error:", error);
+      res.status(500).json({ error: "Failed to get businesses" });
+    }
+  });
+
+  app.post("/api/auth/switch-business", async (req: any, res) => {
+    const effectiveUserId = req.userId || req.session?.userId;
+    
+    if (!effectiveUserId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    const { businessId } = req.body;
+    
+    if (!businessId) {
+      return res.status(400).json({ error: "businessId is required" });
+    }
+    
+    try {
+      const membership = await storage.getTeamMemberByUserIdAndBusiness(effectiveUserId, businessId);
+      if (!membership || membership.inviteStatus !== 'accepted') {
+        return res.status(403).json({ error: "You are not an active member of this business" });
+      }
+      
+      await storage.updateUser(effectiveUserId, { activeBusinessId: businessId } as any);
+      
+      res.json({ success: true, activeBusinessId: businessId });
+    } catch (error) {
+      console.error("Switch business error:", error);
+      res.status(500).json({ error: "Failed to switch business" });
     }
   });
 

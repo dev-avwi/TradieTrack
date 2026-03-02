@@ -59,7 +59,7 @@ export const TIER_LIMITS = {
     features: ['unlimited_jobs', 'unlimited_invoices', 'recurring', 'reports', 'photo_attachments', 'auto_reminders', 'team_management', 'branding', 'ai_assistant', 'live_tracking', 'team_chat'],
   },
   trial: {
-    durationDays: 14,
+    durationDays: 7,
   },
 } as const;
 
@@ -309,6 +309,7 @@ export const users = pgTable("users", {
   // Onboarding demo data
   hasDemoData: boolean("has_demo_data").default(false), // Whether demo data has been seeded for this user
   demoDataIds: jsonb("demo_data_ids"), // Stores IDs of demo records: { clients: [], jobs: [], quotes: [], invoices: [] }
+  activeBusinessId: varchar("active_business_id"), // For multi-business subcontractors: which business they're currently viewing
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
