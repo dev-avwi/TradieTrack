@@ -387,6 +387,7 @@ export const businessSettings = pgTable("business_settings", {
   defaultHourlyRate: decimal("default_hourly_rate", { precision: 10, scale: 2 }).default('100.00'),
   timeRoundingMinutes: integer("time_rounding_minutes").default(5),
   minimumCalloutHours: decimal("minimum_callout_hours", { precision: 10, scale: 2 }).default('0'),
+  includeLocationProofOnInvoices: boolean("include_location_proof_on_invoices").default(true),
   calloutFee: decimal("callout_fee", { precision: 10, scale: 2 }).default('80.00'),
   quoteValidityDays: integer("quote_validity_days").default(30),
   invoicePrefix: text("invoice_prefix").default('TT-'),
@@ -1431,6 +1432,12 @@ export const timeEntries = pgTable("time_entries", {
   // Positive means device is ahead, negative means behind
   // Allows reconstruction of actual time even if device clock was wrong
   deviceTimeOffset: integer("device_time_offset"),
+  clockInLatitude: decimal("clock_in_latitude", { precision: 10, scale: 7 }),
+  clockInLongitude: decimal("clock_in_longitude", { precision: 10, scale: 7 }),
+  clockInAddress: text("clock_in_address"),
+  clockOutLatitude: decimal("clock_out_latitude", { precision: 10, scale: 7 }),
+  clockOutLongitude: decimal("clock_out_longitude", { precision: 10, scale: 7 }),
+  clockOutAddress: text("clock_out_address"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

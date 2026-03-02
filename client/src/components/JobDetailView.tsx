@@ -435,10 +435,20 @@ export default function JobDetailView({
   // Time entry interface for calculating actual hours
   interface TimeEntryForCosting {
     id: string;
+    userId?: string;
     startTime: string;
     endTime?: string;
     isBreak?: boolean;
     hourlyRate?: number;
+    duration?: number;
+    description?: string;
+    origin?: string;
+    clockInLatitude?: string;
+    clockInLongitude?: string;
+    clockInAddress?: string;
+    clockOutLatitude?: string;
+    clockOutLongitude?: string;
+    clockOutAddress?: string;
   }
 
   // Fetch time entries for this job - only for active jobs where time tracking applies
@@ -3323,6 +3333,114 @@ export default function JobDetailView({
               geofenceAutoClockOut={job.geofenceAutoClockOut}
               assignedTo={job.assignedTo}
             />
+          )}
+
+          {/* Worker Attendance — GPS location evidence */}
+          {timeEntries.length > 0 && (
+            <Card data-testid="card-worker-attendance">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-green-600" />
+                  Worker Attendance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {timeEntries.filter(e => !e.isBreak).map((entry) => {
+                    const hasGps = !!(entry.clockInLatitude || entry.clockOutLatitude);
+                    const isGeofence = entry.origin === 'geofence';
+                    const verified = hasGps || isGeofence;
+                    const startDate = new Date(entry.startTime);
+                    const endDate = entry.endTime ? new Date(entry.endTime) : null;
+                    const durationMins = entry.duration || (endDate ? Math.floor((endDate.getTime() - startDate.getTime()) / 60000) : 0);
+                    const hours = Math.round(durationMins / 60 * 10) / 10;
+
+                    return (
+                      <div key={entry.id} className="flex items-start gap-3 p-3 rounded-md bg-muted/30">
+                        <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${verified ? 'bg-green-500' : 'bg-amber-400'}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium">
+                              {startDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {startDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                              {endDate ? ` — ${endDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}` : ' (active)'}
+                            </span>
+                            {hours > 0 && (
+                              <span className="text-xs text-muted-foreground">({hours}h)</span>
+                            )}
+                            {verified && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded">
+                                <CheckCircle className="h-3 w-3" />
+                                GPS
+                              </span>
+                            )}
+                          </div>
+                          {(entry.clockInAddress || entry.clockOutAddress) && (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              {entry.clockInAddress && (
+                                <div className="flex items-center gap-1">
+                                  <span>In:</span>
+                                  {entry.clockInLatitude && entry.clockInLongitude ? (
+                                    <a
+                                      href={`https://www.google.com/maps?q=${entry.clockInLatitude},${entry.clockInLongitude}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="underline hover:text-foreground"
+                                    >
+                                      {entry.clockInAddress}
+                                    </a>
+                                  ) : (
+                                    <span>{entry.clockInAddress}</span>
+                                  )}
+                                </div>
+                              )}
+                              {entry.clockOutAddress && (
+                                <div className="flex items-center gap-1">
+                                  <span>Out:</span>
+                                  {entry.clockOutLatitude && entry.clockOutLongitude ? (
+                                    <a
+                                      href={`https://www.google.com/maps?q=${entry.clockOutLatitude},${entry.clockOutLongitude}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="underline hover:text-foreground"
+                                    >
+                                      {entry.clockOutAddress}
+                                    </a>
+                                  ) : (
+                                    <span>{entry.clockOutAddress}</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {!entry.clockInAddress && entry.clockInLatitude && entry.clockInLongitude && (
+                            <div className="mt-1">
+                              <a
+                                href={`https://www.google.com/maps?q=${entry.clockInLatitude},${entry.clockInLongitude}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-muted-foreground underline hover:text-foreground inline-flex items-center gap-1"
+                              >
+                                <Navigation className="h-3 w-3" />
+                                {parseFloat(entry.clockInLatitude).toFixed(4)}, {parseFloat(entry.clockInLongitude).toFixed(4)}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {timeEntries.some(e => e.clockInLatitude || e.origin === 'geofence') && (
+                  <div className="mt-3 pt-2 border-t flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                    <Shield className="h-3.5 w-3.5" />
+                    GPS-verified attendance recorded
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {/* AI Photo Analysis - Show when photos exist */}

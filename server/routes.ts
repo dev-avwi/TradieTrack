@@ -16883,6 +16883,22 @@ Be specific about materials, colors, and features that would be included.`
       const checklistItemsList = await storage.getChecklistItems(job.id, portalToken.userId);
       const materialsList = await storage.getJobMaterials(job.id, portalToken.userId);
       
+      const jobTimeEntries = await storage.getTimeEntriesForJob(job.id);
+      const workerAttendance = jobTimeEntries
+        .filter((e: any) => !e.isBreak && e.endTime)
+        .map((e: any) => {
+          const hasGps = !!(e.clockInLatitude || e.clockOutLatitude);
+          const isGeofence = e.origin === 'geofence';
+          return {
+            startTime: e.startTime,
+            endTime: e.endTime,
+            duration: e.duration,
+            gpsVerified: hasGps || isGeofence,
+            clockInAddress: e.clockInAddress || null,
+            clockOutAddress: e.clockOutAddress || null,
+          };
+        });
+      
       let dynamicEtaText = job.workerEta;
       let dynamicEtaMinutes = job.workerEtaMinutes;
       if (job.workerStatus === 'on_my_way' && job.latitude && job.longitude) {
@@ -16953,6 +16969,7 @@ Be specific about materials, colors, and features that would be included.`
           status: m.status,
         })),
         assignments: assignmentsArray,
+        workerAttendance,
       };
       
       res.json(portalData);
@@ -19340,6 +19357,15 @@ Be specific about materials, colors, and features that would be included.`
         try {
           const { generateLabourSummary } = await import('./labourService');
           labourSummary = await generateLabourSummary(invoiceWithItems.jobId, userContext.effectiveUserId);
+          const businessSettingsForProof = await storage.getBusinessSettings(userContext.effectiveUserId);
+          if (businessSettingsForProof?.includeLocationProofOnInvoices === false && labourSummary) {
+            labourSummary.locationProof = [];
+            labourSummary.gpsVerified = false;
+            for (const line of labourSummary.labourLines) {
+              line.hasGpsProof = false;
+              line.attendanceRecords = [];
+            }
+          }
         } catch (labourError) {
           console.warn(`[Invoice PDF] Could not generate labour summary for invoice ${invoiceId}:`, labourError);
         }
@@ -23510,10 +23536,24 @@ Respond with JSON in this format:
     }
   });
 
+  function validateGpsCoordinate(lat: any, lng: any): boolean {
+    if (lat === undefined || lat === null || lng === undefined || lng === null) return true;
+    const latNum = parseFloat(String(lat));
+    const lngNum = parseFloat(String(lng));
+    if (isNaN(latNum) || isNaN(lngNum)) return false;
+    if (latNum < -90 || latNum > 90) return false;
+    if (lngNum < -180 || lngNum > 180) return false;
+    return true;
+  }
+
   app.post("/api/time-entries", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const data = insertTimeEntrySchema.parse(req.body);
+      
+      if (!validateGpsCoordinate(data.clockInLatitude, data.clockInLongitude)) {
+        return res.status(400).json({ error: 'Invalid GPS coordinates for clock-in' });
+      }
       
       // Validate start time is not in the future (allow 2 min tolerance for clock drift)
       if (data.startTime) {
@@ -23742,8 +23782,17 @@ Respond with JSON in this format:
         return res.status(403).json({ error: 'Access denied - not your time entry or team member' });
       }
       
-      // Server-side timestamp for integrity
-      const stoppedEntry = await storage.stopTimeEntry(id, userId);
+      if (!validateGpsCoordinate(req.body.clockOutLatitude, req.body.clockOutLongitude)) {
+        return res.status(400).json({ error: 'Invalid GPS coordinates for clock-out' });
+      }
+      
+      const locationData = {
+        clockOutLatitude: req.body.clockOutLatitude ? String(req.body.clockOutLatitude) : undefined,
+        clockOutLongitude: req.body.clockOutLongitude ? String(req.body.clockOutLongitude) : undefined,
+        clockOutAddress: req.body.clockOutAddress || undefined,
+      };
+      
+      const stoppedEntry = await storage.stopTimeEntry(id, userId, locationData);
       if (!stoppedEntry) {
         return res.status(500).json({ error: 'Failed to stop time entry' });
       }

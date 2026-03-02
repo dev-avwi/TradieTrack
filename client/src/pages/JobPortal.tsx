@@ -64,6 +64,14 @@ interface JobPortalData {
   checklist: Array<{ text: string; isCompleted: boolean; sortOrder: number }>;
   materials: Array<{ name: string; quantity: number; unit?: string; status?: string }>;
   assignments?: PortalAssignment[];
+  workerAttendance?: Array<{
+    startTime: string;
+    endTime: string;
+    duration: number;
+    gpsVerified: boolean;
+    clockInAddress: string | null;
+    clockOutAddress: string | null;
+  }>;
 }
 
 interface PortalAssignment {
@@ -1430,6 +1438,63 @@ export default function JobPortal() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {data.workerAttendance && data.workerAttendance.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="bg-brand text-white px-5 py-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-slate-300" />
+                  <span className="font-semibold text-sm">Worker Attendance</span>
+                  {data.workerAttendance.some(a => a.gpsVerified) && (
+                    <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-medium bg-emerald-500/20 text-emerald-100 px-2 py-0.5 rounded-full">
+                      <Shield className="w-3 h-3" />
+                      GPS Verified
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="p-5">
+                <div className="space-y-3">
+                  {data.workerAttendance.map((entry, idx) => {
+                    const startDate = new Date(entry.startTime);
+                    const endDate = new Date(entry.endTime);
+                    const hours = entry.duration ? Math.round(entry.duration / 60 * 10) / 10 : 0;
+                    return (
+                      <div key={idx} className="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0">
+                        <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${entry.gpsVerified ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium text-slate-800">
+                              {startDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {startDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                              {' — '}
+                              {endDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {hours > 0 && (
+                              <span className="text-xs text-slate-500">({hours}h)</span>
+                            )}
+                          </div>
+                          {entry.clockInAddress && (
+                            <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {entry.clockInAddress}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 pt-2 border-t border-slate-100">
+                  <div className="text-xs text-slate-400">
+                    Total: {Math.round(data.workerAttendance.reduce((sum, a) => sum + (a.duration || 0), 0) / 60 * 10) / 10} hours across {data.workerAttendance.length} session{data.workerAttendance.length !== 1 ? 's' : ''}
+                  </div>
                 </div>
               </div>
             </div>

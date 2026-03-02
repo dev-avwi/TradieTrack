@@ -1,6 +1,23 @@
 import { storage } from './storage';
 import type { TimeEntry, TeamMember, BusinessSettings, JobAssignment, InvoiceLineItem, InsertInvoiceLineItem } from '@shared/schema';
 
+interface LocationStamp {
+  latitude: string | null;
+  longitude: string | null;
+  address: string | null;
+  timestamp: Date | null;
+}
+
+interface AttendanceRecord {
+  workerId: string;
+  workerName: string;
+  clockIn: LocationStamp;
+  clockOut: LocationStamp;
+  durationMinutes: number;
+  origin: string;
+  gpsVerified: boolean;
+}
+
 interface LabourLine {
   workerId: string;
   workerName: string;
@@ -12,9 +29,11 @@ interface LabourLine {
   workPeriodStart: Date | null;
   workPeriodEnd: Date | null;
   sessionCount: number;
+  attendanceRecords: AttendanceRecord[];
+  hasGpsProof: boolean;
 }
 
-interface LabourSummary {
+export interface LabourSummary {
   labourLines: LabourLine[];
   workPeriodStart: Date | null;
   workPeriodEnd: Date | null;
@@ -23,6 +42,7 @@ interface LabourSummary {
   gpsVerified: boolean;
   trackingInterruptions: number;
   manualEdits: number;
+  locationProof: AttendanceRecord[];
 }
 
 function roundMinutes(minutes: number, roundTo: number): number {
@@ -32,6 +52,32 @@ function roundMinutes(minutes: number, roundTo: number): number {
 
 function minutesToHours(minutes: number): number {
   return Math.round((minutes / 60) * 100) / 100;
+}
+
+function buildAttendanceRecord(entry: TimeEntry, workerName: string): AttendanceRecord {
+  const hasClockInGps = !!(entry.clockInLatitude && entry.clockInLongitude);
+  const hasClockOutGps = !!(entry.clockOutLatitude && entry.clockOutLongitude);
+  const isGeofence = entry.origin === 'geofence';
+
+  return {
+    workerId: entry.userId,
+    workerName,
+    clockIn: {
+      latitude: entry.clockInLatitude || null,
+      longitude: entry.clockInLongitude || null,
+      address: entry.clockInAddress || null,
+      timestamp: entry.startTime ? new Date(entry.startTime) : null,
+    },
+    clockOut: {
+      latitude: entry.clockOutLatitude || null,
+      longitude: entry.clockOutLongitude || null,
+      address: entry.clockOutAddress || null,
+      timestamp: entry.endTime ? new Date(entry.endTime) : null,
+    },
+    durationMinutes: entry.duration || 0,
+    origin: entry.origin || 'manual',
+    gpsVerified: hasClockInGps || hasClockOutGps || isGeofence,
+  };
 }
 
 export async function generateLabourSummary(
@@ -59,6 +105,7 @@ export async function generateLabourSummary(
   }
   
   const labourLines: LabourLine[] = [];
+  const allAttendance: AttendanceRecord[] = [];
   let overallStart: Date | null = null;
   let overallEnd: Date | null = null;
   
@@ -81,6 +128,15 @@ export async function generateLabourSummary(
     let periodStart: Date | null = null;
     let periodEnd: Date | null = null;
     
+    let workerName = 'Worker';
+    if (assignment?.displayName) {
+      workerName = assignment.displayName;
+    } else if (teamMember?.firstName) {
+      workerName = [teamMember.firstName, teamMember.lastName].filter(Boolean).join(' ');
+    }
+    
+    const attendanceRecords: AttendanceRecord[] = [];
+    
     for (const entry of entries) {
       const mins = entry.duration || 0;
       totalRawMinutes += mins;
@@ -92,6 +148,10 @@ export async function generateLabourSummary(
       if (!periodEnd || end > periodEnd) periodEnd = end;
       if (!overallStart || start < overallStart) overallStart = start;
       if (!overallEnd || end > overallEnd) overallEnd = end;
+      
+      const record = buildAttendanceRecord(entry, workerName);
+      attendanceRecords.push(record);
+      allAttendance.push(record);
     }
     
     const roundedMinutes = roundMinutes(totalRawMinutes, roundingMinutes);
@@ -101,12 +161,7 @@ export async function generateLabourSummary(
       roundedHours = minimumCalloutHours;
     }
     
-    let workerName = 'Worker';
-    if (assignment?.displayName) {
-      workerName = assignment.displayName;
-    } else if (teamMember?.firstName) {
-      workerName = [teamMember.firstName, teamMember.lastName].filter(Boolean).join(' ');
-    }
+    const hasGpsProof = attendanceRecords.some(r => r.gpsVerified);
     
     labourLines.push({
       workerId,
@@ -119,6 +174,8 @@ export async function generateLabourSummary(
       workPeriodStart: periodStart,
       workPeriodEnd: periodEnd,
       sessionCount: entries.length,
+      attendanceRecords,
+      hasGpsProof,
     });
   }
   
@@ -131,9 +188,10 @@ export async function generateLabourSummary(
     workPeriodEnd: overallEnd,
     totalBillableHours,
     totalLabourAmount,
-    gpsVerified: timeEntriesAll.some(e => e.origin === 'geofence'),
+    gpsVerified: timeEntriesAll.some(e => e.origin === 'geofence') || allAttendance.some(r => r.gpsVerified),
     trackingInterruptions: 0,
     manualEdits: 0,
+    locationProof: allAttendance,
   };
 }
 
@@ -143,6 +201,8 @@ export async function generateLabourLineItems(
   businessOwnerId: string
 ): Promise<InvoiceLineItem[]> {
   const summary = await generateLabourSummary(jobId, businessOwnerId);
+  const businessSettings = await storage.getBusinessSettings(businessOwnerId);
+  const includeGpsProof = businessSettings?.includeLocationProofOnInvoices !== false;
   
   const existingItems = await storage.getInvoiceLineItems(invoiceId);
   const existingLabourItems = existingItems.filter(item => 
@@ -161,7 +221,8 @@ export async function generateLabourLineItems(
   for (let i = 0; i < summary.labourLines.length; i++) {
     const line = summary.labourLines[i];
     const nameDisplay = line.hideNameOnInvoice ? 'Labour' : `Labour — ${line.workerName}`;
-    const description = `${nameDisplay} — $${line.hourlyRate.toFixed(2)}/hr`;
+    const gpsTag = includeGpsProof && line.hasGpsProof ? ' [GPS Verified]' : '';
+    const description = `${nameDisplay} — $${line.hourlyRate.toFixed(2)}/hr${gpsTag}`;
     
     const item = await storage.createInvoiceLineItem({
       invoiceId,

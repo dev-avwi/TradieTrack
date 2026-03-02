@@ -30,7 +30,7 @@ Core architectural and design decisions include:
 *   **Enterprise Features**: Saved Filters + Advanced Search, Dual-view Team Scheduler, Progress Payments, Profit Margin by Job Type dashboard, Auto-Suggest Technician Assignment, all with full mobile parity.
 *   **Alerts & Summaries**: Job Aging Alerts, Daily Operations Summary, and Cashflow/Team Performance Dashboards.
 *   **Customization**: Trade-Specific Customization System for 13 priority trades.
-*   **Time Tracking**: Enhancements include break/pause, billable/non-billable toggles, job costing widget, categorizable entries, timesheet approvals, GPS signal logging, and server-side stale timer detection.
+*   **Time Tracking**: Enhancements include break/pause, billable/non-billable toggles, job costing widget, categorizable entries, timesheet approvals, GPS signal logging, and server-side stale timer detection. GPS Proof of Presence captures clock-in/clock-out coordinates and addresses on time entries, surfaced in job detail view (Worker Attendance card), client portal (Worker Attendance section), and invoice PDFs (Worker Presence Verified table). Labour line items on invoices include GPS Verified tags. Business setting `includeLocationProofOnInvoices` controls whether GPS proof appears on PDFs.
 *   **Compliance**: Compliance & Licensing Module for document management, status tracking, dashboard alerts, and automated expiry notifications.
 *   **Production Hardening**: GPS coordinate validation, geofence event API idempotency, PDF generation concurrency limits, mobile ErrorBoundary, Express global error middleware, and list virtualization for performance.
 *   **Autopilot Enhancements**: "Technician On Their Way" auto-notification and batch invoicing.

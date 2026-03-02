@@ -321,6 +321,14 @@ interface InvoiceWithDetails {
       workPeriodStart: Date | null;
       workPeriodEnd: Date | null;
       sessionCount: number;
+      hasGpsProof?: boolean;
+      attendanceRecords?: Array<{
+        workerName: string;
+        clockIn: { latitude: string | null; longitude: string | null; address: string | null; timestamp: Date | null };
+        clockOut: { latitude: string | null; longitude: string | null; address: string | null; timestamp: Date | null };
+        durationMinutes: number;
+        gpsVerified: boolean;
+      }>;
     }>;
     workPeriodStart: Date | null;
     workPeriodEnd: Date | null;
@@ -329,6 +337,13 @@ interface InvoiceWithDetails {
     gpsVerified: boolean;
     trackingInterruptions: number;
     manualEdits: number;
+    locationProof?: Array<{
+      workerName: string;
+      clockIn: { latitude: string | null; longitude: string | null; address: string | null; timestamp: Date | null };
+      clockOut: { latitude: string | null; longitude: string | null; address: string | null; timestamp: Date | null };
+      durationMinutes: number;
+      gpsVerified: boolean;
+    }>;
   };
   assignments?: Array<{
     workerName: string;
@@ -373,6 +388,18 @@ const formatDate = (date: Date | string | null): string => {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+  });
+};
+
+const formatDateTime = (date: Date | string | null): string => {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
   });
 };
 
@@ -1369,7 +1396,7 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
         <tbody>
           ${labourSummary.labourLines.map((line: any) => `
             <tr>
-              <td>${line.hideNameOnInvoice ? 'Labour' : line.workerName}</td>
+              <td>${line.hideNameOnInvoice ? 'Labour' : line.workerName}${line.hasGpsProof ? ' <span style="color: #16a34a; font-size: 8px;">GPS</span>' : ''}</td>
               <td>${formatCurrency(line.hourlyRate)}/hr</td>
               <td>${line.roundedHours}h</td>
               <td style="font-size: 8px; color: #666;">${formatTimePeriod(line.workPeriodStart, line.workPeriodEnd)}</td>
@@ -1379,6 +1406,36 @@ export const generateInvoicePDF = (data: InvoiceWithDetails): string => {
         </tbody>
       </table>
     </div>
+    ${labourSummary.locationProof && labourSummary.locationProof.filter((r: any) => r.gpsVerified).length > 0 ? `
+    <div style="margin-bottom: 16px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px;">
+      <div style="font-size: 10px; font-weight: 600; color: #16a34a; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+        Worker Presence Verified
+      </div>
+      <table style="width: 100%; border-collapse: collapse; font-size: 9px;">
+        <thead>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <th style="text-align: left; padding: 4px 6px; color: #6b7280;">Worker</th>
+            <th style="text-align: left; padding: 4px 6px; color: #6b7280;">Arrived</th>
+            <th style="text-align: left; padding: 4px 6px; color: #6b7280;">Departed</th>
+            <th style="text-align: left; padding: 4px 6px; color: #6b7280;">Location</th>
+            <th style="text-align: right; padding: 4px 6px; color: #6b7280;">Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${labourSummary.locationProof.filter((r: any) => r.gpsVerified).map((record: any) => `
+            <tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 4px 6px;">${record.workerName}</td>
+              <td style="padding: 4px 6px;">${record.clockIn.timestamp ? formatDateTime(record.clockIn.timestamp) : '—'}</td>
+              <td style="padding: 4px 6px;">${record.clockOut.timestamp ? formatDateTime(record.clockOut.timestamp) : '—'}</td>
+              <td style="padding: 4px 6px; font-size: 8px; color: #6b7280;">${record.clockIn.address || (record.clockIn.latitude ? record.clockIn.latitude + ', ' + record.clockIn.longitude : '—')}</td>
+              <td style="padding: 4px 6px; text-align: right;">${record.durationMinutes > 0 ? Math.round(record.durationMinutes / 60 * 10) / 10 + 'h' : '—'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div style="margin-top: 6px; font-size: 7px; color: #9ca3af;">GPS coordinates recorded at clock-in/clock-out. Times shown in local timezone.</div>
+    </div>
+    ` : ''}
     ` : ''}
     
     <table class="line-items-table">
