@@ -1088,15 +1088,15 @@ export default function MapScreen() {
         }
       };
       
-      ws.onerror = (error) => {
-        console.error('[Map] WebSocket error (falling back to polling):', error);
+      ws.onerror = () => {
+        console.warn('[Map] WebSocket unavailable — using polling for location updates');
       };
       
       ws.onclose = () => {
         console.log('[Map] WebSocket closed');
       };
     } catch (error) {
-      console.error('[Map] WebSocket connection failed (using polling):', error instanceof Error ? error.message : String(error));
+      console.warn('[Map] WebSocket connection failed (using polling):', error instanceof Error ? error.message : String(error));
     }
     
     return () => {
@@ -1104,7 +1104,7 @@ export default function MapScreen() {
         try {
           ws.close();
         } catch (e) {
-          console.error('[Map] Error closing WebSocket:', e);
+          // Ignore cleanup errors
         }
       }
     };
