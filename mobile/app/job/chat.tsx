@@ -1202,7 +1202,7 @@ export default function JobChatScreen() {
           {renderMessages()}
         </ScrollView>
 
-        <View style={[styles.composerContainer, { paddingBottom: spacing.sm }]}>
+        <View style={[styles.composerContainer, { paddingBottom: spacing.lg }]}>
           <View style={styles.composerRow}>
             <TouchableOpacity 
               style={styles.attachButton} 

@@ -342,12 +342,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       <Header />
       
       {/* Main content area - fills remaining space */}
-      <View style={[
-        styles.content, 
-        { 
-          paddingBottom: bottomNavHeight,
-        }
-      ]}>
+      <View style={[styles.content, { paddingBottom: bottomNavHeight }]}>
         {children}
       </View>
       
