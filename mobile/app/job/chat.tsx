@@ -78,16 +78,37 @@ interface JobPhoto {
 
 interface Quote {
   id: string;
-  quoteNumber: string;
+  number: string;
   total: number;
   status: string;
+  clientName?: string;
+  jobTitle?: string;
 }
 
 interface Invoice {
   id: string;
-  invoiceNumber: string;
+  number: string;
   total: number;
   status: string;
+  clientName?: string;
+  jobTitle?: string;
+}
+
+function getDocStatusColors(status: string, colors: ThemeColors): { bg: string; text: string } {
+  const s = (status || '').toLowerCase();
+  if (s === 'paid' || s === 'accepted' || s === 'approved') {
+    return { bg: colors.successLight, text: colors.success };
+  }
+  if (s === 'sent' || s === 'pending' || s === 'viewed') {
+    return { bg: colors.infoLight, text: colors.info };
+  }
+  if (s === 'overdue' || s === 'declined' || s === 'rejected' || s === 'cancelled') {
+    return { bg: colors.destructiveLight, text: colors.destructive };
+  }
+  if (s === 'draft') {
+    return { bg: colors.muted, text: colors.mutedForeground };
+  }
+  return { bg: colors.muted, text: colors.mutedForeground };
 }
 
 const AVATAR_COLORS = [
@@ -566,30 +587,85 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   documentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.muted,
+    backgroundColor: colors.card,
     padding: spacing.md,
-    borderRadius: radius.md,
-    gap: spacing.sm,
+    borderRadius: radius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    gap: spacing.md,
   },
   documentIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   documentInfo: {
     flex: 1,
+    gap: 4,
   },
   documentTitle: {
-    ...typography.caption,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     color: colors.foreground,
+    letterSpacing: -0.2,
   },
   documentMeta: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.foreground,
     marginTop: 2,
+  },
+  documentStatusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+    marginTop: 2,
+  },
+  documentStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  documentSendBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary + '12',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  documentEmptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing['3xl'],
+    paddingHorizontal: spacing['2xl'],
+  },
+  documentEmptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  documentEmptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+    textAlign: 'center',
+  },
+  documentEmptySubtext: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 20,
   },
 });
 
@@ -1318,8 +1394,8 @@ export default function JobChatScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {documentType === 'photos' ? 'Job Photos' : 
-                 documentType === 'quotes' ? 'Quotes' : 'Invoices'}
+                {documentType === 'photos' ? 'Select Photo' : 
+                 documentType === 'quotes' ? 'Select Quote' : 'Select Invoice'}
               </Text>
               <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setShowDocumentsModal(false)}>
                 <Feather name="x" size={24} color={colors.foreground} />
@@ -1332,51 +1408,84 @@ export default function JobChatScreen() {
                   style={styles.documentItem}
                   onPress={() => handleSelectDocument('Photo', photo.id, photo.caption || 'Job Photo')}
                 >
-                  <Image source={{ uri: photo.url }} style={{ width: 40, height: 40, borderRadius: 8 }} />
+                  <Image source={{ uri: photo.url }} style={{ width: 44, height: 44, borderRadius: radius.lg }} />
                   <View style={styles.documentInfo}>
                     <Text style={styles.documentTitle}>{photo.caption || 'Job Photo'}</Text>
                   </View>
-                  <Feather name="send" size={18} color={colors.primary} />
+                  <View style={styles.documentSendBtn}>
+                    <Feather name="send" size={16} color={colors.primary} />
+                  </View>
                 </TouchableOpacity>
               ))}
-              {documentType === 'quotes' && jobQuotes.map((quote) => (
-                <TouchableOpacity 
-                  key={quote.id} 
-                  style={styles.documentItem}
-                  onPress={() => handleSelectDocument('Quote', quote.id, quote.quoteNumber)}
-                >
-                  <View style={[styles.documentIcon, { backgroundColor: colors.infoLight }]}>
-                    <Feather name="file-text" size={20} color={colors.info} />
-                  </View>
-                  <View style={styles.documentInfo}>
-                    <Text style={styles.documentTitle}>{quote.quoteNumber}</Text>
-                    <Text style={styles.documentMeta}>${parseFloat(String(quote.total || 0)).toFixed(2)} - {quote.status}</Text>
-                  </View>
-                  <Feather name="send" size={18} color={colors.primary} />
-                </TouchableOpacity>
-              ))}
-              {documentType === 'invoices' && jobInvoices.map((invoice) => (
-                <TouchableOpacity 
-                  key={invoice.id} 
-                  style={styles.documentItem}
-                  onPress={() => handleSelectDocument('Invoice', invoice.id, invoice.invoiceNumber)}
-                >
-                  <View style={[styles.documentIcon, { backgroundColor: colors.warningLight }]}>
-                    <Feather name="dollar-sign" size={20} color={colors.warning} />
-                  </View>
-                  <View style={styles.documentInfo}>
-                    <Text style={styles.documentTitle}>{invoice.invoiceNumber}</Text>
-                    <Text style={styles.documentMeta}>${parseFloat(String(invoice.total || 0)).toFixed(2)} - {invoice.status}</Text>
-                  </View>
-                  <Feather name="send" size={18} color={colors.primary} />
-                </TouchableOpacity>
-              ))}
+              {documentType === 'quotes' && jobQuotes.map((quote) => {
+                const statusColors = getDocStatusColors(quote.status, colors);
+                return (
+                  <TouchableOpacity 
+                    key={quote.id} 
+                    style={styles.documentItem}
+                    onPress={() => handleSelectDocument('Quote', quote.id, quote.number || `Q-${quote.id.slice(0,6)}`)}
+                  >
+                    <View style={[styles.documentIcon, { backgroundColor: colors.infoLight }]}>
+                      <Feather name="file-text" size={22} color={colors.info} />
+                    </View>
+                    <View style={styles.documentInfo}>
+                      <Text style={styles.documentTitle}>{quote.number || `Quote #${quote.id.slice(0,6)}`}</Text>
+                      <Text style={styles.documentMeta}>${parseFloat(String(quote.total || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                      <View style={[styles.documentStatusBadge, { backgroundColor: statusColors.bg }]}>
+                        <Text style={[styles.documentStatusText, { color: statusColors.text }]}>{quote.status}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.documentSendBtn}>
+                      <Feather name="send" size={16} color={colors.primary} />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+              {documentType === 'invoices' && jobInvoices.map((invoice) => {
+                const statusColors = getDocStatusColors(invoice.status, colors);
+                return (
+                  <TouchableOpacity 
+                    key={invoice.id} 
+                    style={styles.documentItem}
+                    onPress={() => handleSelectDocument('Invoice', invoice.id, invoice.number || `INV-${invoice.id.slice(0,6)}`)}
+                  >
+                    <View style={[styles.documentIcon, { backgroundColor: colors.warningLight }]}>
+                      <Feather name="dollar-sign" size={22} color={colors.warning} />
+                    </View>
+                    <View style={styles.documentInfo}>
+                      <Text style={styles.documentTitle}>{invoice.number || `Invoice #${invoice.id.slice(0,6)}`}</Text>
+                      <Text style={styles.documentMeta}>${parseFloat(String(invoice.total || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                      <View style={[styles.documentStatusBadge, { backgroundColor: statusColors.bg }]}>
+                        <Text style={[styles.documentStatusText, { color: statusColors.text }]}>{invoice.status}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.documentSendBtn}>
+                      <Feather name="send" size={16} color={colors.primary} />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
               {((documentType === 'photos' && jobPhotos.length === 0) ||
                 (documentType === 'quotes' && jobQuotes.length === 0) ||
                 (documentType === 'invoices' && jobInvoices.length === 0)) && (
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No {documentType} found</Text>
-                  <Text style={styles.emptySubtext}>Add {documentType} to the job first</Text>
+                <View style={styles.documentEmptyContainer}>
+                  <View style={styles.documentEmptyIcon}>
+                    <Feather 
+                      name={documentType === 'photos' ? 'image' : documentType === 'quotes' ? 'file-text' : 'dollar-sign'} 
+                      size={28} 
+                      color={colors.mutedForeground} 
+                    />
+                  </View>
+                  <Text style={styles.documentEmptyText}>
+                    No {documentType === 'photos' ? 'photos' : documentType === 'quotes' ? 'quotes' : 'invoices'} found
+                  </Text>
+                  <Text style={styles.documentEmptySubtext}>
+                    {documentType === 'photos' 
+                      ? 'Add photos to this job to share them here' 
+                      : documentType === 'quotes' 
+                        ? 'Create a quote for this job to share it here' 
+                        : 'Create an invoice for this job to share it here'}
+                  </Text>
                 </View>
               )}
             </ScrollView>

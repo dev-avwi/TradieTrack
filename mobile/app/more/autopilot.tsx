@@ -209,7 +209,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   statCard: {
     flex: 1,
@@ -218,7 +218,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     padding: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 80,
+    height: 88,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -246,7 +246,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     padding: spacing.xs,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
     marginTop: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -257,8 +257,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     borderRadius: radius.xl,
     gap: spacing.xs,
   },
@@ -289,7 +289,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   sectionTitle: {
     ...typography.label,
     color: colors.mutedForeground,
-    marginTop: spacing.lg,
+    marginTop: spacing.sm,
     marginBottom: spacing.sm,
   },
   card: {
@@ -439,8 +439,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     borderWidth: 1,
@@ -450,9 +450,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...shadows.sm,
   },
   emptyIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
@@ -460,7 +460,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   emptyTitle: {
     ...typography.cardTitle,
     color: colors.foreground,
-    marginBottom: spacing.xs,
+    marginBottom: 2,
     textAlign: 'center',
   },
   emptyDescription: {
@@ -469,7 +469,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     maxWidth: 280,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   emptyCta: {
     flexDirection: 'row',
@@ -477,7 +477,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing['2xl'],
+    paddingHorizontal: spacing.xl,
     borderRadius: radius.xl,
     backgroundColor: colors.primary,
   },
@@ -1405,7 +1405,7 @@ export default function AutopilotScreen() {
   const renderEmptyState = (type: 'automations' | 'templates') => (
     <View style={styles.emptyContainer}>
       <View style={[styles.emptyIconContainer, { backgroundColor: colors.primaryLight || (colors.primary + '15') }]}>
-        <Feather name="zap" size={22} color={colors.primary} />
+        <Feather name="zap" size={18} color={colors.primary} />
       </View>
       <Text style={styles.emptyTitle}>
         {type === 'automations' ? 'Put Your Business on Autopilot' : 'No Templates Available'}
@@ -1416,7 +1416,7 @@ export default function AutopilotScreen() {
           : 'Templates will appear here when available. Check back soon for ready-made automations.'}
       </Text>
       {type === 'automations' && (
-        <View style={{ gap: spacing.sm, alignItems: 'center' }}>
+        <View style={{ gap: spacing.xs, alignItems: 'center' }}>
           <TouchableOpacity
             style={styles.emptyCta}
             onPress={openCreateEditor}
@@ -1428,10 +1428,10 @@ export default function AutopilotScreen() {
           <TouchableOpacity
             onPress={() => setActiveTab('templates')}
             activeOpacity={0.7}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs }}
           >
-            <Feather name="copy" size={iconSizes.md} color={colors.primary} />
-            <Text style={[styles.emptyCtaText, { color: colors.primary }]}>Browse Templates</Text>
+            <Feather name="copy" size={iconSizes.sm} color={colors.primary} />
+            <Text style={[styles.emptyCtaText, { color: colors.primary, fontSize: 13 }]}>Browse Templates</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1570,7 +1570,7 @@ export default function AutopilotScreen() {
               {activityLogs.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <View style={[styles.emptyIconContainer, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
-                    <Feather name="clock" size={22} color="#22c55e" />
+                    <Feather name="clock" size={18} color="#22c55e" />
                   </View>
                   <Text style={styles.emptyTitle}>No Activity Yet</Text>
                   <Text style={styles.emptyDescription}>

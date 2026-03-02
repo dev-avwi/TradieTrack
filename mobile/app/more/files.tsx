@@ -310,16 +310,18 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: spacing.sm,
   },
   complianceFilterTab: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    height: sizes.filterChipHeight,
     borderRadius: radius.pill,
     backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   complianceFilterTabActive: {
     backgroundColor: colors.primary,
   },
   complianceFilterTabText: {
-    ...typography.badge,
+    ...typography.button,
     color: colors.mutedForeground,
   },
   complianceFilterTabTextActive: {
@@ -329,7 +331,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     padding: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -343,9 +345,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     gap: spacing.md,
   },
   documentIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.lg,
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -379,10 +381,15 @@ const createStyles = (colors: any) => StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 4,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: radius.pill,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statusBadgeText: {
     ...typography.badge,
@@ -702,7 +709,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.sm,
+    padding: spacing.md,
     alignItems: 'center',
     ...shadows.sm,
     borderWidth: 1,
@@ -979,6 +986,7 @@ export default function FilesScreen() {
                 <Text style={styles.typeBadgeText}>{typeConfig.label}</Text>
               </View>
               <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+                <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
                 <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
               </View>
             </View>
@@ -1090,16 +1098,25 @@ export default function FilesScreen() {
         <>
           <View style={styles.complianceStatsRow}>
             <View style={styles.complianceStatCard}>
-              <Text style={[styles.statValue, { fontSize: 18, color: STATUS_CONFIG.valid.color }]}>{validCount}</Text>
-              <Text style={[styles.statLabel, { fontSize: 10 }]}>Valid</Text>
+              <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.valid.bgColor }]}>
+                <Feather name="check-circle" size={16} color={STATUS_CONFIG.valid.color} />
+              </View>
+              <Text style={[styles.statValue, { color: STATUS_CONFIG.valid.color }]}>{validCount}</Text>
+              <Text style={styles.statLabel}>Valid</Text>
             </View>
             <View style={styles.complianceStatCard}>
-              <Text style={[styles.statValue, { fontSize: 18, color: STATUS_CONFIG.expiring_soon.color }]}>{expiringSoonCount}</Text>
-              <Text style={[styles.statLabel, { fontSize: 10 }]}>Expiring</Text>
+              <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.expiring_soon.bgColor }]}>
+                <Feather name="alert-triangle" size={16} color={STATUS_CONFIG.expiring_soon.color} />
+              </View>
+              <Text style={[styles.statValue, { color: STATUS_CONFIG.expiring_soon.color }]}>{expiringSoonCount}</Text>
+              <Text style={styles.statLabel}>Expiring</Text>
             </View>
             <View style={styles.complianceStatCard}>
-              <Text style={[styles.statValue, { fontSize: 18, color: STATUS_CONFIG.expired.color }]}>{expiredCount}</Text>
-              <Text style={[styles.statLabel, { fontSize: 10 }]}>Expired</Text>
+              <View style={[styles.statIconContainer, { backgroundColor: STATUS_CONFIG.expired.bgColor }]}>
+                <Feather name="x-circle" size={16} color={STATUS_CONFIG.expired.color} />
+              </View>
+              <Text style={[styles.statValue, { color: STATUS_CONFIG.expired.color }]}>{expiredCount}</Text>
+              <Text style={styles.statLabel}>Expired</Text>
             </View>
           </View>
 
