@@ -136,8 +136,8 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Communications Hub - office admin handles communications
   { path: '/communications', label: 'Communications', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
   
-  // Equipment - owner/manager
-  { path: '/equipment', label: 'Equipment', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  // Equipment (redirects to inventory page equipment tab)
+  { path: '/equipment', label: 'Equipment', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
 
   // Files (Compliance & Licensing) - all roles (content filtered by RBAC on backend)
   { path: '/files', label: 'Files', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: true },

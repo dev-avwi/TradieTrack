@@ -76,7 +76,6 @@ import SchedulePage from "@/pages/SchedulePage";
 import Automations from "@/pages/Automations";
 import RecurringJobs from "@/pages/RecurringJobs";
 import ServiceRemindersPage from "@/pages/ServiceReminders";
-import EquipmentPage from "@/pages/Equipment";
 import InventoryPage from "@/pages/InventoryPage";
 import RebatesPage from "@/pages/Rebates";
 import Leads from "@/pages/Leads";
@@ -711,7 +710,7 @@ function Router({
       )} />
       
       <Route path="/equipment" component={() => (
-        <EquipmentPage />
+        <InventoryPage initialSection="equipment" />
       )} />
       
       <Route path="/files" component={() => (

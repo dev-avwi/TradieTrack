@@ -21,8 +21,7 @@ Core architectural and design decisions include:
 *   **Multi-Business Subcontractors**: Supports subcontractors working for multiple businesses with a business switching mechanism.
 *   **Communication**: Customizable email automation via SendGrid, PWA support, real-time communication via WebSockets for various chat types, and two-way Twilio SMS integration with a unified Chat Hub.
 *   **Operations & Dispatch**: Features a Team Operations Center, a Visual Dispatch Board (Schedule, Kanban, Map views), Ops Health Banner, schedule conflict detection, and assignment-based dispatch with live location tracking.
-*   **Materials & Equipment Management**: Tracks per-job material lists and manages equipment with maintenance logs and utilization reporting.
-*   **Inventory Management**: Full inventory system with items, categories, stock transactions, low-stock alerts, supplier management, and purchase orders.
+*   **Inventory & Equipment (Unified)**: Combined page at `/inventory` with two top-level section tabs: "Stock & Materials" (items, categories, low-stock, purchase orders) and "Equipment & Assets" (equipment list, maintenance, utilisation, job assignments). The `/equipment` route redirects to the equipment tab. Single sidebar entry replaces two separate entries.
 *   **Visual Form Builder**: Custom form builder supporting 9 field types with conditional logic, drag-and-drop reorder, and CSV export.
 *   **Access Control**: Role-Based Access Control (RBAC) with granular permissions, including a Subcontractor role.
 *   **Offline Mode & Media Sync**: Comprehensive offline-first support with smart synchronization for major workflows and media.
