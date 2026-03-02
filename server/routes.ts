@@ -8079,9 +8079,9 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
       
-      // Verify SendGrid by checking API key format
       let emailVerified = false;
       let emailError: string | null = null;
+      
       if (sendgridConfigured) {
         const apiKey = process.env.SENDGRID_API_KEY;
         if (apiKey && apiKey.startsWith('SG.') && apiKey.length > 20) {
@@ -8089,6 +8089,43 @@ Be specific about materials, colors, and features that would be included.`
         } else {
           emailError = 'Invalid SendGrid API key format';
         }
+      }
+      
+      if (!emailVerified) {
+        try {
+          const { isGmailConnected } = await import('./gmailClient');
+          const gmailOk = await isGmailConnected();
+          if (gmailOk) {
+            emailVerified = true;
+            emailError = null;
+          }
+        } catch {}
+      }
+      
+      if (!emailVerified) {
+        try {
+          const { isOutlookConnected } = await import('./outlookClient');
+          const outlookOk = await isOutlookConnected(req.userId);
+          if (outlookOk) {
+            emailVerified = true;
+            emailError = null;
+          }
+        } catch {}
+      }
+      
+      if (!emailVerified) {
+        try {
+          const { getEmailIntegration } = await import('./emailIntegrationService');
+          const integration = await getEmailIntegration(req.userId);
+          if (integration && integration.status === 'connected') {
+            emailVerified = true;
+            emailError = null;
+          }
+        } catch {}
+      }
+      
+      if (!emailVerified && !emailError) {
+        emailError = 'No email service connected';
       }
       
       // Determine payment status based on Stripe Connect

@@ -1038,12 +1038,19 @@ export default function Integrations() {
                   </div>
                 </div>
                 <Badge className={`border-0 ${
-                  emailSendingMode === 'automatic'
+                  emailSendingMode === 'automatic' && health?.services?.email?.status === 'ready'
                     ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-                    : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+                    : emailSendingMode === 'automatic' && health?.services?.email?.status !== 'ready'
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
+                    : 'bg-muted text-muted-foreground'
                 }`}>
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Working
+                  {emailSendingMode === 'automatic' && health?.services?.email?.status === 'ready' ? (
+                    <><CheckCircle className="w-3 h-3 mr-1" />Working</>
+                  ) : emailSendingMode === 'automatic' ? (
+                    <><AlertTriangle className="w-3 h-3 mr-1" />Check Setup</>
+                  ) : (
+                    <>Manual</>
+                  )}
                 </Badge>
               </div>
             </CardHeader>
