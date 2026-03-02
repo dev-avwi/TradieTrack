@@ -21,8 +21,10 @@ export async function getSendGridCredentials(): Promise<{ apiKey: string; email:
       const conn = data.items?.[0];
       if (conn?.settings?.api_key && conn?.settings?.from_email) {
         connectorFromEmail = conn.settings.from_email;
+        console.log(`[SendGrid] Using connector credentials, from_email: ${conn.settings.from_email}, key prefix: ${conn.settings.api_key.substring(0, 10)}...`);
         return { apiKey: conn.settings.api_key, email: conn.settings.from_email };
       }
+      console.log(`[SendGrid] Connector found but missing api_key or from_email:`, JSON.stringify({ hasKey: !!conn?.settings?.api_key, hasEmail: !!conn?.settings?.from_email }));
     } catch (e) {
       console.warn('⚠️ SendGrid connector fetch failed, falling back to env var');
     }
@@ -50,7 +52,15 @@ export async function sendViaSendGrid(emailData: any): Promise<void> {
   if (emailData.from?.email === PLATFORM_FROM_EMAIL && connectorFromEmail) {
     emailData.from.email = connectorFromEmail;
   }
-  await sgMail.send(emailData);
+  console.log(`[SendGrid] Sending from: ${emailData.from?.email} (name: "${emailData.from?.name}") to: ${emailData.to}`);
+  try {
+    await sgMail.send(emailData);
+  } catch (err: any) {
+    const statusCode = err?.code || err?.response?.statusCode;
+    const body = err?.response?.body;
+    console.error(`[SendGrid] Send failed - status: ${statusCode}, body:`, JSON.stringify(body || err.message));
+    throw err;
+  }
 }
 
 export async function sendSystemEmail(emailData: any): Promise<void> {
