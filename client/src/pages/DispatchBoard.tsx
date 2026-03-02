@@ -1481,7 +1481,7 @@ export default function DispatchBoard() {
                   </div>
 
                   <ScrollArea className="h-[700px]">
-                    <div className="relative overflow-hidden" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
+                    <div className="relative" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
                       {WORK_HOURS.map(hour => (
                         <div key={hour} className="flex border-b" style={{ height: HOUR_HEIGHT }}>
                           <div className="w-12 flex-shrink-0 p-1 text-[10px] text-muted-foreground border-r bg-muted/10">
@@ -1495,7 +1495,7 @@ export default function DispatchBoard() {
                             return (
                               <div
                                 key={slotId}
-                                className={`flex-1 min-w-0 border-l relative transition-colors ${
+                                className={`flex-1 min-w-0 border-l relative z-[1] transition-colors ${
                                   isOver ? 'bg-primary/10' : ''
                                 } ${isClickable ? 'cursor-pointer hover:bg-primary/20 bg-primary/5' : 'hover:bg-muted/30'}`}
                                 onDragOver={(e) => handleDragOver(e, slotId)}
