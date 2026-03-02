@@ -629,7 +629,7 @@ export default function ChatHubScreen() {
     return name.substring(0, 2).toUpperCase();
   };
 
-  const twilioConnected = (twilioStatus?.connected === true || twilioStatus?.configured === true || twilioStatus?.enabled === true) && !!twilioStatus?.phoneNumber;
+  const twilioConnected = twilioStatus?.connected === true || twilioStatus?.enabled === true || (twilioStatus?.configured === true && twilioStatus?.hasPhoneNumber === true);
 
   const jobSmsMap = useMemo(() => {
     const byJobId = new Map<string, SmsConversation>();
@@ -1009,7 +1009,7 @@ export default function ChatHubScreen() {
             <Feather name="check" size={16} color="#FFFFFF" />
           </View>
           <Text style={styles.twilioConnectedText}>
-            SMS connected: {twilioStatus.phoneNumber}
+            SMS connected{twilioStatus.phoneNumber ? `: ${twilioStatus.phoneNumber}` : ''}
           </Text>
         </View>
       );
