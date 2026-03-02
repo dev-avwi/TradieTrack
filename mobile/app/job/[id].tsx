@@ -5023,7 +5023,17 @@ export default function JobDetailScreen() {
             <ActivityIndicator color={colors.primary} />
           </View>
         ) : materials.length === 0 ? (
-          <View style={[styles.card, { alignItems: 'center', paddingVertical: spacing.xl, flexDirection: 'column' }]}>
+          <View style={{
+            backgroundColor: colors.card,
+            borderRadius: radius.xl,
+            padding: spacing.xl,
+            marginBottom: spacing.xl,
+            flexDirection: 'column',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            ...shadows.sm,
+          }}>
             <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
               <Feather name="package" size={28} color={colors.mutedForeground} />
             </View>
@@ -5110,7 +5120,17 @@ export default function JobDetailScreen() {
             ))}
 
             {/* Cost vs Price Summary */}
-            <View style={[styles.card, { backgroundColor: `${colors.primary}08`, flexDirection: 'column' }]}>
+            <View style={{
+              backgroundColor: `${colors.primary}08`,
+              borderRadius: radius.xl,
+              padding: spacing.xl,
+              marginBottom: spacing.xl,
+              flexDirection: 'column',
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: colors.cardBorder,
+              ...shadows.sm,
+            }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.md }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ ...typography.caption, color: colors.mutedForeground }}>COST</Text>
@@ -5180,7 +5200,17 @@ export default function JobDetailScreen() {
             <ActivityIndicator color={colors.primary} />
           </View>
         ) : jobMessages.length === 0 ? (
-          <View style={[styles.card, { alignItems: 'center', paddingVertical: spacing.xl, marginBottom: spacing.md, flexDirection: 'column' }]}>
+          <View style={{
+            backgroundColor: colors.card,
+            borderRadius: radius.xl,
+            padding: spacing.xl,
+            marginBottom: spacing.md,
+            flexDirection: 'column',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            ...shadows.sm,
+          }}>
             <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
               <Feather name="message-circle" size={28} color={colors.mutedForeground} />
             </View>

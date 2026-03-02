@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -23,25 +23,16 @@ import {
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 
 const categoryMeta: Record<string, { icon: keyof typeof Feather.glyphMap; label: string; colorKey: string }> = {
-  featured: { icon: 'star', label: '', colorKey: 'warning' },
+  featured: { icon: 'star', label: 'Featured', colorKey: 'warning' },
   work: { icon: 'briefcase', label: 'Work', colorKey: 'primary' },
   money: { icon: 'dollar-sign', label: 'Money', colorKey: 'success' },
   team: { icon: 'users', label: 'Team', colorKey: 'info' },
-  communication: { icon: 'message-circle', label: 'Communication', colorKey: 'info' },
+  communication: { icon: 'message-circle', label: 'Comms', colorKey: 'info' },
   settings: { icon: 'settings', label: 'Settings', colorKey: 'muted' },
   legal: { icon: 'shield', label: 'Legal', colorKey: 'muted' },
   account: { icon: 'user', label: 'Account', colorKey: 'muted' },
-  admin: { icon: 'shield', label: 'Platform Admin', colorKey: 'destructive' },
+  admin: { icon: 'shield', label: 'Admin', colorKey: 'destructive' },
 };
-
-const quickAccessDefs: { icon: keyof typeof Feather.glyphMap; label: string; url: string; colorKey: string }[] = [
-  { icon: 'crosshair', label: 'Action\nCenter', url: '/more/action-center', colorKey: 'primary' },
-  { icon: 'file-text', label: 'Invoices', url: '/more/invoices', colorKey: 'success' },
-  { icon: 'file-text', label: 'Quotes', url: '/more/quotes', colorKey: 'info' },
-  { icon: 'calendar', label: 'Schedule', url: '/more/calendar', colorKey: 'warning' },
-  { icon: 'layout', label: 'Dispatch', url: '/more/dispatch-board', colorKey: 'info' },
-  { icon: 'message-circle', label: 'Chat', url: '/more/chat-hub', colorKey: 'primary' },
-];
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -54,7 +45,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     padding: spacing.lg,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     minHeight: 80,
@@ -97,41 +88,36 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
     color: colors.primary,
   },
-  quickAccessContainer: {
-    marginBottom: spacing.lg,
+  categoryTabsContainer: {
+    marginBottom: spacing.md,
   },
-  quickAccessLabel: {
-    ...typography.label,
-    color: colors.mutedForeground,
-    marginBottom: spacing.sm,
-    paddingLeft: spacing.xs,
+  categoryTabsScroll: {
+    marginBottom: spacing.xs,
   },
-  quickAccessRow: {
+  categoryTabsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.xs,
   },
-  quickAccessItem: {
+  categoryTab: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    minWidth: 70,
-    maxWidth: 80,
-    paddingVertical: spacing.md,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    backgroundColor: colors.muted,
   },
-  quickAccessIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
+  categoryTabActive: {
+    backgroundColor: colors.primary,
   },
-  quickAccessText: {
-    ...typography.captionSmall,
-    color: colors.foreground,
-    fontWeight: '500',
-    textAlign: 'center',
+  categoryTabText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+  },
+  categoryTabTextActive: {
+    color: colors.primaryForeground || '#fff',
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -217,6 +203,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.captionSmall,
     color: colors.mutedForeground,
     marginTop: spacing.xs,
+  },
+  itemCount: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    paddingLeft: spacing.xs,
+    marginBottom: spacing.sm,
   },
 });
 
@@ -340,6 +332,7 @@ export default function MoreScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollRef = useRef<ScrollView | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
+  const [activeCategory, setActiveCategory] = useState<string>('all');
   
   useEffect(() => {
     if (scrollToTopTrigger > 0) {
@@ -374,13 +367,30 @@ export default function MoreScreen() {
     [filterOptions]
   );
 
-  const visibleQuickAccess = useMemo(() => {
-    const allVisibleUrls = new Set<string>();
-    Object.values(categorizedItems).forEach(items => {
-      items.forEach(item => allVisibleUrls.add(item.url));
-    });
-    return quickAccessDefs.filter(qa => allVisibleUrls.has(qa.url));
+  const visibleCategories = useMemo(() => {
+    const cats: string[] = [];
+    for (const key of categoryOrder) {
+      const items = categorizedItems[key] || [];
+      if (items.length > 0) {
+        cats.push(key);
+      }
+    }
+    return cats;
   }, [categorizedItems]);
+
+  const allItems = useMemo(() => {
+    const items: NavItem[] = [];
+    for (const key of categoryOrder) {
+      const catItems = categorizedItems[key] || [];
+      items.push(...catItems);
+    }
+    return items;
+  }, [categorizedItems]);
+
+  const filteredCategories = useMemo(() => {
+    if (activeCategory === 'all') return visibleCategories;
+    return visibleCategories.filter(k => k === activeCategory);
+  }, [activeCategory, visibleCategories]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -411,6 +421,7 @@ export default function MoreScreen() {
   };
 
   const renderSectionHeader = (categoryKey: string) => {
+    if (activeCategory !== 'all') return null;
     const meta = categoryMeta[categoryKey];
     if (!meta || !meta.label) return null;
     const colorVals = getColorValues(meta.colorKey, colors);
@@ -464,6 +475,8 @@ export default function MoreScreen() {
     padding: responsiveShell.paddingHorizontal,
   }), [responsiveShell]);
 
+  const totalItemCount = allItems.length;
+
   return (
     <ScrollView 
       ref={scrollRef}
@@ -494,64 +507,94 @@ export default function MoreScreen() {
         <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
       </TouchableOpacity>
 
-      {visibleQuickAccess.length >= 3 && (
-        <View style={styles.quickAccessContainer}>
-          <Text style={styles.quickAccessLabel}>Quick Access</Text>
-          <View style={styles.quickAccessRow}>
-            {visibleQuickAccess.map((qa) => {
-              const qColors = getColorValues(qa.colorKey, colors);
+      <View style={styles.categoryTabsContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoryTabsScroll}
+        >
+          <View style={styles.categoryTabsRow}>
+            <TouchableOpacity
+              style={[styles.categoryTab, activeCategory === 'all' && styles.categoryTabActive]}
+              activeOpacity={0.7}
+              onPress={() => setActiveCategory('all')}
+            >
+              <Text style={[styles.categoryTabText, activeCategory === 'all' && styles.categoryTabTextActive]}>
+                All
+              </Text>
+            </TouchableOpacity>
+            {visibleCategories.map(catKey => {
+              const meta = categoryMeta[catKey];
+              if (!meta) return null;
+              const isActive = activeCategory === catKey;
               return (
                 <TouchableOpacity
-                  key={qa.url}
-                  style={styles.quickAccessItem}
+                  key={catKey}
+                  style={[styles.categoryTab, isActive && styles.categoryTabActive]}
                   activeOpacity={0.7}
-                  onPress={() => router.push(qa.url as any)}
+                  onPress={() => setActiveCategory(catKey)}
                 >
-                  <View style={[styles.quickAccessIconCircle, { backgroundColor: qColors.bg }]}>
-                    <Feather name={qa.icon} size={iconSizes.xl} color={qColors.fg} />
-                  </View>
-                  <Text style={styles.quickAccessText} numberOfLines={2}>{qa.label}</Text>
+                  <Feather 
+                    name={meta.icon} 
+                    size={14} 
+                    color={isActive ? (colors.primaryForeground || '#fff') : colors.mutedForeground} 
+                  />
+                  <Text style={[styles.categoryTabText, isActive && styles.categoryTabTextActive]}>
+                    {meta.label}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-        </View>
-      )}
+        </ScrollView>
+        {activeCategory === 'all' && (
+          <Text style={styles.itemCount}>{totalItemCount} features available</Text>
+        )}
+        {activeCategory !== 'all' && (
+          <Text style={styles.itemCount}>
+            {(categorizedItems[activeCategory] || []).length} items in {categoryMeta[activeCategory]?.label || activeCategory}
+          </Text>
+        )}
+      </View>
 
-      {categoryOrder.filter(k => k !== 'account').map(categoryKey => 
+      {filteredCategories.filter(k => k !== 'account').map(categoryKey => 
         renderSection(categoryKey, categorizedItems[categoryKey] || [])
       )}
 
-      {renderSectionHeader('account')}
-      <View style={styles.section}>
-        {(categorizedItems.account || []).map((item, index) => {
-          const colorValues = getColorValues(item.color, colors);
-          const badgeColorValues = getBadgeColors(item.color, colors);
-          return (
+      {(activeCategory === 'all' || activeCategory === 'account') && (
+        <>
+          {activeCategory === 'all' && renderSectionHeader('account')}
+          <View style={styles.section}>
+            {(categorizedItems.account || []).map((item, index) => {
+              const colorValues = getColorValues(item.color, colors);
+              const badgeColorValues = getBadgeColors(item.color, colors);
+              return (
+                <MenuItem
+                  key={item.url}
+                  icon={item.icon}
+                  iconBg={colorValues.bg}
+                  iconColor={colorValues.fg}
+                  title={item.title}
+                  subtitle={item.description}
+                  badge={item.badge}
+                  badgeBg={badgeColorValues.bg}
+                  badgeColor={badgeColorValues.fg}
+                  onPress={() => handleNavItemPress(item)}
+                />
+              );
+            })}
             <MenuItem
-              key={item.url}
-              icon={item.icon}
-              iconBg={colorValues.bg}
-              iconColor={colorValues.fg}
-              title={item.title}
-              subtitle={item.description}
-              badge={item.badge}
-              badgeBg={badgeColorValues.bg}
-              badgeColor={badgeColorValues.fg}
-              onPress={() => handleNavItemPress(item)}
+              icon="log-out"
+              iconBg={colors.destructiveLight}
+              iconColor={colors.destructive}
+              title="Sign Out"
+              onPress={handleLogout}
+              destructive
+              isLast
             />
-          );
-        })}
-        <MenuItem
-          icon="log-out"
-          iconBg={colors.destructiveLight}
-          iconColor={colors.destructive}
-          title="Sign Out"
-          onPress={handleLogout}
-          destructive
-          isLast
-        />
-      </View>
+          </View>
+        </>
+      )}
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>JobRunner Mobile</Text>

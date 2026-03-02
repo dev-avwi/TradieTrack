@@ -66,6 +66,9 @@ interface UnreadCounts {
 
 interface TwilioStatus {
   enabled: boolean;
+  configured?: boolean;
+  connected?: boolean;
+  hasPhoneNumber?: boolean;
   phoneNumber: string | null;
 }
 
@@ -626,7 +629,7 @@ export default function ChatHubScreen() {
     return name.substring(0, 2).toUpperCase();
   };
 
-  const twilioConnected = twilioStatus?.enabled === true && !!twilioStatus?.phoneNumber;
+  const twilioConnected = (twilioStatus?.connected === true || twilioStatus?.configured === true || twilioStatus?.enabled === true) && !!twilioStatus?.phoneNumber;
 
   const jobSmsMap = useMemo(() => {
     const byJobId = new Map<string, SmsConversation>();
