@@ -67,6 +67,21 @@ const createStyles = (colors: ThemeColors, isTabletDevice: boolean = false, resp
     color: colors.mutedForeground,
     marginTop: 2,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  dispatchButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   scheduleButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -651,14 +666,23 @@ export default function CalendarScreen() {
               <Text style={styles.pageTitle}>Schedule</Text>
               <Text style={styles.pageSubtitle}>Schedule and track your jobs</Text>
             </View>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.scheduleButton}
-              onPress={handleScheduleJob}
-            >
-              <Feather name="plus" size={18} color={colors.primaryForeground} />
-              <Text style={styles.scheduleButtonText}>New Job</Text>
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.dispatchButton}
+                onPress={() => router.push('/more/dispatch-board')}
+              >
+                <Feather name="columns" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.scheduleButton}
+                onPress={handleScheduleJob}
+              >
+                <Feather name="plus" size={18} color={colors.primaryForeground} />
+                <Text style={styles.scheduleButtonText}>New Job</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.tabsContainer}>
