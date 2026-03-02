@@ -218,9 +218,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   messagesContent: {
     flexGrow: 1,
     justifyContent: 'flex-end',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.md,
   },
   dateSeparator: {
     alignItems: 'center',
@@ -359,47 +359,45 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginLeft: 4,
   },
   messageBubble: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
   },
   messageBubbleOwn: {
     backgroundColor: colors.primary,
-    borderBottomRightRadius: 6,
+    borderBottomRightRadius: 4,
   },
   messageBubbleOther: {
-    backgroundColor: colors.isDark ? colors.muted : colors.card,
-    borderBottomLeftRadius: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    backgroundColor: colors.isDark ? colors.muted : '#e9ecef',
+    borderBottomLeftRadius: 4,
   },
   messageText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '400',
     lineHeight: 22,
   },
   messageTextOwn: {
-    color: colors.primaryForeground,
+    color: '#ffffff',
   },
   messageTextOther: {
-    color: colors.foreground,
+    color: colors.isDark ? '#e4e6ea' : '#1c1e21',
   },
   messageFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: 5,
-    marginTop: 4,
+    marginTop: 3,
   },
   messageTime: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '400',
   },
   messageTimeOwn: {
-    color: colors.primaryForeground + '70',
+    color: 'rgba(255,255,255,0.6)',
   },
   messageTimeOther: {
-    color: colors.mutedForeground,
+    color: colors.isDark ? '#8a8d91' : '#65676b',
   },
   attachmentPreview: {
     marginTop: spacing.sm,
@@ -427,20 +425,30 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
   },
   smsBubbleOwn: {
-    backgroundColor: colors.success,
-    borderBottomRightRadius: 6,
+    backgroundColor: '#34b759',
+    borderBottomRightRadius: 4,
   },
   smsBubbleOther: {
-    backgroundColor: colors.isDark ? colors.successLight : '#e8f5e9',
-    borderBottomLeftRadius: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.isDark ? colors.success + '30' : '#c8e6c9',
+    backgroundColor: colors.isDark ? '#1a3a1a' : '#dcf8c6',
+    borderBottomLeftRadius: 4,
+  },
+  smsTextOwn: {
+    color: '#ffffff',
+  },
+  smsTextOther: {
+    color: colors.isDark ? '#d4e8c0' : '#1c1e21',
+  },
+  smsTimeOwn: {
+    color: 'rgba(255,255,255,0.6)',
+  },
+  smsTimeOther: {
+    color: colors.isDark ? '#7aaa60' : '#65676b',
   },
   smsTypeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(0,0,0,0.06)',
+    backgroundColor: 'rgba(0,0,0,0.08)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: radius.full,
@@ -451,7 +459,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     letterSpacing: 0.3,
   },
   composerContainer: {
-    paddingTop: spacing.sm,
+    paddingTop: 8,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.card,
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -1061,7 +1069,17 @@ export default function JobChatScreen() {
         ? (own ? styles.smsBubbleOwn : styles.smsBubbleOther)
         : (own ? styles.messageBubbleOwn : styles.messageBubbleOther);
 
-      const smsTextColorOther = colors.isDark ? colors.foreground : '#2e7d32';
+      const textStyle = isSms
+        ? (own ? styles.smsTextOwn : styles.smsTextOther)
+        : (own ? styles.messageTextOwn : styles.messageTextOther);
+
+      const timeStyle = isSms
+        ? (own ? styles.smsTimeOwn : styles.smsTimeOther)
+        : (own ? styles.messageTimeOwn : styles.messageTimeOther);
+
+      const badgeIconColor = isSms
+        ? (own ? 'rgba(255,255,255,0.7)' : (colors.isDark ? '#7aaa60' : '#65676b'))
+        : (own ? 'rgba(255,255,255,0.7)' : (colors.isDark ? '#8a8d91' : '#65676b'));
 
       elements.push(
         <View
@@ -1088,29 +1106,18 @@ export default function JobChatScreen() {
               <Text style={styles.messageSender}>{msg.senderName}</Text>
             )}
             <View style={[styles.messageBubble, bubbleStyle]}>
-              <Text style={[
-                styles.messageText,
-                own ? styles.messageTextOwn : styles.messageTextOther,
-                isSms && !own && { color: smsTextColorOther },
-              ]}>
+              <Text style={[styles.messageText, textStyle]}>
                 {isSms ? formatMessageText(msg.message) : msg.message}
               </Text>
               {msg.type === 'chat' && renderAttachment(msg.originalMessage)}
               <View style={styles.messageFooter}>
-                <Text style={[styles.messageTime, own ? styles.messageTimeOwn : styles.messageTimeOther]}>
+                <Text style={[styles.messageTime, timeStyle]}>
                   {formatTime(msg.createdAt)}
                 </Text>
                 {isSms && (
                   <View style={[styles.smsTypeBadge, own && { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                    <Feather
-                      name="smartphone"
-                      size={8}
-                      color={own ? colors.primaryForeground + '90' : colors.mutedForeground}
-                    />
-                    <Text style={[
-                      styles.smsTypeBadgeText,
-                      { color: own ? colors.primaryForeground + '90' : colors.mutedForeground },
-                    ]}>
+                    <Feather name="smartphone" size={8} color={badgeIconColor} />
+                    <Text style={[styles.smsTypeBadgeText, { color: badgeIconColor }]}>
                       SMS
                     </Text>
                   </View>
