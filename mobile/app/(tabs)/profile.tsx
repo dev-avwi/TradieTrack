@@ -23,7 +23,7 @@ import {
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 
 const categoryMeta: Record<string, { icon: keyof typeof Feather.glyphMap; label: string; colorKey: string }> = {
-  featured: { icon: 'star', label: 'Featured', colorKey: 'warning' },
+  featured: { icon: 'zap', label: 'Featured', colorKey: 'warning' },
   work: { icon: 'briefcase', label: 'Work', colorKey: 'primary' },
   money: { icon: 'dollar-sign', label: 'Money', colorKey: 'success' },
   team: { icon: 'users', label: 'Team', colorKey: 'info' },
@@ -93,7 +93,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   quickActionsLabel: {
     ...typography.label,
-    color: colors.mutedForeground,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: colors.foreground,
     marginBottom: spacing.sm,
     paddingLeft: spacing.xs,
   },
@@ -103,22 +106,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   quickActionBtn: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
     backgroundColor: colors.card,
     borderRadius: radius.xl,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
   quickActionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
+    width: 36,
+    height: 36,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -164,26 +166,32 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.sm,
     paddingLeft: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   sectionHeaderIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 7,
+    width: 30,
+    height: 30,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sectionTitle: {
-    ...typography.caption,
+    ...typography.body,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
-    color: colors.mutedForeground,
+    color: colors.foreground,
   },
   sectionCount: {
     ...typography.captionSmall,
+    fontWeight: '600',
     color: colors.mutedForeground,
+    backgroundColor: colors.muted,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+    overflow: 'hidden',
     marginLeft: 'auto' as any,
-    paddingRight: spacing.xs,
   },
   section: {
     backgroundColor: colors.card,
@@ -195,7 +203,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...shadows.sm,
   },
   featuredSection: {
-    borderColor: colors.primary,
+    borderColor: colors.warning,
     borderWidth: 1.5,
   },
   menuItem: {
@@ -487,9 +495,9 @@ export default function MoreScreen() {
     return (
       <View style={styles.sectionHeaderRow}>
         <View style={[styles.sectionHeaderIcon, { backgroundColor: colorVals.bg }]}>
-          <Feather name={meta.icon} size={13} color={colorVals.fg} />
+          <Feather name={meta.icon} size={15} color={colorVals.fg} />
         </View>
-        <Text style={styles.sectionTitle}>{meta.label}</Text>
+        <Text style={[styles.sectionTitle, { color: colorVals.fg }]}>{meta.label}</Text>
         <Text style={styles.sectionCount}>{itemCount}</Text>
       </View>
     );
@@ -562,6 +570,22 @@ export default function MoreScreen() {
               <Text style={styles.businessName}>{businessSettings.businessName}</Text>
             </View>
           )}
+          {(isOwner || isStaff) && (
+            <View style={[styles.businessRow, { marginTop: spacing.xs }]}>
+              <View style={{
+                backgroundColor: isOwner ? colors.primaryLight : colors.infoLight,
+                paddingHorizontal: spacing.sm,
+                paddingVertical: 2,
+                borderRadius: radius.full,
+              }}>
+                <Text style={{
+                  ...typography.captionSmall,
+                  fontWeight: '600',
+                  color: isOwner ? colors.primary : colors.info,
+                }}>{isOwner ? 'Owner' : 'Team Member'}</Text>
+              </View>
+            </View>
+          )}
         </View>
         <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
       </TouchableOpacity>
@@ -578,7 +602,7 @@ export default function MoreScreen() {
                 onPress={() => router.push(action.route as any)}
               >
                 <View style={[styles.quickActionIcon, { backgroundColor: action.bg }]}>
-                  <Feather name={action.icon} size={iconSizes.lg} color={action.fg} />
+                  <Feather name={action.icon} size={18} color={action.fg} />
                 </View>
                 <Text style={styles.quickActionText}>{action.label}</Text>
               </TouchableOpacity>
@@ -607,19 +631,26 @@ export default function MoreScreen() {
               const meta = categoryMeta[catKey];
               if (!meta) return null;
               const isActive = activeCategory === catKey;
+              const catColorVals = getColorValues(meta.colorKey, colors);
               return (
                 <TouchableOpacity
                   key={catKey}
-                  style={[styles.categoryTab, isActive && styles.categoryTabActive]}
+                  style={[
+                    styles.categoryTab, 
+                    isActive && { backgroundColor: catColorVals.fg },
+                  ]}
                   activeOpacity={0.7}
                   onPress={() => setActiveCategory(catKey)}
                 >
                   <Feather 
                     name={meta.icon} 
                     size={14} 
-                    color={isActive ? (colors.primaryForeground || '#fff') : colors.mutedForeground} 
+                    color={isActive ? '#fff' : colors.mutedForeground} 
                   />
-                  <Text style={[styles.categoryTabText, isActive && styles.categoryTabTextActive]}>
+                  <Text style={[
+                    styles.categoryTabText, 
+                    isActive && { color: '#fff' },
+                  ]}>
                     {meta.label}
                   </Text>
                 </TouchableOpacity>

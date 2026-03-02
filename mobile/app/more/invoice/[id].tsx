@@ -3563,7 +3563,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTop: {
     flexDirection: 'row',
@@ -3573,8 +3578,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   invoiceNumber: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.foreground,
+    letterSpacing: 0.3,
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -3584,6 +3590,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   statusText: {
     fontSize: 13,
     fontWeight: '600',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.3,
   },
   totalAmount: {
     fontSize: 36,
@@ -3601,15 +3609,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 8,
     marginTop: 12,
     paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 4,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   dueLabel: {
     fontSize: 14,
+    fontWeight: '500',
     color: colors.mutedForeground,
   },
   dueAmount: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: colors.warning,
   },
@@ -3652,10 +3663,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
     paddingVertical: 14,
     paddingHorizontal: 12,
     borderRadius: 12,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.6,
+    shadowRadius: 2,
+    elevation: 1,
   },
   primaryActionText: {
     fontSize: 14,
@@ -3759,16 +3775,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   overdueAlert: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     padding: 14,
     backgroundColor: colors.destructiveLight,
-    borderRadius: 10,
+    borderRadius: 12,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.destructive + '30',
   },
   overdueText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: colors.destructive,
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 13,
@@ -3784,14 +3803,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     minHeight: 50,
   },
   timelineIndicator: {
-    width: 20,
+    width: 24,
     alignItems: 'center',
   },
   timelineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginTop: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: 5,
+    borderWidth: 2,
+    borderColor: colors.card,
   },
   timelineLine: {
     flex: 1,
@@ -3806,13 +3827,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   timelineLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: colors.foreground,
   },
   timelineDate: {
     fontSize: 12,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: 3,
   },
   card: {
     backgroundColor: colors.card,
@@ -4055,7 +4076,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   paidCard: {
     borderColor: colors.success,
-    borderWidth: 1,
+    borderWidth: 1.5,
     backgroundColor: colors.successLight,
   },
   paidInfo: {
@@ -4067,24 +4088,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   paidAmount: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: colors.success,
   },
   paidDate: {
     fontSize: 14,
+    fontWeight: '500',
     color: colors.foreground,
     marginTop: 4,
   },
   paidMethod: {
     fontSize: 13,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: 3,
   },
   paidReference: {
     fontSize: 12,
     color: colors.mutedForeground,
     marginTop: 2,
+    fontStyle: 'italic' as const,
   },
   sendReceiptButton: {
     flexDirection: 'row',
@@ -4310,18 +4333,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   footerSection: {
     marginTop: 8,
     marginBottom: 24,
-    paddingTop: 16,
+    paddingTop: 20,
+    paddingBottom: 8,
     borderTopWidth: 2,
     alignItems: 'center',
   },
   thankYouText: {
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '500' as const,
     color: colors.mutedForeground,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   abnFooter: {
     fontSize: 12,
     color: colors.mutedForeground,
+    letterSpacing: 0.2,
   },
   modalOverlay: {
     flex: 1,

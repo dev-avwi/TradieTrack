@@ -1479,6 +1479,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   assignJobRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -1654,7 +1655,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing['2xl'],
     paddingHorizontal: spacing['2xl'],
   },
   emptyIconCircle: {
@@ -1785,6 +1786,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.sm,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -1821,6 +1823,8 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     borderRadius: radius['2xl'],
     backgroundColor: colors.muted,
     marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   timeOffHeader: {
     flexDirection: 'row',
@@ -1876,7 +1880,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     marginTop: spacing.sm,
   },
   statCard: {
-    width: ((contentWidth - (isTabletDevice ? spacing.sm * 2 : responsivePadding * 2)) - spacing.sm) / 2,
+    width: ((contentWidth - (isTabletDevice ? spacing.sm * 2 : responsivePadding * 2) - spacing.sm) / 2),
     padding: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
@@ -1912,6 +1916,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    gap: spacing.xs,
     ...shadows.sm,
   },
   performanceRank: {

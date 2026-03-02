@@ -20239,6 +20239,62 @@ Be specific about materials, colors, and features that would be included.`
         });
       }
 
+      const activeJobs = jobs.filter(j => j.status === 'in_progress' || j.status === 'scheduled');
+      const jobsWithoutQuotes = activeJobs.filter(j => {
+        return !quotes.some(q => q.jobId === j.id);
+      });
+      if (jobsWithoutQuotes.length > 2) {
+        actions.push({
+          id: "jobs-missing-quotes",
+          priority: "suggestions",
+          title: `${jobsWithoutQuotes.length} active jobs without quotes`,
+          description: "Creating quotes for active work helps track expected revenue and keeps clients informed.",
+          impact: "Better tracking",
+          cta: "Create Quotes",
+          ctaUrl: "/documents?tab=quotes&action=create",
+          metric: `${jobsWithoutQuotes.length} jobs`,
+          category: "revenue",
+        });
+      }
+
+      const paidInvoices = invoices.filter(inv => inv.status === 'paid');
+      const unpaidSentInvoices = invoices.filter(inv => inv.status === 'sent');
+      if (paidInvoices.length > 0 && unpaidSentInvoices.length > 0) {
+        const avgDaysToPay = paidInvoices.reduce((sum, inv) => {
+          if (!inv.paidAt || !inv.createdAt) return sum;
+          const days = Math.floor((new Date(inv.paidAt).getTime() - new Date(inv.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+          return sum + Math.max(days, 0);
+        }, 0) / paidInvoices.length;
+        if (avgDaysToPay > 14) {
+          actions.push({
+            id: "slow-payment-cycle",
+            priority: "suggestions",
+            title: `Average payment takes ${Math.round(avgDaysToPay)} days`,
+            description: "Consider offering early payment discounts or sending reminders sooner to speed up cashflow.",
+            impact: "Faster cashflow",
+            cta: "View Invoices",
+            ctaUrl: "/documents?tab=invoices",
+            metric: `${Math.round(avgDaysToPay)} days avg`,
+            category: "revenue",
+          });
+        }
+      }
+
+      const completedJobs = jobs.filter(j => j.status === 'done');
+      if (completedJobs.length >= 5 && activeJobs.length < 3) {
+        actions.push({
+          id: "pipeline-low",
+          priority: "suggestions",
+          title: "Your active job pipeline is running low",
+          description: `Only ${activeJobs.length} active job${activeJobs.length !== 1 ? 's' : ''} vs ${completedJobs.length} completed. Time to chase new work.`,
+          impact: "Stay busy",
+          cta: "View Schedule",
+          ctaUrl: "/schedule",
+          metric: `${activeJobs.length} active`,
+          category: "schedule",
+        });
+      }
+
       actions.sort((a, b) => {
         const priorityOrder = { fix_now: 0, this_week: 1, suggestions: 2 };
         return priorityOrder[a.priority] - priorityOrder[b.priority];

@@ -49,7 +49,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     ...shadows.sm,
@@ -377,7 +378,7 @@ export default function SmsConversationScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View style={styles.headerCard}>
+        <View style={[styles.headerCard, { paddingTop: insets.top + spacing.sm }]}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}

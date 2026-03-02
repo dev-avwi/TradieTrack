@@ -379,9 +379,8 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
           {(data || pendingRequests.length > 0) && (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-start animate-fade-up stagger-delay-4">
               {data && sectionConfig.map((section, sectionIdx) => {
-                const items = data.sections[section.key];
+                const items = data.sections[section.key] || [];
                 const count = data.summary[section.countKey];
-                if (!items || items.length === 0) return null;
 
                 return (
                   <div key={section.key} className="flex flex-col gap-2">
@@ -396,6 +395,12 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                       </Badge>
                     </div>
 
+                    {items.length === 0 ? (
+                      <div className="feed-card p-4 flex flex-col items-center justify-center text-center min-h-[80px]">
+                        <CheckCircle className="h-5 w-5 text-muted-foreground/40 mb-1.5" />
+                        <p className="text-xs text-muted-foreground">All clear</p>
+                      </div>
+                    ) : (
                     <div className="flex flex-col gap-2">
                       {items.map((action, idx) => {
                         const CategoryIcon = getCategoryIcon(action.category);
@@ -560,6 +565,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                         );
                       })}
                     </div>
+                    )}
                   </div>
                 );
               })}

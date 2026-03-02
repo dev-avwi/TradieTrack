@@ -1498,8 +1498,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.sm,
     borderRadius: radius.lg,
-    gap: 4,
-    minHeight: 52,
+    gap: 3,
+    minHeight: 48,
   },
   tabActive: {
     backgroundColor: colors.primary,
@@ -1511,10 +1511,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: colors.mutedForeground,
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
   tabLabelActive: {
     color: colors.primaryForeground,
@@ -4680,24 +4680,15 @@ export default function JobDetailScreen() {
           </>
         ) : (
           <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
-            <Text style={{ fontSize: 14, color: colors.mutedForeground, marginBottom: spacing.md }}>
-              No expenses recorded for this job
-            </Text>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: spacing.xs,
-                backgroundColor: colors.mutedForeground,
-                paddingVertical: spacing.sm,
-                paddingHorizontal: spacing.lg,
-                borderRadius: radius.lg,
-                opacity: 0.5,
-              }}
-            >
-              <Feather name="plus" size={16} color={colors.primaryForeground} />
-              <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Add Expense</Text>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
+              <Feather name="credit-card" size={24} color={colors.mutedForeground} />
             </View>
+            <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.xs }}>
+              No expenses recorded
+            </Text>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', paddingHorizontal: spacing.md }}>
+              Track costs, receipts, and billable expenses for this job
+            </Text>
           </View>
         )}
       </View>
@@ -5644,9 +5635,18 @@ export default function JobDetailScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.emptyPhotosContainer}>
+            <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
+                <Feather name="edit-3" size={24} color={colors.mutedForeground} />
+              </View>
+              <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.xs }}>
+                No signatures yet
+              </Text>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.lg, paddingHorizontal: spacing.md }}>
+                Capture client or worker signatures for job sign-off
+              </Text>
               <TouchableOpacity 
-                style={styles.takePhotoInlineButton}
+                style={[styles.takePhotoInlineButton, { width: '100%' }]}
                 onPress={() => setShowSignaturePad(true)}
                 activeOpacity={0.7}
                 data-testid="button-capture-signature"
@@ -6287,7 +6287,7 @@ export default function JobDetailScreen() {
           >
             <Feather 
               name={tab.icon} 
-              size={iconSizes.xl} 
+              size={iconSizes.lg} 
               color={activeTab === tab.id ? colors.primaryForeground : colors.mutedForeground} 
             />
             <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>
@@ -6497,8 +6497,14 @@ export default function JobDetailScreen() {
               })}
               {teamMembers.length === 0 && (
                 <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
-                  <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center' }}>
-                    No team members found. Add team members in Settings.
+                  <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
+                    <Feather name="users" size={24} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.xs }}>
+                    No team members found
+                  </Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', paddingHorizontal: spacing.md }}>
+                    Add team members in Settings to assign them to jobs
                   </Text>
                 </View>
               )}

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, typographySizes } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
@@ -74,7 +75,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     gap: spacing.sm,
@@ -404,6 +406,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
 export default function CommunicationsScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   
   const getStatusConfig = useCallback((status: string) => {
     switch (status) {
@@ -673,7 +676,7 @@ export default function CommunicationsScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       
-      <View style={styles.headerCard}>
+      <View style={[styles.headerCard, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}

@@ -137,11 +137,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   headerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingTop: pageShell.paddingTop,
     paddingBottom: spacing.sm,
     backgroundColor: colors.background,
     marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerContent: {
+    flex: 1,
   },
   headerTitle: {
     ...typography.largeTitle,
@@ -377,7 +391,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
+    flexWrap: 'wrap',
   },
   statusBadge: {
     paddingHorizontal: spacing.sm,
@@ -1052,27 +1067,33 @@ export default function ChatHubScreen() {
         return {
           title: 'No enquiries yet',
           text: 'New SMS conversations that aren\'t linked to a job will appear here.',
+          icon: 'smartphone' as const,
+          iconColor: colors.success,
         };
       case 'team':
         return {
           title: 'No team conversations',
           text: 'Use Team Chat to coordinate with your crew, or start a direct message.',
+          icon: 'users' as const,
+          iconColor: colors.info,
         };
       case 'jobs':
       default:
         return {
           title: 'No job conversations yet',
           text: 'Create jobs to start job discussions and communicate with clients.',
+          icon: 'briefcase' as const,
+          iconColor: colors.primary,
         };
     }
   };
 
-  const getSectionTitle = () => {
+  const getSectionInfo = () => {
     switch (activeFilter) {
-      case 'jobs': return 'JOB CONVERSATIONS';
-      case 'enquiries': return 'SMS ENQUIRIES';
-      case 'team': return 'TEAM & DIRECT MESSAGES';
-      default: return 'CONVERSATIONS';
+      case 'jobs': return { title: 'JOB CONVERSATIONS', icon: 'briefcase' as const };
+      case 'enquiries': return { title: 'SMS ENQUIRIES', icon: 'smartphone' as const };
+      case 'team': return { title: 'TEAM & DIRECT MESSAGES', icon: 'users' as const };
+      default: return { title: 'CONVERSATIONS', icon: 'message-circle' as const };
     }
   };
 
@@ -1082,8 +1103,16 @@ export default function ChatHubScreen() {
       
       <View style={styles.container}>
         <View style={styles.headerCard}>
-          <Text style={styles.headerTitle}>Chat Hub</Text>
-          <Text style={styles.headerSubtitle}>Messages, SMS & team chat for your jobs</Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Feather name="chevron-left" size={24} color={colors.foreground} />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Chat Hub</Text>
+            <Text style={styles.headerSubtitle}>Messages, SMS & team chat for your jobs</Text>
+          </View>
         </View>
 
         {renderTwilioBanner()}
@@ -1138,6 +1167,11 @@ export default function ChatHubScreen() {
                   if (filter !== 'jobs') setJobStatusFilter('all');
                 }}
               >
+                <Feather
+                  name={filter === 'jobs' ? 'briefcase' : filter === 'team' ? 'users' : 'smartphone'}
+                  size={14}
+                  color={isActive ? colors.primaryForeground : colors.mutedForeground}
+                />
                 <Text style={[
                   styles.filterButtonText,
                   isActive && styles.filterButtonTextActive
@@ -1193,21 +1227,29 @@ export default function ChatHubScreen() {
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : conversations.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyStateIcon}>
-                <Feather name="message-circle" size={28} color={colors.primary} />
-              </View>
-              <Text style={styles.emptyStateTitle}>
-                {getEmptyStateMessage().title}
-              </Text>
-              <Text style={styles.emptyStateText}>
-                {getEmptyStateMessage().text}
-              </Text>
-            </View>
+            (() => {
+              const emptyMsg = getEmptyStateMessage();
+              return (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyStateIcon}>
+                    <Feather name={emptyMsg.icon} size={28} color={emptyMsg.iconColor} />
+                  </View>
+                  <Text style={styles.emptyStateTitle}>
+                    {emptyMsg.title}
+                  </Text>
+                  <Text style={styles.emptyStateText}>
+                    {emptyMsg.text}
+                  </Text>
+                </View>
+              );
+            })()
           ) : (
             <>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{getSectionTitle()}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                  <Feather name={getSectionInfo().icon} size={14} color={colors.mutedForeground} />
+                  <Text style={styles.sectionTitle}>{getSectionInfo().title}</Text>
+                </View>
                 <Text style={styles.sectionCount}>{conversations.length} {conversations.length === 1 ? 'conversation' : 'conversations'}</Text>
               </View>
               {conversations.map(renderConversation)}
