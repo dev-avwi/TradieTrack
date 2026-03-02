@@ -8085,7 +8085,18 @@ Be specific about materials, colors, and features that would be included.`
       if (sendgridConfigured) {
         const apiKey = process.env.SENDGRID_API_KEY;
         if (apiKey && apiKey.startsWith('SG.') && apiKey.length > 20) {
-          emailVerified = true;
+          try {
+            const sgRes = await fetch('https://api.sendgrid.com/v3/scopes', {
+              headers: { 'Authorization': `Bearer ${apiKey}` }
+            });
+            if (sgRes.ok) {
+              emailVerified = true;
+            } else {
+              emailError = sgRes.status === 401 ? 'SendGrid API key is expired or invalid' : `SendGrid returned ${sgRes.status}`;
+            }
+          } catch {
+            emailVerified = true;
+          }
         } else {
           emailError = 'Invalid SendGrid API key format';
         }

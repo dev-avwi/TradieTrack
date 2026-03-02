@@ -1140,9 +1140,18 @@ export default function Integrations() {
                           variant: data.success ? "default" : "destructive",
                         });
                       } catch (error: any) {
+                        let errorMsg = "Could not send test email. The email service API key may need to be refreshed.";
+                        try {
+                          const raw = error.message || '';
+                          const jsonStr = raw.replace(/^\d{3}:\s*/, '');
+                          const parsed = JSON.parse(jsonStr);
+                          if (parsed.error) errorMsg = typeof parsed.error === 'string' && parsed.error === 'Unauthorized'
+                            ? "The email service API key is expired or invalid. Please update it in your environment settings."
+                            : parsed.error;
+                        } catch {}
                         toast({
-                          title: "Test Email",
-                          description: error.message || "Could not send test email. Check your email configuration.",
+                          title: "Email Not Working",
+                          description: errorMsg,
                           variant: "destructive",
                         });
                       }
