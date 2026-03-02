@@ -7252,7 +7252,7 @@ Be specific about materials, colors, and features that would be included.`
   // Integration Test Routes
   app.post("/api/integrations/test-email", requireAuth, async (req: any, res) => {
     try {
-      const { sendTestEmail } = await import("./emailService");
+      const { sendEmailViaIntegration } = await import("./emailIntegrationService");
       const user = await storage.getUser(req.userId);
       const businessSettings = await storage.getBusinessSettings(req.userId);
       
@@ -7260,24 +7260,35 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(400).json({ error: "No email address found for your account" });
       }
       
-      const result = await sendTestEmail(
-        user.email, 
-        businessSettings?.businessName || 'JobRunner User'
-      );
+      const businessName = businessSettings?.businessName || 'JobRunner User';
+      const result = await sendEmailViaIntegration({
+        to: user.email,
+        subject: 'JobRunner - Test Email',
+        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Email Test Successful!</h1>
+          </div>
+          <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e;">
+            <p>Hi ${businessName},</p>
+            <p>Your JobRunner email integration is working. Quotes and invoices will be delivered to your clients.</p>
+          </div>
+        </div>`,
+        userId: req.userId,
+        type: 'reminder',
+        fromName: businessName,
+      });
       
       if (result.success) {
         res.json({ 
           success: true, 
-          message: result.mock 
-            ? "Test email logged to console (demo mode)" 
-            : `Test email sent to ${user.email}`
+          message: `Test email sent to ${user.email} via ${result.sentVia || 'email service'}`
         });
       } else {
         res.status(500).json({ error: result.error || "Failed to send test email" });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error testing email:", error);
-      res.status(500).json({ error: "Failed to test email connection" });
+      res.status(500).json({ error: error.message || "Failed to test email connection" });
     }
   });
 

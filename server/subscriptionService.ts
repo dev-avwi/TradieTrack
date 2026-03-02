@@ -30,20 +30,26 @@ export interface LimitCheckResult {
 }
 
 function getEffectiveTier(user: any): SubscriptionTier {
-  if (user.subscriptionTier === 'team') {
-    return 'team';
-  }
-  if (user.subscriptionTier === 'pro') {
-    return 'pro';
-  }
-  
-  if (user.trialStatus === 'active' && user.trialEndsAt) {
-    const trialEnd = new Date(user.trialEndsAt);
-    if (trialEnd > new Date()) {
+  const hasActiveStripeSubscription = user.subscriptionStatus === 'active' || user.subscriptionStatus === 'trialing';
+  const isTrialUser = user.trialStatus === 'active' || user.trialStatus === 'expired';
+
+  if (isTrialUser && !hasActiveStripeSubscription) {
+    if (user.trialStatus === 'active' && user.trialEndsAt && new Date(user.trialEndsAt) > new Date()) {
       return user.subscriptionTier === 'team' ? 'team' : 'pro';
     }
+    return 'free';
   }
-  
+
+  if (hasActiveStripeSubscription) {
+    if (user.subscriptionTier === 'team') return 'team';
+    if (user.subscriptionTier === 'pro') return 'pro';
+  }
+
+  if (!user.subscriptionStatus || user.subscriptionStatus === 'none') {
+    if (user.subscriptionTier === 'team') return 'team';
+    if (user.subscriptionTier === 'pro') return 'pro';
+  }
+
   return 'free';
 }
 
