@@ -1210,6 +1210,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   modalContent: {
     padding: spacing.lg,
   },
+  modalFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
   notesInput: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,
@@ -1220,6 +1229,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     minHeight: 150,
     textAlignVertical: 'top',
+  },
+  singleLineInput: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: 15,
+    color: colors.foreground,
+    height: 44,
+    textAlignVertical: 'center',
   },
   saveButton: {
     backgroundColor: colors.primary,
@@ -5001,12 +5022,12 @@ export default function JobDetailScreen() {
             <ActivityIndicator color={colors.primary} />
           </View>
         ) : materials.length === 0 ? (
-          <View style={[styles.card, { alignItems: 'center', paddingVertical: spacing.xl }]}>
+          <View style={[styles.card, { alignItems: 'center', paddingVertical: spacing.xl, flexDirection: 'column' }]}>
             <Feather name="package" size={32} color={colors.mutedForeground} />
             <Text style={{ ...typography.body, color: colors.mutedForeground, marginTop: spacing.sm, textAlign: 'center' }}>
               No materials added yet
             </Text>
-            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center' }}>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center', paddingHorizontal: spacing.md }}>
               Track parts, materials and supplies used on this job
             </Text>
           </View>
@@ -5156,12 +5177,12 @@ export default function JobDetailScreen() {
             <ActivityIndicator color={colors.primary} />
           </View>
         ) : jobMessages.length === 0 ? (
-          <View style={[styles.card, { alignItems: 'center', paddingVertical: spacing.xl, marginBottom: spacing.md }]}>
+          <View style={[styles.card, { alignItems: 'center', paddingVertical: spacing.xl, marginBottom: spacing.md, flexDirection: 'column' }]}>
             <Feather name="message-circle" size={32} color={colors.mutedForeground} />
             <Text style={{ ...typography.body, color: colors.mutedForeground, marginTop: spacing.sm, textAlign: 'center' }}>
               No messages yet
             </Text>
-            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center' }}>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center', paddingHorizontal: spacing.md }}>
               Start a conversation with your team about this job
             </Text>
           </View>
@@ -6236,7 +6257,7 @@ export default function JobDetailScreen() {
               <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
                 <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Name *</Text>
                 <TextInput
-                  style={[styles.notesInput, { height: 44, textAlignVertical: 'center', marginBottom: spacing.md }]}
+                  style={[styles.singleLineInput, { marginBottom: spacing.md }]}
                   value={materialForm.name}
                   onChangeText={v => setMaterialForm(f => ({ ...f, name: v }))}
                   placeholder="e.g. Copper pipe 25mm"
@@ -6246,7 +6267,7 @@ export default function JobDetailScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Quantity</Text>
                     <TextInput
-                      style={[styles.notesInput, { height: 44, textAlignVertical: 'center' }]}
+                      style={styles.singleLineInput}
                       value={materialForm.quantity}
                       onChangeText={v => setMaterialForm(f => ({ ...f, quantity: v }))}
                       keyboardType="decimal-pad"
@@ -6257,7 +6278,7 @@ export default function JobDetailScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Unit Cost ($)</Text>
                     <TextInput
-                      style={[styles.notesInput, { height: 44, textAlignVertical: 'center' }]}
+                      style={styles.singleLineInput}
                       value={materialForm.unitCost}
                       onChangeText={v => setMaterialForm(f => ({ ...f, unitCost: v }))}
                       keyboardType="decimal-pad"
@@ -6270,7 +6291,7 @@ export default function JobDetailScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Sell Price ($)</Text>
                     <TextInput
-                      style={[styles.notesInput, { height: 44, textAlignVertical: 'center' }]}
+                      style={styles.singleLineInput}
                       value={materialForm.unitPrice}
                       onChangeText={v => setMaterialForm(f => ({ ...f, unitPrice: v }))}
                       keyboardType="decimal-pad"
@@ -6281,7 +6302,7 @@ export default function JobDetailScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Markup %</Text>
                     <TextInput
-                      style={[styles.notesInput, { height: 44, textAlignVertical: 'center' }]}
+                      style={styles.singleLineInput}
                       value={materialForm.markupPercent}
                       onChangeText={v => setMaterialForm(f => ({ ...f, markupPercent: v }))}
                       keyboardType="decimal-pad"
@@ -6299,7 +6320,7 @@ export default function JobDetailScreen() {
                 )}
                 <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Supplier</Text>
                 <TextInput
-                  style={[styles.notesInput, { height: 44, textAlignVertical: 'center', marginBottom: spacing.md }]}
+                  style={[styles.singleLineInput, { marginBottom: spacing.md }]}
                   value={materialForm.supplier}
                   onChangeText={v => setMaterialForm(f => ({ ...f, supplier: v }))}
                   placeholder="e.g. Reece Plumbing"
@@ -6423,7 +6444,7 @@ export default function JobDetailScreen() {
           style={{ flex: 1 }}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalContainer, { maxHeight: 200 }]}>
+            <View style={[styles.modalContainer, { maxHeight: 280 }]}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Rename Job</Text>
                 <TouchableOpacity onPress={() => setShowRenameModal(false)}>
@@ -6432,7 +6453,7 @@ export default function JobDetailScreen() {
               </View>
               <View style={styles.modalContent}>
                 <TextInput
-                  style={[styles.notesInput, { height: 44, textAlignVertical: 'center' }]}
+                  style={styles.singleLineInput}
                   value={newJobTitle}
                   onChangeText={setNewJobTitle}
                   placeholder="Enter job title..."
@@ -7251,14 +7272,14 @@ export default function JobDetailScreen() {
                   Contact Details
                 </Text>
                 <TextInput
-                  style={[styles.notesInput, { minHeight: 44, marginBottom: spacing.md }]}
+                  style={[styles.singleLineInput, { marginBottom: spacing.md }]}
                   placeholder="Name *"
                   placeholderTextColor={colors.mutedForeground}
                   value={subcontractorForm.contactName}
                   onChangeText={(t) => setSubcontractorForm(prev => ({ ...prev, contactName: t }))}
                 />
                 <TextInput
-                  style={[styles.notesInput, { minHeight: 44, marginBottom: spacing.md }]}
+                  style={[styles.singleLineInput, { marginBottom: spacing.md }]}
                   placeholder="Phone number"
                   placeholderTextColor={colors.mutedForeground}
                   keyboardType="phone-pad"
@@ -7266,7 +7287,7 @@ export default function JobDetailScreen() {
                   onChangeText={(t) => setSubcontractorForm(prev => ({ ...prev, contactPhone: t }))}
                 />
                 <TextInput
-                  style={[styles.notesInput, { minHeight: 44, marginBottom: spacing.lg }]}
+                  style={[styles.singleLineInput, { marginBottom: spacing.lg }]}
                   placeholder="Email address"
                   placeholderTextColor={colors.mutedForeground}
                   keyboardType="email-address"
