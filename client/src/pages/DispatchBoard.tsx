@@ -1481,23 +1481,28 @@ export default function DispatchBoard() {
                   </div>
 
                   <ScrollArea className="h-[700px]">
-                    <div className="relative" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
-                      {WORK_HOURS.map(hour => (
-                        <div key={hour} className="flex border-b" style={{ height: HOUR_HEIGHT }}>
-                          <div className="w-12 flex-shrink-0 p-1 text-[10px] text-muted-foreground border-r bg-muted/10">
+                    <div className="flex" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
+                      <div className="w-12 flex-shrink-0">
+                        {WORK_HOURS.map(hour => (
+                          <div key={hour} className="border-b border-r bg-muted/10 p-1 text-[10px] text-muted-foreground" style={{ height: HOUR_HEIGHT }}>
                             {formatTime(hour)}
                           </div>
-                          {teamMembersWithJobs.map(member => {
+                        ))}
+                      </div>
+
+                      {teamMembersWithJobs.map(member => (
+                        <div key={member.id} className="flex-1 min-w-0 border-l relative">
+                          {WORK_HOURS.map(hour => {
                             const slotId = `${member.id}-${hour}`;
                             const isOver = dragOverSlot === slotId;
                             const isClickable = !!selectedJob;
-                            
                             return (
                               <div
                                 key={slotId}
-                                className={`flex-1 min-w-0 border-l relative z-[1] transition-colors ${
+                                className={`border-b transition-colors ${
                                   isOver ? 'bg-primary/10' : ''
                                 } ${isClickable ? 'cursor-pointer hover:bg-primary/20 bg-primary/5' : 'hover:bg-muted/30'}`}
+                                style={{ height: HOUR_HEIGHT }}
                                 onDragOver={(e) => handleDragOver(e, slotId)}
                                 onDragLeave={handleDragLeave}
                                 onDrop={(e) => handleDrop(e, member.memberId, hour)}
@@ -1505,82 +1510,70 @@ export default function DispatchBoard() {
                                 data-testid={`slot-${member.id}-${hour}`}
                               >
                                 {isOver && (
-                                  <div className="absolute inset-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center">
+                                  <div className="absolute inset-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center" style={{ zIndex: 5 }}>
                                     <span className="text-xs text-primary font-medium">Drop here</span>
-                                  </div>
-                                )}
-                                {isClickable && !isOver && (
-                                  <div className="absolute inset-1 border border-dashed border-primary/40 rounded-lg opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
-                                    <span className="text-xs text-primary font-medium">Tap to assign</span>
                                   </div>
                                 )}
                               </div>
                             );
                           })}
-                        </div>
-                      ))}
 
-                      {teamMembersWithJobs.map((member, memberIndex) => (
-                        member.jobs.map(job => {
-                          const { top, height } = getJobPosition(job);
-                          const statusStyle = getStatusStyle(job.status);
-                          const colCount = teamMembersWithJobs.length;
-                          const leftPercent = (memberIndex / colCount) * 100;
-                          const widthPercent = (1 / colCount) * 100;
-                          const isSelected = selectedJob?.job.id === job.id;
+                          {member.jobs.map(job => {
+                            const { top, height } = getJobPosition(job);
+                            const statusStyle = getStatusStyle(job.status);
+                            const isSelected = selectedJob?.job.id === job.id;
 
-                          return (
-                            <div
-                              key={job.id}
-                              draggable
-                              onDragStart={() => handleDragStart(job, member.memberId)}
-                              onDragEnd={() => setDraggedJob(null)}
-                              onClick={() => handleJobClick(job, 'reassign')}
-                              className={`absolute mx-1 rounded-lg border cursor-pointer active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : conflictJobIds.has(job.id) ? 'ring-2 ring-destructive/60 ring-offset-1' : ''}`}
-                              style={{
-                                top: top + 1,
-                                left: `calc(48px + (100% - 48px) * ${memberIndex} / ${colCount})`,
-                                width: `calc((100% - 48px) / ${colCount} - 8px)`,
-                                height: height - 2,
-                                zIndex: draggedJob?.job.id === job.id ? 50 : 10,
-                                opacity: draggedJob?.job.id === job.id ? 0.5 : 1,
-                              }}
-                              data-testid={`scheduled-job-${job.id}`}
-                            >
-                              <div className="p-2 h-full flex flex-col">
-                                <div className="flex items-start gap-1">
-                                  <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                                  {conflictJobIds.has(job.id) && (
-                                    <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0 mt-0.5" />
-                                  )}
-                                  <div className="flex-1 min-w-0">
-                                    <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
-                                      {job.title}
-                                    </h4>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {job.clientName}
-                                    </p>
-                                  </div>
-                                </div>
-                                {height > 60 && (
-                                  <div className="mt-auto flex items-center gap-2 text-xs text-muted-foreground">
-                                    <Clock className="h-3 w-3" />
-                                    <span>{formatScheduledTime(job.scheduledTime, job.scheduledAt)}</span>
-                                    {job.estimatedDuration && (
-                                      <span>({Math.round(job.estimatedDuration / 60)}h)</span>
+                            return (
+                              <div
+                                key={job.id}
+                                draggable
+                                onDragStart={() => handleDragStart(job, member.memberId)}
+                                onDragEnd={() => setDraggedJob(null)}
+                                onClick={() => handleJobClick(job, 'reassign')}
+                                className={`absolute left-0 right-0 mx-1 rounded-lg border cursor-pointer active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : conflictJobIds.has(job.id) ? 'ring-2 ring-destructive/60 ring-offset-1' : ''}`}
+                                style={{
+                                  top: top + 1,
+                                  height: height - 2,
+                                  zIndex: draggedJob?.job.id === job.id ? 50 : 10,
+                                  opacity: draggedJob?.job.id === job.id ? 0.5 : 1,
+                                }}
+                                data-testid={`scheduled-job-${job.id}`}
+                              >
+                                <div className="p-2 h-full flex flex-col">
+                                  <div className="flex items-start gap-1">
+                                    <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                    {conflictJobIds.has(job.id) && (
+                                      <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0 mt-0.5" />
                                     )}
+                                    <div className="flex-1 min-w-0">
+                                      <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
+                                        {job.title}
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground truncate">
+                                        {job.clientName}
+                                      </p>
+                                    </div>
                                   </div>
-                                )}
-                                {height > 80 && job.address && (
-                                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                    <MapPin className="h-3 w-3 flex-shrink-0" />
-                                    <span className="truncate">{job.address}</span>
-                                  </div>
-                                )}
+                                  {height > 60 && (
+                                    <div className="mt-auto flex items-center gap-2 text-xs text-muted-foreground">
+                                      <Clock className="h-3 w-3" />
+                                      <span>{formatScheduledTime(job.scheduledTime, job.scheduledAt)}</span>
+                                      {job.estimatedDuration && (
+                                        <span>({Math.round(job.estimatedDuration / 60)}h)</span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {height > 80 && job.address && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                      <MapPin className="h-3 w-3 flex-shrink-0" />
+                                      <span className="truncate">{job.address}</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })
+                            );
+                          })}
+                        </div>
                       ))}
                     </div>
                   </ScrollArea>
