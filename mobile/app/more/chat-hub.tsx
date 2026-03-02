@@ -277,12 +277,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
   },
   sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: pageShell.paddingHorizontal,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     paddingBottom: spacing.sm,
+    gap: spacing.sm,
   },
   sectionTitle: {
     ...typography.label,
+    color: colors.mutedForeground,
+  },
+  sectionCount: {
+    ...typography.captionSmall,
     color: colors.mutedForeground,
   },
   conversationsList: {
@@ -315,13 +323,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.successLight,
   },
   conversationAvatarDirect: {
-    backgroundColor: colors.accentLight || '#E9D5FF',
+    backgroundColor: colors.infoLight,
   },
   conversationAvatarMember: {
     backgroundColor: colors.muted,
   },
   conversationAvatarText: {
     ...typography.button,
+    color: colors.foreground,
   },
   conversationContent: {
     flex: 1,
@@ -405,17 +414,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    paddingVertical: spacing['3xl'],
+    paddingHorizontal: spacing.xl,
   },
   emptyStateIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   emptyStateTitle: {
     ...typography.cardTitle,
@@ -428,6 +437,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     textAlign: 'center',
     lineHeight: 20,
+    maxWidth: 260,
   },
   loadingContainer: {
     flex: 1,
@@ -926,7 +936,7 @@ export default function ChatHubScreen() {
           ) : item.type === 'sms' ? (
             <Feather name="smartphone" size={20} color={colors.success} />
           ) : item.type === 'direct' ? (
-            <Feather name="message-square" size={20} color={colors.accent || '#7C3AED'} />
+            <Feather name="message-square" size={20} color={colors.info} />
           ) : item.type === 'member' ? (
             <Feather name="user-plus" size={20} color={colors.mutedForeground} />
           ) : (
@@ -1172,7 +1182,7 @@ export default function ChatHubScreen() {
           ) : conversations.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyStateIcon}>
-                <Feather name="message-circle" size={16} color={colors.primary} />
+                <Feather name="message-circle" size={28} color={colors.primary} />
               </View>
               <Text style={styles.emptyStateTitle}>
                 {getEmptyStateMessage().title}
@@ -1183,6 +1193,10 @@ export default function ChatHubScreen() {
             </View>
           ) : (
             <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{getSectionTitle()}</Text>
+                <Text style={styles.sectionCount}>{conversations.length} {conversations.length === 1 ? 'conversation' : 'conversations'}</Text>
+              </View>
               {conversations.map(renderConversation)}
               <View style={{ height: 100, paddingBottom: 100 }} />
             </>

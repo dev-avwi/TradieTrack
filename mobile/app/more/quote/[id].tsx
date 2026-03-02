@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput,
   Linking,
+  Image,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -1426,33 +1427,37 @@ ${businessName}`;
           )}
 
           {/* Line Items */}
-          {lineItems.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Items ({lineItems.length})</Text>
-              <View style={styles.card}>
-                {lineItems.map((item: any, index: number) => (
-                  <View 
-                    key={item.id || index} 
-                    style={[styles.lineItem, index > 0 && styles.lineItemBorder]}
-                  >
-                    <View style={styles.lineItemHeader}>
-                      <Feather name="package" size={16} color={colors.mutedForeground} />
-                      <Text style={styles.lineItemDescription} numberOfLines={2}>
-                        {item.description}
-                      </Text>
-                    </View>
-                    <View style={styles.lineItemDetails}>
-                      <Text style={styles.lineItemQty}>
-                        {item.quantity} × {formatCurrency(item.unitPrice)}
-                      </Text>
-                      <Text style={styles.lineItemTotal}>
-                        {formatCurrency(item.quantity * item.unitPrice)}
-                      </Text>
-                    </View>
+          <Text style={styles.sectionTitle}>Items ({lineItems.length})</Text>
+          {lineItems.length > 0 ? (
+            <View style={styles.card}>
+              {lineItems.map((item: any, index: number) => (
+                <View 
+                  key={item.id || index} 
+                  style={[styles.lineItem, index > 0 && styles.lineItemBorder]}
+                >
+                  <View style={styles.lineItemHeader}>
+                    <Feather name="package" size={16} color={colors.mutedForeground} />
+                    <Text style={styles.lineItemDescription} numberOfLines={2}>
+                      {item.description}
+                    </Text>
                   </View>
-                ))}
-              </View>
-            </>
+                  <View style={styles.lineItemDetails}>
+                    <Text style={styles.lineItemQty}>
+                      {item.quantity} × {formatCurrency(item.unitPrice)}
+                    </Text>
+                    <Text style={styles.lineItemTotal}>
+                      {formatCurrency(item.quantity * item.unitPrice)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyStateCard}>
+              <Feather name="inbox" size={32} color={colors.mutedForeground} />
+              <Text style={styles.emptyStateText}>No line items added</Text>
+              <Text style={styles.emptyStateSubtext}>Line items will appear here once added to the quote</Text>
+            </View>
           )}
 
           {/* Amounts */}
@@ -1483,8 +1488,11 @@ ${businessName}`;
           {quote.notes && (
             <>
               <Text style={styles.sectionTitle}>Notes</Text>
-              <View style={[styles.card, styles.notesCard, { borderLeftColor: brandColor }]}>
-                <Text style={styles.notesText}>{quote.notes}</Text>
+              <View style={[styles.card, styles.notesCard]}>
+                <View style={[styles.notesAccentBar, { backgroundColor: brandColor }]} />
+                <View style={styles.notesContent}>
+                  <Text style={styles.notesText}>{quote.notes}</Text>
+                </View>
               </View>
             </>
           )}
@@ -1511,8 +1519,19 @@ ${businessName}`;
               <Text style={styles.sectionTitle}>Quote Accepted</Text>
               {allSignatures.filter(sig => sig.documentType === 'quote_acceptance').map((sig, index) => (
                 <View key={sig.id || index} style={[styles.card, styles.acceptedCard]}>
+                  <View style={styles.acceptedHeader}>
+                    <Feather name="check-circle" size={20} color={colors.success} />
+                    <Text style={styles.acceptedTitle}>Quote Accepted</Text>
+                  </View>
                   <View style={styles.signatureImageContainer}>
                     <Text style={styles.signatureLabel}>Client Signature:</Text>
+                    {sig.signatureData && (
+                      <Image 
+                        source={{ uri: sig.signatureData }} 
+                        style={styles.signatureImage}
+                        resizeMode="contain"
+                      />
+                    )}
                   </View>
                   {sig.signerName && (
                     <Text style={styles.acceptedInfo}>
@@ -2331,19 +2350,47 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     opacity: 0.6,
   },
   notesCard: {
-    borderLeftWidth: 4,
-    borderRadius: 0,
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
+    flexDirection: 'row' as const,
+    alignItems: 'stretch' as const,
+    padding: 0,
+    overflow: 'hidden' as const,
+  },
+  notesAccentBar: {
+    width: 4,
+  },
+  notesContent: {
+    flex: 1,
+    padding: 16,
+  },
+  emptyStateCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 32,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  emptyStateText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: colors.foreground,
+    marginTop: 4,
+  },
+  emptyStateSubtext: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    textAlign: 'center' as const,
+    lineHeight: 18,
   },
   acceptanceCard: {
     backgroundColor: colors.card,
     borderRadius: 12,
-    padding: 16,
+    padding: 20,
     marginBottom: 24,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.border,
-    borderStyle: 'dashed',
   },
   acceptanceText: {
     fontSize: 13,
@@ -2352,20 +2399,36 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 16,
   },
   signaturePlaceholder: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     gap: 8,
-    paddingTop: 12,
+    paddingVertical: 24,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    borderStyle: 'dashed' as const,
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    marginTop: 4,
   },
   signaturePlaceholderText: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.mutedForeground,
+    fontWeight: '500' as const,
   },
   acceptedCard: {
     backgroundColor: colors.successLight,
     borderColor: colors.success,
+  },
+  acceptedHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    marginBottom: 16,
+  },
+  acceptedTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: colors.success,
   },
   signatureImageContainer: {
     marginBottom: 12,
@@ -2374,6 +2437,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 12,
     color: colors.successDark,
     marginBottom: 8,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    fontWeight: '600' as const,
+  },
+  signatureImage: {
+    width: '100%' as const,
+    height: 80,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   acceptedInfo: {
     fontSize: 13,

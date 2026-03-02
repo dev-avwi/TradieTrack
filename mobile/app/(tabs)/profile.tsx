@@ -15,7 +15,6 @@ import { useUserRole, type UserRoleType } from '../../src/hooks/use-user-role';
 import { spacing, radius, shadows, typography, iconSizes, sizes, usePageShell } from '../../src/lib/design-tokens';
 import { 
   getMorePageItemsByCategory, 
-  categoryLabels, 
   categoryOrder,
   type NavItem,
   type FilterOptions,
@@ -23,13 +22,31 @@ import {
 } from '../../src/lib/navigation-config';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 
+const categoryMeta: Record<string, { icon: keyof typeof Feather.glyphMap; label: string; colorKey: string }> = {
+  featured: { icon: 'star', label: '', colorKey: 'warning' },
+  work: { icon: 'briefcase', label: 'Work', colorKey: 'primary' },
+  money: { icon: 'dollar-sign', label: 'Money', colorKey: 'success' },
+  team: { icon: 'users', label: 'Team', colorKey: 'info' },
+  communication: { icon: 'message-circle', label: 'Communication', colorKey: 'info' },
+  settings: { icon: 'settings', label: 'Settings', colorKey: 'muted' },
+  legal: { icon: 'shield', label: 'Legal', colorKey: 'muted' },
+  account: { icon: 'user', label: 'Account', colorKey: 'muted' },
+  admin: { icon: 'shield', label: 'Platform Admin', colorKey: 'destructive' },
+};
+
+const quickAccessDefs: { icon: keyof typeof Feather.glyphMap; label: string; url: string; colorKey: string }[] = [
+  { icon: 'crosshair', label: 'Action\nCenter', url: '/more/action-center', colorKey: 'primary' },
+  { icon: 'file-text', label: 'Invoices', url: '/more/invoices', colorKey: 'success' },
+  { icon: 'file-text', label: 'Quotes', url: '/more/quotes', colorKey: 'info' },
+  { icon: 'calendar', label: 'Schedule', url: '/more/calendar', colorKey: 'warning' },
+  { icon: 'layout', label: 'Dispatch', url: '/more/dispatch-board', colorKey: 'info' },
+  { icon: 'message-circle', label: 'Chat', url: '/more/chat-hub', colorKey: 'primary' },
+];
+
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  contentContainer: {
-    padding: spacing.lg,
   },
   profileHeader: {
     flexDirection: 'row',
@@ -80,6 +97,60 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
     color: colors.primary,
   },
+  quickAccessContainer: {
+    marginBottom: spacing.lg,
+  },
+  quickAccessLabel: {
+    ...typography.label,
+    color: colors.mutedForeground,
+    marginBottom: spacing.sm,
+    paddingLeft: spacing.xs,
+  },
+  quickAccessRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  quickAccessItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    minWidth: 70,
+    maxWidth: 80,
+    paddingVertical: spacing.md,
+  },
+  quickAccessIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  quickAccessText: {
+    ...typography.captionSmall,
+    color: colors.foreground,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+    paddingLeft: spacing.xs,
+  },
+  sectionHeaderIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionTitle: {
+    ...typography.label,
+    color: colors.mutedForeground,
+  },
   section: {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
@@ -91,13 +162,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   featuredSection: {
     borderColor: colors.primary,
-    borderWidth: 2,
-  },
-  sectionTitle: {
-    ...typography.label,
-    color: colors.mutedForeground,
-    marginBottom: spacing.sm,
-    paddingLeft: spacing.xs,
+    borderWidth: 1.5,
   },
   menuItem: {
     flexDirection: 'row',
@@ -106,8 +171,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     minHeight: 52,
   },
   menuItemIcon: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -129,17 +194,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   menuItemSubtitle: {
     ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
   badge: {
-    backgroundColor: colors.successLight,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: 2,
     borderRadius: radius.sm,
   },
   badgeText: {
     ...typography.badge,
-    color: colors.success,
   },
   footer: {
     alignItems: 'center',
@@ -167,6 +230,8 @@ interface MenuItemProps {
   destructive?: boolean;
   isLast?: boolean;
   badge?: string;
+  badgeBg?: string;
+  badgeColor?: string;
 }
 
 function MenuItem({ 
@@ -178,12 +243,16 @@ function MenuItem({
   onPress, 
   destructive = false, 
   isLast = false, 
-  badge 
+  badge,
+  badgeBg,
+  badgeColor,
 }: MenuItemProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const effectiveIconBg = iconBg || colors.primaryLight;
   const effectiveIconColor = iconColor || colors.primary;
+  const effectiveBadgeBg = badgeBg || colors.successLight;
+  const effectiveBadgeColor = badgeColor || colors.success;
   
   return (
     <TouchableOpacity
@@ -191,11 +260,11 @@ function MenuItem({
       activeOpacity={0.7}
       style={[
         styles.menuItem,
-        !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }
+        !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }
       ]}
     >
       <View style={[styles.menuItemIcon, { backgroundColor: effectiveIconBg }]}>
-        <Feather name={icon} size={iconSizes.xl} color={effectiveIconColor} />
+        <Feather name={icon} size={iconSizes.lg} color={effectiveIconColor} />
       </View>
       <View style={styles.menuItemContent}>
         <View style={styles.menuItemTitleRow}>
@@ -206,18 +275,18 @@ function MenuItem({
             {title}
           </Text>
           {badge && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{badge}</Text>
+            <View style={[styles.badge, { backgroundColor: effectiveBadgeBg }]}>
+              <Text style={[styles.badgeText, { color: effectiveBadgeColor }]}>{badge}</Text>
             </View>
           )}
         </View>
         {subtitle && (
-          <Text style={styles.menuItemSubtitle}>{subtitle}</Text>
+          <Text style={styles.menuItemSubtitle} numberOfLines={1}>{subtitle}</Text>
         )}
       </View>
       <Feather 
         name="chevron-right" 
-        size={iconSizes.xl} 
+        size={iconSizes.lg} 
         color={destructive ? colors.destructive : colors.mutedForeground} 
       />
     </TouchableOpacity>
@@ -235,11 +304,26 @@ function getColorValues(colorKey: string | undefined, colors: ThemeColors): { bg
     case 'info':
       return { bg: colors.infoLight, fg: colors.info };
     case 'muted':
-      return { bg: colors.muted, fg: colors.foreground };
+      return { bg: colors.muted, fg: colors.mutedForeground };
     case 'destructive':
       return { bg: colors.destructiveLight, fg: colors.destructive };
     default:
       return { bg: colors.primaryLight, fg: colors.primary };
+  }
+}
+
+function getBadgeColors(colorKey: string | undefined, colors: ThemeColors): { bg: string; fg: string } {
+  switch (colorKey) {
+    case 'warning':
+      return { bg: colors.warningLight, fg: colors.warning };
+    case 'success':
+      return { bg: colors.successLight, fg: colors.success };
+    case 'destructive':
+      return { bg: colors.destructiveLight, fg: colors.destructive };
+    case 'info':
+      return { bg: colors.infoLight, fg: colors.info };
+    default:
+      return { bg: colors.successLight, fg: colors.success };
   }
 }
 
@@ -275,8 +359,6 @@ export default function MoreScreen() {
     canAccessBilling,
   } = useUserRole();
 
-  // For navigation visibility: use canAccessTeamPages (shows team items to owners/managers)
-  // For feature access: use hasTeamAccess (requires team subscription)
   const filterOptions: FilterOptions = useMemo(() => ({
     isTeam: canAccessTeamPages && !isSolo,
     isTradie: isStaff,
@@ -291,6 +373,14 @@ export default function MoreScreen() {
     getMorePageItemsByCategory(filterOptions), 
     [filterOptions]
   );
+
+  const visibleQuickAccess = useMemo(() => {
+    const allVisibleUrls = new Set<string>();
+    Object.values(categorizedItems).forEach(items => {
+      items.forEach(item => allVisibleUrls.add(item.url));
+    });
+    return quickAccessDefs.filter(qa => allVisibleUrls.has(qa.url));
+  }, [categorizedItems]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -320,18 +410,33 @@ export default function MoreScreen() {
     router.push(item.url as any);
   };
 
+  const renderSectionHeader = (categoryKey: string) => {
+    const meta = categoryMeta[categoryKey];
+    if (!meta || !meta.label) return null;
+    const colorVals = getColorValues(meta.colorKey, colors);
+    
+    return (
+      <View style={styles.sectionHeaderRow}>
+        <View style={[styles.sectionHeaderIcon, { backgroundColor: colorVals.bg }]}>
+          <Feather name={meta.icon} size={12} color={colorVals.fg} />
+        </View>
+        <Text style={styles.sectionTitle}>{meta.label}</Text>
+      </View>
+    );
+  };
+
   const renderSection = (categoryKey: string, items: NavItem[]) => {
     if (items.length === 0) return null;
     
-    const label = categoryLabels[categoryKey];
     const isFeatured = categoryKey === 'featured';
     
     return (
       <View key={categoryKey}>
-        {label && <Text style={styles.sectionTitle}>{label}</Text>}
+        {renderSectionHeader(categoryKey)}
         <View style={[styles.section, isFeatured && styles.featuredSection]}>
           {items.map((item, index) => {
             const colorValues = getColorValues(item.color, colors);
+            const badgeColorValues = getBadgeColors(item.color, colors);
             const isLast = index === items.length - 1;
             
             return (
@@ -343,6 +448,8 @@ export default function MoreScreen() {
                 title={item.title}
                 subtitle={item.description}
                 badge={item.badge}
+                badgeBg={badgeColorValues.bg}
+                badgeColor={badgeColorValues.fg}
                 onPress={() => handleNavItemPress(item)}
                 isLast={isLast}
               />
@@ -353,7 +460,6 @@ export default function MoreScreen() {
     );
   };
 
-  // Dynamic content container style for iPad-responsive padding
   const responsiveContentStyle = useMemo(() => ({
     padding: responsiveShell.paddingHorizontal,
   }), [responsiveShell]);
@@ -365,7 +471,6 @@ export default function MoreScreen() {
       contentContainerStyle={responsiveContentStyle}
       showsVerticalScrollIndicator={false}
     >
-      {/* Profile Header */}
       <TouchableOpacity 
         style={styles.profileHeader}
         activeOpacity={0.8}
@@ -389,16 +494,39 @@ export default function MoreScreen() {
         <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
       </TouchableOpacity>
 
-      {/* Render all categories in order (except account which has special handling) */}
+      {visibleQuickAccess.length >= 3 && (
+        <View style={styles.quickAccessContainer}>
+          <Text style={styles.quickAccessLabel}>Quick Access</Text>
+          <View style={styles.quickAccessRow}>
+            {visibleQuickAccess.map((qa) => {
+              const qColors = getColorValues(qa.colorKey, colors);
+              return (
+                <TouchableOpacity
+                  key={qa.url}
+                  style={styles.quickAccessItem}
+                  activeOpacity={0.7}
+                  onPress={() => router.push(qa.url as any)}
+                >
+                  <View style={[styles.quickAccessIconCircle, { backgroundColor: qColors.bg }]}>
+                    <Feather name={qa.icon} size={iconSizes.xl} color={qColors.fg} />
+                  </View>
+                  <Text style={styles.quickAccessText} numberOfLines={2}>{qa.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
       {categoryOrder.filter(k => k !== 'account').map(categoryKey => 
         renderSection(categoryKey, categorizedItems[categoryKey] || [])
       )}
 
-      {/* Account Section - special handling for sign out */}
-      <Text style={styles.sectionTitle}>Account</Text>
+      {renderSectionHeader('account')}
       <View style={styles.section}>
         {(categorizedItems.account || []).map((item, index) => {
           const colorValues = getColorValues(item.color, colors);
+          const badgeColorValues = getBadgeColors(item.color, colors);
           return (
             <MenuItem
               key={item.url}
@@ -408,6 +536,8 @@ export default function MoreScreen() {
               title={item.title}
               subtitle={item.description}
               badge={item.badge}
+              badgeBg={badgeColorValues.bg}
+              badgeColor={badgeColorValues.fg}
               onPress={() => handleNavItemPress(item)}
             />
           );
@@ -423,13 +553,11 @@ export default function MoreScreen() {
         />
       </View>
 
-      {/* App Version */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>JobRunner Mobile</Text>
         <Text style={styles.versionText}>Version 1.1.0</Text>
       </View>
 
-      {/* Bottom Spacing */}
       <View style={{ height: spacing['4xl'] }} />
     </ScrollView>
   );

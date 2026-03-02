@@ -1498,8 +1498,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.sm,
     borderRadius: radius.lg,
-    gap: 2,
-    minHeight: 44,
+    gap: 3,
+    minHeight: 48,
   },
   tabActive: {
     backgroundColor: colors.primary,
@@ -1511,13 +1511,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
     color: colors.mutedForeground,
+    letterSpacing: 0.1,
   },
   tabLabelActive: {
     color: colors.primaryForeground,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   fixedHeader: {
     paddingHorizontal: spacing.lg,
@@ -5023,8 +5024,10 @@ export default function JobDetailScreen() {
           </View>
         ) : materials.length === 0 ? (
           <View style={[styles.card, { alignItems: 'center', paddingVertical: spacing.xl, flexDirection: 'column' }]}>
-            <Feather name="package" size={32} color={colors.mutedForeground} />
-            <Text style={{ ...typography.body, color: colors.mutedForeground, marginTop: spacing.sm, textAlign: 'center' }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
+              <Feather name="package" size={28} color={colors.mutedForeground} />
+            </View>
+            <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center' }}>
               No materials added yet
             </Text>
             <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center', paddingHorizontal: spacing.md }}>
@@ -5178,8 +5181,10 @@ export default function JobDetailScreen() {
           </View>
         ) : jobMessages.length === 0 ? (
           <View style={[styles.card, { alignItems: 'center', paddingVertical: spacing.xl, marginBottom: spacing.md, flexDirection: 'column' }]}>
-            <Feather name="message-circle" size={32} color={colors.mutedForeground} />
-            <Text style={{ ...typography.body, color: colors.mutedForeground, marginTop: spacing.sm, textAlign: 'center' }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
+              <Feather name="message-circle" size={28} color={colors.mutedForeground} />
+            </View>
+            <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center' }}>
               No messages yet
             </Text>
             <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center', paddingHorizontal: spacing.md }}>
@@ -5229,18 +5234,20 @@ export default function JobDetailScreen() {
           borderRadius: radius.xl,
           borderWidth: 1,
           borderColor: colors.cardBorder,
-          padding: spacing.sm,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
           alignItems: 'flex-end',
           marginBottom: spacing.md,
+          minHeight: 52,
         }}>
           <TextInput
             style={{
               flex: 1,
               ...typography.body,
               color: colors.foreground,
-              paddingHorizontal: spacing.sm,
               paddingVertical: spacing.xs,
               maxHeight: 100,
+              minHeight: 36,
             }}
             placeholder="Message your team..."
             placeholderTextColor={colors.mutedForeground}
@@ -5253,8 +5260,9 @@ export default function JobDetailScreen() {
             disabled={!newMessage.trim() || isSendingMessage}
             style={{
               backgroundColor: newMessage.trim() ? colors.primary : colors.muted,
-              borderRadius: radius.lg,
-              padding: spacing.sm,
+              borderRadius: radius.full,
+              width: 36,
+              height: 36,
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -5634,8 +5642,8 @@ export default function JobDetailScreen() {
         
         {photos.length > 0 ? (
           <>
-            <ScrollView 
-              horizontal 
+            <ScrollView
+              horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.photosScrollView}
               contentContainerStyle={styles.photosScrollContent}
@@ -5728,41 +5736,52 @@ export default function JobDetailScreen() {
             </View>
           </>
         ) : (
-          <View style={[styles.emptyPhotosContainer, { flexWrap: 'wrap', gap: spacing.sm }]}>
-            <TouchableOpacity 
-              style={[styles.takePhotoInlineButton, { flex: 0, minWidth: '30%', paddingHorizontal: spacing.md }]}
-              onPress={handleTakePhoto}
-              disabled={isUploadingPhoto}
-              activeOpacity={0.7}
-            >
-              {isUploadingPhoto ? (
-                <ActivityIndicator size="small" color={colors.primaryForeground} />
-              ) : (
-                <>
-                  <Feather name="camera" size={18} color={colors.primaryForeground} style={{ marginRight: spacing.xs }} />
-                  <Text style={styles.takePhotoInlineText}>Photo</Text>
-                </>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.recordVideoButton}
-              onPress={handleRecordVideo}
-              disabled={isUploadingPhoto}
-              activeOpacity={0.7}
-              data-testid="button-record-video"
-            >
-              <Feather name="video" size={18} color={colors.primaryForeground} style={styles.recordVideoButtonIcon} />
-              <Text style={styles.recordVideoText}>Video</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.galleryInlineButton, { flex: 1, marginRight: 0 }]}
-              onPress={handlePickMedia}
-              disabled={isUploadingPhoto}
-              activeOpacity={0.7}
-            >
-              <Feather name="image" size={18} color={colors.foreground} style={{ marginRight: spacing.xs }} />
-              <Text style={styles.galleryInlineText}>Gallery</Text>
-            </TouchableOpacity>
+          <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+              <Feather name="camera" size={28} color={colors.mutedForeground} />
+            </View>
+            <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.xs }}>
+              No photos yet
+            </Text>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.lg, paddingHorizontal: spacing.md }}>
+              Document the job with before, during, and after photos
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, width: '100%' }}>
+              <TouchableOpacity 
+                style={[styles.takePhotoInlineButton, { flex: 0, minWidth: '30%', paddingHorizontal: spacing.md }]}
+                onPress={handleTakePhoto}
+                disabled={isUploadingPhoto}
+                activeOpacity={0.7}
+              >
+                {isUploadingPhoto ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <>
+                    <Feather name="camera" size={18} color={colors.primaryForeground} style={{ marginRight: spacing.xs }} />
+                    <Text style={styles.takePhotoInlineText}>Photo</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.recordVideoButton}
+                onPress={handleRecordVideo}
+                disabled={isUploadingPhoto}
+                activeOpacity={0.7}
+                data-testid="button-record-video"
+              >
+                <Feather name="video" size={18} color={colors.primaryForeground} style={styles.recordVideoButtonIcon} />
+                <Text style={styles.recordVideoText}>Video</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.galleryInlineButton, { flex: 1, marginRight: 0 }]}
+                onPress={handlePickMedia}
+                disabled={isUploadingPhoto}
+                activeOpacity={0.7}
+              >
+                <Feather name="image" size={18} color={colors.foreground} style={{ marginRight: spacing.xs }} />
+                <Text style={styles.galleryInlineText}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </View>
@@ -5789,7 +5808,7 @@ export default function JobDetailScreen() {
           />
         ) : voiceNotes.length > 0 ? (
           <View style={{ gap: spacing.sm }}>
-            {voiceNotes.map((note) => (
+            {voiceNotes.map((note: VoiceNote) => (
               <VoiceNotePlayer
                 key={note.id}
                 noteId={note.id}
@@ -5855,9 +5874,18 @@ export default function JobDetailScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.emptyPhotosContainer}>
+          <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+              <Feather name="mic" size={24} color={colors.mutedForeground} />
+            </View>
+            <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.xs }}>
+              No voice notes yet
+            </Text>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.lg, paddingHorizontal: spacing.md }}>
+              Record audio notes hands-free while on the job
+            </Text>
             <TouchableOpacity 
-              style={styles.takePhotoInlineButton}
+              style={[styles.takePhotoInlineButton, { width: '100%' }]}
               onPress={() => setShowVoiceRecorder(true)}
               activeOpacity={0.7}
             >
@@ -5891,8 +5919,16 @@ export default function JobDetailScreen() {
         {job.notes ? (
           <Text style={styles.notesText}>{job.notes}</Text>
         ) : (
-          <View style={styles.emptyNotesPlaceholder}>
-            <Text style={styles.emptyNotesText}>Tap to add notes about this job...</Text>
+          <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+              <Feather name="file-text" size={24} color={colors.mutedForeground} />
+            </View>
+            <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.xs }}>
+              No notes yet
+            </Text>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center' }}>
+              Tap to add job notes, instructions, or reminders
+            </Text>
           </View>
         )}
       </TouchableOpacity>
@@ -6194,7 +6230,9 @@ export default function JobDetailScreen() {
           activeOpacity={0.7}
         >
           <Text style={styles.title}>{job.title}</Text>
-          <Feather name="edit-2" size={16} color={colors.mutedForeground} />
+          <View style={{ padding: spacing.xs, opacity: 0.6 }}>
+            <Feather name="edit-2" size={14} color={colors.mutedForeground} />
+          </View>
         </TouchableOpacity>
         {job.description && (
           <Text style={styles.description}>{job.description}</Text>
@@ -6212,7 +6250,7 @@ export default function JobDetailScreen() {
           >
             <Feather 
               name={tab.icon} 
-              size={iconSizes.md} 
+              size={iconSizes.lg} 
               color={activeTab === tab.id ? colors.primaryForeground : colors.mutedForeground} 
             />
             <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>

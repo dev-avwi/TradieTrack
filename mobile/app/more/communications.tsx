@@ -77,15 +77,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: spacing.sm,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerIconContainer: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: radius.lg,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.md,
   },
   headerContent: {
     flex: 1,
@@ -668,6 +676,12 @@ export default function CommunicationsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       
       <View style={styles.headerCard}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Feather name="chevron-left" size={24} color={colors.foreground} />
+        </TouchableOpacity>
         <View style={styles.headerIconContainer}>
           <Feather name="send" size={iconSizes.lg} color={colors.primary} />
         </View>
@@ -682,18 +696,22 @@ export default function CommunicationsScreen() {
       
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
+          <Feather name="activity" size={14} color={colors.mutedForeground} style={{ marginBottom: 2 }} />
           <Text style={styles.statValue}>{stats.total}</Text>
           <Text style={styles.statLabel}>Total</Text>
         </View>
         <View style={styles.statCard}>
+          <Feather name="mail" size={14} color={'#3b82f6'} style={{ marginBottom: 2 }} />
           <Text style={[styles.statValue, { color: '#3b82f6' }]}>{stats.emails}</Text>
           <Text style={styles.statLabel}>Emails</Text>
         </View>
         <View style={styles.statCard}>
+          <Feather name="message-square" size={14} color={'#22c55e'} style={{ marginBottom: 2 }} />
           <Text style={[styles.statValue, { color: '#22c55e' }]}>{stats.sms}</Text>
           <Text style={styles.statLabel}>SMS</Text>
         </View>
         <View style={styles.statCard}>
+          <Feather name="check-circle" size={14} color={'#10b981'} style={{ marginBottom: 2 }} />
           <Text style={[styles.statValue, { color: '#10b981' }]}>{stats.delivered}</Text>
           <Text style={styles.statLabel}>Delivered</Text>
         </View>

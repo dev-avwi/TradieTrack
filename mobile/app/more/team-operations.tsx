@@ -638,7 +638,7 @@ export default function TeamOperationsScreen() {
               const lastName = member.lastName || '';
               const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
               const shortName = firstName || member.email?.split('@')[0] || 'Team';
-              const memberColor = member.themeColor || statusConfig?.color || '#3b82f6';
+              const memberColor = statusConfig?.color || colors.primary;
               
               return (
                 <Marker
@@ -976,10 +976,12 @@ export default function TeamOperationsScreen() {
       </View>
 
       <Text style={styles.sectionTitle}>Individual Performance</Text>
-      {memberStats.map((member, index) => (
+      {memberStats.map((member, index) => {
+        const rankColor = index === 0 ? colors.warning : index === 1 ? colors.mutedForeground : index === 2 ? '#cd7f32' : colors.mutedForeground;
+        return (
         <View key={member.id} style={styles.performanceCard}>
-          <View style={styles.performanceRank}>
-            <Text style={styles.performanceRankText}>{index + 1}</Text>
+          <View style={[styles.performanceRank, index < 3 && { backgroundColor: `${rankColor}20` }]}>
+            <Text style={[styles.performanceRankText, index < 3 && { color: rankColor }]}>{index + 1}</Text>
           </View>
           <View style={[styles.avatar, { backgroundColor: colors.primary, width: 36, height: 36, borderRadius: 18 }]}>
             <Text style={[styles.avatarText, { fontSize: 14 }]}>{getInitials(member.firstName, member.lastName, member.email)}</Text>
@@ -992,7 +994,8 @@ export default function TeamOperationsScreen() {
             <Text style={styles.performanceRateText}>{member.completionRate}%</Text>
           </View>
         </View>
-      ))}
+        );
+      })}
 
       {memberStats.length === 0 && (
         <View style={styles.emptyState}>
@@ -1164,7 +1167,8 @@ export default function TeamOperationsScreen() {
         onRequestClose={() => { setShowAssignModal(false); setAssigningToMember(null); }}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={styles.assignModalContainer}>
+            <View style={styles.assignModalHandle} />
             <View style={styles.modalHeader}>
               <View>
                 <Text style={styles.modalTitle}>Assign a Job</Text>
@@ -1199,9 +1203,9 @@ export default function TeamOperationsScreen() {
                       {job.clientName && (
                         <Text style={styles.assignJobClient} numberOfLines={1}>{job.clientName}</Text>
                       )}
-                      {job.scheduledDate && (
+                      {job.scheduledAt && (
                         <Text style={styles.assignJobDate}>
-                          {format(new Date(job.scheduledDate), 'EEE d MMM')}
+                          {format(new Date(job.scheduledAt), 'EEE d MMM')}
                         </Text>
                       )}
                     </View>
@@ -1943,6 +1947,22 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   },
   modalContainer: {
     flex: 1,
+  },
+  assignModalContainer: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: radius['2xl'],
+    borderTopRightRadius: radius['2xl'],
+    maxHeight: '70%',
+    paddingBottom: 40,
+  },
+  assignModalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.muted,
+    alignSelf: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
   },
   modalHeader: {
     flexDirection: 'row',

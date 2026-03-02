@@ -16,7 +16,7 @@ import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius } from '../../src/lib/design-tokens';
+import { spacing, radius, typography, shadows, sizes } from '../../src/lib/design-tokens';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
 import api from '../../src/lib/api';
 
@@ -52,20 +52,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    ...shadows.sm,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: sizes.inputHeightSm,
+    height: sizes.inputHeightSm,
+    borderRadius: radius.md,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
   },
   headerIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: sizes.avatarMd,
+    height: sizes.avatarMd,
+    borderRadius: sizes.avatarMd / 2,
     backgroundColor: colors.successLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -75,12 +76,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   headerSubtitle: {
-    fontSize: 12,
+    ...typography.captionSmall,
     color: colors.mutedForeground,
     marginTop: 2,
   },
@@ -95,21 +95,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: spacing['4xl'],
   },
-  emptyIcon: {
-    opacity: 0.3,
-    marginBottom: spacing.sm,
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.successLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
   },
   emptyText: {
-    fontSize: 15,
-    fontWeight: '500',
+    ...typography.cardTitle,
     color: colors.foreground,
   },
   emptySubtext: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   messageRow: {
     marginBottom: spacing.sm,
@@ -121,17 +125,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'flex-start',
   },
   messageLabel: {
-    fontSize: 11,
-    fontWeight: '500',
+    ...typography.badge,
     color: colors.mutedForeground,
     marginBottom: 2,
-    marginLeft: 4,
+    marginLeft: spacing.xs,
   },
   messageBubble: {
     maxWidth: '80%',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 16,
+    borderRadius: radius['2xl'],
   },
   messageBubbleOutbound: {
     backgroundColor: colors.primary,
@@ -142,8 +145,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderBottomLeftRadius: 4,
   },
   messageText: {
+    ...typography.body,
     fontSize: 14,
-    lineHeight: 20,
   },
   messageTextOutbound: {
     color: colors.primaryForeground,
@@ -153,7 +156,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   messageTime: {
     fontSize: 10,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   messageTimeOutbound: {
     color: colors.primaryForeground + '80',
@@ -161,6 +164,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   messageTimeInbound: {
     color: colors.mutedForeground,
+  },
+  dateSeparator: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  dateSeparatorText: {
+    ...typography.badge,
+    color: colors.mutedForeground,
+    backgroundColor: colors.muted,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
   },
   messageStatus: {
     fontSize: 10,
@@ -191,10 +207,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   composerInput: {
     paddingHorizontal: spacing.md,
     paddingVertical: Platform.OS === 'ios' ? 10 : 8,
-    fontSize: 15,
+    ...typography.body,
     color: colors.foreground,
     maxHeight: 100,
-    minHeight: 36,
+    minHeight: sizes.inputHeightSm,
   },
   sendButton: {
     width: 36,
@@ -242,7 +258,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 6,
   },
   quickReplyChipText: {
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '500',
     color: colors.foreground,
   },
@@ -394,44 +410,58 @@ export default function SmsConversationScreen() {
         >
           {messages.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Feather name="message-circle" size={48} color={colors.mutedForeground} style={styles.emptyIcon} />
+              <View style={styles.emptyIconContainer}>
+                <Feather name="message-circle" size={28} color={colors.success} />
+              </View>
               <Text style={styles.emptyText}>No messages yet</Text>
               <Text style={styles.emptySubtext}>Send an SMS to start the conversation</Text>
             </View>
           ) : (
-            messages.map((msg) => {
+            messages.map((msg, index) => {
               const isOutbound = msg.direction === 'outbound';
+              const msgDate = new Date(msg.createdAt).toDateString();
+              const prevDate = index > 0 ? new Date(messages[index - 1].createdAt).toDateString() : null;
+              const showDateSep = index === 0 || msgDate !== prevDate;
+              
               return (
-                <View
-                  key={msg.id}
-                  style={[
-                    styles.messageRow,
-                    isOutbound ? styles.messageRowOutbound : styles.messageRowInbound,
-                  ]}
-                >
-                  {!isOutbound && (
-                    <Text style={styles.messageLabel}>{clientName}</Text>
+                <View key={msg.id}>
+                  {showDateSep && (
+                    <View style={styles.dateSeparator}>
+                      <Text style={styles.dateSeparatorText}>
+                        {new Date(msg.createdAt).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      </Text>
+                    </View>
                   )}
-                  <View style={[
-                    styles.messageBubble,
-                    isOutbound ? styles.messageBubbleOutbound : styles.messageBubbleInbound,
-                  ]}>
-                    <Text style={[
-                      styles.messageText,
-                      isOutbound ? styles.messageTextOutbound : styles.messageTextInbound,
+                  <View
+                    style={[
+                      styles.messageRow,
+                      isOutbound ? styles.messageRowOutbound : styles.messageRowInbound,
+                    ]}
+                  >
+                    {!isOutbound && (
+                      <Text style={styles.messageLabel}>{clientName}</Text>
+                    )}
+                    <View style={[
+                      styles.messageBubble,
+                      isOutbound ? styles.messageBubbleOutbound : styles.messageBubbleInbound,
                     ]}>
-                      {msg.body}
-                    </Text>
-                    <Text style={[
-                      styles.messageTime,
-                      isOutbound ? styles.messageTimeOutbound : styles.messageTimeInbound,
-                    ]}>
-                      {formatTime(msg.createdAt)}
-                    </Text>
+                      <Text style={[
+                        styles.messageText,
+                        isOutbound ? styles.messageTextOutbound : styles.messageTextInbound,
+                      ]}>
+                        {msg.body}
+                      </Text>
+                      <Text style={[
+                        styles.messageTime,
+                        isOutbound ? styles.messageTimeOutbound : styles.messageTimeInbound,
+                      ]}>
+                        {formatTime(msg.createdAt)}
+                      </Text>
+                    </View>
+                    {isOutbound && msg.status && msg.status !== 'sent' && (
+                      <Text style={styles.messageStatus}>{msg.status}</Text>
+                    )}
                   </View>
-                  {isOutbound && msg.status && msg.status !== 'sent' && (
-                    <Text style={styles.messageStatus}>{msg.status}</Text>
-                  )}
                 </View>
               );
             })

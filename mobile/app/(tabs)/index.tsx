@@ -1074,6 +1074,219 @@ function TodayJobCard({
   );
 }
 
+function RevenueChart({ isOwner }: { isOwner: boolean }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const [revenueData, setRevenueData] = useState<{ month: string; amount: number }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadRevenueData();
+  }, []);
+
+  const loadRevenueData = async () => {
+    try {
+      const response = await api.get<any[]>('/api/invoices');
+      if (response.data) {
+        const invoices = response.data;
+        const now = new Date();
+        const months: { month: string; shortMonth: string; amount: number }[] = [];
+
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+          const monthRevenue = invoices
+            .filter((inv: any) => {
+              if (inv.status !== 'paid' || !inv.paidAt) return false;
+              const paidDate = new Date(inv.paidAt);
+              return paidDate >= d && paidDate <= endOfMonth;
+            })
+            .reduce((sum: number, inv: any) => sum + (parseFloat(inv.total) || 0), 0);
+
+          months.push({
+            month: d.toLocaleDateString('en-AU', { month: 'short' }),
+            shortMonth: d.toLocaleDateString('en-AU', { month: 'short' }),
+            amount: monthRevenue,
+          });
+        }
+        setRevenueData(months);
+      }
+    } catch (error) {
+      console.log('Error loading revenue data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOwner) return null;
+
+  const maxAmount = Math.max(...revenueData.map(d => d.amount), 1);
+  const totalRevenue = revenueData.reduce((sum, d) => sum + d.amount, 0);
+  const maxBarHeight = 100;
+
+  const formatAmount = (amount: number) => {
+    if (amount >= 1000) return `$${(amount / 1000).toFixed(1)}k`;
+    return `$${amount.toFixed(0)}`;
+  };
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <View style={[styles.sectionTitleIcon, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
+            <Feather name="trending-up" size={iconSizes.md} color={colors.success} />
+          </View>
+          <Text style={styles.sectionTitle}>Revenue</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.viewAllButton}
+          onPress={() => router.push('/more/money-hub')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.viewAllText}>Details</Text>
+          <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.revenueChartCard}>
+        {isLoading ? (
+          <View style={styles.revenueChartLoading}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : (
+          <>
+            <View style={styles.revenueChartHeader}>
+              <Text style={styles.revenueChartTotal}>{formatAmount(totalRevenue)}</Text>
+              <Text style={styles.revenueChartSubtitle}>Last 6 months</Text>
+            </View>
+            <View style={styles.revenueChartBars}>
+              {revenueData.map((item, index) => {
+                const barHeight = maxAmount > 0
+                  ? Math.max((item.amount / maxAmount) * maxBarHeight, 4)
+                  : 4;
+                const isCurrentMonth = index === revenueData.length - 1;
+                return (
+                  <View key={index} style={styles.revenueBarColumn}>
+                    <Text style={styles.revenueBarValue}>
+                      {item.amount > 0 ? formatAmount(item.amount) : ''}
+                    </Text>
+                    <View style={styles.revenueBarTrack}>
+                      <View
+                        style={[
+                          styles.revenueBar,
+                          {
+                            height: barHeight,
+                            backgroundColor: isCurrentMonth ? colors.success : colorWithOpacity(colors.success, 0.4),
+                          },
+                        ]}
+                      />
+                    </View>
+                    <Text style={[
+                      styles.revenueBarLabel,
+                      isCurrentMonth && { color: colors.foreground, fontWeight: '600' as const },
+                    ]}>
+                      {item.month}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function ComplianceAlerts({ isOwner }: { isOwner: boolean }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadComplianceData();
+  }, []);
+
+  const loadComplianceData = async () => {
+    try {
+      const response = await api.get<any[]>('/api/compliance-documents');
+      if (response.data) {
+        const docs = response.data;
+        const now = new Date();
+        const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+        const expiringOrExpired = docs.filter((doc: any) => {
+          if (!doc.expiryDate) return false;
+          const expiry = new Date(doc.expiryDate);
+          return expiry <= thirtyDaysFromNow;
+        }).map((doc: any) => {
+          const expiry = new Date(doc.expiryDate);
+          const isExpired = expiry < now;
+          const daysUntil = Math.ceil((expiry.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+          return { ...doc, isExpired, daysUntil };
+        }).sort((a: any, b: any) => a.daysUntil - b.daysUntil);
+
+        setAlerts(expiringOrExpired);
+      }
+    } catch (error) {
+      console.log('Error loading compliance data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOwner || isLoading || alerts.length === 0) return null;
+
+  const expiredCount = alerts.filter(a => a.isExpired).length;
+  const expiringCount = alerts.filter(a => !a.isExpired).length;
+
+  return (
+    <View style={styles.section}>
+      <TouchableOpacity
+        style={[
+          styles.complianceAlertCard,
+          expiredCount > 0
+            ? { backgroundColor: colorWithOpacity(colors.destructive, 0.08), borderColor: colorWithOpacity(colors.destructive, 0.2) }
+            : { backgroundColor: colorWithOpacity(colors.warning, 0.08), borderColor: colorWithOpacity(colors.warning, 0.2) },
+        ]}
+        onPress={() => router.push('/more/documents?tab=compliance')}
+        activeOpacity={0.7}
+      >
+        <View style={styles.complianceAlertRow}>
+          <View style={[
+            styles.complianceAlertIconContainer,
+            { backgroundColor: expiredCount > 0 ? colorWithOpacity(colors.destructive, 0.15) : colorWithOpacity(colors.warning, 0.15) },
+          ]}>
+            <Feather
+              name="alert-triangle"
+              size={iconSizes.xl}
+              color={expiredCount > 0 ? colors.destructive : colors.warning}
+            />
+          </View>
+          <View style={styles.complianceAlertContent}>
+            <Text style={[
+              styles.complianceAlertTitle,
+              { color: expiredCount > 0 ? colors.destructive : colors.warning },
+            ]}>
+              {expiredCount > 0
+                ? `${expiredCount} document${expiredCount > 1 ? 's' : ''} expired`
+                : `${expiringCount} document${expiringCount > 1 ? 's' : ''} expiring soon`}
+            </Text>
+            <Text style={styles.complianceAlertDescription}>
+              {alerts.slice(0, 2).map((a: any) => {
+                if (a.isExpired) return `${a.documentName || a.name} - expired ${Math.abs(a.daysUntil)}d ago`;
+                return `${a.documentName || a.name} - ${a.daysUntil}d left`;
+              }).join(', ')}
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // Empty State Component
 function EmptyTodayState({ onCreateJob }: { onCreateJob: () => void }) {
   const { colors } = useTheme();
@@ -1863,6 +2076,16 @@ export default function DashboardScreen() {
           )}
         </View>
       </View>
+
+      {/* Revenue Chart - Owner Only */}
+      {isOwnerUser && heavySectionsReady && (
+        <RevenueChart isOwner={isOwnerUser} />
+      )}
+
+      {/* Compliance Alerts - Owner Only */}
+      {isOwnerUser && heavySectionsReady && (
+        <ComplianceAlerts isOwner={isOwnerUser} />
+      )}
 
       {/* Deferred heavy sections - rendered after interactions settle to keep UI responsive */}
       {!heavySectionsReady && (
@@ -3185,6 +3408,92 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   viewAllWeekText: {
     ...typography.caption,
+    color: colors.mutedForeground,
+  },
+
+  revenueChartCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing.lg,
+  },
+  revenueChartLoading: {
+    height: 160,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  revenueChartHeader: {
+    marginBottom: spacing.lg,
+  },
+  revenueChartTotal: {
+    ...typography.sectionTitle,
+    color: colors.foreground,
+  },
+  revenueChartSubtitle: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  revenueChartBars: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  revenueBarColumn: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  revenueBarValue: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    fontSize: 10,
+  },
+  revenueBarTrack: {
+    width: '100%',
+    height: 100,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  revenueBar: {
+    width: '80%',
+    borderRadius: radius.xs,
+    minHeight: 4,
+  },
+  revenueBarLabel: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    fontSize: 11,
+  },
+
+  complianceAlertCard: {
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    padding: spacing.lg,
+  },
+  complianceAlertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  complianceAlertIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  complianceAlertContent: {
+    flex: 1,
+  },
+  complianceAlertTitle: {
+    ...typography.bodySemibold,
+    marginBottom: 2,
+  },
+  complianceAlertDescription: {
+    ...typography.captionSmall,
     color: colors.mutedForeground,
   },
 });

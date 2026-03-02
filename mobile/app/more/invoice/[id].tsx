@@ -2184,8 +2184,8 @@ ${businessName}`;
                 <Text style={[styles.documentSummaryTitle, { color: isPaid ? colors.success : brandColor }]}>
                   {isPaid ? 'Payment Received' : (invoice.status === 'overdue' ? 'Overdue Amount' : 'Amount Due')}
                 </Text>
-                <View style={[styles.documentStatusBadge, { backgroundColor: status.bgColor }]}>
-                  <Text style={[styles.documentStatusBadgeText, { color: status.textColor }]}>{status.label}</Text>
+                <View style={[styles.documentStatusBadge, { backgroundColor: status.bg }]}>
+                  <Text style={[styles.documentStatusBadgeText, { color: status.color }]}>{status.label}</Text>
                 </View>
               </View>
               
@@ -2495,33 +2495,37 @@ ${businessName}`;
           )}
 
           {/* Line Items */}
-          {lineItems.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Items ({lineItems.length})</Text>
-              <View style={styles.card}>
-                {lineItems.map((item: any, index: number) => (
-                  <View 
-                    key={item.id || index} 
-                    style={[styles.lineItem, index > 0 && styles.lineItemBorder]}
-                  >
-                    <View style={styles.lineItemHeader}>
-                      <Feather name="package" size={16} color={colors.mutedForeground} />
-                      <Text style={styles.lineItemDescription} numberOfLines={2}>
-                        {item.description}
-                      </Text>
-                    </View>
-                    <View style={styles.lineItemDetails}>
-                      <Text style={styles.lineItemQty}>
-                        {item.quantity} × {formatCurrency(item.unitPrice)}
-                      </Text>
-                      <Text style={styles.lineItemTotal}>
-                        {formatCurrency(item.quantity * item.unitPrice)}
-                      </Text>
-                    </View>
+          <Text style={styles.sectionTitle}>Items ({lineItems.length})</Text>
+          {lineItems.length > 0 ? (
+            <View style={styles.card}>
+              {lineItems.map((item: any, index: number) => (
+                <View 
+                  key={item.id || index} 
+                  style={[styles.lineItem, index > 0 && styles.lineItemBorder]}
+                >
+                  <View style={styles.lineItemHeader}>
+                    <Feather name="package" size={16} color={colors.mutedForeground} />
+                    <Text style={styles.lineItemDescription} numberOfLines={2}>
+                      {item.description}
+                    </Text>
                   </View>
-                ))}
-              </View>
-            </>
+                  <View style={styles.lineItemDetails}>
+                    <Text style={styles.lineItemQty}>
+                      {item.quantity} × {formatCurrency(item.unitPrice)}
+                    </Text>
+                    <Text style={styles.lineItemTotal}>
+                      {formatCurrency(item.quantity * item.unitPrice)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyStateCard}>
+              <Feather name="inbox" size={32} color={colors.mutedForeground} />
+              <Text style={styles.emptyStateText}>No line items added</Text>
+              <Text style={styles.emptyStateSubtext}>Line items will appear here once added to the invoice</Text>
+            </View>
           )}
 
           {/* Amounts */}
@@ -2846,8 +2850,11 @@ ${businessName}`;
           {invoice.notes && (
             <>
               <Text style={styles.sectionTitle}>Notes</Text>
-              <View style={[styles.card, styles.notesCard, { borderLeftColor: brandColor }]}>
-                <Text style={styles.notesText}>{invoice.notes}</Text>
+              <View style={[styles.card, styles.notesCard]}>
+                <View style={[styles.notesAccentBar, { backgroundColor: brandColor }]} />
+                <View style={styles.notesContent}>
+                  <Text style={styles.notesText}>{invoice.notes}</Text>
+                </View>
               </View>
             </>
           )}
@@ -4252,10 +4259,39 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     opacity: 0.6,
   },
   notesCard: {
-    borderLeftWidth: 4,
-    borderRadius: 0,
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
+    flexDirection: 'row' as const,
+    alignItems: 'stretch' as const,
+    padding: 0,
+    overflow: 'hidden' as const,
+  },
+  notesAccentBar: {
+    width: 4,
+  },
+  notesContent: {
+    flex: 1,
+    padding: 16,
+  },
+  emptyStateCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 32,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  emptyStateText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: colors.foreground,
+    marginTop: 4,
+  },
+  emptyStateSubtext: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    textAlign: 'center' as const,
+    lineHeight: 18,
   },
   signatureImage: {
     width: '100%',
