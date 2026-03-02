@@ -106,7 +106,15 @@ function getTradieFriendlyEmailError(rawError: string): { title: string; message
     };
   }
   
-  if (errorLower.includes('authentication') || errorLower.includes('auth') || errorLower.includes('password')) {
+  if (errorLower.includes('unauthorized') || errorLower.includes('forbidden') || errorLower.includes('all email sending methods failed')) {
+    return {
+      title: "Email Service Unavailable",
+      message: "The email service is temporarily unavailable.",
+      fix: "Try again in a few minutes. If this keeps happening, go to Settings → Email Integration and check your email connection is working."
+    };
+  }
+
+  if (errorLower.includes('authentication failed') || errorLower.includes('invalid login') || errorLower.includes('password')) {
     return {
       title: "Email Login Expired",
       message: "Your email login needs to be refreshed.",
