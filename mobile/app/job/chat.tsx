@@ -17,10 +17,8 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
-import { getBottomNavHeight } from '../../src/components/BottomNav';
 import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 
@@ -598,8 +596,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 export default function JobChatScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuthStore();
   const scrollRef = useRef<ScrollView>(null);
@@ -1206,7 +1202,7 @@ export default function JobChatScreen() {
           {renderMessages()}
         </ScrollView>
 
-        <View style={[styles.composerContainer, { paddingBottom: bottomNavHeight + spacing.xs }]}>
+        <View style={[styles.composerContainer, { paddingBottom: spacing.sm }]}>
           <View style={styles.composerRow}>
             <TouchableOpacity 
               style={styles.attachButton} 

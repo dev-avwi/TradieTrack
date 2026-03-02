@@ -137,12 +137,14 @@ export function BottomNav() {
   const { triggerScrollToTop } = useScrollToTop();
 
   const isActive = (item: NavItem) => {
-    // Chat-specific routes should only highlight Chat, not More
     const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'];
     const isChatRoute = chatRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
-    
-    // If current route is a chat route, only Chat tab should be active
     if (isChatRoute) {
+      return item.title === 'Chat';
+    }
+
+    const jobChatMatch = pathname.match(/^\/job\/[^/]+\/chat/);
+    if (jobChatMatch) {
       return item.title === 'Chat';
     }
     
