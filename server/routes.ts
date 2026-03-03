@@ -134,6 +134,7 @@ import {
   automationLogs,
   automations as automationsTable,
   geofenceAlerts as geofence_alerts,
+  jobInvites,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, and, gte, lte, isNotNull, isNull, inArray, or } from "drizzle-orm";
@@ -6269,6 +6270,8 @@ Be specific about materials, colors, and features that would be included.`
       materials: query.hide_materials === '1',
       photos: query.hide_photos === '1',
       invoice: query.hide_invoice === '1',
+      compliance: query.hide_compliance === '1',
+      subcontractors: query.hide_subcontractors === '1',
     };
 
     const rawTimeEntries = await storage.getTimeEntriesForJob(jobId);
@@ -6297,7 +6300,7 @@ Be specific about materials, colors, and features that would be included.`
 
     const materials = await storage.getJobMaterials(jobId, userId);
 
-    let photos: Array<{url: string; caption?: string; category: string; createdAt?: string}> = [];
+    let photos: Array<{url: string; caption?: string; category: string; createdAt?: string; latitude?: number | null; longitude?: number | null; address?: string | null}> = [];
     try {
       const { getJobPhotos } = await import('./photoService');
       const rawPhotos = await getJobPhotos(jobId, userId);
@@ -6308,6 +6311,9 @@ Be specific about materials, colors, and features that would be included.`
           caption: p.caption || undefined,
           category: p.category || 'general',
           createdAt: p.createdAt ? (p.createdAt instanceof Date ? p.createdAt.toISOString() : String(p.createdAt)) : undefined,
+          latitude: p.latitude != null ? p.latitude : null,
+          longitude: p.longitude != null ? p.longitude : null,
+          address: p.address || null,
         }));
     } catch (e) {
       console.error('Error fetching photos for proof pack:', e);
@@ -6358,6 +6364,66 @@ Be specific about materials, colors, and features that would be included.`
       console.error('Error fetching geofence alerts for proof pack:', e);
     }
 
+    let complianceDocs: any[] = [];
+    try {
+      const workerIds = new Set<string>();
+      rawTimeEntries.forEach((e: any) => { if (e.userId) workerIds.add(e.userId); });
+      workerIds.add(userId);
+      
+      const allDocs = await storage.getComplianceDocuments(userId);
+      const now = new Date();
+      complianceDocs = allDocs
+        .filter((d: any) => {
+          if (!d.holderUserId) return true;
+          return workerIds.has(d.holderUserId);
+        })
+        .map((d: any) => {
+          let status = 'current';
+          if (d.expiryDate) {
+            const expiry = new Date(d.expiryDate);
+            const daysUntil = Math.floor((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            if (daysUntil < 0) status = 'expired';
+            else if (daysUntil <= 30) status = 'expiring';
+          }
+          return {
+            type: d.type,
+            title: d.title,
+            documentNumber: d.documentNumber,
+            issuer: d.issuer,
+            holderName: d.holderName,
+            expiryDate: d.expiryDate ? new Date(d.expiryDate).toLocaleDateString('en-AU') : null,
+            coverageAmount: d.coverageAmount,
+            status,
+          };
+        });
+    } catch (e) {
+      console.error('Error fetching compliance docs for proof pack:', e);
+    }
+
+    let subcontractorsList: any[] = [];
+    try {
+      const subTokens = await storage.getSubcontractorTokensByJobId(jobId);
+      const jobInvitesList = await db.select().from(jobInvites).where(eq(jobInvites.jobId, jobId));
+      
+      subcontractorsList = [...subTokens.map((t: any) => ({
+        name: t.contactName || t.contactEmail || t.contactPhone || 'Subcontractor',
+        status: t.status || 'pending',
+        invitedAt: t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-AU') : null,
+        acceptedAt: t.acceptedAt ? new Date(t.acceptedAt).toLocaleDateString('en-AU') : null,
+        lastAccessed: t.lastAccessedAt ? new Date(t.lastAccessedAt).toLocaleDateString('en-AU') : null,
+        source: 'direct_invite',
+      })), ...jobInvitesList.filter((inv: any) => !subTokens.some((t: any) => t.inviteId === inv.id)).map((inv: any) => ({
+        name: inv.email || 'Subcontractor',
+        status: inv.status || 'pending',
+        invitedAt: inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('en-AU') : null,
+        acceptedAt: inv.usedAt ? new Date(inv.usedAt).toLocaleDateString('en-AU') : null,
+        lastAccessed: null,
+        source: 'magic_link',
+      }))];
+    } catch (e) {
+      console.error('Error fetching subcontractor data for proof pack:', e);
+    }
+
     return {
       job,
       business,
@@ -6374,6 +6440,8 @@ Be specific about materials, colors, and features that would be included.`
       photos,
       invoice: invoiceData,
       geofenceAlerts,
+      complianceDocs,
+      subcontractors: subcontractorsList,
       hideSections,
     };
   }
@@ -28747,7 +28815,12 @@ Respond with JSON in this format:
         return res.status(400).json({ error: 'No file uploaded' });
       }
       
-      const { category, caption, takenAt } = req.body;
+      const { category, caption, takenAt, latitude, longitude, address } = req.body;
+      
+      const parsedLat = latitude != null && latitude !== '' ? parseFloat(latitude) : undefined;
+      const parsedLng = longitude != null && longitude !== '' ? parseFloat(longitude) : undefined;
+      const validLat = parsedLat != null && !isNaN(parsedLat) && parsedLat >= -90 && parsedLat <= 90 ? parsedLat : undefined;
+      const validLng = parsedLng != null && !isNaN(parsedLng) && parsedLng >= -180 && parsedLng <= 180 ? parsedLng : undefined;
       
       const { uploadJobPhoto } = await import('./photoService');
       // Use effectiveUserId so all team uploads are visible to everyone on the team
@@ -28758,6 +28831,9 @@ Respond with JSON in this format:
         category: category || 'general',
         caption,
         takenAt: takenAt ? new Date(takenAt) : undefined,
+        latitude: validLat,
+        longitude: validLng,
+        address: address || undefined,
       });
       
       if (!result.success) {

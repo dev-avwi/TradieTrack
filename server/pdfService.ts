@@ -3671,13 +3671,15 @@ export const generateJobProofPackPDF = (data: {
   client: any;
   timeEntries: Array<{workerName: string; startTime: string; endTime?: string; duration?: number; billable?: boolean; clockInLatitude?: string | null; clockInLongitude?: string | null; clockInAddress?: string | null; clockOutLatitude?: string | null; clockOutLongitude?: string | null; clockOutAddress?: string | null; origin?: string}>;
   materials: Array<{name: string; quantity?: string; unitCost?: string; totalCost?: string; supplier?: string; status?: string}>;
-  photos: Array<{url: string; caption?: string; category: string; createdAt?: string}>;
+  photos: Array<{url: string; caption?: string; category: string; createdAt?: string; latitude?: number | null; longitude?: number | null; address?: string | null}>;
   invoice?: {number: string; date: string; total: string; gstAmount: string; status: string} | null;
   geofenceAlerts?: Array<{workerName: string; alertType: string; latitude?: string; longitude?: string; address?: string; distanceFromSite?: string; createdAt: string}>;
-  hideSections?: {timeline?: boolean; attendance?: boolean; gpsProof?: boolean; materials?: boolean; photos?: boolean; invoice?: boolean};
+  complianceDocs?: Array<{type: string; title: string; documentNumber?: string; issuer?: string; holderName?: string; expiryDate?: string | null; coverageAmount?: string; status: string}>;
+  subcontractors?: Array<{name: string; status: string; invitedAt?: string | null; acceptedAt?: string | null; lastAccessed?: string | null; source: string}>;
+  hideSections?: {timeline?: boolean; attendance?: boolean; gpsProof?: boolean; materials?: boolean; photos?: boolean; invoice?: boolean; compliance?: boolean; subcontractors?: boolean};
   accentColor?: string;
 }): string => {
-  const { job, business, client, timeEntries, materials, photos, invoice, geofenceAlerts = [], hideSections = {}, accentColor: overrideColor } = data;
+  const { job, business, client, timeEntries, materials, photos, invoice, geofenceAlerts = [], complianceDocs = [], subcontractors = [], hideSections = {}, accentColor: overrideColor } = data;
 
   const { template, accentColor: templateColor } = getTemplateFromBusinessSettings(business);
   const brandColor = overrideColor || templateColor;
@@ -3826,6 +3828,7 @@ export const generateJobProofPackPDF = (data: {
             <span class="photo-category">${p.category || 'general'}</span>
             ${p.caption ? `<span class="photo-caption">${p.caption}</span>` : ''}
             ${p.createdAt ? `<span class="photo-date">${formatShortDate(p.createdAt)}</span>` : ''}
+            ${p.latitude != null && p.longitude != null ? `<span class="photo-location"><span class="gps-badge verified">GPS</span> ${p.address || `${Number(p.latitude).toFixed(5)}, ${Number(p.longitude).toFixed(5)}`}</span>` : ''}
           </div>
         </div>`).join('')}
       </div>`
@@ -3898,6 +3901,81 @@ export const generateJobProofPackPDF = (data: {
       </table>
       <p style="font-size:9px;color:#888;margin-top:4px;font-style:italic">GPS coordinates recorded at clock-in/clock-out. Times shown in AEST.</p>`
     : `<p class="empty-message">No GPS verification data recorded</p>`;
+
+  const complianceTypeLabel = (t: string) => {
+    const map: Record<string, string> = { licence: 'Trade Licence', insurance: 'Insurance', white_card: 'White Card', vehicle_rego: 'Vehicle Rego', certification: 'Certification', other: 'Other' };
+    return map[t] || t;
+  };
+
+  const complianceStatusColor = (s: string) => {
+    if (s === 'current') return 'background:#dcfce7;color:#166534';
+    if (s === 'expiring') return 'background:#fef3c7;color:#92400e';
+    return 'background:#fee2e2;color:#991b1b';
+  };
+
+  const complianceHtml = complianceDocs.length > 0
+    ? `<table class="proof-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Document</th>
+            <th>Number</th>
+            <th>Holder</th>
+            <th>Issuer</th>
+            <th>Expiry</th>
+            <th style="text-align:center">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${complianceDocs.map(d => `
+          <tr>
+            <td>${complianceTypeLabel(d.type)}</td>
+            <td style="font-weight:600">${d.title}</td>
+            <td>${d.documentNumber || '-'}</td>
+            <td>${d.holderName || '-'}</td>
+            <td>${d.issuer || '-'}</td>
+            <td>${d.expiryDate || 'No expiry'}</td>
+            <td style="text-align:center"><span class="status-pill" style="${complianceStatusColor(d.status)}">${d.status === 'current' ? 'Current' : d.status === 'expiring' ? 'Expiring' : 'Expired'}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      ${complianceDocs.some(d => d.coverageAmount) ? `<p style="font-size:9px;color:#888;margin-top:4px;font-style:italic">Insurance coverage: ${complianceDocs.filter(d => d.coverageAmount).map(d => `${d.title} — ${d.coverageAmount}`).join(', ')}</p>` : ''}`
+    : `<p class="empty-message">No compliance documents on file</p>`;
+
+  const subStatusLabel = (s: string) => {
+    const map: Record<string, string> = { pending: 'Pending', accepted: 'Accepted', active: 'Active', expired: 'Expired', revoked: 'Revoked' };
+    return map[s] || s;
+  };
+
+  const subStatusColor = (s: string) => {
+    if (s === 'accepted' || s === 'active') return 'background:#dcfce7;color:#166534';
+    if (s === 'pending') return 'background:#fef3c7;color:#92400e';
+    return 'background:#fee2e2;color:#991b1b';
+  };
+
+  const subcontractorsHtml = subcontractors.length > 0
+    ? `<table class="proof-table">
+        <thead>
+          <tr>
+            <th>Subcontractor</th>
+            <th>Invited</th>
+            <th>Accepted</th>
+            <th>Last Active</th>
+            <th style="text-align:center">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${subcontractors.map(s => `
+          <tr>
+            <td style="font-weight:600">${s.name}</td>
+            <td>${s.invitedAt || '-'}</td>
+            <td>${s.acceptedAt || '-'}</td>
+            <td>${s.lastAccessed || '-'}</td>
+            <td style="text-align:center"><span class="status-pill" style="${subStatusColor(s.status)}">${subStatusLabel(s.status)}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`
+    : `<p class="empty-message">No subcontractors assigned to this job</p>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -3978,6 +4056,8 @@ export const generateJobProofPackPDF = (data: {
     .photo-category { display: inline-block; background: ${brandColor}15; color: ${brandColor}; padding: 1px 6px; border-radius: 8px; font-weight: 600; text-transform: capitalize; margin-right: 4px; }
     .photo-caption { display: block; margin-top: 2px; color: #333; }
     .photo-date { display: block; color: #999; font-size: 9px; }
+    .photo-location { display: block; margin-top: 2px; font-size: 8px; color: #666; }
+    .photo-location .gps-badge { font-size: 7px; padding: 0 4px; margin-right: 2px; vertical-align: middle; }
 
     .gps-badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; }
     .gps-badge.verified { background: #dcfce7; color: #166534; }
@@ -4080,6 +4160,16 @@ export const generateJobProofPackPDF = (data: {
     ${!hideSections.invoice ? `<div class="section">
       <div class="section-title">6. Invoice Summary</div>
       ${invoiceHtml}
+    </div>` : ''}
+
+    ${!hideSections.compliance ? `<div class="section">
+      <div class="section-title">7. Compliance &amp; Licensing</div>
+      ${complianceHtml}
+    </div>` : ''}
+
+    ${!hideSections.subcontractors ? `<div class="section">
+      <div class="section-title">8. Subcontractor Coordination</div>
+      ${subcontractorsHtml}
     </div>` : ''}
 
     <div class="footer">

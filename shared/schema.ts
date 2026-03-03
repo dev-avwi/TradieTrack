@@ -2616,6 +2616,9 @@ export const jobPhotos = pgTable("job_photos", {
   caption: text("caption"),
   takenAt: timestamp("taken_at"), // When photo was taken (from EXIF or user input)
   uploadedBy: varchar("uploaded_by").references(() => users.id), // Team member who uploaded
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  address: text("address"),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });

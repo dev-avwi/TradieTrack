@@ -280,6 +280,8 @@ export default function JobDetailView({
     materials: true,
     photos: true,
     invoice: true,
+    compliance: true,
+    subcontractors: true,
   });
   const [inspectionNotesInput, setInspectionNotesInput] = useState("");
   const [workerPopoverOpen, setWorkerPopoverOpen] = useState(false);
@@ -4351,6 +4353,8 @@ export default function JobDetailView({
                 { key: 'materials' as const, label: 'Materials & Costs' },
                 { key: 'photos' as const, label: 'Photos' },
                 { key: 'invoice' as const, label: 'Invoice Summary' },
+                { key: 'compliance' as const, label: 'Compliance & Licensing' },
+                { key: 'subcontractors' as const, label: 'Subcontractor Coordination' },
               ].map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input

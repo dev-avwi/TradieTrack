@@ -71,6 +71,9 @@ export interface PhotoMetadata {
   category?: 'before' | 'after' | 'progress' | 'materials' | 'general';
   caption?: string;
   takenAt?: Date;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
 }
 
 export async function uploadJobPhoto(
@@ -123,6 +126,9 @@ export async function uploadJobPhoto(
       category: metadata.category || 'general',
       caption: metadata.caption,
       takenAt: metadata.takenAt,
+      latitude: metadata.latitude,
+      longitude: metadata.longitude,
+      address: metadata.address,
     });
 
     return {
@@ -245,6 +251,9 @@ export async function getJobPhotos(
   mimeType: string | null;
   createdAt: Date | null;
   signedUrl?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  address?: string | null;
 }>> {
   try {
     const photos = await dbStorage.getJobPhotos(jobId, userId);
@@ -267,6 +276,9 @@ export async function getJobPhotos(
           mimeType: photo.mimeType,
           createdAt: photo.createdAt,
           signedUrl: url,
+          latitude: photo.latitude,
+          longitude: photo.longitude,
+          address: photo.address,
         };
       })
     );
