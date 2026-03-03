@@ -328,6 +328,9 @@ export async function createDemoUserAndData() {
 
       // Seed client tags and types if not already set
       await seedDemoClientTags(demoUser.id, existingClients);
+
+      // Seed equipment and job-equipment assignments for dispatch board
+      await seedDemoEquipment(demoUser.id);
       
       return demoUser;
     }
@@ -2656,6 +2659,101 @@ export async function clearUserDemoData(userId: string): Promise<{
   } catch (error: any) {
     console.error('[DemoClear] Error clearing demo data:', error);
     return { success: false, message: error.message || 'Failed to clear demo data', deleted: { clients: 0, jobs: 0, quotes: 0, invoices: 0 } };
+  }
+}
+
+async function seedDemoEquipment(userId: string) {
+  try {
+    const existingEquipment = await storage.getEquipment(userId);
+    if (existingEquipment.length > 0) return;
+
+    const equipmentItems = [
+      { name: 'Hilux Ute #1', model: 'Toyota Hilux SR5 2024', serialNumber: 'UTE-001', manufacturer: 'Toyota', status: 'active', location: 'On Site' },
+      { name: 'Excavator - Mini', model: 'Kubota U17-3', serialNumber: 'EXC-003', manufacturer: 'Kubota', status: 'active', location: 'Depot' },
+      { name: 'Pipe Threader', model: 'RIDGID 300 Compact', serialNumber: 'THR-012', manufacturer: 'RIDGID', status: 'active', location: 'Ute #1' },
+      { name: 'Drain Camera', model: 'RIDGID SeeSnake CS65x', serialNumber: 'CAM-008', manufacturer: 'RIDGID', status: 'active', location: 'Ute #2' },
+      { name: 'Hot Water System Dolly', model: 'Heavy Duty 500kg', serialNumber: 'DOL-002', manufacturer: 'Sydney Trolleys', status: 'active', location: 'Depot' },
+      { name: 'Jetter - High Pressure', model: 'Aussie Pumps Commander 3000', serialNumber: 'JET-006', manufacturer: 'Aussie Pumps', status: 'active', location: 'Trailer #1' },
+      { name: 'Hilux Ute #2', model: 'Toyota Hilux Workmate 2023', serialNumber: 'UTE-002', manufacturer: 'Toyota', status: 'active', location: 'On Site' },
+      { name: 'Generator 7kVA', model: 'Honda EU70is', serialNumber: 'GEN-004', manufacturer: 'Honda', status: 'active', location: 'Depot' },
+      { name: 'Copper Press Tool', model: 'Milwaukee M18 Force Logic', serialNumber: 'PRS-015', manufacturer: 'Milwaukee', status: 'maintenance', location: 'Service Centre' },
+      { name: 'Laser Level', model: 'Dewalt DW089K', serialNumber: 'LSR-009', manufacturer: 'Dewalt', status: 'active', location: 'Ute #1' },
+    ];
+
+    const created: any[] = [];
+    for (const eq of equipmentItems) {
+      const item = await storage.createEquipment({ ...eq, userId });
+      created.push(item);
+    }
+
+    const allJobs = await storage.getJobs(userId);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const activeJobs = allJobs.filter(j => {
+      const status = (j.status || '').toLowerCase();
+      if (['done', 'completed', 'cancelled', 'archived'].includes(status)) return false;
+      if (j.scheduledAt && new Date(j.scheduledAt).toISOString().split('T')[0] === todayStr) return true;
+      return status === 'in_progress';
+    });
+
+    const assignableEquipment = created.filter(e => e.status === 'active');
+    const jobsToAssign = activeJobs.slice(0, Math.min(4, activeJobs.length));
+    for (let i = 0; i < jobsToAssign.length && i < assignableEquipment.length; i++) {
+      await storage.addJobEquipment({
+        jobId: jobsToAssign[i].id,
+        equipmentId: assignableEquipment[i].id,
+        userId,
+        notes: `Assigned for ${jobsToAssign[i].title}`,
+      });
+      if (i + 4 < assignableEquipment.length) {
+        await storage.addJobEquipment({
+          jobId: jobsToAssign[i].id,
+          equipmentId: assignableEquipment[i + 4].id,
+          userId,
+        });
+      }
+    }
+
+    const materialsData = [
+      { name: '15mm Copper Pipe', quantity: '20', unit: 'metres', status: 'needed', supplier: 'Reece Plumbing' },
+      { name: 'PVC 100mm Drainage Pipe', quantity: '6', unit: 'metres', status: 'ordered', supplier: 'Tradelink' },
+      { name: 'Rheem 250L Hot Water Unit', quantity: '1', unit: 'each', status: 'ordered', supplier: 'Reece Plumbing' },
+      { name: 'Brazing Rods', quantity: '1', unit: 'pack', status: 'needed', supplier: 'BOC Gas' },
+      { name: 'Waterproofing Membrane', quantity: '5', unit: 'sqm', status: 'shipped', supplier: 'Bunnings Trade' },
+    ];
+
+    let materialsAdded = 0;
+    for (let i = 0; i < Math.min(materialsData.length, jobsToAssign.length); i++) {
+      const mat = materialsData[i];
+      await storage.createJobMaterial({
+        jobId: jobsToAssign[i].id,
+        userId,
+        name: mat.name,
+        quantity: mat.quantity,
+        unit: mat.unit,
+        status: mat.status,
+        supplier: mat.supplier,
+      });
+      materialsAdded++;
+    }
+    if (materialsData.length > jobsToAssign.length) {
+      for (let i = jobsToAssign.length; i < materialsData.length && jobsToAssign.length > 0; i++) {
+        const mat = materialsData[i];
+        await storage.createJobMaterial({
+          jobId: jobsToAssign[i % jobsToAssign.length].id,
+          userId,
+          name: mat.name,
+          quantity: mat.quantity,
+          unit: mat.unit,
+          status: mat.status,
+          supplier: mat.supplier,
+        });
+        materialsAdded++;
+      }
+    }
+
+    console.log(`🔧 Seeded ${created.length} equipment, assigned to ${jobsToAssign.length} jobs, ${materialsAdded} materials added`);
+  } catch (error) {
+    console.error('[DemoEquipment] Error seeding equipment:', error);
   }
 }
 

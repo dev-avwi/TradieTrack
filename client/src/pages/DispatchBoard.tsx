@@ -1663,6 +1663,29 @@ export default function DispatchBoard() {
           </Card>
         </div>
 
+        <div className="flex items-center gap-3 mb-3 mt-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+            </div>
+            <h2 className="text-lg font-semibold">Operations Centre</h2>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>{scheduledJobsForDate.length} scheduled</span>
+            <span className="text-muted-foreground/40">|</span>
+            <span>{scheduledJobsForDate.filter(j => j.status === 'in_progress').length} active</span>
+            <span className="text-muted-foreground/40">|</span>
+            <span>{teamMembersWithJobs.length} crew</span>
+            {(dispatchResources?.deployedEquipment?.length ?? 0) > 0 && (
+              <>
+                <span className="text-muted-foreground/40">|</span>
+                <span>{dispatchResources!.deployedEquipment.length} equipment out</span>
+              </>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
@@ -1966,11 +1989,8 @@ export default function DispatchBoard() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <div className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-                </div>
-                Live Operations
+                <Navigation className="h-4 w-4" />
+                Live Status
               </CardTitle>
             </CardHeader>
             <CardContent className="p-3">
@@ -2009,6 +2029,24 @@ export default function DispatchBoard() {
                   </div>
                   <span className="text-lg font-bold tabular-nums text-amber-500">
                     {unscheduledJobs.length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2.5 rounded-md bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Wrench className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Equipment Out</span>
+                  </div>
+                  <span className="text-lg font-bold tabular-nums">
+                    {dispatchResources?.deployedEquipment?.length ?? 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2.5 rounded-md bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Materials Pending</span>
+                  </div>
+                  <span className="text-lg font-bold tabular-nums">
+                    {dispatchResources?.materialsNeeded?.length ?? 0}
                   </span>
                 </div>
               </div>
