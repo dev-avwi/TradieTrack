@@ -652,6 +652,9 @@ export const clients = pgTable("clients", {
   notes: text("notes"),
   savedSignatureData: text("saved_signature_data"),
   savedSignatureDate: timestamp("saved_signature_date"),
+  tags: text("tags").array().default(sql`'{}'::text[]`),
+  clientType: text("client_type"),
+  referralSource: text("referral_source"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

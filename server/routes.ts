@@ -11044,6 +11044,111 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  app.get("/api/clients/tags", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const allClients = await storage.getClients(userContext.effectiveUserId);
+      const tagSet = new Set<string>();
+      for (const client of allClients) {
+        if (Array.isArray(client.tags)) {
+          for (const tag of client.tags) {
+            if (tag) tagSet.add(tag);
+          }
+        }
+      }
+      res.json(Array.from(tagSet).sort());
+    } catch (error) {
+      console.error("Error fetching client tags:", error);
+      res.status(500).json({ error: "Failed to fetch tags" });
+    }
+  });
+
+  app.get("/api/clients/segments", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const allClients = await storage.getClients(userContext.effectiveUserId);
+      const allJobs = await storage.getJobs(userContext.effectiveUserId);
+      const allInvoices = await storage.getInvoices(userContext.effectiveUserId);
+
+      const now = new Date();
+      const sixMonthsAgo = new Date(now);
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const segments: Record<string, number> = {
+        all: allClients.length,
+        residential: 0,
+        commercial: 0,
+        strata: 0,
+        insurance: 0,
+        government: 0,
+        vip: 0,
+        new_this_month: 0,
+        no_recent_jobs: 0,
+        outstanding_balance: 0,
+        has_tags: 0,
+      };
+
+      const clientJobMap = new Map<string, Date>();
+      for (const job of allJobs) {
+        if (job.clientId) {
+          const existing = clientJobMap.get(job.clientId);
+          const jobDate = job.createdAt ? new Date(job.createdAt) : new Date(0);
+          if (!existing || jobDate > existing) {
+            clientJobMap.set(job.clientId, jobDate);
+          }
+        }
+      }
+
+      const clientOutstandingMap = new Set<string>();
+      for (const inv of allInvoices) {
+        if (inv.clientId && inv.status && ['sent', 'overdue'].includes(inv.status)) {
+          clientOutstandingMap.add(inv.clientId);
+        }
+      }
+
+      const noRecentJobIds: string[] = [];
+      const outstandingBalanceIds: string[] = [];
+
+      for (const client of allClients) {
+        if (client.clientType) {
+          const typeKey = client.clientType.toLowerCase();
+          if (typeKey in segments) {
+            segments[typeKey]++;
+          }
+        }
+
+        const tags = Array.isArray(client.tags) ? client.tags : [];
+        if (tags.length > 0) {
+          segments.has_tags++;
+        }
+        if (tags.some(t => t?.toLowerCase() === 'vip')) {
+          segments.vip++;
+        }
+
+        if (client.createdAt && new Date(client.createdAt) >= thisMonthStart) {
+          segments.new_this_month++;
+        }
+
+        const lastJobDate = clientJobMap.get(client.id);
+        if (!lastJobDate || lastJobDate < sixMonthsAgo) {
+          segments.no_recent_jobs++;
+          noRecentJobIds.push(client.id);
+        }
+
+        if (clientOutstandingMap.has(client.id)) {
+          segments.outstanding_balance++;
+          outstandingBalanceIds.push(client.id);
+        }
+      }
+
+      res.json({ ...segments, noRecentJobIds, outstandingBalanceIds });
+    } catch (error) {
+      console.error("Error fetching client segments:", error);
+      res.status(500).json({ error: "Failed to fetch segments" });
+    }
+  });
+
   // Get single client (team-aware)
   app.get("/api/clients/:id", requireAuth, async (req: any, res) => {
     try {

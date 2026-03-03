@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { getSessionToken } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Plus, Users, Phone, Mail, MapPin, Briefcase, LayoutGrid, List, MoreVertical, FileText, MessageCircle, Trash2, Download } from "lucide-react";
+import { Plus, Users, Phone, Mail, MapPin, Briefcase, LayoutGrid, List, MoreVertical, FileText, MessageCircle, Trash2, Download, Building2, Star, CalendarPlus, Clock, DollarSign, Tag } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +54,7 @@ export default function ClientsList({
   const searchParams = useSearch();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -58,6 +62,26 @@ export default function ClientsList({
   const clients = Array.isArray(data) ? data : [];
   const deleteClient = useDeleteClient();
   const { toast } = useToast();
+
+  const { data: segments } = useQuery<Record<string, any>>({
+    queryKey: ['/api/clients/segments'],
+    queryFn: async () => {
+      const token = getSessionToken();
+      const res = await fetch('/api/clients/segments', { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
+      if (!res.ok) return {};
+      return res.json();
+    }
+  });
+
+  const { data: allTags = [] } = useQuery<string[]>({
+    queryKey: ['/api/clients/tags'],
+    queryFn: async () => {
+      const token = getSessionToken();
+      const res = await fetch('/api/clients/tags', { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
+      if (!res.ok) return [];
+      return res.json();
+    }
+  });
 
   const handleDeleteClick = (client: { id: string; name: string }) => {
     setClientToDelete(client);
@@ -142,6 +166,28 @@ export default function ClientsList({
       ),
     },
     {
+      id: "tags",
+      header: "Tags",
+      hideOnMobile: true,
+      cell: (row) => {
+        const tags: string[] = Array.isArray(row.tags) ? row.tags : [];
+        return tags.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {tags.slice(0, 2).map((tag: string) => (
+              <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
+                {tag}
+              </Badge>
+            ))}
+            {tags.length > 2 && (
+              <span className="text-[10px] text-muted-foreground">+{tags.length - 2}</span>
+            )}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        );
+      },
+    },
+    {
       id: "actions",
       header: "",
       className: "w-10",
@@ -202,37 +248,51 @@ export default function ClientsList({
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     const filterParam = params.get('filter');
-    if (filterParam && ['all', 'with_email', 'with_phone', 'with_address'].includes(filterParam)) {
+    if (filterParam) {
       setActiveFilter(filterParam);
     }
   }, [searchParams]);
+
+  const now = new Date();
+  const sixMonthsAgo = new Date(now);
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
   const filteredClients = clients.filter((client: any) => {
     const name = client.name ? client.name.toLowerCase() : '';
     const email = client.email ? client.email.toLowerCase() : '';
     const phone = client.phone || '';
     const address = client.address ? client.address.toLowerCase() : '';
+    const tags: string[] = Array.isArray(client.tags) ? client.tags : [];
     const search = searchTerm.toLowerCase();
     
     const matchesSearch = name.includes(search) ||
            email.includes(search) ||
            phone.includes(search) ||
-           address.includes(search);
-    
-    const matchesFilter = activeFilter === 'all' ||
-      (activeFilter === 'with_email' && client.email) ||
-      (activeFilter === 'with_phone' && client.phone) ||
-      (activeFilter === 'with_address' && client.address);
-    
-    return matchesSearch && matchesFilter;
-  });
+           address.includes(search) ||
+           tags.some(t => t.toLowerCase().includes(search));
 
-  const stats = {
-    total: clients.length,
-    withEmail: clients.filter((c: any) => c.email).length,
-    withPhone: clients.filter((c: any) => c.phone).length,
-    withAddress: clients.filter((c: any) => c.address).length,
-  };
+    let matchesFilter = true;
+    switch (activeFilter) {
+      case 'all': break;
+      case 'residential': matchesFilter = client.clientType === 'residential'; break;
+      case 'commercial': matchesFilter = client.clientType === 'commercial'; break;
+      case 'strata': matchesFilter = client.clientType === 'strata'; break;
+      case 'insurance': matchesFilter = client.clientType === 'insurance'; break;
+      case 'government': matchesFilter = client.clientType === 'government'; break;
+      case 'vip': matchesFilter = tags.some(t => t.toLowerCase() === 'vip'); break;
+      case 'no_recent_jobs': matchesFilter = Array.isArray(segments?.noRecentJobIds) && segments.noRecentJobIds.includes(client.id); break;
+      case 'outstanding_balance': matchesFilter = Array.isArray(segments?.outstandingBalanceIds) && segments.outstandingBalanceIds.includes(client.id); break;
+      case 'has_tags': matchesFilter = tags.length > 0; break;
+      case 'with_email': matchesFilter = !!client.email; break;
+      case 'with_phone': matchesFilter = !!client.phone; break;
+      case 'with_address': matchesFilter = !!client.address; break;
+      default: break;
+    }
+
+    const matchesTag = !activeTagFilter || tags.includes(activeTagFilter);
+    
+    return matchesSearch && matchesFilter && matchesTag;
+  });
 
   return (
     <PageShell data-testid="clients-list">
@@ -295,22 +355,47 @@ export default function ClientsList({
       <SearchBar
         value={searchTerm}
         onChange={setSearchTerm}
-        placeholder="Search clients by name, email, phone, or address..."
+        placeholder="Search clients by name, email, phone, tag..."
       />
 
-      {/* Filter Chips */}
+      {/* Smart Segment Chips */}
       <FilterChips 
         chips={[
-          { id: 'all', label: 'All', count: stats.total, icon: <Users className="h-3 w-3" /> },
-          { id: 'with_email', label: 'With Email', count: stats.withEmail, icon: <Mail className="h-3 w-3" /> },
-          { id: 'with_phone', label: 'With Phone', count: stats.withPhone, icon: <Phone className="h-3 w-3" /> },
-          { id: 'with_address', label: 'With Address', count: stats.withAddress, icon: <MapPin className="h-3 w-3" /> }
+          { id: 'all', label: 'All', count: segments?.all ?? clients.length, icon: <Users className="h-3 w-3" /> },
+          { id: 'residential', label: 'Residential', count: segments?.residential, icon: <Users className="h-3 w-3" /> },
+          { id: 'commercial', label: 'Commercial', count: segments?.commercial, icon: <Building2 className="h-3 w-3" /> },
+          { id: 'vip', label: 'VIP', count: segments?.vip, icon: <Star className="h-3 w-3" /> },
+          { id: 'no_recent_jobs', label: 'Inactive 6mo+', count: segments?.no_recent_jobs, icon: <Clock className="h-3 w-3" /> },
+          { id: 'outstanding_balance', label: 'Outstanding', count: segments?.outstanding_balance, icon: <DollarSign className="h-3 w-3" /> },
         ]}
         activeId={activeFilter}
-        onSelect={setActiveFilter}
+        onSelect={(id) => { setActiveFilter(id); setActiveTagFilter(null); }}
       />
 
-      {/* KPI Stats - 4 across on desktop, 2x2 on mobile - clickable to filter */}
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Tag className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+          {allTags.slice(0, 12).map((tag) => (
+            <button
+              key={tag}
+              onClick={() => {
+                setActiveTagFilter(activeTagFilter === tag ? null : tag);
+                setActiveFilter('all');
+              }}
+              className={cn(
+                "inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium transition-colors border",
+                activeTagFilter === tag
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background border-border hover-elevate"
+              )}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* KPI Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {isLoading ? (
           <>
@@ -328,26 +413,26 @@ export default function ClientsList({
             <KPIBox
               icon={Users}
               title="Total Clients"
-              value={stats.total.toString()}
-              onClick={() => setActiveFilter('all')}
+              value={(segments?.all ?? clients.length).toString()}
+              onClick={() => { setActiveFilter('all'); setActiveTagFilter(null); }}
             />
             <KPIBox
-              icon={Mail}
-              title="With Email"
-              value={stats.withEmail.toString()}
-              onClick={() => setActiveFilter('with_email')}
+              icon={Building2}
+              title="Commercial"
+              value={(segments?.commercial ?? 0).toString()}
+              onClick={() => { setActiveFilter('commercial'); setActiveTagFilter(null); }}
             />
             <KPIBox
-              icon={Phone}
-              title="With Phone"
-              value={stats.withPhone.toString()}
-              onClick={() => setActiveFilter('with_phone')}
+              icon={Star}
+              title="VIP"
+              value={(segments?.vip ?? 0).toString()}
+              onClick={() => { setActiveFilter('vip'); setActiveTagFilter(null); }}
             />
             <KPIBox
-              icon={MapPin}
-              title="With Address"
-              value={stats.withAddress.toString()}
-              onClick={() => setActiveFilter('with_address')}
+              icon={DollarSign}
+              title="Outstanding"
+              value={(segments?.outstanding_balance ?? 0).toString()}
+              onClick={() => { setActiveFilter('outstanding_balance'); setActiveTagFilter(null); }}
             />
           </>
         )}

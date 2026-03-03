@@ -34,7 +34,10 @@ import {
   Trash2,
   AlertTriangle,
   Loader2,
-  ClipboardList
+  ClipboardList,
+  Tag,
+  Building2,
+  UserCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -42,6 +45,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import StatusBadge from "./StatusBadge";
 import KPIBox from "./KPIBox";
@@ -77,18 +81,23 @@ export default function ClientDetailView({
     name: "",
     email: "",
     phone: "",
-    address: ""
+    address: "",
+    clientType: "",
+    referralSource: ""
   });
+  const [newTagInput, setNewTagInput] = useState("");
+  const [tagSuggestionsOpen, setTagSuggestionsOpen] = useState(false);
   const { toast } = useToast();
 
   // Update client mutation
   const updateClientMutation = useMutation({
-    mutationFn: async (data: { name: string; email: string; phone: string; address: string }) => {
+    mutationFn: async (data: Record<string, any>) => {
       await apiRequest('PATCH', `/api/clients/${clientId}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/clients', clientId] });
       queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients/tags'] });
       setIsEditDialogOpen(false);
       toast({
         title: "Client updated",
@@ -110,7 +119,9 @@ export default function ClientDetailView({
         name: client.name || "",
         email: client.email || "",
         phone: client.phone || "",
-        address: client.address || ""
+        address: client.address || "",
+        clientType: client.clientType || "",
+        referralSource: client.referralSource || ""
       });
       setIsEditDialogOpen(true);
     }
@@ -184,6 +195,34 @@ export default function ClientDetailView({
       return response.json();
     }
   });
+
+  const { data: allTags = [] } = useQuery<string[]>({
+    queryKey: ['/api/clients/tags'],
+    queryFn: async () => {
+      const token = getSessionToken();
+      const response = await fetch('/api/clients/tags', { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
+      if (!response.ok) return [];
+      return response.json();
+    }
+  });
+
+  const clientTags: string[] = Array.isArray(client?.tags) ? client.tags : [];
+
+  const addTag = (tag: string) => {
+    const trimmed = tag.trim();
+    if (!trimmed || clientTags.includes(trimmed)) return;
+    updateClientMutation.mutate({ tags: [...clientTags, trimmed] });
+    setNewTagInput("");
+    setTagSuggestionsOpen(false);
+  };
+
+  const removeTag = (tag: string) => {
+    updateClientMutation.mutate({ tags: clientTags.filter(t => t !== tag) });
+  };
+
+  const tagSuggestions = allTags.filter(
+    t => t.toLowerCase().includes(newTagInput.toLowerCase()) && !clientTags.includes(t)
+  );
 
   const { data: jobs = [], isLoading: jobsLoading } = useQuery({
     queryKey: ['/api/clients', clientId, 'jobs'],
@@ -608,6 +647,98 @@ export default function ClientDetailView({
               </a>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Tag className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Tags & Classification</span>
+            </div>
+            {client.clientType && (
+              <Badge variant="outline" className="text-xs capitalize">
+                <Building2 className="h-3 w-3 mr-1" />
+                {client.clientType}
+              </Badge>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {clientTags.map((tag: string) => (
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="text-xs gap-1"
+              >
+                {tag}
+                <button
+                  onClick={() => removeTag(tag)}
+                  className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </Badge>
+            ))}
+            <Popover open={tagSuggestionsOpen} onOpenChange={setTagSuggestionsOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  data-testid="button-add-tag"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add Tag
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2" align="start">
+                <Input
+                  value={newTagInput}
+                  onChange={(e) => setNewTagInput(e.target.value)}
+                  placeholder="Type a tag..."
+                  className="h-8 text-xs mb-2"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newTagInput.trim()) {
+                      addTag(newTagInput);
+                    }
+                  }}
+                  data-testid="input-new-tag"
+                  autoFocus
+                />
+                {tagSuggestions.length > 0 && (
+                  <div className="max-h-32 overflow-y-auto space-y-0.5">
+                    {tagSuggestions.slice(0, 8).map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => addTag(suggestion)}
+                        className="w-full text-left text-xs px-2 py-1.5 rounded hover-elevate"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {newTagInput.trim() && !allTags.includes(newTagInput.trim()) && (
+                  <button
+                    onClick={() => addTag(newTagInput)}
+                    className="w-full text-left text-xs px-2 py-1.5 rounded hover-elevate text-muted-foreground mt-1 border-t pt-2"
+                  >
+                    <Plus className="h-3 w-3 inline mr-1" />
+                    Create "{newTagInput.trim()}"
+                  </button>
+                )}
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {client.referralSource && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <UserCheck className="h-3.5 w-3.5" />
+              <span>Referred via: {client.referralSource}</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1440,6 +1571,35 @@ export default function ClientDetailView({
                 onChange={(e) => setEditForm(prev => ({ ...prev, address: e.target.value }))}
                 placeholder="123 Main St, Sydney NSW 2000"
                 data-testid="input-edit-address"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-clientType">Client Type</Label>
+              <Select
+                value={editForm.clientType || "none"}
+                onValueChange={(value) => setEditForm(prev => ({ ...prev, clientType: value === "none" ? "" : value }))}
+              >
+                <SelectTrigger data-testid="select-client-type">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Not set</SelectItem>
+                  <SelectItem value="residential">Residential</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
+                  <SelectItem value="strata">Strata</SelectItem>
+                  <SelectItem value="insurance">Insurance</SelectItem>
+                  <SelectItem value="government">Government</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-referralSource">Referral Source</Label>
+              <Input
+                id="edit-referralSource"
+                value={editForm.referralSource}
+                onChange={(e) => setEditForm(prev => ({ ...prev, referralSource: e.target.value }))}
+                placeholder="e.g. Google, Word of Mouth, Facebook"
+                data-testid="input-edit-referral"
               />
             </div>
           </div>

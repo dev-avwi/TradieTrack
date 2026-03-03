@@ -33,6 +33,7 @@ Core architectural and design decisions include:
 *   **Compliance**: Compliance & Licensing Module for document management, status tracking, dashboard alerts, automated expiry notifications, and integration into Job Proof Pack (Section 7) showing all relevant trade licences, insurance, white cards, certifications, and vehicle registrations with status indicators.
 *   **Production Hardening**: GPS coordinate validation, geofence event API idempotency, PDF generation concurrency limits, mobile ErrorBoundary, Express global error middleware, and list virtualization for performance.
 *   **Autopilot Enhancements**: "Technician On Their Way" auto-notification and batch invoicing.
+*   **CRM & Client Management**: Client tags (text array), client type classification (residential/commercial/strata/insurance/government), referral source tracking, smart segment filtering with live counts (All, Residential, Commercial, VIP, Inactive 6mo+, Outstanding Balance), tag-based filtering, tag autocomplete, and tag badges on client cards/table rows. APIs: `GET /api/clients/tags`, `GET /api/clients/segments`.
 *   **Deep-Link Navigation**: KPI widgets and action items deep-link to specific filtered views.
 *   **Documents Hub**: Consolidated view of quotes, invoices, and receipts with relationship links.
 *   **Templates Hub**: Document Styles with live preview for quotes, invoices, and jobs, including 81 seeded trade-specific templates.

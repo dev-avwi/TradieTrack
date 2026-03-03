@@ -18,6 +18,8 @@ interface ClientCardProps {
   address?: string;
   jobsCount?: number;
   lastJobDate?: string;
+  tags?: string[];
+  clientType?: string;
   onView?: () => void;
   onCreateJob?: () => void;
   onCall?: () => void;
@@ -33,6 +35,8 @@ export default function ClientCard({
   address, 
   jobsCount = 0,
   lastJobDate,
+  tags = [],
+  clientType,
   onView, 
   onCreateJob,
   onCall,
@@ -58,10 +62,23 @@ export default function ClientCard({
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-[15px] line-clamp-1">{name}</h3>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                     {jobsCount} {jobsCount === 1 ? 'job' : 'jobs'}
                   </Badge>
+                  {clientType && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
+                      {clientType}
+                    </Badge>
+                  )}
+                  {tags.slice(0, 3).map((tag) => (
+                    <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
+                      {tag}
+                    </Badge>
+                  ))}
+                  {tags.length > 3 && (
+                    <span className="text-[10px] text-muted-foreground">+{tags.length - 3}</span>
+                  )}
                   {lastJobDate && (
                     <span>Last: {lastJobDate}</span>
                   )}

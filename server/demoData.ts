@@ -325,6 +325,9 @@ export async function createDemoUserAndData() {
       // Always refresh activity logs and notifications to show current data
       await createDemoActivityLogs(demoUser.id);
       await createDemoNotifications(demoUser.id);
+
+      // Seed client tags and types if not already set
+      await seedDemoClientTags(demoUser.id, existingClients);
       
       return demoUser;
     }
@@ -2653,5 +2656,53 @@ export async function clearUserDemoData(userId: string): Promise<{
   } catch (error: any) {
     console.error('[DemoClear] Error clearing demo data:', error);
     return { success: false, message: error.message || 'Failed to clear demo data', deleted: { clients: 0, jobs: 0, quotes: 0, invoices: 0 } };
+  }
+}
+
+async function seedDemoClientTags(userId: string, clients: any[]) {
+  try {
+    const tagConfigs = [
+      { nameMatch: /smith|renovations/i, tags: ['VIP', 'Repeat Customer', 'Residential'], clientType: 'residential', referralSource: 'Referral' },
+      { nameMatch: /jones|construction/i, tags: ['Commercial', 'High Value'], clientType: 'commercial', referralSource: 'Website' },
+      { nameMatch: /wilson|property|strata/i, tags: ['Strata', 'Maintenance Contract'], clientType: 'strata', referralSource: 'Real Estate Agent' },
+      { nameMatch: /brown|insurance/i, tags: ['Insurance Work', 'Urgent'], clientType: 'insurance', referralSource: 'Insurance Company' },
+      { nameMatch: /taylor|williams/i, tags: ['Repeat Customer', 'Residential'], clientType: 'residential', referralSource: 'Word of Mouth' },
+      { nameMatch: /johnson|davis/i, tags: ['Commercial', 'Government'], clientType: 'government', referralSource: 'Tender' },
+      { nameMatch: /garcia|martinez|lee/i, tags: ['New Client'], clientType: 'residential', referralSource: 'Google' },
+      { nameMatch: /anderson|thomas/i, tags: ['VIP', 'Commercial', 'High Value'], clientType: 'commercial', referralSource: 'Referral' },
+      { nameMatch: /white|harris/i, tags: ['Slow Payer'], clientType: 'residential', referralSource: 'Facebook' },
+    ];
+
+    const defaultConfigs = [
+      { tags: ['Residential'], clientType: 'residential', referralSource: 'Phone Enquiry' },
+      { tags: ['Commercial', 'Repeat Customer'], clientType: 'commercial', referralSource: 'Website' },
+      { tags: ['VIP', 'Residential'], clientType: 'residential', referralSource: 'Referral' },
+      { tags: ['Strata'], clientType: 'strata', referralSource: 'Real Estate Agent' },
+      { tags: ['New Client'], clientType: 'residential', referralSource: 'Google' },
+    ];
+
+    let updated = 0;
+    for (let i = 0; i < clients.length; i++) {
+      const client = clients[i];
+      if (Array.isArray(client.tags) && client.tags.length > 0) continue;
+
+      let config = tagConfigs.find(tc => tc.nameMatch.test(client.name));
+      if (!config) {
+        config = defaultConfigs[i % defaultConfigs.length];
+      }
+
+      await storage.updateClient(client.id, userId, {
+        tags: config.tags,
+        clientType: config.clientType,
+        referralSource: config.referralSource,
+      });
+      updated++;
+    }
+
+    if (updated > 0) {
+      console.log(`🏷️ Seeded tags for ${updated} demo clients`);
+    }
+  } catch (error) {
+    console.error('[DemoTags] Error seeding client tags:', error);
   }
 }
