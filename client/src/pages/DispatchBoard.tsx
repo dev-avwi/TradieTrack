@@ -225,23 +225,51 @@ interface DispatchAssignment {
   } | null;
 }
 
-const jobIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+function createJobIcon(status: string) {
+  const colors: Record<string, string> = {
+    scheduled: '#3b82f6',
+    assigned: '#3b82f6',
+    en_route: '#f59e0b',
+    arrived: '#8b5cf6',
+    in_progress: '#f97316',
+    completed: '#22c55e',
+    cancelled: '#ef4444',
+  };
+  const color = colors[status] || '#3b82f6';
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
+      background: ${color}; transform: rotate(-45deg);
+      border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      display: flex; align-items: center; justify-content: center;
+    "><div style="
+      transform: rotate(45deg); color: white; font-size: 13px; font-weight: 700;
+    "><svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5'><path d='M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z'/><circle cx='12' cy='10' r='3'/></svg></div></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  });
+}
 
-const workerIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+function createWorkerIcon(initials: string, color?: string) {
+  const bg = color || '#22c55e';
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width: 36px; height: 36px; border-radius: 50%;
+      background: ${bg}; border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      display: flex; align-items: center; justify-content: center;
+      font-family: system-ui, -apple-system, sans-serif;
+      animation: pulse-ring 2s ease-out infinite;
+    "><span style="color: white; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">${initials}</span></div>
+    <style>@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 ${bg}60; } 70% { box-shadow: 0 0 0 8px ${bg}00; } 100% { box-shadow: 0 0 0 0 ${bg}00; } }</style>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18],
+  });
+}
 
 const KANBAN_COLUMNS = [
   { key: 'assigned', label: 'Assigned', color: 'bg-blue-500', bgLight: 'bg-blue-50 dark:bg-blue-900/20' },
@@ -399,7 +427,7 @@ function DispatchMapView({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
       ...jobMarkers.map(m => m.position),
       ...workerMarkers.map(m => m.position),
     ];
-    if (allPoints.length === 0) return [39.8283, -98.5795];
+    if (allPoints.length === 0) return [-16.92, 145.77];
     const avgLat = allPoints.reduce((s, p) => s + p[0], 0) / allPoints.length;
     const avgLng = allPoints.reduce((s, p) => s + p[1], 0) / allPoints.length;
     return [avgLat, avgLng];
@@ -429,41 +457,57 @@ function DispatchMapView({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
       <div className="rounded-b-lg overflow-hidden">
       <MapContainer
         center={center}
-        zoom={jobMarkers.length + workerMarkers.length > 0 ? 10 : 4}
-        className="h-[500px] w-full"
+        zoom={jobMarkers.length + workerMarkers.length > 0 ? 11 : 4}
+        className="h-[550px] w-full"
+        scrollWheelZoom={true}
+        zoomControl={true}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
-        {jobMarkers.map(({ position, job }) => (
-          <Marker key={`job-${job.id}`} position={position} icon={jobIcon}>
+        {jobMarkers.map(({ position, job }) => {
+          const statusColors: Record<string, { bg: string; text: string }> = {
+            scheduled: { bg: '#dbeafe', text: '#1d4ed8' },
+            assigned: { bg: '#dbeafe', text: '#1d4ed8' },
+            en_route: { bg: '#fef3c7', text: '#b45309' },
+            arrived: { bg: '#ede9fe', text: '#6d28d9' },
+            in_progress: { bg: '#ffedd5', text: '#c2410c' },
+            completed: { bg: '#dcfce7', text: '#15803d' },
+          };
+          const sc = statusColors[job.status] || statusColors.scheduled;
+          return (
+          <Marker key={`job-${job.id}`} position={position} icon={createJobIcon(job.status)}>
             <Popup>
-              <div className="min-w-[180px]">
-                <p className="font-semibold text-sm">{job.title}</p>
-                {job.client && <p className="text-xs text-gray-600">{job.client.name}</p>}
-                {job.address && <p className="text-xs text-gray-500 mt-1">{job.address}</p>}
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">{job.status}</span>
-                  {job.scheduledTime && <span className="text-xs text-gray-500">{job.scheduledTime}</span>}
+              <div className="min-w-[200px] p-1">
+                <p style={{ fontWeight: 600, fontSize: '13px', margin: '0 0 4px 0', color: '#1a1a1a' }}>{job.title}</p>
+                {job.client && <p style={{ fontSize: '12px', color: '#666', margin: '0 0 2px 0' }}>{job.client.name}</p>}
+                {job.address && <p style={{ fontSize: '11px', color: '#888', margin: '0 0 6px 0' }}>{job.address}</p>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: sc.bg, color: sc.text }}>{job.status.replace(/_/g, ' ')}</span>
+                  {job.scheduledTime && <span style={{ fontSize: '11px', color: '#888' }}>{job.scheduledTime}</span>}
                 </div>
               </div>
             </Popup>
           </Marker>
-        ))}
-        {workerMarkers.map(({ position, assignment, jobTitle }, index) => (
-          <Marker key={`worker-${assignment.id}-${index}`} position={position} icon={workerIcon}>
+          );
+        })}
+        {workerMarkers.map(({ position, assignment, jobTitle }, index) => {
+          const initials = ((assignment.memberFirstName?.[0] || '') + (assignment.memberLastName?.[0] || '')).toUpperCase() || '??';
+          return (
+          <Marker key={`worker-${assignment.id}-${index}`} position={position} icon={createWorkerIcon(initials)}>
             <Popup>
-              <div className="min-w-[160px]">
-                <p className="font-semibold text-sm">
+              <div className="min-w-[200px] p-1">
+                <p style={{ fontWeight: 600, fontSize: '13px', margin: '0 0 4px 0', color: '#1a1a1a' }}>
                   {assignment.memberFirstName} {assignment.memberLastName}
                 </p>
-                <p className="text-xs text-gray-500">En route to: {jobTitle}</p>
-                <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-green-100 text-green-700">En Route</span>
+                <p style={{ fontSize: '12px', color: '#666', margin: '0 0 6px 0' }}>En route to: {jobTitle}</p>
+                <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: '#dcfce7', color: '#15803d' }}>En Route</span>
               </div>
             </Popup>
           </Marker>
-        ))}
+          );
+        })}
       </MapContainer>
       </div>
       </CardContent>

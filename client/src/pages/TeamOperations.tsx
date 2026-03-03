@@ -544,24 +544,33 @@ function LiveOpsTab() {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="px-4 pb-4">
-                    <div className="h-[300px] rounded-lg overflow-hidden border" data-testid="team-map-container">
+                    <div className="h-[450px] rounded-lg overflow-hidden border" data-testid="team-map-container">
                       {presence.some(p => p.lastLocationLat && p.lastLocationLng) ? (
                         <MapContainer
                           center={(() => {
-                            const withLocation = presence.find(p => p.lastLocationLat && p.lastLocationLng);
-                            return withLocation 
-                              ? [withLocation.lastLocationLat!, withLocation.lastLocationLng!] as [number, number]
-                              : [-16.92, 145.77] as [number, number]; // Default to Cairns
+                            const withLocation = presence.filter(p => {
+                              const lat = Number(p.lastLocationLat);
+                              const lng = Number(p.lastLocationLng);
+                              return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+                            });
+                            if (withLocation.length === 0) return [-16.92, 145.77] as [number, number];
+                            const avgLat = withLocation.reduce((s, p) => s + Number(p.lastLocationLat), 0) / withLocation.length;
+                            const avgLng = withLocation.reduce((s, p) => s + Number(p.lastLocationLng), 0) / withLocation.length;
+                            return [avgLat, avgLng] as [number, number];
                           })()}
                           zoom={13}
                           className="h-full w-full"
                           scrollWheelZoom={true}
                         >
                           <TileLayer
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
                           />
-                          {presence.filter(p => p.lastLocationLat && p.lastLocationLng).map((p) => {
+                          {presence.filter(p => {
+                            const lat = Number(p.lastLocationLat);
+                            const lng = Number(p.lastLocationLng);
+                            return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+                          }).map((p) => {
                             const member = acceptedMembers.find(m => m.userId === p.userId);
                             const statusDisplay = getStatusDisplay(p.status);
                             const initials = getInitials(member?.firstName, member?.lastName, member?.email);
@@ -574,32 +583,49 @@ function LiveOpsTab() {
                             return (
                               <Marker
                                 key={p.userId}
-                                position={[p.lastLocationLat!, p.lastLocationLng!]}
-                                icon={L.divIcon({
-                                  className: '',
-                                  html: `<div style="
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                    width: 24px;
-                                    height: 24px;
-                                    border-radius: 50%;
-                                    background: ${member?.themeColor || statusDisplay.markerBg};
-                                    border: 2px solid white;
-                                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                                    font-family: system-ui, -apple-system, sans-serif;
-                                    cursor: pointer;
-                                  ">
-                                    <span style="
-                                      color: #fff;
-                                      font-size: 9px;
-                                      font-weight: 700;
-                                      letter-spacing: 0.2px;
-                                    ">${initials}</span>
-                                  </div>`,
-                                  iconSize: [24, 24],
-                                  iconAnchor: [12, 12],
-                                })}
+                                position={[Number(p.lastLocationLat), Number(p.lastLocationLng)]}
+                                icon={(() => {
+                                  const bg = member?.themeColor || statusDisplay.markerBg;
+                                  const isActive = p.status === 'online' || p.status === 'on_job';
+                                  return L.divIcon({
+                                    className: '',
+                                    html: `<div style="
+                                      position: relative;
+                                      display: flex;
+                                      align-items: center;
+                                      justify-content: center;
+                                      width: 38px;
+                                      height: 38px;
+                                      border-radius: 50%;
+                                      background: ${bg};
+                                      border: 3px solid white;
+                                      box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+                                      font-family: system-ui, -apple-system, sans-serif;
+                                      cursor: pointer;
+                                      ${isActive ? `animation: team-pulse 2s ease-out infinite;` : ''}
+                                    ">
+                                      <span style="
+                                        color: #fff;
+                                        font-size: 12px;
+                                        font-weight: 700;
+                                        letter-spacing: 0.3px;
+                                      ">${initials}</span>
+                                      <div style="
+                                        position: absolute;
+                                        bottom: -1px;
+                                        right: -1px;
+                                        width: 10px;
+                                        height: 10px;
+                                        border-radius: 50%;
+                                        background: ${p.status === 'online' ? '#22c55e' : p.status === 'on_job' ? '#f59e0b' : p.status === 'break' ? '#eab308' : '#94a3b8'};
+                                        border: 2px solid white;
+                                      "></div>
+                                    </div>
+                                    <style>@keyframes team-pulse { 0% { box-shadow: 0 0 0 0 ${bg}50; } 70% { box-shadow: 0 0 0 10px ${bg}00; } 100% { box-shadow: 0 0 0 0 ${bg}00; } }</style>`,
+                                    iconSize: [38, 38],
+                                    iconAnchor: [19, 19],
+                                  });
+                                })()}
                                 eventHandlers={{
                                   click: () => {
                                     if (member) {
