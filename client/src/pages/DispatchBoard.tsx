@@ -815,12 +815,17 @@ export default function DispatchBoard() {
 
     const allMembers = [ownerMember, ...teamMembers.filter(m => m.isActive)];
     
+    const claimedJobIds = new Set<string>();
+    
     return allMembers.map(member => {
-      const memberJobs = scheduledJobsForDate.filter(job => 
-        job.assignedTo === member.memberId || 
-        job.assignedTo === member.id ||
-        (!job.assignedTo && member.id === 'owner')
-      );
+      const memberJobs = scheduledJobsForDate.filter(job => {
+        if (claimedJobIds.has(job.id)) return false;
+        const match = job.assignedTo === member.memberId || 
+          job.assignedTo === member.id ||
+          (!job.assignedTo && member.id === 'owner');
+        if (match) claimedJobIds.add(job.id);
+        return match;
+      });
 
       const totalMinutes = memberJobs.reduce((sum, job) => 
         sum + (job.estimatedDuration || 60), 0
