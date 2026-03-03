@@ -4422,7 +4422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        message: 'Your subscription has been upgraded to Team with a 7-day trial. Invite team members to get started!',
+        message: 'Your subscription has been upgraded to Team with a 30-day trial. Invite team members to get started!',
         trialEndsAt: result.trialEndsAt,
         subscriptionId: result.subscriptionId,
       });

@@ -439,7 +439,7 @@ export const businessSettings = pgTable("business_settings", {
   billingRemindersEnabled: boolean("billing_reminders_enabled").default(true), // User can disable reminders
   // Trial tracking (at business level)
   trialStartDate: timestamp("trial_start_date"), // When trial started
-  trialEndDate: timestamp("trial_end_date"), // When trial ends (14 days after start)
+  trialEndDate: timestamp("trial_end_date"), // When trial ends (30 days after start)
   trialConverted: boolean("trial_converted").default(false), // Did trial convert to paid?
   // Digital Signature Settings
   defaultSignature: text("default_signature"), // Base64 encoded signature image for quotes/invoices
