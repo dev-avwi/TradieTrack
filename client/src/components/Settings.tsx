@@ -463,6 +463,7 @@ export default function Settings({
     signatureName: "",
     includeSignatureOnQuotes: false,
     includeSignatureOnInvoices: false,
+    includeLocationProofOnInvoices: true,
   });
 
   // Document template settings
@@ -666,6 +667,7 @@ export default function Settings({
         signatureName: (businessSettings as any).signatureName || "",
         includeSignatureOnQuotes: (businessSettings as any).includeSignatureOnQuotes || false,
         includeSignatureOnInvoices: (businessSettings as any).includeSignatureOnInvoices || false,
+        includeLocationProofOnInvoices: (businessSettings as any).includeLocationProofOnInvoices !== false,
       });
       
       // Load document template setting
@@ -819,6 +821,7 @@ export default function Settings({
       signatureName: signatureData.signatureName,
       includeSignatureOnQuotes: signatureData.includeSignatureOnQuotes,
       includeSignatureOnInvoices: signatureData.includeSignatureOnInvoices,
+      includeLocationProofOnInvoices: signatureData.includeLocationProofOnInvoices,
       // Document template
       documentTemplate: documentTemplate,
       documentTemplateSettings: templateCustomization,
@@ -2253,6 +2256,31 @@ export default function Settings({
                     />
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>GPS Location Proof</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                When workers clock in and out with GPS enabled, their location is recorded as proof of attendance
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between p-3 rounded-lg border">
+                <div className="space-y-0.5">
+                  <Label htmlFor="location-proof-invoices" className="font-medium">Show on Invoices</Label>
+                  <p className="text-xs text-muted-foreground">Include a "Worker Presence Verified" table on invoice PDFs showing GPS-stamped arrival and departure times</p>
+                </div>
+                <Switch
+                  id="location-proof-invoices"
+                  checked={signatureData.includeLocationProofOnInvoices}
+                  onCheckedChange={(checked) => 
+                    setSignatureData(prev => ({ ...prev, includeLocationProofOnInvoices: checked }))
+                  }
+                  data-testid="switch-location-proof-invoices"
+                />
               </div>
             </CardContent>
           </Card>
