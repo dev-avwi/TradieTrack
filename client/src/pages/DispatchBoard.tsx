@@ -1272,8 +1272,8 @@ export default function DispatchBoard() {
       )}
 
       {topView === 'schedule' && (
-      <div className="flex flex-col gap-4">
-        <div className="flex-1">
+      <div className="flex flex-col lg:flex-row gap-4" style={{ minHeight: 'calc(100vh - 200px)' }}>
+        <div className="flex-1 min-w-0 lg:max-w-[65%]">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -1663,30 +1663,22 @@ export default function DispatchBoard() {
           </Card>
         </div>
 
-        <div className="flex items-center gap-3 mb-3 mt-2">
-          <div className="flex items-center gap-2">
+        <div className="lg:w-[35%] lg:min-w-[340px] flex flex-col gap-3">
+          <div className="flex items-center gap-2 px-1">
             <div className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
             </div>
-            <h2 className="text-lg font-semibold">Operations Centre</h2>
+            <h2 className="text-base font-semibold">Operations Centre</h2>
+            <div className="flex items-center gap-1.5 ml-auto text-xs text-muted-foreground">
+              <span>{scheduledJobsForDate.length} jobs</span>
+              <span className="text-muted-foreground/40">|</span>
+              <span>{teamMembersWithJobs.length} crew</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>{scheduledJobsForDate.length} scheduled</span>
-            <span className="text-muted-foreground/40">|</span>
-            <span>{scheduledJobsForDate.filter(j => j.status === 'in_progress').length} active</span>
-            <span className="text-muted-foreground/40">|</span>
-            <span>{teamMembersWithJobs.length} crew</span>
-            {(dispatchResources?.deployedEquipment?.length ?? 0) > 0 && (
-              <>
-                <span className="text-muted-foreground/40">|</span>
-                <span>{dispatchResources!.deployedEquipment.length} equipment out</span>
-              </>
-            )}
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <ScrollArea className="lg:h-[calc(100vh-240px)]">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3 pr-1">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
@@ -1700,7 +1692,7 @@ export default function DispatchBoard() {
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleUnscheduledDrop}
             >
-              <ScrollArea className="h-[300px]">
+              <ScrollArea className="h-[200px]">
                 {unscheduledJobs.length === 0 ? (
                   <div className="text-center py-8">
                     <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
@@ -1867,7 +1859,7 @@ export default function DispatchBoard() {
               ) : aiSuggestions?.suggestions && aiSuggestions.suggestions.length > 0 ? (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">{aiSuggestions.summary}</p>
-                  <ScrollArea className="h-[250px]">
+                  <ScrollArea className="h-[180px]">
                     <div className="space-y-2 pr-2">
                       {aiSuggestions.suggestions.map((suggestion, index) => {
                         const isApplied = appliedSuggestions.has(suggestion.jobId);
@@ -2094,7 +2086,7 @@ export default function DispatchBoard() {
                       </span>
                     </div>
                   )}
-                  <ScrollArea className="h-[230px]">
+                  <ScrollArea className="h-[160px]">
                     <div className="space-y-1.5">
                       {dispatchResources.deployedEquipment.map((eq) => (
                         <div key={eq.assignmentId} className="flex items-start gap-2 p-2 rounded-md bg-muted/30">
@@ -2140,7 +2132,7 @@ export default function DispatchBoard() {
                   <p className="text-xs text-muted-foreground mt-1">All materials received or no materials tracked</p>
                 </div>
               ) : (
-                <ScrollArea className="h-[260px]">
+                <ScrollArea className="h-[160px]">
                   <div className="space-y-1.5">
                     {dispatchResources.materialsNeeded.map((mat) => {
                       const statusColors: Record<string, string> = {
@@ -2170,6 +2162,8 @@ export default function DispatchBoard() {
               )}
             </CardContent>
           </Card>
+        </div>
+          </ScrollArea>
         </div>
       </div>
       )}
