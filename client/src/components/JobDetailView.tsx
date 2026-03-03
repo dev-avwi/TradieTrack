@@ -2781,30 +2781,6 @@ export default function JobDetailView({
             </Card>
           )}
 
-          {!job.requiresInspection && (job.status === 'pending' || job.status === 'scheduled') && !linkedQuote && !isTradie && (
-            <Card data-testid="card-ready-to-quote">
-              <CardContent className="py-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-muted">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm">Ready to Quote</p>
-                    <p className="text-xs text-muted-foreground">Create a quote for this job to get started</p>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => onCreateQuote?.(jobId)}
-                  data-testid="button-create-quote-prompt"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Create Quote
-                </Button>
-              </CardContent>
-            </Card>
-          )}
 
           {job.status === 'done' && !linkedInvoice && !isTradie && (
             <Card className="border-2" style={{ borderColor: 'hsl(142.1 76.2% 36.3% / 0.5)' }} data-testid="card-create-invoice-prompt">
