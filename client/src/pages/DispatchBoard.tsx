@@ -51,7 +51,10 @@ import {
   Loader2,
   Check,
   X,
-  Plus
+  Plus,
+  Wrench,
+  Package,
+  ArrowRight
 } from "lucide-react";
 import {
   format,
@@ -741,6 +744,16 @@ export default function DispatchBoard() {
   const { data: opsHealth } = useQuery<OpsHealth>({
     queryKey: ['/api/ops/health'],
     refetchInterval: 30000,
+  });
+
+  const { data: dispatchResources } = useQuery<{
+    deployedEquipment: Array<{assignmentId: string; equipmentId: string; equipmentName: string; category: string; serialNumber: string; jobId: string; jobTitle: string; jobStatus: string; notes?: string}>;
+    materialsNeeded: Array<{id: string; name: string; quantity: string; unit: string; status: string; supplier?: string; jobId: string; jobTitle: string}>;
+    totalEquipment: number;
+    availableEquipment: number;
+  }>({
+    queryKey: ['/api/dispatch/resources'],
+    refetchInterval: 60000,
   });
 
   // Apply AI suggestion mutation
@@ -1650,7 +1663,7 @@ export default function DispatchBoard() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
@@ -1999,6 +2012,124 @@ export default function DispatchBoard() {
                   </span>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wrench className="h-4 w-4" />
+                Equipment Deployed
+                {(dispatchResources?.deployedEquipment?.length ?? 0) > 0 && (
+                  <Badge variant="secondary" className="ml-auto">
+                    {dispatchResources!.deployedEquipment.length}
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3">
+              {!dispatchResources?.deployedEquipment?.length ? (
+                <div className="text-center py-4">
+                  <Wrench className="h-8 w-8 text-muted-foreground/25 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No equipment deployed today</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {dispatchResources?.totalEquipment 
+                      ? `${dispatchResources.availableEquipment} of ${dispatchResources.totalEquipment} available`
+                      : 'Assign equipment from job details'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {dispatchResources.totalEquipment > 0 && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.min(((dispatchResources.totalEquipment - dispatchResources.availableEquipment) / dispatchResources.totalEquipment) * 100, 100)}%`,
+                            backgroundColor: 'hsl(var(--trade))',
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {dispatchResources.totalEquipment - dispatchResources.availableEquipment}/{dispatchResources.totalEquipment} in use
+                      </span>
+                    </div>
+                  )}
+                  <ScrollArea className="h-[230px]">
+                    <div className="space-y-1.5">
+                      {dispatchResources.deployedEquipment.map((eq) => (
+                        <div key={eq.assignmentId} className="flex items-start gap-2 p-2 rounded-md bg-muted/30">
+                          <Wrench className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{eq.equipmentName}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                              <span className="truncate">{eq.jobTitle}</span>
+                              {eq.serialNumber && (
+                                <span className="flex-shrink-0">SN: {eq.serialNumber}</span>
+                              )}
+                            </div>
+                          </div>
+                          <Badge variant="secondary" className="text-[10px] flex-shrink-0">
+                            {eq.jobStatus === 'in_progress' ? 'Active' : 'Assigned'}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Materials Needed
+                {(dispatchResources?.materialsNeeded?.length ?? 0) > 0 && (
+                  <Badge variant="secondary" className="ml-auto">
+                    {dispatchResources!.materialsNeeded.length}
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3">
+              {!dispatchResources?.materialsNeeded?.length ? (
+                <div className="text-center py-4">
+                  <Package className="h-8 w-8 text-muted-foreground/25 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No outstanding materials</p>
+                  <p className="text-xs text-muted-foreground mt-1">All materials received or no materials tracked</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[260px]">
+                  <div className="space-y-1.5">
+                    {dispatchResources.materialsNeeded.map((mat) => {
+                      const statusColors: Record<string, string> = {
+                        needed: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+                        ordered: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+                        shipped: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+                      };
+                      return (
+                        <div key={mat.id} className="flex items-start gap-2 p-2 rounded-md bg-muted/30">
+                          <Package className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{mat.name}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                              <span>{mat.quantity} {mat.unit}</span>
+                              {mat.supplier && <span>from {mat.supplier}</span>}
+                              <span className="truncate">{mat.jobTitle}</span>
+                            </div>
+                          </div>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${statusColors[mat.status] || statusColors.needed}`}>
+                            {mat.status}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              )}
             </CardContent>
           </Card>
         </div>

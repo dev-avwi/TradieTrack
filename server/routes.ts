@@ -15567,6 +15567,80 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  app.get("/api/dispatch/resources", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      const allJobs = await storage.getJobs(userId);
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
+      const activeJobs = allJobs.filter((j: any) => {
+        const status = (j.status || '').toLowerCase();
+        if (['done', 'completed', 'cancelled', 'archived'].includes(status)) return false;
+        if (!j.scheduledAt) return status === 'in_progress';
+        return new Date(j.scheduledAt).toISOString().split('T')[0] === todayStr || status === 'in_progress';
+      });
+
+      const equipmentAssignments: any[] = [];
+      const materialsNeeded: any[] = [];
+
+      for (const job of activeJobs) {
+        const eqList = await storage.getJobEquipment(job.id);
+        for (const eq of eqList) {
+          equipmentAssignments.push({
+            ...eq,
+            jobTitle: job.title,
+            jobStatus: job.status,
+          });
+        }
+
+        const mats = await storage.getJobMaterials(job.id, userId);
+        for (const mat of mats) {
+          if (['needed', 'ordered', 'shipped'].includes(mat.status)) {
+            materialsNeeded.push({
+              id: mat.id,
+              name: mat.name,
+              quantity: mat.quantity,
+              unit: mat.unit,
+              status: mat.status,
+              supplier: mat.supplier,
+              jobId: job.id,
+              jobTitle: job.title,
+            });
+          }
+        }
+      }
+
+      const equipmentList = await storage.getEquipment(userId);
+
+      const deployedEquipment = equipmentAssignments.map((a: any) => {
+        const eq = equipmentList.find((e: any) => e.id === a.equipmentId);
+        return {
+          assignmentId: a.id,
+          equipmentId: a.equipmentId,
+          equipmentName: eq?.name || 'Unknown',
+          category: eq?.category || '',
+          serialNumber: eq?.serialNumber || '',
+          jobId: a.jobId,
+          jobTitle: a.jobTitle,
+          jobStatus: a.jobStatus,
+          notes: a.notes,
+        };
+      });
+
+      res.json({
+        deployedEquipment,
+        materialsNeeded,
+        totalEquipment: equipmentList.length,
+        availableEquipment: equipmentList.filter((e: any) => !equipmentAssignments.some((a: any) => a.equipmentId === e.id)).length,
+      });
+    } catch (error: any) {
+      console.error("Error fetching dispatch resources:", error);
+      res.status(500).json({ error: "Failed to fetch dispatch resources" });
+    }
+  });
+
   // Get operational health metrics for the dispatch board
   app.get("/api/ops/health", requireAuth, async (req: any, res) => {
     try {
