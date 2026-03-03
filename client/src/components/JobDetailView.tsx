@@ -3015,10 +3015,16 @@ export default function JobDetailView({
                     <Badge variant="secondary" className="text-xs">{jobMaterials.length}</Badge>
                   )}
                 </div>
-                <Button size="sm" variant="ghost" onClick={() => setShowAddMaterial(!showAddMaterial)}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => setShowAddMaterial(!showAddMaterial)}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowAssignEquipment(true)}>
+                    <Wrench className="h-4 w-4 mr-1" />
+                    Equipment
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="pt-0 space-y-3">
@@ -3166,8 +3172,8 @@ export default function JobDetailView({
                 </div>
               )}
 
-              {jobMaterials.length === 0 && !showAddMaterial && (
-                <p className="text-sm text-muted-foreground py-2">No materials tracked yet. Tap Add to start tracking parts and supplies.</p>
+              {jobMaterials.length === 0 && !showAddMaterial && jobEquipmentList.length === 0 && (
+                <p className="text-sm text-muted-foreground py-2">No materials or equipment tracked yet. Tap Add for parts, or Equipment to assign tools and assets.</p>
               )}
 
               {jobMaterials.length > 0 && (
@@ -3325,6 +3331,37 @@ export default function JobDetailView({
                   </div>
                 );
               })()}
+
+              {jobEquipmentList.length > 0 && (
+                <div className="pt-3 border-t space-y-2">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                    <Wrench className="h-3.5 w-3.5" />
+                    Assigned Equipment
+                  </span>
+                  <div className="space-y-1.5">
+                    {jobEquipmentList.map((assignment) => {
+                      const eq = allEquipment.find((e: any) => e.id === assignment.equipmentId);
+                      return (
+                        <div key={assignment.id} className="flex items-center gap-2 text-sm group">
+                          <Wrench className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          <span className="flex-1 min-w-0 truncate">{eq?.name || 'Unknown'}</span>
+                          {eq?.serialNumber && (
+                            <span className="text-xs text-muted-foreground flex-shrink-0">SN: {eq.serialNumber}</span>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="invisible group-hover:visible flex-shrink-0"
+                            onClick={(e) => { e.stopPropagation(); unassignEquipmentMutation.mutate(assignment.id); }}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

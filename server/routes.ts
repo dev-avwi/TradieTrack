@@ -6424,6 +6424,26 @@ Be specific about materials, colors, and features that would be included.`
       console.error('Error fetching subcontractor data for proof pack:', e);
     }
 
+    let variations: any[] = [];
+    try {
+      const allVariations = await storage.getJobVariations(jobId, userId);
+      variations = allVariations.map((v: any) => ({
+        number: v.number,
+        title: v.title,
+        description: v.description || undefined,
+        reason: v.reason || undefined,
+        additionalAmount: v.additionalAmount || '0',
+        gstAmount: v.gstAmount || '0',
+        totalAmount: v.totalAmount || '0',
+        status: v.status,
+        approvedByName: v.approvedByName || undefined,
+        approvedAt: v.approvedAt ? new Date(v.approvedAt).toLocaleDateString('en-AU') : undefined,
+        createdAt: v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-AU') : undefined,
+      }));
+    } catch (e) {
+      console.error('Error fetching variations for proof pack:', e);
+    }
+
     return {
       job,
       business,
@@ -6442,6 +6462,7 @@ Be specific about materials, colors, and features that would be included.`
       geofenceAlerts,
       complianceDocs,
       subcontractors: subcontractorsList,
+      variations,
       hideSections,
     };
   }

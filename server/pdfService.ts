@@ -3676,10 +3676,11 @@ export const generateJobProofPackPDF = (data: {
   geofenceAlerts?: Array<{workerName: string; alertType: string; latitude?: string; longitude?: string; address?: string; distanceFromSite?: string; createdAt: string}>;
   complianceDocs?: Array<{type: string; title: string; documentNumber?: string; issuer?: string; holderName?: string; expiryDate?: string | null; coverageAmount?: string; status: string}>;
   subcontractors?: Array<{name: string; status: string; invitedAt?: string | null; acceptedAt?: string | null; lastAccessed?: string | null; source: string}>;
-  hideSections?: {timeline?: boolean; attendance?: boolean; gpsProof?: boolean; materials?: boolean; photos?: boolean; invoice?: boolean; compliance?: boolean; subcontractors?: boolean};
+  variations?: Array<{number: string; title: string; description?: string; reason?: string; additionalAmount: string; gstAmount: string; totalAmount: string; status: string; approvedByName?: string; approvedAt?: string; createdAt?: string}>;
+  hideSections?: {timeline?: boolean; attendance?: boolean; gpsProof?: boolean; materials?: boolean; photos?: boolean; invoice?: boolean; compliance?: boolean; subcontractors?: boolean; variations?: boolean};
   accentColor?: string;
 }): string => {
-  const { job, business, client, timeEntries, materials, photos, invoice, geofenceAlerts = [], complianceDocs = [], subcontractors = [], hideSections = {}, accentColor: overrideColor } = data;
+  const { job, business, client, timeEntries, materials, photos, invoice, geofenceAlerts = [], complianceDocs = [], subcontractors = [], variations = [], hideSections = {}, accentColor: overrideColor } = data;
 
   const { template, accentColor: templateColor } = getTemplateFromBusinessSettings(business);
   const brandColor = overrideColor || templateColor;
@@ -3818,6 +3819,48 @@ export const generateJobProofPackPDF = (data: {
         </tfoot>
       </table>`
     : `<p class="empty-message">No materials tracked</p>`;
+
+  const variationsTotal = variations.reduce((sum, v) => sum + parseFloat(v.totalAmount || '0'), 0);
+  const variationsHtml = variations.length > 0
+    ? `<table class="proof-table">
+        <thead>
+          <tr>
+            <th>Ref</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th style="text-align:right">Amount (inc GST)</th>
+            <th>Approved By</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${variations.map(v => {
+            const statusColor = v.status === 'approved' ? '#166534' : v.status === 'rejected' ? '#991b1b' : '#92400e';
+            const statusBg = v.status === 'approved' ? '#dcfce7' : v.status === 'rejected' ? '#fecaca' : '#fef3c7';
+            return `
+          <tr>
+            <td style="font-weight:600">${v.number}</td>
+            <td>
+              <strong>${v.title}</strong>
+              ${v.description ? `<br/><span style="color:#666;font-size:9px">${v.description}</span>` : ''}
+              ${v.reason ? `<br/><span style="color:#888;font-size:9px">Reason: ${v.reason}</span>` : ''}
+            </td>
+            <td><span class="status-pill" style="background:${statusBg};color:${statusColor}">${v.status}</span></td>
+            <td style="text-align:right">${parseFloat(v.totalAmount) >= 0 ? '' : '-'}$${Math.abs(parseFloat(v.totalAmount)).toFixed(2)}</td>
+            <td>${v.approvedByName || '-'}</td>
+            <td>${v.approvedAt || v.createdAt || '-'}</td>
+          </tr>`;
+          }).join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" style="text-align:right;font-weight:700;border-top:2px solid ${brandColor}">Variations Total</td>
+            <td style="text-align:right;font-weight:700;border-top:2px solid ${brandColor}">${variationsTotal >= 0 ? '' : '-'}$${Math.abs(variationsTotal).toFixed(2)}</td>
+            <td colspan="2" style="border-top:2px solid ${brandColor}"></td>
+          </tr>
+        </tfoot>
+      </table>`
+    : `<p class="empty-message">No variations recorded</p>`;
 
   const photosHtml = photos.length > 0
     ? `<div class="photo-grid">
@@ -4152,23 +4195,28 @@ export const generateJobProofPackPDF = (data: {
       ${materialsHtml}
     </div>` : ''}
 
+    ${!hideSections.variations && variations.length > 0 ? `<div class="section">
+      <div class="section-title">5. Variations</div>
+      ${variationsHtml}
+    </div>` : ''}
+
     ${!hideSections.photos ? `<div class="section">
-      <div class="section-title">5. Photos (Before / After)</div>
+      <div class="section-title">${!hideSections.variations && variations.length > 0 ? '6' : '5'}. Photos (Before / After)</div>
       ${photosHtml}
     </div>` : ''}
 
     ${!hideSections.invoice ? `<div class="section">
-      <div class="section-title">6. Invoice Summary</div>
+      <div class="section-title">${!hideSections.variations && variations.length > 0 ? '7' : '6'}. Invoice Summary</div>
       ${invoiceHtml}
     </div>` : ''}
 
     ${!hideSections.compliance ? `<div class="section">
-      <div class="section-title">7. Compliance &amp; Licensing</div>
+      <div class="section-title">${!hideSections.variations && variations.length > 0 ? '8' : '7'}. Compliance &amp; Licensing</div>
       ${complianceHtml}
     </div>` : ''}
 
     ${!hideSections.subcontractors ? `<div class="section">
-      <div class="section-title">8. Subcontractor Coordination</div>
+      <div class="section-title">${!hideSections.variations && variations.length > 0 ? '9' : '8'}. Subcontractor Coordination</div>
       ${subcontractorsHtml}
     </div>` : ''}
 
