@@ -28413,6 +28413,9 @@ Respond with JSON in this format:
             description: 'Auto-started by geofence arrival',
             origin: 'geofence',
             geofenceEventId: alert.id,
+            clockInLatitude: String(latitude),
+            clockInLongitude: String(longitude),
+            clockInAddress: address || null,
           });
           console.info('[Geofence] Auto clock-in succeeded:', JSON.stringify({
             ...logContext,
@@ -28450,7 +28453,11 @@ Respond with JSON in this format:
           
           if (durationSeconds >= 60) {
             // Safe to auto-clock-out
-            const stoppedEntry = await storage.stopTimeEntry(activeEntry.id, userId);
+            const stoppedEntry = await storage.stopTimeEntry(activeEntry.id, userId, {
+              clockOutLatitude: String(latitude),
+              clockOutLongitude: String(longitude),
+              clockOutAddress: address || undefined,
+            });
             console.info('[Geofence] Auto clock-out succeeded:', JSON.stringify({
               ...logContext,
               entryId: activeEntry.id,
