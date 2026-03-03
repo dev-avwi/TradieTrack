@@ -439,7 +439,7 @@ export default function OwnerManagerDashboard({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
         {actionData && actionData.summary.totalCount > 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
