@@ -232,6 +232,25 @@ function getInitials(firstName?: string, lastName?: string, email?: string): str
   return "?";
 }
 
+const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+function TeamThemeAwareTiles() {
+  const { theme } = useTheme();
+  const map = useMap();
+  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const tileUrl = isDark ? TILE_DARK : TILE_LIGHT;
+  
+  useEffect(() => {
+    const tileLayer = L.tileLayer(tileUrl, { attribution: TILE_ATTRIBUTION });
+    tileLayer.addTo(map);
+    return () => { map.removeLayer(tileLayer); };
+  }, [tileUrl, map]);
+  
+  return null;
+}
+
 function LiveOpsTab() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -562,10 +581,7 @@ function LiveOpsTab() {
                           className="h-full w-full"
                           scrollWheelZoom={true}
                         >
-                          <TileLayer
-                            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                          />
+                          <TeamThemeAwareTiles />
                           {presence.filter(p => {
                             const lat = Number(p.lastLocationLat);
                             const lng = Number(p.lastLocationLng);

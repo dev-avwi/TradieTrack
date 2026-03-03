@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
+import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
@@ -64,7 +65,7 @@ import {
   differenceInMinutes,
   addMinutes
 } from "date-fns";
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -390,6 +391,25 @@ function KanbanBoard({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
   );
 }
 
+const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+function ThemeAwareTiles() {
+  const { theme } = useTheme();
+  const map = useMap();
+  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const tileUrl = isDark ? TILE_DARK : TILE_LIGHT;
+  
+  useEffect(() => {
+    const tileLayer = L.tileLayer(tileUrl, { attribution: TILE_ATTRIBUTION });
+    tileLayer.addTo(map);
+    return () => { map.removeLayer(tileLayer); };
+  }, [tileUrl, map]);
+  
+  return null;
+}
+
 function DispatchMapView({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
   const jobMarkers = useMemo(() => {
     return dispatchJobs.filter(job => {
@@ -462,10 +482,7 @@ function DispatchMapView({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
         scrollWheelZoom={true}
         zoomControl={true}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-        />
+        <ThemeAwareTiles />
         {jobMarkers.map(({ position, job }) => {
           const statusColors: Record<string, { bg: string; text: string }> = {
             scheduled: { bg: '#dbeafe', text: '#1d4ed8' },
