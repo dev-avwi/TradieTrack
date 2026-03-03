@@ -3224,18 +3224,6 @@ export interface PaymentReceiptData {
   };
 }
 
-// Format date with time for receipts
-const formatDateTime = (date: Date | string | null): string => {
-  if (!date) return '';
-  const d = new Date(date);
-  return d.toLocaleDateString('en-AU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
 
 // Format cents to currency
 const formatCentsToAUD = (cents: number): string => {
@@ -3681,13 +3669,15 @@ export const generateJobProofPackPDF = (data: {
   job: any;
   business: any;
   client: any;
-  timeEntries: Array<{workerName: string; startTime: string; endTime?: string; duration?: number; billable?: boolean}>;
+  timeEntries: Array<{workerName: string; startTime: string; endTime?: string; duration?: number; billable?: boolean; clockInLatitude?: string | null; clockInLongitude?: string | null; clockInAddress?: string | null; clockOutLatitude?: string | null; clockOutLongitude?: string | null; clockOutAddress?: string | null; origin?: string}>;
   materials: Array<{name: string; quantity?: string; unitCost?: string; totalCost?: string; supplier?: string; status?: string}>;
   photos: Array<{url: string; caption?: string; category: string; createdAt?: string}>;
   invoice?: {number: string; date: string; total: string; gstAmount: string; status: string} | null;
+  geofenceAlerts?: Array<{workerName: string; alertType: string; latitude?: string; longitude?: string; address?: string; distanceFromSite?: string; createdAt: string}>;
+  hideSections?: {timeline?: boolean; attendance?: boolean; gpsProof?: boolean; materials?: boolean; photos?: boolean; invoice?: boolean};
   accentColor?: string;
 }): string => {
-  const { job, business, client, timeEntries, materials, photos, invoice, accentColor: overrideColor } = data;
+  const { job, business, client, timeEntries, materials, photos, invoice, geofenceAlerts = [], hideSections = {}, accentColor: overrideColor } = data;
 
   const { template, accentColor: templateColor } = getTemplateFromBusinessSettings(business);
   const brandColor = overrideColor || templateColor;
@@ -3853,6 +3843,62 @@ export const generateJobProofPackPDF = (data: {
       </table>`
     : `<p class="empty-message">No invoice generated</p>`;
 
+  const gpsEntries = timeEntries.filter(e => e.clockInLatitude || e.clockOutLatitude || e.origin === 'geofence');
+  const gpsProofHtml = gpsEntries.length > 0 || geofenceAlerts.length > 0
+    ? `<table class="proof-table">
+        <thead>
+          <tr>
+            <th>Worker</th>
+            <th>Event</th>
+            <th>Time</th>
+            <th>Location</th>
+            <th style="text-align:center">Verified</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${gpsEntries.map(e => {
+            const rows = [];
+            if (e.clockInLatitude || e.clockInAddress) {
+              rows.push(`<tr>
+                <td>${e.workerName}</td>
+                <td>Clock In</td>
+                <td>${formatShortTime(e.startTime)}, ${formatShortDate(e.startTime)}</td>
+                <td>${e.clockInAddress || `${e.clockInLatitude}, ${e.clockInLongitude}`}</td>
+                <td style="text-align:center"><span class="gps-badge verified">GPS</span></td>
+              </tr>`);
+            }
+            if (e.clockOutLatitude || e.clockOutAddress) {
+              rows.push(`<tr>
+                <td>${e.workerName}</td>
+                <td>Clock Out</td>
+                <td>${e.endTime ? `${formatShortTime(e.endTime)}, ${formatShortDate(e.endTime)}` : '-'}</td>
+                <td>${e.clockOutAddress || `${e.clockOutLatitude}, ${e.clockOutLongitude}`}</td>
+                <td style="text-align:center"><span class="gps-badge verified">GPS</span></td>
+              </tr>`);
+            }
+            if (rows.length === 0 && e.origin === 'geofence') {
+              rows.push(`<tr>
+                <td>${e.workerName}</td>
+                <td>Geofence</td>
+                <td>${formatShortTime(e.startTime)}, ${formatShortDate(e.startTime)}</td>
+                <td>Auto-detected by geofence</td>
+                <td style="text-align:center"><span class="gps-badge verified">GPS</span></td>
+              </tr>`);
+            }
+            return rows.join('');
+          }).join('')}
+          ${geofenceAlerts.map(a => `<tr>
+            <td>${a.workerName}</td>
+            <td>${a.alertType === 'arrival' ? 'Geofence Arrival' : 'Geofence Departure'}</td>
+            <td>${formatShortTime(a.createdAt)}, ${formatShortDate(a.createdAt)}</td>
+            <td>${a.address || (a.latitude ? `${a.latitude}, ${a.longitude}` : '-')}${a.distanceFromSite ? ` (${parseFloat(a.distanceFromSite).toFixed(0)}m from site)` : ''}</td>
+            <td style="text-align:center"><span class="gps-badge verified">GPS</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <p style="font-size:9px;color:#888;margin-top:4px;font-style:italic">GPS coordinates recorded at clock-in/clock-out. Times shown in AEST.</p>`
+    : `<p class="empty-message">No GPS verification data recorded</p>`;
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3933,6 +3979,10 @@ export const generateJobProofPackPDF = (data: {
     .photo-caption { display: block; margin-top: 2px; color: #333; }
     .photo-date { display: block; color: #999; font-size: 9px; }
 
+    .gps-badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; }
+    .gps-badge.verified { background: #dcfce7; color: #166534; }
+    .gps-badge.manual { background: #fef3c7; color: #92400e; }
+
     .footer {
       margin-top: 20px;
       padding-top: 12px;
@@ -3988,7 +4038,7 @@ export const generateJobProofPackPDF = (data: {
       </div>
     </div>
 
-    <div class="section">
+    ${!hideSections.timeline ? `<div class="section">
       <div class="section-title">1. Job Timeline</div>
       <table class="proof-table">
         <thead>
@@ -4005,27 +4055,32 @@ export const generateJobProofPackPDF = (data: {
           </tr>`).join('')}
         </tbody>
       </table>
-    </div>
+    </div>` : ''}
 
-    <div class="section">
+    ${!hideSections.attendance ? `<div class="section">
       <div class="section-title">2. Hours Per Worker</div>
       ${timeEntriesHtml}
-    </div>
+    </div>` : ''}
 
-    <div class="section">
-      <div class="section-title">3. Materials &amp; Costs</div>
+    ${!hideSections.gpsProof ? `<div class="section">
+      <div class="section-title">3. Worker Presence Verification (GPS)</div>
+      ${gpsProofHtml}
+    </div>` : ''}
+
+    ${!hideSections.materials ? `<div class="section">
+      <div class="section-title">4. Materials &amp; Costs</div>
       ${materialsHtml}
-    </div>
+    </div>` : ''}
 
-    <div class="section">
-      <div class="section-title">4. Photos (Before / After)</div>
+    ${!hideSections.photos ? `<div class="section">
+      <div class="section-title">5. Photos (Before / After)</div>
       ${photosHtml}
-    </div>
+    </div>` : ''}
 
-    <div class="section">
-      <div class="section-title">5. Invoice Summary</div>
+    ${!hideSections.invoice ? `<div class="section">
+      <div class="section-title">6. Invoice Summary</div>
       ${invoiceHtml}
-    </div>
+    </div>` : ''}
 
     <div class="footer">
       <p>Generated by JobRunner &bull; ${formatDate(new Date())}</p>

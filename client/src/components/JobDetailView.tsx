@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone, Wrench, FileDown, Search, ChevronsUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -270,6 +270,17 @@ export default function JobDetailView({
   const [siteUpdatePhotoPreview, setSiteUpdatePhotoPreview] = useState<string | null>(null);
   const [selectedDurationEstimate, setSelectedDurationEstimate] = useState<string>('');
   const [proofPackPreviewOpen, setProofPackPreviewOpen] = useState(false);
+  const [proofPackBlobUrl, setProofPackBlobUrl] = useState<string | null>(null);
+  const [proofPackLoading, setProofPackLoading] = useState(false);
+  const [proofPackError, setProofPackError] = useState<string | null>(null);
+  const [proofPackSections, setProofPackSections] = useState({
+    timeline: true,
+    attendance: true,
+    gpsProof: true,
+    materials: true,
+    photos: true,
+    invoice: true,
+  });
   const [inspectionNotesInput, setInspectionNotesInput] = useState("");
   const [workerPopoverOpen, setWorkerPopoverOpen] = useState(false);
   
@@ -294,6 +305,45 @@ export default function JobDetailView({
     }
   }, [shouldScrollToChat]);
   
+  const loadProofPackPreview = useCallback(async () => {
+    if (!jobId) return;
+    setProofPackLoading(true);
+    setProofPackError(null);
+    if (proofPackBlobUrl) {
+      URL.revokeObjectURL(proofPackBlobUrl);
+      setProofPackBlobUrl(null);
+    }
+    try {
+      const params = new URLSearchParams();
+      Object.entries(proofPackSections).forEach(([key, val]) => {
+        if (!val) params.set(`hide_${key}`, '1');
+      });
+      const res = await fetch(`/api/jobs/${jobId}/proof-pack/preview?${params.toString()}`, { credentials: 'include' });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Failed to load preview');
+      }
+      const html = await res.text();
+      const blob = new Blob([html], { type: 'text/html' });
+      setProofPackBlobUrl(URL.createObjectURL(blob));
+    } catch (err: any) {
+      setProofPackError(err.message || 'Failed to load proof pack preview');
+    } finally {
+      setProofPackLoading(false);
+    }
+  }, [jobId, proofPackSections]);
+
+  useEffect(() => {
+    if (proofPackPreviewOpen) {
+      loadProofPackPreview();
+    }
+    return () => {
+      if (proofPackBlobUrl) {
+        URL.revokeObjectURL(proofPackBlobUrl);
+      }
+    };
+  }, [proofPackPreviewOpen, loadProofPackPreview]);
+
   const { userRole, isTradie, isSolo, actionPermissions } = useAppMode();
   const { data: businessSettings } = useBusinessSettings();
   const { data: integrationHealth } = useIntegrationHealth();
@@ -4279,22 +4329,78 @@ export default function JobDetailView({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={proofPackPreviewOpen} onOpenChange={setProofPackPreviewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+      <Dialog open={proofPackPreviewOpen} onOpenChange={(open) => {
+        setProofPackPreviewOpen(open);
+        if (!open) {
+          if (proofPackBlobUrl) URL.revokeObjectURL(proofPackBlobUrl);
+          setProofPackBlobUrl(null);
+          setProofPackError(null);
+        }
+      }}>
+        <DialogContent className="max-w-5xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Job Proof Pack</DialogTitle>
           </DialogHeader>
-          <iframe 
-            src={`/api/jobs/${jobId}/proof-pack/preview`}
-            className="w-full border rounded-md bg-white"
-            style={{ height: '65vh' }}
-            title="Proof Pack Preview"
-          />
+          <div className="flex gap-4">
+            <div className="w-48 flex-shrink-0 space-y-3 border-r pr-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Include Sections</p>
+              {[
+                { key: 'timeline' as const, label: 'Job Timeline' },
+                { key: 'attendance' as const, label: 'Worker Hours' },
+                { key: 'gpsProof' as const, label: 'GPS Verification' },
+                { key: 'materials' as const, label: 'Materials & Costs' },
+                { key: 'photos' as const, label: 'Photos' },
+                { key: 'invoice' as const, label: 'Invoice Summary' },
+              ].map(({ key, label }) => (
+                <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={proofPackSections[key]}
+                    onChange={(e) => setProofPackSections(prev => ({ ...prev, [key]: e.target.checked }))}
+                    className="rounded border-border"
+                  />
+                  {label}
+                </label>
+              ))}
+              <Button variant="outline" size="sm" className="w-full mt-2" onClick={loadProofPackPreview}>
+                Update Preview
+              </Button>
+            </div>
+            <div className="flex-1 min-w-0">
+              {proofPackLoading && (
+                <div className="flex items-center justify-center" style={{ height: '60vh' }}>
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">Generating preview...</span>
+                </div>
+              )}
+              {proofPackError && (
+                <div className="flex flex-col items-center justify-center gap-2" style={{ height: '60vh' }}>
+                  <AlertTriangle className="h-8 w-8 text-destructive" />
+                  <p className="text-sm text-destructive">{proofPackError}</p>
+                  <Button variant="outline" size="sm" onClick={loadProofPackPreview}>Retry</Button>
+                </div>
+              )}
+              {!proofPackLoading && !proofPackError && proofPackBlobUrl && (
+                <iframe
+                  src={proofPackBlobUrl}
+                  className="w-full border rounded-md bg-white"
+                  style={{ height: '60vh' }}
+                  title="Proof Pack Preview"
+                />
+              )}
+            </div>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setProofPackPreviewOpen(false)}>
               Close
             </Button>
-            <Button onClick={() => window.open(`/api/jobs/${jobId}/proof-pack`, '_blank')}>
+            <Button onClick={() => {
+              const params = new URLSearchParams();
+              Object.entries(proofPackSections).forEach(([key, val]) => {
+                if (!val) params.set(`hide_${key}`, '1');
+              });
+              window.open(`/api/jobs/${jobId}/proof-pack?${params.toString()}`, '_blank');
+            }}>
               <FileDown className="h-4 w-4 mr-2" />
               Download PDF
             </Button>
