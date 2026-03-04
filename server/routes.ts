@@ -135,9 +135,10 @@ import {
   automations as automationsTable,
   geofenceAlerts as geofence_alerts,
   jobInvites,
+  jobPhotos,
 } from "@shared/schema";
 import { db } from "./storage";
-import { eq, sql, desc, and, gte, lte, isNotNull, isNull, inArray, or } from "drizzle-orm";
+import { eq, sql, desc, asc, and, gte, lte, isNotNull, isNull, inArray, or } from "drizzle-orm";
 import { 
   ObjectStorageService, 
   ObjectNotFoundError,
@@ -37896,6 +37897,318 @@ Respond with JSON in this format:
         error: safeMessage,
         requestId,
       });
+    }
+  });
+
+  // ============================================
+  // PHOTO LIBRARY ROUTES (Files > Photos tab)
+  // ============================================
+
+  app.get("/api/photos", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext?.effectiveUserId || userId;
+
+      const { jobId, clientId, category, tag, dateFrom, dateTo, sortBy, sortOrder, limit: limitParam, offset: offsetParam } = req.query;
+
+      const conditions: any[] = [eq(jobPhotos.userId, effectiveUserId)];
+
+      if (jobId) conditions.push(eq(jobPhotos.jobId, jobId as string));
+      if (clientId) conditions.push(eq(jobs.clientId, clientId as string));
+      if (category && category !== 'all') conditions.push(eq(jobPhotos.category, category as string));
+      if (dateFrom) conditions.push(sql`${jobPhotos.createdAt} >= ${new Date(dateFrom as string)}`);
+      if (dateTo) conditions.push(sql`${jobPhotos.createdAt} <= ${new Date(dateTo as string)}`);
+      if (tag) conditions.push(sql`${tag} = ANY(${jobPhotos.tags})`);
+
+      const finalQuery = db
+        .select({
+          id: jobPhotos.id,
+          userId: jobPhotos.userId,
+          jobId: jobPhotos.jobId,
+          objectStorageKey: jobPhotos.objectStorageKey,
+          fileName: jobPhotos.fileName,
+          fileSize: jobPhotos.fileSize,
+          mimeType: jobPhotos.mimeType,
+          category: jobPhotos.category,
+          caption: jobPhotos.caption,
+          takenAt: jobPhotos.takenAt,
+          uploadedBy: jobPhotos.uploadedBy,
+          latitude: jobPhotos.latitude,
+          longitude: jobPhotos.longitude,
+          address: jobPhotos.address,
+          tags: jobPhotos.tags,
+          sortOrder: jobPhotos.sortOrder,
+          createdAt: jobPhotos.createdAt,
+          jobTitle: jobs.title,
+          jobStatus: jobs.status,
+          clientId: jobs.clientId,
+          clientName: clients.name,
+        })
+        .from(jobPhotos)
+        .leftJoin(jobs, eq(jobPhotos.jobId, jobs.id))
+        .leftJoin(clients, eq(jobs.clientId, clients.id))
+        .where(and(...conditions));
+
+      let orderClause;
+      const dir = sortOrder === 'asc' ? asc : desc;
+      switch (sortBy) {
+        case 'job': orderClause = dir(jobs.title); break;
+        case 'client': orderClause = dir(clients.name); break;
+        case 'category': orderClause = dir(jobPhotos.category); break;
+        default: orderClause = dir(jobPhotos.createdAt);
+      }
+
+      const photos = await finalQuery
+        .orderBy(orderClause)
+        .limit(parseInt(limitParam as string) || 200)
+        .offset(parseInt(offsetParam as string) || 0);
+
+      const { getSignedPhotoUrl } = await import('./photoService');
+      const photosWithUrls = await Promise.all(
+        photos.map(async (photo) => {
+          try {
+            const { url, error } = await getSignedPhotoUrl(photo.objectStorageKey);
+            if (url) return { ...photo, url };
+            const fallback = photo.jobId ? `/api/jobs/${photo.jobId}/photos/${photo.id}/view` : null;
+            return { ...photo, url: fallback };
+          } catch {
+            const fallback = photo.jobId ? `/api/jobs/${photo.jobId}/photos/${photo.id}/view` : null;
+            return { ...photo, url: fallback };
+          }
+        })
+      );
+
+      res.json(photosWithUrls);
+    } catch (error: any) {
+      console.error("Error fetching photo library:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/photos/stats", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext?.effectiveUserId || userId;
+
+      const allPhotos = await db.select({
+        id: jobPhotos.id,
+        category: jobPhotos.category,
+        fileSize: jobPhotos.fileSize,
+        createdAt: jobPhotos.createdAt,
+        jobId: jobPhotos.jobId,
+        jobTitle: jobs.title,
+      })
+        .from(jobPhotos)
+        .leftJoin(jobs, eq(jobPhotos.jobId, jobs.id))
+        .where(eq(jobPhotos.userId, effectiveUserId));
+
+      const now = new Date();
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const thisWeek = allPhotos.filter(p => p.createdAt && new Date(p.createdAt) >= weekAgo).length;
+
+      const categoryBreakdown: Record<string, number> = {};
+      allPhotos.forEach(p => {
+        const cat = p.category || 'general';
+        categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + 1;
+      });
+
+      const totalStorage = allPhotos.reduce((sum, p) => sum + (p.fileSize || 0), 0);
+
+      const jobCounts: Record<string, { count: number; title: string }> = {};
+      allPhotos.forEach(p => {
+        if (p.jobId) {
+          if (!jobCounts[p.jobId]) jobCounts[p.jobId] = { count: 0, title: p.jobTitle || 'Untitled' };
+          jobCounts[p.jobId].count++;
+        }
+      });
+      const mostPhotographed = Object.entries(jobCounts).sort((a, b) => b[1].count - a[1].count)[0];
+
+      res.json({
+        totalPhotos: allPhotos.length,
+        thisWeek,
+        categoryBreakdown,
+        storageUsedBytes: totalStorage,
+        storageUsedFormatted: totalStorage > 1024 * 1024 * 1024
+          ? `${(totalStorage / (1024 * 1024 * 1024)).toFixed(1)} GB`
+          : totalStorage > 1024 * 1024
+            ? `${(totalStorage / (1024 * 1024)).toFixed(1)} MB`
+            : `${(totalStorage / 1024).toFixed(1)} KB`,
+        mostPhotographedJob: mostPhotographed ? { jobId: mostPhotographed[0], title: mostPhotographed[1].title, count: mostPhotographed[1].count } : null,
+      });
+    } catch (error: any) {
+      console.error("Error fetching photo stats:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/photos/tags", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext?.effectiveUserId || userId;
+
+      const result = await db.selectDistinct({ tag: sql<string>`unnest(${jobPhotos.tags})` })
+        .from(jobPhotos)
+        .where(eq(jobPhotos.userId, effectiveUserId));
+
+      res.json(result.map(r => r.tag).filter(Boolean).sort());
+    } catch (error: any) {
+      console.error("Error fetching photo tags:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/photos/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext?.effectiveUserId || userId;
+      const { category, caption, tags: newTags } = req.body;
+
+      const [photo] = await db.select().from(jobPhotos).where(and(eq(jobPhotos.id, req.params.id), eq(jobPhotos.userId, effectiveUserId)));
+      if (!photo) return res.status(404).json({ error: 'Photo not found' });
+
+      const updates: any = {};
+      if (category !== undefined) updates.category = category;
+      if (caption !== undefined) updates.caption = caption;
+      if (newTags !== undefined) updates.tags = newTags;
+
+      const [updated] = await db.update(jobPhotos).set(updates).where(eq(jobPhotos.id, req.params.id)).returning();
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating photo:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/photos/bulk", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const userContext = await getUserContext(userId);
+      const effectiveUserId = userContext?.effectiveUserId || userId;
+      const { photoIds, action, jobId: targetJobId, category: targetCategory, tags: targetTags } = req.body;
+
+      if (!Array.isArray(photoIds) || photoIds.length === 0) {
+        return res.status(400).json({ error: 'photoIds array required' });
+      }
+
+      const userPhotos = await db.select({ id: jobPhotos.id })
+        .from(jobPhotos)
+        .where(and(eq(jobPhotos.userId, effectiveUserId), inArray(jobPhotos.id, photoIds)));
+
+      const validIds = userPhotos.map(p => p.id);
+      if (validIds.length === 0) return res.status(404).json({ error: 'No matching photos found' });
+
+      switch (action) {
+        case 'attachToJob':
+          if (!targetJobId) return res.status(400).json({ error: 'jobId required for attachToJob' });
+          await db.update(jobPhotos).set({ jobId: targetJobId }).where(inArray(jobPhotos.id, validIds));
+          break;
+        case 'setCategory':
+          if (!targetCategory) return res.status(400).json({ error: 'category required for setCategory' });
+          await db.update(jobPhotos).set({ category: targetCategory }).where(inArray(jobPhotos.id, validIds));
+          break;
+        case 'addTags':
+          if (!targetTags || !Array.isArray(targetTags)) return res.status(400).json({ error: 'tags array required' });
+          for (const id of validIds) {
+            await db.execute(sql`UPDATE job_photos SET tags = array_cat(COALESCE(tags, '{}'), ${targetTags}::text[]) WHERE id = ${id}`);
+          }
+          await db.execute(sql`UPDATE job_photos SET tags = ARRAY(SELECT DISTINCT unnest(tags)) WHERE id = ANY(${validIds}::text[])`);
+          break;
+        case 'removeTags':
+          if (!targetTags || !Array.isArray(targetTags)) return res.status(400).json({ error: 'tags array required' });
+          for (const tagToRemove of targetTags) {
+            await db.execute(sql`UPDATE job_photos SET tags = array_remove(tags, ${tagToRemove}) WHERE id = ANY(${validIds}::text[])`);
+          }
+          break;
+        case 'delete':
+          const { deleteJobPhoto } = await import('./photoService');
+          for (const id of validIds) {
+            await deleteJobPhoto(id, effectiveUserId);
+          }
+          break;
+        default:
+          return res.status(400).json({ error: `Unknown action: ${action}` });
+      }
+
+      res.json({ success: true, affected: validIds.length });
+    } catch (error: any) {
+      console.error("Error performing bulk photo action:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/photos/upload-standalone", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const { data, fileName, mimeType, jobId: targetJobId, category, caption, tags: photoTags } = req.body;
+
+      if (!data) return res.status(400).json({ error: 'Photo data required' });
+
+      const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif'];
+      const actualMime = (mimeType || 'image/jpeg').toLowerCase();
+      if (!allowedMimeTypes.includes(actualMime)) {
+        return res.status(400).json({ error: 'Invalid file type. Only images are allowed.' });
+      }
+
+      const base64Data = data.includes(',') ? data.split(',')[1] : data;
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      const MAX_FILE_SIZE = 25 * 1024 * 1024;
+      if (buffer.length > MAX_FILE_SIZE) {
+        return res.status(400).json({ error: 'File too large. Maximum size is 25MB.' });
+      }
+
+      if (targetJobId) {
+        const { uploadJobPhoto } = await import('./photoService');
+        const result = await uploadJobPhoto(userId, targetJobId, buffer, {
+          fileName: fileName || 'photo.jpg',
+          mimeType: mimeType || 'image/jpeg',
+          category: category || 'general',
+          caption: caption || null,
+        });
+        if (!result.success) return res.status(500).json({ error: result.error });
+
+        if (photoTags?.length > 0 && result.photoId) {
+          await db.update(jobPhotos).set({ tags: photoTags }).where(eq(jobPhotos.id, result.photoId));
+        }
+        res.json({ success: true, id: result.photoId });
+      } else {
+        const { isObjectStorageConfigured } = await import('./photoService');
+        if (!isObjectStorageConfigured()) {
+          return res.status(500).json({ error: 'Photo storage not available' });
+        }
+
+        const ext = (fileName || 'photo.jpg').split('.').pop() || 'jpg';
+        const uniqueId = randomUUID();
+        const PRIVATE_OBJECT_DIR = process.env.PRIVATE_OBJECT_DIR || '.private';
+        const objectKey = `${PRIVATE_OBJECT_DIR}/photos/${userId}/${uniqueId}.${ext}`;
+
+        const { parseObjectPath, objectStorageClient } = await import('./objectStorage');
+        const { bucketName, objectName } = parseObjectPath(objectKey);
+        const bucket = objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectName);
+        await file.save(buffer, { contentType: mimeType || 'image/jpeg' });
+
+        const photo = await storage.createJobPhoto({
+          userId,
+          jobId: null,
+          objectStorageKey: objectKey,
+          fileName: fileName || `${uniqueId}.${ext}`,
+          fileSize: buffer.length,
+          mimeType: mimeType || 'image/jpeg',
+          category: category || 'general',
+          caption: caption || null,
+          tags: photoTags || [],
+        });
+
+        res.json({ success: true, id: photo.id });
+      }
+    } catch (error: any) {
+      console.error("Error uploading standalone photo:", error);
+      res.status(500).json({ error: error.message });
     }
   });
 

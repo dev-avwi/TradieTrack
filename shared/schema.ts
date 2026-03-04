@@ -2611,18 +2611,19 @@ export type EmailDeliveryLog = typeof emailDeliveryLogs.$inferSelect;
 export const jobPhotos = pgTable("job_photos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
-  objectStorageKey: text("object_storage_key").notNull(), // Path in object storage
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'cascade' }),
+  objectStorageKey: text("object_storage_key").notNull(),
   fileName: text("file_name").notNull(),
-  fileSize: integer("file_size"), // In bytes
+  fileSize: integer("file_size"),
   mimeType: text("mime_type"),
-  category: text("category").default('general'), // before, after, progress, damage, materials
+  category: text("category").default('general'),
   caption: text("caption"),
-  takenAt: timestamp("taken_at"), // When photo was taken (from EXIF or user input)
-  uploadedBy: varchar("uploaded_by").references(() => users.id), // Team member who uploaded
+  takenAt: timestamp("taken_at"),
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
   latitude: doublePrecision("latitude"),
   longitude: doublePrecision("longitude"),
   address: text("address"),
+  tags: text("tags").array().default([]),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });

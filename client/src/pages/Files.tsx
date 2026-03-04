@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import PhotoLibraryTab from "@/components/PhotoLibraryTab";
 import {
   Dialog,
   DialogContent,
@@ -131,6 +132,7 @@ const defaultFormData = {
 
 export default function FilesPage() {
   const { toast } = useToast();
+  const [pageTab, setPageTab] = useState<"documents" | "photos">("documents");
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -337,9 +339,33 @@ export default function FilesPage() {
 
   return (
     <PageShell>
-      <PageHeader title="Files" subtitle="Licences, insurance, certifications & compliance" />
+      <PageHeader title="Files" subtitle="Documents, photos & compliance" />
 
       <div className="section-gap">
+        <div className="feed-card overflow-x-auto no-scrollbar mb-4 animate-fade-up">
+          <div className="flex items-center gap-1 p-1.5">
+            {[
+              { value: "documents" as const, label: "Documents" },
+              { value: "photos" as const, label: "Photos" },
+            ].map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setPageTab(tab.value)}
+                className={`whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                  pageTab === tab.value ? 'text-foreground' : 'text-muted-foreground'
+                }`}
+                style={pageTab === tab.value ? { backgroundColor: 'hsl(var(--trade) / 0.1)', color: 'hsl(var(--trade))' } : undefined}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {pageTab === "photos" ? (
+          <PhotoLibraryTab />
+        ) : (
+        <>
         <div className="animate-fade-up">
           <p className="ios-label mb-3">Overview</p>
           <div className="feed-card card-press p-5 mb-3 animate-fade-up stagger-delay-1"
@@ -540,7 +566,6 @@ export default function FilesPage() {
             </div>
           </div>
         )}
-      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
@@ -849,6 +874,9 @@ export default function FilesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </>
+      )}
+      </div>
     </PageShell>
   );
 }
