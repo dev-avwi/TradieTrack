@@ -243,7 +243,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
+                  <MapPin className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
                   Location
                 </CardTitle>
               </CardHeader>
@@ -320,7 +320,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
                   Schedule
                 </CardTitle>
               </CardHeader>

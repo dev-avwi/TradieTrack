@@ -165,7 +165,7 @@ export function LinkedDocumentsCard({
     <Card className={className} data-testid="linked-documents-card">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <FileText className="h-4 w-4" />
+          <FileText className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
           Documents
         </CardTitle>
       </CardHeader>

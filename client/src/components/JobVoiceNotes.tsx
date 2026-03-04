@@ -190,7 +190,7 @@ export function JobVoiceNotes({ jobId, canUpload = true, existingNotes, onNotesU
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Mic className="h-4 w-4" />
+            <Mic className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
             Voice Notes
           </CardTitle>
           {canUpload && !showRecorder && (

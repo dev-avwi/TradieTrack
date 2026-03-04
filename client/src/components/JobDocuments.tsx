@@ -215,7 +215,7 @@ export function JobDocuments({ jobId, canUpload = true }: JobDocumentsProps) {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Upload className="h-4 w-4" />
+              <Upload className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
               Uploaded Documents
             </CardTitle>
             {canUpload && (

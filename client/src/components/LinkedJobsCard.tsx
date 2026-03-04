@@ -216,7 +216,7 @@ export default function LinkedJobsCard({ jobId, clientId, clientName }: LinkedJo
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Link2 className="h-4 w-4" />
+              <Link2 className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
               Previous Jobs for {clientName}
             </CardTitle>
             <Badge variant="secondary">{linkedJobs.length} job{linkedJobs.length !== 1 ? 's' : ''}</Badge>

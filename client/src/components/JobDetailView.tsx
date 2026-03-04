@@ -2068,7 +2068,7 @@ export default function JobDetailView({
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Briefcase className="h-4 w-4" />
+                <Briefcase className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
                 Job Details
               </CardTitle>
             </CardHeader>
@@ -2641,7 +2641,7 @@ export default function JobDetailView({
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
+                  <FileText className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
                   Notes
                   {jobNotesData.length > 0 && (
                     <Badge variant="secondary" className="text-xs">{jobNotesData.length}</Badge>
@@ -3405,7 +3405,7 @@ export default function JobDetailView({
             <Card data-testid="card-worker-attendance">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-green-600" />
+                  <MapPin className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
                   Worker Attendance
                 </CardTitle>
               </CardHeader>
@@ -3565,7 +3565,7 @@ export default function JobDetailView({
       <Card className="mt-4" data-testid="job-activity-feed">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <History className="h-4 w-4" />
+            <History className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
             Job Timeline
           </CardTitle>
         </CardHeader>

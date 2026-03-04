@@ -330,7 +330,7 @@ export default function JobCompletion({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-primary" />
+            <CheckCircle className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
             Complete Job
           </CardTitle>
         </CardHeader>

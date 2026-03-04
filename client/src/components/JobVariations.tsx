@@ -425,7 +425,7 @@ export function JobVariations({ jobId, canEdit = true }: JobVariationsProps) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <FileEdit className="h-4 w-4" />
+            <FileEdit className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
             Variations / Change Orders
           </CardTitle>
           {canEdit && (

@@ -326,7 +326,7 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Film className="h-4 w-4" />
+            <Film className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
             Media {photos.length > 0 && `(${photos.length})`}
           </CardTitle>
           <div className="flex items-center gap-2">

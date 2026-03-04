@@ -120,7 +120,7 @@ export function JobSignature({ jobId }: JobSignatureProps) {
     <Card data-testid="job-signature-card">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-medium flex items-center gap-2">
-          <PenTool className="h-4 w-4 text-primary" />
+          <PenTool className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
           Client Signature
         </CardTitle>
       </CardHeader>
