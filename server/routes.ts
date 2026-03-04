@@ -2498,6 +2498,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           job = await storage.getJob(quote.jobId, quote.userId);
         }
         
+        // Get signature - from quote record or fall back to digital_signatures table
+        let signatureData = quote.acceptanceSignatureData || null;
+        if (!signatureData && quote.status === 'accepted') {
+          try {
+            const sigs = await db.select().from(digitalSignatures)
+              .where(eq(digitalSignatures.quoteId, quote.id))
+              .orderBy(desc(digitalSignatures.signedAt))
+              .limit(1);
+            if (sigs.length > 0 && sigs[0].signatureData) {
+              signatureData = sigs[0].signatureData;
+            }
+          } catch (e) {
+            // ignore - signature is optional
+          }
+        }
+        
         return res.json({
           type: 'quote',
           id: quote.id,
@@ -2512,7 +2528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           validUntil: quote.validUntil,
           acceptedAt: quote.acceptedAt,
           acceptedBy: quote.acceptedBy,
-          acceptanceSignatureData: quote.acceptanceSignatureData || null,
+          acceptanceSignatureData: signatureData,
           depositRequired: quote.depositRequired,
           depositAmount: quote.depositAmount,
           depositPaid: quote.depositPaid,
