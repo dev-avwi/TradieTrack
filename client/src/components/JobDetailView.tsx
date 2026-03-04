@@ -1969,18 +1969,6 @@ export default function JobDetailView({
               </Button>
             )}
 
-            {/* In Progress → Complete (Finish work) */}
-            {job.status === 'in_progress' && onCompleteJob && (
-              <Button
-                onClick={() => onCompleteJob(jobId)}
-                data-testid="button-complete-job"
-                className="w-full text-white"
-                style={{ backgroundColor: 'hsl(var(--trade))' }}
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Go Complete Job
-              </Button>
-            )}
 
             {/* Done status badge */}
             {job.status === 'done' && (
@@ -2055,7 +2043,7 @@ export default function JobDetailView({
             onViewQuote={() => linkedQuote && navigate(`/quotes/${linkedQuote.id}`)}
             onSchedule={() => onEditJob?.(jobId)}
             onStart={() => updateJobMutation.mutate({ status: 'in_progress' })}
-            onComplete={handleCompleteJob}
+            onComplete={onCompleteJob ? () => onCompleteJob(jobId) : handleCompleteJob}
             onCreateInvoice={() => onCreateInvoice?.(jobId)}
             onViewInvoice={() => linkedInvoice && navigate(`/invoices/${linkedInvoice.id}`)}
             onStatusChange={(newStatus) => {
