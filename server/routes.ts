@@ -973,6 +973,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const updatedQuote = await storage.acceptQuoteByToken(token, accepted_by.trim(), clientIp);
         
         if (updatedQuote) {
+          // Store signature on the quote record for portal display
+          if (signature_data) {
+            try {
+              await storage.updateQuote(quote.id, quote.userId, { acceptanceSignatureData: signature_data });
+            } catch (e) {
+              console.error('Failed to save signature to quote:', e);
+            }
+          }
           // Save the digital signature with documentType 'quote_acceptance' to match PDF query
           try {
             await storage.createDigitalSignature({
@@ -2504,6 +2512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           validUntil: quote.validUntil,
           acceptedAt: quote.acceptedAt,
           acceptedBy: quote.acceptedBy,
+          acceptanceSignatureData: quote.acceptanceSignatureData || null,
           depositRequired: quote.depositRequired,
           depositAmount: quote.depositAmount,
           depositPaid: quote.depositPaid,
@@ -2653,7 +2662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/public/quote/:token/accept", async (req, res) => {
     try {
       const { token } = req.params;
-      const { acceptedBy } = req.body;
+      const { acceptedBy, signature } = req.body;
       
       const quote = await storage.getQuoteByToken(token);
       if (!quote) {
@@ -2674,7 +2683,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'accepted',
         acceptedAt: new Date(),
         acceptedBy: acceptedBy || 'Client',
-        acceptanceIp: typeof clientIp === 'string' ? clientIp : clientIp[0]
+        acceptanceIp: typeof clientIp === 'string' ? clientIp : clientIp[0],
+        acceptanceSignatureData: signature || null,
       });
       
       try {

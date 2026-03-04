@@ -29,6 +29,7 @@ interface DocumentData {
   paidAt?: string;
   acceptedAt?: string;
   acceptedBy?: string;
+  acceptanceSignatureData?: string;
   depositRequired?: boolean;
   depositAmount?: string;
   depositPaid?: boolean;
@@ -514,7 +515,7 @@ export default function ClientPortal() {
             {/* Acceptance Status */}
             {isAccepted && data.acceptedBy && (
               <Card className="bg-white rounded-xl shadow-sm border border-green-200">
-                <CardContent className="py-4">
+                <CardContent className="py-4 space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                       <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -526,6 +527,16 @@ export default function ClientPortal() {
                       </p>
                     </div>
                   </div>
+                  {data.acceptanceSignatureData && (
+                    <div className="border border-green-100 rounded-lg p-3 bg-green-50/30">
+                      <p className="text-xs text-muted-foreground mb-2">Signature</p>
+                      <img 
+                        src={data.acceptanceSignatureData} 
+                        alt="Acceptance signature"
+                        className="max-h-16 w-auto"
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -552,7 +563,7 @@ export default function ClientPortal() {
             {/* Quote Accepted Status */}
             {isAccepted && type === 'quote' && !data.acceptedBy && (
               <Card className="bg-white rounded-xl shadow-sm border border-green-200">
-                <CardContent className="py-4">
+                <CardContent className="py-4 space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                       <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -564,6 +575,16 @@ export default function ClientPortal() {
                       </p>
                     </div>
                   </div>
+                  {data.acceptanceSignatureData && (
+                    <div className="border border-green-100 rounded-lg p-3 bg-green-50/30">
+                      <p className="text-xs text-muted-foreground mb-2">Signature</p>
+                      <img 
+                        src={data.acceptanceSignatureData} 
+                        alt="Acceptance signature"
+                        className="max-h-16 w-auto"
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

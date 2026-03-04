@@ -789,6 +789,7 @@ export const quotes = pgTable("quotes", {
   acceptanceToken: varchar("acceptance_token").unique(), // Secure token for public quote acceptance
   acceptedBy: text("accepted_by"), // Name of person who accepted
   acceptanceIp: text("acceptance_ip"), // IP address for audit trail
+  acceptanceSignatureData: text("acceptance_signature_data"), // Base64 signature image from client
   declineReason: text("decline_reason"), // Optional reason if declined
   notes: text("notes"),
   photos: jsonb("photos").default([]),
