@@ -1343,11 +1343,16 @@ export default function JobDetailView({
   const portalLinkMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/jobs/${jobId}/portal-link`);
-      return res;
+      const json = await res.json();
+      return json;
     },
     onSuccess: (data: any) => {
       if (data.url) {
         setPortalUrl(data.url);
+        setShowShareDialog(true);
+      } else if (data.token?.token) {
+        const baseUrl = window.location.origin;
+        setPortalUrl(`${baseUrl}/p/${data.token.token}`);
         setShowShareDialog(true);
       }
     },

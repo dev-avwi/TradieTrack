@@ -16861,6 +16861,37 @@ Be specific about materials, colors, and features that would be included.`
   // ============================================
   // PORTAL LINK MANAGEMENT
   // ============================================
+  app.get("/api/jobs/:id/portal-link", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const job = await storage.getJob(req.params.id, effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      const baseUrl = process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : 'http://localhost:5000';
+      let activeToken = await storage.getActiveJobPortalToken(job.id);
+      if (!activeToken) {
+        const cryptoModule = await import('crypto');
+        const tokenStr = cryptoModule.randomBytes(32).toString('hex');
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        activeToken = await storage.createJobPortalToken({
+          jobId: job.id,
+          userId: effectiveUserId,
+          token: tokenStr,
+          expiresAt,
+          createdBy: req.userId,
+        });
+        await storage.updateJob(req.params.id, effectiveUserId, { portalEnabled: true });
+      }
+      return res.redirect(`${baseUrl}/p/${activeToken.token}`);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to get portal link' });
+    }
+  });
+
   app.post("/api/jobs/:id/portal-link", requireAuth, async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;
