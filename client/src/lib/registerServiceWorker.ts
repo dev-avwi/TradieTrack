@@ -7,7 +7,8 @@ export async function registerSW(): Promise<ServiceWorkerRegistration | null> {
   }
 
   try {
-    const registration = await navigator.serviceWorker.register('/service-worker.js', {
+    const swPath = `${import.meta.env.BASE_URL || '/'}sw.js`;
+    const registration = await navigator.serviceWorker.register(swPath, {
       scope: '/',
     });
 

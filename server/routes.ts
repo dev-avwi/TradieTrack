@@ -1664,6 +1664,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!['accepted', 'declined'].includes(status)) {
         return res.status(400).json({ error: 'Status must be accepted or declined' });
       }
+      const ownerId = req.effectiveUserId || req.userId || req.user?.id;
+      if (!ownerId) return res.status(401).json({ error: "Not authenticated" });
+      const requests = await storage.getWorkerRequests(ownerId);
+      const request = requests.find((r: any) => r.id === req.params.id);
+      if (!request) return res.status(404).json({ error: 'Request not found' });
       const updated = await storage.updateWorkerRequestStatus(req.params.id, status);
       if (!updated) return res.status(404).json({ error: 'Request not found' });
       res.json(updated);
@@ -9833,7 +9838,9 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Admin endpoint to initialize Stripe products (creates Pro and Team tier products/prices)
-  app.post("/api/admin/init-stripe-products", async (req, res) => {
+  app.post("/api/admin/init-stripe-products", requireAuth, async (req: any, res) => {
+    const user = await storage.getUser(req.userId);
+    if (!user?.isPlatformAdmin) return res.status(403).json({ error: 'Admin access required' });
     try {
       const { initializeStripeProducts } = await import('./billingService');
       const result = await initializeStripeProducts();
@@ -9854,7 +9861,9 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Admin endpoint to fix Team base price from $59 to $49
-  app.post("/api/admin/fix-team-price", async (req, res) => {
+  app.post("/api/admin/fix-team-price", requireAuth, async (req: any, res) => {
+    const user = await storage.getUser(req.userId);
+    if (!user?.isPlatformAdmin) return res.status(403).json({ error: 'Admin access required' });
     try {
       const { fixTeamBasePrice } = await import('./billingService');
       const result = await fixTeamBasePrice();

@@ -34,11 +34,12 @@ async function cacheApiResponse<T extends { id: string | number }>(url: string, 
   
   try {
     const items = Array.isArray(data) ? data : [data];
-    for (const item of items) {
+    const validItems = items.filter(item => item && typeof item === 'object' && 'id' in item && item.id != null && (typeof item.id === 'string' ? item.id.length > 0 : typeof item.id === 'number'));
+    if (validItems.length === 0) return;
+    for (const item of validItems) {
       await saveItem(storeName, item);
     }
-  } catch (error) {
-    console.warn('Failed to cache API response:', error);
+  } catch {
   }
 }
 
