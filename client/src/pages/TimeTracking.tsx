@@ -751,7 +751,20 @@ export default function TimeTrackingPage() {
 
         <TabsContent value="timer" className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
-            <TimerWidget />
+            <Card 
+              className="border-2"
+              style={{ borderColor: 'hsl(var(--trade) / 0.3)' }}
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2" style={{ color: 'hsl(var(--trade))' }}>
+                  <Timer className="h-5 w-5" />
+                  Time Tracking
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TimerWidget />
+              </CardContent>
+            </Card>
             <Card className="hover-elevate">
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
