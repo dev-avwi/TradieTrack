@@ -1978,10 +1978,10 @@ export default function JobDetailView({
               </div>
             )}
 
-            {/* Quick actions row - Job Chat + Email + SMS in one row */}
-            <div className="flex gap-2">
+            {/* Quick actions row - Job Chat + Email + SMS + Site Update + Proof Pack */}
+            <div className="flex flex-wrap gap-2">
               {currentUser && !isSolo && (
-                <div ref={chatSectionRef} data-testid="section-job-chat" className="flex-1">
+                <div ref={chatSectionRef} data-testid="section-job-chat" className="flex-1 min-w-[calc(50%-0.25rem)]">
                   <Button
                     variant="outline"
                     className="w-full gap-2"
@@ -1995,7 +1995,7 @@ export default function JobDetailView({
               {client?.email && (
                 <Button
                   variant="outline"
-                  className="flex-1 gap-2"
+                  className="flex-1 min-w-[calc(50%-0.25rem)] gap-2"
                   onClick={() => { setUnifiedSendDefaultTab('email'); setShowUnifiedSendModal(true); }}
                   data-testid="button-email-client"
                 >
@@ -2006,7 +2006,7 @@ export default function JobDetailView({
               {client?.phone && (
                 <Button
                   variant="outline"
-                  className="flex-1 gap-2"
+                  className="flex-1 min-w-[calc(50%-0.25rem)] gap-2"
                   onClick={() => { setUnifiedSendDefaultTab('sms'); setShowUnifiedSendModal(true); }}
                   data-testid="button-sms-client"
                 >
@@ -2014,9 +2014,20 @@ export default function JobDetailView({
                   SMS
                 </Button>
               )}
+              {job.status !== 'invoiced' && job.status !== 'pending' && (
+                <Button
+                  variant="outline"
+                  className="flex-1 min-w-[calc(50%-0.25rem)] gap-2"
+                  onClick={() => setShowSiteUpdateDialog(true)}
+                  data-testid="button-log-site-update"
+                >
+                  <PenLine className="h-4 w-4" />
+                  Site Update
+                </Button>
+              )}
               <Button
                 variant="outline"
-                className="flex-1 gap-2"
+                className="flex-1 min-w-[calc(50%-0.25rem)] gap-2"
                 onClick={() => setProofPackPreviewOpen(true)}
                 data-testid="button-proof-pack"
               >
@@ -2412,20 +2423,6 @@ export default function JobDetailView({
           )}
 
 
-          {job.status !== 'invoiced' && job.status !== 'pending' && (
-            <Card data-testid="card-log-site-update">
-              <CardContent className="pt-4 pb-4">
-                <Button
-                  className="w-full gap-2"
-                  style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
-                  onClick={() => setShowSiteUpdateDialog(true)}
-                >
-                  <PenLine className="h-4 w-4" />
-                  Log Site Update
-                </Button>
-              </CardContent>
-            </Card>
-          )}
 
           {(linkedQuote?.lineItems?.length > 0 || jobVariations.length > 0 || jobMaterials.length > 0) && (
             <Card data-testid="card-job-brief">
