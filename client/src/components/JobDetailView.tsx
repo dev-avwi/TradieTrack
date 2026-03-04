@@ -1978,61 +1978,61 @@ export default function JobDetailView({
               </div>
             )}
 
-            {/* Quick actions row - Job Chat + Email + SMS + Site Update + Proof Pack */}
-            <div className="flex flex-wrap gap-2">
+            {/* Quick actions row - all 5 in one row */}
+            <div className="grid grid-cols-5 gap-1.5">
               {currentUser && !isSolo && (
-                <div ref={chatSectionRef} data-testid="section-job-chat" className="flex-1 min-w-[calc(50%-0.25rem)]">
+                <div ref={chatSectionRef} data-testid="section-job-chat">
                   <Button
                     variant="outline"
-                    className="w-full gap-2"
+                    className="w-full gap-1 px-2 text-xs"
                     onClick={() => navigate(`/chat?job=${jobId}`)}
                   >
-                    <MessageSquare className="h-4 w-4" />
-                    Job Chat
+                    <MessageSquare className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="truncate">Chat</span>
                   </Button>
                 </div>
               )}
               {client?.email && (
                 <Button
                   variant="outline"
-                  className="flex-1 min-w-[calc(50%-0.25rem)] gap-2"
+                  className="gap-1 px-2 text-xs"
                   onClick={() => { setUnifiedSendDefaultTab('email'); setShowUnifiedSendModal(true); }}
                   data-testid="button-email-client"
                 >
-                  <Mail className="h-4 w-4" />
-                  Email
+                  <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="truncate">Email</span>
                 </Button>
               )}
               {client?.phone && (
                 <Button
                   variant="outline"
-                  className="flex-1 min-w-[calc(50%-0.25rem)] gap-2"
+                  className="gap-1 px-2 text-xs"
                   onClick={() => { setUnifiedSendDefaultTab('sms'); setShowUnifiedSendModal(true); }}
                   data-testid="button-sms-client"
                 >
-                  <MessageSquare className="h-4 w-4" />
-                  SMS
+                  <MessageSquare className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="truncate">SMS</span>
                 </Button>
               )}
               {job.status !== 'invoiced' && job.status !== 'pending' && (
                 <Button
                   variant="outline"
-                  className="flex-1 min-w-[calc(50%-0.25rem)] gap-2"
+                  className="gap-1 px-2 text-xs"
                   onClick={() => setShowSiteUpdateDialog(true)}
                   data-testid="button-log-site-update"
                 >
-                  <PenLine className="h-4 w-4" />
-                  Site Update
+                  <PenLine className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="truncate">Update</span>
                 </Button>
               )}
               <Button
                 variant="outline"
-                className="flex-1 min-w-[calc(50%-0.25rem)] gap-2"
+                className="gap-1 px-2 text-xs"
                 onClick={() => setProofPackPreviewOpen(true)}
                 data-testid="button-proof-pack"
               >
-                <FileDown className="h-4 w-4" />
-                Proof Pack
+                <FileDown className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className="truncate">Proof</span>
               </Button>
             </div>
           </div>
