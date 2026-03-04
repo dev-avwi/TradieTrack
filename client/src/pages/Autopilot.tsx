@@ -730,7 +730,7 @@ export default function Autopilot({ onNavigate }: AutopilotProps) {
       </div>
 
       <div className="animate-fade-up stagger-delay-2">
-        <div className="feed-card p-1.5">
+        <div className="bg-muted rounded-2xl p-1.5">
           <div className="flex gap-1 overflow-x-auto no-scrollbar">
             {tabs.map((tab) => (
               <button
