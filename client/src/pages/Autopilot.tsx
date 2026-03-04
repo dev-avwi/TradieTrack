@@ -738,9 +738,10 @@ export default function Autopilot({ onNavigate }: AutopilotProps) {
                 onClick={() => setActiveTab(tab.key)}
                 className={`flex-1 min-w-0 px-4 py-2 rounded-xl text-[13px] font-medium transition-all ${
                   activeTab === tab.key
-                    ? "bg-foreground text-background"
+                    ? "text-white"
                     : "text-muted-foreground"
                 }`}
+                style={activeTab === tab.key ? { backgroundColor: 'hsl(var(--trade))' } : undefined}
               >
                 {tab.label}
               </button>
