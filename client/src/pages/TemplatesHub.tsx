@@ -61,6 +61,7 @@ import type { StylePreset, RateCard, LineItemCatalog, CustomForm, QuoteTemplate 
 import { format } from "date-fns";
 import LiveDocumentPreview from "@/components/LiveDocumentPreview";
 import { FormBuilder } from "@/components/CustomFormBuilder";
+import { SwmsBuilder } from "@/components/SwmsBuilder";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { TemplateId, TemplateCustomization, DOCUMENT_TEMPLATES, DOCUMENT_ACCENT_COLOR } from "@/lib/document-templates";
 import { Check, Settings } from "lucide-react";
@@ -1550,12 +1551,18 @@ function FormsTab() {
   const [complianceFormsOpen, setComplianceFormsOpen] = useState(true);
   const [inspectionFormsOpen, setInspectionFormsOpen] = useState(true);
   const [swmsTemplatesOpen, setSwmsTemplatesOpen] = useState(true);
+  const [mySwmsDocsOpen, setMySwmsDocsOpen] = useState(true);
   const [selectedForm, setSelectedForm] = useState<FormItem | null>(null);
   const [editFormId, setEditFormId] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [formToDelete, setFormToDelete] = useState<FormItem | null>(null);
   const [formSearch, setFormSearch] = useState('');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [swmsBuilderOpen, setSwmsBuilderOpen] = useState(false);
+  const [swmsBuilderSwmsId, setSwmsBuilderSwmsId] = useState<string | undefined>(undefined);
+  const [swmsBuilderTitle, setSwmsBuilderTitle] = useState<string>('');
+  const [swmsDeleteConfirmOpen, setSwmsDeleteConfirmOpen] = useState(false);
+  const [swmsToDelete, setSwmsToDelete] = useState<any>(null);
 
   // Fetch custom forms
   const { data: customForms = [], isLoading: isLoadingCustomForms } = useQuery<CustomForm[]>({
@@ -1593,7 +1600,58 @@ function FormsTab() {
     queryKey: ["/api/swms/templates"],
   });
 
-  const isLoading = isLoadingCustomForms || isLoadingSafetyTemplates || isLoadingSwmsTemplates;
+  const { data: mySwmsDocs = [], isLoading: isLoadingMySwms } = useQuery<any[]>({
+    queryKey: ["/api/swms"],
+  });
+
+  const isLoading = isLoadingCustomForms || isLoadingSafetyTemplates || isLoadingSwmsTemplates || isLoadingMySwms;
+
+  const swmsCreateFromTemplateMutation = useMutation({
+    mutationFn: async (template: any) => {
+      const res = await apiRequest("POST", "/api/swms", {
+        title: template.title,
+        description: template.description,
+        workActivityDescription: template.workActivityDescription || '',
+        ppeRequirements: template.ppeRequirements || [],
+        status: 'draft',
+        hazards: (template.hazards || []).map((h: any) => ({
+          activityTask: h.activityTask,
+          hazard: h.hazard,
+          likelihood: h.likelihood || 'possible',
+          consequence: h.consequence || 'moderate',
+          riskBefore: h.riskBefore || 'medium',
+          controlMeasures: h.controlMeasures || '',
+          riskAfter: h.riskAfter || 'low',
+        })),
+      });
+      return await res.json();
+    },
+    onSuccess: (newDoc: any) => {
+      toast({ title: "SWMS document created from template" });
+      queryClient.invalidateQueries({ queryKey: ["/api/swms"] });
+      setSwmsBuilderSwmsId(newDoc.id);
+      setSwmsBuilderTitle(newDoc.title);
+      setSwmsBuilderOpen(true);
+    },
+    onError: () => {
+      toast({ title: "Failed to create SWMS document", variant: "destructive" });
+    },
+  });
+
+  const swmsDeleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/swms/${id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "SWMS document deleted" });
+      setSwmsDeleteConfirmOpen(false);
+      setSwmsToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/swms"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete SWMS document", variant: "destructive" });
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -1955,11 +2013,108 @@ function FormsTab() {
                         <span className="text-sm truncate">{template.title}</span>
                         <Badge variant="default" className="text-xs shrink-0">SWMS</Badge>
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                        <span>{template.hazards?.length || 0} hazards</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-muted-foreground">{template.hazards?.length || 0} hazards</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            swmsCreateFromTemplateMutation.mutate(template);
+                          }}
+                          disabled={swmsCreateFromTemplateMutation.isPending}
+                          data-testid={`button-customize-swms-${template.id}`}
+                        >
+                          {swmsCreateFromTemplateMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Pencil className="h-4 w-4" />
+                          )}
+                        </Button>
                       </div>
                     </div>
                   ))}
+                </CardContent>
+              )}
+            </Card>
+
+            <Card data-testid="card-my-swms-docs">
+              <CardHeader className="pb-2 cursor-pointer" onClick={() => setMySwmsDocsOpen(!mySwmsDocsOpen)}>
+                <CardTitle className="text-sm font-medium flex items-center justify-between gap-4">
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                    <div>
+                      <div>My SWMS Documents</div>
+                      <div className="text-xs font-normal text-muted-foreground">Your saved and customised SWMS documents</div>
+                    </div>
+                  </span>
+                  <Badge variant="secondary" className="text-xs">{mySwmsDocs.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              {mySwmsDocsOpen && (
+                <CardContent className="pt-0 space-y-1">
+                  {mySwmsDocs.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-3 text-center">
+                      No SWMS documents yet. Use a template above to get started.
+                    </p>
+                  ) : (
+                    mySwmsDocs.map((doc: any) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between gap-3 p-2 rounded-md hover-elevate cursor-pointer"
+                        onClick={() => setSelectedForm({
+                          id: `swms-doc-${doc.id}`,
+                          name: doc.title,
+                          description: doc.description || '',
+                          formType: 'safety',
+                          fields: [],
+                          settings: {},
+                          requiresSignature: true,
+                          isActive: true,
+                          userId: doc.userId,
+                          createdAt: doc.createdAt,
+                          updatedAt: doc.updatedAt,
+                        } as any)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm truncate">{doc.title}</span>
+                          <Badge variant={doc.status === 'active' ? 'default' : 'secondary'} className="text-xs shrink-0 capitalize">{doc.status || 'draft'}</Badge>
+                          {doc.hazardCount > 0 && (
+                            <span className="text-xs text-muted-foreground shrink-0">{doc.hazardCount} hazards</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSwmsBuilderSwmsId(doc.id);
+                              setSwmsBuilderTitle(doc.title);
+                              setSwmsBuilderOpen(true);
+                            }}
+                            data-testid={`button-edit-swms-${doc.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSwmsToDelete(doc);
+                              setSwmsDeleteConfirmOpen(true);
+                            }}
+                            data-testid={`button-delete-swms-${doc.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </CardContent>
               )}
             </Card>
@@ -2170,6 +2325,54 @@ function FormsTab() {
           </DialogContent>
         </Dialog>
       )}
+
+      <AlertDialog open={swmsDeleteConfirmOpen} onOpenChange={setSwmsDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete SWMS Document</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{swmsToDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSwmsToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => swmsToDelete && swmsDeleteMutation.mutate(swmsToDelete.id)}
+              className="bg-destructive text-destructive-foreground"
+            >
+              {swmsDeleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={swmsBuilderOpen} onOpenChange={(open) => {
+        setSwmsBuilderOpen(open);
+        if (!open) {
+          setSwmsBuilderSwmsId(undefined);
+          setSwmsBuilderTitle('');
+          queryClient.invalidateQueries({ queryKey: ["/api/swms"] });
+        }
+      }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{swmsBuilderTitle ? `Edit: ${swmsBuilderTitle}` : 'SWMS Builder'}</DialogTitle>
+          </DialogHeader>
+          {swmsBuilderOpen && (
+            <SwmsBuilder
+              jobId=""
+              swmsId={swmsBuilderSwmsId}
+              onClose={() => {
+                setSwmsBuilderOpen(false);
+                setSwmsBuilderSwmsId(undefined);
+                setSwmsBuilderTitle('');
+                queryClient.invalidateQueries({ queryKey: ["/api/swms"] });
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
