@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,7 +55,11 @@ import {
   Plus,
   Wrench,
   Package,
-  ArrowRight
+  ArrowRight,
+  CalendarDays,
+  ExternalLink,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 import {
   format,
@@ -306,89 +311,269 @@ function getKanbanColumn(job: DispatchJob): string {
   return 'assigned';
 }
 
-function KanbanBoard({ dispatchJobs }: { dispatchJobs: DispatchJob[] }) {
+function KanbanBoard({ dispatchJobs, teamMembers: kanbanTeam }: { dispatchJobs: DispatchJob[]; teamMembers?: TeamMember[] }) {
+  const [kanbanFilter, setKanbanFilter] = useState<string>('all');
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [kanbanDrag, setKanbanDrag] = useState<{ jobId: string; fromColumn: string } | null>(null);
+  const [kanbanDragOver, setKanbanDragOver] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ jobId, status, workerStatus }: { jobId: string; status: string; workerStatus?: string }) => {
+      return apiRequest('PATCH', `/api/jobs/${jobId}`, { status, ...(workerStatus ? { workerStatus } : {}) });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dispatch/board'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      toast({ title: "Job status updated" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const filteredJobs = useMemo(() => {
+    if (kanbanFilter === 'all') return dispatchJobs;
+    return dispatchJobs.filter(job => {
+      const activeAssignment = job.assignments?.find(a => a.isActive);
+      if (kanbanFilter === 'unassigned') return !activeAssignment;
+      return activeAssignment?.memberId === kanbanFilter;
+    });
+  }, [dispatchJobs, kanbanFilter]);
+
   const columnJobs = useMemo(() => {
     const map: Record<string, DispatchJob[]> = {};
     KANBAN_COLUMNS.forEach(col => { map[col.key] = []; });
-    dispatchJobs.forEach(job => {
+    filteredJobs.forEach(job => {
       const col = getKanbanColumn(job);
       if (map[col]) map[col].push(job);
     });
     return map;
+  }, [filteredJobs]);
+
+  const statusForColumn: Record<string, string> = {
+    assigned: 'scheduled',
+    en_route: 'in_progress',
+    arrived: 'in_progress',
+    in_progress: 'in_progress',
+    completed: 'done',
+  };
+
+  const workerStatusForColumn: Record<string, string> = {
+    assigned: 'assigned',
+    en_route: 'on_my_way',
+    arrived: 'arrived',
+    in_progress: 'in_progress',
+    completed: 'completed',
+  };
+
+  const handleKanbanDrop = (targetColumn: string) => {
+    if (!kanbanDrag || kanbanDrag.fromColumn === targetColumn) {
+      setKanbanDrag(null);
+      setKanbanDragOver(null);
+      return;
+    }
+    const newStatus = statusForColumn[targetColumn];
+    const newWorkerStatus = workerStatusForColumn[targetColumn];
+    if (newStatus) {
+      updateStatusMutation.mutate({
+        jobId: kanbanDrag.jobId,
+        status: newStatus,
+        workerStatus: newWorkerStatus,
+      });
+    }
+    setKanbanDrag(null);
+    setKanbanDragOver(null);
+  };
+
+  const uniqueMembers = useMemo(() => {
+    const memberMap = new Map<string, { id: string; name: string }>();
+    dispatchJobs.forEach(job => {
+      (job.assignments || []).forEach(a => {
+        if (a.isActive && a.memberId && !memberMap.has(a.memberId)) {
+          memberMap.set(a.memberId, {
+            id: a.memberId,
+            name: `${a.memberFirstName || ''} ${a.memberLastName || ''}`.trim(),
+          });
+        }
+      });
+    });
+    return Array.from(memberMap.values());
   }, [dispatchJobs]);
 
   return (
-    <div className="overflow-x-auto pb-4">
-      <div className="flex gap-3">
-        {KANBAN_COLUMNS.map(column => {
-          const count = columnJobs[column.key]?.length || 0;
-          return (
-            <div key={column.key} className="flex-1 min-w-0">
-              <div className={`h-[3px] rounded-full mb-2 ${column.color}`} />
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <h3 className="text-sm font-semibold">{column.label}</h3>
-                <Badge variant="secondary" className="ml-auto tabular-nums">
-                  {count}
-                </Badge>
-              </div>
-              <div className={`rounded-md p-1.5 space-y-1.5 min-h-[200px] ${column.bgLight}`}>
-                {(columnJobs[column.key] || []).map(job => {
-                  const firstAssignment = job.assignments?.find(a => a.isActive);
-                  const colDef = KANBAN_COLUMNS.find(c => c.key === getKanbanColumn(job));
-                  return (
-                    <Card key={job.id} className="hover-elevate overflow-visible">
-                      <CardContent className="p-2.5 flex gap-2">
-                        <div className={`w-1 rounded-full flex-shrink-0 self-stretch ${colDef?.color || 'bg-muted'}`} />
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <h4 className="text-sm font-medium leading-tight truncate">{job.title}</h4>
-                          </div>
-                          {job.client && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              {job.client.name}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {firstAssignment && (
-                              <div className="flex items-center gap-1">
-                                <Avatar className="h-4 w-4">
-                                  <AvatarFallback className="text-[8px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
-                                    {(firstAssignment.memberFirstName?.[0] || '') + (firstAssignment.memberLastName?.[0] || '')}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">
-                                  {firstAssignment.memberFirstName}
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs font-medium text-muted-foreground">Filter:</span>
+        <div className="flex items-center gap-1 flex-wrap">
+          <Button
+            variant={kanbanFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setKanbanFilter('all')}
+          >
+            All ({dispatchJobs.length})
+          </Button>
+          {uniqueMembers.map(m => (
+            <Button
+              key={m.id}
+              variant={kanbanFilter === m.id ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setKanbanFilter(kanbanFilter === m.id ? 'all' : m.id)}
+            >
+              {m.name || 'Unknown'}
+            </Button>
+          ))}
+          <Button
+            variant={kanbanFilter === 'unassigned' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setKanbanFilter(kanbanFilter === 'unassigned' ? 'all' : 'unassigned')}
+          >
+            Unassigned
+          </Button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto pb-4">
+        <div className="flex gap-3" style={{ minWidth: '800px' }}>
+          {KANBAN_COLUMNS.map(column => {
+            const jobs = columnJobs[column.key] || [];
+            const count = jobs.length;
+            const totalHours = Math.round(jobs.reduce((sum, j) => sum + (j.estimatedDuration || 60), 0) / 60 * 10) / 10;
+            const isDragTarget = kanbanDragOver === column.key && kanbanDrag?.fromColumn !== column.key;
+            return (
+              <div
+                key={column.key}
+                className="flex-1 min-w-[160px] flex flex-col"
+                onDragOver={(e) => { e.preventDefault(); setKanbanDragOver(column.key); }}
+                onDragLeave={() => setKanbanDragOver(null)}
+                onDrop={(e) => { e.preventDefault(); handleKanbanDrop(column.key); }}
+              >
+                <div className={`h-[3px] rounded-full mb-2 ${column.color}`} />
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <h3 className="text-sm font-semibold">{column.label}</h3>
+                  <Badge variant="secondary" className="tabular-nums">
+                    {count}
+                  </Badge>
+                  {totalHours > 0 && (
+                    <span className="text-[10px] text-muted-foreground ml-auto">{totalHours}h</span>
+                  )}
+                </div>
+                <div className={`rounded-md p-1.5 space-y-1.5 min-h-[200px] max-h-[60vh] overflow-y-auto flex-1 transition-colors ${column.bgLight} ${isDragTarget ? 'ring-2 ring-primary/40 ring-dashed' : ''}`}>
+                  {jobs.map(job => {
+                    const firstAssignment = job.assignments?.find(a => a.isActive);
+                    const colDef = KANBAN_COLUMNS.find(c => c.key === getKanbanColumn(job));
+                    const isExpanded = expandedCard === job.id;
+                    const durationStr = job.estimatedDuration
+                      ? (job.estimatedDuration >= 60 ? `${Math.floor(job.estimatedDuration / 60)}h${job.estimatedDuration % 60 ? ` ${job.estimatedDuration % 60}m` : ''}` : `${job.estimatedDuration}m`)
+                      : null;
+                    return (
+                      <Card
+                        key={job.id}
+                        className={`hover-elevate overflow-visible cursor-pointer ${kanbanDrag?.jobId === job.id ? 'opacity-40' : ''}`}
+                        draggable
+                        onDragStart={() => setKanbanDrag({ jobId: job.id, fromColumn: getKanbanColumn(job) })}
+                        onDragEnd={() => { setKanbanDrag(null); setKanbanDragOver(null); }}
+                        onClick={() => setExpandedCard(isExpanded ? null : job.id)}
+                      >
+                        <CardContent className="p-2.5 flex gap-2">
+                          <div className={`w-1 rounded-full flex-shrink-0 self-stretch ${colDef?.color || 'bg-muted'}`} />
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className="text-sm font-medium leading-tight truncate">{job.title}</h4>
+                              {durationStr && (
+                                <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
+                                  {durationStr}
+                                </Badge>
+                              )}
+                            </div>
+                            {job.client && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {job.client.name}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {firstAssignment && (
+                                <div className="flex items-center gap-1">
+                                  <Avatar className="h-4 w-4">
+                                    <AvatarFallback className="text-[8px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                                      {(firstAssignment.memberFirstName?.[0] || '') + (firstAssignment.memberLastName?.[0] || '')}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">
+                                    {firstAssignment.memberFirstName}
+                                  </span>
+                                </div>
+                              )}
+                              {job.scheduledTime && (
+                                <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
+                                  <Clock className="h-2.5 w-2.5" />
+                                  {job.scheduledTime}
                                 </span>
+                              )}
+                              {!firstAssignment && (
+                                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Unassigned</span>
+                              )}
+                            </div>
+                            {!isExpanded && job.address && (
+                              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
+                                <span className="truncate">{job.address}</span>
                               </div>
                             )}
-                            {job.scheduledTime && (
-                              <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
-                                <Clock className="h-2.5 w-2.5" />
-                                {job.scheduledTime}
-                              </span>
+                            {isExpanded && (
+                              <div className="pt-1.5 mt-1 border-t space-y-1.5">
+                                {job.address && (
+                                  <div className="flex items-start gap-1 text-xs text-muted-foreground">
+                                    <MapPin className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                                    <span>{job.address}</span>
+                                  </div>
+                                )}
+                                {job.client?.phone && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Phone className="h-3 w-3 flex-shrink-0" />
+                                    <span>{job.client.phone}</span>
+                                  </div>
+                                )}
+                                {job.scheduledAt && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <CalendarIcon className="h-3 w-3 flex-shrink-0" />
+                                    <span>{(() => { try { return format(parseISO(job.scheduledAt), 'EEE, MMM d, yyyy'); } catch { return job.scheduledAt; } })()}</span>
+                                  </div>
+                                )}
+                                {(job.assignments || []).filter(a => a.isActive).length > 1 && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Users className="h-3 w-3 flex-shrink-0" />
+                                    <span>{job.assignments!.filter(a => a.isActive).map(a => a.memberFirstName).join(', ')}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1 pt-0.5">
+                                  <Badge variant="secondary" className="text-[10px]">
+                                    {job.status}
+                                  </Badge>
+                                  {job.workerStatus && job.workerStatus !== job.status && (
+                                    <Badge variant="outline" className="text-[10px]">
+                                      {job.workerStatus}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
                             )}
                           </div>
-                          {job.address && (
-                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                              <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
-                              <span className="truncate">{job.address}</span>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-                {count === 0 && (
-                  <div className="text-center py-8 text-xs text-muted-foreground">
-                    <div className={`w-6 h-6 rounded-full mx-auto mb-2 opacity-30 ${column.color}`} />
-                    No {column.label.toLowerCase()} jobs
-                  </div>
-                )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  {count === 0 && (
+                    <div className="text-center py-8 text-xs text-muted-foreground">
+                      <div className={`w-6 h-6 rounded-full mx-auto mb-2 opacity-30 ${column.color}`} />
+                      No {column.label.toLowerCase()} jobs
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -713,7 +898,11 @@ export default function DispatchBoard() {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('owner');
   const [selectedHour, setSelectedHour] = useState<number>(9);
+  const [quickAssignJob, setQuickAssignJob] = useState<Job | null>(null);
+  const [quickAssignMember, setQuickAssignMember] = useState<string>('');
+  const [quickAssignHour, setQuickAssignHour] = useState<number>(9);
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<Job[]>({
     queryKey: ['/api/jobs'],
@@ -1137,11 +1326,22 @@ export default function DispatchBoard() {
   return (
     <PageShell data-testid="dispatch-board">
       <div className="mb-6 space-y-3">
-        <PageHeader
-          title="Dispatch Board"
-          subtitle="Live operations center"
-          leading={<Navigation className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
-        />
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <PageHeader
+            title="Dispatch Board"
+            subtitle="Live operations center"
+            leading={<Navigation className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/team-operations')}
+            className="gap-1.5"
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            Team Schedule
+          </Button>
+        </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-md bg-muted/40 border px-3 py-2">
           <div className="flex items-center gap-1 bg-background rounded-md p-0.5">
             <Button
@@ -1221,7 +1421,7 @@ export default function DispatchBoard() {
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <KanbanBoard dispatchJobs={dispatchJobs} />
+          <KanbanBoard dispatchJobs={dispatchJobs} teamMembers={teamMembers} />
         )
       )}
 
@@ -1717,16 +1917,31 @@ export default function DispatchBoard() {
                           draggable
                           onDragStart={() => handleDragStart(job, null)}
                           onDragEnd={() => setDraggedJob(null)}
-                          onClick={() => handleJobClick(job, 'assign')}
                           className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''} ${draggedJob?.job.id === job.id ? 'opacity-50' : ''}`}
                           data-testid={`unscheduled-job-${job.id}`}
                         >
                           <div className="flex items-start gap-2">
                             <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
-                              <h4 className={`font-medium text-sm ${statusStyle.text}`}>
-                                {job.title}
-                              </h4>
+                              <div className="flex items-start justify-between gap-1">
+                                <h4 className={`font-medium text-sm ${statusStyle.text}`}>
+                                  {job.title}
+                                </h4>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setQuickAssignJob(job);
+                                    setQuickAssignMember('');
+                                    setQuickAssignHour(9);
+                                  }}
+                                  data-testid={`quick-assign-btn-${job.id}`}
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Assign
+                                </Button>
+                              </div>
                               <p className="text-xs text-muted-foreground truncate">
                                 {job.clientName}
                               </p>
@@ -2246,6 +2461,101 @@ export default function DispatchBoard() {
                   <Check className="h-4 w-4 mr-2" />
                   Assign
                 </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!quickAssignJob} onOpenChange={(open) => { if (!open) setQuickAssignJob(null); }}>
+        <DialogContent className="max-w-sm" data-testid="dialog-dispatch-quick-assign">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Quick Assign
+            </DialogTitle>
+            <DialogDescription>
+              {quickAssignJob && (
+                <>Assign <strong>{quickAssignJob.title}</strong> to a team member</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Team Member</label>
+              <Select value={quickAssignMember} onValueChange={setQuickAssignMember}>
+                <SelectTrigger data-testid="select-quick-member">
+                  <SelectValue placeholder="Select team member" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="owner">
+                    <div className="flex items-center gap-2">
+                      <User className="h-3.5 w-3.5" />
+                      Me (Owner)
+                    </div>
+                  </SelectItem>
+                  {teamMembers.filter(m => m.isActive).map(member => (
+                    <SelectItem key={member.memberId} value={member.memberId}>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-4 w-4">
+                          <AvatarFallback className="text-[7px]">
+                            {(member.firstName?.[0] || '') + (member.lastName?.[0] || '')}
+                          </AvatarFallback>
+                        </Avatar>
+                        {member.firstName} {member.lastName}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Date</label>
+              <p className="text-sm text-muted-foreground">{format(currentDate, 'EEE, MMM d, yyyy')}</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Time</label>
+              <Select value={quickAssignHour.toString()} onValueChange={(v) => setQuickAssignHour(parseInt(v))}>
+                <SelectTrigger data-testid="select-quick-time">
+                  <SelectValue placeholder="Select time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {WORK_HOURS.map(hour => (
+                    <SelectItem key={hour} value={hour.toString()}>
+                      {formatTime(hour)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setQuickAssignJob(null)}>Cancel</Button>
+            <Button
+              disabled={!quickAssignMember || rescheduleJobMutation.isPending}
+              onClick={() => {
+                if (!quickAssignJob || !quickAssignMember) return;
+                const scheduledDate = new Date(currentDate);
+                scheduledDate.setHours(quickAssignHour, 0, 0, 0);
+                const timeStr = `${quickAssignHour.toString().padStart(2, '0')}:00`;
+                rescheduleJobMutation.mutate({
+                  jobId: quickAssignJob.id,
+                  scheduledAt: scheduledDate.toISOString(),
+                  scheduledTime: timeStr,
+                  assignedTo: quickAssignMember === 'owner' ? null : quickAssignMember,
+                }, {
+                  onSuccess: () => {
+                    setQuickAssignJob(null);
+                    toast({ title: "Job assigned", description: `${quickAssignJob.title} has been scheduled` });
+                  },
+                });
+              }}
+              data-testid="button-quick-assign-confirm"
+            >
+              {rescheduleJobMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Assigning...</>
+              ) : (
+                <><Check className="h-4 w-4 mr-2" />Assign</>
               )}
             </Button>
           </DialogFooter>

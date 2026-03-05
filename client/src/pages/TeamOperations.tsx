@@ -3237,7 +3237,7 @@ function SchedulingTab() {
       </Dialog>
 
       <Dialog open={!!quickAssignCell} onOpenChange={(open) => { if (!open) setQuickAssignCell(null); }}>
-        <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col" data-testid="dialog-quick-assign">
+        <DialogContent className="max-w-md overflow-hidden flex flex-col" style={{ maxHeight: 'min(80vh, 600px)' }} data-testid="dialog-quick-assign">
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
@@ -3254,11 +3254,10 @@ function SchedulingTab() {
               placeholder="Search jobs..."
               value={quickAssignSearch}
               onChange={(e) => setQuickAssignSearch(e.target.value)}
-              className="mb-2"
               data-testid="input-quick-assign-search"
             />
           </div>
-          <ScrollArea className="flex-1 -mx-6 px-6">
+          <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
             <div className="space-y-1.5 pb-2">
               {(() => {
                 const searchLower = quickAssignSearch.toLowerCase();
@@ -3283,8 +3282,11 @@ function SchedulingTab() {
                 }
 
                 return filteredJobs.map(job => {
-                  const jobTime = getJobTime(job);
                   const suburb = getSuburb(job.address);
+                  const hasDate = job.scheduledAt ? (() => { try { return format(parseISO(job.scheduledAt), 'EEE, MMM d'); } catch { return null; } })() : null;
+                  const duration = job.estimatedDuration
+                    ? (job.estimatedDuration >= 60 ? `${Math.floor(job.estimatedDuration / 60)}h${job.estimatedDuration % 60 ? ` ${job.estimatedDuration % 60}m` : ''}` : `${job.estimatedDuration}m`)
+                    : null;
                   return (
                     <button
                       key={job.id}
@@ -3308,14 +3310,14 @@ function SchedulingTab() {
                             {job.clientName && (
                               <span className="text-xs text-muted-foreground">{job.clientName}</span>
                             )}
-                            {jobTime && (
+                            {hasDate && (
                               <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                                <Clock className="h-2.5 w-2.5" />{jobTime}
+                                <Calendar className="h-2.5 w-2.5" />{hasDate}
                               </span>
                             )}
-                            {job.estimatedDuration && (
-                              <span className="text-xs text-muted-foreground">
-                                {job.estimatedDuration >= 60 ? `${Math.floor(job.estimatedDuration / 60)}h` : `${job.estimatedDuration}m`}
+                            {duration && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                <Clock className="h-2.5 w-2.5" />{duration}
                               </span>
                             )}
                           </div>
@@ -3334,7 +3336,7 @@ function SchedulingTab() {
                 });
               })()}
             </div>
-          </ScrollArea>
+          </div>
           {allUnassignedJobs.length > 0 && (
             <div className="shrink-0 pt-2 border-t text-xs text-muted-foreground text-center">
               {allUnassignedJobs.length} unassigned job{allUnassignedJobs.length !== 1 ? 's' : ''} available
