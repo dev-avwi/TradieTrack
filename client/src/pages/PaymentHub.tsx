@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { format, isAfter, isBefore, subDays, differenceInDays } from "date-fns";
 import { 
   DollarSign, 
@@ -22,7 +22,15 @@ import {
   Settings,
   Link2,
   AlertCircle,
-  Loader2
+  Loader2,
+  Zap,
+  Phone,
+  Mail,
+  MessageSquare,
+  Target,
+  Users,
+  Sparkles,
+  CircleDollarSign
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,8 +44,48 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Invoice, Quote, Client } from "@shared/schema";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { useLocation } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+interface ChaserItem {
+  invoiceId: string;
+  invoiceNumber: string;
+  clientId: string;
+  clientName: string;
+  clientPhone: string | null;
+  clientEmail: string | null;
+  amount: number;
+  amountPaid: number;
+  outstanding: number;
+  dueDate: string | null;
+  daysOverdue: number;
+  isOverdue: boolean;
+  status: string;
+  urgency: 'upcoming' | 'friendly' | 'firm' | 'final' | 'critical';
+  recommendedAction: string;
+  recommendedTone: 'friendly' | 'professional' | 'firm';
+  remindersSent: number;
+  lastReminderDate: string | null;
+  lastReminderType: string | null;
+  lastReminderVia: string | null;
+  daysSinceLastContact: number | null;
+  paymentMethod: string | null;
+}
+
+interface ChaserSummary {
+  totalOverdueAmount: number;
+  totalOverdueCount: number;
+  clientsToChase: number;
+  avgDaysOverdue: number;
+  collectionRate: number;
+  totalOutstanding: number;
+  totalOutstandingCount: number;
+}
+
+interface ChaserResponse {
+  summary: ChaserSummary;
+  items: ChaserItem[];
+}
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-AU', {
@@ -469,8 +517,304 @@ function StripeConnectCard({
   );
 }
 
+function SmartChaserTab({ onViewInvoice }: { onViewInvoice: (id: string) => void }) {
+  const { toast } = useToast();
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+  const [toneSelector, setToneSelector] = useState<string | null>(null);
+  const [aiInsights, setAiInsights] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [chaserFilter, setChaserFilter] = useState<string>('all');
+
+  const { data: chaserData, isLoading: chaserLoading } = useQuery<ChaserResponse>({
+    queryKey: ['/api/payment-chaser/summary'],
+  });
+
+  const summary = chaserData?.summary;
+  const items = chaserData?.items || [];
+
+  const filteredItems = useMemo(() => {
+    if (chaserFilter === 'all') return items;
+    return items.filter(item => item.urgency === chaserFilter);
+  }, [items, chaserFilter]);
+
+  const sendReminder = async (invoiceId: string, tone: string) => {
+    setSendingReminder(invoiceId);
+    try {
+      await apiRequest('POST', `/api/invoices/${invoiceId}/reminder`, { tone });
+      toast({ title: "Reminder Sent", description: `${tone.charAt(0).toUpperCase() + tone.slice(1)} reminder sent successfully` });
+      queryClient.invalidateQueries({ queryKey: ['/api/payment-chaser/summary'] });
+      setToneSelector(null);
+    } catch (error: any) {
+      toast({ title: "Failed to Send", description: error.message || "Could not send reminder", variant: "destructive" });
+    } finally {
+      setSendingReminder(null);
+    }
+  };
+
+  const getAiInsights = async () => {
+    setAiLoading(true);
+    try {
+      const response = await apiRequest('POST', '/api/payment-chaser/ai-insights', {});
+      const data = await response.json();
+      setAiInsights(data.insights);
+    } catch (error: any) {
+      toast({ title: "AI Insights Error", description: "Could not generate insights. Check your AI settings.", variant: "destructive" });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const urgencyConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; color: string }> = {
+    critical: { label: 'Critical', variant: 'destructive', color: 'text-red-600' },
+    final: { label: 'Final Notice', variant: 'destructive', color: 'text-orange-600' },
+    firm: { label: 'Firm', variant: 'default', color: 'text-yellow-600' },
+    friendly: { label: 'Friendly', variant: 'outline', color: 'text-blue-600' },
+    upcoming: { label: 'Upcoming', variant: 'secondary', color: 'text-muted-foreground' },
+  };
+
+  if (chaserLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i}><CardContent className="p-4"><Skeleton className="h-4 w-24 mb-2" /><Skeleton className="h-8 w-32" /></CardContent></Card>
+          ))}
+        </div>
+        {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full" />)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KPICard
+          title="Total Overdue"
+          value={formatCurrency((summary?.totalOverdueAmount || 0) * 100)}
+          subtitle={`${summary?.totalOverdueCount || 0} invoices`}
+          icon={<AlertTriangle className="h-5 w-5 text-red-500" />}
+          variant={(summary?.totalOverdueCount || 0) > 0 ? 'danger' : 'default'}
+        />
+        <KPICard
+          title="Clients to Chase"
+          value={String(summary?.clientsToChase || 0)}
+          subtitle="need follow-up"
+          icon={<Users className="h-5 w-5 text-orange-500" />}
+          variant={(summary?.clientsToChase || 0) > 0 ? 'warning' : 'default'}
+        />
+        <KPICard
+          title="Avg Days Overdue"
+          value={`${summary?.avgDaysOverdue || 0}d`}
+          subtitle="across overdue invoices"
+          icon={<Clock className="h-5 w-5 text-yellow-500" />}
+          variant={(summary?.avgDaysOverdue || 0) > 14 ? 'warning' : 'default'}
+        />
+        <KPICard
+          title="Collection Rate"
+          value={`${summary?.collectionRate || 0}%`}
+          subtitle="of sent invoices paid"
+          icon={<Target className="h-5 w-5 text-green-500" />}
+          variant="success"
+        />
+      </div>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <div>
+                <p className="font-medium text-sm">AI Payment Advisor</p>
+                <p className="text-xs text-muted-foreground">Get smart recommendations for your overdue invoices</p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={getAiInsights}
+              disabled={aiLoading || (summary?.totalOverdueCount || 0) === 0}
+              data-testid="btn-ai-insights"
+            >
+              {aiLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+              {aiLoading ? 'Analysing...' : 'Get AI Advice'}
+            </Button>
+          </div>
+          {aiInsights && (
+            <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
+              <p className="text-sm whitespace-pre-wrap leading-relaxed">{aiInsights}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Zap className="h-4 w-4 text-primary" />
+                Chase Queue
+              </CardTitle>
+              <CardDescription>
+                {items.length} invoice{items.length !== 1 ? 's' : ''} needing attention
+              </CardDescription>
+            </div>
+            <Select value={chaserFilter} onValueChange={setChaserFilter}>
+              <SelectTrigger className="w-[140px]" data-testid="chaser-filter">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
+                <SelectItem value="final">Final Notice</SelectItem>
+                <SelectItem value="firm">Firm</SelectItem>
+                <SelectItem value="friendly">Friendly</SelectItem>
+                <SelectItem value="upcoming">Upcoming</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-[500px]">
+            <div className="space-y-3">
+              {filteredItems.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-green-500" />
+                  <p className="font-medium">All caught up!</p>
+                  <p className="text-sm mt-1">No invoices need chasing right now</p>
+                </div>
+              ) : (
+                filteredItems.map(item => {
+                  const uConfig = urgencyConfig[item.urgency] || urgencyConfig.upcoming;
+                  const isExpanded = toneSelector === item.invoiceId;
+                  const isSending = sendingReminder === item.invoiceId;
+
+                  return (
+                    <div
+                      key={item.invoiceId}
+                      className="p-4 rounded-lg border bg-card transition-all"
+                      data-testid={`chaser-item-${item.invoiceId}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium">{item.clientName}</span>
+                            <Badge variant={uConfig.variant} className="text-xs">
+                              {uConfig.label}
+                            </Badge>
+                            {item.remindersSent > 0 && (
+                              <Badge variant="secondary" className="text-xs">
+                                {item.remindersSent} reminder{item.remindersSent !== 1 ? 's' : ''} sent
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
+                            <span>Invoice #{item.invoiceNumber}</span>
+                            {item.isOverdue && (
+                              <span className={uConfig.color}>
+                                {item.daysOverdue}d overdue
+                              </span>
+                            )}
+                            {!item.isOverdue && item.dueDate && (
+                              <span>Due {format(new Date(item.dueDate), 'dd MMM')}</span>
+                            )}
+                            {item.daysSinceLastContact != null && (
+                              <span>Last contact {item.daysSinceLastContact}d ago</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 italic">
+                            {item.recommendedAction}
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="font-bold text-lg">{formatCurrency(item.outstanding * 100)}</p>
+                          {item.amountPaid > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              {formatCurrency(item.amountPaid * 100)} paid
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        {isExpanded ? (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs text-muted-foreground mr-1">Tone:</span>
+                            {(['friendly', 'professional', 'firm'] as const).map(tone => (
+                              <Button
+                                key={tone}
+                                size="sm"
+                                variant={tone === item.recommendedTone ? 'default' : 'outline'}
+                                onClick={() => sendReminder(item.invoiceId, tone)}
+                                disabled={isSending}
+                                data-testid={`btn-send-${tone}-${item.invoiceId}`}
+                              >
+                                {isSending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                                {tone.charAt(0).toUpperCase() + tone.slice(1)}
+                              </Button>
+                            ))}
+                            <Button size="sm" variant="ghost" onClick={() => setToneSelector(null)}>
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => setToneSelector(item.invoiceId)}
+                              data-testid={`btn-chase-${item.invoiceId}`}
+                            >
+                              <Send className="h-3 w-3 mr-1" />
+                              Send Reminder
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => onViewInvoice(item.invoiceId)}
+                              data-testid={`btn-view-${item.invoiceId}`}
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              View
+                            </Button>
+                            {item.clientPhone && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => window.open(`tel:${item.clientPhone}`, '_self')}
+                              >
+                                <Phone className="h-3 w-3 mr-1" />
+                                Call
+                              </Button>
+                            )}
+                            {item.clientEmail && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => window.open(`mailto:${item.clientEmail}`, '_blank')}
+                              >
+                                <Mail className="h-3 w-3 mr-1" />
+                                Email
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function PaymentHub() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'invoices' | 'quotes' | 'payments'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'invoices' | 'quotes' | 'chaser' | 'payments'>('overview');
   const [invoiceFilter, setInvoiceFilter] = useState<string>('all');
   const [timeRange, setTimeRange] = useState<string>('30d');
   const [, navigate] = useLocation();
@@ -745,6 +1089,13 @@ export default function PaymentHub() {
                   <Badge variant="secondary" className="ml-2">{stats.pendingQuotesCount}</Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="chaser" data-testid="tab-chaser">
+                <Zap className="h-3 w-3 mr-1" />
+                Smart Chaser
+                {stats.overdueCount > 0 && (
+                  <Badge variant="destructive" className="ml-2">{stats.overdueCount}</Badge>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="payments" data-testid="tab-payments">Payments</TabsTrigger>
             </TabsList>
           </div>
@@ -939,6 +1290,10 @@ export default function PaymentHub() {
                 </ScrollArea>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="chaser" className="mt-4">
+            <SmartChaserTab onViewInvoice={handleViewInvoice} />
           </TabsContent>
 
           <TabsContent value="payments" className="mt-4 space-y-4">

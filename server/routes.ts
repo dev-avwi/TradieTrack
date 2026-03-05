@@ -33690,6 +33690,246 @@ Respond with JSON in this format:
     }
   });
 
+  // ===== SMART PAYMENT CHASER ROUTES =====
+
+  app.get("/api/payment-chaser/summary", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = getUserContext(req);
+
+      const allInvoices = await storage.getInvoices(userContext.effectiveUserId);
+      const allClients = await storage.getClients(userContext.effectiveUserId);
+      const clientMap = new Map(allClients.map(c => [c.id, c]));
+
+      const now = new Date();
+      const outstandingInvoices = allInvoices.filter(
+        (inv: any) => inv.status !== 'paid' && inv.status !== 'draft'
+      );
+
+      const reminderLogsByInvoice = new Map<string, any[]>();
+      for (const inv of outstandingInvoices) {
+        try {
+          const logs = await storage.getInvoiceReminderLogs(inv.id, userContext.effectiveUserId);
+          if (logs.length > 0) {
+            reminderLogsByInvoice.set(inv.id, logs);
+          }
+        } catch (e) {}
+      }
+
+      const chaserItems: any[] = [];
+      let totalOverdueAmount = 0;
+      let totalOverdueCount = 0;
+      const clientsToChaseSet = new Set<string>();
+
+      for (const inv of outstandingInvoices) {
+        const dueDate = inv.dueDate ? new Date(inv.dueDate) : null;
+        const isOverdue = dueDate ? dueDate < now : false;
+        const daysOverdue = dueDate ? Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+        const amount = parseFloat(String(inv.total) || '0');
+        const amountPaid = parseFloat(String(inv.amountPaid) || '0');
+        const outstanding = amount - amountPaid;
+
+        if (!isOverdue && daysOverdue === 0 && inv.status === 'sent') {
+          const daysSinceSent = inv.sentAt ? Math.floor((now.getTime() - new Date(inv.sentAt).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+          if (daysSinceSent < 3) continue;
+        }
+
+        const reminderLogs = reminderLogsByInvoice.get(inv.id) || [];
+        const remindersSent = reminderLogs.length;
+        const lastReminder = reminderLogs.length > 0 ? reminderLogs[0] : null;
+        const daysSinceLastContact = lastReminder?.createdAt
+          ? Math.floor((now.getTime() - new Date(lastReminder.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+          : (inv.sentAt ? Math.floor((now.getTime() - new Date(inv.sentAt).getTime()) / (1000 * 60 * 60 * 24)) : null);
+
+        let urgency: 'upcoming' | 'friendly' | 'firm' | 'final' | 'critical' = 'upcoming';
+        let recommendedAction = '';
+        let recommendedTone: 'friendly' | 'professional' | 'firm' = 'friendly';
+
+        if (daysOverdue >= 30) {
+          urgency = 'critical';
+          recommendedAction = remindersSent >= 3
+            ? 'Consider calling the client directly or engaging a collections process'
+            : 'Send a firm final notice immediately';
+          recommendedTone = 'firm';
+        } else if (daysOverdue >= 14) {
+          urgency = 'final';
+          recommendedAction = remindersSent >= 2
+            ? 'Call the client — written reminders have not worked'
+            : 'Send a firm reminder with payment deadline';
+          recommendedTone = 'firm';
+        } else if (daysOverdue >= 7) {
+          urgency = 'firm';
+          recommendedAction = remindersSent >= 1
+            ? 'Follow up with a professional tone reminder'
+            : 'Send a friendly reminder — first follow-up';
+          recommendedTone = 'professional';
+        } else if (daysOverdue >= 1) {
+          urgency = 'friendly';
+          recommendedAction = 'Send a friendly reminder — invoice is just overdue';
+          recommendedTone = 'friendly';
+        } else {
+          urgency = 'upcoming';
+          const daysToDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+          recommendedAction = `Due in ${daysToDue} day${daysToDue === 1 ? '' : 's'} — no action needed yet`;
+          recommendedTone = 'friendly';
+        }
+
+        if (isOverdue) {
+          totalOverdueAmount += outstanding;
+          totalOverdueCount++;
+          if (inv.clientId) clientsToChaseSet.add(inv.clientId);
+        }
+
+        const client = inv.clientId ? clientMap.get(inv.clientId) : undefined;
+
+        chaserItems.push({
+          invoiceId: inv.id,
+          invoiceNumber: inv.number || inv.id.slice(0, 8),
+          clientId: inv.clientId,
+          clientName: client?.name || 'Unknown Client',
+          clientPhone: client?.phone || null,
+          clientEmail: client?.email || null,
+          amount,
+          amountPaid,
+          outstanding,
+          dueDate: inv.dueDate,
+          daysOverdue,
+          isOverdue,
+          status: inv.status,
+          urgency,
+          recommendedAction,
+          recommendedTone,
+          remindersSent,
+          lastReminderDate: lastReminder?.createdAt || null,
+          lastReminderType: lastReminder?.reminderType || null,
+          lastReminderVia: lastReminder?.sentVia || null,
+          daysSinceLastContact,
+          paymentMethod: inv.paymentMethod || null,
+        });
+      }
+
+      chaserItems.sort((a: any, b: any) => {
+        const urgencyOrder: Record<string, number> = { critical: 0, final: 1, firm: 2, friendly: 3, upcoming: 4 };
+        const ua = urgencyOrder[a.urgency] ?? 5;
+        const ub = urgencyOrder[b.urgency] ?? 5;
+        if (ua !== ub) return ua - ub;
+        return b.daysOverdue - a.daysOverdue;
+      });
+
+      const paidInvoices = allInvoices.filter((inv: any) => inv.status === 'paid');
+      const totalInvoicesCount = allInvoices.filter((inv: any) => inv.status !== 'draft').length;
+      const collectionRate = totalInvoicesCount > 0
+        ? Math.round((paidInvoices.length / totalInvoicesCount) * 100)
+        : 100;
+
+      const avgDaysOverdue = totalOverdueCount > 0
+        ? Math.round(chaserItems.filter((i: any) => i.isOverdue).reduce((sum: number, i: any) => sum + i.daysOverdue, 0) / totalOverdueCount)
+        : 0;
+
+      res.json({
+        summary: {
+          totalOverdueAmount,
+          totalOverdueCount,
+          clientsToChase: clientsToChaseSet.size,
+          avgDaysOverdue,
+          collectionRate,
+          totalOutstanding: chaserItems.reduce((sum: number, i: any) => sum + i.outstanding, 0),
+          totalOutstandingCount: chaserItems.length,
+        },
+        items: chaserItems,
+      });
+    } catch (error: any) {
+      console.error('Error generating payment chaser summary:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/payment-chaser/ai-insights", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = getUserContext(req);
+
+      const allInvoices = await storage.getInvoices(userContext.effectiveUserId);
+      const allClients = await storage.getClients(userContext.effectiveUserId);
+      const clientMap = new Map(allClients.map((c: any) => [c.id, c]));
+      const now = new Date();
+
+      const overdueInvoices = allInvoices.filter((inv: any) => {
+        if (inv.status === 'paid' || inv.status === 'draft') return false;
+        return inv.dueDate && new Date(inv.dueDate) < now;
+      });
+
+      let totalOverdueAmount = 0;
+      const clientsSet = new Set<string>();
+      const overdueDetails: string[] = [];
+
+      for (const inv of overdueInvoices.slice(0, 10)) {
+        const amount = parseFloat(String(inv.total) || '0');
+        const amountPaid = parseFloat(String(inv.amountPaid) || '0');
+        const outstanding = amount - amountPaid;
+        const daysOverdue = Math.max(0, Math.floor((now.getTime() - new Date(inv.dueDate).getTime()) / (1000 * 60 * 60 * 24)));
+        const client = inv.clientId ? clientMap.get(inv.clientId) : undefined;
+        const clientName = client?.name || 'Unknown';
+
+        let reminderCount = 0;
+        let daysSinceContact: number | null = null;
+        try {
+          const logs = await storage.getInvoiceReminderLogs(inv.id, userContext.effectiveUserId);
+          reminderCount = logs.length;
+          if (logs.length > 0 && logs[0].createdAt) {
+            daysSinceContact = Math.floor((now.getTime() - new Date(logs[0].createdAt).getTime()) / (1000 * 60 * 60 * 24));
+          }
+        } catch (e) {}
+
+        totalOverdueAmount += outstanding;
+        if (inv.clientId) clientsSet.add(inv.clientId);
+
+        overdueDetails.push(
+          `- ${clientName}: Invoice #${inv.number || inv.id.slice(0, 8)}, $${outstanding.toFixed(2)} outstanding, ${daysOverdue} days overdue, ${reminderCount} reminders sent${daysSinceContact != null ? `, last contact ${daysSinceContact} days ago` : ''}`
+        );
+      }
+
+      const avgDaysOverdue = overdueInvoices.length > 0
+        ? Math.round(overdueInvoices.reduce((sum: number, inv: any) => sum + Math.max(0, Math.floor((now.getTime() - new Date(inv.dueDate).getTime()) / (1000 * 60 * 60 * 24))), 0) / overdueInvoices.length)
+        : 0;
+
+      const totalNonDraft = allInvoices.filter((inv: any) => inv.status !== 'draft').length;
+      const paidCount = allInvoices.filter((inv: any) => inv.status === 'paid').length;
+      const collectionRate = totalNonDraft > 0 ? Math.round((paidCount / totalNonDraft) * 100) : 100;
+
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI();
+
+      const context = overdueDetails.join('\n');
+
+      const prompt = `You are a business cash flow advisor for an Australian tradie business. Analyse these overdue invoices and give brief, actionable advice in plain English. Be direct and practical.
+
+Summary:
+- Total overdue: $${totalOverdueAmount.toFixed(2)} across ${overdueInvoices.length} invoices
+- ${clientsSet.size} clients to chase
+- Average ${avgDaysOverdue} days overdue
+- Collection rate: ${collectionRate}%
+
+Overdue invoices:
+${context || 'No overdue invoices — great work!'}
+
+Give 3-5 short, specific recommendations. Mention client names. Use Australian English. Keep it under 200 words.`;
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 400,
+        temperature: 0.7,
+      });
+
+      const insights = completion.choices[0]?.message?.content || 'Unable to generate insights at this time.';
+      res.json({ insights });
+    } catch (error: any) {
+      console.error('Error generating AI insights:', error);
+      res.status(500).json({ error: 'Failed to generate AI insights. Check your AI integration settings.' });
+    }
+  });
+
   // ===== RECURRING JOBS/INVOICES ROUTES =====
   
   // Process recurring jobs and invoices for current user only
