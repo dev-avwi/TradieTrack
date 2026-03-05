@@ -1838,17 +1838,24 @@ export default function DispatchBoard() {
                         ))}
                       </div>
 
-                      {teamMembersWithJobs.map(member => (
+                      {teamMembersWithJobs.map(member => {
+                        const dropSlotHour = dragOverSlot?.startsWith(`${member.id}-`) 
+                          ? parseInt(dragOverSlot.split('-').pop() || '0') 
+                          : null;
+                        const dragDuration = draggedJob?.job.estimatedDuration || 60;
+                        const dragSlots = Math.max(1, Math.ceil(dragDuration / 60));
+
+                        return (
                         <div key={member.id} className="flex-1 min-w-0 border-l relative">
                           {WORK_HOURS.map(hour => {
                             const slotId = `${member.id}-${hour}`;
-                            const isOver = dragOverSlot === slotId;
+                            const isInDropRange = dropSlotHour !== null && hour >= dropSlotHour && hour < dropSlotHour + dragSlots;
                             const isClickable = !!selectedJob;
                             return (
                               <div
                                 key={slotId}
                                 className={`border-b transition-colors ${
-                                  isOver ? 'bg-primary/10' : ''
+                                  isInDropRange ? 'bg-primary/10' : ''
                                 } ${isClickable ? 'cursor-pointer hover:bg-primary/20 bg-primary/5' : 'hover:bg-muted/30'}`}
                                 style={{ height: HOUR_HEIGHT }}
                                 onDragOver={(e) => handleDragOver(e, slotId)}
@@ -1856,15 +1863,26 @@ export default function DispatchBoard() {
                                 onDrop={(e) => handleDrop(e, member.memberId, hour)}
                                 onClick={() => selectedJob && handleSlotClick(member.memberId, hour)}
                                 data-testid={`slot-${member.id}-${hour}`}
-                              >
-                                {isOver && (
-                                  <div className="absolute inset-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center" style={{ zIndex: 5 }}>
-                                    <span className="text-xs text-primary font-medium">Drop here</span>
-                                  </div>
-                                )}
-                              </div>
+                              />
                             );
                           })}
+
+                          {dropSlotHour !== null && (
+                            <div
+                              className="absolute left-0 right-0 mx-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none"
+                              style={{
+                                top: (dropSlotHour - WORK_HOURS[0]) * HOUR_HEIGHT + 2,
+                                height: Math.min(dragSlots * HOUR_HEIGHT - 4, (WORK_HOURS.length * HOUR_HEIGHT) - ((dropSlotHour - WORK_HOURS[0]) * HOUR_HEIGHT) - 4),
+                                zIndex: 5,
+                                backgroundColor: 'hsl(var(--primary) / 0.08)',
+                              }}
+                            >
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="text-xs text-primary font-medium">Drop here</span>
+                                <span className="text-[10px] text-primary/70">{formatTime(dropSlotHour)} — {Math.round(dragDuration / 60)}h</span>
+                              </div>
+                            </div>
+                          )}
 
                           {member.jobs.map(job => {
                             const { top, height } = getJobPosition(job);
@@ -1922,7 +1940,8 @@ export default function DispatchBoard() {
                             );
                           })}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </ScrollArea>
                 </div>

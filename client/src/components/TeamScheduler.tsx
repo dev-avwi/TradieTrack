@@ -1052,6 +1052,14 @@ function WeekGridView({
   );
 }
 
+function parseDropCellHour(cellId: string | null, memberPrefix: string): number | null {
+  if (!cellId || !cellId.startsWith(memberPrefix)) return null;
+  const parts = cellId.split('-');
+  const hourStr = parts[parts.length - 1];
+  const hour = parseInt(hourStr);
+  return isNaN(hour) ? null : hour;
+}
+
 function TimelineView({
   allMembers, weekDays, selectedDay, setSelectedDay, clientsMap, draggedJob, dragOverCell,
   ownerId, weekJobs, isToday, getJobsForMemberAndDay, getConflictsForMemberAndDay,
@@ -1114,31 +1122,51 @@ function TimelineView({
                     </div>
 
                     <div className="relative">
-                      {WORK_HOURS.map(hour => {
-                        const cellId = `timeline-${member.memberId}-${hour}`;
-                        const isDragOver = dragOverCell === cellId;
-                        const hasConflict = conflictHours.has(hour);
-
+                      {(() => {
+                        const dropHour = parseDropCellHour(dragOverCell, `timeline-${member.memberId}-`);
+                        const dragDuration = draggedJob?.job.estimatedDuration || 60;
+                        const dragSlots = Math.max(1, Math.ceil(dragDuration / 60));
                         return (
-                          <div
-                            key={hour}
-                            className={`border-b transition-colors
-                              ${isDragOver ? 'bg-primary/10 ring-2 ring-primary ring-inset' : ''}
-                              ${hasConflict ? 'bg-red-50/60 dark:bg-red-900/15' : ''}
-                            `}
-                            style={{ height: HOUR_HEIGHT }}
-                            onDragOver={(e: React.DragEvent) => onDragOver(e, cellId)}
-                            onDragLeave={onDragLeave}
-                            onDrop={(e: React.DragEvent) => onDropOnHour(e, member.memberId, selectedDay, hour)}
-                          >
-                            {isDragOver && (
-                              <div className="h-full border-2 border-dashed border-primary/40 rounded-md flex items-center justify-center m-0.5">
-                                <span className="text-[10px] text-primary/60">{hourToTimeStr(hour)}</span>
+                          <>
+                          {WORK_HOURS.map(hour => {
+                            const cellId = `timeline-${member.memberId}-${hour}`;
+                            const isInDropRange = dropHour !== null && hour >= dropHour && hour < dropHour + dragSlots;
+                            const hasConflict = conflictHours.has(hour);
+
+                            return (
+                              <div
+                                key={hour}
+                                className={`border-b transition-colors
+                                  ${isInDropRange ? 'bg-primary/10' : ''}
+                                  ${hasConflict ? 'bg-red-50/60 dark:bg-red-900/15' : ''}
+                                `}
+                                style={{ height: HOUR_HEIGHT }}
+                                onDragOver={(e: React.DragEvent) => onDragOver(e, cellId)}
+                                onDragLeave={onDragLeave}
+                                onDrop={(e: React.DragEvent) => onDropOnHour(e, member.memberId, selectedDay, hour)}
+                              />
+                            );
+                          })}
+
+                          {dropHour !== null && (
+                            <div
+                              className="absolute left-0 right-0 mx-0.5 border-2 border-dashed border-primary/40 rounded-md flex items-center justify-center pointer-events-none"
+                              style={{
+                                top: (dropHour - WORK_HOURS[0]) * HOUR_HEIGHT + 1,
+                                height: Math.min(dragSlots * HOUR_HEIGHT - 2, (WORK_HOURS.length * HOUR_HEIGHT) - ((dropHour - WORK_HOURS[0]) * HOUR_HEIGHT) - 2),
+                                zIndex: 5,
+                                backgroundColor: 'hsl(var(--primary) / 0.08)',
+                              }}
+                            >
+                              <div className="flex flex-col items-center">
+                                <span className="text-[10px] text-primary/60">{hourToTimeStr(dropHour)}</span>
+                                <span className="text-[9px] text-primary/50">{Math.round(dragDuration / 60)}h</span>
                               </div>
-                            )}
-                          </div>
+                            </div>
+                          )}
+                          </>
                         );
-                      })}
+                      })()}
 
                       {dayJobs.map((job: Job) => {
                         const startHour = parseTimeToHour(job.scheduledTime);
