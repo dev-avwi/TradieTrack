@@ -3545,6 +3545,8 @@ export default function JobDetailView({
           <SafetyFormsSection 
             jobId={jobId} 
             jobStatus={job.status}
+            jobTitle={job.title}
+            jobAddress={job.address}
             className="flex-grow"
           />
 

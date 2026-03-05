@@ -31,6 +31,7 @@ import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as Location from 'expo-location';
 import api, { API_URL } from '../../src/lib/api';
 import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/store';
 import { Button } from '../../src/components/ui/Button';
@@ -218,6 +219,63 @@ interface SubcontractorToken {
   expiresAt?: string;
   createdAt?: string;
 }
+
+interface SwmsDocument {
+  id: string;
+  title: string;
+  description?: string;
+  jobId?: string;
+  siteAddress?: string;
+  workActivityDescription?: string;
+  ppeRequirements?: string[];
+  emergencyContact?: string;
+  firstAidLocation?: string;
+  status?: string;
+  createdAt?: string;
+  hazardCount?: number;
+  signatureCount?: number;
+  hazards?: SwmsHazard[];
+  signatures?: SwmsSignature[];
+}
+
+interface SwmsHazard {
+  id: string;
+  hazardDescription: string;
+  riskConsequence?: string;
+  riskLikelihood?: string;
+  riskRating?: string;
+  controlMeasures?: string;
+  responsiblePerson?: string;
+}
+
+interface SwmsSignature {
+  id: string;
+  workerName: string;
+  signedAt?: string;
+  address?: string;
+}
+
+interface SwmsTemplate {
+  id: string;
+  title: string;
+  description?: string;
+  hazards?: SwmsHazard[];
+  ppeRequirements?: string[];
+  workActivityDescription?: string;
+}
+
+const PPE_OPTIONS: { key: string; label: string; icon: string }[] = [
+  { key: 'hard_hat', label: 'Hard Hat', icon: 'hard-hat' },
+  { key: 'safety_glasses', label: 'Safety Glasses', icon: 'eye' },
+  { key: 'hi_vis', label: 'Hi-Vis Vest', icon: 'sun' },
+  { key: 'steel_caps', label: 'Steel Caps', icon: 'anchor' },
+  { key: 'hearing_protection', label: 'Hearing Protection', icon: 'volume-x' },
+  { key: 'dust_mask', label: 'Dust Mask', icon: 'wind' },
+  { key: 'gloves', label: 'Gloves', icon: 'hand' },
+  { key: 'fall_harness', label: 'Fall Harness', icon: 'link' },
+  { key: 'face_shield', label: 'Face Shield', icon: 'shield' },
+  { key: 'sun_protection', label: 'Sun Protection', icon: 'sun' },
+];
 
 const STATUS_ACTIONS = {
   pending: { next: 'scheduled', label: 'Schedule Job', icon: 'calendar' as const, iconSize: 20 },
@@ -1839,7 +1897,7 @@ export default function JobDetailScreen() {
   // Forms data is loaded by JobForms component and passed via onFormsChange/onSubmissionsChange callbacks
   // This eliminates duplicate API calls
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes' | 'materials' | 'chat'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes' | 'materials' | 'chat' | 'safety'>('overview');
 
   const [materials, setMaterials] = useState<JobMaterial[]>([]);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
@@ -1847,6 +1905,29 @@ export default function JobDetailScreen() {
   const [editingMaterial, setEditingMaterial] = useState<JobMaterial | null>(null);
   const [materialForm, setMaterialForm] = useState({ name: '', quantity: '1', unitCost: '', unitPrice: '', markupPercent: '', supplier: '', description: '' });
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
+
+  const [swmsDocuments, setSwmsDocuments] = useState<SwmsDocument[]>([]);
+  const [isLoadingSwms, setIsLoadingSwms] = useState(false);
+  const [expandedSwmsId, setExpandedSwmsId] = useState<string | null>(null);
+  const [showCreateSwmsModal, setShowCreateSwmsModal] = useState(false);
+  const [showTemplatePickerModal, setShowTemplatePickerModal] = useState(false);
+  const [swmsTemplates, setSwmsTemplates] = useState<SwmsTemplate[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [showSignSwmsModal, setShowSignSwmsModal] = useState(false);
+  const [signingSwmsId, setSigningSwmsId] = useState<string | null>(null);
+  const [signWorkerName, setSignWorkerName] = useState('');
+  const [isSigningSwms, setIsSigningSwms] = useState(false);
+  const [isSavingSwms, setIsSavingSwms] = useState(false);
+  const [swmsForm, setSwmsForm] = useState({
+    title: '',
+    description: '',
+    workActivityDescription: '',
+    siteAddress: '',
+    ppeRequirements: [] as string[],
+    emergencyContact: '',
+    firstAidLocation: '',
+    hazards: [] as { hazardDescription: string; riskConsequence: string; riskLikelihood: string; controlMeasures: string; responsiblePerson: string }[],
+  });
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -2132,12 +2213,256 @@ export default function JobDetailScreen() {
     }
   }, [id]);
 
+  const loadSwmsDocuments = useCallback(async () => {
+    if (!id) return;
+    setIsLoadingSwms(true);
+    try {
+      const res = await api.get<SwmsDocument[]>(`/api/jobs/${id}/swms`);
+      setSwmsDocuments(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error('Error loading SWMS:', e);
+    } finally {
+      setIsLoadingSwms(false);
+    }
+  }, [id]);
+
+  const loadSwmsTemplates = useCallback(async () => {
+    setIsLoadingTemplates(true);
+    try {
+      const res = await api.get<SwmsTemplate[]>('/api/swms/templates');
+      setSwmsTemplates(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error('Error loading SWMS templates:', e);
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  }, []);
+
+  const loadSwmsDetails = useCallback(async (swmsId: string) => {
+    try {
+      const res = await api.get<SwmsDocument>(`/api/swms/${swmsId}`);
+      if (res.data) {
+        setSwmsDocuments(prev => prev.map(d => d.id === swmsId ? { ...d, ...res.data, hazards: res.data!.hazards, signatures: res.data!.signatures } : d));
+      }
+    } catch (e) {
+      console.error('Error loading SWMS details:', e);
+    }
+  }, []);
+
+  const handleSelectTemplate = useCallback(async (template: SwmsTemplate) => {
+    setShowTemplatePickerModal(false);
+    try {
+      const res = await api.get<SwmsTemplate>(`/api/swms/templates/${template.id}`);
+      const fullTemplate = res.data;
+      setSwmsForm({
+        title: fullTemplate?.title || template.title || '',
+        description: fullTemplate?.description || template.description || '',
+        workActivityDescription: fullTemplate?.workActivityDescription || '',
+        siteAddress: job?.address || '',
+        ppeRequirements: fullTemplate?.ppeRequirements || [],
+        emergencyContact: '',
+        firstAidLocation: '',
+        hazards: (fullTemplate?.hazards || []).map((h: any) => ({
+          hazardDescription: h.activityTask || h.hazardDescription || '',
+          riskConsequence: h.consequence || h.riskConsequence || 'moderate',
+          riskLikelihood: h.likelihood || h.riskLikelihood || 'possible',
+          controlMeasures: h.controlMeasures || '',
+          responsiblePerson: '',
+        })),
+      });
+    } catch (e) {
+      setSwmsForm(prev => ({
+        ...prev,
+        title: template.title || '',
+        description: template.description || '',
+        siteAddress: job?.address || '',
+      }));
+    }
+    setShowCreateSwmsModal(true);
+  }, [job]);
+
+  const handleCreateSwms = useCallback(async () => {
+    if (!id || !swmsForm.title.trim()) return;
+    setIsSavingSwms(true);
+    try {
+      const res = await api.post<SwmsDocument>('/api/swms', {
+        title: swmsForm.title,
+        description: swmsForm.description,
+        jobId: id as string,
+        siteAddress: swmsForm.siteAddress,
+        workActivityDescription: swmsForm.workActivityDescription,
+        ppeRequirements: swmsForm.ppeRequirements,
+        emergencyContact: swmsForm.emergencyContact,
+        firstAidLocation: swmsForm.firstAidLocation,
+        status: 'draft',
+        hazards: swmsForm.hazards.map(h => ({
+          activityTask: h.hazardDescription || 'Activity',
+          hazard: h.riskConsequence || 'Hazard',
+          likelihood: h.riskLikelihood || 'possible',
+          consequence: h.riskConsequence || 'moderate',
+          riskBefore: 'medium',
+          controlMeasures: h.controlMeasures || '',
+          riskAfter: 'low',
+        })),
+      });
+      if (res.data) {
+        setShowCreateSwmsModal(false);
+        setSwmsForm({
+          title: '', description: '', workActivityDescription: '', siteAddress: '',
+          ppeRequirements: [], emergencyContact: '', firstAidLocation: '', hazards: [],
+        });
+        loadSwmsDocuments();
+        Alert.alert('Success', 'SWMS created successfully');
+      } else if (res.error) {
+        Alert.alert('Error', res.error);
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to create SWMS');
+    } finally {
+      setIsSavingSwms(false);
+    }
+  }, [id, swmsForm, loadSwmsDocuments]);
+
+  const handleSignSwms = useCallback(async () => {
+    if (!signingSwmsId || !signWorkerName.trim()) return;
+    setIsSigningSwms(true);
+    try {
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+      let address: string | undefined;
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          latitude = loc.coords.latitude;
+          longitude = loc.coords.longitude;
+          const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
+          if (geocode.length > 0) {
+            const g = geocode[0];
+            address = [g.street, g.city, g.region].filter(Boolean).join(', ');
+          }
+        }
+      } catch (locErr) {
+        console.log('Location not available for SWMS signing');
+      }
+
+      const res = await api.post(`/api/swms/${signingSwmsId}/sign`, {
+        workerName: signWorkerName.trim(),
+        signatureData: 'mobile-text-signature',
+        latitude,
+        longitude,
+        address,
+      });
+      if (res.error) {
+        Alert.alert('Error', res.error);
+      } else {
+        setShowSignSwmsModal(false);
+        setSignWorkerName('');
+        setSigningSwmsId(null);
+        loadSwmsDocuments();
+        Alert.alert('Success', 'SWMS signed successfully');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to sign SWMS');
+    } finally {
+      setIsSigningSwms(false);
+    }
+  }, [signingSwmsId, signWorkerName, loadSwmsDocuments]);
+
+  const handleDownloadSwmsPdf = useCallback((swmsId: string) => {
+    const url = `${API_URL}/api/swms/${swmsId}/pdf`;
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Error', 'Could not open PDF');
+    });
+  }, []);
+
+  const toggleSwmsExpand = useCallback((swmsId: string) => {
+    if (expandedSwmsId === swmsId) {
+      setExpandedSwmsId(null);
+    } else {
+      setExpandedSwmsId(swmsId);
+      loadSwmsDetails(swmsId);
+    }
+  }, [expandedSwmsId, loadSwmsDetails]);
+
+  const handleStartCreateSwms = useCallback(() => {
+    setSwmsForm({
+      title: '', description: '', workActivityDescription: '',
+      siteAddress: job?.address || '',
+      ppeRequirements: [], emergencyContact: '', firstAidLocation: '', hazards: [],
+    });
+    setShowTemplatePickerModal(true);
+    loadSwmsTemplates();
+  }, [job, loadSwmsTemplates]);
+
+  const handleStartBlankSwms = useCallback(() => {
+    setShowTemplatePickerModal(false);
+    setSwmsForm({
+      title: '', description: '', workActivityDescription: '',
+      siteAddress: job?.address || '',
+      ppeRequirements: [], emergencyContact: '', firstAidLocation: '', hazards: [],
+    });
+    setShowCreateSwmsModal(true);
+  }, [job]);
+
+  const togglePpe = useCallback((key: string) => {
+    setSwmsForm(prev => ({
+      ...prev,
+      ppeRequirements: prev.ppeRequirements.includes(key)
+        ? prev.ppeRequirements.filter(k => k !== key)
+        : [...prev.ppeRequirements, key],
+    }));
+  }, []);
+
+  const addHazardRow = useCallback(() => {
+    setSwmsForm(prev => ({
+      ...prev,
+      hazards: [...prev.hazards, { hazardDescription: '', riskConsequence: 'moderate', riskLikelihood: 'possible', controlMeasures: '', responsiblePerson: '' }],
+    }));
+  }, []);
+
+  const removeHazardRow = useCallback((index: number) => {
+    setSwmsForm(prev => ({
+      ...prev,
+      hazards: prev.hazards.filter((_, i) => i !== index),
+    }));
+  }, []);
+
+  const updateHazardRow = useCallback((index: number, field: string, value: string) => {
+    setSwmsForm(prev => ({
+      ...prev,
+      hazards: prev.hazards.map((h, i) => i === index ? { ...h, [field]: value } : h),
+    }));
+  }, []);
+
+  const getRiskColor = useCallback((rating?: string) => {
+    switch (rating) {
+      case 'low': return colors.success;
+      case 'medium': return colors.warning;
+      case 'high': return '#F97316';
+      case 'extreme': return colors.destructive;
+      default: return colors.mutedForeground;
+    }
+  }, [colors]);
+
+  const getStatusColor = useCallback((status?: string) => {
+    switch (status) {
+      case 'draft': return colors.mutedForeground;
+      case 'active': return colors.success;
+      case 'closed': return colors.primary;
+      default: return colors.mutedForeground;
+    }
+  }, [colors]);
+
   useEffect(() => {
     if (activeTab === 'chat' && id) {
       loadJobMessages();
     }
     if (activeTab === 'materials' && id) {
       loadMaterials();
+    }
+    if (activeTab === 'safety' && id) {
+      loadSwmsDocuments();
     }
   }, [activeTab, id]);
 
@@ -4036,6 +4361,7 @@ export default function JobDetailScreen() {
     { id: 'photos' as const, label: 'Photos', icon: 'camera' as const },
     { id: 'notes' as const, label: 'Notes', icon: 'file' as const },
     { id: 'chat' as const, label: 'Chat', icon: 'message-circle' as const },
+    { id: 'safety' as const, label: 'Safety', icon: 'shield' as const },
   ];
 
   const renderOverviewTab = () => (
@@ -5175,6 +5501,233 @@ export default function JobDetailScreen() {
       </>
     );
   };
+
+  const renderSafetyTab = () => (
+    <>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15`, marginRight: spacing.sm }]}>
+            <Feather name="shield" size={iconSizes.lg} color={colors.primary} />
+          </View>
+          <View>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.foreground }}>SWMS Documents</Text>
+            <Text style={{ fontSize: 13, color: colors.mutedForeground }}>
+              {swmsDocuments.length} document{swmsDocuments.length !== 1 ? 's' : ''}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.primary,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm,
+            borderRadius: radius.lg,
+            gap: spacing.xs,
+          }}
+          onPress={handleStartCreateSwms}
+          activeOpacity={0.7}
+        >
+          <Feather name="plus" size={16} color={colors.primaryForeground} />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>Create SWMS</Text>
+        </TouchableOpacity>
+      </View>
+
+      {isLoadingSwms ? (
+        <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
+          <ActivityIndicator color={colors.primary} />
+          <Text style={{ fontSize: 14, color: colors.mutedForeground, marginTop: spacing.sm }}>Loading safety documents...</Text>
+        </View>
+      ) : swmsDocuments.length === 0 ? (
+        <View style={[styles.notesCard, { alignItems: 'center', paddingVertical: spacing.xl }]}>
+          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+            <Feather name="shield" size={28} color={colors.mutedForeground} />
+          </View>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.foreground, marginBottom: spacing.xs }}>No SWMS Documents</Text>
+          <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: 'center', paddingHorizontal: spacing.lg }}>
+            Create a Safe Work Method Statement for this job to manage hazards and safety requirements.
+          </Text>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: colors.primary,
+              paddingHorizontal: spacing.lg,
+              paddingVertical: spacing.md,
+              borderRadius: radius.lg,
+              gap: spacing.sm,
+              marginTop: spacing.lg,
+            }}
+            onPress={handleStartCreateSwms}
+            activeOpacity={0.7}
+          >
+            <Feather name="plus" size={18} color={colors.primaryForeground} />
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primaryForeground }}>Create SWMS</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        swmsDocuments.map((swms) => {
+          const isExpanded = expandedSwmsId === swms.id;
+          return (
+            <View key={swms.id} style={[styles.notesCard, { marginBottom: spacing.md }]}>
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+                onPress={() => toggleSwmsExpand(swms.id)}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground, flex: 1 }} numberOfLines={1}>
+                      {swms.title}
+                    </Text>
+                    <View style={{
+                      paddingHorizontal: spacing.sm,
+                      paddingVertical: 2,
+                      borderRadius: radius.sm,
+                      backgroundColor: `${getStatusColor(swms.status)}20`,
+                    }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: getStatusColor(swms.status), textTransform: 'capitalize' }}>
+                        {swms.status || 'draft'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Feather name="alert-triangle" size={12} color={colors.mutedForeground} />
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                        {swms.hazardCount || 0} hazard{(swms.hazardCount || 0) !== 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Feather name="edit-3" size={12} color={colors.mutedForeground} />
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                        {swms.signatureCount || 0} signature{(swms.signatureCount || 0) !== 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                    {swms.createdAt && (
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                        {new Date(swms.createdAt).toLocaleDateString()}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={colors.mutedForeground} style={{ marginLeft: spacing.sm }} />
+              </TouchableOpacity>
+
+              {isExpanded && (
+                <View style={{ marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
+                  {swms.hazards && swms.hazards.length > 0 && (
+                    <View style={{ marginBottom: spacing.md }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: spacing.sm }}>
+                        Hazards
+                      </Text>
+                      {swms.hazards.map((hazard, idx) => (
+                        <View key={hazard.id || idx} style={{
+                          backgroundColor: colors.muted,
+                          borderRadius: radius.lg,
+                          padding: spacing.md,
+                          marginBottom: spacing.sm,
+                        }}>
+                          <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground, marginBottom: 4 }}>
+                            {hazard.hazardDescription}
+                          </Text>
+                          {hazard.riskRating && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 4 }}>
+                              <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Risk:</Text>
+                              <View style={{
+                                paddingHorizontal: 6,
+                                paddingVertical: 1,
+                                borderRadius: radius.sm,
+                                backgroundColor: `${getRiskColor(hazard.riskRating)}20`,
+                              }}>
+                                <Text style={{ fontSize: 11, fontWeight: '600', color: getRiskColor(hazard.riskRating), textTransform: 'capitalize' }}>
+                                  {hazard.riskRating}
+                                </Text>
+                              </View>
+                            </View>
+                          )}
+                          {hazard.controlMeasures && (
+                            <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                              Controls: {hazard.controlMeasures}
+                            </Text>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {swms.signatures && swms.signatures.length > 0 && (
+                    <View style={{ marginBottom: spacing.md }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: spacing.sm }}>
+                        Signatures
+                      </Text>
+                      {swms.signatures.map((sig, idx) => (
+                        <View key={sig.id || idx} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs, gap: spacing.sm }}>
+                          <Feather name="check-circle" size={14} color={colors.success} />
+                          <Text style={{ fontSize: 14, color: colors.foreground, flex: 1 }}>{sig.workerName}</Text>
+                          {sig.signedAt && (
+                            <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                              {new Date(sig.signedAt).toLocaleDateString()}
+                            </Text>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: colors.primary,
+                        paddingVertical: spacing.md,
+                        borderRadius: radius.lg,
+                        gap: spacing.xs,
+                        minHeight: 44,
+                      }}
+                      onPress={() => {
+                        setSigningSwmsId(swms.id);
+                        setSignWorkerName('');
+                        setShowSignSwmsModal(true);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="edit-3" size={16} color={colors.primaryForeground} />
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>Sign</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: colors.muted,
+                        paddingVertical: spacing.md,
+                        borderRadius: radius.lg,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        gap: spacing.xs,
+                        minHeight: 44,
+                      }}
+                      onPress={() => handleDownloadSwmsPdf(swms.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="download" size={16} color={colors.foreground} />
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>PDF</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+          );
+        })
+      )}
+    </>
+  );
 
   const renderChatTab = () => {
     const currentUserId = user?.id;
@@ -6316,6 +6869,7 @@ export default function JobDetailScreen() {
         {activeTab === 'photos' && renderPhotosTab()}
         {activeTab === 'notes' && renderNotesTab()}
         {activeTab === 'chat' && renderChatTab()}
+        {activeTab === 'safety' && renderSafetyTab()}
       </ScrollView>
       </View>
 
@@ -7524,6 +8078,360 @@ export default function JobDetailScreen() {
                 </TouchableOpacity>
                 <View style={{ height: spacing.xl }} />
               </ScrollView>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Template Picker Modal */}
+      <Modal visible={showTemplatePickerModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '70%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Choose Template</Text>
+              <TouchableOpacity onPress={() => setShowTemplatePickerModal(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              <TouchableOpacity
+                style={[styles.card, { marginBottom: spacing.sm }]}
+                onPress={handleStartBlankSwms}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+                  <Feather name="file-plus" size={iconSizes.lg} color={colors.primary} />
+                </View>
+                <View style={styles.cardContent}>
+                  <Text style={[styles.cardValue, { fontWeight: '600' }]}>Blank SWMS</Text>
+                  <Text style={{ fontSize: 13, color: colors.mutedForeground }}>Start from scratch</Text>
+                </View>
+                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              {isLoadingTemplates ? (
+                <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+                  <ActivityIndicator color={colors.primary} />
+                </View>
+              ) : (
+                swmsTemplates.map((template) => (
+                  <TouchableOpacity
+                    key={template.id}
+                    style={[styles.card, { marginBottom: spacing.sm }]}
+                    onPress={() => handleSelectTemplate(template)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.cardIconContainer, { backgroundColor: `${colors.warning}15` }]}>
+                      <Feather name="clipboard" size={iconSizes.lg} color={colors.warning} />
+                    </View>
+                    <View style={styles.cardContent}>
+                      <Text style={[styles.cardValue, { fontWeight: '600' }]}>{template.title}</Text>
+                      {template.description && (
+                        <Text style={{ fontSize: 13, color: colors.mutedForeground }} numberOfLines={2}>
+                          {template.description}
+                        </Text>
+                      )}
+                    </View>
+                    <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+            <View style={styles.modalFooter}>
+              <Button variant="outline" onPress={() => setShowTemplatePickerModal(false)} style={{ flex: 1 }}>
+                Cancel
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Create SWMS Modal */}
+      <Modal visible={showCreateSwmsModal} animationType="slide" transparent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Create SWMS</Text>
+                <TouchableOpacity onPress={() => setShowCreateSwmsModal(false)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+                <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Title *</Text>
+                <TextInput
+                  style={[styles.singleLineInput, { marginBottom: spacing.md }]}
+                  value={swmsForm.title}
+                  onChangeText={v => setSwmsForm(f => ({ ...f, title: v }))}
+                  placeholder="e.g. Working at Heights - Roof Repair"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+
+                <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Work Activity Description</Text>
+                <TextInput
+                  style={[styles.notesInput, { marginBottom: spacing.md, minHeight: 80 }]}
+                  value={swmsForm.workActivityDescription}
+                  onChangeText={v => setSwmsForm(f => ({ ...f, workActivityDescription: v }))}
+                  placeholder="Describe the work activities..."
+                  placeholderTextColor={colors.mutedForeground}
+                  multiline
+                  numberOfLines={3}
+                />
+
+                <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Site Address</Text>
+                <TextInput
+                  style={[styles.singleLineInput, { marginBottom: spacing.md }]}
+                  value={swmsForm.siteAddress}
+                  onChangeText={v => setSwmsForm(f => ({ ...f, siteAddress: v }))}
+                  placeholder="Job site address"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+
+                <Text style={[styles.cardLabel, { marginBottom: spacing.sm }]}>PPE Requirements</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md }}>
+                  {PPE_OPTIONS.map((ppe) => {
+                    const isSelected = swmsForm.ppeRequirements.includes(ppe.key);
+                    return (
+                      <TouchableOpacity
+                        key={ppe.key}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          paddingHorizontal: spacing.md,
+                          paddingVertical: spacing.sm,
+                          borderRadius: radius.lg,
+                          backgroundColor: isSelected ? `${colors.primary}15` : colors.muted,
+                          borderWidth: 1,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                          gap: spacing.xs,
+                        }}
+                        onPress={() => togglePpe(ppe.key)}
+                        activeOpacity={0.7}
+                      >
+                        <Feather
+                          name={isSelected ? 'check-square' : 'square'}
+                          size={16}
+                          color={isSelected ? colors.primary : colors.mutedForeground}
+                        />
+                        <Text style={{
+                          fontSize: 13,
+                          fontWeight: isSelected ? '600' : '400',
+                          color: isSelected ? colors.primary : colors.foreground,
+                        }}>
+                          {ppe.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Emergency Contact</Text>
+                    <TextInput
+                      style={styles.singleLineInput}
+                      value={swmsForm.emergencyContact}
+                      onChangeText={v => setSwmsForm(f => ({ ...f, emergencyContact: v }))}
+                      placeholder="000 or site contact"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>First Aid Location</Text>
+                    <TextInput
+                      style={styles.singleLineInput}
+                      value={swmsForm.firstAidLocation}
+                      onChangeText={v => setSwmsForm(f => ({ ...f, firstAidLocation: v }))}
+                      placeholder="e.g. Site office"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+                  <Text style={[styles.cardLabel, { marginBottom: 0 }]}>Hazards</Text>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: spacing.sm,
+                      paddingVertical: 4,
+                      borderRadius: radius.md,
+                      backgroundColor: `${colors.primary}15`,
+                      gap: 4,
+                    }}
+                    onPress={addHazardRow}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="plus" size={14} color={colors.primary} />
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>Add Hazard</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {swmsForm.hazards.map((hazard, idx) => (
+                  <View key={idx} style={{
+                    backgroundColor: colors.muted,
+                    borderRadius: radius.lg,
+                    padding: spacing.md,
+                    marginBottom: spacing.sm,
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Hazard {idx + 1}</Text>
+                      <TouchableOpacity onPress={() => removeHazardRow(idx)}>
+                        <Feather name="trash-2" size={16} color={colors.destructive} />
+                      </TouchableOpacity>
+                    </View>
+                    <TextInput
+                      style={[styles.singleLineInput, { marginBottom: spacing.sm, backgroundColor: colors.background }]}
+                      value={hazard.hazardDescription}
+                      onChangeText={v => updateHazardRow(idx, 'hazardDescription', v)}
+                      placeholder="Describe the hazard"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+                    <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 11, color: colors.mutedForeground, marginBottom: 4 }}>Likelihood</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                          {['rare', 'unlikely', 'possible', 'likely', 'almost_certain'].map(opt => (
+                            <TouchableOpacity
+                              key={opt}
+                              style={{
+                                paddingHorizontal: 6,
+                                paddingVertical: 3,
+                                borderRadius: radius.sm,
+                                backgroundColor: hazard.riskLikelihood === opt ? colors.primary : colors.background,
+                                borderWidth: 1,
+                                borderColor: hazard.riskLikelihood === opt ? colors.primary : colors.border,
+                              }}
+                              onPress={() => updateHazardRow(idx, 'riskLikelihood', opt)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={{
+                                fontSize: 10,
+                                fontWeight: hazard.riskLikelihood === opt ? '600' : '400',
+                                color: hazard.riskLikelihood === opt ? colors.primaryForeground : colors.foreground,
+                                textTransform: 'capitalize',
+                              }}>
+                                {opt.replace('_', ' ')}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    </View>
+                    <View style={{ marginBottom: spacing.sm }}>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, marginBottom: 4 }}>Consequence</Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                        {['insignificant', 'minor', 'moderate', 'major', 'catastrophic'].map(opt => (
+                          <TouchableOpacity
+                            key={opt}
+                            style={{
+                              paddingHorizontal: 6,
+                              paddingVertical: 3,
+                              borderRadius: radius.sm,
+                              backgroundColor: hazard.riskConsequence === opt ? colors.primary : colors.background,
+                              borderWidth: 1,
+                              borderColor: hazard.riskConsequence === opt ? colors.primary : colors.border,
+                            }}
+                            onPress={() => updateHazardRow(idx, 'riskConsequence', opt)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={{
+                              fontSize: 10,
+                              fontWeight: hazard.riskConsequence === opt ? '600' : '400',
+                              color: hazard.riskConsequence === opt ? colors.primaryForeground : colors.foreground,
+                              textTransform: 'capitalize',
+                            }}>
+                              {opt}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                    <TextInput
+                      style={[styles.singleLineInput, { marginBottom: spacing.sm, backgroundColor: colors.background }]}
+                      value={hazard.controlMeasures}
+                      onChangeText={v => updateHazardRow(idx, 'controlMeasures', v)}
+                      placeholder="Control measures"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+                    <TextInput
+                      style={[styles.singleLineInput, { backgroundColor: colors.background }]}
+                      value={hazard.responsiblePerson}
+                      onChangeText={v => updateHazardRow(idx, 'responsiblePerson', v)}
+                      placeholder="Responsible person"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+                  </View>
+                ))}
+
+                {swmsForm.hazards.length === 0 && (
+                  <View style={{ alignItems: 'center', paddingVertical: spacing.md, marginBottom: spacing.md }}>
+                    <Text style={{ fontSize: 13, color: colors.mutedForeground }}>
+                      No hazards added yet. Tap "Add Hazard" above.
+                    </Text>
+                  </View>
+                )}
+
+                <View style={{ height: spacing.md }} />
+              </ScrollView>
+              <View style={styles.modalFooter}>
+                <Button variant="outline" onPress={() => setShowCreateSwmsModal(false)} style={{ flex: 1, marginRight: 8 }}>
+                  Cancel
+                </Button>
+                <Button onPress={handleCreateSwms} disabled={isSavingSwms || !swmsForm.title.trim()} style={{ flex: 1 }}>
+                  {isSavingSwms ? 'Saving...' : 'Create SWMS'}
+                </Button>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Sign SWMS Modal */}
+      <Modal visible={showSignSwmsModal} animationType="slide" transparent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Sign SWMS</Text>
+                <TouchableOpacity onPress={() => { setShowSignSwmsModal(false); setSigningSwmsId(null); }}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalContent}>
+                <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
+                  <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+                    <Feather name="edit-3" size={28} color={colors.primary} />
+                  </View>
+                  <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: 'center' }}>
+                    By signing, you confirm you have read and understood the Safe Work Method Statement.
+                  </Text>
+                </View>
+                <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Worker Name *</Text>
+                <TextInput
+                  style={[styles.singleLineInput, { marginBottom: spacing.md }]}
+                  value={signWorkerName}
+                  onChangeText={setSignWorkerName}
+                  placeholder="Enter your full name"
+                  placeholderTextColor={colors.mutedForeground}
+                  autoFocus
+                />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: `${colors.primary}10`, padding: spacing.md, borderRadius: radius.lg }}>
+                  <Feather name="map-pin" size={16} color={colors.primary} />
+                  <Text style={{ fontSize: 13, color: colors.mutedForeground, flex: 1 }}>
+                    GPS location will be recorded with your signature
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.modalFooter}>
+                <Button variant="outline" onPress={() => { setShowSignSwmsModal(false); setSigningSwmsId(null); }} style={{ flex: 1, marginRight: 8 }}>
+                  Cancel
+                </Button>
+                <Button onPress={handleSignSwms} disabled={isSigningSwms || !signWorkerName.trim()} style={{ flex: 1 }}>
+                  {isSigningSwms ? 'Signing...' : 'Sign SWMS'}
+                </Button>
+              </View>
             </View>
           </View>
         </KeyboardAvoidingView>

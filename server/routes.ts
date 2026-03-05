@@ -136,6 +136,9 @@ import {
   geofenceAlerts as geofence_alerts,
   jobInvites,
   jobPhotos,
+  swmsDocuments,
+  swmsHazards,
+  swmsSignatures,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, asc, and, gte, lte, isNotNull, isNull, inArray, or } from "drizzle-orm";
@@ -6304,6 +6307,7 @@ Be specific about materials, colors, and features that would be included.`
       invoice: query.hide_invoice === '1',
       compliance: query.hide_compliance === '1',
       subcontractors: query.hide_subcontractors === '1',
+      swms: query.hide_swms === '1',
     };
 
     const rawTimeEntries = await storage.getTimeEntriesForJob(jobId);
@@ -6476,6 +6480,38 @@ Be specific about materials, colors, and features that would be included.`
       console.error('Error fetching variations for proof pack:', e);
     }
 
+    let swmsList: any[] = [];
+    try {
+      const swmsDocs = await db.select().from(swmsDocuments).where(and(eq(swmsDocuments.jobId, jobId), eq(swmsDocuments.userId, userId)));
+      for (const sdoc of swmsDocs) {
+        const hazards = await db.select().from(swmsHazards).where(eq(swmsHazards.swmsId, sdoc.id)).orderBy(asc(swmsHazards.sortOrder));
+        const sigs = await db.select().from(swmsSignatures).where(eq(swmsSignatures.swmsId, sdoc.id)).orderBy(asc(swmsSignatures.signedAt));
+        const ppeLabels: Record<string, string> = { hard_hat: 'Hard Hat', safety_glasses: 'Safety Glasses', hi_vis: 'Hi-Vis Vest', steel_caps: 'Steel Cap Boots', hearing_protection: 'Hearing Protection', dust_mask: 'Dust Mask', gloves: 'Gloves', fall_harness: 'Fall Harness', face_shield: 'Face Shield', sun_protection: 'Sun Protection' };
+        swmsList.push({
+          title: sdoc.title,
+          status: sdoc.status,
+          siteAddress: sdoc.siteAddress,
+          workActivity: sdoc.workActivityDescription,
+          ppe: (sdoc.ppeRequirements as string[] || []).map((p: string) => ppeLabels[p] || p),
+          hazards: hazards.map(h => ({
+            activity: h.activityTask,
+            hazard: h.hazard,
+            riskBefore: h.riskBefore,
+            controlMeasures: h.controlMeasures,
+            riskAfter: h.riskAfter,
+          })),
+          signatures: sigs.map(s => ({
+            name: s.workerName,
+            signedAt: s.signedAt ? new Date(s.signedAt).toLocaleString('en-AU') : '-',
+            location: s.address || (s.latitude ? `${s.latitude}, ${s.longitude}` : null),
+          })),
+          createdAt: sdoc.createdAt ? new Date(sdoc.createdAt).toLocaleDateString('en-AU') : '-',
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching SWMS for proof pack:', e);
+    }
+
     return {
       job,
       business,
@@ -6495,6 +6531,7 @@ Be specific about materials, colors, and features that would be included.`
       complianceDocs,
       subcontractors: subcontractorsList,
       variations,
+      swmsList,
       hideSections,
     };
   }
@@ -38210,6 +38247,563 @@ Respond with JSON in this format:
       console.error("Error uploading standalone photo:", error);
       res.status(500).json({ error: error.message });
     }
+  });
+
+  // ========================
+  // SWMS (Safe Work Method Statements) Routes
+  // ========================
+
+  const SWMS_TEMPLATES = [
+    {
+      id: 'working-at-heights',
+      title: 'Working at Heights',
+      description: 'SWMS for any work performed at height above 2 metres',
+      workActivityDescription: 'Work performed at height above 2 metres including use of ladders, scaffolding, elevated work platforms, and roof work.',
+      ppeRequirements: ['hard_hat', 'safety_glasses', 'hi_vis', 'steel_caps', 'fall_harness', 'gloves'],
+      hazards: [
+        { activityTask: 'Setting up scaffolding/EWP', hazard: 'Fall from height during setup', likelihood: 'possible', consequence: 'major', riskBefore: 'high', controlMeasures: 'Ensure scaffolding erected by competent person. Use fall arrest system during setup. Inspect all components before use.', riskAfter: 'low' },
+        { activityTask: 'Working on elevated platform', hazard: 'Fall from platform edge', likelihood: 'possible', consequence: 'catastrophic', riskBefore: 'extreme', controlMeasures: 'Install guard rails and toe boards. Workers to wear fall arrest harness attached to anchor point. Keep platform clear of trip hazards.', riskAfter: 'low' },
+        { activityTask: 'Accessing roof area', hazard: 'Fall through fragile roof surface', likelihood: 'unlikely', consequence: 'catastrophic', riskBefore: 'high', controlMeasures: 'Identify fragile areas and mark with signage. Use crawl boards. Install safety mesh below.', riskAfter: 'low' },
+        { activityTask: 'Using ladder for access', hazard: 'Ladder slip or collapse', likelihood: 'possible', consequence: 'major', riskBefore: 'high', controlMeasures: 'Inspect ladder before use. Set up on stable level ground at 4:1 ratio. Secure top of ladder. Maintain 3 points of contact.', riskAfter: 'low' },
+        { activityTask: 'Lifting tools/materials to height', hazard: 'Dropped objects striking persons below', likelihood: 'possible', consequence: 'major', riskBefore: 'high', controlMeasures: 'Establish exclusion zone below work area. Use tool lanyards. Store materials securely on platform.', riskAfter: 'low' },
+      ],
+    },
+    {
+      id: 'electrical-work',
+      title: 'Electrical Work',
+      description: 'SWMS for electrical installation, maintenance and repair',
+      workActivityDescription: 'Electrical work including installation, maintenance, testing and repair of electrical systems and components.',
+      ppeRequirements: ['safety_glasses', 'hi_vis', 'steel_caps', 'gloves', 'hearing_protection'],
+      hazards: [
+        { activityTask: 'Working on live circuits', hazard: 'Electric shock / electrocution', likelihood: 'possible', consequence: 'catastrophic', riskBefore: 'extreme', controlMeasures: 'Isolate power at switchboard. Lock out/tag out. Test for dead using approved voltage tester. Use insulated tools.', riskAfter: 'low' },
+        { activityTask: 'Cable installation in roof space', hazard: 'Contact with existing live wiring', likelihood: 'unlikely', consequence: 'major', riskBefore: 'medium', controlMeasures: 'Identify existing circuits before starting. Use cable detector. Isolate circuits in work area.', riskAfter: 'low' },
+        { activityTask: 'Working near switchboard', hazard: 'Arc flash / electrical burn', likelihood: 'rare', consequence: 'catastrophic', riskBefore: 'high', controlMeasures: 'Wear arc-rated PPE. Maintain safe working distance. Use insulated tools rated for voltage.', riskAfter: 'low' },
+        { activityTask: 'Testing electrical systems', hazard: 'Exposure to live parts during testing', likelihood: 'possible', consequence: 'major', riskBefore: 'high', controlMeasures: 'Use approved test instruments. Follow safe testing procedures. Ensure adequate lighting.', riskAfter: 'low' },
+      ],
+    },
+    {
+      id: 'excavation',
+      title: 'Excavation & Trenching',
+      description: 'SWMS for excavation work including trenching deeper than 1.5m',
+      workActivityDescription: 'Excavation and trenching work for installation of services, foundations, or drainage.',
+      ppeRequirements: ['hard_hat', 'safety_glasses', 'hi_vis', 'steel_caps', 'gloves', 'hearing_protection'],
+      hazards: [
+        { activityTask: 'Digging trench', hazard: 'Trench collapse / cave-in', likelihood: 'possible', consequence: 'catastrophic', riskBefore: 'extreme', controlMeasures: 'Shore or batter trench walls. Do not enter trench deeper than 1.5m without shoring. Keep spoil 1m from edge.', riskAfter: 'low' },
+        { activityTask: 'Operating excavator', hazard: 'Strike underground services (gas, electrical)', likelihood: 'possible', consequence: 'catastrophic', riskBefore: 'extreme', controlMeasures: 'Obtain Dial Before You Dig plans. Use cable locator. Hand dig within 500mm of services. Pothole to confirm.', riskAfter: 'medium' },
+        { activityTask: 'Working near excavation edge', hazard: 'Fall into excavation', likelihood: 'possible', consequence: 'major', riskBefore: 'high', controlMeasures: 'Install barricades around excavation. Maintain 1m clearance from edge. Provide safe access via ladder or ramp.', riskAfter: 'low' },
+        { activityTask: 'Backfilling trench', hazard: 'Workers struck by plant or equipment', likelihood: 'unlikely', consequence: 'major', riskBefore: 'medium', controlMeasures: 'Establish exclusion zone around plant. Use spotter. Workers to maintain safe distance from operating plant.', riskAfter: 'low' },
+      ],
+    },
+    {
+      id: 'demolition',
+      title: 'Demolition Work',
+      description: 'SWMS for demolition of structures or structural elements',
+      workActivityDescription: 'Demolition of structures, walls, floors, or structural elements including manual and mechanical methods.',
+      ppeRequirements: ['hard_hat', 'safety_glasses', 'hi_vis', 'steel_caps', 'dust_mask', 'gloves', 'hearing_protection'],
+      hazards: [
+        { activityTask: 'Structural demolition', hazard: 'Uncontrolled collapse of structure', likelihood: 'possible', consequence: 'catastrophic', riskBefore: 'extreme', controlMeasures: 'Obtain engineering advice on sequence. Install temporary propping. Establish exclusion zones. Follow demolition plan.', riskAfter: 'medium' },
+        { activityTask: 'Breaking concrete/masonry', hazard: 'Silica dust exposure', likelihood: 'likely', consequence: 'major', riskBefore: 'extreme', controlMeasures: 'Wet-cut methods where possible. P2 respirator mandatory. Dust suppression with water. Monitor exposure levels.', riskAfter: 'low' },
+        { activityTask: 'Removing materials', hazard: 'Exposure to asbestos', likelihood: 'possible', consequence: 'catastrophic', riskBefore: 'extreme', controlMeasures: 'Survey for asbestos before work. If found, stop work immediately. Engage licensed asbestos removalist.', riskAfter: 'low' },
+        { activityTask: 'Using power tools for cutting', hazard: 'Flying debris causing injury', likelihood: 'likely', consequence: 'moderate', riskBefore: 'high', controlMeasures: 'Full face shield and safety glasses. Establish exclusion zone. Use guards on cutting equipment.', riskAfter: 'low' },
+      ],
+    },
+    {
+      id: 'confined-space',
+      title: 'Confined Space Entry',
+      description: 'SWMS for work in confined spaces such as tanks, pits, and manholes',
+      workActivityDescription: 'Entry and work within confined spaces including tanks, vessels, pits, manholes, and enclosed drainage systems.',
+      ppeRequirements: ['hard_hat', 'safety_glasses', 'hi_vis', 'steel_caps', 'gloves', 'dust_mask'],
+      hazards: [
+        { activityTask: 'Entering confined space', hazard: 'Oxygen depletion / toxic atmosphere', likelihood: 'possible', consequence: 'catastrophic', riskBefore: 'extreme', controlMeasures: 'Atmospheric testing before entry and continuously during work. Forced ventilation. Gas detector worn by entrant. Standby person at entry.', riskAfter: 'medium' },
+        { activityTask: 'Working inside space', hazard: 'Engulfment by liquid or material', likelihood: 'unlikely', consequence: 'catastrophic', riskBefore: 'high', controlMeasures: 'Isolate and lock out all inlets. Drain and purge space. Confirm isolation before entry.', riskAfter: 'low' },
+        { activityTask: 'Emergency rescue', hazard: 'Inability to rescue incapacitated worker', likelihood: 'rare', consequence: 'catastrophic', riskBefore: 'high', controlMeasures: 'Rescue plan in place. Rescue equipment at entry. Standby person trained in rescue. Communication system established.', riskAfter: 'low' },
+      ],
+    },
+    {
+      id: 'hot-work',
+      title: 'Hot Work (Welding/Grinding)',
+      description: 'SWMS for welding, cutting, grinding and other hot work activities',
+      workActivityDescription: 'Hot work activities including welding, thermal cutting, grinding, and brazing.',
+      ppeRequirements: ['hard_hat', 'safety_glasses', 'hi_vis', 'steel_caps', 'gloves', 'face_shield', 'hearing_protection'],
+      hazards: [
+        { activityTask: 'Welding / cutting', hazard: 'Fire from sparks igniting combustibles', likelihood: 'possible', consequence: 'major', riskBefore: 'high', controlMeasures: 'Clear area of combustibles 10m radius. Fire extinguisher within 5m. Fire watch during and 30 min after work. Hot work permit issued.', riskAfter: 'low' },
+        { activityTask: 'Arc welding', hazard: 'UV radiation / arc eye', likelihood: 'likely', consequence: 'moderate', riskBefore: 'high', controlMeasures: 'Welding helmet with appropriate shade lens. Welding screens to protect others. Long sleeves and welding gloves.', riskAfter: 'low' },
+        { activityTask: 'Grinding metal', hazard: 'Eye injury from flying particles', likelihood: 'likely', consequence: 'moderate', riskBefore: 'high', controlMeasures: 'Full face shield over safety glasses. Guard fitted to grinder. Inspect disc before use. Secure workpiece.', riskAfter: 'low' },
+        { activityTask: 'Welding in confined area', hazard: 'Fume inhalation', likelihood: 'likely', consequence: 'major', riskBefore: 'extreme', controlMeasures: 'Forced mechanical ventilation. Fume extraction at source. P2 respirator. Monitor for oxygen depletion.', riskAfter: 'low' },
+      ],
+    },
+    {
+      id: 'roofing',
+      title: 'Roofing Work',
+      description: 'SWMS for roof installation, repair and maintenance',
+      workActivityDescription: 'Roof work including installation, repair and maintenance of roofing materials, guttering, and flashings.',
+      ppeRequirements: ['hard_hat', 'safety_glasses', 'hi_vis', 'steel_caps', 'fall_harness', 'gloves', 'sun_protection'],
+      hazards: [
+        { activityTask: 'Accessing roof via ladder', hazard: 'Fall from ladder', likelihood: 'possible', consequence: 'major', riskBefore: 'high', controlMeasures: 'Industrial rated ladder at 4:1 angle. Secured at top. 3 points of contact. Extend 1m above landing.', riskAfter: 'low' },
+        { activityTask: 'Walking on roof surface', hazard: 'Fall from roof edge', likelihood: 'possible', consequence: 'catastrophic', riskBefore: 'extreme', controlMeasures: 'Edge protection installed. Fall arrest system with roof anchor. Travel restraint to prevent access to edge.', riskAfter: 'low' },
+        { activityTask: 'Handling roofing sheets', hazard: 'Sheets caught by wind causing fall', likelihood: 'possible', consequence: 'major', riskBefore: 'high', controlMeasures: 'Do not work in winds above 40km/h. Secure sheets immediately after placement. Two workers for large sheets.', riskAfter: 'low' },
+        { activityTask: 'Working in sun/heat', hazard: 'Heat stress / sunburn', likelihood: 'likely', consequence: 'moderate', riskBefore: 'high', controlMeasures: 'Schedule heavy work for cooler parts of day. Regular water breaks. Sun protection (hat, sunscreen, long sleeves). Monitor for heat stress symptoms.', riskAfter: 'low' },
+      ],
+    },
+    {
+      id: 'plumbing',
+      title: 'Plumbing & Hot Water',
+      description: 'SWMS for plumbing work including hot water system installation',
+      workActivityDescription: 'Plumbing work including installation, repair and maintenance of water supply, drainage, gas fitting and hot water systems.',
+      ppeRequirements: ['safety_glasses', 'hi_vis', 'steel_caps', 'gloves'],
+      hazards: [
+        { activityTask: 'Working with gas supply', hazard: 'Gas leak / explosion', likelihood: 'unlikely', consequence: 'catastrophic', riskBefore: 'high', controlMeasures: 'Isolate gas supply before work. Test for leaks with approved detector after connection. Ventilate area. No ignition sources.', riskAfter: 'low' },
+        { activityTask: 'Soldering copper pipes', hazard: 'Burns / fire risk', likelihood: 'possible', consequence: 'moderate', riskBefore: 'medium', controlMeasures: 'Fire blanket behind work area. Fire extinguisher nearby. Heat-resistant gloves. Clear combustibles.', riskAfter: 'low' },
+        { activityTask: 'Working under building', hazard: 'Confined space / limited access', likelihood: 'possible', consequence: 'moderate', riskBefore: 'medium', controlMeasures: 'Check for hazardous atmosphere. Adequate lighting. Clear access/egress path. Notify others of location.', riskAfter: 'low' },
+        { activityTask: 'Handling hot water system', hazard: 'Scalding from hot water / steam', likelihood: 'possible', consequence: 'moderate', riskBefore: 'medium', controlMeasures: 'Isolate power/gas and allow to cool. Release pressure valve. Wear heat-resistant gloves.', riskAfter: 'low' },
+      ],
+    },
+    {
+      id: 'general-construction',
+      title: 'General Construction',
+      description: 'General SWMS for construction site activities',
+      workActivityDescription: 'General construction activities including site preparation, building works, and finishing trades.',
+      ppeRequirements: ['hard_hat', 'safety_glasses', 'hi_vis', 'steel_caps', 'hearing_protection'],
+      hazards: [
+        { activityTask: 'Manual handling of materials', hazard: 'Musculoskeletal injury / back strain', likelihood: 'likely', consequence: 'moderate', riskBefore: 'high', controlMeasures: 'Use mechanical aids where possible. Team lift for heavy items over 20kg. Correct lifting technique. Rotate tasks.', riskAfter: 'low' },
+        { activityTask: 'Using power tools', hazard: 'Cuts and lacerations', likelihood: 'possible', consequence: 'moderate', riskBefore: 'medium', controlMeasures: 'Guards fitted and operational. Pre-use inspection. Trained operators only. Secure workpiece.', riskAfter: 'low' },
+        { activityTask: 'Working near mobile plant', hazard: 'Struck by moving plant', likelihood: 'unlikely', consequence: 'catastrophic', riskBefore: 'high', controlMeasures: 'Exclusion zones around plant. Hi-vis mandatory. Spotter for reversing. Eye contact with operator before approaching.', riskAfter: 'low' },
+        { activityTask: 'Housekeeping and site access', hazard: 'Slips, trips and falls', likelihood: 'likely', consequence: 'minor', riskBefore: 'medium', controlMeasures: 'Keep walkways clear. Clean up spills immediately. Good lighting. Appropriate footwear.', riskAfter: 'low' },
+      ],
+    },
+  ];
+
+  app.get("/api/swms/templates", requireAuth, async (_req: any, res) => {
+    try {
+      res.json(SWMS_TEMPLATES.map(t => ({ id: t.id, title: t.title, description: t.description })));
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/swms/templates/:templateId", requireAuth, async (req: any, res) => {
+    try {
+      const template = SWMS_TEMPLATES.find(t => t.id === req.params.templateId);
+      if (!template) return res.status(404).json({ error: 'Template not found' });
+      res.json(template);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/swms", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      const docs = await db.select().from(swmsDocuments).where(eq(swmsDocuments.userId, userId)).orderBy(desc(swmsDocuments.createdAt));
+      const docsWithJob = await Promise.all(docs.map(async (doc) => {
+        let jobTitle = null;
+        if (doc.jobId) {
+          try {
+            const job = await storage.getJob(doc.jobId, userId);
+            jobTitle = job?.title || null;
+          } catch {}
+        }
+        const hazardCount = await db.select({ count: sql<number>`count(*)` }).from(swmsHazards).where(eq(swmsHazards.swmsId, doc.id));
+        const sigCount = await db.select({ count: sql<number>`count(*)` }).from(swmsSignatures).where(eq(swmsSignatures.swmsId, doc.id));
+        return { ...doc, jobTitle, hazardCount: Number(hazardCount[0]?.count || 0), signatureCount: Number(sigCount[0]?.count || 0) };
+      }));
+      res.json(docsWithJob);
+    } catch (error: any) {
+      console.error("Error fetching SWMS:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/swms", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      const { title, description, jobId, siteAddress, workActivityDescription, ppeRequirements, emergencyContact, firstAidLocation, status, hazards } = req.body;
+      if (!title) return res.status(400).json({ error: 'Title is required' });
+
+      let resolvedAddress = siteAddress;
+      if (jobId && !siteAddress) {
+        try {
+          const job = await storage.getJob(jobId, userId);
+          if (job?.address) resolvedAddress = job.address;
+        } catch {}
+      }
+
+      const [doc] = await db.insert(swmsDocuments).values({
+        userId,
+        jobId: jobId || null,
+        title,
+        description: description || null,
+        siteAddress: resolvedAddress || null,
+        workActivityDescription: workActivityDescription || null,
+        ppeRequirements: ppeRequirements || [],
+        emergencyContact: emergencyContact || null,
+        firstAidLocation: firstAidLocation || null,
+        status: status || 'draft',
+      }).returning();
+
+      if (hazards && Array.isArray(hazards) && hazards.length > 0) {
+        for (let i = 0; i < hazards.length; i++) {
+          const h = hazards[i];
+          await db.insert(swmsHazards).values({
+            swmsId: doc.id,
+            stepNumber: i + 1,
+            activityTask: h.activityTask || 'Activity',
+            hazard: h.hazard || 'Hazard',
+            likelihood: h.likelihood || 'possible',
+            consequence: h.consequence || 'moderate',
+            riskBefore: h.riskBefore || 'medium',
+            controlMeasures: h.controlMeasures || null,
+            riskAfter: h.riskAfter || 'low',
+            sortOrder: i,
+          });
+        }
+      }
+
+      res.json(doc);
+    } catch (error: any) {
+      console.error("Error creating SWMS:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/swms/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      const [doc] = await db.select().from(swmsDocuments).where(and(eq(swmsDocuments.id, req.params.id), eq(swmsDocuments.userId, userId)));
+      if (!doc) return res.status(404).json({ error: 'SWMS not found' });
+      const hazards = await db.select().from(swmsHazards).where(eq(swmsHazards.swmsId, doc.id)).orderBy(asc(swmsHazards.sortOrder));
+      const signatures = await db.select().from(swmsSignatures).where(eq(swmsSignatures.swmsId, doc.id)).orderBy(asc(swmsSignatures.signedAt));
+      let jobTitle = null;
+      if (doc.jobId) {
+        try {
+          const job = await storage.getJob(doc.jobId, userId);
+          jobTitle = job?.title || null;
+        } catch {}
+      }
+      res.json({ ...doc, jobTitle, hazards, signatures });
+    } catch (error: any) {
+      console.error("Error fetching SWMS:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/swms/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      const [existing] = await db.select().from(swmsDocuments).where(and(eq(swmsDocuments.id, req.params.id), eq(swmsDocuments.userId, userId)));
+      if (!existing) return res.status(404).json({ error: 'SWMS not found' });
+
+      const updates: any = { updatedAt: new Date() };
+      const fields = ['title', 'description', 'jobId', 'siteAddress', 'workActivityDescription', 'ppeRequirements', 'emergencyContact', 'firstAidLocation', 'status'];
+      fields.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+
+      const [updated] = await db.update(swmsDocuments).set(updates).where(eq(swmsDocuments.id, req.params.id)).returning();
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating SWMS:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/swms/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      const [existing] = await db.select().from(swmsDocuments).where(and(eq(swmsDocuments.id, req.params.id), eq(swmsDocuments.userId, userId)));
+      if (!existing) return res.status(404).json({ error: 'SWMS not found' });
+      await db.delete(swmsDocuments).where(eq(swmsDocuments.id, req.params.id));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting SWMS:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/jobs/:jobId/swms", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      const docs = await db.select().from(swmsDocuments).where(and(eq(swmsDocuments.jobId, req.params.jobId), eq(swmsDocuments.userId, userId))).orderBy(desc(swmsDocuments.createdAt));
+      const docsWithCounts = await Promise.all(docs.map(async (doc) => {
+        const hazardCount = await db.select({ count: sql<number>`count(*)` }).from(swmsHazards).where(eq(swmsHazards.swmsId, doc.id));
+        const sigCount = await db.select({ count: sql<number>`count(*)` }).from(swmsSignatures).where(eq(swmsSignatures.swmsId, doc.id));
+        return { ...doc, hazardCount: Number(hazardCount[0]?.count || 0), signatureCount: Number(sigCount[0]?.count || 0) };
+      }));
+      res.json(docsWithCounts);
+    } catch (error: any) {
+      console.error("Error fetching job SWMS:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/swms/:id/hazards", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      const [doc] = await db.select().from(swmsDocuments).where(and(eq(swmsDocuments.id, req.params.id), eq(swmsDocuments.userId, userId)));
+      if (!doc) return res.status(404).json({ error: 'SWMS not found' });
+
+      const { activityTask, hazard, likelihood, consequence, riskBefore, controlMeasures, riskAfter } = req.body;
+      if (!activityTask || !hazard) return res.status(400).json({ error: 'Activity and hazard are required' });
+
+      const existing = await db.select({ count: sql<number>`count(*)` }).from(swmsHazards).where(eq(swmsHazards.swmsId, doc.id));
+      const stepNum = Number(existing[0]?.count || 0) + 1;
+
+      const [h] = await db.insert(swmsHazards).values({
+        swmsId: doc.id,
+        stepNumber: stepNum,
+        activityTask,
+        hazard,
+        likelihood: likelihood || 'possible',
+        consequence: consequence || 'moderate',
+        riskBefore: riskBefore || 'medium',
+        controlMeasures: controlMeasures || null,
+        riskAfter: riskAfter || 'low',
+        sortOrder: stepNum - 1,
+      }).returning();
+      res.json(h);
+    } catch (error: any) {
+      console.error("Error adding hazard:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/swms/hazards/:hazardId", requireAuth, async (req: any, res) => {
+    try {
+      const [hazard] = await db.select().from(swmsHazards).where(eq(swmsHazards.id, req.params.hazardId));
+      if (!hazard) return res.status(404).json({ error: 'Hazard not found' });
+
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      const [doc] = await db.select().from(swmsDocuments).where(and(eq(swmsDocuments.id, hazard.swmsId), eq(swmsDocuments.userId, userId)));
+      if (!doc) return res.status(404).json({ error: 'SWMS not found' });
+
+      const updates: any = {};
+      const fields = ['activityTask', 'hazard', 'likelihood', 'consequence', 'riskBefore', 'controlMeasures', 'riskAfter', 'sortOrder'];
+      fields.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+
+      const [updated] = await db.update(swmsHazards).set(updates).where(eq(swmsHazards.id, req.params.hazardId)).returning();
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating hazard:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/swms/hazards/:hazardId", requireAuth, async (req: any, res) => {
+    try {
+      const [hazard] = await db.select().from(swmsHazards).where(eq(swmsHazards.id, req.params.hazardId));
+      if (!hazard) return res.status(404).json({ error: 'Hazard not found' });
+
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      const [doc] = await db.select().from(swmsDocuments).where(and(eq(swmsDocuments.id, hazard.swmsId), eq(swmsDocuments.userId, userId)));
+      if (!doc) return res.status(404).json({ error: 'SWMS not found' });
+
+      await db.delete(swmsHazards).where(eq(swmsHazards.id, req.params.hazardId));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting hazard:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/swms/:id/sign", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      const [doc] = await db.select().from(swmsDocuments).where(eq(swmsDocuments.id, req.params.id));
+      if (!doc) return res.status(404).json({ error: 'SWMS not found' });
+
+      if (doc.userId !== userId) {
+        const teamCheck = await db.execute(sql`SELECT 1 FROM team_members WHERE user_id = ${req.userId} AND business_owner_id = ${doc.userId} AND status = 'active' LIMIT 1`);
+        if (!teamCheck.rows || teamCheck.rows.length === 0) return res.status(403).json({ error: 'Not authorized to sign this SWMS' });
+      }
+
+      const { workerName, signatureData, latitude, longitude, address, workerUserId } = req.body;
+      if (!workerName || !signatureData) return res.status(400).json({ error: 'Worker name and signature are required' });
+
+      const [sig] = await db.insert(swmsSignatures).values({
+        swmsId: req.params.id,
+        workerName,
+        workerUserId: workerUserId || req.userId || null,
+        signatureData,
+        signedAt: new Date(),
+        latitude: latitude || null,
+        longitude: longitude || null,
+        address: address || null,
+      }).returning();
+      res.json(sig);
+    } catch (error: any) {
+      console.error("Error signing SWMS:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  const PPE_LABELS: Record<string, string> = {
+    hard_hat: 'Hard Hat',
+    safety_glasses: 'Safety Glasses',
+    hi_vis: 'Hi-Vis Vest',
+    steel_caps: 'Steel Cap Boots',
+    hearing_protection: 'Hearing Protection',
+    dust_mask: 'Dust Mask / Respirator',
+    gloves: 'Gloves',
+    fall_harness: 'Fall Arrest Harness',
+    face_shield: 'Face Shield',
+    sun_protection: 'Sun Protection',
+  };
+
+  const RISK_MATRIX: Record<string, Record<string, string>> = {
+    rare: { insignificant: 'low', minor: 'low', moderate: 'low', major: 'medium', catastrophic: 'medium' },
+    unlikely: { insignificant: 'low', minor: 'low', moderate: 'medium', major: 'medium', catastrophic: 'high' },
+    possible: { insignificant: 'low', minor: 'medium', moderate: 'medium', major: 'high', catastrophic: 'extreme' },
+    likely: { insignificant: 'low', minor: 'medium', moderate: 'high', major: 'high', catastrophic: 'extreme' },
+    almost_certain: { insignificant: 'medium', minor: 'high', moderate: 'high', major: 'extreme', catastrophic: 'extreme' },
+  };
+
+  app.get("/api/swms/:id/pdf", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const userId = userContext.effectiveUserId;
+      const [doc] = await db.select().from(swmsDocuments).where(and(eq(swmsDocuments.id, req.params.id), eq(swmsDocuments.userId, userId)));
+      if (!doc) return res.status(404).json({ error: 'SWMS not found' });
+
+      const hazards = await db.select().from(swmsHazards).where(eq(swmsHazards.swmsId, doc.id)).orderBy(asc(swmsHazards.sortOrder));
+      const signatures = await db.select().from(swmsSignatures).where(eq(swmsSignatures.swmsId, doc.id)).orderBy(asc(swmsSignatures.signedAt));
+
+      const businessRaw = await storage.getBusinessSettingsByUserId(userId);
+      const businessName = businessRaw?.businessName || 'Business';
+      const abn = businessRaw?.abn || '';
+
+      const ppeList = (doc.ppeRequirements as string[] || []).map((p: string) => PPE_LABELS[p] || p).join(', ');
+
+      const riskColor = (r: string) => {
+        if (r === 'low') return 'background:#dcfce7;color:#166534';
+        if (r === 'medium') return 'background:#fef3c7;color:#92400e';
+        if (r === 'high') return 'background:#fee2e2;color:#991b1b';
+        return 'background:#7f1d1d;color:#fff';
+      };
+
+      const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>SWMS - ${doc.title}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #222; margin: 0; padding: 20px; }
+  .header { background: #1e3a5f; color: white; padding: 20px; border-radius: 6px; margin-bottom: 16px; }
+  .header h1 { margin: 0 0 4px 0; font-size: 20px; }
+  .header p { margin: 2px 0; font-size: 11px; opacity: 0.9; }
+  .section { margin-bottom: 14px; }
+  .section-title { font-size: 13px; font-weight: 700; color: #1e3a5f; border-bottom: 2px solid #1e3a5f; padding-bottom: 4px; margin-bottom: 8px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
+  .info-item label { font-weight: 600; color: #555; font-size: 9px; text-transform: uppercase; display: block; }
+  .info-item span { font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  th { background: #f1f5f9; padding: 6px 8px; text-align: left; border: 1px solid #e2e8f0; font-size: 9px; text-transform: uppercase; color: #475569; }
+  td { padding: 6px 8px; border: 1px solid #e2e8f0; vertical-align: top; }
+  .risk-badge { padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; text-transform: uppercase; display: inline-block; }
+  .ppe-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ppe-item { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; padding: 4px 10px; font-size: 10px; color: #1e40af; }
+  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .sig-card { border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; }
+  .sig-card img { max-width: 180px; max-height: 60px; }
+  .sig-name { font-weight: 700; font-size: 12px; }
+  .sig-meta { font-size: 9px; color: #666; margin-top: 2px; }
+  .footer { margin-top: 20px; text-align: center; font-size: 9px; color: #999; border-top: 1px solid #eee; padding-top: 8px; }
+</style></head><body>
+  <div class="header">
+    <h1>SAFE WORK METHOD STATEMENT</h1>
+    <p>${doc.title}</p>
+    <p>${businessName}${abn ? ` | ABN: ${abn}` : ''}</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">1. General Information</div>
+    <div class="info-grid">
+      <div class="info-item"><label>Document Title</label><span>${doc.title}</span></div>
+      <div class="info-item"><label>Status</label><span>${(doc.status || 'draft').toUpperCase()}</span></div>
+      <div class="info-item"><label>Site Address</label><span>${doc.siteAddress || 'Not specified'}</span></div>
+      <div class="info-item"><label>Date Created</label><span>${doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('en-AU') : '-'}</span></div>
+    </div>
+    ${doc.description ? `<p style="margin-top:8px">${doc.description}</p>` : ''}
+  </div>
+
+  <div class="section">
+    <div class="section-title">2. Work Activity Description</div>
+    <p>${doc.workActivityDescription || 'Not specified'}</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">3. Hazard Identification & Risk Assessment</div>
+    ${hazards.length > 0 ? `<table>
+      <thead><tr>
+        <th style="width:5%">#</th>
+        <th style="width:18%">Activity / Task</th>
+        <th style="width:18%">Hazard</th>
+        <th style="width:8%">Likelihood</th>
+        <th style="width:8%">Consequence</th>
+        <th style="width:8%">Risk</th>
+        <th style="width:22%">Control Measures</th>
+        <th style="width:8%">Residual</th>
+      </tr></thead>
+      <tbody>${hazards.map((h, i) => `<tr>
+        <td>${i + 1}</td>
+        <td>${h.activityTask}</td>
+        <td>${h.hazard}</td>
+        <td>${h.likelihood.replace('_', ' ')}</td>
+        <td>${h.consequence}</td>
+        <td><span class="risk-badge" style="${riskColor(h.riskBefore)}">${h.riskBefore}</span></td>
+        <td>${h.controlMeasures || '-'}</td>
+        <td><span class="risk-badge" style="${riskColor(h.riskAfter)}">${h.riskAfter}</span></td>
+      </tr>`).join('')}</tbody>
+    </table>` : '<p>No hazards identified</p>'}
+  </div>
+
+  <div class="section">
+    <div class="section-title">4. PPE Requirements</div>
+    ${ppeList ? `<div class="ppe-grid">${(doc.ppeRequirements as string[] || []).map((p: string) => `<div class="ppe-item">${PPE_LABELS[p] || p}</div>`).join('')}</div>` : '<p>No PPE requirements specified</p>'}
+  </div>
+
+  <div class="section">
+    <div class="section-title">5. Emergency Information</div>
+    <div class="info-grid">
+      <div class="info-item"><label>Emergency Contact</label><span>${doc.emergencyContact || 'Not specified'}</span></div>
+      <div class="info-item"><label>First Aid Location</label><span>${doc.firstAidLocation || 'Not specified'}</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">6. Worker Sign-off</div>
+    <p style="font-size:10px;color:#555;margin-bottom:8px">I have read and understood this SWMS and agree to follow the safe work procedures described.</p>
+    ${signatures.length > 0 ? `<div class="sig-grid">${signatures.map(s => `<div class="sig-card">
+      <div class="sig-name">${s.workerName}</div>
+      ${s.signatureData && s.signatureData.startsWith('data:') ? `<img src="${s.signatureData}" alt="Signature" />` : `<div style="font-style:italic;color:#666;font-size:10px;padding:8px 0">Signed electronically via mobile</div>`}
+      <div class="sig-meta">Signed: ${s.signedAt ? new Date(s.signedAt).toLocaleString('en-AU') : '-'}</div>
+      ${s.address ? `<div class="sig-meta">Location: ${s.address}</div>` : (s.latitude ? `<div class="sig-meta">GPS: ${s.latitude}, ${s.longitude}</div>` : '')}
+    </div>`).join('')}</div>` : '<p>No signatures yet</p>'}
+  </div>
+
+  <div class="footer">
+    <p>Generated by JobRunner &bull; ${new Date().toLocaleDateString('en-AU')}</p>
+    <p>This SWMS must be reviewed when work conditions change or a new hazard is identified.</p>
+  </div>
+</body></html>`;
+
+      const { generatePDFBuffer } = await import('./pdfService');
+      const buffer = await generatePDFBuffer(html);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="SWMS-${doc.title.replace(/[^a-zA-Z0-9]/g, '-')}.pdf"`);
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Error generating SWMS PDF:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/swms/risk-matrix", requireAuth, async (_req: any, res) => {
+    res.json(RISK_MATRIX);
   });
 
   const httpServer = createServer(app);

@@ -3677,10 +3677,11 @@ export const generateJobProofPackPDF = (data: {
   complianceDocs?: Array<{type: string; title: string; documentNumber?: string; issuer?: string; holderName?: string; expiryDate?: string | null; coverageAmount?: string; status: string}>;
   subcontractors?: Array<{name: string; status: string; invitedAt?: string | null; acceptedAt?: string | null; lastAccessed?: string | null; source: string}>;
   variations?: Array<{number: string; title: string; description?: string; reason?: string; additionalAmount: string; gstAmount: string; totalAmount: string; status: string; approvedByName?: string; approvedAt?: string; createdAt?: string}>;
-  hideSections?: {timeline?: boolean; attendance?: boolean; gpsProof?: boolean; materials?: boolean; photos?: boolean; invoice?: boolean; compliance?: boolean; subcontractors?: boolean; variations?: boolean};
+  swmsList?: Array<{title: string; status: string; siteAddress?: string; workActivity?: string; ppe: string[]; hazards: Array<{activity: string; hazard: string; riskBefore: string; controlMeasures?: string; riskAfter: string}>; signatures: Array<{name: string; signedAt: string; location?: string | null}>; createdAt: string}>;
+  hideSections?: {timeline?: boolean; attendance?: boolean; gpsProof?: boolean; materials?: boolean; photos?: boolean; invoice?: boolean; compliance?: boolean; subcontractors?: boolean; swms?: boolean; variations?: boolean};
   accentColor?: string;
 }): string => {
-  const { job, business, client, timeEntries, materials, photos, invoice, geofenceAlerts = [], complianceDocs = [], subcontractors = [], variations = [], hideSections = {}, accentColor: overrideColor } = data;
+  const { job, business, client, timeEntries, materials, photos, invoice, geofenceAlerts = [], complianceDocs = [], subcontractors = [], variations = [], swmsList = [], hideSections = {}, accentColor: overrideColor } = data;
 
   const { template, accentColor: templateColor } = getTemplateFromBusinessSettings(business);
   const brandColor = overrideColor || templateColor;
@@ -4218,6 +4219,35 @@ export const generateJobProofPackPDF = (data: {
     ${!hideSections.subcontractors ? `<div class="section">
       <div class="section-title">${!hideSections.variations && variations.length > 0 ? '9' : '8'}. Subcontractor Coordination</div>
       ${subcontractorsHtml}
+    </div>` : ''}
+
+    ${!(hideSections as any).swms && swmsList.length > 0 ? `<div class="section">
+      <div class="section-title">${!hideSections.variations && variations.length > 0 ? '10' : '9'}. Safe Work Method Statements (SWMS)</div>
+      ${swmsList.map(s => `
+        <div style="margin-bottom:12px;border:1px solid #e2e8f0;border-radius:6px;padding:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-weight:700;font-size:13px">${s.title}</div>
+            <span class="status-pill" style="${s.status === 'active' ? 'background:#dcfce7;color:#166534' : s.status === 'completed' ? 'background:#dbeafe;color:#1e40af' : 'background:#f3f4f6;color:#6b7280'}">${(s.status || 'draft').toUpperCase()}</span>
+          </div>
+          ${s.workActivity ? `<p style="font-size:10px;color:#555;margin:0 0 8px 0">${s.workActivity}</p>` : ''}
+          ${s.hazards.length > 0 ? `
+          <table class="proof-table" style="margin-bottom:8px">
+            <thead><tr><th>Activity</th><th>Hazard</th><th style="text-align:center">Risk</th><th>Controls</th><th style="text-align:center">Residual</th></tr></thead>
+            <tbody>${s.hazards.map(h => {
+              const rc = (r: string) => r === 'low' ? 'background:#dcfce7;color:#166534' : r === 'medium' ? 'background:#fef3c7;color:#92400e' : r === 'high' ? 'background:#fee2e2;color:#991b1b' : 'background:#7f1d1d;color:#fff';
+              return `<tr>
+                <td>${h.activity}</td>
+                <td>${h.hazard}</td>
+                <td style="text-align:center"><span class="status-pill" style="${rc(h.riskBefore)}">${h.riskBefore.toUpperCase()}</span></td>
+                <td>${h.controlMeasures || '-'}</td>
+                <td style="text-align:center"><span class="status-pill" style="${rc(h.riskAfter)}">${h.riskAfter.toUpperCase()}</span></td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>` : ''}
+          ${s.ppe.length > 0 ? `<p style="font-size:9px;color:#666;margin:4px 0"><strong>PPE:</strong> ${s.ppe.join(', ')}</p>` : ''}
+          ${s.signatures.length > 0 ? `<p style="font-size:9px;color:#666;margin:4px 0"><strong>Signed by:</strong> ${s.signatures.map(sig => `${sig.name} (${sig.signedAt})`).join(', ')}</p>` : '<p style="font-size:9px;color:#cc6600;margin:4px 0"><strong>No worker signatures recorded</strong></p>'}
+        </div>
+      `).join('')}
     </div>` : ''}
 
     <div class="footer">

@@ -4115,3 +4115,60 @@ export const paymentRecords = pgTable("payment_records", {
 export const insertPaymentRecordSchema = createInsertSchema(paymentRecords).omit({ id: true, createdAt: true });
 export type InsertPaymentRecord = z.infer<typeof insertPaymentRecordSchema>;
 export type PaymentRecord = typeof paymentRecords.$inferSelect;
+
+// SWMS (Safe Work Method Statements) - Australian WHS compliance
+export const swmsDocuments = pgTable("swms_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  title: text("title").notNull(),
+  description: text("description"),
+  siteAddress: text("site_address"),
+  workActivityDescription: text("work_activity_description"),
+  ppeRequirements: jsonb("ppe_requirements").default([]),
+  emergencyContact: text("emergency_contact"),
+  firstAidLocation: text("first_aid_location"),
+  status: text("status").notNull().default('draft'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const swmsHazards = pgTable("swms_hazards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  swmsId: varchar("swms_id").notNull().references(() => swmsDocuments.id, { onDelete: 'cascade' }),
+  stepNumber: integer("step_number").notNull().default(1),
+  activityTask: text("activity_task").notNull(),
+  hazard: text("hazard").notNull(),
+  likelihood: text("likelihood").notNull().default('possible'),
+  consequence: text("consequence").notNull().default('moderate'),
+  riskBefore: text("risk_before").notNull().default('medium'),
+  controlMeasures: text("control_measures"),
+  riskAfter: text("risk_after").notNull().default('low'),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const swmsSignatures = pgTable("swms_signatures", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  swmsId: varchar("swms_id").notNull().references(() => swmsDocuments.id, { onDelete: 'cascade' }),
+  workerName: text("worker_name").notNull(),
+  workerUserId: varchar("worker_user_id").references(() => users.id, { onDelete: 'set null' }),
+  signatureData: text("signature_data").notNull(),
+  signedAt: timestamp("signed_at").notNull().defaultNow(),
+  latitude: text("latitude"),
+  longitude: text("longitude"),
+  address: text("address"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSwmsDocumentSchema = createInsertSchema(swmsDocuments).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSwmsDocument = z.infer<typeof insertSwmsDocumentSchema>;
+export type SwmsDocument = typeof swmsDocuments.$inferSelect;
+
+export const insertSwmsHazardSchema = createInsertSchema(swmsHazards).omit({ id: true, createdAt: true });
+export type InsertSwmsHazard = z.infer<typeof insertSwmsHazardSchema>;
+export type SwmsHazard = typeof swmsHazards.$inferSelect;
+
+export const insertSwmsSignatureSchema = createInsertSchema(swmsSignatures).omit({ id: true, createdAt: true });
+export type InsertSwmsSignature = z.infer<typeof insertSwmsSignatureSchema>;
+export type SwmsSignature = typeof swmsSignatures.$inferSelect;

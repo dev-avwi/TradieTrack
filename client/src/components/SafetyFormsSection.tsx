@@ -25,25 +25,44 @@ import {
   Eye,
   PenLine,
   AlertCircle,
+  Download,
+  Trash2,
+  Loader2,
+  Edit,
 } from "lucide-react";
 import { format } from "date-fns";
 import { FormRenderer } from "./CustomFormRenderer";
+import { SwmsBuilder } from "./SwmsBuilder";
 import type { CustomForm, FormSubmission } from "@shared/schema";
 import { SAFETY_FORM_TYPES } from "@shared/schema";
+
+interface SwmsListItem {
+  id: string;
+  title: string;
+  status: string;
+  hazardCount: number;
+  signatureCount: number;
+  createdAt?: string;
+  siteAddress?: string;
+}
 
 interface SafetyFormsSectionProps {
   jobId: string;
   jobStatus: string;
+  jobTitle?: string;
+  jobAddress?: string;
   onSafetyCheckRequired?: () => void;
   className?: string;
 }
 
-export function SafetyFormsSection({ jobId, jobStatus, onSafetyCheckRequired, className }: SafetyFormsSectionProps) {
+export function SafetyFormsSection({ jobId, jobStatus, jobTitle, jobAddress, onSafetyCheckRequired, className }: SafetyFormsSectionProps) {
   const { toast } = useToast();
   const [showFormPicker, setShowFormPicker] = useState(false);
   const [selectedForm, setSelectedForm] = useState<CustomForm | null>(null);
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [viewingSubmission, setViewingSubmission] = useState<FormSubmission | null>(null);
+  const [showSwmsBuilder, setShowSwmsBuilder] = useState(false);
+  const [editingSwmsId, setEditingSwmsId] = useState<string | undefined>(undefined);
 
   const { data: submissions, isLoading: loadingSubmissions } = useQuery<FormSubmission[]>({
     queryKey: ['/api/jobs', jobId, 'form-submissions'],
@@ -71,6 +90,56 @@ export function SafetyFormsSection({ jobId, jobStatus, onSafetyCheckRequired, cl
     enabled: !!user,
     staleTime: 30000,
   });
+
+  const { data: swmsList, isLoading: loadingSwms } = useQuery<SwmsListItem[]>({
+    queryKey: ['/api/jobs', jobId, 'swms'],
+    enabled: !!jobId,
+    staleTime: 30000,
+  });
+
+  const deleteSwmsMutation = useMutation({
+    mutationFn: async (swmsId: string) => {
+      await apiRequest('DELETE', `/api/swms/${swmsId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'swms'] });
+      toast({ title: 'SWMS deleted', description: 'The SWMS document has been removed' });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to delete SWMS', variant: 'destructive' });
+    },
+  });
+
+  const handleDownloadPdf = async (swmsId: string) => {
+    try {
+      const response = await fetch(`/api/swms/${swmsId}/pdf`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to download');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `swms-${swmsId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: 'Error', description: 'Failed to download PDF', variant: 'destructive' });
+    }
+  };
+
+  const getSwmsStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-500"><ShieldCheck className="h-3 w-3 mr-1" />Active</Badge>;
+      case 'draft':
+        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Draft</Badge>;
+      case 'archived':
+        return <Badge variant="outline"><FileText className="h-3 w-3 mr-1" />Archived</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
   const isLoading = loadingSubmissions || loadingForms;
 
@@ -258,6 +327,126 @@ export function SafetyFormsSection({ jobId, jobStatus, onSafetyCheckRequired, cl
           )}
         </CardContent>
       </Card>
+
+      <Card data-testid="card-swms-documents" className={className}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center justify-between gap-4">
+            <span className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              SWMS Documents
+            </span>
+            {swmsList && swmsList.length > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {swmsList.length}
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {loadingSwms ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : swmsList && swmsList.length > 0 ? (
+            <div className="space-y-2">
+              {swmsList.map((swms) => (
+                <div
+                  key={swms.id}
+                  className="p-3 rounded-md border"
+                >
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{swms.title}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {getSwmsStatusBadge(swms.status)}
+                        <span className="text-xs text-muted-foreground">
+                          {swms.hazardCount} hazard{swms.hazardCount !== 1 ? 's' : ''}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {swms.signatureCount} signature{swms.signatureCount !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingSwmsId(swms.id);
+                          setShowSwmsBuilder(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDownloadPdf(swms.id)}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => deleteSwmsMutation.mutate(swms.id)}
+                        disabled={deleteSwmsMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-muted-foreground">
+              <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No SWMS documents</p>
+              <p className="text-xs">Create a Safe Work Method Statement for high-risk work</p>
+            </div>
+          )}
+          {jobStatus !== 'invoiced' && (
+            <Button
+              onClick={() => {
+                setEditingSwmsId(undefined);
+                setShowSwmsBuilder(true);
+              }}
+              className="w-full"
+              variant={!swmsList || swmsList.length === 0 ? "default" : "outline"}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create SWMS
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={showSwmsBuilder} onOpenChange={(open) => {
+        setShowSwmsBuilder(open);
+        if (!open) setEditingSwmsId(undefined);
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" />
+              {editingSwmsId ? 'Edit SWMS' : 'Create SWMS'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingSwmsId ? 'Update the Safe Work Method Statement' : 'Create a new Safe Work Method Statement for this job'}
+            </DialogDescription>
+          </DialogHeader>
+          <SwmsBuilder
+            jobId={jobId}
+            jobTitle={jobTitle}
+            jobAddress={jobAddress}
+            swmsId={editingSwmsId}
+            onClose={() => {
+              setShowSwmsBuilder(false);
+              setEditingSwmsId(undefined);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showFormPicker} onOpenChange={setShowFormPicker}>
         <DialogContent>
