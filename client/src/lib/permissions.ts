@@ -117,7 +117,7 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   
   // Payment Hub - office admin can manage payments
   { path: '/payment-hub', label: 'Payment Hub', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
-  { path: '/expenses', label: 'Expenses', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
+  { path: '/expenses', label: 'Expenses', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: true },
   
   // Automations - owner only (controls now in Communications Hub)
   { path: '/automations', label: 'Automations', allowedRoles: ['owner', 'solo_owner'], showInNav: false },
@@ -129,10 +129,10 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/recurring-jobs', label: 'Recurring Jobs', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   
   // Custom Forms - owner/manager only (redirects to /templates)
-  { path: '/custom-forms', label: 'Forms', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+  { path: '/custom-forms', label: 'Forms', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: false },
   
-  // Templates Hub - owner/manager only
-  { path: '/templates', label: 'Templates', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  // Templates Hub - owner/manager, staff can access for safety forms
+  { path: '/templates', label: 'Templates', allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'], showInNav: true },
   
   // Communications Hub - office admin handles communications
   { path: '/communications', label: 'Communications', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },

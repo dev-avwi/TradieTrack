@@ -114,7 +114,12 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { TeamMember, UserRole, TeamMemberSkill, TeamMemberAvailability, TeamMemberTimeOff } from "@shared/schema";
-import { PERMISSION_CATEGORIES, PERMISSION_LABELS, type WorkerPermission, DEFAULT_WORKER_PERMISSIONS } from "@shared/schema";
+import { PERMISSION_CATEGORIES, PERMISSION_LABELS, type WorkerPermission, DEFAULT_WORKER_PERMISSIONS, ALL_WORKER_PERMISSIONS, ROLE_PRESETS, WORKER_PERMISSIONS } from "@shared/schema";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import "leaflet/dist/leaflet.css";
 
 interface TeamPresenceData {
@@ -1137,6 +1142,42 @@ function LiveOpsTab() {
   );
 }
 
+const ROLE_DESCRIPTION_MAP: Record<string, { description: string; permissions: readonly string[] }> = {
+  'WORKER': { description: 'Can view assigned jobs, log time, upload photos, and check in at sites. Cannot create quotes or invoices unless granted extra permissions.', permissions: [...ROLE_PRESETS.worker.permissions] },
+  'OFFICE_ADMIN': { description: 'Manages quotes, invoices, and client communication from the office. No field capabilities like GPS or time tracking.', permissions: [...ROLE_PRESETS.office_admin.permissions] },
+  'MANAGER': { description: 'Full operational access including all jobs, team scheduling, and financial documents. Cannot manage billing or subscription.', permissions: [...ALL_WORKER_PERMISSIONS] },
+  'SUBCONTRACTOR': { description: 'External sub who can only see their assigned jobs. No access to financial data or other team members\' work.', permissions: [...ROLE_PRESETS.subcontractor.permissions] },
+};
+
+function getRoleInfo(roleName?: string): { description: string; permissions: string[] } | null {
+  if (!roleName) return null;
+  const upper = roleName.toUpperCase();
+  const info = ROLE_DESCRIPTION_MAP[upper];
+  if (info) return { description: info.description, permissions: [...info.permissions] };
+  return null;
+}
+
+function getMemberPermissionCount(member: TeamMemberData, roleName?: string): { granted: number; total: number } {
+  const total = ALL_WORKER_PERMISSIONS.length;
+  if (member.useCustomPermissions && member.customPermissions) {
+    return { granted: member.customPermissions.length, total };
+  }
+  const roleInfo = getRoleInfo(roleName);
+  if (roleInfo) {
+    return { granted: roleInfo.permissions.length, total };
+  }
+  return { granted: DEFAULT_WORKER_PERMISSIONS.length, total };
+}
+
+function getActivePermissionsList(member: TeamMemberData, roleName?: string): string[] {
+  if (member.useCustomPermissions && member.customPermissions) {
+    return member.customPermissions;
+  }
+  const roleInfo = getRoleInfo(roleName);
+  if (roleInfo) return roleInfo.permissions;
+  return [...DEFAULT_WORKER_PERMISSIONS];
+}
+
 function TeamAdminTab() {
   const { toast } = useToast();
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -1153,6 +1194,7 @@ function TeamAdminTab() {
   const [selectedMemberForPermissions, setSelectedMemberForPermissions] = useState<TeamMemberData | null>(null);
   const [editedPermissions, setEditedPermissions] = useState<string[]>([]);
   const [useCustomPermissions, setUseCustomPermissions] = useState(false);
+  const [expandedPermissionMembers, setExpandedPermissionMembers] = useState<Set<string>>(new Set());
 
   const { data: teamMembers, isLoading: membersLoading } = useQuery<TeamMemberData[]>({
     queryKey: ['/api/team/members'],
@@ -1523,6 +1565,24 @@ function TeamAdminTab() {
                         {member.hourlyRate && (
                           <Badge variant="outline" className="text-xs">${member.hourlyRate}/hr</Badge>
                         )}
+                        {(() => {
+                          const { granted, total } = getMemberPermissionCount(member, role?.name);
+                          const pct = Math.round((granted / total) * 100);
+                          return (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="outline" className="text-xs gap-1 cursor-help">
+                                  <Key className="h-2.5 w-2.5" />
+                                  {granted}/{total}
+                                  {member.useCustomPermissions && <span className="text-[9px] opacity-70">custom</span>}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-xs">{granted} of {total} permissions granted ({pct}%)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -1584,6 +1644,63 @@ function TeamAdminTab() {
                       <UserX className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
+                </div>
+                <div className="mt-2 pt-2 border-t border-border/50">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedPermissionMembers(prev => {
+                        const next = new Set(prev);
+                        if (next.has(member.id)) {
+                          next.delete(member.id);
+                        } else {
+                          next.add(member.id);
+                        }
+                        return next;
+                      });
+                    }}
+                    data-testid={`button-what-can-do-${member.id}`}
+                  >
+                    <Eye className="h-3 w-3" />
+                    <span>What can they do?</span>
+                    {expandedPermissionMembers.has(member.id) ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </button>
+                  {expandedPermissionMembers.has(member.id) && (() => {
+                    const activePerms = getActivePermissionsList(member, role?.name);
+                    return (
+                      <div className="mt-2 space-y-1.5">
+                        {Object.entries(PERMISSION_CATEGORIES).map(([catKey, category]) => {
+                          const catPerms = category.permissions.filter(p => activePerms.includes(p));
+                          const allDenied = catPerms.length === 0;
+                          return (
+                            <div key={catKey} className="flex items-start gap-1.5">
+                              {allDenied ? (
+                                <X className="h-3 w-3 text-muted-foreground/50 shrink-0 mt-0.5" />
+                              ) : (
+                                <CheckCircle2 className="h-3 w-3 text-green-600 shrink-0 mt-0.5" />
+                              )}
+                              <div className="min-w-0">
+                                <span className={`text-xs ${allDenied ? 'text-muted-foreground/50 line-through' : 'font-medium'}`}>
+                                  {category.label}
+                                </span>
+                                {!allDenied && (
+                                  <span className="text-[11px] text-muted-foreground ml-1">
+                                    ({catPerms.map(p => PERMISSION_LABELS[p as WorkerPermission] || p).join(', ')})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -1658,11 +1775,44 @@ function TeamAdminTab() {
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles?.filter(r => r.name !== 'OWNER').map((role) => (
-                    <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
-                  ))}
+                  {roles?.filter(r => r.name !== 'OWNER').map((role) => {
+                    const info = getRoleInfo(role.name);
+                    return (
+                      <SelectItem key={role.id} value={role.id}>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium">{role.name}</span>
+                          {info && (
+                            <span className="text-xs text-muted-foreground leading-tight">{info.description.split('.')[0]}.</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              {inviteRoleId && (() => {
+                const selectedRole = roles?.find(r => r.id === inviteRoleId);
+                const info = getRoleInfo(selectedRole?.name);
+                if (!info) return null;
+                return (
+                  <div className="p-3 rounded-md border bg-muted/30 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <p className="text-xs text-muted-foreground leading-tight">{info.description}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {info.permissions.slice(0, 6).map(p => (
+                        <Badge key={p} variant="secondary" className="text-[10px]">
+                          {PERMISSION_LABELS[p as WorkerPermission] || p}
+                        </Badge>
+                      ))}
+                      {info.permissions.length > 6 && (
+                        <Badge variant="outline" className="text-[10px]">+{info.permissions.length - 6} more</Badge>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             <div className="space-y-2">
               <Label htmlFor="hourlyRate">Hourly Rate (optional)</Label>
@@ -1692,25 +1842,80 @@ function TeamAdminTab() {
           <DialogHeader>
             <DialogTitle>Manage Roles</DialogTitle>
             <DialogDescription>
-              View and edit team roles and their permissions.
+              View team roles and their included permissions.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="h-[400px] pr-4">
+          <ScrollArea className="h-[500px] pr-4">
             <div className="space-y-4">
-              {roles?.map((role) => (
-                <div key={role.id} className="p-4 border rounded-lg" data-testid={`role-${role.id}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Shield className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="font-semibold">{role.name}</h4>
-                    {role.name === 'OWNER' && (
-                      <Badge variant="secondary" className="text-xs">System</Badge>
+              {roles?.map((role) => {
+                const info = getRoleInfo(role.name);
+                const isOwnerRole = role.name === 'OWNER';
+                return (
+                  <div key={role.id} className="border rounded-lg overflow-hidden" data-testid={`role-${role.id}`}>
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Shield className="h-4 w-4 text-muted-foreground" />
+                        <h4 className="font-semibold">{role.name}</h4>
+                        {isOwnerRole && (
+                          <Badge variant="secondary" className="text-xs">System</Badge>
+                        )}
+                        {info && (
+                          <Badge variant="outline" className="text-xs ml-auto">
+                            {info.permissions.length} of {ALL_WORKER_PERMISSIONS.length} permissions
+                          </Badge>
+                        )}
+                        {isOwnerRole && (
+                          <Badge variant="outline" className="text-xs ml-auto">Full Access</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {info?.description || role.description || 'No description'}
+                      </p>
+                    </div>
+                    {info && (
+                      <div className="px-4 pb-4">
+                        <div className="space-y-2">
+                          {Object.entries(PERMISSION_CATEGORIES).map(([catKey, category]) => {
+                            const catPerms = category.permissions.filter(p => info.permissions.includes(p));
+                            if (catPerms.length === 0) return null;
+                            return (
+                              <div key={catKey} className="flex items-start gap-2">
+                                <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="text-xs font-medium">{category.label}</p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {catPerms.map(p => PERMISSION_LABELS[p as WorkerPermission] || p).join(', ')}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {(() => {
+                            const deniedCategories = Object.entries(PERMISSION_CATEGORIES).filter(([, category]) =>
+                              category.permissions.every(p => !info.permissions.includes(p))
+                            );
+                            if (deniedCategories.length === 0) return null;
+                            return deniedCategories.map(([catKey, category]) => (
+                              <div key={catKey} className="flex items-start gap-2 opacity-50">
+                                <X className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                                <p className="text-xs text-muted-foreground">{category.label}</p>
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                    {isOwnerRole && (
+                      <div className="px-4 pb-4">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0 mt-0.5" />
+                          <p className="text-xs text-muted-foreground">All permissions including team management and billing</p>
+                        </div>
+                      </div>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {role.description || 'No description'}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </ScrollArea>
         </DialogContent>
@@ -1788,6 +1993,91 @@ function TeamAdminTab() {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Quick Presets</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="justify-start gap-2"
+                        onClick={() => {
+                          setEditedPermissions([
+                            WORKER_PERMISSIONS.UPDATE_JOB_STATUS,
+                            WORKER_PERMISSIONS.TIME_TRACKING,
+                            WORKER_PERMISSIONS.GPS_CHECKIN,
+                          ]);
+                          setUseCustomPermissions(true);
+                        }}
+                        data-testid="preset-field-worker"
+                      >
+                        <Wrench className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Field Worker</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="justify-start gap-2"
+                        onClick={() => {
+                          setEditedPermissions([
+                            WORKER_PERMISSIONS.UPDATE_JOB_STATUS,
+                            WORKER_PERMISSIONS.TIME_TRACKING,
+                            WORKER_PERMISSIONS.GPS_CHECKIN,
+                            WORKER_PERMISSIONS.CREATE_QUOTES,
+                            WORKER_PERMISSIONS.VIEW_QUOTES,
+                            WORKER_PERMISSIONS.COLLECT_PAYMENTS,
+                            WORKER_PERMISSIONS.VIEW_CLIENTS,
+                            WORKER_PERMISSIONS.TEAM_CHAT,
+                          ]);
+                          setUseCustomPermissions(true);
+                        }}
+                        data-testid="preset-senior-tradie"
+                      >
+                        <Award className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Senior Tradie</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="justify-start gap-2"
+                        onClick={() => {
+                          setEditedPermissions([
+                            WORKER_PERMISSIONS.VIEW_ALL_JOBS,
+                            WORKER_PERMISSIONS.CREATE_QUOTES,
+                            WORKER_PERMISSIONS.VIEW_QUOTES,
+                            WORKER_PERMISSIONS.CREATE_INVOICES,
+                            WORKER_PERMISSIONS.VIEW_INVOICES,
+                            WORKER_PERMISSIONS.EDIT_DOCUMENTS,
+                            WORKER_PERMISSIONS.SEND_QUOTES,
+                            WORKER_PERMISSIONS.SEND_INVOICES,
+                            WORKER_PERMISSIONS.VIEW_CLIENTS,
+                            WORKER_PERMISSIONS.CREATE_CLIENTS,
+                            WORKER_PERMISSIONS.EDIT_CLIENTS,
+                            WORKER_PERMISSIONS.TEAM_CHAT,
+                            WORKER_PERMISSIONS.CLIENT_SMS,
+                          ]);
+                          setUseCustomPermissions(true);
+                        }}
+                        data-testid="preset-office-staff"
+                      >
+                        <FileText className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Office Staff</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="justify-start gap-2"
+                        onClick={() => {
+                          setEditedPermissions([...ALL_WORKER_PERMISSIONS]);
+                          setUseCustomPermissions(true);
+                        }}
+                        data-testid="preset-full-access"
+                      >
+                        <Key className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Full Access</span>
+                      </Button>
+                    </div>
+                  </div>
+                  <Separator />
                   {Object.entries(PERMISSION_CATEGORIES).map(([categoryKey, category]) => (
                     <div key={categoryKey} className="border rounded-lg">
                       <div className="p-3 bg-muted/30 border-b">

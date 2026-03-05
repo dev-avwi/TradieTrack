@@ -135,7 +135,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "bg-muted/10",
     showInSidebar: true,
     showInMore: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'],
   },
   {
     title: "Schedule",
@@ -274,10 +274,9 @@ export const mainMenuItems: NavItem[] = [
     description: "Styles, components, and document templates",
     color: "text-primary",
     bgColor: "bg-primary/10",
-    hideForStaff: true,
     showInSidebar: true,
     showInMore: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
   },
   // Hidden for now - will be added back when fully integrated with mobile
   // {
