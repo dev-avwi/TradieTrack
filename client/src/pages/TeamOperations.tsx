@@ -2144,6 +2144,8 @@ function SchedulingTab() {
   const [timeOffSectionOpen, setTimeOffSectionOpen] = useState(true);
   const [availabilitySectionOpen, setAvailabilitySectionOpen] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [quickAssignCell, setQuickAssignCell] = useState<{ memberId: string; memberUserId: string; memberName: string; dayKey: string; dayLabel: string } | null>(null);
+  const [quickAssignSearch, setQuickAssignSearch] = useState("");
   const [schedulingTipDismissed, setSchedulingTipDismissed] = useState(() =>
     typeof window !== 'undefined' && localStorage.getItem('team-scheduler-onboarding-dismissed') === 'true'
   );
@@ -2755,8 +2757,19 @@ function SchedulingTab() {
                                 className={`${cellBg} p-1 border-t border-border flex flex-col items-start justify-start gap-0.5 min-h-[60px] group relative ${
                                   isCurrentDay ? 'ring-1 ring-inset ring-primary/20' : ''
                                 } ${isDropZone ? 'ring-2 ring-dashed ring-primary/50 bg-primary/5' : ''} ${
-                                  isAvail && memberJobs.length === 0 && !hasApprovedTimeOff && !hasPendingTimeOff ? 'hover:bg-primary/5 transition-colors cursor-default' : ''
+                                  isAvail && !hasApprovedTimeOff && !hasPendingTimeOff ? 'hover:bg-primary/5 transition-colors cursor-pointer' : ''
                                 }`}
+                                onClick={() => {
+                                  if (!isAvail || hasApprovedTimeOff || isWeekend) return;
+                                  setQuickAssignCell({
+                                    memberId: member.id,
+                                    memberUserId: member.userId,
+                                    memberName: member.firstName || 'Team Member',
+                                    dayKey,
+                                    dayLabel: format(day, 'EEE, MMM d'),
+                                  });
+                                  setQuickAssignSearch("");
+                                }}
                                 onDragOver={isAvail ? (e) => handleDragOver(e, cellId) : undefined}
                                 onDragLeave={isAvail ? handleDragLeave : undefined}
                                 onDrop={isAvail ? (e) => handleDropOnTeamCell(e, member.userId, dayKey) : undefined}
@@ -3220,6 +3233,113 @@ function SchedulingTab() {
               {requestTimeOffMutation.isPending ? "Submitting..." : "Submit Request"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!quickAssignCell} onOpenChange={(open) => { if (!open) setQuickAssignCell(null); }}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col" data-testid="dialog-quick-assign">
+          <DialogHeader className="shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Assign Job
+            </DialogTitle>
+            <DialogDescription>
+              {quickAssignCell && (
+                <>Assign a job to <strong>{quickAssignCell.memberName}</strong> on <strong>{quickAssignCell.dayLabel}</strong></>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="shrink-0">
+            <Input
+              placeholder="Search jobs..."
+              value={quickAssignSearch}
+              onChange={(e) => setQuickAssignSearch(e.target.value)}
+              className="mb-2"
+              data-testid="input-quick-assign-search"
+            />
+          </div>
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            <div className="space-y-1.5 pb-2">
+              {(() => {
+                const searchLower = quickAssignSearch.toLowerCase();
+                const filteredJobs = allUnassignedJobs.filter(j => {
+                  if (!searchLower) return true;
+                  return (
+                    j.title.toLowerCase().includes(searchLower) ||
+                    (j.clientName && j.clientName.toLowerCase().includes(searchLower)) ||
+                    (j.address && j.address.toLowerCase().includes(searchLower))
+                  );
+                });
+
+                if (filteredJobs.length === 0) {
+                  return (
+                    <div className="py-8 text-center">
+                      <Briefcase className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
+                      <p className="text-sm text-muted-foreground">
+                        {allUnassignedJobs.length === 0 ? 'No unassigned jobs' : 'No jobs match your search'}
+                      </p>
+                    </div>
+                  );
+                }
+
+                return filteredJobs.map(job => {
+                  const jobTime = getJobTime(job);
+                  const suburb = getSuburb(job.address);
+                  return (
+                    <button
+                      key={job.id}
+                      className="w-full text-left p-3 rounded-md border hover:bg-primary/5 transition-colors cursor-pointer"
+                      onClick={() => {
+                        if (!quickAssignCell) return;
+                        const scheduledAt = new Date(quickAssignCell.dayKey + 'T09:00:00').toISOString();
+                        assignJobMutation.mutate({
+                          jobId: job.id,
+                          assignedTo: quickAssignCell.memberUserId,
+                          scheduledAt,
+                        });
+                        setQuickAssignCell(null);
+                      }}
+                      data-testid={`quick-assign-job-${job.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{job.title}</p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {job.clientName && (
+                              <span className="text-xs text-muted-foreground">{job.clientName}</span>
+                            )}
+                            {jobTime && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                <Clock className="h-2.5 w-2.5" />{jobTime}
+                              </span>
+                            )}
+                            {job.estimatedDuration && (
+                              <span className="text-xs text-muted-foreground">
+                                {job.estimatedDuration >= 60 ? `${Math.floor(job.estimatedDuration / 60)}h` : `${job.estimatedDuration}m`}
+                              </span>
+                            )}
+                          </div>
+                          {suburb && (
+                            <p className="text-xs text-muted-foreground/70 mt-0.5 flex items-center gap-0.5">
+                              <MapPin className="h-2.5 w-2.5 shrink-0" />{suburb}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 border-0 shrink-0 ${getJobStatusStyle(job.status)}`}>
+                          {getJobStatusLabel(job.status)}
+                        </Badge>
+                      </div>
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+          </ScrollArea>
+          {allUnassignedJobs.length > 0 && (
+            <div className="shrink-0 pt-2 border-t text-xs text-muted-foreground text-center">
+              {allUnassignedJobs.length} unassigned job{allUnassignedJobs.length !== 1 ? 's' : ''} available
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
