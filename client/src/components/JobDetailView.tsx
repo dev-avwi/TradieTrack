@@ -4479,7 +4479,7 @@ export default function JobDetailView({
                 { key: 'invoice' as const, label: 'Invoice Summary' },
                 { key: 'compliance' as const, label: 'Compliance & Licensing' },
                 { key: 'subcontractors' as const, label: 'Subcontractor Coordination' },
-                { key: 'swms' as const, label: 'SWMS Documents' },
+                { key: 'swms' as const, label: 'Safety & SWMS' },
               ].map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input

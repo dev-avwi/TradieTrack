@@ -12,7 +12,7 @@ Core architectural and design decisions include:
 *   **Authentication**: Supports Email/password, Google OAuth, Apple Sign-In, secure password reset, and unified identity management.
 *   **Onboarding**: A multi-step wizard for business details, logo upload, Stripe setup, team invites, client portal preview, and sample data seeding.
 *   **AI Integration**: Leverages GPT-4o-mini for business suggestions, Australian English phrasing, proactive notifications, quote generation, voice note transcription, photo auto-categorization, receipt scanning, and SWMS hazard detection. GPT-4o vision powers AI Photo Analysis, AI Schedule Optimizer, and Voice-to-Action detection. A Role-Aware AI Assistant provides context-filtered actions.
-*   **PDF Generation**: Server-side generation of customizable quotes, invoices, and Job Proof Packs via Puppeteer, including GPS Worker Presence Verification and photo GPS location stamps.
+*   **PDF Generation**: Server-side generation of customizable quotes, invoices, and Job Proof Packs via Puppeteer, including GPS Worker Presence Verification, photo GPS location stamps, and a unified "Safety & SWMS" section that combines SWMS documents with safety inspection form submissions.
 *   **Analytics & Error Handling**: GA4 event tracking, global JS error capture, and server-side structured error logging.
 *   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators and confirmation emails.
 *   **Financial System**: Live quote/invoice editor with real-time preview, catalog integration, deposit settings, digital signatures, rate snapshots, invoice locking, and audit trails.

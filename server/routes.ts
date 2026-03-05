@@ -139,6 +139,8 @@ import {
   swmsDocuments,
   swmsHazards,
   swmsSignatures,
+  customForms,
+  formSubmissions,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, asc, and, gte, lte, isNotNull, isNull, inArray, or } from "drizzle-orm";
@@ -6512,6 +6514,40 @@ Be specific about materials, colors, and features that would be included.`
       console.error('Error fetching SWMS for proof pack:', e);
     }
 
+    let safetyForms: any[] = [];
+    try {
+      const submissions = await storage.getFormSubmissionsByJob(jobId, userId);
+      for (const sub of submissions) {
+        const form = await storage.getCustomForm(sub.formId, userId);
+        if (!form) continue;
+        const formType = form.formType || 'general';
+        if (!['safety', 'inspection', 'compliance'].includes(formType)) continue;
+        const fields = (form.fields || []) as Array<{id: string; label: string; type: string}>;
+        const data = (sub.submissionData || {}) as Record<string, any>;
+        const responses: Array<{label: string; value: string; type: string}> = [];
+        for (const field of fields) {
+          const val = data[field.id];
+          if (val === undefined || val === null || val === '') continue;
+          let displayVal = String(val);
+          if (typeof val === 'boolean') displayVal = val ? 'Yes' : 'No';
+          if (Array.isArray(val)) displayVal = val.join(', ');
+          responses.push({ label: field.label, value: displayVal, type: field.type || 'text' });
+        }
+        safetyForms.push({
+          formName: form.name,
+          formType,
+          description: form.description || undefined,
+          status: sub.status || 'submitted',
+          submittedAt: sub.submittedAt ? new Date(sub.submittedAt).toLocaleString('en-AU', { timeZone: 'Australia/Sydney' }) : '-',
+          submittedBy: sub.submittedBy || undefined,
+          notes: sub.notes || undefined,
+          responses,
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching safety forms for proof pack:', e);
+    }
+
     return {
       job,
       business,
@@ -6532,6 +6568,7 @@ Be specific about materials, colors, and features that would be included.`
       subcontractors: subcontractorsList,
       variations,
       swmsList,
+      safetyForms,
       hideSections,
     };
   }
