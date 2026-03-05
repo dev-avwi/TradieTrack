@@ -919,7 +919,7 @@ function LiveOpsTab() {
                     variant="outline" 
                     size="sm" 
                     className="flex-col h-auto py-3"
-                    onClick={() => navigate(`/direct-messages?userId=${selectedMember.userId}`)}
+                    onClick={() => navigate(`/chat?to=${selectedMember.userId}&type=dm`)}
                     data-testid="button-dm-member"
                   >
                     <Send className="h-5 w-5 mb-1" />
@@ -2755,13 +2755,8 @@ function SchedulingTab() {
                                 className={`${cellBg} p-1 border-t border-border flex flex-col items-start justify-start gap-0.5 min-h-[60px] group relative ${
                                   isCurrentDay ? 'ring-1 ring-inset ring-primary/20' : ''
                                 } ${isDropZone ? 'ring-2 ring-dashed ring-primary/50 bg-primary/5' : ''} ${
-                                  !isWeekend ? 'hover:bg-primary/5 transition-colors cursor-pointer' : ''
+                                  isAvail && memberJobs.length === 0 && !hasApprovedTimeOff && !hasPendingTimeOff ? 'hover:bg-primary/5 transition-colors cursor-default' : ''
                                 }`}
-                                onClick={(e) => {
-                                  if (isWeekend) return;
-                                  if ((e.target as HTMLElement).closest('[draggable="true"]')) return;
-                                  navigate(`/dispatch-board?date=${dayKey}`);
-                                }}
                                 onDragOver={isAvail ? (e) => handleDragOver(e, cellId) : undefined}
                                 onDragLeave={isAvail ? handleDragLeave : undefined}
                                 onDrop={isAvail ? (e) => handleDropOnTeamCell(e, member.userId, dayKey) : undefined}
@@ -2826,9 +2821,14 @@ function SchedulingTab() {
                                     )}
                                   </div>
                                 )}
-                                <span className="absolute bottom-0.5 right-0.5 text-[8px] text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors">
-                                  View
-                                </span>
+                                {!isWeekend && memberJobs.length > 0 && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/dispatch-board?date=${dayKey}`); }}
+                                    className="absolute bottom-0.5 right-0.5 text-[8px] text-primary/0 group-hover:text-primary/60 transition-colors hover:underline cursor-pointer"
+                                  >
+                                    View
+                                  </button>
+                                )}
                               </div>
                             );
                           })
