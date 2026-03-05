@@ -55,7 +55,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/components/ThemeProvider";
 import { useLocation } from "wouter";
 import { useAppMode } from "@/hooks/use-app-mode";
-import { formatDistanceToNow, format, addDays, isAfter, isBefore, parseISO, startOfWeek, isWithinInterval, isSameDay } from "date-fns";
+import { formatDistanceToNow, format, addDays, subDays, isAfter, isBefore, parseISO, startOfWeek, isWithinInterval, isSameDay } from "date-fns";
 import {
   Users,
   MessageCircle,
@@ -68,6 +68,7 @@ import {
   Briefcase,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
   ChevronRight,
   RefreshCw,
   Circle,
@@ -2142,6 +2143,7 @@ function SchedulingTab() {
   const [timeOffNotes, setTimeOffNotes] = useState("");
   const [timeOffSectionOpen, setTimeOffSectionOpen] = useState(true);
   const [availabilitySectionOpen, setAvailabilitySectionOpen] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
   const [schedulingTipDismissed, setSchedulingTipDismissed] = useState(() =>
     typeof window !== 'undefined' && localStorage.getItem('team-scheduler-onboarding-dismissed') === 'true'
   );
@@ -2213,8 +2215,10 @@ function SchedulingTab() {
   const acceptedMembers = teamMembers.filter(m => m.inviteStatus === 'accepted');
 
   const today = new Date();
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const weekStart = addDays(currentWeekStart, weekOffset * 7);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const isCurrentWeek = weekOffset === 0;
 
   const isWeekday = (date: Date) => {
     const day = date.getDay();
@@ -2432,13 +2436,52 @@ function SchedulingTab() {
     return acceptedMembers.find(m => m.userId === userId);
   };
 
-  const renderJobCard = (job: JobData, options?: { draggable?: boolean; compact?: boolean }) => {
+  const getSuburb = (address?: string | null) => {
+    if (!address) return null;
+    const parts = address.split(',').map(p => p.trim());
+    if (parts.length >= 2) return parts[parts.length - 2];
+    return parts[0]?.length > 25 ? parts[0].substring(0, 22) + '...' : parts[0];
+  };
+
+  const getMemberWeeklyJobCount = (userId: string | undefined) => {
+    if (!userId) return 0;
+    return weekDays.reduce((total, day) => total + getMemberJobsForDay(userId, day).length, 0);
+  };
+
+  const dailyTotals = useMemo(() => {
+    return weekDays.map(day => {
+      const dayKey = format(day, 'yyyy-MM-dd');
+      let totalJobs = 0;
+      acceptedMembers.forEach(member => {
+        totalJobs += getMemberJobsForDay(member.userId, day).length;
+      });
+      return { dayKey, totalJobs };
+    });
+  }, [weekDays, acceptedMembers, jobs]);
+
+  const urgentUnassignedJobs = useMemo(() => {
+    return allUnassignedJobs.filter(j => {
+      if (j.status === 'in_progress') return true;
+      if (j.scheduledAt && isBefore(new Date(j.scheduledAt), today)) return true;
+      if (j.scheduledAt && isSameDay(new Date(j.scheduledAt), today)) return true;
+      return false;
+    });
+  }, [allUnassignedJobs, today]);
+
+  const regularUnassignedJobs = useMemo(() => {
+    return allUnassignedJobs.filter(j => !urgentUnassignedJobs.includes(j));
+  }, [allUnassignedJobs, urgentUnassignedJobs]);
+
+  const renderJobCard = (job: JobData, options?: { draggable?: boolean; compact?: boolean; showUrgent?: boolean }) => {
     const isDraggable = options?.draggable !== false;
     const isCompact = options?.compact;
     const isUnassigned = !job.assignedTo;
     const assignedMember = job.assignedTo ? getMemberById(job.assignedTo) : null;
     const jobTime = getJobTime(job);
     const isDropTarget = dragOverTarget === `job-${job.id}`;
+    const suburb = getSuburb(job.address);
+    const isOverdue = job.scheduledAt && isBefore(new Date(job.scheduledAt), today) && !isSameDay(new Date(job.scheduledAt), today);
+    const isToday = job.scheduledAt && isSameDay(new Date(job.scheduledAt), today);
 
     return (
       <div
@@ -2449,11 +2492,15 @@ function SchedulingTab() {
         onDragLeave={isUnassigned ? handleDragLeave : undefined}
         onDrop={isUnassigned ? (e) => handleDropOnJob(e, job.id) : undefined}
         className={`p-2 rounded-md border text-left ${
-          isUnassigned
-            ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200/50 dark:border-amber-800/30'
-            : job.status === 'in_progress'
-              ? 'bg-green-50/30 dark:bg-green-900/5 border-green-200/50 dark:border-green-800/30'
-              : 'border-border'
+          options?.showUrgent && isOverdue
+            ? 'bg-red-50/50 dark:bg-red-900/10 border-red-300/50 dark:border-red-800/30'
+            : options?.showUrgent && isToday
+              ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-300/50 dark:border-amber-800/30'
+              : isUnassigned
+                ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200/50 dark:border-amber-800/30'
+                : job.status === 'in_progress'
+                  ? 'bg-green-50/30 dark:bg-green-900/5 border-green-200/50 dark:border-green-800/30'
+                  : 'border-border'
         } ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''} ${
           isDropTarget ? 'ring-2 ring-dashed ring-primary/50 bg-primary/5' : ''
         }`}
@@ -2463,20 +2510,34 @@ function SchedulingTab() {
           <div className="flex-1 min-w-0">
             <p className={`font-medium truncate ${isCompact ? 'text-[11px]' : 'text-xs'}`}>{job.title}</p>
             {!isCompact && (
-              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                {jobTime && (
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                    <Clock className="h-2.5 w-2.5" />
-                    {jobTime}
+              <div className="flex flex-col gap-0.5 mt-0.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {jobTime && (
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                      <Clock className="h-2.5 w-2.5" />
+                      {jobTime}
+                    </span>
+                  )}
+                  {job.estimatedDuration && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {job.estimatedDuration >= 60 ? `${Math.floor(job.estimatedDuration / 60)}h${job.estimatedDuration % 60 ? ` ${job.estimatedDuration % 60}m` : ''}` : `${job.estimatedDuration}m`}
+                    </span>
+                  )}
+                  {job.clientName && (
+                    <span className="text-[10px] text-muted-foreground truncate">{job.clientName}</span>
+                  )}
+                </div>
+                {suburb && (
+                  <span className="text-[10px] text-muted-foreground/70 flex items-center gap-0.5 truncate">
+                    <MapPin className="h-2.5 w-2.5 shrink-0" />
+                    {suburb}
                   </span>
                 )}
-                {job.estimatedDuration && (
-                  <span className="text-[10px] text-muted-foreground">
-                    {job.estimatedDuration >= 60 ? `${Math.floor(job.estimatedDuration / 60)}h${job.estimatedDuration % 60 ? ` ${job.estimatedDuration % 60}m` : ''}` : `${job.estimatedDuration}m`}
+                {isUnassigned && job.scheduledAt && (
+                  <span className={`text-[10px] flex items-center gap-0.5 ${isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted-foreground/70'}`}>
+                    <Calendar className="h-2.5 w-2.5 shrink-0" />
+                    {isOverdue ? 'Overdue: ' : ''}{format(new Date(job.scheduledAt), 'MMM d')}
                   </span>
-                )}
-                {job.clientName && (
-                  <span className="text-[10px] text-muted-foreground truncate">{job.clientName}</span>
                 )}
               </div>
             )}
@@ -2492,7 +2553,10 @@ function SchedulingTab() {
               </AvatarFallback>
             </Avatar>
           )}
-          {isUnassigned && (
+          {isUnassigned && isOverdue && (
+            <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
+          )}
+          {isUnassigned && !isOverdue && (
             <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
           )}
         </div>
@@ -2572,9 +2636,35 @@ function SchedulingTab() {
               Team Schedule Board
             </CardTitle>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted-foreground">
-                {format(weekDays[0], 'MMM d')} - {format(weekDays[6], 'MMM d, yyyy')}
-              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setWeekOffset(prev => prev - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {!isCurrentWeek && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setWeekOffset(0)}
+                    className="text-xs"
+                  >
+                    Today
+                  </Button>
+                )}
+                <span className="text-xs font-medium min-w-[120px] text-center">
+                  {format(weekDays[0], 'MMM d')} - {format(weekDays[6], 'MMM d, yyyy')}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setWeekOffset(prev => prev + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
@@ -2616,7 +2706,9 @@ function SchedulingTab() {
                         );
                       })}
 
-                      {acceptedMembers.flatMap((member) => [
+                      {acceptedMembers.flatMap((member) => {
+                        const weeklyCount = getMemberWeeklyJobCount(member.userId);
+                        return [
                           <div key={`name-${member.id}`} className="bg-card p-2 flex items-center gap-2 border-t border-border">
                             <Avatar className="h-6 w-6 shrink-0">
                               <AvatarImage src={member.profileImageUrl} />
@@ -2627,7 +2719,12 @@ function SchedulingTab() {
                                 {getInitials(member.firstName, member.lastName, member.email)}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-xs font-medium truncate">{member.firstName}</span>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-medium truncate block">{member.firstName}</span>
+                              {weeklyCount > 0 && (
+                                <span className="text-[10px] text-muted-foreground">{weeklyCount} job{weeklyCount !== 1 ? 's' : ''} this week</span>
+                              )}
+                            </div>
                           </div>,
                           ...weekDays.map((day, dayIndex) => {
                             const dayKey = format(day, 'yyyy-MM-dd');
@@ -2655,11 +2752,16 @@ function SchedulingTab() {
                             return (
                               <div
                                 key={`${member.id}-${dayIndex}`}
-                                className={`${cellBg} p-1 border-t border-border flex flex-col items-start justify-start gap-0.5 min-h-[60px] group ${
+                                className={`${cellBg} p-1 border-t border-border flex flex-col items-start justify-start gap-0.5 min-h-[60px] group relative ${
                                   isCurrentDay ? 'ring-1 ring-inset ring-primary/20' : ''
                                 } ${isDropZone ? 'ring-2 ring-dashed ring-primary/50 bg-primary/5' : ''} ${
-                                  isAvail && memberJobs.length === 0 && !hasApprovedTimeOff && !hasPendingTimeOff ? 'hover:bg-primary/5 transition-colors cursor-default' : ''
+                                  !isWeekend ? 'hover:bg-primary/5 transition-colors cursor-pointer' : ''
                                 }`}
+                                onClick={(e) => {
+                                  if (isWeekend) return;
+                                  if ((e.target as HTMLElement).closest('[draggable="true"]')) return;
+                                  navigate(`/dispatch-board?date=${dayKey}`);
+                                }}
                                 onDragOver={isAvail ? (e) => handleDragOver(e, cellId) : undefined}
                                 onDragLeave={isAvail ? handleDragLeave : undefined}
                                 onDrop={isAvail ? (e) => handleDropOnTeamCell(e, member.userId, dayKey) : undefined}
@@ -2685,22 +2787,38 @@ function SchedulingTab() {
                                 )}
                                 {memberJobs.length > 0 && (
                                   <div className="w-full space-y-0.5">
-                                    {memberJobs.map((job) => {
+                                    {memberJobs.slice(0, 3).map((job) => {
                                       const jTime = getJobTime(job);
+                                      const jobSuburb = getSuburb(job.address);
+                                      const statusDot = job.status === 'in_progress' ? 'bg-green-500' : job.status === 'scheduled' ? 'bg-blue-500' : 'bg-muted-foreground';
                                       return (
                                         <div
                                           key={job.id}
                                           draggable
                                           onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, 'job', job.id, dayKey); }}
-                                          className="px-1 py-0.5 rounded bg-blue-100/80 dark:bg-blue-900/30 cursor-grab active:cursor-grabbing"
+                                          className="px-1.5 py-0.5 rounded bg-blue-100/80 dark:bg-blue-900/30 cursor-grab active:cursor-grabbing"
                                         >
-                                          <p className="text-[9px] font-medium text-blue-700 dark:text-blue-400 truncate">{job.title}</p>
-                                          {jTime && (
-                                            <p className="text-[8px] text-blue-600/70 dark:text-blue-400/70">{jTime}</p>
+                                          <div className="flex items-center gap-1">
+                                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${statusDot}`} />
+                                            <p className="text-[10px] font-medium text-blue-700 dark:text-blue-400 truncate">{job.title}</p>
+                                          </div>
+                                          <div className="flex items-center gap-1 text-[9px] text-blue-600/70 dark:text-blue-400/70">
+                                            {jTime && <span>{jTime}</span>}
+                                            {job.clientName && <span className="truncate">{job.clientName}</span>}
+                                          </div>
+                                          {jobSuburb && (
+                                            <p className="text-[8px] text-blue-600/50 dark:text-blue-400/50 truncate flex items-center gap-0.5">
+                                              <MapPin className="h-2 w-2 shrink-0" />{jobSuburb}
+                                            </p>
                                           )}
                                         </div>
                                       );
                                     })}
+                                    {memberJobs.length > 3 && (
+                                      <p className="text-[9px] text-center text-muted-foreground font-medium">
+                                        +{memberJobs.length - 3} more
+                                      </p>
+                                    )}
                                     {isAvail && (
                                       <div className="group/add w-full flex items-center justify-center pt-0.5">
                                         <Plus className="h-2.5 w-2.5 text-muted-foreground/0 group-hover/add:text-muted-foreground/40 transition-colors" />
@@ -2708,11 +2826,25 @@ function SchedulingTab() {
                                     )}
                                   </div>
                                 )}
+                                <span className="absolute bottom-0.5 right-0.5 text-[8px] text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors">
+                                  View
+                                </span>
                               </div>
                             );
                           })
-                        ]
-                      )}
+                        ];
+                      })}
+
+                      <div className="bg-muted/30 p-2 text-xs font-medium text-muted-foreground border-t border-border flex items-center">
+                        Total
+                      </div>
+                      {dailyTotals.map((dt, i) => (
+                        <div key={`total-${i}`} className="bg-muted/30 p-1.5 text-center border-t border-border">
+                          <span className={`text-xs font-semibold ${dt.totalJobs > 0 ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                            {dt.totalJobs > 0 ? `${dt.totalJobs} job${dt.totalJobs !== 1 ? 's' : ''}` : '-'}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -2721,15 +2853,47 @@ function SchedulingTab() {
               )}
 
               {allUnassignedJobs.length > 0 && (
-                <div className="mt-3 pt-3 border-t">
-                  <p className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
-                    <span className="text-amber-700 dark:text-amber-400">Unassigned Jobs ({allUnassignedJobs.length})</span>
-                    <span className="text-xs text-muted-foreground font-normal ml-1">drag into a team member's day</span>
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {allUnassignedJobs.map((job) => renderJobCard(job))}
+                <div className="mt-3 pt-3 border-t space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-sm font-medium flex items-center gap-1.5">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      <span className="text-amber-700 dark:text-amber-400">Unassigned Jobs ({allUnassignedJobs.length})</span>
+                      <span className="text-xs text-muted-foreground font-normal ml-1">drag into a team member's day</span>
+                    </p>
+                    {(() => {
+                      const totalHours = allUnassignedJobs.reduce((sum, j) => sum + (j.estimatedDuration || 0), 0);
+                      return totalHours > 0 ? (
+                        <span className="text-xs text-muted-foreground">
+                          {totalHours >= 60 ? `${Math.floor(totalHours / 60)}h ${totalHours % 60}m` : `${totalHours}m`} estimated
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
+
+                  {urgentUnassignedJobs.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-1.5 uppercase tracking-wide flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Urgent / Overdue ({urgentUnassignedJobs.length})
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {urgentUnassignedJobs.map((job) => renderJobCard(job, { showUrgent: true }))}
+                      </div>
+                    </div>
+                  )}
+
+                  {regularUnassignedJobs.length > 0 && (
+                    <div>
+                      {urgentUnassignedJobs.length > 0 && (
+                        <p className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+                          Ready to Assign ({regularUnassignedJobs.length})
+                        </p>
+                      )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {regularUnassignedJobs.map((job) => renderJobCard(job))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

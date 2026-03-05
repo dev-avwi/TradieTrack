@@ -695,7 +695,15 @@ function detectScheduleConflicts(jobs: Job[]): Set<string> {
 
 export default function DispatchBoard() {
   const [topView, setTopView] = useState<'schedule' | 'board' | 'map'>('schedule');
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dateParam = params.get('date');
+    if (dateParam) {
+      const parsed = parseISO(dateParam);
+      if (!isNaN(parsed.getTime())) return startOfDay(parsed);
+    }
+    return startOfDay(new Date());
+  });
   const [viewMode, setViewMode] = useState<'day' | '3day' | 'week'>('day');
   const [draggedJob, setDraggedJob] = useState<DraggedJob | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
