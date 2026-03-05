@@ -38375,7 +38375,7 @@ Respond with JSON in this format:
 
   app.get("/api/swms/templates", requireAuth, async (_req: any, res) => {
     try {
-      res.json(SWMS_TEMPLATES.map(t => ({ id: t.id, title: t.title, description: t.description })));
+      res.json(SWMS_TEMPLATES.map(t => ({ id: t.id, title: t.title, description: t.description, hazards: t.hazards, ppeRequirements: t.ppeRequirements })));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

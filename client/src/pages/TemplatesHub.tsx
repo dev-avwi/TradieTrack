@@ -1549,6 +1549,7 @@ function FormsTab() {
   const [safetyFormsOpen, setSafetyFormsOpen] = useState(true);
   const [complianceFormsOpen, setComplianceFormsOpen] = useState(true);
   const [inspectionFormsOpen, setInspectionFormsOpen] = useState(true);
+  const [swmsTemplatesOpen, setSwmsTemplatesOpen] = useState(true);
   const [selectedForm, setSelectedForm] = useState<FormItem | null>(null);
   const [editFormId, setEditFormId] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -1588,7 +1589,11 @@ function FormsTab() {
     })),
   ];
 
-  const isLoading = isLoadingCustomForms || isLoadingSafetyTemplates;
+  const { data: swmsTemplates = [], isLoading: isLoadingSwmsTemplates } = useQuery<any[]>({
+    queryKey: ["/api/swms/templates"],
+  });
+
+  const isLoading = isLoadingCustomForms || isLoadingSafetyTemplates || isLoadingSwmsTemplates;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -1903,6 +1908,61 @@ function FormsTab() {
               setInspectionFormsOpen,
               "card-inspection-forms"
             )}
+
+            <Card data-testid="card-swms-templates">
+              <CardHeader className="pb-2 cursor-pointer" onClick={() => setSwmsTemplatesOpen(!swmsTemplatesOpen)}>
+                <CardTitle className="text-sm font-medium flex items-center justify-between gap-4">
+                  <span className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                    <div>
+                      <div>SWMS Templates</div>
+                      <div className="text-xs font-normal text-muted-foreground">Safe Work Method Statement templates for high-risk work</div>
+                    </div>
+                  </span>
+                  <Badge variant="secondary" className="text-xs">{swmsTemplates.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              {swmsTemplatesOpen && (
+                <CardContent className="pt-0 space-y-1">
+                  {swmsTemplates.map((template: any) => (
+                    <div
+                      key={template.id}
+                      className="flex items-center justify-between gap-3 p-2 rounded-md hover-elevate cursor-pointer"
+                      onClick={() => setSelectedForm({
+                        id: `swms-${template.id}`,
+                        name: template.title,
+                        description: template.description || '',
+                        formType: 'safety',
+                        fields: (template.hazards || []).map((h: any, i: number) => ({
+                          id: `hazard-${i}`,
+                          type: 'text',
+                          label: `${h.activityTask}: ${h.hazard}`,
+                          required: false,
+                        })),
+                        settings: {},
+                        requiresSignature: true,
+                        isActive: true,
+                        userId: '',
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        isSystemTemplate: true,
+                        templateKey: template.id,
+                        _swmsTemplate: template,
+                      } as any)}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm truncate">{template.title}</span>
+                        <Badge variant="default" className="text-xs shrink-0">SWMS</Badge>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                        <span>{template.hazards?.length || 0} hazards</span>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              )}
+            </Card>
             </>
             )}
           </div>
@@ -1944,7 +2004,7 @@ function FormsTab() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant={getFormTypeBadgeVariant(selectedForm.formType || 'general')} className="capitalize">
                           {getFormTypeIcon(selectedForm.formType || 'general')}
-                          <span className="ml-1">{selectedForm.formType || 'General'}</span>
+                          <span className="ml-1">{(selectedForm as any)._swmsTemplate ? 'SWMS' : (selectedForm.formType || 'General')}</span>
                         </Badge>
                         {selectedForm.requiresSignature && (
                           <Badge variant="outline">Requires Signature</Badge>
@@ -1954,6 +2014,58 @@ function FormsTab() {
                         )}
                       </div>
 
+                      {(selectedForm as any)._swmsTemplate ? (
+                        <div className="space-y-3 border-t pt-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hazard Assessment</p>
+                          <table className="w-full text-xs border-collapse">
+                            <thead>
+                              <tr className="border-b">
+                                <th className="text-left py-1 pr-2">Activity</th>
+                                <th className="text-left py-1 pr-2">Hazard</th>
+                                <th className="text-left py-1">Risk</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {((selectedForm as any)._swmsTemplate.hazards || []).slice(0, 5).map((h: any, i: number) => (
+                                <tr key={i} className="border-b border-muted">
+                                  <td className="py-1 pr-2">{h.activityTask}</td>
+                                  <td className="py-1 pr-2">{h.hazard}</td>
+                                  <td className="py-1">
+                                    <Badge variant="outline" className={`text-[10px] py-0 ${
+                                      h.riskBefore === 'high' || h.riskBefore === 'extreme' 
+                                        ? 'border-red-500 text-red-600 dark:text-red-400' 
+                                        : h.riskBefore === 'medium' 
+                                          ? 'border-orange-500 text-orange-600 dark:text-orange-400' 
+                                          : 'border-green-500 text-green-600 dark:text-green-400'
+                                    }`}>
+                                      {(h.riskBefore || 'medium').toUpperCase()}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {((selectedForm as any)._swmsTemplate.hazards || []).length > 5 && (
+                            <p className="text-xs text-muted-foreground">+{(selectedForm as any)._swmsTemplate.hazards.length - 5} more hazards...</p>
+                          )}
+                          {(selectedForm as any)._swmsTemplate.ppeRequirements?.length > 0 && (
+                            <div className="border-t pt-3">
+                              <p className="text-xs font-semibold uppercase tracking-wide mb-2 text-muted-foreground">PPE Requirements</p>
+                              <div className="flex flex-wrap gap-1">
+                                {(selectedForm as any)._swmsTemplate.ppeRequirements.map((ppe: string) => (
+                                  <Badge key={ppe} variant="secondary" className="text-xs capitalize">
+                                    {ppe.replace(/_/g, ' ')}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div className="border-t pt-3 mt-3">
+                            <p className="text-xs text-muted-foreground">Worker sign-off required</p>
+                            <div className="h-16 border-2 border-dashed rounded mt-2" />
+                          </div>
+                        </div>
+                      ) : (
                       <div className="space-y-3 border-t pt-4">
                         {Array.isArray(selectedForm.fields) && selectedForm.fields.length > 0 ? (
                           (selectedForm.fields as Array<{ label?: string; type?: string }>).slice(0, 5).map((field, index) => (
@@ -1985,8 +2097,9 @@ function FormsTab() {
                           </p>
                         )}
                       </div>
+                      )}
 
-                      {selectedForm.requiresSignature && (
+                      {selectedForm.requiresSignature && !(selectedForm as any)._swmsTemplate && (
                         <div className="border-t pt-3 mt-3">
                           <p className="text-xs text-muted-foreground">Signature required</p>
                           <div className="h-16 border-2 border-dashed rounded mt-2" />

@@ -228,6 +228,9 @@ export function SafetyFormsSection({ jobId, jobStatus, jobTitle, jobAddress, onS
     );
   }
 
+  const totalSafetyDocs = safetySubmissions.length + (swmsList?.length || 0);
+  const hasAnySafetyContent = totalSafetyDocs > 0;
+
   return (
     <>
       <Card data-testid="card-safety-forms" className={className}>
@@ -235,120 +238,51 @@ export function SafetyFormsSection({ jobId, jobStatus, jobTitle, jobAddress, onS
           <CardTitle className="text-sm font-medium flex items-center justify-between gap-4">
             <span className="flex items-center gap-2">
               <safetyStatus.icon className={`h-4 w-4 ${safetyStatus.color}`} />
-              Safety Forms
+              Safety & Compliance
             </span>
-            {safetyStatus.status === 'required' && (
-              <Badge variant="outline" className="border-amber-500 text-amber-600 dark:text-amber-400 text-xs">
-                <AlertCircle className="h-3 w-3 mr-1" />
-                Required
-              </Badge>
-            )}
-            {safetyStatus.status === 'complete' && (
-              <Badge className="bg-green-500 text-xs">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Complete
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {totalSafetyDocs > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {totalSafetyDocs}
+                </Badge>
+              )}
+              {safetyStatus.status === 'required' && !hasAnySafetyContent && (
+                <Badge variant="outline" className="border-amber-500 text-amber-600 dark:text-amber-400 text-xs">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Required
+                </Badge>
+              )}
+              {safetyStatus.status === 'complete' && (
+                <Badge className="bg-green-500 text-xs">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Complete
+                </Badge>
+              )}
+            </div>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {safetyForms.length === 0 ? (
-            <div className="text-center py-4 text-muted-foreground">
-              <Shield className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No safety forms configured</p>
-              <p className="text-xs">Create SWMS/JSA forms in Settings</p>
+        <CardContent className="space-y-4">
+          {!hasAnySafetyContent && safetyForms.length > 0 && (
+            <div className={`p-4 rounded-lg border-2 ${jobStatus === 'invoiced' ? 'border-muted bg-muted/30' : 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/80'}`}>
+              <div className="flex items-start gap-3">
+                <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${jobStatus === 'invoiced' ? 'bg-muted' : 'bg-amber-100 dark:bg-amber-900'}`}>
+                  <AlertTriangle className={`h-5 w-5 ${jobStatus === 'invoiced' ? 'text-muted-foreground' : 'text-amber-600 dark:text-amber-400'}`} />
+                </div>
+                <div>
+                  <p className={`text-sm font-semibold ${jobStatus === 'invoiced' ? 'text-muted-foreground' : 'text-amber-800 dark:text-amber-200'}`}>
+                    {jobStatus === 'invoiced' ? 'No safety forms were completed' : 'Safety documentation required'}
+                  </p>
+                  <p className={`text-xs mt-1 ${jobStatus === 'invoiced' ? 'text-muted-foreground/70' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {jobStatus === 'invoiced' ? 'Safety forms were not completed for this job' : 'Complete a SWMS or safety checklist before starting high-risk work'}
+                  </p>
+                </div>
+              </div>
             </div>
-          ) : (
-            <>
-              {safetySubmissions.length === 0 && (
-                <div className={`p-4 rounded-lg border-2 ${jobStatus === 'invoiced' ? 'border-muted bg-muted/30' : 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/80'}`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${jobStatus === 'invoiced' ? 'bg-muted' : 'bg-amber-100 dark:bg-amber-900'}`}>
-                      <AlertTriangle className={`h-5 w-5 ${jobStatus === 'invoiced' ? 'text-muted-foreground' : 'text-amber-600 dark:text-amber-400'}`} />
-                    </div>
-                    <div>
-                      <p className={`text-sm font-semibold ${jobStatus === 'invoiced' ? 'text-muted-foreground' : 'text-amber-800 dark:text-amber-200'}`}>
-                        {jobStatus === 'invoiced' ? 'No safety forms were completed' : 'Safety documentation required'}
-                      </p>
-                      <p className={`text-xs mt-1 ${jobStatus === 'invoiced' ? 'text-muted-foreground/70' : 'text-amber-600 dark:text-amber-400'}`}>
-                        {jobStatus === 'invoiced' ? 'Safety forms were not completed for this job' : 'Complete a SWMS or JSA before starting high-risk work'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {safetySubmissions.length > 0 && (
-                <div className="space-y-2">
-                  {safetySubmissions.map(submission => {
-                    const form = getFormById(submission.formId);
-                    return (
-                      <button
-                        key={submission.id}
-                        onClick={() => handleViewSubmission(submission)}
-                        className="w-full p-3 rounded-lg border hover:border-primary/50 hover:bg-accent/50 transition-all text-left"
-                        data-testid={`safety-submission-${submission.id}`}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
-                              <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-medium text-sm truncate">{form?.name || 'Safety Form'}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {submission.submittedAt && format(new Date(submission.submittedAt), 'dd MMM yyyy, h:mm a')}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {getStatusBadge(submission)}
-                            <Eye className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {jobStatus !== 'invoiced' && (
-                <Button
-                  onClick={() => setShowFormPicker(true)}
-                  className="w-full"
-                  variant={safetySubmissions.length === 0 ? "default" : "outline"}
-                  data-testid="button-add-safety-form"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  {safetySubmissions.length === 0 ? 'Complete Safety Form' : 'Add Another Form'}
-                </Button>
-              )}
-            </>
           )}
-        </CardContent>
-      </Card>
 
-      <Card data-testid="card-swms-documents" className={className}>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center justify-between gap-4">
-            <span className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              SWMS Documents
-            </span>
-            {swmsList && swmsList.length > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {swmsList.length}
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {loadingSwms ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : swmsList && swmsList.length > 0 ? (
+          {swmsList && swmsList.length > 0 && (
             <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">SWMS Documents</p>
               {swmsList.map((swms) => (
                 <div
                   key={swms.id}
@@ -398,25 +332,68 @@ export function SafetyFormsSection({ jobId, jobStatus, jobTitle, jobAddress, onS
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-4 text-muted-foreground">
-              <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No SWMS documents</p>
-              <p className="text-xs">Create a Safe Work Method Statement for high-risk work</p>
+          )}
+
+          {safetySubmissions.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Safety Checklists</p>
+              {safetySubmissions.map(submission => {
+                const form = getFormById(submission.formId);
+                return (
+                  <button
+                    key={submission.id}
+                    onClick={() => handleViewSubmission(submission)}
+                    className="w-full p-3 rounded-lg border hover-elevate transition-all text-left"
+                    data-testid={`safety-submission-${submission.id}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
+                          <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{form?.name || 'Safety Form'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {submission.submittedAt && format(new Date(submission.submittedAt), 'dd MMM yyyy, h:mm a')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(submission)}
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
+
           {jobStatus !== 'invoiced' && (
-            <Button
-              onClick={() => {
-                setEditingSwmsId(undefined);
-                setShowSwmsBuilder(true);
-              }}
-              className="w-full"
-              variant={!swmsList || swmsList.length === 0 ? "default" : "outline"}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create SWMS
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setEditingSwmsId(undefined);
+                  setShowSwmsBuilder(true);
+                }}
+                className="flex-1"
+                variant={!hasAnySafetyContent ? "default" : "outline"}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create SWMS
+              </Button>
+              {safetyForms.length > 0 && (
+                <Button
+                  onClick={() => setShowFormPicker(true)}
+                  className="flex-1"
+                  variant="outline"
+                  data-testid="button-add-safety-form"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Safety Checklist
+                </Button>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>

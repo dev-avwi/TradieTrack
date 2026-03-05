@@ -281,6 +281,7 @@ export default function JobDetailView({
     photos: true,
     invoice: true,
     compliance: true,
+    swms: true,
     subcontractors: true,
   });
   const [inspectionNotesInput, setInspectionNotesInput] = useState("");
@@ -4360,6 +4361,7 @@ export default function JobDetailView({
                 { key: 'invoice' as const, label: 'Invoice Summary' },
                 { key: 'compliance' as const, label: 'Compliance & Licensing' },
                 { key: 'subcontractors' as const, label: 'Subcontractor Coordination' },
+                { key: 'swms' as const, label: 'SWMS Documents' },
               ].map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
