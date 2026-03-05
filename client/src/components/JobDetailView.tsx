@@ -264,7 +264,7 @@ export default function JobDetailView({
   const [materialTrackingUrl, setMaterialTrackingUrl] = useState('');
   const [materialNotes, setMaterialNotes] = useState('');
   const [materialMarkupPercent, setMaterialMarkupPercent] = useState('');
-  const [materialReceiptPhotoUrl, setMaterialReceiptPhotoUrl] = useState('');
+  
   const [showSiteUpdateDialog, setShowSiteUpdateDialog] = useState(false);
   const [siteUpdateNote, setSiteUpdateNote] = useState('');
   const [siteUpdatePhoto, setSiteUpdatePhoto] = useState<File | null>(null);
@@ -997,7 +997,6 @@ export default function JobDetailView({
       setMaterialTrackingUrl('');
       setMaterialNotes('');
       setMaterialMarkupPercent('');
-      setMaterialReceiptPhotoUrl('');
       toast({ title: 'Material added' });
     },
     onError: () => {
@@ -1024,6 +1023,51 @@ export default function JobDetailView({
       toast({ title: 'Material removed' });
     },
   });
+
+  const uploadMaterialReceiptMutation = useMutation({
+    mutationFn: async ({ materialId, base64Image }: { materialId: string; base64Image: string }) => {
+      const res = await apiRequest('POST', `/api/materials/${materialId}/receipt-photo`, { image: base64Image });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'materials'] });
+      setUploadingMaterialId(null);
+      toast({ title: 'Receipt photo saved' });
+    },
+    onError: () => {
+      setUploadingMaterialId(null);
+      toast({ title: 'Failed to upload receipt', variant: 'destructive' });
+    },
+  });
+
+  const [uploadingMaterialId, setUploadingMaterialId] = useState<string | null>(null);
+
+  const handleMaterialReceiptUpload = (materialId: string) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        toast({ title: 'Please select an image file', variant: 'destructive' });
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ title: 'Image too large (max 10MB)', variant: 'destructive' });
+        return;
+      }
+      setUploadingMaterialId(materialId);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        uploadMaterialReceiptMutation.mutate({ materialId, base64Image: base64 });
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
 
   const assignEquipmentMutation = useMutation({
     mutationFn: async (data: { equipmentId: string; notes?: string }) => {
@@ -3221,33 +3265,21 @@ export default function JobDetailView({
                     </Select>
                   </div>
                   <Input
-                    placeholder="Tracking URL (optional)"
-                    value={materialTrackingUrl}
-                    onChange={(e) => setMaterialTrackingUrl(e.target.value)}
-                  />
-                  <Input
                     placeholder="Notes (optional)"
                     value={materialNotes}
                     onChange={(e) => setMaterialNotes(e.target.value)}
                   />
                   {!isTradie && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="relative">
-                        <Input
-                          placeholder="Markup %"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={materialMarkupPercent}
-                          onChange={(e) => setMaterialMarkupPercent(e.target.value)}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
-                      </div>
+                    <div className="relative">
                       <Input
-                        placeholder="Receipt photo URL (optional)"
-                        value={materialReceiptPhotoUrl}
-                        onChange={(e) => setMaterialReceiptPhotoUrl(e.target.value)}
+                        placeholder="Markup %"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={materialMarkupPercent}
+                        onChange={(e) => setMaterialMarkupPercent(e.target.value)}
                       />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                     </div>
                   )}
                   <div className="flex gap-2">
@@ -3267,7 +3299,6 @@ export default function JobDetailView({
                           trackingUrl: materialTrackingUrl || undefined,
                           notes: materialNotes || undefined,
                           markupPercent: materialMarkupPercent || undefined,
-                          receiptPhotoUrl: materialReceiptPhotoUrl || undefined,
                         });
                       }}
                       style={{ backgroundColor: 'hsl(var(--trade))', color: 'white' }}
@@ -3370,23 +3401,51 @@ export default function JobDetailView({
                               </a>
                             </div>
                           )}
-                          {!isTradie && mat.receiptPhotoUrl && /^https?:\/\//i.test(mat.receiptPhotoUrl) && (
+                          {mat.receiptPhotoUrl && (
                             <div className="flex items-center gap-1 mt-1 text-xs">
                               <Receipt className="h-3 w-3 text-muted-foreground" />
-                              <a
-                                href={mat.receiptPhotoUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline flex items-center gap-1"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                View Receipt
-                                <ExternalLink className="h-2.5 w-2.5" />
-                              </a>
+                              {mat.receiptPhotoUrl.startsWith('/objects/') ? (
+                                <a
+                                  href={mat.receiptPhotoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-green-600 dark:text-green-400 font-medium hover:underline flex items-center gap-1"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  View Receipt
+                                  <Eye className="h-2.5 w-2.5" />
+                                </a>
+                              ) : /^https?:\/\//i.test(mat.receiptPhotoUrl) ? (
+                                <a
+                                  href={mat.receiptPhotoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline flex items-center gap-1"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  View Receipt
+                                  <ExternalLink className="h-2.5 w-2.5" />
+                                </a>
+                              ) : (
+                                <span className="text-green-600 dark:text-green-400 font-medium">Receipt attached</span>
+                              )}
                             </div>
                           )}
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            size="sm"
+                            variant={mat.receiptPhotoUrl ? "ghost" : "outline"}
+                            onClick={() => handleMaterialReceiptUpload(mat.id)}
+                            disabled={uploadingMaterialId === mat.id}
+                          >
+                            {uploadingMaterialId === mat.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Camera className="h-3.5 w-3.5 mr-1" />
+                            )}
+                            {mat.receiptPhotoUrl ? '' : 'Receipt'}
+                          </Button>
                           <Select
                             value={mat.status}
                             onValueChange={(val) => updateMaterialStatusMutation.mutate({ id: mat.id, status: val })}

@@ -30568,6 +30568,48 @@ Respond with JSON in this format:
     }
   });
 
+  app.post("/api/materials/:id/receipt-photo", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const effectiveUserId = req.effectiveUserId || userId;
+
+      const existing = await storage.getJobMaterial(id, effectiveUserId);
+      if (!existing) {
+        return res.status(404).json({ error: "Material not found" });
+      }
+
+      if (!req.body.image) {
+        return res.status(400).json({ error: "No receipt image provided" });
+      }
+
+      const base64Data = req.body.image.replace(/^data:image\/\w+;base64,/, '');
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+
+      if (imageBuffer.length > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "Image too large. Maximum 10MB." });
+      }
+
+      let contentType = 'image/jpeg';
+      let ext = 'jpg';
+      const mimeMatch = req.body.image.match(/^data:(image\/\w+);base64,/);
+      if (mimeMatch) {
+        contentType = mimeMatch[1];
+        ext = contentType.split('/')[1] || 'jpg';
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const fileName = `material-receipts/${id}-${Date.now()}.${ext}`;
+      const objectPath = await objectStorageService.uploadFile(fileName, imageBuffer, contentType);
+
+      const updated = await storage.updateJobMaterial(id, effectiveUserId, { receiptPhotoUrl: objectPath });
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error uploading material receipt:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Delete a material
   app.delete("/api/materials/:id", requireAuth, async (req: any, res) => {
     try {
