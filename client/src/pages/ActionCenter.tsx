@@ -174,6 +174,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [uninvoicedExpanded, setUninvoicedExpanded] = useState(false);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const [confirmInvoiceDialogOpen, setConfirmInvoiceDialogOpen] = useState(false);
 
   const { data, isLoading } = useQuery<ActionCenterData>({
     queryKey: ["/api/bi/action-center"],
@@ -301,7 +302,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
   return (
     <PageShell>
       <PageHeader
-        title="Action Center"
+        title="Action Centre"
         subtitle="What needs your attention"
         leading={<Zap className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
       />
@@ -513,7 +514,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                                               disabled={selectedJobIds.size === 0 || batchInvoiceMutation.isPending}
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                batchInvoiceMutation.mutate(Array.from(selectedJobIds));
+                                                setConfirmInvoiceDialogOpen(true);
                                               }}
                                             >
                                               {batchInvoiceMutation.isPending ? (
@@ -772,6 +773,48 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
             >
               <X className="h-4 w-4 mr-1" />
               Decline
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmInvoiceDialogOpen} onOpenChange={setConfirmInvoiceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate {selectedJobIds.size} Invoice{selectedJobIds.size !== 1 ? "s" : ""}?</DialogTitle>
+            <DialogDescription>
+              This will create draft invoices for the selected completed jobs. You can review and edit each invoice before sending to clients.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-1 max-h-48 overflow-y-auto py-2">
+            {uninvoicedJobs.filter(j => selectedJobIds.has(j.id)).map(job => (
+              <div key={job.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{job.title}</p>
+                  {job.clientId && clientMap.get(job.clientId) && (
+                    <p className="text-xs text-muted-foreground truncate">{clientMap.get(job.clientId)}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setConfirmInvoiceDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={batchInvoiceMutation.isPending}
+              onClick={() => {
+                setConfirmInvoiceDialogOpen(false);
+                batchInvoiceMutation.mutate(Array.from(selectedJobIds));
+              }}
+            >
+              {batchInvoiceMutation.isPending ? (
+                <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Creating...</>
+              ) : (
+                <>Yes, Generate {selectedJobIds.size} Invoice{selectedJobIds.size !== 1 ? "s" : ""}</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

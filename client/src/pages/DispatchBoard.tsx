@@ -214,6 +214,8 @@ interface DispatchJob {
   latitude?: string | number | null;
   longitude?: string | number | null;
   clientId: string;
+  priority?: string;
+  notes?: string;
   client?: { id: string; name: string; phone?: string } | null;
   assignments?: DispatchAssignment[];
 }
@@ -309,6 +311,36 @@ function getKanbanColumn(job: DispatchJob): string {
   if (['pending', 'scheduled'].includes(status)) return 'assigned';
 
   return 'assigned';
+}
+
+function getPriorityConfig(priority?: string) {
+  switch (priority?.toLowerCase()) {
+    case 'urgent': return { label: 'Urgent', color: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/25' };
+    case 'high': return { label: 'High', color: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/25' };
+    case 'low': return { label: 'Low', color: 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/25' };
+    default: return null;
+  }
+}
+
+function getTimeElapsed(scheduledAt?: string, scheduledTime?: string): string | null {
+  if (!scheduledAt) return null;
+  try {
+    let startDate: Date;
+    if (scheduledTime) {
+      const [h, m] = scheduledTime.split(':').map(Number);
+      startDate = parseISO(scheduledAt);
+      startDate.setHours(h, m, 0, 0);
+    } else {
+      startDate = parseISO(scheduledAt);
+    }
+    const now = new Date();
+    if (startDate > now) return null;
+    const mins = differenceInMinutes(now, startDate);
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    const remainMins = mins % 60;
+    return remainMins > 0 ? `${hours}h ${remainMins}m ago` : `${hours}h ago`;
+  } catch { return null; }
 }
 
 function KanbanBoard({ dispatchJobs, teamMembers: kanbanTeam }: { dispatchJobs: DispatchJob[]; teamMembers?: TeamMember[] }) {
@@ -466,6 +498,10 @@ function KanbanBoard({ dispatchJobs, teamMembers: kanbanTeam }: { dispatchJobs: 
                     const durationStr = job.estimatedDuration
                       ? (job.estimatedDuration >= 60 ? `${Math.floor(job.estimatedDuration / 60)}h${job.estimatedDuration % 60 ? ` ${job.estimatedDuration % 60}m` : ''}` : `${job.estimatedDuration}m`)
                       : null;
+                    const priorityCfg = getPriorityConfig(job.priority);
+                    const elapsed = getTimeElapsed(job.scheduledAt, job.scheduledTime);
+                    const kanbanCol = getKanbanColumn(job);
+                    const isActive = ['en_route', 'arrived', 'in_progress'].includes(kanbanCol);
                     return (
                       <Card
                         key={job.id}
@@ -480,11 +516,18 @@ function KanbanBoard({ dispatchJobs, teamMembers: kanbanTeam }: { dispatchJobs: 
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex items-start justify-between gap-2">
                               <h4 className="text-sm font-medium leading-tight truncate">{job.title}</h4>
-                              {durationStr && (
-                                <Badge variant="secondary" className="text-[9px] px-1 py-0 shrink-0">
-                                  {durationStr}
-                                </Badge>
-                              )}
+                              <div className="flex items-center gap-1 shrink-0">
+                                {priorityCfg && (
+                                  <Badge variant="outline" className={`text-[9px] px-1 py-0 no-default-hover-elevate no-default-active-elevate ${priorityCfg.color}`}>
+                                    {priorityCfg.label}
+                                  </Badge>
+                                )}
+                                {durationStr && (
+                                  <Badge variant="secondary" className="text-[9px] px-1 py-0">
+                                    {durationStr}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                             {job.client && (
                               <p className="text-xs text-muted-foreground truncate">
@@ -508,6 +551,12 @@ function KanbanBoard({ dispatchJobs, teamMembers: kanbanTeam }: { dispatchJobs: 
                                 <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
                                   <Clock className="h-2.5 w-2.5" />
                                   {job.scheduledTime}
+                                </span>
+                              )}
+                              {isActive && elapsed && (
+                                <span className="text-[10px] font-medium flex items-center gap-0.5" style={{ color: 'hsl(var(--trade))' }}>
+                                  <Timer className="h-2.5 w-2.5" />
+                                  {elapsed}
                                 </span>
                               )}
                               {!firstAssignment && (
@@ -540,13 +589,19 @@ function KanbanBoard({ dispatchJobs, teamMembers: kanbanTeam }: { dispatchJobs: 
                                     <span>{(() => { try { return format(parseISO(job.scheduledAt), 'EEE, MMM d, yyyy'); } catch { return job.scheduledAt; } })()}</span>
                                   </div>
                                 )}
+                                {job.notes && (
+                                  <div className="flex items-start gap-1 text-xs text-muted-foreground">
+                                    <Briefcase className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                                    <span className="line-clamp-3">{job.notes}</span>
+                                  </div>
+                                )}
                                 {(job.assignments || []).filter(a => a.isActive).length > 1 && (
                                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                     <Users className="h-3 w-3 flex-shrink-0" />
                                     <span>{job.assignments!.filter(a => a.isActive).map(a => a.memberFirstName).join(', ')}</span>
                                   </div>
                                 )}
-                                <div className="flex items-center gap-1 pt-0.5">
+                                <div className="flex items-center gap-1 pt-0.5 flex-wrap">
                                   <Badge variant="secondary" className="text-[10px]">
                                     {job.status}
                                   </Badge>
@@ -554,6 +609,12 @@ function KanbanBoard({ dispatchJobs, teamMembers: kanbanTeam }: { dispatchJobs: 
                                     <Badge variant="outline" className="text-[10px]">
                                       {job.workerStatus}
                                     </Badge>
+                                  )}
+                                  {elapsed && (
+                                    <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 ml-auto">
+                                      <Timer className="h-2.5 w-2.5" />
+                                      Started {elapsed}
+                                    </span>
                                   )}
                                 </div>
                               </div>

@@ -157,8 +157,8 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/payouts', label: 'Payouts', allowedRoles: ['owner', 'solo_owner'], showInNav: false },
   { path: '/stripe-connect', label: 'Stripe Connect', allowedRoles: ['owner', 'solo_owner'], showInNav: false },
   
-  // Business Intelligence - Action Center, Insights, Autopilot
-  { path: '/action-center', label: 'Action Center', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
+  // Business Intelligence - Action Centre, Insights, Autopilot
+  { path: '/action-center', label: 'Action Centre', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   { path: '/insights', label: 'Insights', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: true },
   { path: '/autopilot', label: 'Autopilot', allowedRoles: ['owner', 'solo_owner'], showInNav: true },
 

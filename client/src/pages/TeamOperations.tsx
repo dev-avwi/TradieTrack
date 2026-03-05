@@ -3257,7 +3257,7 @@ function SchedulingTab() {
               data-testid="input-quick-assign-search"
             />
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
+          <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6" style={{ maxHeight: 'min(50vh, 380px)' }}>
             <div className="space-y-1.5 pb-2">
               {(() => {
                 const searchLower = quickAssignSearch.toLowerCase();

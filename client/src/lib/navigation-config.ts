@@ -66,7 +66,7 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'],
   },
   {
-    title: "Action Center",
+    title: "Action Centre",
     url: "/action-center",
     icon: Target,
     description: "What needs your attention today",
