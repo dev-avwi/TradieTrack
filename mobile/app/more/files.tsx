@@ -7,6 +7,7 @@ import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { format } from 'date-fns';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
+import PhotoLibrary from '../../src/components/PhotoLibrary';
 
 interface ComplianceDocument {
   id: string;
@@ -1172,45 +1173,45 @@ export default function FilesScreen() {
 
       <TouchableOpacity
         style={styles.categoryCard}
-        onPress={() => router.push('/(tabs)/work' as any)}
+        onPress={() => setActiveFilter('photos')}
         activeOpacity={0.7}
       >
         <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
           <Feather name="camera" size={16} color={CATEGORY_COLORS.photos.color} />
         </View>
         <View style={styles.categoryContent}>
-          <Text style={styles.categoryTitle}>Job Photos</Text>
-          <Text style={styles.categoryCount}>View photos across {activeJobs} jobs</Text>
+          <Text style={styles.categoryTitle}>Photo Library</Text>
+          <Text style={styles.categoryCount}>Browse, upload & manage all photos</Text>
         </View>
         <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.categoryCard}
-        onPress={() => router.push('/(tabs)/work' as any)}
+        onPress={() => router.push('/more/documents' as any)}
         activeOpacity={0.7}
       >
         <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.voiceNotes.bg }]}>
-          <Feather name="mic" size={16} color={CATEGORY_COLORS.voiceNotes.color} />
+          <Feather name="folder" size={16} color={CATEGORY_COLORS.voiceNotes.color} />
         </View>
         <View style={styles.categoryContent}>
-          <Text style={styles.categoryTitle}>Voice Notes</Text>
-          <Text style={styles.categoryCount}>Attached to jobs</Text>
+          <Text style={styles.categoryTitle}>Documents</Text>
+          <Text style={styles.categoryCount}>Quotes, invoices & receipts</Text>
         </View>
         <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.categoryCard}
-        onPress={() => router.push('/(tabs)/work' as any)}
+        onPress={() => setActiveFilter('compliance')}
         activeOpacity={0.7}
       >
-        <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.sitePhotos.bg }]}>
-          <Feather name="image" size={16} color={CATEGORY_COLORS.sitePhotos.color} />
+        <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.compliance.bg }]}>
+          <Feather name="shield" size={16} color={CATEGORY_COLORS.compliance.color} />
         </View>
         <View style={styles.categoryContent}>
-          <Text style={styles.categoryTitle}>Site Photos</Text>
-          <Text style={styles.categoryCount}>Before & after shots</Text>
+          <Text style={styles.categoryTitle}>Compliance</Text>
+          <Text style={styles.categoryCount}>Licences, insurance & certifications</Text>
         </View>
         <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
       </TouchableOpacity>
@@ -1251,37 +1252,7 @@ export default function FilesScreen() {
   );
 
   const renderPhotosContent = () => (
-    <View style={styles.quickAccessSection}>
-      <TouchableOpacity
-        style={styles.categoryCard}
-        onPress={() => router.push('/(tabs)/work' as any)}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
-          <Feather name="camera" size={16} color={CATEGORY_COLORS.photos.color} />
-        </View>
-        <View style={styles.categoryContent}>
-          <Text style={styles.categoryTitle}>Job Photos</Text>
-          <Text style={styles.categoryCount}>View photos across {activeJobs} jobs</Text>
-        </View>
-        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.categoryCard}
-        onPress={() => router.push('/(tabs)/work' as any)}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.sitePhotos.bg }]}>
-          <Feather name="image" size={16} color={CATEGORY_COLORS.sitePhotos.color} />
-        </View>
-        <View style={styles.categoryContent}>
-          <Text style={styles.categoryTitle}>Site Photos</Text>
-          <Text style={styles.categoryCount}>Before & after shots</Text>
-        </View>
-        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-      </TouchableOpacity>
-    </View>
+    <PhotoLibrary />
   );
 
   const renderDocumentsContent = () => (
