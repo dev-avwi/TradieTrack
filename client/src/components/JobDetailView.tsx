@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone, Wrench, FileDown, Search, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone, Wrench, FileDown, Search, ChevronsUpDown, Eye, Image, ListChecks, Activity } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { TimerWidget } from "./TimeTracking";
 import { useLocation, useSearch } from "wouter";
@@ -1297,6 +1298,15 @@ export default function JobDetailView({
 
   const [portalUrl, setPortalUrl] = useState<string | null>(null);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [portalSettings, setPortalSettings] = useState({
+    showTimeline: true,
+    showPhotos: true,
+    showChecklist: true,
+    showActivityFeed: true,
+    clientMessage: '' as string,
+  });
+  const [showPortalControls, setShowPortalControls] = useState(false);
+  const [portalMessageDraft, setPortalMessageDraft] = useState('');
   const [elapsedTime, setElapsedTime] = useState('');
 
   useEffect(() => {
@@ -1334,6 +1344,14 @@ export default function JobDetailView({
           if (activeToken) {
             const baseUrl = window.location.origin;
             setPortalUrl(`${baseUrl}/p/${activeToken.token}`);
+            setPortalSettings({
+              showTimeline: activeToken.showTimeline !== false,
+              showPhotos: activeToken.showPhotos !== false,
+              showChecklist: activeToken.showChecklist !== false,
+              showActivityFeed: activeToken.showActivityFeed !== false,
+              clientMessage: activeToken.clientMessage || '',
+            });
+            setPortalMessageDraft(activeToken.clientMessage || '');
           }
         }
       }).catch(() => { portalFetchedRef.current = false; });
@@ -1356,6 +1374,29 @@ export default function JobDetailView({
         setPortalUrl(`${baseUrl}/p/${data.token.token}`);
         setShowShareDialog(true);
       }
+    },
+  });
+
+  const portalSettingsMutation = useMutation({
+    mutationFn: async (settings: Partial<typeof portalSettings>) => {
+      const res = await apiRequest("PATCH", `/api/jobs/${jobId}/portal-settings`, settings);
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.showTimeline !== undefined) {
+        setPortalSettings(prev => ({
+          ...prev,
+          showTimeline: data.showTimeline !== false,
+          showPhotos: data.showPhotos !== false,
+          showChecklist: data.showChecklist !== false,
+          showActivityFeed: data.showActivityFeed !== false,
+          clientMessage: data.clientMessage || '',
+        }));
+      }
+      toast({ title: "Portal settings updated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update portal settings", variant: "destructive" });
     },
   });
 
@@ -2821,13 +2862,24 @@ export default function JobDetailView({
                         <Globe className="h-3.5 w-3.5" />
                         Client Portal
                       </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => window.open(portalUrl, '_blank')}
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setShowPortalControls(!showPortalControls)}
+                          title="Portal visibility settings"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => window.open(portalUrl, '_blank')}
+                          title="Preview as client"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-3 gap-1.5">
                       <Button
@@ -2877,6 +2929,72 @@ export default function JobDetailView({
                         Email
                       </Button>
                     </div>
+
+                    {showPortalControls && (
+                      <div className="space-y-3 pt-2 border-t">
+                        <span className="text-xs font-medium text-muted-foreground">Client can see:</span>
+                        <div className="space-y-2">
+                          {[
+                            { key: 'showTimeline' as const, label: 'Progress Timeline', icon: Clock },
+                            { key: 'showPhotos' as const, label: 'Job Photos', icon: Image },
+                            { key: 'showChecklist' as const, label: 'Checklist Progress', icon: ListChecks },
+                            { key: 'showActivityFeed' as const, label: 'Activity Feed', icon: Activity },
+                          ].map(({ key, label, icon: Icon }) => (
+                            <div key={key} className="flex items-center justify-between gap-2">
+                              <label className="text-xs flex items-center gap-1.5 cursor-pointer">
+                                <Icon className="h-3 w-3 text-muted-foreground" />
+                                {label}
+                              </label>
+                              <Switch
+                                checked={portalSettings[key]}
+                                onCheckedChange={(checked) => {
+                                  setPortalSettings(prev => ({ ...prev, [key]: checked }));
+                                  portalSettingsMutation.mutate({ [key]: checked });
+                                }}
+                                disabled={portalSettingsMutation.isPending}
+                              />
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-muted-foreground">Message to client</label>
+                          <Textarea
+                            value={portalMessageDraft}
+                            onChange={(e) => setPortalMessageDraft(e.target.value)}
+                            placeholder="e.g. Running a bit behind, should be there by 2pm"
+                            className="text-xs resize-none"
+                            rows={2}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-xs gap-1"
+                            disabled={portalSettingsMutation.isPending || portalMessageDraft === portalSettings.clientMessage}
+                            onClick={() => {
+                              portalSettingsMutation.mutate({ clientMessage: portalMessageDraft || null });
+                            }}
+                          >
+                            {portalSettingsMutation.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Check className="h-3 w-3" />
+                            )}
+                            {portalMessageDraft ? 'Save Message' : 'Clear Message'}
+                          </Button>
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs gap-1"
+                          onClick={() => window.open(portalUrl, '_blank')}
+                        >
+                          <Eye className="h-3 w-3" />
+                          Preview as Client
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <Button

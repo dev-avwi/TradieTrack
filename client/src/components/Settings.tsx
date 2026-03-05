@@ -426,6 +426,7 @@ export default function Settings({
     aiEnabled: true,
     aiPhotoAnalysisEnabled: true,
     aiSuggestionsEnabled: true,
+    aiAutoCategorizationEnabled: true,
     emailSendingMode: "manual" as "manual" | "automatic",
     tradeType: "general"
   });
@@ -643,6 +644,7 @@ export default function Settings({
         aiEnabled: (businessSettings as any).aiEnabled !== false,
         aiPhotoAnalysisEnabled: (businessSettings as any).aiPhotoAnalysisEnabled !== false,
         aiSuggestionsEnabled: (businessSettings as any).aiSuggestionsEnabled !== false,
+        aiAutoCategorizationEnabled: (businessSettings as any).aiAutoCategorizationEnabled !== false,
         emailSendingMode: (businessSettings as any).emailSendingMode || "manual",
         tradeType: (businessSettings as any).tradeType || "general"
       });
@@ -2392,6 +2394,22 @@ export default function Settings({
                     }}
                     disabled={businessData.aiEnabled === false}
                     data-testid="switch-ai-photo-analysis" 
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <Label>Auto-categorize Photos on Upload</Label>
+                    <p className="text-sm text-muted-foreground">Automatically sort uploaded photos into categories (before, after, progress, materials)</p>
+                  </div>
+                  <Switch 
+                    checked={businessData.aiAutoCategorizationEnabled !== false}
+                    onCheckedChange={(checked) => {
+                      setBusinessData(prev => ({ ...prev, aiAutoCategorizationEnabled: checked }));
+                      handleBusinessSave({ aiAutoCategorizationEnabled: checked });
+                    }}
+                    disabled={businessData.aiEnabled === false}
+                    data-testid="switch-ai-auto-categorization" 
                   />
                 </div>
 

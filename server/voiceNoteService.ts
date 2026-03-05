@@ -1,6 +1,7 @@
 import { storage as dbStorage } from './storage';
 import { objectStorageClient } from './objectStorage';
 import crypto from 'crypto';
+import OpenAI from 'openai';
 
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
@@ -246,6 +247,7 @@ export async function getJobVoiceNotes(
   duration: number | null;
   title: string | null;
   transcription: string | null;
+  detectedActions: DetectedAction[] | null;
   createdAt: Date | null;
   signedUrl?: string;
 }>> {
@@ -261,6 +263,7 @@ export async function getJobVoiceNotes(
           duration: note.duration,
           title: note.title,
           transcription: note.transcription,
+          detectedActions: (note.detectedActions as DetectedAction[] | null) || null,
           createdAt: note.createdAt,
           signedUrl: url,
         };
@@ -345,15 +348,86 @@ export async function transcribeVoiceNote(
     
     console.log('[VoiceNoteService] Transcription complete:', transcription.substring(0, 100) + '...');
     
-    // Save transcription to database
+    const transcriptionText = transcription.toString();
+    
     await dbStorage.updateVoiceNote(voiceNoteId, userId, { 
-      transcription: transcription.toString() 
+      transcription: transcriptionText 
     });
     
-    return { success: true, transcription: transcription.toString() };
+    detectActionsFromTranscription(transcriptionText, voiceNoteId, userId).catch(err => {
+      console.error('[VoiceNoteService] Background action detection failed:', err.message);
+    });
+    
+    return { success: true, transcription: transcriptionText };
   } catch (error: any) {
     console.error('Error transcribing voice note:', error);
     return { success: false, error: error.message };
+  }
+}
+
+export interface DetectedAction {
+  type: 'reminder' | 'follow_up' | 'material_need' | 'quote_request';
+  description: string;
+  date?: string;
+  confirmed?: boolean;
+  dismissed?: boolean;
+}
+
+export async function detectActionsFromTranscription(
+  transcription: string,
+  voiceNoteId: string,
+  userId: string
+): Promise<DetectedAction[]> {
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.log('[VoiceNoteService] No OpenAI API key, skipping action detection');
+      return [];
+    }
+
+    const openai = new OpenAI({ apiKey });
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'Analyse this voice note from an Australian tradesperson. Extract any action items: reminders (with dates), follow-up tasks, material needs, quote requests. Return JSON array of actions with type, description, and date (if detected). Types: reminder, follow_up, material_need, quote_request. Be conservative — only extract clear actions.'
+        },
+        {
+          role: 'user',
+          content: transcription
+        }
+      ],
+      response_format: { type: 'json_object' },
+      max_tokens: 500,
+    });
+
+    const content = response.choices[0]?.message?.content || '{"actions": []}';
+    const parsed = JSON.parse(content);
+    const actions: DetectedAction[] = Array.isArray(parsed) ? parsed : (parsed.actions || []);
+
+    const validActions = actions
+      .filter((a: any) => a && a.type && a.description)
+      .map((a: any) => ({
+        type: a.type as DetectedAction['type'],
+        description: a.description,
+        date: a.date || undefined,
+        confirmed: false,
+        dismissed: false,
+      }));
+
+    if (validActions.length > 0) {
+      await dbStorage.updateVoiceNote(voiceNoteId, userId, {
+        detectedActions: validActions as any,
+      });
+      console.log(`[VoiceNoteService] Detected ${validActions.length} actions from transcription`);
+    }
+
+    return validActions;
+  } catch (error: any) {
+    console.error('[VoiceNoteService] Error detecting actions:', error.message);
+    return [];
   }
 }
 

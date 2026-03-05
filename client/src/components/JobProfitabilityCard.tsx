@@ -14,7 +14,7 @@ interface ProfitabilityData {
   clientName: string;
   quoted: { amount: number; gst: number; quoteNumber: string } | null;
   revenue: { invoiced: number; pending: number; received: number };
-  costs: { labour: number; materials: number; otherExpenses: number; total: number };
+  costs: { labour: number; subcontractor: number; materials: number; otherExpenses: number; total: number };
   profit: { amount: number; margin: number; vsQuote: number | null };
   hours: { total: number; billable: number; nonBillable: number };
   status: "profitable" | "tight" | "loss";
@@ -139,6 +139,12 @@ export default function JobProfitabilityCard({ jobId }: { jobId: string }) {
               </span>
               <span className="text-sm">{formatCurrency(data.costs.labour)}</span>
             </div>
+            {data.costs.subcontractor > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Subcontractors</span>
+                <span className="text-sm">{formatCurrency(data.costs.subcontractor)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Materials</span>
               <span className="text-sm">{formatCurrency(data.costs.materials)}</span>

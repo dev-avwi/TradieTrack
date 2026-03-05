@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Calendar as CalendarIcon, DollarSign, Receipt, Plus, Trash2, Edit3, TrendingUp, Filter, Download } from "lucide-react";
+import { Calendar as CalendarIcon, DollarSign, Receipt, Plus, Trash2, Edit3, TrendingUp, Filter, Download, Camera, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -49,7 +49,70 @@ export function ExpenseTracking() {
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [selectedJob, setSelectedJob] = useState<string | undefined>();
+  const [isScanning, setIsScanning] = useState(false);
+  const [scannedReceiptUrl, setScannedReceiptUrl] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleScanReceipt = async () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.capture = "environment";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      setIsScanning(true);
+      setShowExpenseDialog(true);
+
+      try {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const base64 = reader.result as string;
+          setScannedReceiptUrl(base64);
+
+          try {
+            const response = await apiRequest("POST", "/api/expenses/scan-receipt", {
+              image: base64,
+            });
+
+            const result = response as any;
+
+            if (result.total) {
+              const totalStr = String(result.total);
+              expenseForm.setValue("amount", totalStr);
+              const gst = result.gst ? String(result.gst) : (parseFloat(totalStr) * 0.1).toFixed(2);
+              expenseForm.setValue("gstAmount", gst);
+            }
+            if (result.vendor) {
+              expenseForm.setValue("vendor", result.vendor);
+            }
+            if (result.lineItems && result.lineItems.length > 0) {
+              const desc = result.lineItems.map((item: any) => item.description).filter(Boolean).join(", ");
+              if (desc) {
+                expenseForm.setValue("description", desc);
+              }
+            }
+            if (result.date) {
+              expenseForm.setValue("expenseDate", new Date(result.date));
+            }
+            expenseForm.setValue("receiptUrl", base64);
+
+            toast({ title: "Receipt scanned", description: "Fields pre-filled from receipt. Review and save." });
+          } catch (err: any) {
+            toast({ title: "Scan failed", description: err.message || "Could not read receipt. Fill in manually.", variant: "destructive" });
+          } finally {
+            setIsScanning(false);
+          }
+        };
+        reader.readAsDataURL(file);
+      } catch {
+        setIsScanning(false);
+        toast({ title: "Error", description: "Failed to read file", variant: "destructive" });
+      }
+    };
+    input.click();
+  };
 
   // Fetch data
   const { data: categories = [] } = useQuery({
@@ -126,6 +189,7 @@ export function ExpenseTracking() {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/reports/expenses"], exact: false });
       setShowExpenseDialog(false);
+      setScannedReceiptUrl(null);
       expenseForm.reset();
       toast({ title: "Success", description: "Expense recorded successfully" });
     },
@@ -218,7 +282,24 @@ export function ExpenseTracking() {
               </Form>
             </DialogContent>
           </Dialog>
-          <Dialog open={showExpenseDialog} onOpenChange={setShowExpenseDialog}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-sm"
+            onClick={handleScanReceipt}
+            disabled={isScanning}
+            data-testid="button-scan-receipt"
+          >
+            <Camera className="h-4 w-4 mr-1 md:mr-2" />
+            <span className="hidden sm:inline">Scan </span>Receipt
+          </Button>
+          <Dialog open={showExpenseDialog} onOpenChange={(open) => {
+            setShowExpenseDialog(open);
+            if (!open) {
+              setScannedReceiptUrl(null);
+              setIsScanning(false);
+            }
+          }}>
             <DialogTrigger asChild>
               <Button size="sm" className="text-sm" data-testid="button-add-expense">
                 <Plus className="h-4 w-4 mr-1 md:mr-2" />
@@ -232,6 +313,24 @@ export function ExpenseTracking() {
                   Add a business expense and track it against a job
                 </DialogDescription>
               </DialogHeader>
+              {isScanning && (
+                <div className="flex items-center gap-3 p-4 border rounded-md bg-muted/50">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Reading receipt...</p>
+                    <p className="text-xs text-muted-foreground">AI is extracting details from your receipt photo</p>
+                  </div>
+                </div>
+              )}
+              {scannedReceiptUrl && !isScanning && (
+                <div className="flex items-center gap-3 p-3 border rounded-md bg-muted/30">
+                  <img src={scannedReceiptUrl} alt="Scanned receipt" className="h-12 w-12 rounded-md object-cover" />
+                  <div>
+                    <p className="text-sm font-medium">Receipt photo attached</p>
+                    <p className="text-xs text-muted-foreground">Review the pre-filled fields below and save</p>
+                  </div>
+                </div>
+              )}
               <Form {...expenseForm}>
                 <form onSubmit={expenseForm.handleSubmit((data) => createExpenseMutation.mutate(data))} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -407,6 +506,19 @@ export function ExpenseTracking() {
                       )}
                     />
                   </div>
+                  {!scannedReceiptUrl && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full border-dashed"
+                      onClick={handleScanReceipt}
+                      disabled={isScanning}
+                      data-testid="button-scan-receipt-inline"
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      {isScanning ? "Reading receipt..." : "Scan Receipt to Auto-Fill"}
+                    </Button>
+                  )}
                   <div className="flex justify-end gap-3">
                     <Button type="button" variant="outline" onClick={() => setShowExpenseDialog(false)}>
                       Cancel

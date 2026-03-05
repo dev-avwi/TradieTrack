@@ -11,8 +11,9 @@ import { Progress } from "@/components/ui/progress";
 import {
   DollarSign, Clock, Users, HardHat, Download, FileText, BarChart3,
   ChevronDown, ChevronRight, TrendingUp, TrendingDown, AlertTriangle,
-  CheckCircle2, XCircle, Briefcase
+  CheckCircle2, XCircle, Briefcase, Award
 } from "lucide-react";
+import WorkerPerformanceSection from "@/components/WorkerPerformanceCard";
 
 const fmtAud = (n: number) => `$${n.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
 
@@ -275,10 +276,11 @@ export default function PayrollReports() {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="payroll">Payroll</TabsTrigger>
           <TabsTrigger value="receivables">Receivables</TabsTrigger>
           <TabsTrigger value="utilisation">Utilisation</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="payroll" className="space-y-4 mt-4">
@@ -852,6 +854,10 @@ export default function PayrollReports() {
               </Card>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="performance" className="space-y-4 mt-4">
+          <WorkerPerformanceSection />
         </TabsContent>
       </Tabs>
     </div>

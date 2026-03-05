@@ -154,7 +154,7 @@ import {
   tradieRateCards 
 } from "./tradieTemplates";
 import { getSafetyFormTemplates, getSafetyFormTemplate } from "./safetyTemplates";
-import { generateAISuggestions, chatWithAI, type BusinessContext } from "./ai";
+import { generateAISuggestions, chatWithAI, analyzeReceipt, detectHazards, type BusinessContext } from "./ai";
 import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted, notifyJobAssigned as notifyJobAssignedDB, notifyTeamMemberInvited, notifySmsReceived, notifyTimesheetSubmitted, notifyChatMessage, notifyQuoteAccepted as notifyQuoteAcceptedDB, notifyQuoteRejected as notifyQuoteRejectedDB, notifyGeofenceCheckIn, notifyGeofenceCheckOut, notifyRecurringJobCreated, notifyRecurringInvoiceCreated, notifyInvoiceOverdue as notifyInvoiceOverdueDB, notifyQuoteExpiring, notifyPaymentFailed } from "./notifications";
 import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected, notifyTeamMessage, notifyInvoiceOverdue } from "./pushNotifications";
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
@@ -17004,6 +17004,38 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  app.patch("/api/jobs/:id/portal-settings", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const job = await storage.getJob(req.params.id, effectiveUserId);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
+
+      const settingsSchema = z.object({
+        showTimeline: z.boolean().optional(),
+        showPhotos: z.boolean().optional(),
+        showChecklist: z.boolean().optional(),
+        showActivityFeed: z.boolean().optional(),
+        clientMessage: z.string().max(500).nullable().optional(),
+      });
+
+      const parsed = settingsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid settings', details: parsed.error.errors });
+      }
+
+      const activeToken = await storage.getActiveJobPortalToken(job.id);
+      if (!activeToken) {
+        return res.status(404).json({ error: 'No active portal link found for this job' });
+      }
+
+      const updated = await storage.updateJobPortalTokenSettings(activeToken.id, parsed.data);
+      res.json(updated || activeToken);
+    } catch (error: any) {
+      console.error('Error updating portal settings:', error);
+      res.status(500).json({ error: error.message || 'Failed to update portal settings' });
+    }
+  });
+
   app.post("/api/jobs/:id/share-portal-sms", requireAuth, async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;
@@ -17271,6 +17303,57 @@ Be specific about materials, colors, and features that would be included.`
         } catch {}
       }
 
+      const showTimeline = portalToken.showTimeline !== false;
+      const showPhotos = portalToken.showPhotos !== false;
+      const showChecklist = portalToken.showChecklist !== false;
+      const showActivityFeed = portalToken.showActivityFeed !== false;
+
+      const timelineEvents: Array<{ stage: string; label: string; date: string | null; completed: boolean }> = [];
+      timelineEvents.push({ stage: 'quoted', label: 'Quoted', date: job.createdAt ? new Date(job.createdAt).toISOString() : null, completed: true });
+      if (job.scheduledAt) {
+        timelineEvents.push({ stage: 'scheduled', label: 'Scheduled', date: new Date(job.scheduledAt).toISOString(), completed: true });
+      } else {
+        timelineEvents.push({ stage: 'scheduled', label: 'Scheduled', date: null, completed: false });
+      }
+      const isStarted = ['in_progress', 'done', 'invoiced', 'paid'].includes(job.status) || job.startedAt;
+      timelineEvents.push({ stage: 'in_progress', label: 'In Progress', date: job.startedAt ? new Date(job.startedAt).toISOString() : null, completed: !!isStarted });
+      const isComplete = ['done', 'invoiced', 'paid'].includes(job.status);
+      timelineEvents.push({ stage: 'complete', label: 'Complete', date: job.completedAt ? new Date(job.completedAt).toISOString() : null, completed: isComplete });
+      const isInvoiced = ['invoiced', 'paid'].includes(job.status) || jobInvoices.length > 0;
+      timelineEvents.push({ stage: 'invoiced', label: 'Invoiced', date: isInvoiced && jobInvoices.length > 0 ? jobInvoices[0].createdAt : null, completed: isInvoiced });
+
+      const totalChecklistItems = checklistItemsList.length;
+      const completedChecklistItems = checklistItemsList.filter((item: any) => item.isCompleted).length;
+      const checklistSummary = {
+        total: totalChecklistItems,
+        completed: completedChecklistItems,
+        percentage: totalChecklistItems > 0 ? Math.round((completedChecklistItems / totalChecklistItems) * 100) : 0,
+      };
+
+      const clientSafeActivityTypes = [
+        'job_status_changed', 'job_completed', 'job_scheduled', 'job_started',
+        'quote_created', 'quote_sent', 'invoice_created', 'invoice_sent', 'invoice_paid', 'payment_received',
+        'check_in', 'check_out', 'photo_added', 'job_created',
+      ];
+
+      let clientActivityFeed: Array<{ type: string; title: string; description: string | null; timestamp: string }> = [];
+      try {
+        const allActivities = await storage.getActivityFeed(portalToken.userId, 100);
+        const jobActivities = allActivities
+          .filter((a: any) => {
+            if (a.entityId !== job.id && a.entityId !== portalToken.jobId) return false;
+            return clientSafeActivityTypes.includes(a.activityType);
+          })
+          .slice(0, 20)
+          .map((a: any) => ({
+            type: a.activityType,
+            title: a.entityTitle || a.description || a.activityType.replace(/_/g, ' '),
+            description: a.description,
+            timestamp: a.createdAt ? new Date(a.createdAt).toISOString() : new Date().toISOString(),
+          }));
+        clientActivityFeed = jobActivities;
+      } catch {}
+
       const portalData = {
         job: {
           id: job.id,
@@ -17287,7 +17370,7 @@ Be specific about materials, colors, and features that would be included.`
           scheduledAt: job.scheduledAt,
           scheduledTime: job.scheduledTime,
           estimatedDuration: job.estimatedDuration,
-          photos: job.photos || [],
+          photos: showPhotos ? (job.photos || []) : [],
           startedAt: job.startedAt,
           completedAt: job.completedAt,
           notes: job.notes,
@@ -17310,11 +17393,12 @@ Be specific about materials, colors, and features that would be included.`
           quotes: jobQuotes,
           invoices: jobInvoices,
         },
-        checklist: checklistItemsList.map((item: any) => ({
+        checklist: showChecklist ? checklistItemsList.map((item: any) => ({
           text: item.text,
           isCompleted: item.isCompleted,
           sortOrder: item.sortOrder,
-        })),
+        })) : [],
+        checklistSummary: showChecklist ? checklistSummary : null,
         materials: materialsList.map((m: any) => ({
           name: m.name,
           quantity: m.quantity,
@@ -17323,6 +17407,15 @@ Be specific about materials, colors, and features that would be included.`
         })),
         assignments: assignmentsArray,
         workerAttendance,
+        timeline: showTimeline ? timelineEvents : null,
+        activityFeed: showActivityFeed ? clientActivityFeed : [],
+        clientMessage: portalToken.clientMessage || null,
+        visibility: {
+          showTimeline,
+          showPhotos,
+          showChecklist,
+          showActivityFeed,
+        },
       };
       
       res.json(portalData);
@@ -25244,6 +25337,32 @@ Respond with JSON in this format:
     }
   });
 
+  const receiptUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }
+  });
+
+  app.post("/api/expenses/scan-receipt", requireAuth, receiptUpload.single('receipt'), async (req: any, res) => {
+    try {
+      let imageBuffer: Buffer;
+
+      if (req.file) {
+        imageBuffer = req.file.buffer;
+      } else if (req.body.image) {
+        const base64Data = req.body.image.replace(/^data:image\/\w+;base64,/, '');
+        imageBuffer = Buffer.from(base64Data, 'base64');
+      } else {
+        return res.status(400).json({ error: "No receipt image provided. Upload a file or send base64 image data." });
+      }
+
+      const result = await analyzeReceipt(imageBuffer);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Receipt scan error:", error);
+      res.status(500).json({ error: error.message || "Failed to analyse receipt" });
+    }
+  });
+
   // Expenses
   app.get("/api/expenses", requireAuth, async (req: any, res) => {
     try {
@@ -25391,16 +25510,45 @@ Respond with JSON in this format:
 
       const totalMaterialsCost = materialExpenseCost + materialsCostFromTable;
 
-      // Get time tracking costs
-      const timeEntries = await storage.getTimeEntries(userId, jobId);
-      const completedEntries = timeEntries.filter(entry => entry.endTime);
-      const totalLaborCost = completedEntries.reduce((sum, entry) => {
-        const start = new Date(entry.startTime);
-        const end = new Date(entry.endTime!);
-        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-        const rate = parseFloat(entry.hourlyRate?.toString() || '0');
-        return sum + (hours * rate);
-      }, 0);
+      // Get time tracking costs — separate subcontractor vs employee labour
+      const allTimeEntries = await storage.getTimeEntries(userId, jobId);
+      const completedEntries = allTimeEntries.filter(entry => entry.endTime);
+
+      const allTeamMembers = await storage.getTeamMembers(userId);
+      const subcontractorUserIds = new Set<string>();
+      for (const member of allTeamMembers) {
+        if (member.roleId) {
+          try {
+            const role = await storage.getUserRole(member.roleId);
+            if (role?.name?.toLowerCase().includes('subcontractor')) {
+              if (member.memberId) subcontractorUserIds.add(member.memberId);
+              subcontractorUserIds.add(member.id);
+            }
+          } catch (e) {}
+        }
+      }
+
+      const employeeEntries = completedEntries.filter(entry => !subcontractorUserIds.has(entry.userId));
+      const subcontractorEntries = completedEntries.filter(entry => subcontractorUserIds.has(entry.userId));
+
+      const calcEntryCost = (entry: any) => {
+        const hours = (new Date(entry.endTime!).getTime() - new Date(entry.startTime).getTime()) / (1000 * 60 * 60);
+        return hours * parseFloat(entry.hourlyRate?.toString() || '0');
+      };
+
+      const employeeLaborCost = employeeEntries.reduce((sum, entry) => sum + calcEntryCost(entry), 0);
+      const subcontractorTimeCost = subcontractorEntries.reduce((sum, entry) => sum + calcEntryCost(entry), 0);
+
+      const subcontractorExpenses = expenses.filter(e => {
+        const desc = (e.description || '').toLowerCase();
+        const cat = ((e as any).category || (e as any).categoryName || '').toLowerCase();
+        return cat.includes('subcontractor') || desc.includes('subcontractor');
+      });
+      const subcontractorExpenseCost = subcontractorExpenses.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
+
+      const totalSubcontractorCost = subcontractorTimeCost + subcontractorExpenseCost;
+      const nonSubNonMaterialExpenses = nonMaterialExpenses - subcontractorExpenseCost;
+      const totalLaborCost = employeeLaborCost;
 
       // Hours breakdown
       const totalHours = completedEntries.reduce((sum, entry) => {
@@ -25411,7 +25559,7 @@ Respond with JSON in this format:
       }, 0);
       const nonBillableHours = totalHours - billableHours;
 
-      const totalCosts = nonMaterialExpenses + totalMaterialsCost + totalLaborCost;
+      const totalCosts = nonSubNonMaterialExpenses + totalMaterialsCost + totalLaborCost + totalSubcontractorCost;
       const profit = totalRevenue - totalCosts;
       const profitMargin = totalRevenue > 0 ? ((profit / totalRevenue) * 100) : 0;
 
@@ -25432,8 +25580,9 @@ Respond with JSON in this format:
         },
         costs: {
           labour: totalLaborCost,
+          subcontractor: totalSubcontractorCost,
           materials: totalMaterialsCost,
-          otherExpenses: nonMaterialExpenses,
+          otherExpenses: nonSubNonMaterialExpenses,
           total: totalCosts,
         },
         profit: {
@@ -29503,6 +29652,106 @@ Respond with JSON in this format:
       res.json({ success: true, transcription: result.transcription });
     } catch (error: any) {
       console.error('Error transcribing voice note:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/jobs/:jobId/voice-notes/:voiceNoteId/confirm-action", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId, voiceNoteId } = req.params;
+      const { actionIndex, action: actionOverride } = req.body;
+
+      if (actionIndex === undefined || actionIndex === null) {
+        return res.status(400).json({ error: 'actionIndex is required' });
+      }
+
+      const userContext = await getUserContext(userId);
+      const voiceNote = await storage.getVoiceNote(voiceNoteId, userContext.effectiveUserId);
+      if (!voiceNote) {
+        return res.status(404).json({ error: 'Voice note not found' });
+      }
+
+      const detectedActions = (voiceNote.detectedActions as any[]) || [];
+      if (actionIndex < 0 || actionIndex >= detectedActions.length) {
+        return res.status(400).json({ error: 'Invalid action index' });
+      }
+
+      const detectedAction = { ...detectedActions[actionIndex], ...(actionOverride || {}) };
+
+      let createdEntity: any = null;
+
+      if (detectedAction.type === 'reminder' && detectedAction.date) {
+        const sendAt = new Date(detectedAction.date);
+        if (isNaN(sendAt.getTime())) {
+          return res.status(400).json({ error: 'Invalid date for reminder' });
+        }
+        createdEntity = await storage.createJobReminder({
+          jobId,
+          userId: userContext.effectiveUserId,
+          type: 'sms',
+          sendAt,
+          hoursBeforeJob: 0,
+          status: 'pending',
+        });
+      }
+
+      try {
+        await logTeamActivity({
+          userId: userContext.effectiveUserId,
+          performedBy: userId,
+          action: 'voice_action_confirmed',
+          entityType: 'job',
+          entityId: jobId,
+          details: `Confirmed voice action: ${detectedAction.type} - ${detectedAction.description}`,
+        });
+      } catch (e) {}
+
+      detectedActions[actionIndex] = { ...detectedActions[actionIndex], confirmed: true };
+      await storage.updateVoiceNote(voiceNoteId, userContext.effectiveUserId, {
+        detectedActions: detectedActions as any,
+      });
+
+      res.json({
+        success: true,
+        action: detectedAction,
+        createdEntity,
+      });
+    } catch (error: any) {
+      console.error('Error confirming voice action:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/jobs/:jobId/voice-notes/:voiceNoteId/dismiss-action", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { voiceNoteId } = req.params;
+      const { actionIndex } = req.body;
+
+      if (actionIndex === undefined || actionIndex === null) {
+        return res.status(400).json({ error: 'actionIndex is required' });
+      }
+
+      const userContext = await getUserContext(userId);
+      const voiceNote = await storage.getVoiceNote(voiceNoteId, userContext.effectiveUserId);
+      if (!voiceNote) {
+        return res.status(404).json({ error: 'Voice note not found' });
+      }
+
+      const detectedActions = (voiceNote.detectedActions as any[]) || [];
+      if (actionIndex < 0 || actionIndex >= detectedActions.length) {
+        return res.status(400).json({ error: 'Invalid action index' });
+      }
+
+      detectedActions[actionIndex] = { ...detectedActions[actionIndex], dismissed: true };
+      await storage.updateVoiceNote(voiceNoteId, userContext.effectiveUserId, {
+        detectedActions: detectedActions as any,
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error dismissing voice action:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -33662,6 +33911,20 @@ Respond with JSON in this format:
       const allExpenses = await storage.getExpenses(effectiveUserId);
       const allQuotes = await storage.getQuotes(effectiveUserId);
 
+      const reportTeamMembers = await storage.getTeamMembers(effectiveUserId);
+      const reportSubcontractorUserIds = new Set<string>();
+      for (const member of reportTeamMembers) {
+        if (member.roleId) {
+          try {
+            const role = await storage.getUserRole(member.roleId);
+            if (role?.name?.toLowerCase().includes('subcontractor')) {
+              if (member.memberId) reportSubcontractorUserIds.add(member.memberId);
+              reportSubcontractorUserIds.add(member.id);
+            }
+          } catch (e) {}
+        }
+      }
+
       let totalRevenue = 0;
       let totalCosts = 0;
       let jobsProfitable = 0;
@@ -33677,13 +33940,27 @@ Respond with JSON in this format:
         const jobExpenses = allExpenses.filter(e => e.jobId === job.id);
         const expenseCost = jobExpenses.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
 
+        const subExpenses = jobExpenses.filter(e => {
+          const desc = (e.description || '').toLowerCase();
+          const cat = ((e as any).category || (e as any).categoryName || '').toLowerCase();
+          return cat.includes('subcontractor') || desc.includes('subcontractor');
+        });
+        const subExpenseCost = subExpenses.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
+
         const timeEntries = await storage.getTimeEntries(effectiveUserId, job.id);
-        const labourCost = timeEntries
-          .filter(e => e.endTime)
-          .reduce((sum, e) => {
-            const hours = (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
-            return sum + (hours * parseFloat(e.hourlyRate?.toString() || '0'));
-          }, 0);
+        const completedTimeEntries = timeEntries.filter(e => e.endTime);
+
+        const employeeTimeEntries = completedTimeEntries.filter(e => !reportSubcontractorUserIds.has(e.userId));
+        const subTimeEntries = completedTimeEntries.filter(e => reportSubcontractorUserIds.has(e.userId));
+
+        const calcCost = (e: any) => {
+          const hours = (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+          return hours * parseFloat(e.hourlyRate?.toString() || '0');
+        };
+
+        const labourCost = employeeTimeEntries.reduce((sum, e) => sum + calcCost(e), 0);
+        const subTimeCost = subTimeEntries.reduce((sum, e) => sum + calcCost(e), 0);
+        const subcontractorCost = subTimeCost + subExpenseCost;
 
         let materialsCost = 0;
         try {
@@ -33691,7 +33968,8 @@ Respond with JSON in this format:
           materialsCost = materials.reduce((sum, m) => sum + parseFloat(m.totalCost?.toString() || '0'), 0);
         } catch (e) { /* no materials */ }
 
-        const costs = expenseCost + labourCost + materialsCost;
+        const otherExpenseCost = expenseCost - subExpenseCost;
+        const costs = otherExpenseCost + labourCost + subcontractorCost + materialsCost;
         const profit = revenue - costs;
         const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
 
@@ -33708,11 +33986,9 @@ Respond with JSON in this format:
           }
         } catch (e) {}
 
-        const totalHours = timeEntries
-          .filter(e => e.endTime)
-          .reduce((sum, e) => {
-            return sum + (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
-          }, 0);
+        const totalHours = completedTimeEntries.reduce((sum, e) => {
+          return sum + (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+        }, 0);
 
         return {
           jobId: job.id,
@@ -33724,8 +34000,9 @@ Respond with JSON in this format:
           quoted: quotedAmount,
           revenue,
           labourCost,
+          subcontractorCost,
           materialCost: materialsCost,
-          expenseCost,
+          expenseCost: otherExpenseCost,
           costs,
           profit,
           margin: parseFloat(margin.toFixed(1)),
@@ -33919,11 +34196,26 @@ Respond with JSON in this format:
       const allInvoices = await storage.getInvoices(effectiveUserId);
       const allExpenses = await storage.getExpenses(effectiveUserId);
 
+      const jtTeamMembers = await storage.getTeamMembers(effectiveUserId);
+      const jtSubcontractorUserIds = new Set<string>();
+      for (const member of jtTeamMembers) {
+        if (member.roleId) {
+          try {
+            const role = await storage.getUserRole(member.roleId);
+            if (role?.name?.toLowerCase().includes('subcontractor')) {
+              if (member.memberId) jtSubcontractorUserIds.add(member.memberId);
+              jtSubcontractorUserIds.add(member.id);
+            }
+          } catch (e) {}
+        }
+      }
+
       const typeMap: Record<string, {
         jobType: string;
         jobCount: number;
         totalRevenue: number;
         totalLabourCost: number;
+        totalSubcontractorCost: number;
         totalMaterialCost: number;
         totalExpenseCost: number;
         totalCosts: number;
@@ -33935,7 +34227,7 @@ Respond with JSON in this format:
         const jobType = job.title?.trim() || 'Uncategorised';
 
         if (!typeMap[jobType]) {
-          typeMap[jobType] = { jobType, jobCount: 0, totalRevenue: 0, totalLabourCost: 0, totalMaterialCost: 0, totalExpenseCost: 0, totalCosts: 0, totalProfit: 0, totalHours: 0 };
+          typeMap[jobType] = { jobType, jobCount: 0, totalRevenue: 0, totalLabourCost: 0, totalSubcontractorCost: 0, totalMaterialCost: 0, totalExpenseCost: 0, totalCosts: 0, totalProfit: 0, totalHours: 0 };
         }
         const entry = typeMap[jobType];
         entry.jobCount++;
@@ -33946,16 +34238,32 @@ Respond with JSON in this format:
 
         const jobExpenses = allExpenses.filter(e => e.jobId === job.id);
         const expenseCost = jobExpenses.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
-        entry.totalExpenseCost += expenseCost;
+
+        const jtSubExpenses = jobExpenses.filter(e => {
+          const desc = (e.description || '').toLowerCase();
+          const cat = ((e as any).category || (e as any).categoryName || '').toLowerCase();
+          return cat.includes('subcontractor') || desc.includes('subcontractor');
+        });
+        const jtSubExpenseCost = jtSubExpenses.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
+
+        entry.totalExpenseCost += expenseCost - jtSubExpenseCost;
 
         const timeEntries = await storage.getTimeEntries(effectiveUserId, job.id);
-        const labourCost = timeEntries.filter(e => e.endTime).reduce((sum, e) => {
-          const hours = (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
-          return sum + (hours * parseFloat(e.hourlyRate?.toString() || '0'));
-        }, 0);
-        entry.totalLabourCost += labourCost;
+        const completedTE = timeEntries.filter(e => e.endTime);
+        const employeeTE = completedTE.filter(e => !jtSubcontractorUserIds.has(e.userId));
+        const subTE = completedTE.filter(e => jtSubcontractorUserIds.has(e.userId));
 
-        const hours = timeEntries.filter(e => e.endTime).reduce((sum, e) => {
+        const calcHrCost = (e: any) => {
+          const hours = (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+          return hours * parseFloat(e.hourlyRate?.toString() || '0');
+        };
+
+        const labourCost = employeeTE.reduce((sum, e) => sum + calcHrCost(e), 0);
+        const subTimeCost = subTE.reduce((sum, e) => sum + calcHrCost(e), 0);
+        entry.totalLabourCost += labourCost;
+        entry.totalSubcontractorCost += subTimeCost + jtSubExpenseCost;
+
+        const hours = completedTE.reduce((sum, e) => {
           return sum + (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
         }, 0);
         entry.totalHours += hours;
@@ -33967,7 +34275,7 @@ Respond with JSON in this format:
         } catch (e) {}
         entry.totalMaterialCost += materialsCost;
 
-        const costs = expenseCost + labourCost + materialsCost;
+        const costs = (expenseCost - jtSubExpenseCost) + labourCost + (subTimeCost + jtSubExpenseCost) + materialsCost;
         entry.totalCosts += costs;
         entry.totalProfit += revenue - costs;
       }));
@@ -34043,6 +34351,103 @@ Respond with JSON in this format:
     } catch (error) {
       console.error("Error generating by-job-type profitability:", error);
       res.status(500).json({ error: "Failed to generate by-job-type report" });
+    }
+  });
+
+  app.get("/api/reports/profitability/trend", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      if (!userContext.isOwner) {
+        return res.status(403).json({ error: 'Access denied - owners only' });
+      }
+      const effectiveUserId = userContext.effectiveUserId;
+
+      const now = new Date();
+      const months: { year: number; month: number; label: string; startDate: Date; endDate: Date }[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const endD = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+        months.push({
+          year: d.getFullYear(),
+          month: d.getMonth(),
+          label: d.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' }),
+          startDate: d,
+          endDate: endD,
+        });
+      }
+
+      const allJobs = await storage.getJobs(effectiveUserId);
+      const allInvoices = await storage.getInvoices(effectiveUserId);
+      const allExpenses = await storage.getExpenses(effectiveUserId);
+
+      const teamMembers = await storage.getTeamMembers(effectiveUserId);
+      const subcontractorIds = new Set<string>();
+      for (const member of teamMembers) {
+        if (member.roleId) {
+          try {
+            const role = await storage.getUserRole(member.roleId);
+            if (role?.name?.toLowerCase().includes('subcontractor')) {
+              if (member.memberId) subcontractorIds.add(member.memberId);
+              subcontractorIds.add(member.id);
+            }
+          } catch (e) {}
+        }
+      }
+
+      const jobTimeEntriesCache: Record<string, any[]> = {};
+
+      const trend = await Promise.all(months.map(async (m) => {
+        const monthInvoices = allInvoices.filter(inv => {
+          if (inv.status !== 'paid' || !inv.paidAt) return false;
+          const paidDate = new Date(inv.paidAt);
+          return paidDate >= m.startDate && paidDate <= m.endDate;
+        });
+        const revenue = monthInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
+
+        const monthExpenses = allExpenses.filter(exp => {
+          const expDate = exp.expenseDate ? new Date(exp.expenseDate) : (exp.createdAt ? new Date(exp.createdAt) : null);
+          return expDate && expDate >= m.startDate && expDate <= m.endDate;
+        });
+        const expenseCost = monthExpenses.reduce((sum, e) => sum + parseFloat(e.amount || '0'), 0);
+
+        const jobIdsInMonth = new Set<string>();
+        monthInvoices.forEach(inv => { if (inv.jobId) jobIdsInMonth.add(inv.jobId); });
+        monthExpenses.forEach(exp => { if (exp.jobId) jobIdsInMonth.add(exp.jobId); });
+
+        let labourCost = 0;
+        for (const jobId of jobIdsInMonth) {
+          if (!jobTimeEntriesCache[jobId]) {
+            jobTimeEntriesCache[jobId] = await storage.getTimeEntries(effectiveUserId, jobId);
+          }
+          const entries = jobTimeEntriesCache[jobId].filter(e => {
+            if (!e.endTime) return false;
+            const entryDate = new Date(e.startTime);
+            return entryDate >= m.startDate && entryDate <= m.endDate;
+          });
+          labourCost += entries.reduce((sum, e) => {
+            const hours = (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+            return sum + hours * parseFloat(e.hourlyRate?.toString() || '0');
+          }, 0);
+        }
+
+        const totalCosts = expenseCost + labourCost;
+        const profit = revenue - totalCosts;
+        const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+        return {
+          month: m.label,
+          revenue: parseFloat(revenue.toFixed(2)),
+          costs: parseFloat(totalCosts.toFixed(2)),
+          profit: parseFloat(profit.toFixed(2)),
+          margin: parseFloat(margin.toFixed(1)),
+        };
+      }));
+
+      res.json({ trend });
+    } catch (error) {
+      console.error("Error generating profitability trend:", error);
+      res.status(500).json({ error: "Failed to generate profitability trend" });
     }
   });
 
@@ -38802,8 +39207,296 @@ Respond with JSON in this format:
     }
   });
 
+  const hazardScanUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+  });
+
+  app.post("/api/swms/scan-hazards", requireAuth, hazardScanUpload.array('photos', 10), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(req);
+      const effectiveUserId = userContext.effectiveUserId;
+      const { jobId, jobContext } = req.body;
+      let imageBuffers: Buffer[] = [];
+
+      if (req.files && req.files.length > 0) {
+        imageBuffers = req.files.map((f: any) => f.buffer);
+      } else if (jobId) {
+        const photos = await storage.getJobPhotos(jobId, effectiveUserId);
+        if (!photos || photos.length === 0) {
+          return res.status(400).json({ error: "No photos found for this job." });
+        }
+
+        const { getSignedPhotoUrl } = await import('./photoService');
+        const limitedPhotos = photos.slice(0, 5);
+        for (const photo of limitedPhotos) {
+          try {
+            const { url } = await getSignedPhotoUrl(photo.objectStorageKey);
+            if (url) {
+              const photoResponse = await fetch(url);
+              if (photoResponse.ok) {
+                const arrayBuffer = await photoResponse.arrayBuffer();
+                imageBuffers.push(Buffer.from(arrayBuffer));
+              }
+            }
+          } catch (e) {
+            console.warn(`[SWMS] Failed to fetch photo ${photo.id}:`, e);
+          }
+        }
+
+        if (imageBuffers.length === 0) {
+          return res.status(400).json({ error: "Could not retrieve any job photos for analysis." });
+        }
+      } else {
+        return res.status(400).json({ error: "Provide either photos or a jobId to scan for hazards." });
+      }
+
+      const contextStr = jobContext || 'General construction work';
+      const result = await detectHazards(imageBuffers, contextStr);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Hazard scan error:", error);
+      res.status(500).json({ error: error.message || "Failed to scan for hazards" });
+    }
+  });
+
   app.get("/api/swms/risk-matrix", requireAuth, async (_req: any, res) => {
     res.json(RISK_MATRIX);
+  });
+
+  app.get("/api/team/:memberId/performance", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userContext?.effectiveUserId || req.userId!;
+      const { memberId } = req.params;
+
+      const teamMembersList = await storage.getTeamMembers(userId);
+      const member = teamMembersList.find((m: any) => m.id === memberId || m.memberId === memberId);
+      if (!member) {
+        return res.status(404).json({ error: "Team member not found" });
+      }
+
+      const workerUserId = member.memberId;
+      if (!workerUserId) {
+        return res.json({
+          memberId: member.id,
+          name: `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email,
+          role: 'pending',
+          jobsCompletedThisMonth: 0,
+          jobsCompletedAllTime: 0,
+          hoursWorkedThisMonth: 0,
+          hoursWorkedAllTime: 0,
+          onTimeRate: 0,
+          averageJobDurationHours: 0,
+          utilisationRate: 0,
+          revenueGenerated: 0,
+          currentStreak: 0,
+        });
+      }
+
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const allJobs = await storage.getJobs(userId);
+      const allTimeEntries = await storage.getTimeEntries(userId);
+      const allInvoices = await storage.getInvoices(userId);
+
+      const workerJobs = allJobs.filter((j: any) =>
+        j.assignedTo === workerUserId || j.assignedTo === memberId
+      );
+
+      const completedJobs = workerJobs.filter((j: any) => j.status === 'done' || j.status === 'invoiced');
+      const completedThisMonth = completedJobs.filter((j: any) => {
+        const d = j.completedAt ? new Date(j.completedAt) : null;
+        return d && d >= startOfMonth;
+      });
+
+      const workerTimeEntries = allTimeEntries.filter((te: any) => te.userId === workerUserId);
+      const totalMinutesAllTime = workerTimeEntries
+        .filter((te: any) => te.endTime && !te.isBreak)
+        .reduce((sum: number, te: any) => sum + (te.duration || Math.round((new Date(te.endTime!).getTime() - new Date(te.startTime).getTime()) / 60000)), 0);
+      const monthEntries = workerTimeEntries.filter((te: any) => new Date(te.startTime) >= startOfMonth && te.endTime && !te.isBreak);
+      const totalMinutesThisMonth = monthEntries
+        .reduce((sum: number, te: any) => sum + (te.duration || Math.round((new Date(te.endTime!).getTime() - new Date(te.startTime).getTime()) / 60000)), 0);
+
+      let onTimeCount = 0;
+      const jobsWithSchedule = completedJobs.filter((j: any) => j.scheduledAt && j.completedAt);
+      for (const j of jobsWithSchedule) {
+        const scheduled = new Date(j.scheduledAt!);
+        const completed = new Date(j.completedAt!);
+        const scheduledEnd = new Date(scheduled.getTime() + (j.estimatedDuration || 60) * 60000);
+        if (completed <= new Date(scheduledEnd.getTime() + 24 * 60 * 60 * 1000)) {
+          onTimeCount++;
+        }
+      }
+      const onTimeRate = jobsWithSchedule.length > 0 ? Math.round((onTimeCount / jobsWithSchedule.length) * 100) : 0;
+
+      const avgDurationHours = completedJobs.length > 0
+        ? +(totalMinutesAllTime / 60 / completedJobs.length).toFixed(1)
+        : 0;
+
+      const workingDaysThisMonth = Math.max(1, Math.ceil((now.getTime() - startOfMonth.getTime()) / (1000 * 60 * 60 * 24)));
+      const weekdaysThisMonth = Math.max(1, Math.round(workingDaysThisMonth * 5 / 7));
+      const capacityMinutes = weekdaysThisMonth * 8 * 60;
+      const utilisationRate = capacityMinutes > 0 ? Math.min(100, Math.round((totalMinutesThisMonth / capacityMinutes) * 100)) : 0;
+
+      const workerJobIds = new Set(workerJobs.map((j: any) => j.id));
+      const revenueGenerated = allInvoices
+        .filter((inv: any) => inv.status === 'paid' && inv.jobId && workerJobIds.has(inv.jobId))
+        .reduce((sum: number, inv: any) => sum + parseFloat(inv.total || '0'), 0);
+
+      let currentStreak = 0;
+      const sortedCompleted = [...jobsWithSchedule].sort((a: any, b: any) =>
+        new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime()
+      );
+      for (const j of sortedCompleted) {
+        const scheduled = new Date(j.scheduledAt!);
+        const completed = new Date(j.completedAt!);
+        const scheduledEnd = new Date(scheduled.getTime() + (j.estimatedDuration || 60) * 60000);
+        if (completed <= new Date(scheduledEnd.getTime() + 24 * 60 * 60 * 1000)) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+
+      const workerUser = await storage.getUser(workerUserId);
+
+      res.json({
+        memberId: member.id,
+        userId: workerUserId,
+        name: `${member.firstName || workerUser?.firstName || ''} ${member.lastName || workerUser?.lastName || ''}`.trim() || member.email,
+        email: member.email,
+        role: member.roleId,
+        profileImageUrl: workerUser?.profileImageUrl,
+        jobsCompletedThisMonth: completedThisMonth.length,
+        jobsCompletedAllTime: completedJobs.length,
+        hoursWorkedThisMonth: +(totalMinutesThisMonth / 60).toFixed(1),
+        hoursWorkedAllTime: +(totalMinutesAllTime / 60).toFixed(1),
+        onTimeRate,
+        averageJobDurationHours: avgDurationHours,
+        utilisationRate,
+        revenueGenerated: +revenueGenerated.toFixed(2),
+        currentStreak,
+      });
+    } catch (error) {
+      console.error("Get worker performance error:", error);
+      res.status(500).json({ error: "Failed to fetch worker performance" });
+    }
+  });
+
+  app.get("/api/team/performance-summary", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userContext?.effectiveUserId || req.userId!;
+
+      const teamMembersList = await storage.getTeamMembers(userId);
+      const activeMembers = teamMembersList.filter((m: any) => m.isActive && m.inviteStatus === 'accepted' && m.memberId);
+
+      if (activeMembers.length === 0) {
+        return res.json({ workers: [], summary: { averageOnTimeRate: 0, totalHoursThisMonth: 0, busiestWorker: null, teamSize: 0 } });
+      }
+
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const allJobs = await storage.getJobs(userId);
+      const allTimeEntries = await storage.getTimeEntries(userId);
+      const allInvoices = await storage.getInvoices(userId);
+
+      const workers: any[] = [];
+      let totalOnTimeRate = 0;
+      let totalHoursThisMonth = 0;
+      let busiestWorker: { name: string; hours: number } | null = null;
+
+      for (const member of activeMembers) {
+        const workerUserId = member.memberId!;
+
+        const workerJobs = allJobs.filter((j: any) =>
+          j.assignedTo === workerUserId || j.assignedTo === member.id
+        );
+        const completedJobs = workerJobs.filter((j: any) => j.status === 'done' || j.status === 'invoiced');
+        const completedThisMonth = completedJobs.filter((j: any) => {
+          const d = j.completedAt ? new Date(j.completedAt) : null;
+          return d && d >= startOfMonth;
+        });
+
+        const workerTimeEntries = allTimeEntries.filter((te: any) => te.userId === workerUserId);
+        const monthEntries = workerTimeEntries.filter((te: any) => new Date(te.startTime) >= startOfMonth && te.endTime && !te.isBreak);
+        const totalMinutesThisMonth = monthEntries
+          .reduce((sum: number, te: any) => sum + (te.duration || Math.round((new Date(te.endTime!).getTime() - new Date(te.startTime).getTime()) / 60000)), 0);
+        const hoursThisMonth = +(totalMinutesThisMonth / 60).toFixed(1);
+
+        let onTimeCount = 0;
+        const jobsWithSchedule = completedJobs.filter((j: any) => j.scheduledAt && j.completedAt);
+        for (const j of jobsWithSchedule) {
+          const scheduled = new Date(j.scheduledAt!);
+          const completed = new Date(j.completedAt!);
+          const scheduledEnd = new Date(scheduled.getTime() + (j.estimatedDuration || 60) * 60000);
+          if (completed <= new Date(scheduledEnd.getTime() + 24 * 60 * 60 * 1000)) {
+            onTimeCount++;
+          }
+        }
+        const onTimeRate = jobsWithSchedule.length > 0 ? Math.round((onTimeCount / jobsWithSchedule.length) * 100) : 0;
+
+        const workingDaysThisMonth = Math.max(1, Math.ceil((now.getTime() - startOfMonth.getTime()) / (1000 * 60 * 60 * 24)));
+        const weekdaysThisMonth = Math.max(1, Math.round(workingDaysThisMonth * 5 / 7));
+        const capacityMinutes = weekdaysThisMonth * 8 * 60;
+        const utilisationRate = capacityMinutes > 0 ? Math.min(100, Math.round((totalMinutesThisMonth / capacityMinutes) * 100)) : 0;
+
+        const workerJobIds = new Set(workerJobs.map((j: any) => j.id));
+        const revenueGenerated = allInvoices
+          .filter((inv: any) => inv.status === 'paid' && inv.jobId && workerJobIds.has(inv.jobId))
+          .reduce((sum: number, inv: any) => sum + parseFloat(inv.total || '0'), 0);
+
+        const workerUser = await storage.getUser(workerUserId);
+        const name = `${member.firstName || workerUser?.firstName || ''} ${member.lastName || workerUser?.lastName || ''}`.trim() || member.email;
+
+        const last4Weeks: number[] = [];
+        for (let w = 0; w < 4; w++) {
+          const weekEnd = new Date(now.getTime() - w * 7 * 24 * 60 * 60 * 1000);
+          const weekStart = new Date(weekEnd.getTime() - 7 * 24 * 60 * 60 * 1000);
+          const weekMinutes = workerTimeEntries
+            .filter((te: any) => te.endTime && !te.isBreak && new Date(te.startTime) >= weekStart && new Date(te.startTime) < weekEnd)
+            .reduce((sum: number, te: any) => sum + (te.duration || Math.round((new Date(te.endTime!).getTime() - new Date(te.startTime).getTime()) / 60000)), 0);
+          last4Weeks.unshift(+(weekMinutes / 60).toFixed(1));
+        }
+
+        workers.push({
+          memberId: member.id,
+          userId: workerUserId,
+          name,
+          email: member.email,
+          role: member.roleId,
+          profileImageUrl: workerUser?.profileImageUrl,
+          jobsCompletedThisMonth: completedThisMonth.length,
+          jobsCompletedAllTime: completedJobs.length,
+          hoursWorkedThisMonth: hoursThisMonth,
+          onTimeRate,
+          utilisationRate,
+          revenueGenerated: +revenueGenerated.toFixed(2),
+          last4WeeksHours: last4Weeks,
+        });
+
+        totalOnTimeRate += onTimeRate;
+        totalHoursThisMonth += hoursThisMonth;
+        if (!busiestWorker || hoursThisMonth > busiestWorker.hours) {
+          busiestWorker = { name, hours: hoursThisMonth };
+        }
+      }
+
+      res.json({
+        workers,
+        summary: {
+          averageOnTimeRate: workers.length > 0 ? Math.round(totalOnTimeRate / workers.length) : 0,
+          totalHoursThisMonth: +totalHoursThisMonth.toFixed(1),
+          busiestWorker,
+          teamSize: workers.length,
+        },
+      });
+    } catch (error) {
+      console.error("Get team performance summary error:", error);
+      res.status(500).json({ error: "Failed to fetch team performance summary" });
+    }
   });
 
   const httpServer = createServer(app);

@@ -1,6 +1,7 @@
 import { storage as dbStorage } from './storage';
 import { objectStorageClient } from './objectStorage';
 import crypto from 'crypto';
+import { categorizePhoto } from './ai';
 
 const BUCKET_ID = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
 
@@ -131,6 +132,12 @@ export async function uploadJobPhoto(
       address: metadata.address,
     });
 
+    if ((!metadata.category || metadata.category === 'general') && isImageMimeType(metadata.mimeType)) {
+      triggerAutoCategorizationAsync(photo.id, userId, jobId, fileBuffer).catch(err => {
+        console.error('[PhotoService] Auto-categorization background error:', err);
+      });
+    }
+
     return {
       success: true,
       photoId: photo.id,
@@ -254,6 +261,7 @@ export async function getJobPhotos(
   latitude?: number | null;
   longitude?: number | null;
   address?: string | null;
+  aiSuggestedCategory?: string | null;
 }>> {
   try {
     const photos = await dbStorage.getJobPhotos(jobId, userId);
@@ -279,6 +287,7 @@ export async function getJobPhotos(
           latitude: photo.latitude,
           longitude: photo.longitude,
           address: photo.address,
+          aiSuggestedCategory: photo.aiSuggestedCategory,
         };
       })
     );
@@ -305,5 +314,44 @@ export async function updatePhotoMetadata(
   } catch (error: any) {
     console.error('Error updating photo metadata:', error);
     return { success: false, error: error.message };
+  }
+}
+
+function isImageMimeType(mimeType: string): boolean {
+  return mimeType.startsWith('image/');
+}
+
+async function triggerAutoCategorizationAsync(
+  photoId: string,
+  userId: string,
+  jobId: string,
+  fileBuffer: Buffer
+): Promise<void> {
+  try {
+    const settings = await dbStorage.getBusinessSettings(userId);
+    if (settings && (settings.aiPhotoAnalysisEnabled === false || (settings as any).aiAutoCategorizationEnabled === false)) {
+      return;
+    }
+
+    const job = await dbStorage.getJob(jobId, userId);
+    const jobContext = job ? `${job.title || 'Untitled Job'} - ${job.description || ''} - Status: ${job.status || 'unknown'}` : 'Unknown job';
+
+    console.log(`[PhotoService] Starting auto-categorization for photo ${photoId}`);
+    const suggestedCategory = await categorizePhoto(fileBuffer, jobContext);
+
+    if (suggestedCategory && suggestedCategory !== 'general') {
+      await dbStorage.updateJobPhoto(photoId, userId, {
+        category: suggestedCategory,
+        aiSuggestedCategory: suggestedCategory,
+      });
+      console.log(`[PhotoService] Auto-categorized photo ${photoId} as '${suggestedCategory}'`);
+    } else {
+      await dbStorage.updateJobPhoto(photoId, userId, {
+        aiSuggestedCategory: suggestedCategory || 'general',
+      });
+      console.log(`[PhotoService] Photo ${photoId} categorized as 'general' by AI`);
+    }
+  } catch (error) {
+    console.error(`[PhotoService] Auto-categorization failed for photo ${photoId}:`, error);
   }
 }

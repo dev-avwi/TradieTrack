@@ -2624,6 +2624,7 @@ export const jobPhotos = pgTable("job_photos", {
   longitude: doublePrecision("longitude"),
   address: text("address"),
   tags: text("tags").array().default([]),
+  aiSuggestedCategory: text("ai_suggested_category"),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -2647,6 +2648,7 @@ export const voiceNotes = pgTable("voice_notes", {
   duration: integer("duration"), // Duration in seconds
   title: text("title"), // Optional title/label for the note
   transcription: text("transcription"), // AI transcription of the audio
+  detectedActions: jsonb("detected_actions"), // AI-detected action items from transcription
   recordedBy: varchar("recorded_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -3890,6 +3892,11 @@ export const jobPortalTokens = pgTable("job_portal_tokens", {
   lastAccessedAt: timestamp("last_accessed_at"),
   accessCount: integer("access_count").default(0),
   createdBy: varchar("created_by").notNull(),
+  showTimeline: boolean("show_timeline").default(true),
+  showPhotos: boolean("show_photos").default(true),
+  showChecklist: boolean("show_checklist").default(true),
+  showActivityFeed: boolean("show_activity_feed").default(true),
+  clientMessage: text("client_message"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

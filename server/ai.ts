@@ -2304,6 +2304,232 @@ export async function optimizeSchedule(
   };
 }
 
+export interface DetectedHazard {
+  activityTask: string;
+  hazard: string;
+  likelihood: number;
+  consequence: number;
+  controlMeasures: string;
+  suggestedPPE: string[];
+}
+
+export interface HazardScanResult {
+  hazards: DetectedHazard[];
+  disclaimer: string;
+}
+
+export async function detectHazards(imageBuffers: Buffer[], jobContext: string): Promise<HazardScanResult> {
+  const disclaimer = "AI-suggested hazards for review. The responsible person must verify all hazards and controls before finalising the SWMS.";
+
+  const imageContents: Array<{ type: "image_url"; image_url: { url: string; detail: "low" | "high" | "auto" } }> = [];
+  for (const buf of imageBuffers) {
+    const base64Image = buf.toString('base64');
+    imageContents.push({
+      type: "image_url",
+      image_url: {
+        url: `data:image/jpeg;base64,${base64Image}`,
+        detail: "high"
+      }
+    });
+  }
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `You are a WHS safety assistant helping an Australian tradesperson identify potential worksite hazards from photos.
+
+Job context: ${jobContext}
+
+For each hazard you identify, provide:
+- activityTask: the work activity
+- hazard: specific danger
+- likelihood: 1-5 (1=rare, 5=almost certain)
+- consequence: 1-5 (1=insignificant, 5=catastrophic)
+- controlMeasures: recommended safety controls
+- suggestedPPE: array from these options only: hard_hat, safety_glasses, gloves, steel_cap_boots, high_vis, ear_protection, dust_mask, face_shield, harness, respirator
+
+Return ONLY a JSON object in this exact format:
+{
+  "hazards": [
+    {
+      "activityTask": "string",
+      "hazard": "string",
+      "likelihood": number,
+      "consequence": number,
+      "controlMeasures": "string",
+      "suggestedPPE": ["string"]
+    }
+  ]
+}
+
+Be conservative — only flag clear, visible hazards. Maximum 8 hazards.`
+            },
+            ...imageContents
+          ]
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 2000,
+      temperature: 0.2
+    });
+
+    const content = response.choices[0]?.message?.content || '{"hazards":[]}';
+    const parsed = JSON.parse(content);
+
+    const validPPE = ['hard_hat', 'safety_glasses', 'gloves', 'steel_cap_boots', 'high_vis', 'ear_protection', 'dust_mask', 'face_shield', 'harness', 'respirator'];
+
+    const hazards: DetectedHazard[] = Array.isArray(parsed.hazards) ? parsed.hazards.slice(0, 8).map((h: any) => ({
+      activityTask: String(h.activityTask || ''),
+      hazard: String(h.hazard || ''),
+      likelihood: Math.min(5, Math.max(1, Number(h.likelihood) || 3)),
+      consequence: Math.min(5, Math.max(1, Number(h.consequence) || 3)),
+      controlMeasures: String(h.controlMeasures || ''),
+      suggestedPPE: Array.isArray(h.suggestedPPE) ? h.suggestedPPE.filter((p: string) => validPPE.includes(p)) : [],
+    })) : [];
+
+    return { hazards, disclaimer };
+  } catch (error: any) {
+    console.error('[AI] Hazard detection error:', error);
+    return { hazards: [], disclaimer };
+  }
+}
+
+export interface ReceiptLineItem {
+  description: string;
+  quantity: number | null;
+  unitPrice: number | null;
+  total: number | null;
+}
+
+export interface ReceiptAnalysisResult {
+  vendor: string | null;
+  date: string | null;
+  lineItems: ReceiptLineItem[];
+  subtotal: number | null;
+  gst: number | null;
+  total: number | null;
+  disclaimer: string;
+}
+
+export async function analyzeReceipt(imageBuffer: Buffer): Promise<ReceiptAnalysisResult> {
+  const base64Image = imageBuffer.toString('base64');
+  const mimeType = 'image/jpeg';
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `You are analysing a receipt photo for an Australian tradesperson. Extract: vendor name, date (in YYYY-MM-DD format), individual line items (description, quantity, unit price, total), subtotal, GST amount, total amount. Return structured JSON. Use Australian dollar amounts. If you can't read a field clearly, set it to null.
+
+Return ONLY a JSON object in this exact format:
+{
+  "vendor": "string or null",
+  "date": "YYYY-MM-DD string or null",
+  "lineItems": [
+    { "description": "string", "quantity": number or null, "unitPrice": number or null, "total": number or null }
+  ],
+  "subtotal": number or null,
+  "gst": number or null,
+  "total": number or null
+}`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${mimeType};base64,${base64Image}`,
+                detail: "high"
+              }
+            }
+          ]
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 1500,
+      temperature: 0.1
+    });
+
+    const content = response.choices[0]?.message?.content || '{}';
+    const parsed = JSON.parse(content);
+
+    return {
+      vendor: parsed.vendor ?? null,
+      date: parsed.date ?? null,
+      lineItems: Array.isArray(parsed.lineItems) ? parsed.lineItems.map((item: any) => ({
+        description: item.description || '',
+        quantity: typeof item.quantity === 'number' ? item.quantity : null,
+        unitPrice: typeof item.unitPrice === 'number' ? item.unitPrice : null,
+        total: typeof item.total === 'number' ? item.total : null,
+      })) : [],
+      subtotal: typeof parsed.subtotal === 'number' ? parsed.subtotal : null,
+      gst: typeof parsed.gst === 'number' ? parsed.gst : null,
+      total: typeof parsed.total === 'number' ? parsed.total : null,
+      disclaimer: 'AI-extracted data — please review all fields before saving.',
+    };
+  } catch (error: any) {
+    console.error('[AI] Receipt analysis error:', error);
+    throw new Error('Failed to analyse receipt. Please try again or enter details manually.');
+  }
+}
+
+export type PhotoCategory = 'before' | 'after' | 'progress' | 'materials' | 'general';
+
+export async function categorizePhoto(imageBuffer: Buffer, jobContext: string): Promise<PhotoCategory> {
+  try {
+    const base64Image = imageBuffer.toString('base64');
+    const mimeType = 'image/jpeg';
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `You are categorizing a job site photo for an Australian tradesperson. Job context: ${jobContext}. Based on the image content, classify it as exactly one of: before, after, progress, materials, general. Consider: 'before' shows untouched/damaged areas pre-work, 'after' shows completed/finished work, 'progress' shows active work in progress, 'materials' shows supplies/tools/equipment. Return ONLY a JSON object like: {"category": "before"}`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${mimeType};base64,${base64Image}`,
+                detail: "low"
+              }
+            }
+          ]
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 50,
+      temperature: 0.1
+    });
+
+    const content = response.choices[0]?.message?.content || '{}';
+    const parsed = JSON.parse(content);
+    const validCategories: PhotoCategory[] = ['before', 'after', 'progress', 'materials', 'general'];
+    const category = parsed.category?.toLowerCase();
+
+    if (validCategories.includes(category)) {
+      return category as PhotoCategory;
+    }
+
+    return 'general';
+  } catch (error: any) {
+    console.error('[AI] Photo categorization error:', error);
+    return 'general';
+  }
+}
+
 /**
  * Get AI-powered scheduling recommendations for a specific date
  */

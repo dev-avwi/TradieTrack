@@ -26,6 +26,10 @@ import {
   Loader2,
   FileText,
   X,
+  Camera,
+  Shield,
+  Info,
+  CheckCircle2,
 } from "lucide-react";
 
 interface SwmsBuilderProps {
@@ -79,6 +83,20 @@ interface SwmsDocument {
   signatures: any[];
 }
 
+interface DetectedHazard {
+  activityTask: string;
+  hazard: string;
+  likelihood: number;
+  consequence: number;
+  controlMeasures: string;
+  suggestedPPE: string[];
+}
+
+interface HazardScanResult {
+  hazards: DetectedHazard[];
+  disclaimer: string;
+}
+
 type RiskMatrix = Record<string, Record<string, string>>;
 
 const LIKELIHOOD_OPTIONS = [
@@ -109,6 +127,30 @@ const PPE_OPTIONS = [
   { value: "face_shield", label: "Face Shield" },
   { value: "sun_protection", label: "Sun Protection" },
 ];
+
+const LIKELIHOOD_NUM_TO_STRING: Record<number, string> = {
+  1: "rare",
+  2: "unlikely",
+  3: "possible",
+  4: "likely",
+  5: "almost_certain",
+};
+
+const CONSEQUENCE_NUM_TO_STRING: Record<number, string> = {
+  1: "insignificant",
+  2: "minor",
+  3: "moderate",
+  4: "major",
+  5: "catastrophic",
+};
+
+function getRiskLevelFromNumbers(likelihood: number, consequence: number): string {
+  const score = likelihood * consequence;
+  if (score <= 4) return "low";
+  if (score <= 9) return "medium";
+  if (score <= 16) return "high";
+  return "extreme";
+}
 
 function emptyHazard(): HazardRow {
   return {
@@ -166,6 +208,10 @@ export function SwmsBuilder({
   const [selectedPpe, setSelectedPpe] = useState<string[]>([]);
   const [hazards, setHazards] = useState<HazardRow[]>([emptyHazard()]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [scanResults, setScanResults] = useState<DetectedHazard[]>([]);
+  const [scanDisclaimer, setScanDisclaimer] = useState<string>("");
+  const [selectedScanHazards, setSelectedScanHazards] = useState<Set<number>>(new Set());
+  const [showScanResults, setShowScanResults] = useState(false);
 
   const { data: riskMatrix } = useQuery<RiskMatrix>({
     queryKey: ["/api/swms/risk-matrix"],
@@ -235,6 +281,94 @@ export function SwmsBuilder({
       toast({ title: "Error", description: "Failed to load template", variant: "destructive" });
     },
   });
+
+  const scanHazardsMutation = useMutation({
+    mutationFn: async () => {
+      const formData = new FormData();
+      formData.append("jobId", jobId);
+      formData.append("jobContext", workActivityDescription || jobTitle || "General construction work");
+      const res = await fetch("/api/swms/scan-hazards", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to scan for hazards");
+      }
+      return (await res.json()) as HazardScanResult;
+    },
+    onSuccess: (result) => {
+      setScanResults(result.hazards);
+      setScanDisclaimer(result.disclaimer);
+      setSelectedScanHazards(new Set());
+      setShowScanResults(true);
+      if (result.hazards.length === 0) {
+        toast({ title: "No hazards detected", description: "AI did not detect any hazards in the job photos." });
+      } else {
+        toast({ title: "Scan complete", description: `Found ${result.hazards.length} potential hazard${result.hazards.length === 1 ? "" : "s"}` });
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: "Scan failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const toggleScanHazard = (index: number) => {
+    setSelectedScanHazards((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
+  const addSelectedHazards = () => {
+    const newHazards: HazardRow[] = [];
+    const newPpe = new Set(selectedPpe);
+
+    selectedScanHazards.forEach((index) => {
+      const detected = scanResults[index];
+      if (!detected) return;
+
+      const likelihoodStr = LIKELIHOOD_NUM_TO_STRING[detected.likelihood] || "possible";
+      const consequenceStr = CONSEQUENCE_NUM_TO_STRING[detected.consequence] || "moderate";
+
+      newHazards.push({
+        hazardDescription: detected.activityTask,
+        riskConsequence: detected.hazard,
+        likelihood: likelihoodStr,
+        consequence: consequenceStr,
+        riskRating: calculateRisk(likelihoodStr, consequenceStr, riskMatrix) || getRiskLevelFromNumbers(detected.likelihood, detected.consequence),
+        controlMeasures: detected.controlMeasures,
+        residualLikelihood: "unlikely",
+        residualConsequence: "minor",
+        residualRiskRating: calculateRisk("unlikely", "minor", riskMatrix) || "low",
+        responsiblePerson: "",
+      });
+
+      detected.suggestedPPE?.forEach((ppe) => newPpe.add(ppe));
+    });
+
+    if (newHazards.length > 0) {
+      const filteredExisting = hazards.filter(
+        (h) => h.hazardDescription || h.riskConsequence || h.controlMeasures
+      );
+      setHazards([...filteredExisting, ...newHazards]);
+      setSelectedPpe(Array.from(newPpe));
+      toast({
+        title: "Hazards added",
+        description: `Added ${newHazards.length} hazard${newHazards.length === 1 ? "" : "s"} to SWMS`,
+      });
+    }
+
+    setShowScanResults(false);
+    setScanResults([]);
+    setSelectedScanHazards(new Set());
+  };
 
   const saveMutation = useMutation({
     mutationFn: async (status: string) => {
@@ -465,13 +599,121 @@ export function SwmsBuilder({
               <AlertTriangle className="h-4 w-4" />
               Hazard & Risk Assessment
             </span>
-            <Button size="sm" variant="outline" onClick={addHazard}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add Hazard
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={scanHazardsMutation.isPending}
+                onClick={() => scanHazardsMutation.mutate()}
+              >
+                {scanHazardsMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <span className="flex items-center gap-0.5 mr-1">
+                    <Camera className="h-4 w-4" />
+                    <Shield className="h-3 w-3" />
+                  </span>
+                )}
+                {scanHazardsMutation.isPending ? "Scanning for hazards..." : "Scan Job Photos"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={addHazard}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Hazard
+              </Button>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {showScanResults && scanResults.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
+                <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  {scanDisclaimer || "AI suggestions — review carefully before adding to SWMS"}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {scanResults.map((detected, idx) => {
+                  const riskLevel = getRiskLevelFromNumbers(detected.likelihood, detected.consequence);
+                  const isSelected = selectedScanHazards.has(idx);
+                  return (
+                    <div
+                      key={idx}
+                      className={`border rounded-md p-3 cursor-pointer transition-colors ${
+                        isSelected
+                          ? "border-primary/50 bg-primary/5"
+                          : "border-border"
+                      }`}
+                      onClick={() => toggleScanHazard(idx)}
+                    >
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleScanHazard(idx)}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium">{detected.activityTask}</span>
+                            <Badge
+                              variant="outline"
+                              className={getRiskBadgeClass(riskLevel)}
+                            >
+                              {riskLevel.toUpperCase()}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{detected.hazard}</p>
+                          <p className="text-xs">
+                            <span className="text-muted-foreground">Controls: </span>
+                            {detected.controlMeasures}
+                          </p>
+                          {detected.suggestedPPE && detected.suggestedPPE.length > 0 && (
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span className="text-xs text-muted-foreground">PPE:</span>
+                              {detected.suggestedPPE.map((ppe) => {
+                                const ppeLabel = PPE_OPTIONS.find(
+                                  (o) => o.value === ppe || o.value === ppe.replace(/-/g, "_")
+                                )?.label || ppe.replace(/_/g, " ");
+                                return (
+                                  <Badge key={ppe} variant="secondary" className="text-[10px]">
+                                    {ppeLabel}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowScanResults(false);
+                    setScanResults([]);
+                    setSelectedScanHazards(new Set());
+                  }}
+                >
+                  Dismiss
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={selectedScanHazards.size === 0}
+                  onClick={addSelectedHazards}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                  Add Selected to SWMS ({selectedScanHazards.size})
+                </Button>
+              </div>
+            </div>
+          )}
+
           {hazards.map((hazard, idx) => (
             <div
               key={idx}

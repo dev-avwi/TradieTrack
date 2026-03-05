@@ -4,9 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { VoiceRecorder, VoiceNotePlayer } from '@/components/ui/voice-recorder';
-import { Mic, Plus, Loader2, Sparkles, FileText, Copy, Edit, X } from 'lucide-react';
+import { Mic, Plus, Loader2, Sparkles, FileText, Copy, Edit, X, Calendar, ClipboardList, ShoppingCart, FileQuestion } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+
+interface DetectedAction {
+  type: 'reminder' | 'follow_up' | 'material_need' | 'quote_request';
+  description: string;
+  date?: string;
+  confirmed?: boolean;
+  dismissed?: boolean;
+}
 
 interface VoiceNote {
   id: string;
@@ -16,6 +24,7 @@ interface VoiceNote {
   transcription: string | null;
   createdAt: string | null;
   signedUrl?: string;
+  detectedActions?: DetectedAction[] | null;
 }
 
 interface JobVoiceNotesProps {
@@ -128,6 +137,39 @@ export function JobVoiceNotes({ jobId, canUpload = true, existingNotes, onNotesU
     },
   });
 
+  const confirmActionMutation = useMutation({
+    mutationFn: async ({ voiceNoteId, actionIndex }: { voiceNoteId: string; actionIndex: number }) => {
+      return apiRequest('POST', `/api/jobs/${jobId}/voice-notes/${voiceNoteId}/confirm-action`, {
+        actionIndex,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'voice-notes'] });
+      toast({
+        title: 'Action created',
+        description: 'The suggested action has been created.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to create action',
+        description: error.message || 'Could not create the action.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const dismissActionMutation = useMutation({
+    mutationFn: async ({ voiceNoteId, actionIndex }: { voiceNoteId: string; actionIndex: number }) => {
+      return apiRequest('POST', `/api/jobs/${jobId}/voice-notes/${voiceNoteId}/dismiss-action`, {
+        actionIndex,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'voice-notes'] });
+    },
+  });
+
   const handleSave = (audioBlob: Blob, duration: number) => {
     uploadMutation.mutate({ audioBlob, duration });
   };
@@ -185,6 +227,82 @@ export function JobVoiceNotes({ jobId, canUpload = true, existingNotes, onNotesU
     }
   };
 
+  const getActionIcon = (type: DetectedAction['type']) => {
+    switch (type) {
+      case 'reminder': return Calendar;
+      case 'follow_up': return ClipboardList;
+      case 'material_need': return ShoppingCart;
+      case 'quote_request': return FileQuestion;
+    }
+  };
+
+  const renderSuggestedActions = (note: VoiceNote) => {
+    const actions = note.detectedActions;
+    if (!actions || actions.length === 0) return null;
+
+    const visibleActions = actions.filter(a => !a.confirmed && !a.dismissed);
+    if (visibleActions.length === 0) return null;
+
+    return (
+      <div className="ml-2 mt-2 rounded-md border border-dashed border-muted-foreground/30 p-2.5">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Sparkles className="h-3 w-3 text-muted-foreground" />
+          <span className="text-xs font-medium text-muted-foreground">Suggested Actions</span>
+        </div>
+        <div className="space-y-1.5">
+          {actions.map((action, index) => {
+            if (action.confirmed || action.dismissed) return null;
+            const Icon = getActionIcon(action.type);
+            const isPending = confirmActionMutation.isPending || dismissActionMutation.isPending;
+            return (
+              <div
+                key={index}
+                className="flex items-center gap-2 rounded-md bg-muted/40 px-2.5 py-1.5"
+              >
+                <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs">{action.description}</span>
+                  {action.date && (
+                    <span className="text-xs text-muted-foreground ml-1.5">({action.date})</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-xs"
+                    disabled={isPending}
+                    onClick={() => confirmActionMutation.mutate({ voiceNoteId: note.id, actionIndex: index })}
+                    data-testid={`button-confirm-action-${note.id}-${index}`}
+                  >
+                    {confirmActionMutation.isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <>
+                        <Plus className="h-3 w-3 mr-0.5" />
+                        Create
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    disabled={isPending}
+                    onClick={() => dismissActionMutation.mutate({ voiceNoteId: note.id, actionIndex: index })}
+                    data-testid={`button-dismiss-action-${note.id}-${index}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -232,86 +350,89 @@ export function JobVoiceNotes({ jobId, canUpload = true, existingNotes, onNotesU
                   onDelete={canUpload ? () => deleteMutation.mutate(note.id) : undefined}
                 />
                 {note.transcription ? (
-                  <div className="bg-muted/50 rounded-md p-3 ml-2 border-l-2 border-primary/30">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <FileText className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs font-medium text-muted-foreground">AI Transcription</span>
-                    </div>
-                    {isEditingNote(note.id) ? (
-                      <div className="space-y-2">
-                        <Textarea
-                          value={getEditedText(note.id)}
-                          onChange={(e) => updateEditedText(note.id, e.target.value)}
-                          className="min-h-[100px] text-sm"
-                          data-testid={`textarea-edit-transcription-${note.id}`}
-                        />
-                        <div className="flex gap-2 flex-wrap">
-                          <Button
-                            size="sm"
-                            onClick={() => handleAddToNotes(note.id, getEditedText(note.id))}
-                            disabled={addingNoteId === note.id || !getEditedText(note.id).trim()}
-                            data-testid={`button-save-to-notes-${note.id}`}
-                          >
-                            {addingNoteId === note.id ? (
-                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            ) : (
-                              <Plus className="h-3 w-3 mr-1" />
-                            )}
-                            Add to Notes
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => cancelEditing(note.id)}
-                            disabled={addingNoteId === note.id}
-                            data-testid={`button-cancel-edit-${note.id}`}
-                          >
-                            <X className="h-3 w-3 mr-1" />
-                            Cancel
-                          </Button>
-                        </div>
+                  <>
+                    <div className="bg-muted/50 rounded-md p-3 ml-2 border-l-2 border-primary/30">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <FileText className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs font-medium text-muted-foreground">AI Transcription</span>
                       </div>
-                    ) : (
-                      <>
-                        <p className="text-sm leading-relaxed mb-2" data-testid={`transcription-${note.id}`}>
-                          {note.transcription}
-                        </p>
-                        <div className="flex gap-2 flex-wrap">
-                          <Button
-                            size="sm"
-                            onClick={() => handleAddToNotes(note.id, note.transcription!)}
-                            disabled={addingNoteId === note.id}
-                            data-testid={`button-add-to-notes-${note.id}`}
-                          >
-                            {addingNoteId === note.id ? (
-                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            ) : (
-                              <Plus className="h-3 w-3 mr-1" />
-                            )}
-                            Add to Notes
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleCopyTranscription(note.transcription!)}
-                            data-testid={`button-copy-transcription-${note.id}`}
-                          >
-                            <Copy className="h-3 w-3 mr-1" />
-                            Copy
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => startEditing(note.id, note.transcription!)}
-                            data-testid={`button-edit-transcription-${note.id}`}
-                          >
-                            <Edit className="h-3 w-3 mr-1" />
-                            Edit
-                          </Button>
+                      {isEditingNote(note.id) ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={getEditedText(note.id)}
+                            onChange={(e) => updateEditedText(note.id, e.target.value)}
+                            className="min-h-[100px] text-sm"
+                            data-testid={`textarea-edit-transcription-${note.id}`}
+                          />
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              size="sm"
+                              onClick={() => handleAddToNotes(note.id, getEditedText(note.id))}
+                              disabled={addingNoteId === note.id || !getEditedText(note.id).trim()}
+                              data-testid={`button-save-to-notes-${note.id}`}
+                            >
+                              {addingNoteId === note.id ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <Plus className="h-3 w-3 mr-1" />
+                              )}
+                              Add to Notes
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => cancelEditing(note.id)}
+                              disabled={addingNoteId === note.id}
+                              data-testid={`button-cancel-edit-${note.id}`}
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Cancel
+                            </Button>
+                          </div>
                         </div>
-                      </>
-                    )}
-                  </div>
+                      ) : (
+                        <>
+                          <p className="text-sm leading-relaxed mb-2" data-testid={`transcription-${note.id}`}>
+                            {note.transcription}
+                          </p>
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              size="sm"
+                              onClick={() => handleAddToNotes(note.id, note.transcription!)}
+                              disabled={addingNoteId === note.id}
+                              data-testid={`button-add-to-notes-${note.id}`}
+                            >
+                              {addingNoteId === note.id ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <Plus className="h-3 w-3 mr-1" />
+                              )}
+                              Add to Notes
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleCopyTranscription(note.transcription!)}
+                              data-testid={`button-copy-transcription-${note.id}`}
+                            >
+                              <Copy className="h-3 w-3 mr-1" />
+                              Copy
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startEditing(note.id, note.transcription!)}
+                              data-testid={`button-edit-transcription-${note.id}`}
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {renderSuggestedActions(note)}
+                  </>
                 ) : (
                   <Button
                     variant="ghost"

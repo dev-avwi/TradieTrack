@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Phone, Mail, MapPin, AlertCircle, CheckCircle2, Clock, Calendar,
   User, Navigation, FileText, Camera, ChevronRight, Timer, Building2,
-  MessageCircle, Loader2, Signal, ClipboardCheck, Package, CreditCard, Shield
+  MessageCircle, Loader2, Signal, ClipboardCheck, Package, CreditCard, Shield,
+  Activity, Receipt, CircleDot
 } from "lucide-react";
 import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
 import { useEffect, useLayoutEffect, useState, useRef, useCallback } from "react";
@@ -26,6 +27,20 @@ L.Icon.Default.mergeOptions({
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
 });
+
+interface TimelineEvent {
+  stage: string;
+  label: string;
+  date: string | null;
+  completed: boolean;
+}
+
+interface ActivityFeedItem {
+  type: string;
+  title: string;
+  description: string | null;
+  timestamp: string;
+}
 
 interface JobPortalData {
   job: {
@@ -62,6 +77,7 @@ interface JobPortalData {
     invoices: Array<{ id: number; invoiceNumber: string; status: string; total: string; token: string; createdAt: string }>;
   };
   checklist: Array<{ text: string; isCompleted: boolean; sortOrder: number }>;
+  checklistSummary?: { total: number; completed: number; percentage: number } | null;
   materials: Array<{ name: string; quantity: number; unit?: string; status?: string }>;
   assignments?: PortalAssignment[];
   workerAttendance?: Array<{
@@ -72,6 +88,15 @@ interface JobPortalData {
     clockInAddress: string | null;
     clockOutAddress: string | null;
   }>;
+  timeline?: TimelineEvent[] | null;
+  activityFeed?: ActivityFeedItem[];
+  clientMessage?: string | null;
+  visibility?: {
+    showTimeline: boolean;
+    showPhotos: boolean;
+    showChecklist: boolean;
+    showActivityFeed: boolean;
+  };
 }
 
 interface PortalAssignment {
@@ -866,8 +891,12 @@ export default function JobPortal() {
   const effectiveWorkerStatus = (job.status === 'done' || job.status === 'invoiced' || job.status === 'paid') ? 'completed' : job.workerStatus;
   const statusConfig = getStatusConfig(effectiveWorkerStatus);
   const statusIdx = getStatusIndex(effectiveWorkerStatus);
-  const hasPhotos = job.photos && job.photos.length > 0;
+  const hasPhotos = data.visibility?.showPhotos !== false && job.photos && job.photos.length > 0;
   const hasDocuments = (documents.quotes.length + documents.invoices.length) > 0;
+  const showTimeline = data.visibility?.showTimeline !== false && data.timeline && data.timeline.length > 0;
+  const showChecklist = data.visibility?.showChecklist !== false;
+  const showActivityFeed = data.visibility?.showActivityFeed !== false && data.activityFeed && data.activityFeed.length > 0;
+  const showPhotos = data.visibility?.showPhotos !== false;
 
   const mapsUrl = job.address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`
@@ -1038,6 +1067,22 @@ export default function JobPortal() {
             </CardContent>
           </Card>
         </div>
+
+        {data.clientMessage && (
+          <div className="mx-4 mt-3">
+            <Card className="border-0 shadow-none bg-amber-50 dark:bg-amber-950/30">
+              <CardContent className="py-3 px-4 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <MessageCircle className="w-4 h-4 text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-amber-800 mb-0.5">Message from {business.name}</p>
+                  <p className="text-sm text-amber-900">{data.clientMessage}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {(() => {
           const unpaidInvoices = effectiveWorkerStatus === 'completed' 
@@ -1284,46 +1329,40 @@ export default function JobPortal() {
             </div>
           )}
 
-          {job.workerStatus && (
+          {showTimeline && data.timeline && (
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-slate-300" />
-                  <span className="font-semibold text-sm">Progress</span>
+                  <Activity className="w-4 h-4 text-slate-300" />
+                  <span className="font-semibold text-sm">Job Progress</span>
                 </div>
               </div>
               <div className="p-5">
                 <div className="relative pl-8">
-                  {[
-                    { key: 'assigned', label: 'Scheduled', icon: Calendar, timestamp: job.scheduledAt },
-                    { key: 'on_my_way', label: 'On the Way', icon: Navigation, timestamp: null },
-                    { key: 'arrived', label: 'Arrived', icon: MapPin, timestamp: null },
-                    { key: 'in_progress', label: 'Work Started', icon: Timer, timestamp: job.startedAt },
-                    { key: 'completed', label: 'Completed', icon: CheckCircle2, timestamp: job.completedAt },
-                  ].map((step, idx, arr) => {
-                    const stepIdx = getStatusIndex(step.key);
-                    const isCompleted = statusIdx > stepIdx;
-                    const isCurrent = statusIdx === stepIdx;
-                    const isFuture = statusIdx < stepIdx;
-                    const isLast = idx === arr.length - 1;
-                    const StepIcon = step.icon;
-
-                    if (isFuture && step.key !== 'completed') {
-                      if (statusIdx < 0) return null;
-                    }
+                  {data.timeline.map((event, idx) => {
+                    const isLast = idx === data.timeline!.length - 1;
+                    const isCurrent = event.completed && (isLast || !data.timeline![idx + 1]?.completed);
+                    const timelineIcons: Record<string, typeof CheckCircle2> = {
+                      quoted: FileText,
+                      scheduled: Calendar,
+                      in_progress: Timer,
+                      complete: CheckCircle2,
+                      invoiced: Receipt,
+                    };
+                    const StepIcon = timelineIcons[event.stage] || CircleDot;
 
                     return (
-                      <div key={step.key} className="relative pb-7 last:pb-0">
+                      <div key={event.stage} className="relative pb-7 last:pb-0">
                         {!isLast && (
                           <div
                             className={`absolute left-[-20px] top-8 w-0.5 h-full ${
-                              isCompleted ? 'bg-emerald-400' : isCurrent ? 'bg-brand/30' : 'bg-gray-200'
+                              event.completed && !isCurrent ? 'bg-emerald-400' : isCurrent ? 'bg-brand/30' : 'bg-gray-200'
                             }`}
                           />
                         )}
                         <div className="flex items-start gap-3">
                           <div className="absolute left-[-28px]">
-                            {isCompleted ? (
+                            {event.completed && !isCurrent ? (
                               <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center mt-0.5 shadow-sm">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                               </div>
@@ -1338,19 +1377,19 @@ export default function JobPortal() {
                           </div>
                           <div className="flex-1">
                             <p className={`text-sm font-semibold ${
-                              isCompleted ? 'text-emerald-700' : isCurrent ? 'text-foreground' : 'text-muted-foreground'
+                              event.completed && !isCurrent ? 'text-emerald-700' : isCurrent ? 'text-foreground' : 'text-muted-foreground'
                             }`}>
-                              {step.label}
+                              {event.label}
                             </p>
-                            {step.timestamp && (isCompleted || isCurrent) && (
-                              <p className="text-xs text-muted-foreground mt-0.5">{formatDateTime(step.timestamp)}</p>
+                            {event.date && event.completed && (
+                              <p className="text-xs text-muted-foreground mt-0.5">{formatDateTime(event.date)}</p>
                             )}
                           </div>
                           <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            isCompleted ? 'bg-emerald-50' : isCurrent ? 'bg-blue-50' : 'bg-gray-50'
+                            event.completed && !isCurrent ? 'bg-emerald-50' : isCurrent ? 'bg-blue-50' : 'bg-gray-50'
                           }`}>
                             <StepIcon className={`w-3.5 h-3.5 ${
-                              isCompleted ? 'text-emerald-500' : isCurrent ? 'text-brand' : 'text-gray-300'
+                              event.completed && !isCurrent ? 'text-emerald-500' : isCurrent ? 'text-brand' : 'text-gray-300'
                             }`} />
                           </div>
                         </div>
@@ -1362,7 +1401,61 @@ export default function JobPortal() {
             </div>
           )}
 
-          {data.checklist && data.checklist.length > 0 && (
+          {showChecklist && data.checklistSummary && data.checklistSummary.total > 0 && (
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="bg-brand text-white px-5 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <ClipboardCheck className="w-4 h-4 text-slate-300" />
+                    <span className="font-semibold text-sm">Work Progress</span>
+                  </div>
+                  <span className="text-xs text-white/70">
+                    {data.checklistSummary.completed} of {data.checklistSummary.total} complete
+                  </span>
+                </div>
+              </div>
+              <div className="p-5">
+                <div className="mb-4">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-sm font-medium text-slate-700">
+                      {data.checklistSummary.percentage}% Complete
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {data.checklistSummary.completed}/{data.checklistSummary.total} tasks
+                    </span>
+                  </div>
+                  <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-brand rounded-full transition-all duration-500"
+                      style={{ width: `${data.checklistSummary.percentage}%` }}
+                    />
+                  </div>
+                </div>
+                {data.checklist && data.checklist.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-gray-100">
+                    {data.checklist
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((item, idx) => (
+                      <div key={idx} className="flex items-start gap-3 py-1.5">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                          item.isCompleted 
+                            ? 'bg-emerald-500 border-emerald-500' 
+                            : 'border-gray-300'
+                        }`}>
+                          {item.isCompleted && <CheckCircle2 className="w-3 h-3 text-white" />}
+                        </div>
+                        <span className={`text-sm ${item.isCompleted ? 'text-muted-foreground line-through' : 'text-slate-800'}`}>
+                          {item.text}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {showChecklist && (!data.checklistSummary || data.checklistSummary.total === 0) && data.checklist && data.checklist.length > 0 && (
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="bg-brand text-white px-5 py-3">
                 <div className="flex items-center gap-2">
@@ -1500,43 +1593,105 @@ export default function JobPortal() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="bg-brand text-white px-5 py-3">
-              <div className="flex items-center gap-2">
-                <Camera className="w-4 h-4 text-slate-300" />
-                <span className="font-semibold text-sm">Photos</span>
-              </div>
-            </div>
-            {hasPhotos ? (
-              <div className="p-4">
-                <div className="grid grid-cols-2 gap-2">
-                  {job.photos.map((photo, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer"
-                      onClick={() => setSelectedPhoto(idx)}>
-                      <img
-                        src={photo.url}
-                        alt={photo.description || `Job photo ${idx + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                      {photo.type && (photo.type === 'before' || photo.type === 'after') && (
-                        <span className={`absolute top-2 left-2 text-xs font-medium px-2 py-0.5 rounded-full ${
-                          photo.type === 'before' ? 'bg-gray-900/60 text-white' : 'bg-emerald-600/80 text-white'
-                        }`}>
-                          {photo.type === 'before' ? 'Before' : 'After'}
-                        </span>
-                      )}
-                    </div>
-                  ))}
+          {showPhotos && (
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="bg-brand text-white px-5 py-3">
+                <div className="flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-slate-300" />
+                  <span className="font-semibold text-sm">Photos</span>
                 </div>
               </div>
-            ) : (
-              <div className="text-center py-6">
-                <Camera className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
-                <p className="text-sm text-muted-foreground">No photos yet</p>
-                <p className="text-xs text-muted-foreground/60">Job photos will be shared here as work progresses</p>
+              {hasPhotos ? (
+                <div className="p-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    {job.photos.map((photo, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer"
+                        onClick={() => setSelectedPhoto(idx)}>
+                        <img
+                          src={photo.url}
+                          alt={photo.description || `Job photo ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        {photo.type && (photo.type === 'before' || photo.type === 'after') && (
+                          <span className={`absolute top-2 left-2 text-xs font-medium px-2 py-0.5 rounded-full ${
+                            photo.type === 'before' ? 'bg-gray-900/60 text-white' : 'bg-emerald-600/80 text-white'
+                          }`}>
+                            {photo.type === 'before' ? 'Before' : 'After'}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <Camera className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
+                  <p className="text-sm text-muted-foreground">No photos yet</p>
+                  <p className="text-xs text-muted-foreground/60">Job photos will be shared here as work progresses</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {showActivityFeed && data.activityFeed && data.activityFeed.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="bg-brand text-white px-5 py-3">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-slate-300" />
+                  <span className="font-semibold text-sm">Recent Activity</span>
+                </div>
               </div>
-            )}
-          </div>
+              <div className="p-5">
+                <div className="space-y-3">
+                  {data.activityFeed.slice(0, 10).map((item, idx) => {
+                    const activityIcons: Record<string, typeof CheckCircle2> = {
+                      status_change: Navigation,
+                      photo_added: Camera,
+                      check_in: MapPin,
+                      check_out: MapPin,
+                      job_created: FileText,
+                    };
+                    const ItemIcon = activityIcons[item.type] || CircleDot;
+                    return (
+                      <div key={idx} className="flex items-start gap-3 py-1.5 border-b border-slate-100 last:border-0">
+                        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <ItemIcon className="w-3.5 h-3.5 text-slate-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800">{item.title}</p>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground mt-1">{formatTimeAgo(item.timestamp)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {hasDocuments && (
+            <div className="flex gap-2 flex-wrap">
+              {documents.quotes.length > 0 && (
+                <a href={`/portal/quote/${documents.quotes[0].token}`} className="flex-1 min-w-[140px]">
+                  <Button variant="outline" className="w-full text-brand border-brand/30">
+                    <FileText className="w-4 h-4 mr-1.5" />
+                    View Quote
+                  </Button>
+                </a>
+              )}
+              {documents.invoices.filter(i => i.status !== 'paid').length > 0 && (
+                <a href={`/portal/invoice/${documents.invoices.filter(i => i.status !== 'paid')[0].token}`} className="flex-1 min-w-[140px]">
+                  <Button className="w-full bg-brand">
+                    <CreditCard className="w-4 h-4 mr-1.5" />
+                    Pay Invoice
+                  </Button>
+                </a>
+              )}
+            </div>
+          )}
 
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             <div className="bg-brand text-white px-5 py-3">

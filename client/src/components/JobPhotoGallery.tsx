@@ -13,7 +13,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Camera, Plus, Trash2, X, Loader2, Image as ImageIcon, CheckCircle2, Video, Film, Download, Sparkles, Check, ArrowLeftRight, Wand2 } from "lucide-react";
+import { Camera, Plus, Trash2, X, Loader2, Image as ImageIcon, CheckCircle2, Video, Film, Download, Sparkles, Check, ArrowLeftRight, Wand2, Bot, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +37,7 @@ interface JobPhoto {
   takenAt?: string;
   createdAt: string;
   signedUrl?: string;
+  aiSuggestedCategory?: string | null;
 }
 
 interface JobPhotoGalleryProps {
@@ -134,6 +141,26 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
       toast({
         title: "Delete failed",
         description: "Failed to delete photo",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ photoId, category }: { photoId: string; category: string }) => {
+      return await apiRequest('PATCH', `/api/jobs/${jobId}/photos/${photoId}`, { category });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'photos'] });
+      toast({
+        title: "Category updated",
+        description: "Photo category has been changed",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Update failed",
+        description: "Failed to update photo category",
         variant: "destructive",
       });
     },
@@ -432,64 +459,12 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {categoryPhotos.map((photo) => {
                       const isVideo = photo.mimeType?.startsWith('video/');
+                      const isAiCategorized = !!photo.aiSuggestedCategory && photo.aiSuggestedCategory === photo.category;
+                      const isCategorizationPending = !isVideo && !photo.aiSuggestedCategory && photo.category === 'general' && settings?.aiEnabled !== false && settings?.aiPhotoAnalysisEnabled !== false;
                       return (
-                        <button
-                          key={photo.id}
-                          className="aspect-square rounded-lg overflow-hidden bg-muted hover-elevate focus:ring-2 focus:ring-primary focus:outline-none relative"
-                          onClick={() => setSelectedPhoto(photo)}
-                          data-testid={`photo-${photo.id}`}
-                        >
-                          {isVideo ? (
-                            <>
-                              <video
-                                src={photo.signedUrl || `/api/jobs/${jobId}/photos/${photo.id}/view`}
-                                className="w-full h-full object-cover"
-                                muted
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                <Video className="h-8 w-8 text-white" />
-                              </div>
-                            </>
-                          ) : (
-                            <img
-                              src={photo.signedUrl || `/api/jobs/${jobId}/photos/${photo.id}/view`}
-                              alt={photo.caption || photo.fileName}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-            
-            {/* Also show any photos with unexpected categories */}
-            {Object.keys(groupedPhotos)
-              .filter(category => !CATEGORY_LABELS[category])
-              .map(category => {
-                const categoryPhotos = groupedPhotos[category];
-                if (!categoryPhotos?.length) return null;
-                
-                return (
-                  <div key={category}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="secondary">
-                        {category || 'Uncategorized'}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {categoryPhotos.length} {categoryPhotos.length === 1 ? 'item' : 'items'}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                      {categoryPhotos.map((photo) => {
-                        const isVideo = photo.mimeType?.startsWith('video/');
-                        return (
+                        <div key={photo.id} className="relative">
                           <button
-                            key={photo.id}
-                            className="aspect-square rounded-lg overflow-hidden bg-muted hover-elevate focus:ring-2 focus:ring-primary focus:outline-none relative"
+                            className="aspect-square rounded-lg overflow-hidden bg-muted hover-elevate focus:ring-2 focus:ring-primary focus:outline-none relative w-full"
                             onClick={() => setSelectedPhoto(photo)}
                             data-testid={`photo-${photo.id}`}
                           >
@@ -512,7 +487,123 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
                                 loading="lazy"
                               />
                             )}
+                            {isCategorizationPending && (
+                              <div className="absolute top-1 left-1">
+                                <div className="flex items-center gap-0.5 bg-black/60 rounded-sm px-1 py-0.5">
+                                  <Loader2 className="h-2.5 w-2.5 animate-spin text-white" />
+                                </div>
+                              </div>
+                            )}
                           </button>
+                          {isAiCategorized && canUpload && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  className="absolute bottom-1 left-1 flex items-center gap-0.5 bg-black/60 rounded-sm px-1 py-0.5 text-[10px] text-white/90 hover:bg-black/80 transition-colors"
+                                  data-testid={`ai-badge-${photo.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Bot className="h-2.5 w-2.5" />
+                                  <span>AI sorted</span>
+                                  <ChevronDown className="h-2 w-2" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="min-w-[140px]">
+                                {Object.entries(CATEGORY_LABELS).map(([cat, { label }]) => (
+                                  <DropdownMenuItem
+                                    key={cat}
+                                    onClick={() => updateCategoryMutation.mutate({ photoId: photo.id, category: cat })}
+                                    className={photo.category === cat ? 'font-medium' : ''}
+                                  >
+                                    {label}
+                                    {photo.category === cat && <Check className="h-3 w-3 ml-auto" />}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            
+            {Object.keys(groupedPhotos)
+              .filter(category => !CATEGORY_LABELS[category])
+              .map(category => {
+                const categoryPhotos = groupedPhotos[category];
+                if (!categoryPhotos?.length) return null;
+                
+                return (
+                  <div key={category}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="secondary">
+                        {category || 'Uncategorized'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {categoryPhotos.length} {categoryPhotos.length === 1 ? 'item' : 'items'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {categoryPhotos.map((photo) => {
+                        const isVideo = photo.mimeType?.startsWith('video/');
+                        const isAiCategorized = !!photo.aiSuggestedCategory && photo.aiSuggestedCategory === photo.category;
+                        return (
+                          <div key={photo.id} className="relative">
+                            <button
+                              className="aspect-square rounded-lg overflow-hidden bg-muted hover-elevate focus:ring-2 focus:ring-primary focus:outline-none relative w-full"
+                              onClick={() => setSelectedPhoto(photo)}
+                              data-testid={`photo-${photo.id}`}
+                            >
+                              {isVideo ? (
+                                <>
+                                  <video
+                                    src={photo.signedUrl || `/api/jobs/${jobId}/photos/${photo.id}/view`}
+                                    className="w-full h-full object-cover"
+                                    muted
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                    <Video className="h-8 w-8 text-white" />
+                                  </div>
+                                </>
+                              ) : (
+                                <img
+                                  src={photo.signedUrl || `/api/jobs/${jobId}/photos/${photo.id}/view`}
+                                  alt={photo.caption || photo.fileName}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              )}
+                            </button>
+                            {isAiCategorized && canUpload && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    className="absolute bottom-1 left-1 flex items-center gap-0.5 bg-black/60 rounded-sm px-1 py-0.5 text-[10px] text-white/90 hover:bg-black/80 transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Bot className="h-2.5 w-2.5" />
+                                    <span>AI sorted</span>
+                                    <ChevronDown className="h-2 w-2" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="min-w-[140px]">
+                                  {Object.entries(CATEGORY_LABELS).map(([cat, { label }]) => (
+                                    <DropdownMenuItem
+                                      key={cat}
+                                      onClick={() => updateCategoryMutation.mutate({ photoId: photo.id, category: cat })}
+                                      className={photo.category === cat ? 'font-medium' : ''}
+                                    >
+                                      {label}
+                                      {photo.category === cat && <Check className="h-3 w-3 ml-auto" />}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -610,9 +701,33 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
               <DialogTitle className="flex items-center gap-2">
                 {selectedPhoto?.caption || selectedPhoto?.fileName || 'Photo'}
                 {selectedPhoto?.category && (
-                  <Badge variant="secondary" className={CATEGORY_LABELS[selectedPhoto.category]?.color}>
-                    {CATEGORY_LABELS[selectedPhoto.category]?.label}
-                  </Badge>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="inline-flex items-center gap-1">
+                        <Badge variant="secondary" className={CATEGORY_LABELS[selectedPhoto.category]?.color}>
+                          {CATEGORY_LABELS[selectedPhoto.category]?.label}
+                          {selectedPhoto.aiSuggestedCategory && selectedPhoto.aiSuggestedCategory === selectedPhoto.category && (
+                            <Bot className="h-3 w-3 ml-1 inline" />
+                          )}
+                          <ChevronDown className="h-3 w-3 ml-0.5 inline" />
+                        </Badge>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-[140px]">
+                      {Object.entries(CATEGORY_LABELS).map(([cat, { label }]) => (
+                        <DropdownMenuItem
+                          key={cat}
+                          onClick={() => {
+                            updateCategoryMutation.mutate({ photoId: selectedPhoto.id, category: cat });
+                          }}
+                          className={selectedPhoto.category === cat ? 'font-medium' : ''}
+                        >
+                          {label}
+                          {selectedPhoto.category === cat && <Check className="h-3 w-3 ml-auto" />}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </DialogTitle>
             </div>
