@@ -1295,6 +1295,7 @@ export default function ChatHub() {
       clientId: selectedSmsConversation.clientId || undefined,
       clientPhone: selectedSmsConversation.clientPhone,
       message: smsNewMessage.trim(),
+      jobId: selectedSmsConversation.jobId || activeJobContext?.id || undefined,
     });
   };
 
@@ -1509,8 +1510,17 @@ export default function ChatHub() {
               <h1 className="text-base font-bold tracking-tight leading-tight">
                 {isTradie ? `Hey ${firstName}` : 'Job Communications'}
               </h1>
-              <p className="ios-caption text-[11px] mt-0">
+              <p className="ios-caption text-[11px] mt-0 flex items-center gap-1">
                 {isTradie ? 'Your jobs & team chat' : 'Messages, SMS & team chat'}
+                {smsSocketConnected ? (
+                  <span className="inline-flex items-center gap-0.5 text-green-600 dark:text-green-400">
+                    <Wifi className="h-2.5 w-2.5" />
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-0.5 text-muted-foreground/50">
+                    <WifiOff className="h-2.5 w-2.5" />
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -2274,8 +2284,32 @@ export default function ChatHub() {
                             </span>
                             {isOwn && msg.status === 'delivered' && <CheckCheck className="h-3 w-3 text-white/70" />}
                             {isOwn && msg.status === 'sent' && <Check className="h-3 w-3 text-white/70" />}
+                            {isOwn && msg.status === 'pending' && <Clock className="h-3 w-3 text-white/70" />}
+                            {isOwn && msg.status === 'failed' && <AlertTriangle className="h-3 w-3 text-red-300" />}
                           </div>
                         </div>
+                        
+                        {isOwn && msg.status === 'failed' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-xs gap-1 text-red-600 dark:text-red-400"
+                            onClick={() => {
+                              if (selectedSmsConversation) {
+                                sendSmsMutation.mutate({
+                                  clientId: selectedSmsConversation.clientId || undefined,
+                                  clientPhone: selectedSmsConversation.clientPhone,
+                                  message: msg.body,
+                                  jobId: selectedSmsConversation.jobId || activeJobContext?.id || undefined,
+                                });
+                              }
+                            }}
+                            disabled={sendSmsMutation.isPending}
+                          >
+                            <AlertTriangle className="h-3 w-3" />
+                            Retry
+                          </Button>
+                        )}
                         
                         {isJobRequest && !jobAlreadyCreated && (
                           <Button
@@ -2462,20 +2496,26 @@ export default function ChatHub() {
                   </DropdownMenu>
                 </div>
               </div>
+              {!twilioConnected && (
+                <div className="px-4 pt-2">
+                  <TwilioWarning compact />
+                </div>
+              )}
               {/* Message input */}
               <div className="px-4 py-3 flex gap-2">
                 <Input
                   ref={smsInputRef}
-                  placeholder="Type a message..."
+                  placeholder={twilioConnected ? "Type a message..." : "SMS not available — check Twilio setup"}
                   value={smsNewMessage}
                   onChange={(e) => setSmsNewMessage(e.target.value)}
                   onKeyPress={handleSmsKeyPress}
                   className="flex-1"
+                  disabled={!twilioConnected}
                   data-testid="input-sms-message"
                 />
                 <Button 
                   onClick={handleSendSms} 
-                  disabled={!smsNewMessage.trim() || sendSmsMutation.isPending} 
+                  disabled={!twilioConnected || !smsNewMessage.trim() || sendSmsMutation.isPending} 
                   size="icon"
                   data-testid="button-send-sms"
                 >

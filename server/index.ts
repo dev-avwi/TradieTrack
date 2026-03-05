@@ -65,7 +65,14 @@ if (process.env.DATABASE_URL) {
   // Initialize Stripe and get webhook UUID
   const { stripe, webhookUuid } = await initializeStripe();
   
-  // Note: Twilio SMS notifications disabled for beta release
+  // Initialize Twilio for SMS notifications
+  const { initializeTwilio, configureTwilioWebhook } = await import('./twilioClient');
+  const twilioReady = await initializeTwilio();
+  if (twilioReady) {
+    const { getProductionBaseUrl } = await import('./urlHelper');
+    const baseUrl = getProductionBaseUrl();
+    await configureTwilioWebhook(baseUrl);
+  }
   
   // Register Stripe webhook route BEFORE express.json()
   // This is critical - webhook needs raw Buffer, not parsed JSON

@@ -313,6 +313,55 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
   }
 }
 
+/**
+ * Auto-configure the Twilio phone number's incoming SMS webhook URL
+ * so inbound messages route to our app instead of showing the default Twilio auto-reply.
+ */
+export async function configureTwilioWebhook(baseUrl: string): Promise<boolean> {
+  if (!twilioClient || !twilioPhoneNumber) {
+    console.log('⚠️ Cannot configure Twilio webhook - client or phone number not available');
+    return false;
+  }
+
+  const webhookUrl = `${baseUrl}/api/sms/webhook/incoming`;
+
+  try {
+    const incomingNumbers = await twilioClient.incomingPhoneNumbers.list({
+      phoneNumber: twilioPhoneNumber,
+      limit: 1,
+    });
+
+    if (incomingNumbers.length === 0) {
+      console.log(`⚠️ Twilio phone number ${twilioPhoneNumber} not found in account - webhook not configured`);
+      console.log('   This may be normal if using an alphanumeric sender ID or messaging service');
+      return false;
+    }
+
+    const phoneNumberSid = incomingNumbers[0].sid;
+    const currentSmsUrl = incomingNumbers[0].smsUrl;
+
+    if (currentSmsUrl === webhookUrl) {
+      console.log(`✅ Twilio SMS webhook already configured: ${webhookUrl}`);
+      return true;
+    }
+
+    await twilioClient.incomingPhoneNumbers(phoneNumberSid).update({
+      smsUrl: webhookUrl,
+      smsMethod: 'POST',
+    });
+
+    console.log(`✅ Twilio SMS webhook configured: ${webhookUrl}`);
+    if (currentSmsUrl) {
+      console.log(`   (was: ${currentSmsUrl})`);
+    }
+    return true;
+  } catch (error: any) {
+    console.error('❌ Failed to configure Twilio webhook:', error.message);
+    console.log(`   Please manually set SMS webhook URL to: ${webhookUrl}`);
+    return false;
+  }
+}
+
 // SMS Templates for JobRunner notifications
 export const smsTemplates = {
   quoteReady: (clientName: string, businessName: string, quoteNumber: string, businessPhone?: string) =>

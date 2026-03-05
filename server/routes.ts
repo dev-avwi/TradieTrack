@@ -32263,13 +32263,21 @@ Respond with JSON in this format:
         smsUnread = smsConversations.reduce((total, conv) => total + (conv.unreadCount || 0), 0);
       }
       
+      // Get DM unread count
+      let dmUnread = 0;
+      try {
+        dmUnread = await storage.getUnreadDirectMessageCount(userId);
+      } catch (e) {
+        // DM count not critical
+      }
+      
       // Return all chat type unread counts
       res.json({ 
         teamChat: teamChatUnread,
-        directMessages: 0,
+        directMessages: dmUnread,
         jobChats: 0,
         sms: smsUnread,
-        total: teamChatUnread + smsUnread
+        total: teamChatUnread + dmUnread + smsUnread
       });
     } catch (error: any) {
       console.error('Error getting unread counts:', error);
