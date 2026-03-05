@@ -14,7 +14,7 @@ Core architectural and design decisions include:
 *   **AI Integration**: Leverages GPT-4o-mini for business suggestions, Australian English phrasing, proactive notifications, quote generation, voice note transcription, photo auto-categorization, receipt scanning, and SWMS hazard detection. GPT-4o vision powers AI Photo Analysis, AI Schedule Optimizer, and Voice-to-Action detection. A Role-Aware AI Assistant provides context-filtered actions.
 *   **PDF Generation**: Server-side generation of customizable quotes, invoices, and Job Proof Packs via Puppeteer, including GPS Worker Presence Verification, photo GPS location stamps, and a unified "Safety & SWMS" section that combines SWMS documents with safety inspection form submissions.
 *   **Analytics & Error Handling**: GA4 event tracking, global JS error capture, and server-side structured error logging.
-*   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators and confirmation emails.
+*   **Job Workflow**: A 5-stage ServiceM8-style job status workflow with visual indicators and confirmation emails. Quote-to-Job flow automatically copies accepted quote line items as job materials (name, quantity, cost, price, status="needed") when creating a job from an accepted quote.
 *   **Financial System**: Live quote/invoice editor with real-time preview, catalog integration, deposit settings, digital signatures, rate snapshots, invoice locking, and audit trails.
 *   **Payment Collection**: Supports Stripe Payment Links, "Tap to Pay Request Flow," QR code support, and Quick Collect Payment.
 *   **Subscription & Billing**: Three-tier pricing (Free, Pro, Team) with upgrade/downgrade functionality, granular team member access, and a 7-day free trial.

@@ -381,6 +381,7 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
         estimatedHours: data.estimatedHours ? parseInt(data.estimatedHours) : undefined,
         scheduledAt: data.scheduledAt ? new Date(data.scheduledAt).toISOString() : undefined,
         customFields: data.customFields,
+        ...(urlQuoteId ? { quoteId: urlQuoteId } : {}),
       };
 
       const result = await createJobMutation.mutateAsync(jobData);

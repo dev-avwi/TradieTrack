@@ -14321,12 +14321,42 @@ Be specific about materials, colors, and features that would be included.`
       const job = await storage.createJob(jobData);
       
       // If job was created from a quote, update the quote's jobId to link back
+      // and copy quote line items as job materials
       // Use req.body.quoteId since insertJobSchema strips non-schema fields
       const quoteIdFromRequest = req.body.quoteId;
       if (quoteIdFromRequest) {
         try {
           await storage.updateQuote(quoteIdFromRequest, effectiveUserId, { jobId: job.id });
           console.log(`[Job Creation] Linked quote ${quoteIdFromRequest} to new job ${job.id}`);
+          
+          // Copy quote line items as job materials (only from accepted quotes the user owns)
+          const quoteWithItems = await storage.getQuoteWithLineItems(quoteIdFromRequest, effectiveUserId);
+          if (quoteWithItems && quoteWithItems.status === 'accepted' && quoteWithItems.lineItems?.length) {
+            let materialsCreated = 0;
+            for (const item of quoteWithItems.lineItems) {
+              try {
+                const quantity = parseFloat(item.quantity?.toString() || '1');
+                const unitCost = parseFloat(item.cost?.toString() || '0');
+                const unitPrice = parseFloat(item.unitPrice?.toString() || '0');
+                await storage.createJobMaterial({
+                  jobId: job.id,
+                  userId: effectiveUserId,
+                  name: item.description,
+                  quantity: quantity.toString(),
+                  unit: 'each',
+                  unitCost: unitCost.toString(),
+                  unitPrice: unitPrice.toString(),
+                  totalCost: (quantity * unitCost).toFixed(2),
+                  totalPrice: (quantity * unitPrice).toFixed(2),
+                  status: 'needed',
+                });
+                materialsCreated++;
+              } catch (matError) {
+                console.error(`[Job Creation] Failed to create material from quote item:`, matError);
+              }
+            }
+            console.log(`[Job Creation] Created ${materialsCreated} materials from ${quoteWithItems.lineItems.length} quote line items`);
+          }
         } catch (linkError) {
           console.error(`[Job Creation] Failed to link quote to job:`, linkError);
           // Don't fail job creation if quote linking fails
