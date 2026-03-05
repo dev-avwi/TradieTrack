@@ -117,6 +117,7 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   
   // Payment Hub - office admin can manage payments
   { path: '/payment-hub', label: 'Payment Hub', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
+  { path: '/expenses', label: 'Expenses', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
   
   // Automations - owner only (controls now in Communications Hub)
   { path: '/automations', label: 'Automations', allowedRoles: ['owner', 'solo_owner'], showInNav: false },

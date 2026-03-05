@@ -86,6 +86,7 @@ import ClientPortalHub from "@/pages/ClientPortalHub";
 import JobPortal from "@/pages/JobPortal";
 import TeamGroups from "@/pages/TeamGroups";
 import PaymentHub from "@/pages/PaymentHub";
+import ExpensesPage from "@/pages/ExpensesPage";
 import WorkPage from "@/pages/WorkPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminAppShell from "@/components/AdminAppShell";
@@ -691,6 +692,8 @@ function Router({
       <Route path="/admin/settings" component={AdminDashboard} />
       
       <Route path="/payment-hub" component={PaymentHub} />
+
+      <Route path="/expenses" component={ExpensesPage} />
       
       <Route path="/automations" component={() => (
         <Automations />

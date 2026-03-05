@@ -127,6 +127,17 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
   },
   {
+    title: "Expenses",
+    url: "/expenses",
+    icon: Receipt,
+    description: "Track expenses, scan receipts, manage categories",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted/10",
+    showInSidebar: true,
+    showInMore: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
+  },
+  {
     title: "Schedule",
     url: "/schedule",
     icon: Calendar,

@@ -76,7 +76,7 @@ export function ExpenseTracking() {
               image: base64,
             });
 
-            const result = response as any;
+            const result = await response.json();
 
             if (result.total) {
               const totalStr = String(result.total);
@@ -121,11 +121,12 @@ export function ExpenseTracking() {
 
   const { data: expenses = [] } = useQuery({
     queryKey: ["/api/expenses", selectedCategory, selectedJob],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedCategory && selectedCategory !== 'all') params.append('categoryId', selectedCategory);
       if (selectedJob && selectedJob !== 'all') params.append('jobId', selectedJob);
-      return apiRequest('GET', `/api/expenses?${params.toString()}`);
+      const res = await apiRequest('GET', `/api/expenses?${params.toString()}`);
+      return res.json();
     },
   }) as { data: any[] };
 
@@ -135,7 +136,10 @@ export function ExpenseTracking() {
 
   const { data: expenseReport } = useQuery({
     queryKey: ["/api/reports/expenses", selectedPeriod],
-    queryFn: () => apiRequest('GET', `/api/reports/expenses?period=${selectedPeriod}&groupBy=category`),
+    queryFn: async () => {
+      const res = await apiRequest('GET', `/api/reports/expenses?period=${selectedPeriod}&groupBy=category`);
+      return res.json();
+    },
   }) as { data: any };
 
   // Forms
