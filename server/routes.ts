@@ -33702,6 +33702,7 @@ Respond with JSON in this format:
       const clientMap = new Map(allClients.map(c => [c.id, c]));
 
       const now = new Date();
+      now.setHours(0, 0, 0, 0);
       const outstandingInvoices = allInvoices.filter(
         (inv: any) => inv.status !== 'paid' && inv.status !== 'draft'
       );
@@ -33723,6 +33724,7 @@ Respond with JSON in this format:
 
       for (const inv of outstandingInvoices) {
         const dueDate = inv.dueDate ? new Date(inv.dueDate) : null;
+        if (dueDate) dueDate.setHours(0, 0, 0, 0);
         const isOverdue = dueDate ? dueDate < now : false;
         const daysOverdue = dueDate ? Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))) : 0;
         const amount = parseFloat(String(inv.total) || '0');

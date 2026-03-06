@@ -1099,14 +1099,20 @@ export default function ChatHub() {
         return bTime - aTime;
       });
       
+      const usedSmsConversationIds = new Set<string>();
+      jobSmsMap.forEach(sms => usedSmsConversationIds.add(sms.id));
+      
       sortedJobs.forEach(job => {
         const directSms = jobSmsMap.get(job.id);
         let clientSms: SmsConversation | undefined;
         if (!directSms && job.clientId) {
           const clientConvos = clientSmsMap.get(job.clientId) || [];
-          clientSms = clientConvos[0];
+          clientSms = clientConvos.find(sms => !usedSmsConversationIds.has(sms.id));
         }
         const smsConvo = directSms || clientSms;
+        if (smsConvo && !directSms) {
+          usedSmsConversationIds.add(smsConvo.id);
+        }
         
         const sitePhotoUrl = jobPhotosMap[job.id];
 

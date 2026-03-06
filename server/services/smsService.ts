@@ -61,28 +61,41 @@ export async function getOrCreateConversation(options: {
 }): Promise<SmsConversation> {
   const formattedPhone = formatPhoneNumber(options.clientPhone);
   
-  // Check if conversation exists
+  if (options.jobId) {
+    const allConvos = await storage.getSmsConversationsByJobIds([options.jobId]);
+    const jobConvo = allConvos.find(c => c.jobId === options.jobId && c.clientPhone === formattedPhone);
+    if (jobConvo) return jobConvo;
+    
+    const newConvo = await storage.createSmsConversation({
+      businessOwnerId: options.businessOwnerId,
+      clientId: options.clientId || null,
+      clientPhone: formattedPhone,
+      clientName: options.clientName || null,
+      jobId: options.jobId,
+      lastMessageAt: new Date(),
+      unreadCount: 0,
+      isArchived: false,
+      deletedAt: null,
+    });
+    return newConvo;
+  }
+  
   let conversation = await storage.getSmsConversationByPhone(
     options.businessOwnerId,
     formattedPhone
   );
   
   if (!conversation) {
-    // Create new conversation
     conversation = await storage.createSmsConversation({
       businessOwnerId: options.businessOwnerId,
       clientId: options.clientId || null,
       clientPhone: formattedPhone,
       clientName: options.clientName || null,
-      jobId: options.jobId || null,
+      jobId: null,
       lastMessageAt: new Date(),
       unreadCount: 0,
       isArchived: false,
       deletedAt: null,
-    });
-  } else if (options.jobId && !conversation.jobId) {
-    conversation = await storage.updateSmsConversation(conversation.id, {
-      jobId: options.jobId,
     });
   }
   
