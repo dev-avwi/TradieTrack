@@ -109,7 +109,18 @@ interface JobMaterial {
   markupPercent?: number;
   supplier?: string;
   category?: string;
+  status?: string;
 }
+
+const MATERIAL_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  needed: { bg: '#FEF3C7', text: '#92400E' },
+  ordered: { bg: '#DBEAFE', text: '#1E40AF' },
+  shipped: { bg: '#EDE9FE', text: '#6D28D9' },
+  received: { bg: '#D1FAE5', text: '#065F46' },
+  installed: { bg: '#A7F3D0', text: '#047857' },
+};
+
+const MATERIAL_STATUS_OPTIONS = ['needed', 'ordered', 'shipped', 'received', 'installed'] as const;
 
 interface TeamMember {
   id: string;
@@ -1905,6 +1916,9 @@ export default function JobDetailScreen() {
   const [editingMaterial, setEditingMaterial] = useState<JobMaterial | null>(null);
   const [materialForm, setMaterialForm] = useState({ name: '', quantity: '1', unitCost: '', unitPrice: '', markupPercent: '', supplier: '', description: '' });
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
+  const [costPromptMaterial, setCostPromptMaterial] = useState<{ id: string; name: string; status: string } | null>(null);
+  const [costPromptValue, setCostPromptValue] = useState('');
+  const [showCostPromptModal, setShowCostPromptModal] = useState(false);
 
   const [swmsDocuments, setSwmsDocuments] = useState<SwmsDocument[]>([]);
   const [isLoadingSwms, setIsLoadingSwms] = useState(false);
@@ -2536,6 +2550,57 @@ export default function JobDetailScreen() {
         },
       ]
     );
+  };
+
+  const handleMaterialStatusChange = (material: JobMaterial) => {
+    const currentStatus = material.status || 'needed';
+    const options = MATERIAL_STATUS_OPTIONS.map(s => ({
+      text: s.charAt(0).toUpperCase() + s.slice(1),
+      onPress: () => {
+        const newStatus = s;
+        const hasCost = Number(material.unitCost || 0) > 0;
+        if ((newStatus === 'received' || newStatus === 'installed') && !hasCost) {
+          setCostPromptMaterial({ id: material.id, name: material.name, status: newStatus });
+          setCostPromptValue('');
+          setShowCostPromptModal(true);
+        } else {
+          updateMaterialStatus(material.id, newStatus);
+        }
+      },
+    }));
+    Alert.alert(
+      'Material Status',
+      `Current: ${currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}`,
+      [...options, { text: 'Cancel', style: 'cancel' as const, onPress: () => {} }]
+    );
+  };
+
+  const updateMaterialStatus = async (materialId: string, status: string, unitCost?: string) => {
+    try {
+      const body: any = { status };
+      if (unitCost !== undefined) body.unitCost = parseFloat(unitCost) || 0;
+      await api.patch(`/api/materials/${materialId}`, body);
+      await loadMaterials();
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update material status');
+    }
+  };
+
+  const handleCostPromptSubmit = () => {
+    if (!costPromptMaterial) return;
+    const cost = costPromptValue ? costPromptValue : '0';
+    updateMaterialStatus(costPromptMaterial.id, costPromptMaterial.status, cost);
+    setCostPromptMaterial(null);
+    setCostPromptValue('');
+    setShowCostPromptModal(false);
+  };
+
+  const handleCostPromptSkip = () => {
+    if (!costPromptMaterial) return;
+    updateMaterialStatus(costPromptMaterial.id, costPromptMaterial.status);
+    setCostPromptMaterial(null);
+    setCostPromptValue('');
+    setShowCostPromptModal(false);
   };
 
   const handleAssignWorker = async (memberId: string | null) => {
@@ -4609,7 +4674,8 @@ export default function JobDetailScreen() {
           const up = Number(m.unitPrice || 0);
           return s + (up > 0 ? up * Number(m.quantity || 1) : 0);
         }, 0);
-        const matMargin = matSell > 0 ? ((matSell - matCost) / matSell * 100).toFixed(0) : null;
+        const matHasCost = materials.some(m => Number(m.unitCost || 0) > 0);
+        const matMargin = matSell > 0 && matHasCost ? ((matSell - matCost) / matSell * 100).toFixed(0) : null;
         return (
           <TouchableOpacity
             style={styles.card}
@@ -4622,7 +4688,7 @@ export default function JobDetailScreen() {
             <View style={styles.cardContent}>
               <Text style={styles.cardLabel}>Materials</Text>
               <Text style={styles.cardValue}>
-                {materials.length} item{materials.length !== 1 ? 's' : ''} · Cost ${matCost.toFixed(2)}{matSell > 0 ? ` · Sell $${matSell.toFixed(2)}` : ''}
+                {materials.length} item{materials.length !== 1 ? 's' : ''} · Cost {matHasCost ? `$${matCost.toFixed(2)}` : 'Not set'}{matSell > 0 ? ` · Sell $${matSell.toFixed(2)}` : ''}
               </Text>
               {matMargin !== null && (
                 <Text style={{ ...typography.caption, color: Number(matMargin) >= 0 ? colors.success : colors.destructive, fontWeight: '600', marginTop: 2 }}>
@@ -4647,11 +4713,15 @@ export default function JobDetailScreen() {
               {job.estimatedCost !== undefined && (
                 <Text style={styles.cardValue}>Est. ${Number(job.estimatedCost).toFixed(2)}</Text>
               )}
-              {materials.length > 0 && (
+              {materials.length > 0 && (() => {
+                const profHasCost = materials.some(m => Number(m.unitCost || 0) > 0);
+                const profMatCost = materials.reduce((s, m) => s + (Number(m.totalCost) || 0), 0);
+                return (
                 <Text style={[styles.cardValue, { color: colors.mutedForeground }]}>
-                  · Materials ${materials.reduce((s, m) => s + (Number(m.totalCost) || 0), 0).toFixed(2)}
+                  · Materials {profHasCost ? `$${profMatCost.toFixed(2)}` : 'Not set'}
                 </Text>
-              )}
+                );
+              })()}
               {invoice && (
                 <Text style={[styles.cardValue, { color: colors.success }]}>
                   · Invoice ${Number(invoice.total).toFixed(2)}
@@ -5314,11 +5384,14 @@ export default function JobDetailScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
           <View>
             <Text style={styles.tabSectionTitle}>JOB MATERIALS</Text>
-            {materials.length > 0 && (
+            {materials.length > 0 && (() => {
+              const headerHasCost = materials.some(m => Number(m.unitCost || 0) > 0);
+              return (
               <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>
-                {materials.length} item{materials.length !== 1 ? 's' : ''} · Cost ${totalCost.toFixed(2)}{hasPricing ? ` · Sell $${totalSellPrice.toFixed(2)}` : ''}
+                {materials.length} item{materials.length !== 1 ? 's' : ''} · Cost {headerHasCost ? `$${totalCost.toFixed(2)}` : 'Not set'}{hasPricing ? ` · Sell $${totalSellPrice.toFixed(2)}` : ''}
               </Text>
-            )}
+              );
+            })()}
           </View>
           <TouchableOpacity
             onPress={() => {
@@ -5370,132 +5443,157 @@ export default function JobDetailScreen() {
           </View>
         ) : (
           <>
-            {materials.map((material) => (
-              <View key={material.id} style={[styles.card, { paddingVertical: spacing.sm }]}>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '600', flex: 1 }} numberOfLines={1}>
-                      {material.name}
-                    </Text>
-                    <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '700', marginLeft: spacing.sm }}>
-                      ${Number(material.totalCost || 0).toFixed(2)}
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: 2, flexWrap: 'wrap' }}>
-                    <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
-                      Qty: {material.quantity} × ${Number(material.unitCost || 0).toFixed(2)}
-                    </Text>
-                    {material.unitPrice && Number(material.unitPrice) > 0 && (
-                      <Text style={{ ...typography.caption, color: colors.primary, fontWeight: '600' }}>
-                        Sell: ${(Number(material.unitPrice) * Number(material.quantity || 1)).toFixed(2)}
+            {materials.map((material) => {
+              const matStatus = material.status || 'needed';
+              const statusColor = MATERIAL_STATUS_COLORS[matStatus] || MATERIAL_STATUS_COLORS.needed;
+              return (
+              <View key={material.id} style={[styles.card, { paddingVertical: spacing.sm, flexDirection: 'column' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+                        {material.name}
                       </Text>
-                    )}
-                    {material.unitPrice && Number(material.unitPrice) > 0 && Number(material.unitCost) > 0 && (
-                      <Text style={{ ...typography.caption, fontWeight: '600', color: Number(material.unitPrice) > Number(material.unitCost) ? colors.success : colors.destructive }}>
-                        {(((Number(material.unitPrice) - Number(material.unitCost)) / Number(material.unitPrice)) * 100).toFixed(0)}% margin
+                      <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '700', marginLeft: spacing.sm }}>
+                        {Number(material.unitCost || 0) > 0 ? `$${Number(material.totalCost || 0).toFixed(2)}` : 'No cost'}
                       </Text>
-                    )}
-                    {(!material.unitPrice || Number(material.unitPrice) === 0) && material.markupPercent && Number(material.markupPercent) > 0 && (
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 4, flexWrap: 'wrap' }}>
+                      <TouchableOpacity
+                        onPress={() => handleMaterialStatusChange(material)}
+                        activeOpacity={0.7}
+                        style={{
+                          backgroundColor: statusColor.bg,
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: radius.sm,
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: statusColor.text, textTransform: 'capitalize' }}>
+                          {matStatus}
+                        </Text>
+                      </TouchableOpacity>
                       <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
-                        +{Number(material.markupPercent).toFixed(0)}% markup
+                        Qty: {material.quantity} {Number(material.unitCost || 0) > 0 ? `× $${Number(material.unitCost || 0).toFixed(2)}` : ''}
                       </Text>
-                    )}
-                    {material.supplier && (
-                      <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
-                        · {material.supplier}
+                      {material.unitPrice && Number(material.unitPrice) > 0 && (
+                        <Text style={{ ...typography.caption, color: colors.primary, fontWeight: '600' }}>
+                          Sell: ${(Number(material.unitPrice) * Number(material.quantity || 1)).toFixed(2)}
+                        </Text>
+                      )}
+                      {material.unitPrice && Number(material.unitPrice) > 0 && Number(material.unitCost) > 0 && (
+                        <Text style={{ ...typography.caption, fontWeight: '600', color: Number(material.unitPrice) > Number(material.unitCost) ? colors.success : colors.destructive }}>
+                          {(((Number(material.unitPrice) - Number(material.unitCost)) / Number(material.unitPrice)) * 100).toFixed(0)}% margin
+                        </Text>
+                      )}
+                      {(!material.unitPrice || Number(material.unitPrice) === 0) && material.markupPercent && Number(material.markupPercent) > 0 && (
+                        <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                          +{Number(material.markupPercent).toFixed(0)}% markup
+                        </Text>
+                      )}
+                      {material.supplier && (
+                        <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                          · {material.supplier}
+                        </Text>
+                      )}
+                    </View>
+                    {material.description && (
+                      <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }} numberOfLines={2}>
+                        {material.description}
                       </Text>
                     )}
                   </View>
-                  {material.description && (
-                    <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }} numberOfLines={2}>
-                      {material.description}
-                    </Text>
-                  )}
-                </View>
-                <View style={{ flexDirection: 'row', gap: spacing.xs, marginLeft: spacing.sm }}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setEditingMaterial(material);
-                      setMaterialForm({
-                        name: material.name,
-                        quantity: String(material.quantity),
-                        unitCost: String(material.unitCost),
-                        unitPrice: material.unitPrice ? String(material.unitPrice) : '',
-                        markupPercent: material.markupPercent ? String(material.markupPercent) : '',
-                        supplier: material.supplier || '',
-                        description: material.description || '',
-                      });
-                      setShowAddMaterialModal(true);
-                    }}
-                    style={{ padding: spacing.xs }}
-                    activeOpacity={0.7}
-                  >
-                    <Feather name="edit-2" size={16} color={colors.mutedForeground} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleDeleteMaterial(material)}
-                    style={{ padding: spacing.xs }}
-                    activeOpacity={0.7}
-                  >
-                    <Feather name="trash-2" size={16} color={colors.destructive} />
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', gap: spacing.xs, marginLeft: spacing.sm }}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setEditingMaterial(material);
+                        setMaterialForm({
+                          name: material.name,
+                          quantity: String(material.quantity),
+                          unitCost: String(material.unitCost),
+                          unitPrice: material.unitPrice ? String(material.unitPrice) : '',
+                          markupPercent: material.markupPercent ? String(material.markupPercent) : '',
+                          supplier: material.supplier || '',
+                          description: material.description || '',
+                        });
+                        setShowAddMaterialModal(true);
+                      }}
+                      style={{ padding: spacing.xs }}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="edit-2" size={16} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteMaterial(material)}
+                      style={{ padding: spacing.xs }}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="trash-2" size={16} color={colors.destructive} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            ))}
+              );
+            })}
 
             {/* Cost vs Price Summary */}
-            <View style={{
-              backgroundColor: `${colors.primary}08`,
-              borderRadius: radius.xl,
-              padding: spacing.xl,
-              marginBottom: spacing.xl,
-              flexDirection: 'column',
-              alignItems: 'center',
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              ...shadows.sm,
-            }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.md }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ ...typography.caption, color: colors.mutedForeground }}>COST</Text>
-                  <Text style={{ fontSize: 20, fontWeight: '700', color: colors.foreground, marginTop: 2 }}>
-                    ${totalCost.toFixed(2)}
-                  </Text>
+            {(() => {
+              const hasCostData = materials.some(m => Number(m.unitCost || 0) > 0);
+              return (
+              <View style={{
+                backgroundColor: `${colors.primary}08`,
+                borderRadius: radius.xl,
+                padding: spacing.xl,
+                marginBottom: spacing.xl,
+                flexDirection: 'column',
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: colors.cardBorder,
+                ...shadows.sm,
+              }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.md }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ ...typography.caption, color: colors.mutedForeground }}>COST</Text>
+                    <Text style={{ fontSize: 20, fontWeight: '700', color: hasCostData ? colors.foreground : colors.mutedForeground, marginTop: 2 }}>
+                      {hasCostData ? `$${totalCost.toFixed(2)}` : 'Not set'}
+                    </Text>
+                  </View>
+                  {hasPricing && (
+                    <View style={{ flex: 1, alignItems: 'center' }}>
+                      <Text style={{ ...typography.caption, color: colors.mutedForeground }}>SELL PRICE</Text>
+                      <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, marginTop: 2 }}>
+                        ${totalSellPrice.toFixed(2)}
+                      </Text>
+                    </View>
+                  )}
+                  {hasPricing && hasCostData && (
+                    <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                      <Text style={{ ...typography.caption, color: colors.mutedForeground }}>MARGIN</Text>
+                      <Text style={{ fontSize: 20, fontWeight: '700', color: overallMargin >= 0 ? colors.success : colors.destructive, marginTop: 2 }}>
+                        {overallMargin.toFixed(1)}%
+                      </Text>
+                    </View>
+                  )}
                 </View>
-                {hasPricing && (
-                  <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text style={{ ...typography.caption, color: colors.mutedForeground }}>SELL PRICE</Text>
-                    <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, marginTop: 2 }}>
-                      ${totalSellPrice.toFixed(2)}
+                {hasPricing && hasCostData && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: `${colors.border}80` }}>
+                    <Text style={{ ...typography.caption, color: colors.mutedForeground }}>Profit</Text>
+                    <Text style={{ ...typography.body, fontWeight: '600', color: (totalSellPrice - totalCost) >= 0 ? colors.success : colors.destructive }}>
+                      ${(totalSellPrice - totalCost).toFixed(2)}
                     </Text>
                   </View>
                 )}
-                {hasPricing && (
-                  <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                    <Text style={{ ...typography.caption, color: colors.mutedForeground }}>MARGIN</Text>
-                    <Text style={{ fontSize: 20, fontWeight: '700', color: overallMargin >= 0 ? colors.success : colors.destructive, marginTop: 2 }}>
-                      {overallMargin.toFixed(1)}%
+                {invoice && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: `${colors.border}80` }}>
+                    <Text style={{ ...typography.caption, color: colors.mutedForeground }}>Invoice Total</Text>
+                    <Text style={{ ...typography.body, color: colors.success, fontWeight: '600' }}>
+                      ${Number(invoice.total).toFixed(2)}
                     </Text>
                   </View>
                 )}
               </View>
-              {hasPricing && (
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: `${colors.border}80` }}>
-                  <Text style={{ ...typography.caption, color: colors.mutedForeground }}>Profit</Text>
-                  <Text style={{ ...typography.body, fontWeight: '600', color: (totalSellPrice - totalCost) >= 0 ? colors.success : colors.destructive }}>
-                    ${(totalSellPrice - totalCost).toFixed(2)}
-                  </Text>
-                </View>
-              )}
-              {invoice && (
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: `${colors.border}80` }}>
-                  <Text style={{ ...typography.caption, color: colors.mutedForeground }}>Invoice Total</Text>
-                  <Text style={{ ...typography.body, color: colors.success, fontWeight: '600' }}>
-                    ${Number(invoice.total).toFixed(2)}
-                  </Text>
-                </View>
-              )}
-            </View>
+              );
+            })()}
           </>
         )}
       </>
@@ -6993,6 +7091,63 @@ export default function JobDetailScreen() {
                 </Button>
                 <Button onPress={handleSaveMaterial} disabled={isSavingMaterial || !materialForm.name.trim()} style={{ flex: 1 }}>
                   {isSavingMaterial ? 'Saving...' : editingMaterial ? 'Update' : 'Add Material'}
+                </Button>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Cost Prompt Modal */}
+      <Modal visible={showCostPromptModal} animationType="fade" transparent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, { maxHeight: 320 }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Enter Material Cost</Text>
+                <TouchableOpacity onPress={() => { setShowCostPromptModal(false); setCostPromptMaterial(null); setCostPromptValue(''); }}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalContent}>
+                <Text style={{ ...typography.body, color: colors.mutedForeground, marginBottom: spacing.md }}>
+                  How much did <Text style={{ fontWeight: '600', color: colors.foreground }}>{costPromptMaterial?.name}</Text> cost you?
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+                  <Text style={{ fontSize: 18, color: colors.mutedForeground }}>$</Text>
+                  <TextInput
+                    style={[styles.singleLineInput, { flex: 1 }]}
+                    value={costPromptValue}
+                    onChangeText={setCostPromptValue}
+                    keyboardType="decimal-pad"
+                    placeholder="Unit cost"
+                    placeholderTextColor={colors.mutedForeground}
+                    autoFocus
+                  />
+                </View>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.md }}>
+                  Tracking costs helps you see your real profit on each job.
+                </Text>
+              </View>
+              <View style={[styles.modalFooter, { gap: spacing.sm }]}>
+                <TouchableOpacity
+                  onPress={() => { setShowCostPromptModal(false); setCostPromptMaterial(null); setCostPromptValue(''); }}
+                  style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md }}
+                >
+                  <Text style={{ color: colors.mutedForeground, fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleCostPromptSkip}
+                  style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md }}
+                >
+                  <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>Skip</Text>
+                </TouchableOpacity>
+                <Button
+                  onPress={handleCostPromptSubmit}
+                  disabled={!costPromptValue || parseFloat(costPromptValue) <= 0}
+                  style={{ flex: 1 }}
+                >
+                  Save & Mark {costPromptMaterial?.status === 'installed' ? 'Installed' : 'Received'}
                 </Button>
               </View>
             </View>

@@ -120,6 +120,12 @@ interface ConversationItem {
   data: any;
 }
 
+const SMS_QUICK_ACTIONS = [
+  { id: 'omw', label: 'On my way', icon: 'navigation' as const, message: "G'day! Just letting you know I'm on my way now. Should be there in about 20 minutes." },
+  { id: 'running-late', label: 'Running late', icon: 'clock' as const, message: "Apologies, I'm running a bit behind schedule. Will be there as soon as I can - should only be another 15-20 minutes." },
+  { id: 'job-done', label: 'Job done', icon: 'check-circle' as const, message: "All done! The job's been completed. Let me know if you have any questions or need anything else." },
+];
+
 type FilterType = 'jobs' | 'enquiries' | 'team';
 
 const JOB_STATUS_FILTERS = [
@@ -569,6 +575,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.badge,
     color: colors.success,
   },
+  quickActionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.warningLight,
+  },
+  quickActionBadgeText: {
+    ...typography.badge,
+    color: colors.warning,
+  },
 });
 
 export default function ChatHubScreen() {
@@ -670,29 +689,23 @@ export default function ChatHubScreen() {
 
   const jobSmsMap = useMemo(() => {
     const byJobId = new Map<string, SmsConversation>();
-    const byClientId = new Map<string, SmsConversation>();
+    const byClientId = new Map<string, SmsConversation[]>();
     smsConversations.forEach(sms => {
       if (sms.jobId) byJobId.set(sms.jobId, sms);
-      if (sms.clientId) byClientId.set(sms.clientId, sms);
+      if (sms.clientId) {
+        const existing = byClientId.get(sms.clientId) || [];
+        existing.push(sms);
+        byClientId.set(sms.clientId, existing);
+      }
     });
     return { byJobId, byClientId };
   }, [smsConversations]);
-
-  const getSmsForJob = (job: Job) => {
-    return jobSmsMap.byJobId.get(job.id) || (job.clientId ? jobSmsMap.byClientId.get(job.clientId) : undefined) || null;
-  };
 
   const clientsWithJobs = useMemo(() => {
     const set = new Set<string>();
     jobs.forEach(job => { if (job.clientId) set.add(job.clientId); });
     return set;
   }, [jobs]);
-
-  const jobIdsWithSms = useMemo(() => {
-    const set = new Set<string>();
-    smsConversations.forEach(sms => { if (sms.jobId) set.add(sms.jobId); });
-    return set;
-  }, [smsConversations]);
 
   const enquiriesUnreadCount = useMemo(() => {
     return smsConversations
@@ -713,10 +726,30 @@ export default function ChatHubScreen() {
       if (jobStatusFilter !== 'all') {
         filteredJobs = jobs.filter(job => job.status === jobStatusFilter);
       }
+
+      const usedSmsConversationIds = new Set<string>();
+      jobSmsMap.byJobId.forEach(sms => usedSmsConversationIds.add(sms.id));
+      const clientsWithSmsAssigned = new Set<string>();
+      jobSmsMap.byJobId.forEach((sms, jobId) => {
+        const job = jobs.find(j => j.id === jobId);
+        if (job?.clientId) clientsWithSmsAssigned.add(job.clientId);
+      });
       
       filteredJobs.forEach(job => {
         const clientName = getClientName(job.clientId);
-        const linkedSms = getSmsForJob(job);
+
+        const directSms = jobSmsMap.byJobId.get(job.id);
+        let clientSms: SmsConversation | undefined;
+        if (!directSms && job.clientId && !clientsWithSmsAssigned.has(job.clientId)) {
+          const clientConvos = jobSmsMap.byClientId.get(job.clientId) || [];
+          clientSms = clientConvos.find(sms => !usedSmsConversationIds.has(sms.id));
+        }
+        const linkedSms = directSms || clientSms || null;
+        if (linkedSms) {
+          if (!directSms) usedSmsConversationIds.add(linkedSms.id);
+          if (job.clientId) clientsWithSmsAssigned.add(job.clientId);
+        }
+
         const smsUnread = linkedSms?.unreadCount || 0;
 
         let lastMessage = 'No messages yet';
@@ -842,6 +875,57 @@ export default function ChatHubScreen() {
     return items;
   }, [jobs, clients, smsConversations, dmConversations, teamMembers, activeFilter, searchQuery, unreadCounts, jobStatusFilter]);
 
+  const handleQuickActionSend = async (item: ConversationItem, actionId: string) => {
+    const template = SMS_QUICK_ACTIONS.find(a => a.id === actionId);
+    if (!template) return;
+
+    let phone: string | undefined;
+    let clientId: string | undefined;
+    let jobId: string | undefined;
+
+    if (item.type === 'job') {
+      const linkedSms = item.data?.linkedSms as SmsConversation | null;
+      phone = linkedSms?.clientPhone || (item.data?.clientId ? getClient(item.data.clientId)?.phone : undefined) || undefined;
+      clientId = linkedSms?.clientId || item.data?.clientId || undefined;
+      jobId = item.data?.id;
+    } else if (item.type === 'sms') {
+      phone = item.phone || item.data?.clientPhone;
+      clientId = item.data?.clientId || undefined;
+      jobId = item.data?.jobId || undefined;
+    }
+
+    if (!phone) {
+      Alert.alert('No Phone Number', 'This contact does not have a phone number for SMS.');
+      return;
+    }
+
+    try {
+      const response = await api.post('/api/sms/send', {
+        clientPhone: phone,
+        message: template.message,
+        clientId,
+        jobId,
+      });
+      if (response.error) {
+        Alert.alert('Error', 'Could not send SMS. Please try again.');
+      } else {
+        Alert.alert('Sent', `"${template.label}" message sent successfully.`);
+        handleRefresh();
+      }
+    } catch {
+      Alert.alert('Error', 'Could not send SMS. Please try again.');
+    }
+  };
+
+  const showQuickActions = (item: ConversationItem) => {
+    const buttons = SMS_QUICK_ACTIONS.map(action => ({
+      text: action.label,
+      onPress: () => handleQuickActionSend(item, action.id),
+    }));
+    buttons.push({ text: 'Cancel', onPress: () => {} });
+    Alert.alert('Quick SMS', 'Send a quick message:', buttons as any);
+  };
+
   const handleConversationPress = (item: ConversationItem) => {
     if (item.type === 'team') {
       router.push('/more/team-chat');
@@ -958,6 +1042,11 @@ export default function ChatHubScreen() {
         key={item.id}
         style={[styles.conversationCard, item.unreadCount > 0 && styles.conversationCardUnread]}
         onPress={() => handleConversationPress(item)}
+        onLongPress={() => {
+          if (item.type === 'job' || item.type === 'sms') {
+            showQuickActions(item);
+          }
+        }}
         activeOpacity={0.7}
       >
         <View style={[
@@ -1021,6 +1110,19 @@ export default function ChatHubScreen() {
                 <Feather name="smartphone" size={10} color={colors.success} />
                 <Text style={styles.smsBadgeText}>SMS</Text>
               </View>
+            )}
+            {(item.type === 'job' || item.type === 'sms') && (
+              <TouchableOpacity
+                style={styles.quickActionBadge}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  showQuickActions(item);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Feather name="zap" size={10} color={colors.warning} />
+                <Text style={styles.quickActionBadgeText}>Quick</Text>
+              </TouchableOpacity>
             )}
             {item.unreadCount > 0 && (
               <View style={styles.unreadBadge}>

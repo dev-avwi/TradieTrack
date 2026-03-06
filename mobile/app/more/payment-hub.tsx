@@ -45,6 +45,46 @@ interface Client {
   name: string;
 }
 
+interface ChaserItem {
+  invoiceId: string;
+  invoiceNumber: string;
+  clientId: string;
+  clientName: string;
+  clientPhone: string | null;
+  clientEmail: string | null;
+  amount: number;
+  amountPaid: number;
+  outstanding: number;
+  dueDate: string | null;
+  daysOverdue: number;
+  isOverdue: boolean;
+  status: string;
+  urgency: 'upcoming' | 'friendly' | 'firm' | 'final' | 'critical';
+  recommendedAction: string;
+  recommendedTone: 'friendly' | 'professional' | 'firm';
+  remindersSent: number;
+  lastReminderDate: string | null;
+  lastReminderType: string | null;
+  lastReminderVia: string | null;
+  daysSinceLastContact: number | null;
+  paymentMethod: string | null;
+}
+
+interface ChaserSummary {
+  totalOverdueAmount: number;
+  totalOverdueCount: number;
+  clientsToChase: number;
+  avgDaysOverdue: number;
+  collectionRate: number;
+  totalOutstanding: number;
+  totalOutstandingCount: number;
+}
+
+interface ChaserResponse {
+  summary: ChaserSummary;
+  items: ChaserItem[];
+}
+
 interface StripeConnectStatus {
   connected: boolean;
   stripeAvailable?: boolean;
@@ -72,7 +112,7 @@ interface StripePayout {
   destination?: string | null;
 }
 
-type TabType = 'overview' | 'invoices' | 'quotes' | 'payments';
+type TabType = 'overview' | 'invoices' | 'quotes' | 'chaser' | 'payments';
 type InvoiceFilterType = 'all' | 'outstanding' | 'overdue' | 'paid' | 'draft';
 type TimeRangeType = '7d' | '30d' | '90d' | 'all';
 
@@ -108,6 +148,14 @@ export default function PaymentHubScreen() {
   const [invoiceFilter, setInvoiceFilter] = useState<InvoiceFilterType>('all');
   const [timeRange, setTimeRange] = useState<TimeRangeType>('30d');
 
+  const [chaserData, setChaserData] = useState<ChaserResponse | null>(null);
+  const [chaserLoading, setChaserLoading] = useState(false);
+  const [chaserFilter, setChaserFilter] = useState<string>('all');
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+  const [toneSelector, setToneSelector] = useState<string | null>(null);
+  const [aiInsights, setAiInsights] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
   const clientMap = useMemo(() => {
     return new Map(clients.map(c => [c.id, c]));
   }, [clients]);
@@ -132,6 +180,45 @@ export default function PaymentHubScreen() {
     }
   }, []);
 
+  const fetchChaserData = useCallback(async () => {
+    setChaserLoading(true);
+    try {
+      const res = await api.get<ChaserResponse>('/api/payment-chaser/summary');
+      setChaserData(res.data ?? null);
+    } catch (error) {
+      console.error('Failed to fetch chaser data:', error);
+    } finally {
+      setChaserLoading(false);
+    }
+  }, []);
+
+  const handleSendReminder = useCallback(async (invoiceId: string, tone: string) => {
+    setSendingReminder(invoiceId);
+    try {
+      await api.post(`/api/invoices/${invoiceId}/reminder`, { tone });
+      Alert.alert('Reminder Sent', `${tone.charAt(0).toUpperCase() + tone.slice(1)} reminder sent successfully`);
+      setToneSelector(null);
+      fetchChaserData();
+    } catch (error: any) {
+      const message = error?.response?.data?.error || 'Could not send reminder';
+      Alert.alert('Failed to Send', message);
+    } finally {
+      setSendingReminder(null);
+    }
+  }, [fetchChaserData]);
+
+  const handleGetAiInsights = useCallback(async () => {
+    setAiLoading(true);
+    try {
+      const res = await api.post<{ insights: string }>('/api/payment-chaser/ai-insights', {});
+      setAiInsights(res.data?.insights || null);
+    } catch (error) {
+      Alert.alert('AI Insights Error', 'Could not generate insights. Check your AI settings.');
+    } finally {
+      setAiLoading(false);
+    }
+  }, []);
+
   const fetchData = useCallback(async () => {
     try {
       const [invoicesRes, quotesRes, clientsRes] = await Promise.all([
@@ -153,13 +240,15 @@ export default function PaymentHubScreen() {
   useEffect(() => {
     fetchData();
     fetchStripeData();
-  }, [fetchData, fetchStripeData]);
+    fetchChaserData();
+  }, [fetchData, fetchStripeData, fetchChaserData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
     fetchStripeData();
-  }, [fetchData, fetchStripeData]);
+    fetchChaserData();
+  }, [fetchData, fetchStripeData, fetchChaserData]);
 
   const handleConnectStripe = useCallback(async () => {
     setIsConnecting(true);
@@ -820,6 +909,279 @@ export default function PaymentHubScreen() {
     </View>
   );
 
+  const filteredChaserItems = useMemo(() => {
+    const items = chaserData?.items || [];
+    if (chaserFilter === 'all') return items;
+    return items.filter(item => item.urgency === chaserFilter);
+  }, [chaserData, chaserFilter]);
+
+  const urgencyConfig: Record<string, { label: string; color: string; bg: string }> = {
+    critical: { label: 'Critical', color: colors.destructive, bg: `${colors.destructive}20` },
+    final: { label: 'Final Notice', color: '#ea580c', bg: '#ea580c20' },
+    firm: { label: 'Firm', color: colors.warning, bg: `${colors.warning}20` },
+    friendly: { label: 'Friendly', color: colors.info, bg: `${colors.info}20` },
+    upcoming: { label: 'Upcoming', color: colors.mutedForeground, bg: `${colors.mutedForeground}20` },
+  };
+
+  const renderSmartChaser = () => {
+    const summary = chaserData?.summary;
+
+    if (chaserLoading) {
+      return (
+        <View style={{ gap: spacing.md }}>
+          <View style={styles.kpiGrid}>
+            {[1, 2, 3, 4].map(i => (
+              <View key={i} style={[styles.kpiCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <View style={{ width: 80, height: 12, backgroundColor: colors.muted, borderRadius: radius.sm, marginBottom: spacing.xs }} />
+                <View style={{ width: 60, height: 20, backgroundColor: colors.muted, borderRadius: radius.sm }} />
+              </View>
+            ))}
+          </View>
+          {[1, 2, 3].map(i => (
+            <View key={i} style={{ height: 80, backgroundColor: colors.muted, borderRadius: radius.lg }} />
+          ))}
+        </View>
+      );
+    }
+
+    return (
+      <View style={{ gap: spacing.md }}>
+        <View style={styles.kpiGrid}>
+          {renderKPICard(
+            'Total Overdue',
+            formatCurrency(summary?.totalOverdueAmount || 0),
+            `${summary?.totalOverdueCount || 0} invoices`,
+            'alert-triangle',
+            colors.destructive,
+            (summary?.totalOverdueCount || 0) > 0 ? 'danger' : 'default'
+          )}
+          {renderKPICard(
+            'Clients to Chase',
+            String(summary?.clientsToChase || 0),
+            'need follow-up',
+            'users',
+            '#ea580c',
+            (summary?.clientsToChase || 0) > 0 ? 'warning' : 'default'
+          )}
+          {renderKPICard(
+            'Avg Days Overdue',
+            `${summary?.avgDaysOverdue || 0}d`,
+            'across overdue invoices',
+            'clock',
+            colors.warning,
+            (summary?.avgDaysOverdue || 0) > 14 ? 'warning' : 'default'
+          )}
+          {renderKPICard(
+            'Collection Rate',
+            `${summary?.collectionRate || 0}%`,
+            'of sent invoices paid',
+            'target',
+            colors.success,
+            'success'
+          )}
+        </View>
+
+        <View style={[styles.sectionContent, { padding: spacing.md }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: spacing.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+              <Feather name="zap" size={iconSizes.md} color={colors.primary} />
+              <View>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>AI Payment Advisor</Text>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground }}>Smart recommendations for overdue invoices</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.stripeButton, styles.stripeButtonPrimary, { opacity: aiLoading || (summary?.totalOverdueCount || 0) === 0 ? 0.5 : 1 }]}
+              onPress={handleGetAiInsights}
+              disabled={aiLoading || (summary?.totalOverdueCount || 0) === 0}
+              activeOpacity={0.7}
+            >
+              {aiLoading ? (
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
+              ) : (
+                <Feather name="zap" size={iconSizes.sm} color={colors.primaryForeground} />
+              )}
+              <Text style={styles.stripeButtonTextPrimary}>
+                {aiLoading ? 'Analysing...' : 'Get AI Advice'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {aiInsights && (
+            <View style={{ marginTop: spacing.sm, padding: spacing.sm, borderRadius: radius.md, backgroundColor: `${colors.primary}08`, borderWidth: 1, borderColor: `${colors.primary}15` }}>
+              <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 20 }}>{aiInsights}</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.sectionContent}>
+          <View style={{ padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+              <View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                  <Feather name="zap" size={iconSizes.sm} color={colors.primary} />
+                  <Text style={styles.sectionTitle}>Chase Queue</Text>
+                </View>
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                  {(chaserData?.items || []).length} invoice{(chaserData?.items || []).length !== 1 ? 's' : ''} needing attention
+                </Text>
+              </View>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {renderFilterChip('All', 'all', chaserFilter, setChaserFilter)}
+              {renderFilterChip('Critical', 'critical', chaserFilter, setChaserFilter)}
+              {renderFilterChip('Final Notice', 'final', chaserFilter, setChaserFilter)}
+              {renderFilterChip('Firm', 'firm', chaserFilter, setChaserFilter)}
+              {renderFilterChip('Friendly', 'friendly', chaserFilter, setChaserFilter)}
+              {renderFilterChip('Upcoming', 'upcoming', chaserFilter, setChaserFilter)}
+            </ScrollView>
+          </View>
+
+          {filteredChaserItems.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Feather name="check-circle" size={32} color={colors.success} />
+              <Text style={styles.emptyText}>All caught up!</Text>
+              <Text style={styles.emptySubtext}>No invoices need chasing right now</Text>
+            </View>
+          ) : (
+            filteredChaserItems.map((item) => {
+              const uCfg = urgencyConfig[item.urgency] || urgencyConfig.upcoming;
+              const isExpanded = toneSelector === item.invoiceId;
+              const isSending = sendingReminder === item.invoiceId;
+
+              return (
+                <View key={item.invoiceId} style={[styles.documentRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap', marginBottom: 4 }}>
+                        <Text style={[styles.documentTitle, { flexShrink: 1 }]} numberOfLines={1}>{item.clientName}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: uCfg.bg }]}>
+                          <Text style={[styles.statusText, { color: uCfg.color }]}>{uCfg.label}</Text>
+                        </View>
+                        {item.remindersSent > 0 && (
+                          <View style={[styles.statusBadge, { backgroundColor: colors.muted }]}>
+                            <Text style={[styles.statusText, { color: colors.mutedForeground }]}>
+                              {item.remindersSent} sent
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }}>
+                        <Text style={styles.documentSubtitle}>#{item.invoiceNumber}</Text>
+                        {item.isOverdue && (
+                          <Text style={[styles.documentSubtitle, { color: uCfg.color }]}>
+                            {item.daysOverdue}d overdue
+                          </Text>
+                        )}
+                        {!item.isOverdue && item.dueDate && (
+                          <Text style={styles.documentSubtitle}>
+                            Due {format(new Date(item.dueDate), 'dd MMM')}
+                          </Text>
+                        )}
+                        {item.daysSinceLastContact != null && (
+                          <Text style={styles.documentSubtitle}>
+                            Last contact {item.daysSinceLastContact}d ago
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontStyle: 'italic', marginTop: 2 }} numberOfLines={2}>
+                        {item.recommendedAction}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[styles.documentAmount, { fontSize: 16 }]}>{formatCurrency(item.outstanding)}</Text>
+                      {item.amountPaid > 0 && (
+                        <Text style={styles.documentSubtitle}>{formatCurrency(item.amountPaid)} paid</Text>
+                      )}
+                    </View>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm, flexWrap: 'wrap' }}>
+                    {isExpanded ? (
+                      <>
+                        <Text style={{ fontSize: 11, color: colors.mutedForeground, marginRight: spacing.xs }}>Tone:</Text>
+                        {(['friendly', 'professional', 'firm'] as const).map(tone => (
+                          <TouchableOpacity
+                            key={tone}
+                            style={[
+                              styles.chaserActionBtn,
+                              tone === item.recommendedTone
+                                ? { backgroundColor: colors.primary, borderColor: colors.primary }
+                                : { backgroundColor: colors.card, borderColor: colors.border },
+                            ]}
+                            onPress={() => handleSendReminder(item.invoiceId, tone)}
+                            disabled={isSending}
+                            activeOpacity={0.7}
+                          >
+                            {isSending ? (
+                              <ActivityIndicator size="small" color={tone === item.recommendedTone ? colors.primaryForeground : colors.primary} />
+                            ) : (
+                              <>
+                                <Feather name="send" size={12} color={tone === item.recommendedTone ? colors.primaryForeground : colors.primary} />
+                                <Text style={{ fontSize: 12, fontWeight: '500', color: tone === item.recommendedTone ? colors.primaryForeground : colors.foreground }}>
+                                  {tone.charAt(0).toUpperCase() + tone.slice(1)}
+                                </Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                        <TouchableOpacity
+                          style={[styles.chaserActionBtn, { backgroundColor: colors.muted, borderColor: colors.muted }]}
+                          onPress={() => setToneSelector(null)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Cancel</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <>
+                        <TouchableOpacity
+                          style={[styles.chaserActionBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                          onPress={() => setToneSelector(item.invoiceId)}
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="send" size={12} color={colors.primaryForeground} />
+                          <Text style={{ fontSize: 12, fontWeight: '500', color: colors.primaryForeground }}>Send Reminder</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.chaserActionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                          onPress={() => router.push(`/more/invoice/${item.invoiceId}`)}
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="file-text" size={12} color={colors.foreground} />
+                          <Text style={{ fontSize: 12, fontWeight: '500', color: colors.foreground }}>View</Text>
+                        </TouchableOpacity>
+                        {item.clientPhone && (
+                          <TouchableOpacity
+                            style={[styles.chaserActionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                            onPress={() => Linking.openURL(`tel:${item.clientPhone}`)}
+                            activeOpacity={0.7}
+                          >
+                            <Feather name="phone" size={12} color={colors.foreground} />
+                            <Text style={{ fontSize: 12, fontWeight: '500', color: colors.foreground }}>Call</Text>
+                          </TouchableOpacity>
+                        )}
+                        {item.clientEmail && (
+                          <TouchableOpacity
+                            style={[styles.chaserActionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                            onPress={() => Linking.openURL(`mailto:${item.clientEmail}`)}
+                            activeOpacity={0.7}
+                          >
+                            <Feather name="mail" size={12} color={colors.foreground} />
+                            <Text style={{ fontSize: 12, fontWeight: '500', color: colors.foreground }}>Email</Text>
+                          </TouchableOpacity>
+                        )}
+                      </>
+                    )}
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </View>
+      </View>
+    );
+  };
+
   const renderPayments = () => (
     <View style={styles.listContainer}>
       <View style={styles.filterRow}>
@@ -949,6 +1311,7 @@ export default function PaymentHubScreen() {
             {renderTab('overview', 'Overview')}
             {renderTab('invoices', 'Invoices', stats.outstandingCount)}
             {renderTab('quotes', 'Quotes', stats.pendingQuotesCount)}
+            {renderTab('chaser', 'Smart Chaser', chaserData?.summary?.totalOverdueCount)}
             {renderTab('payments', 'Payments')}
           </ScrollView>
         </View>
@@ -957,6 +1320,7 @@ export default function PaymentHubScreen() {
           {activeTab === 'overview' && renderOverview()}
           {activeTab === 'invoices' && renderInvoices()}
           {activeTab === 'quotes' && renderQuotes()}
+          {activeTab === 'chaser' && renderSmartChaser()}
           {activeTab === 'payments' && renderPayments()}
         </View>
       </ScrollView>
@@ -1380,5 +1744,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.success,
+  },
+  chaserActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    borderWidth: 1,
   },
 });
