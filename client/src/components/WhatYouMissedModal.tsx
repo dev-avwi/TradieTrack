@@ -268,13 +268,9 @@ export default function WhatYouMissedModal() {
     return null;
   }
 
-  const byDate = (a: MissedNotification, b: MissedNotification) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  const urgentNotifications = data.notifications.filter(n => n.priority === 'urgent').sort(byDate);
-  const importantNotifications = data.notifications.filter(n => n.priority === 'important').sort(byDate);
-  const otherNotifications = data.notifications.filter(n => !n.priority || n.priority === 'info').sort(byDate);
-
-  const sortedNotifications = [...urgentNotifications, ...importantNotifications, ...otherNotifications];
+  const sortedNotifications = [...data.notifications].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
