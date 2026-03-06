@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useTheme } from '../lib/theme';
+import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, typography } from '../lib/design-tokens';
 
 type EmptyStateType = 
@@ -23,124 +23,107 @@ interface EmptyStateConfig {
   title: string;
   description: string;
   actionLabel?: string;
-  iconColor: string;
-  bgColor: string;
+  colorKey: 'primary' | 'info' | 'success' | 'warning' | 'muted' | 'destructive';
 }
 
-const getEmptyStateConfig = (type: EmptyStateType): EmptyStateConfig => {
-  switch (type) {
-    case 'jobs':
-      return {
-        icon: 'briefcase',
-        title: 'No jobs yet',
-        description: 'Create your first job to start tracking your work',
-        actionLabel: 'Create Job',
-        iconColor: '#3b82f6',
-        bgColor: 'rgba(59,130,246,0.1)',
-      };
-    case 'clients':
-      return {
-        icon: 'users',
-        title: 'No clients yet',
-        description: 'Add your first client to get started',
-        actionLabel: 'Add Client',
-        iconColor: '#8b5cf6',
-        bgColor: 'rgba(139,92,246,0.1)',
-      };
-    case 'quotes':
-      return {
-        icon: 'file-text',
-        title: 'No quotes yet',
-        description: 'Create a quote to send to your clients',
-        actionLabel: 'Create Quote',
-        iconColor: '#f59e0b',
-        bgColor: 'rgba(245,158,11,0.1)',
-      };
-    case 'invoices':
-      return {
-        icon: 'file',
-        title: 'No invoices yet',
-        description: 'Create an invoice when you complete a job',
-        actionLabel: 'Create Invoice',
-        iconColor: '#10b981',
-        bgColor: 'rgba(16,185,129,0.1)',
-      };
-    case 'receipts':
-      return {
-        icon: 'check-circle',
-        title: 'No receipts yet',
-        description: 'Receipts are created when invoices are paid',
-        iconColor: '#22c55e',
-        bgColor: 'rgba(34,197,94,0.1)',
-      };
-    case 'team':
-      return {
-        icon: 'user-plus',
-        title: 'No team members',
-        description: 'Invite team members to collaborate on jobs',
-        actionLabel: 'Invite Member',
-        iconColor: '#3b82f6',
-        bgColor: 'rgba(59,130,246,0.1)',
-      };
-    case 'messages':
-      return {
-        icon: 'message-circle',
-        title: 'No messages yet',
-        description: 'Start a conversation with your team or clients',
-        iconColor: '#a855f7',
-        bgColor: 'rgba(168,85,247,0.1)',
-      };
-    case 'notifications':
-      return {
-        icon: 'bell',
-        title: 'All caught up!',
-        description: 'You have no new notifications',
-        iconColor: '#6b7280',
-        bgColor: 'rgba(107,114,128,0.1)',
-      };
-    case 'search':
-      return {
-        icon: 'search',
-        title: 'No results found',
-        description: 'Try adjusting your search or filters',
-        iconColor: '#6b7280',
-        bgColor: 'rgba(107,114,128,0.1)',
-      };
-    case 'documents':
-      return {
-        icon: 'folder',
-        title: 'No documents yet',
-        description: 'Your quotes, invoices, and receipts will appear here',
-        iconColor: '#3b82f6',
-        bgColor: 'rgba(59,130,246,0.1)',
-      };
-    case 'time':
-      return {
-        icon: 'clock',
-        title: 'No time entries',
-        description: 'Start tracking time on your jobs',
-        actionLabel: 'Start Timer',
-        iconColor: '#f59e0b',
-        bgColor: 'rgba(245,158,11,0.1)',
-      };
-    case 'payments':
-      return {
-        icon: 'credit-card',
-        title: 'No payments yet',
-        description: 'Payment transactions will appear here',
-        iconColor: '#10b981',
-        bgColor: 'rgba(16,185,129,0.1)',
-      };
-    default:
-      return {
-        icon: 'inbox',
-        title: 'Nothing here yet',
-        description: 'Content will appear here once available',
-        iconColor: '#6b7280',
-        bgColor: 'rgba(107,114,128,0.1)',
-      };
-  }
+const emptyStateConfigs: Record<EmptyStateType, EmptyStateConfig> = {
+  jobs: {
+    icon: 'briefcase',
+    title: 'No jobs yet',
+    description: 'Create your first job to start tracking your work',
+    actionLabel: 'Create Job',
+    colorKey: 'info',
+  },
+  clients: {
+    icon: 'users',
+    title: 'No clients yet',
+    description: 'Add your first client to get started',
+    actionLabel: 'Add Client',
+    colorKey: 'primary',
+  },
+  quotes: {
+    icon: 'file-text',
+    title: 'No quotes yet',
+    description: 'Create a quote to send to your clients',
+    actionLabel: 'Create Quote',
+    colorKey: 'warning',
+  },
+  invoices: {
+    icon: 'file',
+    title: 'No invoices yet',
+    description: 'Create an invoice when you complete a job',
+    actionLabel: 'Create Invoice',
+    colorKey: 'success',
+  },
+  receipts: {
+    icon: 'check-circle',
+    title: 'No receipts yet',
+    description: 'Receipts are created when invoices are paid',
+    colorKey: 'success',
+  },
+  team: {
+    icon: 'user-plus',
+    title: 'No team members',
+    description: 'Invite team members to collaborate on jobs',
+    actionLabel: 'Invite Member',
+    colorKey: 'info',
+  },
+  messages: {
+    icon: 'message-circle',
+    title: 'No messages yet',
+    description: 'Start a conversation with your team or clients',
+    colorKey: 'primary',
+  },
+  notifications: {
+    icon: 'bell',
+    title: 'All caught up!',
+    description: 'You have no new notifications',
+    colorKey: 'muted',
+  },
+  search: {
+    icon: 'search',
+    title: 'No results found',
+    description: 'Try adjusting your search or filters',
+    colorKey: 'muted',
+  },
+  documents: {
+    icon: 'folder',
+    title: 'No documents yet',
+    description: 'Your quotes, invoices, and receipts will appear here',
+    colorKey: 'info',
+  },
+  time: {
+    icon: 'clock',
+    title: 'No time entries',
+    description: 'Start tracking time on your jobs',
+    actionLabel: 'Start Timer',
+    colorKey: 'warning',
+  },
+  payments: {
+    icon: 'credit-card',
+    title: 'No payments yet',
+    description: 'Payment transactions will appear here',
+    colorKey: 'success',
+  },
+  general: {
+    icon: 'inbox',
+    title: 'Nothing here yet',
+    description: 'Content will appear here once available',
+    colorKey: 'muted',
+  },
 };
+
+function getColorValues(colorKey: string, colors: ThemeColors) {
+  switch (colorKey) {
+    case 'info': return { fg: colors.info, bg: colors.infoLight };
+    case 'success': return { fg: colors.success, bg: colors.successLight };
+    case 'warning': return { fg: colors.warning, bg: colors.warningLight };
+    case 'destructive': return { fg: colors.destructive, bg: `${colors.destructive}15` };
+    case 'muted': return { fg: colors.mutedForeground, bg: `${colors.mutedForeground}15` };
+    case 'primary':
+    default: return { fg: colors.primary, bg: colors.primaryLight };
+  }
+}
 
 interface EmptyStateProps {
   type: EmptyStateType;
@@ -160,7 +143,8 @@ export function EmptyState({
   compact = false,
 }: EmptyStateProps) {
   const { colors } = useTheme();
-  const config = getEmptyStateConfig(type);
+  const config = emptyStateConfigs[type] || emptyStateConfigs.general;
+  const colorVals = getColorValues(config.colorKey, colors);
   
   const displayTitle = title || config.title;
   const displayDescription = description || config.description;
@@ -171,12 +155,12 @@ export function EmptyState({
       <View style={[
         styles.iconContainer, 
         compact && styles.iconContainerCompact,
-        { backgroundColor: config.bgColor }
+        { backgroundColor: colorVals.bg }
       ]}>
         <Feather 
           name={config.icon} 
           size={compact ? 28 : 40} 
-          color={config.iconColor} 
+          color={colorVals.fg} 
         />
       </View>
       

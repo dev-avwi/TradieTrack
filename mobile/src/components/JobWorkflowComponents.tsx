@@ -444,64 +444,175 @@ interface NextActionCardProps {
   jobStatus: JobStatus;
   hasInvoice: boolean;
   hasQuote: boolean;
+  quoteStatus?: string;
+  invoiceStatus?: string;
+  scheduledAt?: string | null;
   onCreateInvoice?: () => void;
   onCreateQuote?: () => void;
+  onSendQuote?: () => void;
+  onSchedule?: () => void;
+  onStartJob?: () => void;
+  onCompleteJob?: () => void;
+  onSendInvoice?: () => void;
+  onSendReminder?: () => void;
 }
 
-export function NextActionCard({
-  jobStatus,
-  hasInvoice,
-  hasQuote,
-  onCreateInvoice,
-  onCreateQuote,
-}: NextActionCardProps) {
+type NextActionPriority = 'high' | 'medium' | 'low';
+
+interface NextAction {
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Feather.glyphMap;
+  buttonText: string;
+  action?: () => void;
+  priority: NextActionPriority;
+}
+
+function getNextAction(props: NextActionCardProps): NextAction | null {
+  const { jobStatus, hasInvoice, hasQuote, quoteStatus, invoiceStatus, scheduledAt } = props;
+
+  switch (jobStatus) {
+    case 'pending':
+      if (!hasQuote) {
+        return {
+          title: 'Create a Quote',
+          subtitle: 'Send the client a quote before scheduling',
+          icon: 'file-text',
+          action: props.onCreateQuote,
+          buttonText: 'Create Quote',
+          priority: 'medium',
+        };
+      }
+      if (quoteStatus?.toLowerCase() === 'draft') {
+        return {
+          title: 'Send Your Quote',
+          subtitle: 'Quote is ready - send it to the client',
+          icon: 'send',
+          action: props.onSendQuote,
+          buttonText: 'Send Quote',
+          priority: 'high',
+        };
+      }
+      if (!scheduledAt) {
+        return {
+          title: 'Schedule This Job',
+          subtitle: 'Pick a date and time for the work',
+          icon: 'calendar',
+          action: props.onSchedule,
+          buttonText: 'Schedule Job',
+          priority: 'medium',
+        };
+      }
+      return null;
+
+    case 'scheduled':
+      return {
+        title: 'Start the Job',
+        subtitle: 'Mark as in progress when you begin work',
+        icon: 'play',
+        action: props.onStartJob,
+        buttonText: 'Start Job',
+        priority: 'medium',
+      };
+
+    case 'in_progress':
+      return {
+        title: 'Complete the Job',
+        subtitle: 'Mark as done when work is finished',
+        icon: 'check-circle',
+        action: props.onCompleteJob,
+        buttonText: 'Mark Complete',
+        priority: 'high',
+      };
+
+    case 'done':
+      if (!hasInvoice) {
+        return {
+          title: 'Create Invoice',
+          subtitle: 'Job is done - time to get paid!',
+          icon: 'file-text',
+          action: props.onCreateInvoice,
+          buttonText: 'Create Invoice',
+          priority: 'high',
+        };
+      }
+      if (invoiceStatus?.toLowerCase() === 'draft') {
+        return {
+          title: 'Send Invoice',
+          subtitle: 'Invoice is ready - send it to get paid',
+          icon: 'send',
+          action: props.onSendInvoice,
+          buttonText: 'Send Invoice',
+          priority: 'high',
+        };
+      }
+      if (invoiceStatus?.toLowerCase() === 'sent' || invoiceStatus?.toLowerCase() === 'overdue') {
+        return {
+          title: 'Follow Up on Payment',
+          subtitle: invoiceStatus?.toLowerCase() === 'overdue'
+            ? 'Payment is overdue - send a reminder'
+            : 'Waiting for payment',
+          icon: 'alert-circle',
+          action: props.onSendReminder,
+          buttonText: 'Send Reminder',
+          priority: invoiceStatus?.toLowerCase() === 'overdue' ? 'high' : 'low',
+        };
+      }
+      return null;
+
+    case 'invoiced':
+      if (invoiceStatus?.toLowerCase() !== 'paid') {
+        return {
+          title: 'Follow Up on Payment',
+          subtitle: 'Invoice sent - waiting for payment',
+          icon: 'clock',
+          action: props.onSendReminder,
+          buttonText: 'Send Reminder',
+          priority: 'low',
+        };
+      }
+      return null;
+
+    default:
+      return null;
+  }
+}
+
+export function NextActionCard(props: NextActionCardProps) {
   const { colors } = useTheme();
   const styles = createNextActionStyles(colors);
+  const nextAction = getNextAction(props);
 
-  if (jobStatus === 'done' && !hasInvoice) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.iconContainer}>
-          <Feather name="file-text" size={20} color={colors.destructive} />
-        </View>
-        <View style={styles.content}>
-          <Text style={styles.title}>Create Invoice</Text>
-          <Text style={styles.subtitle}>Job is done - time to get paid!</Text>
-        </View>
-        {onCreateInvoice && (
-          <TouchableOpacity style={styles.actionButton} onPress={onCreateInvoice}>
-            <Text style={styles.actionButtonText}>Create Invoice</Text>
-            <Feather name="arrow-right" size={14} color={colors.primaryForeground} />
-          </TouchableOpacity>
-        )}
+  if (!nextAction) return null;
+
+  const priorityColors = {
+    high: { border: `${colors.destructive}40`, bg: `${colors.destructive}08`, iconBg: `${colors.destructive}15`, accent: colors.destructive, btnBg: colors.primary },
+    medium: { border: `${colors.warning}40`, bg: `${colors.warning}08`, iconBg: `${colors.warning}15`, accent: colors.warning, btnBg: colors.warning },
+    low: { border: `${colors.info}40`, bg: `${colors.info}08`, iconBg: `${colors.info}15`, accent: colors.info, btnBg: colors.info },
+  };
+
+  const pColors = priorityColors[nextAction.priority];
+
+  return (
+    <View style={[styles.container, { borderColor: pColors.border, backgroundColor: pColors.bg }]}>
+      <View style={[styles.iconContainer, { backgroundColor: pColors.iconBg }]}>
+        <Feather name={nextAction.icon} size={20} color={pColors.accent} />
       </View>
-    );
-  }
-
-  if ((jobStatus === 'pending' || jobStatus === 'scheduled') && !hasQuote) {
-    return (
-      <View style={[styles.container, { borderColor: `${colors.scheduled}40`, backgroundColor: `${colors.scheduled}08` }]}>
-        <View style={[styles.iconContainer, { backgroundColor: `${colors.scheduled}15` }]}>
-          <Feather name="file-text" size={20} color={colors.scheduled} />
-        </View>
-        <View style={styles.content}>
-          <Text style={styles.title}>Create Quote</Text>
-          <Text style={styles.subtitle}>Send a quote before starting</Text>
-        </View>
-        {onCreateQuote && (
-          <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: colors.scheduled }]} 
-            onPress={onCreateQuote}
-          >
-            <Text style={styles.actionButtonText}>Create Quote</Text>
-            <Feather name="arrow-right" size={14} color={colors.primaryForeground} />
-          </TouchableOpacity>
-        )}
+      <View style={styles.content}>
+        <Text style={styles.title}>{nextAction.title}</Text>
+        <Text style={styles.subtitle}>{nextAction.subtitle}</Text>
       </View>
-    );
-  }
-
-  return null;
+      {nextAction.action && (
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: pColors.btnBg }]}
+          onPress={nextAction.action}
+        >
+          <Text style={styles.actionButtonText}>{nextAction.buttonText}</Text>
+          <Feather name="arrow-right" size={14} color={colors.primaryForeground} />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
 }
 
 const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({

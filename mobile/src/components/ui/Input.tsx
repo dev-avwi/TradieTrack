@@ -1,15 +1,7 @@
 import { TextInput, View, Text, StyleSheet, TextInputProps, ViewStyle } from 'react-native';
-import { ReactNode } from 'react';
-
-const colors = {
-  card: '#1c2129',
-  foreground: '#f0f3f5',
-  border: '#262b36',
-  input: '#3d4555',
-  mutedForeground: '#9ca3af',
-  destructive: '#ef4444',
-  ring: '#E8862E',
-};
+import { ReactNode, useMemo } from 'react';
+import { useTheme } from '../../lib/theme';
+import { spacing, radius } from '../../lib/design-tokens';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -28,6 +20,9 @@ export function Input({
   style,
   ...props
 }: InputProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -50,15 +45,14 @@ export function Input({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
-    gap: 8,
+    gap: spacing.sm,
   },
   label: {
     fontSize: 14,
     fontWeight: '500',
     color: colors.foreground,
-    fontFamily: 'Inter',
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -66,7 +60,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radius.md,
     minHeight: 48,
   },
   inputError: {
@@ -75,27 +69,25 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 48,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
     fontSize: 16,
     color: colors.foreground,
-    fontFamily: 'Inter',
   },
   inputWithLeftIcon: {
-    paddingLeft: 8,
+    paddingLeft: spacing.sm,
   },
   inputWithRightIcon: {
-    paddingRight: 8,
+    paddingRight: spacing.sm,
   },
   leftIcon: {
-    paddingLeft: 16,
+    paddingLeft: spacing.lg,
   },
   rightIcon: {
-    paddingRight: 16,
+    paddingRight: spacing.lg,
   },
   errorText: {
     fontSize: 12,
     color: colors.destructive,
-    fontFamily: 'Inter',
   },
 });
 

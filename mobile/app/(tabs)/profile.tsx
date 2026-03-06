@@ -544,9 +544,9 @@ export default function MoreScreen() {
                 iconColor={colorValues.fg}
                 title={item.title}
                 subtitle={item.description}
-                badge={isDispatch ? 'Key' : item.badge}
-                badgeBg={isDispatch ? colors.infoLight : badgeColorValues.bg}
-                badgeColor={isDispatch ? colors.info : badgeColorValues.fg}
+                badge={item.badge}
+                badgeBg={badgeColorValues.bg}
+                badgeColor={badgeColorValues.fg}
                 onPress={() => handleNavItemPress(item)}
                 isLast={isLast}
               />

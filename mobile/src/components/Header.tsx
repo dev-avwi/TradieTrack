@@ -369,14 +369,14 @@ const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.creat
     borderRadius: 6,
   },
   brandName: {
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: '700',
     color: colors.primary,
     letterSpacing: -0.3,
     flexShrink: 1,
   },
   pageTitleWithBack: {
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: '600',
     color: colors.foreground,
     letterSpacing: -0.3,

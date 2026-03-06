@@ -4764,13 +4764,55 @@ export default function JobDetailScreen() {
         </View>
       )}
 
-      {/* Next Action Card - CTA when job is done without invoice */}
+      {/* Smart Next Action Card - guides tradie through workflow */}
       <NextActionCard
         jobStatus={job.status}
         hasInvoice={!!invoice}
         hasQuote={!!quote}
+        quoteStatus={(quote as any)?.status}
+        invoiceStatus={(invoice as any)?.status}
+        scheduledAt={job.scheduledAt}
         onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
+        onSendQuote={async () => {
+          if (quote?.id && client?.email) {
+            try {
+              await api.post(`/api/quotes/${quote.id}/send`, { method: 'email' });
+              Alert.alert('Email Sent', `Quote sent to ${client.email}`);
+            } catch {
+              Alert.alert('Error', 'Could not send quote. Please try again.');
+            }
+          } else {
+            Alert.alert('Cannot Send', client?.email ? 'No quote found' : 'Client has no email address on file.');
+          }
+        }}
+        onSchedule={handleStatusChange}
+        onStartJob={handleStatusChange}
+        onCompleteJob={handleStatusChange}
+        onSendInvoice={async () => {
+          if (invoice?.id && client?.email) {
+            try {
+              await api.post(`/api/invoices/${invoice.id}/send`, { method: 'email' });
+              Alert.alert('Email Sent', `Invoice sent to ${client.email}`);
+            } catch {
+              Alert.alert('Error', 'Could not send invoice. Please try again.');
+            }
+          } else {
+            Alert.alert('Cannot Send', client?.email ? 'No invoice found' : 'Client has no email address on file.');
+          }
+        }}
+        onSendReminder={async () => {
+          if (invoice?.id && client?.email) {
+            try {
+              await api.post(`/api/invoices/${invoice.id}/send`, { method: 'email' });
+              Alert.alert('Reminder Sent', `Payment reminder sent to ${client.email}`);
+            } catch {
+              Alert.alert('Error', 'Could not send reminder. Please try again.');
+            }
+          } else {
+            Alert.alert('Cannot Send', 'Client has no email address on file.');
+          }
+        }}
       />
 
       {/* Address Card */}

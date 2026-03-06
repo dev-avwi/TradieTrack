@@ -140,13 +140,6 @@ function JobListRow({
         </Text>
         <TouchableOpacity 
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          onPress={handleDelete}
-          style={styles.jobListRowAction}
-        >
-          <Feather name="trash-2" size={iconSizes.sm} color={colors.destructive} />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           onPress={handleMorePress}
           style={styles.jobListRowAction}
         >
