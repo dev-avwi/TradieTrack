@@ -520,8 +520,15 @@ export default function CreateJobScreen() {
   const [estimatedDuration, setEstimatedDuration] = useState('');
   const [notes, setNotes] = useState('');
 
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
+  const [assignedToId, setAssignedToId] = useState<string | null>(null);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [loadingTeam, setLoadingTeam] = useState(false);
+
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const [showPriorityPicker, setShowPriorityPicker] = useState(false);
+  const [showTeamPicker, setShowTeamPicker] = useState(false);
   const [showQuickAddClient, setShowQuickAddClient] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [prefillSuggestions, setPrefillSuggestions] = useState<any>(null);
@@ -575,9 +582,34 @@ export default function CreateJobScreen() {
     { value: 'invoiced', label: 'Invoiced', color: colors.invoiced },
   ];
 
+  const PRIORITY_OPTIONS: { value: 'low' | 'medium' | 'high' | 'urgent'; label: string; color: string; icon: string }[] = [
+    { value: 'low', label: 'Low', color: '#6B7280', icon: 'minus' },
+    { value: 'medium', label: 'Medium', color: '#F59E0B', icon: 'minus-circle' },
+    { value: 'high', label: 'High', color: '#EF4444', icon: 'alert-triangle' },
+    { value: 'urgent', label: 'Urgent', color: '#DC2626', icon: 'alert-octagon' },
+  ];
+
+  const selectedPriorityOption = PRIORITY_OPTIONS.find((p) => p.value === priority);
+  const selectedTeamMember = teamMembers.find((m) => String(m.id) === assignedToId);
+
   useEffect(() => {
     fetchClients();
+    fetchTeamMembers();
   }, []);
+
+  const fetchTeamMembers = async () => {
+    setLoadingTeam(true);
+    try {
+      const response = await api.get<any[]>('/api/team/members');
+      if (response.data) {
+        setTeamMembers(response.data);
+      }
+    } catch (error) {
+      console.log('Team members not available:', error);
+    } finally {
+      setLoadingTeam(false);
+    }
+  };
 
   // Handle pre-filled clientId from URL params
   useEffect(() => {
@@ -650,6 +682,8 @@ export default function CreateJobScreen() {
       clientName: selectedClient?.name,
       address: address.trim() || null,
       status,
+      priority,
+      assignedTo: assignedToId || null,
       notes: notes.trim() || null,
     };
 
@@ -944,6 +978,49 @@ export default function CreateJobScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Priority */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Priority</Text>
+              <TouchableOpacity
+                style={styles.selector}
+                onPress={() => setShowPriorityPicker(true)}
+              >
+                <View style={styles.statusDisplay}>
+                  <View style={[styles.statusDot, { backgroundColor: selectedPriorityOption?.color }]} />
+                  <Text style={styles.statusText}>{selectedPriorityOption?.label}</Text>
+                </View>
+                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Team Member Assignment */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Assign To (Optional)</Text>
+              <TouchableOpacity
+                style={styles.selector}
+                onPress={() => setShowTeamPicker(true)}
+              >
+                {selectedTeamMember ? (
+                  <View style={styles.selectedItem}>
+                    <View style={[styles.clientAvatar, { backgroundColor: colors.primary + '20' }]}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
+                        {(selectedTeamMember.name || selectedTeamMember.username || '?').charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={styles.selectedItemText}>
+                      <Text style={styles.selectedItemName}>{selectedTeamMember.name || selectedTeamMember.username}</Text>
+                      <Text style={styles.selectedItemDetail}>{selectedTeamMember.role || 'Team Member'}</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={styles.selectorPlaceholder}>
+                    {loadingTeam ? 'Loading team...' : 'Select team member'}
+                  </Text>
+                )}
+                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
             {/* Schedule Date/Time */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Schedule (Optional)</Text>
@@ -1121,6 +1198,113 @@ export default function CreateJobScreen() {
         onClose={() => setShowStatusPicker(false)}
         colors={colors}
       />
+
+      {/* Priority Picker Modal */}
+      <Modal visible={showPriorityPicker} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Priority</Text>
+              <TouchableOpacity onPress={() => setShowPriorityPicker(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalList}>
+              {PRIORITY_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.statusItem,
+                    priority === option.value && styles.statusItemSelected,
+                  ]}
+                  onPress={() => {
+                    setPriority(option.value);
+                    setShowPriorityPicker(false);
+                  }}
+                >
+                  <Feather name={option.icon as any} size={18} color={option.color} />
+                  <Text style={[styles.statusItemText, { color: option.color, fontWeight: priority === option.value ? '600' : '400' }]}>
+                    {option.label}
+                  </Text>
+                  {priority === option.value && (
+                    <Feather name="check" size={20} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Team Member Picker Modal */}
+      <Modal visible={showTeamPicker} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Assign Team Member</Text>
+              <TouchableOpacity onPress={() => setShowTeamPicker(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalList}>
+              <TouchableOpacity
+                style={[styles.clientItem, !assignedToId && styles.clientItemSelected]}
+                onPress={() => {
+                  setAssignedToId(null);
+                  setShowTeamPicker(false);
+                }}
+              >
+                <Text style={styles.clientItemName}>Unassigned</Text>
+                {!assignedToId && <Feather name="check" size={20} color={colors.primary} />}
+              </TouchableOpacity>
+
+              {teamMembers.map((member) => (
+                <TouchableOpacity
+                  key={member.memberId || member.id}
+                  style={[
+                    styles.clientItem,
+                    assignedToId === String(member.memberId || member.id) && styles.clientItemSelected,
+                  ]}
+                  onPress={() => {
+                    setAssignedToId(String(member.memberId || member.id));
+                    setShowTeamPicker(false);
+                  }}
+                >
+                  <View style={styles.clientItemContent}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={[styles.clientAvatar, { backgroundColor: colors.primary + '20' }]}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
+                          {(member.name || member.username || '?').charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View>
+                        <Text style={styles.clientItemName}>{member.name || member.username}</Text>
+                        <Text style={styles.clientItemEmail}>{member.role || 'Team Member'}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  {assignedToId === String(member.memberId || member.id) && (
+                    <Feather name="check" size={20} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+
+              {teamMembers.length === 0 && !loadingTeam && (
+                <View style={styles.emptyList}>
+                  <Text style={styles.emptyListText}>No team members found</Text>
+                </View>
+              )}
+              {loadingTeam && (
+                <View style={styles.emptyList}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={showQuickAddClient} animationType="slide" transparent>
         <KeyboardAvoidingView 

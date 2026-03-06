@@ -30,6 +30,7 @@ interface DirectMessage {
   senderId: string;
   recipientId: string;
   content: string;
+  isRead?: boolean;
   createdAt: string;
 }
 
@@ -274,6 +275,17 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   messageTimeOwn: {
     color: 'rgba(255,255,255,0.7)',
+  },
+  readReceipt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    marginTop: 2,
+    gap: 3,
+  },
+  readReceiptText: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
   },
   inputContainer: {
     flexDirection: 'row',
@@ -682,6 +694,18 @@ function ChatView({
                   ]}>
                     {formatTime(message.createdAt)}
                   </Text>
+                  {isOwn && (
+                    <View style={styles.readReceipt}>
+                      <Feather 
+                        name={message.isRead ? "check-circle" : "check"} 
+                        size={12} 
+                        color={message.isRead ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)'} 
+                      />
+                      <Text style={styles.readReceiptText}>
+                        {message.isRead ? 'Read' : 'Sent'}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
             );

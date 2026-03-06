@@ -300,8 +300,8 @@ export default function MoneyHubScreen() {
   const stats = useMemo(() => {
     const now = new Date();
     const thirtyDaysAgo = subDays(now, 30);
+    const sixtyDaysAgo = subDays(now, 60);
     
-    // Helper to safely parse total (handles string or number)
     const parseTotal = (total: number | string | undefined): number => {
       if (total === undefined || total === null) return 0;
       const num = typeof total === 'string' ? parseFloat(total) : total;
@@ -329,6 +329,48 @@ export default function MoneyHubScreen() {
     const pendingQuotes = quotes.filter(q => q.status === 'sent' || q.status === 'viewed');
     const pendingQuotesTotal = pendingQuotes.reduce((sum, q) => sum + parseTotal(q.total), 0);
 
+    const sentInvoices = invoices.filter(inv => inv.status !== 'draft');
+    const collectionRate = sentInvoices.length > 0
+      ? Math.round((paid.length / sentInvoices.length) * 100)
+      : 0;
+
+    const avgDaysOverdue = overdue.length > 0
+      ? Math.round(overdue.reduce((sum, inv) => {
+          const due = inv.dueDate ? new Date(inv.dueDate) : now;
+          return sum + Math.max(0, differenceInDays(now, due));
+        }, 0) / overdue.length)
+      : 0;
+
+    const prevMonthPaid = paid.filter(
+      inv => inv.paidAt && isAfter(new Date(inv.paidAt), sixtyDaysAgo) && isBefore(new Date(inv.paidAt), thirtyDaysAgo)
+    );
+    const prevMonthPaidTotal = prevMonthPaid.reduce((sum, inv) => sum + parseTotal(inv.total), 0);
+
+    const prevMonthOutstanding = invoices.filter(inv => {
+      const created = inv.createdAt ? new Date(inv.createdAt) : null;
+      return created && isAfter(created, sixtyDaysAgo) && isBefore(created, thirtyDaysAgo)
+        && inv.status !== 'paid' && inv.status !== 'draft';
+    });
+
+    const prevMonthSent = invoices.filter(inv => {
+      const created = inv.createdAt ? new Date(inv.createdAt) : null;
+      return created && isAfter(created, sixtyDaysAgo) && isBefore(created, thirtyDaysAgo) && inv.status !== 'draft';
+    });
+    const prevMonthPaidCount = invoices.filter(inv => {
+      const created = inv.createdAt ? new Date(inv.createdAt) : null;
+      return created && isAfter(created, sixtyDaysAgo) && isBefore(created, thirtyDaysAgo) && inv.status === 'paid';
+    }).length;
+    const prevCollectionRate = prevMonthSent.length > 0
+      ? Math.round((prevMonthPaidCount / prevMonthSent.length) * 100)
+      : 0;
+
+    const paidTrend = prevMonthPaidTotal > 0
+      ? Math.round(((recentPaidTotal - prevMonthPaidTotal) / prevMonthPaidTotal) * 100)
+      : recentPaidTotal > 0 ? 100 : 0;
+    const collectionTrend = prevCollectionRate > 0
+      ? collectionRate - prevCollectionRate
+      : 0;
+
     return {
       outstandingTotal,
       outstandingCount: outstanding.length,
@@ -338,6 +380,10 @@ export default function MoneyHubScreen() {
       recentPaidCount: recentPaid.length,
       pendingQuotesTotal,
       pendingQuotesCount: pendingQuotes.length,
+      collectionRate,
+      avgDaysOverdue,
+      paidTrend,
+      collectionTrend,
     };
   }, [invoices, quotes]);
 
@@ -387,7 +433,8 @@ export default function MoneyHubScreen() {
     subtitle: string, 
     iconName: keyof typeof Feather.glyphMap, 
     iconColor: string,
-    variant: 'default' | 'success' | 'warning' | 'danger' = 'default'
+    variant: 'default' | 'success' | 'warning' | 'danger' = 'default',
+    trend?: number | null
   ) => {
     const variantStyles = {
       default: { bg: colors.card, border: colors.cardBorder },
@@ -406,10 +453,57 @@ export default function MoneyHubScreen() {
           </View>
         </View>
         <Text style={styles.kpiValue}>{value}</Text>
-        <Text style={styles.kpiSubtitle}>{subtitle}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+          <Text style={styles.kpiSubtitle}>{subtitle}</Text>
+          {trend !== undefined && trend !== null && trend !== 0 && (
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 2,
+              backgroundColor: trend > 0 ? `${colors.success}15` : `${colors.destructive}15`,
+              paddingHorizontal: 4,
+              paddingVertical: 1,
+              borderRadius: radius.sm,
+            }}>
+              <Feather
+                name={trend > 0 ? 'trending-up' : 'trending-down'}
+                size={10}
+                color={trend > 0 ? colors.success : colors.destructive}
+              />
+              <Text style={{
+                fontSize: 9,
+                fontWeight: '700',
+                color: trend > 0 ? colors.success : colors.destructive,
+              }}>
+                {trend > 0 ? '+' : ''}{trend}%
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
     );
   };
+
+  const renderSmartChaserCard = () => (
+    <TouchableOpacity
+      style={styles.smartChaserCard}
+      onPress={() => router.push('/more/payment-hub?tab=chaser')}
+      activeOpacity={0.7}
+    >
+      <View style={styles.smartChaserIconWrapper}>
+        <Feather name="zap" size={iconSizes.lg} color={colors.warning} />
+      </View>
+      <View style={styles.smartChaserContent}>
+        <Text style={styles.smartChaserTitle}>Smart Chaser</Text>
+        <Text style={styles.smartChaserDescription}>
+          {stats.overdueCount > 0
+            ? `${stats.overdueCount} overdue invoice${stats.overdueCount !== 1 ? 's' : ''} need attention`
+            : 'Automated payment follow-ups'}
+        </Text>
+      </View>
+      <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
+    </TouchableOpacity>
+  );
 
   const renderStripeConnectCard = () => {
     if (stripeLoading) {
@@ -1089,6 +1183,8 @@ export default function MoneyHubScreen() {
       >
         {renderStripeConnectCard()}
         
+        {renderSmartChaserCard()}
+        
         {renderQuickActions()}
         
         <View style={styles.kpiGrid}>
@@ -1114,7 +1210,8 @@ export default function MoneyHubScreen() {
             `${stats.recentPaidCount} invoices`,
             'check-circle',
             colors.success,
-            'success'
+            'success',
+            stats.paidTrend
           )}
           {renderKPICard(
             'Pending Quotes',
@@ -1123,6 +1220,23 @@ export default function MoneyHubScreen() {
             'file',
             colors.scheduled,
             'default'
+          )}
+          {renderKPICard(
+            'Collection Rate',
+            `${stats.collectionRate}%`,
+            'paid vs sent',
+            'percent',
+            colors.primary,
+            stats.collectionRate >= 70 ? 'success' : stats.collectionRate >= 40 ? 'warning' : 'danger',
+            stats.collectionTrend
+          )}
+          {renderKPICard(
+            'Avg Days Overdue',
+            `${stats.avgDaysOverdue}`,
+            stats.overdueCount > 0 ? `across ${stats.overdueCount} invoices` : 'no overdue invoices',
+            'calendar',
+            stats.avgDaysOverdue > 30 ? colors.destructive : stats.avgDaysOverdue > 14 ? colors.warning : colors.success,
+            stats.avgDaysOverdue > 30 ? 'danger' : stats.avgDaysOverdue > 14 ? 'warning' : 'default'
           )}
         </View>
 
@@ -1468,6 +1582,38 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderTopColor: colors.border,
   },
   expenseSummaryCount: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
+  smartChaserCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${colors.warning}10`,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: `${colors.warning}30`,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    gap: spacing.md,
+  },
+  smartChaserIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: `${colors.warning}20`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  smartChaserContent: {
+    flex: 1,
+  },
+  smartChaserTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  smartChaserDescription: {
     fontSize: 13,
     color: colors.mutedForeground,
   },

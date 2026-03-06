@@ -362,6 +362,8 @@ export default function TeamChatScreen() {
     }
   };
 
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+
   const pinnedMessages = messages.filter(m => m.isPinned);
   const displayMessages = showPinnedOnly ? pinnedMessages : messages;
   const isBusinessOwner = user && messages.length > 0 
@@ -436,6 +438,7 @@ export default function TeamChatScreen() {
           refreshControl={
             <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
           }
+          onScrollBeginDrag={() => setSelectedMessageId(null)}
         >
           {isLoading ? (
             <View style={styles.emptyState}>
@@ -458,6 +461,32 @@ export default function TeamChatScreen() {
           ) : (
             displayMessages.map((msg) => {
               const isCurrentUser = user ? msg.senderId === user.id : false;
+              const canDelete = isCurrentUser || isBusinessOwner;
+              const canPin = isBusinessOwner;
+              const showActions = selectedMessageId === msg.id;
+
+              const handleLongPress = () => {
+                if (canDelete || canPin) {
+                  setSelectedMessageId(showActions ? null : msg.id);
+                }
+              };
+
+              const confirmDelete = () => {
+                setSelectedMessageId(null);
+                Alert.alert(
+                  'Delete Message',
+                  'Are you sure you want to delete this message?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { 
+                      text: 'Delete', 
+                      style: 'destructive', 
+                      onPress: () => handleDeleteMessage(msg.id) 
+                    },
+                  ]
+                );
+              };
+
               return (
                 <View 
                   key={msg.id}
@@ -472,37 +501,81 @@ export default function TeamChatScreen() {
                     </View>
                   )}
                   
-                  <View style={[
-                    styles.messageBubble,
-                    isCurrentUser ? styles.messageBubbleUser : styles.messageBubbleOther,
-                    msg.isPinned && styles.messageBubblePinned,
-                    msg.isAnnouncement && styles.messageBubbleAnnouncement
-                  ]}>
-                    {!isCurrentUser && (
-                      <Text style={styles.senderName}>{msg.senderName}</Text>
-                    )}
-                    
-                    {msg.isPinned && (
-                      <View style={styles.pinnedBadge}>
-                        <Feather name="bookmark" size={10} color={colors.warning} />
-                        <Text style={styles.pinnedBadgeText}>Pinned</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onLongPress={handleLongPress}
+                    delayLongPress={400}
+                    style={{ maxWidth: '75%' }}
+                  >
+                    <View style={[
+                      styles.messageBubble,
+                      isCurrentUser ? styles.messageBubbleUser : styles.messageBubbleOther,
+                      msg.isPinned && styles.messageBubblePinned,
+                      msg.isAnnouncement && styles.messageBubbleAnnouncement
+                    ]}>
+                      {!isCurrentUser && (
+                        <Text style={styles.senderName}>{msg.senderName}</Text>
+                      )}
+                      
+                      {msg.isPinned && (
+                        <View style={styles.pinnedBadge}>
+                          <Feather name="bookmark" size={10} color={colors.warning} />
+                          <Text style={styles.pinnedBadgeText}>Pinned</Text>
+                        </View>
+                      )}
+                      
+                      <Text style={[
+                        styles.messageText,
+                        isCurrentUser && styles.messageTextUser
+                      ]}>
+                        {msg.message}
+                      </Text>
+                      
+                      <Text style={[
+                        styles.messageTime,
+                        isCurrentUser && styles.messageTimeUser
+                      ]}>
+                        {formatTime(msg.createdAt)}
+                      </Text>
+                    </View>
+
+                    {showActions && (
+                      <View style={[
+                        styles.actionsMenu,
+                        { position: 'relative', bottom: 'auto', right: 'auto', marginTop: 4 }
+                      ]}>
+                        {canPin && (
+                          <TouchableOpacity 
+                            style={styles.actionItem}
+                            onPress={() => {
+                              setSelectedMessageId(null);
+                              handlePinMessage(msg.id, !msg.isPinned);
+                            }}
+                          >
+                            <Feather 
+                              name={msg.isPinned ? "bookmark" : "bookmark"} 
+                              size={16} 
+                              color={msg.isPinned ? colors.warning : colors.foreground} 
+                            />
+                            <Text style={styles.actionText}>
+                              {msg.isPinned ? 'Unpin' : 'Pin'}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                        {canDelete && (
+                          <TouchableOpacity 
+                            style={styles.actionItem}
+                            onPress={confirmDelete}
+                          >
+                            <Feather name="trash-2" size={16} color={colors.destructive} />
+                            <Text style={[styles.actionText, { color: colors.destructive }]}>
+                              Delete
+                            </Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     )}
-                    
-                    <Text style={[
-                      styles.messageText,
-                      isCurrentUser && styles.messageTextUser
-                    ]}>
-                      {msg.message}
-                    </Text>
-                    
-                    <Text style={[
-                      styles.messageTime,
-                      isCurrentUser && styles.messageTimeUser
-                    ]}>
-                      {formatTime(msg.createdAt)}
-                    </Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               );
             })

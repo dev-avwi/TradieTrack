@@ -324,6 +324,41 @@ export default function ClientDetailScreen() {
       case 'overview':
         return (
           <>
+            {/* Client Type & Referral */}
+            {(client.clientType || client.referralSource) && (
+              <>
+                <Text style={styles.sectionTitle}>Details</Text>
+                <View style={styles.card}>
+                  {client.clientType && (
+                    <View style={styles.infoRow}>
+                      <Feather name="layers" size={18} color={colors.mutedForeground} />
+                      <Text style={styles.infoText}>{client.clientType}</Text>
+                    </View>
+                  )}
+                  {client.referralSource && (
+                    <View style={styles.infoRow}>
+                      <Feather name="share-2" size={18} color={colors.mutedForeground} />
+                      <Text style={styles.infoText}>{client.referralSource}</Text>
+                    </View>
+                  )}
+                </View>
+              </>
+            )}
+
+            {/* Tags */}
+            {client.tags && client.tags.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>Tags</Text>
+                <View style={styles.tagsRow}>
+                  {client.tags.map((tag: string, idx: number) => (
+                    <View key={idx} style={styles.tagBadge}>
+                      <Text style={styles.tagBadgeText}>{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+
             {/* Contact Info */}
             <Text style={styles.sectionTitle}>Contact Info</Text>
             <View style={styles.card}>
@@ -1097,6 +1132,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.body,
     color: colors.foreground,
     lineHeight: 22,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  tagBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+  },
+  tagBadgeText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.primary,
   },
   jobCard: {
     backgroundColor: colors.card,

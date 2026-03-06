@@ -15,16 +15,21 @@ import {
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useClientsStore } from '../../src/lib/store';
+import { useClientsStore, useInvoicesStore, useJobsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell, usePageShell } from '../../src/lib/design-tokens';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 import api from '../../src/lib/api';
 
-type FilterKey = 'all' | 'with_email' | 'with_phone' | 'with_address';
+type FilterKey = 'all' | 'residential' | 'commercial' | 'vip' | 'outstanding' | 'inactive_6mo' | 'with_email' | 'with_phone' | 'with_address';
 
-const FILTERS: { key: FilterKey; label: string; icon?: string }[] = [
+const SEGMENT_FILTERS: { key: FilterKey; label: string; icon: string }[] = [
   { key: 'all', label: 'All', icon: 'users' },
+  { key: 'residential', label: 'Residential', icon: 'home' },
+  { key: 'commercial', label: 'Commercial', icon: 'briefcase' },
+  { key: 'vip', label: 'VIP', icon: 'star' },
+  { key: 'outstanding', label: 'Outstanding', icon: 'alert-circle' },
+  { key: 'inactive_6mo', label: 'Inactive 6mo+', icon: 'clock' },
   { key: 'with_email', label: 'With Email', icon: 'mail' },
   { key: 'with_phone', label: 'With Phone', icon: 'phone' },
   { key: 'with_address', label: 'With Address', icon: 'map-pin' },
@@ -114,7 +119,24 @@ function ClientCard({
                 {client.jobsCount || 0} {(client.jobsCount || 0) === 1 ? 'job' : 'jobs'}
               </Text>
             </View>
+            {client.clientType && (
+              <View style={styles.typeBadge}>
+                <Text style={styles.typeBadgeText}>{client.clientType}</Text>
+              </View>
+            )}
           </View>
+          {client.tags && client.tags.length > 0 && (
+            <View style={styles.clientTagsRow}>
+              {client.tags.slice(0, 3).map((tag: string, idx: number) => (
+                <View key={idx} style={styles.clientTagBadge}>
+                  <Text style={styles.clientTagBadgeText}>{tag}</Text>
+                </View>
+              ))}
+              {client.tags.length > 3 && (
+                <Text style={styles.clientTagMore}>+{client.tags.length - 3}</Text>
+              )}
+            </View>
+          )}
           
           <View style={styles.contactRow}>
             {client.email && (
@@ -189,49 +211,112 @@ function ClientCard({
 
 export default function ClientsScreen() {
   const { clients, fetchClients, isLoading, deleteClient } = useClientsStore();
+  const { invoices, fetchInvoices } = useInvoicesStore();
+  const { jobs, fetchJobs } = useJobsStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const { colors } = useTheme();
   const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const refreshData = useCallback(async () => {
-    await fetchClients();
-  }, [fetchClients]);
+    await Promise.all([fetchClients(), fetchInvoices(), fetchJobs()]);
+  }, [fetchClients, fetchInvoices, fetchJobs]);
 
   useEffect(() => {
     refreshData();
   }, []);
 
-  // Refresh data when screen gains focus (syncs with web app)
   useFocusEffect(
     useCallback(() => {
       refreshData();
     }, [refreshData])
   );
 
-  const filterCounts = {
+  const clientsWithOutstanding = useMemo(() => {
+    const outstandingSet = new Set<string>();
+    invoices.forEach(inv => {
+      if (inv.clientId && inv.status !== 'paid') {
+        outstandingSet.add(inv.clientId);
+      }
+    });
+    return outstandingSet;
+  }, [invoices]);
+
+  const sixMonthsAgo = useMemo(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 6);
+    return d;
+  }, []);
+
+  const inactiveClientIds = useMemo(() => {
+    const lastActivity: Record<string, Date> = {};
+    jobs.forEach(job => {
+      if (!job.clientId) return;
+      const date = new Date(job.scheduledAt || 0);
+      if (!lastActivity[job.clientId] || date > lastActivity[job.clientId]) {
+        lastActivity[job.clientId] = date;
+      }
+    });
+    const inactiveSet = new Set<string>();
+    clients.forEach(c => {
+      const last = lastActivity[c.id];
+      if (!last || last < sixMonthsAgo) {
+        inactiveSet.add(c.id);
+      }
+    });
+    return inactiveSet;
+  }, [jobs, clients, sixMonthsAgo]);
+
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    clients.forEach(c => {
+      (c.tags || []).forEach((t: string) => tagSet.add(t));
+    });
+    return Array.from(tagSet).sort();
+  }, [clients]);
+
+  const filterCounts: Record<FilterKey, number> = useMemo(() => ({
     all: clients.length,
+    residential: clients.filter(c => c.clientType === 'Residential').length,
+    commercial: clients.filter(c => c.clientType === 'Commercial').length,
+    vip: clients.filter(c => (c.tags || []).some((t: string) => t.toLowerCase() === 'vip')).length,
+    outstanding: clients.filter(c => clientsWithOutstanding.has(c.id)).length,
+    inactive_6mo: clients.filter(c => inactiveClientIds.has(c.id)).length,
     with_email: clients.filter(c => c.email).length,
     with_phone: clients.filter(c => c.phone).length,
     with_address: clients.filter(c => c.address).length,
-  };
+  }), [clients, clientsWithOutstanding, inactiveClientIds]);
 
-  const filteredClients = clients.filter(client => {
+  const filteredClients = useMemo(() => clients.filter(client => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
       client.name?.toLowerCase().includes(searchLower) ||
       client.email?.toLowerCase().includes(searchLower) ||
       client.phone?.includes(searchQuery) ||
-      client.address?.toLowerCase().includes(searchLower);
+      client.address?.toLowerCase().includes(searchLower) ||
+      (client.tags || []).some((t: string) => t.toLowerCase().includes(searchLower));
     
     let matchesFilter = true;
-    if (activeFilter === 'with_email') matchesFilter = !!client.email;
-    if (activeFilter === 'with_phone') matchesFilter = !!client.phone;
-    if (activeFilter === 'with_address') matchesFilter = !!client.address;
+    switch (activeFilter) {
+      case 'residential': matchesFilter = client.clientType === 'Residential'; break;
+      case 'commercial': matchesFilter = client.clientType === 'Commercial'; break;
+      case 'vip': matchesFilter = (client.tags || []).some((t: string) => t.toLowerCase() === 'vip'); break;
+      case 'outstanding': matchesFilter = clientsWithOutstanding.has(client.id); break;
+      case 'inactive_6mo': matchesFilter = inactiveClientIds.has(client.id); break;
+      case 'with_email': matchesFilter = !!client.email; break;
+      case 'with_phone': matchesFilter = !!client.phone; break;
+      case 'with_address': matchesFilter = !!client.address; break;
+    }
+
+    let matchesTag = true;
+    if (activeTagFilter) {
+      matchesTag = (client.tags || []).includes(activeTagFilter);
+    }
     
-    return matchesSearch && matchesFilter;
-  });
+    return matchesSearch && matchesFilter && matchesTag;
+  }), [clients, searchQuery, activeFilter, activeTagFilter, clientsWithOutstanding, inactiveClientIds]);
 
   const handleCall = (phone: string) => {
     Linking.openURL(`tel:${phone}`);
@@ -363,14 +448,14 @@ export default function ClientsScreen() {
         style={styles.filtersScroll}
         contentContainerStyle={styles.filtersContent}
       >
-        {FILTERS.map((filter) => {
+        {SEGMENT_FILTERS.map((filter) => {
           const count = filterCounts[filter.key];
           const isActive = activeFilter === filter.key;
           
           return (
             <TouchableOpacity
               key={filter.key}
-              onPress={() => setActiveFilter(filter.key)}
+              onPress={() => { setActiveFilter(filter.key); setActiveTagFilter(null); }}
               activeOpacity={0.7}
               style={[
                 styles.filterPill,
@@ -398,6 +483,34 @@ export default function ClientsScreen() {
           );
         })}
       </ScrollView>
+
+      {allTags.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tagsFilterScroll}
+          contentContainerStyle={styles.filtersContent}
+        >
+          <TouchableOpacity
+            onPress={() => setActiveTagFilter(null)}
+            activeOpacity={0.7}
+            style={[styles.tagFilterPill, !activeTagFilter && styles.tagFilterPillActive]}
+          >
+            <Feather name="tag" size={12} color={!activeTagFilter ? colors.white : colors.mutedForeground} />
+            <Text style={[styles.tagFilterPillText, !activeTagFilter && styles.tagFilterPillTextActive]}>All Tags</Text>
+          </TouchableOpacity>
+          {allTags.map((tag) => (
+            <TouchableOpacity
+              key={tag}
+              onPress={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
+              activeOpacity={0.7}
+              style={[styles.tagFilterPill, activeTagFilter === tag && styles.tagFilterPillActive]}
+            >
+              <Text style={[styles.tagFilterPillText, activeTagFilter === tag && styles.tagFilterPillTextActive]}>{tag}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
       <View style={styles.kpiRow}>
         <KPIBox 
@@ -437,7 +550,7 @@ export default function ClientsScreen() {
         </View>
       )}
     </>
-  ), [styles, clients.length, searchQuery, activeFilter, filterCounts, isLoading, colors]);
+  ), [styles, clients.length, searchQuery, activeFilter, activeTagFilter, filterCounts, isLoading, colors, allTags]);
 
   const ListEmptyComponent = useMemo(() => {
     if (isLoading) return null;
@@ -615,6 +728,33 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   filterCountTextActive: {
     color: colors.white,
   },
+  tagsFilterScroll: {
+    marginBottom: spacing.lg,
+    marginHorizontal: -pageShell.paddingHorizontal,
+  },
+  tagFilterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    gap: spacing.xs,
+  },
+  tagFilterPillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  tagFilterPillText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  tagFilterPillTextActive: {
+    color: colors.white,
+  },
 
   section: {
     marginBottom: spacing.xl,
@@ -746,6 +886,40 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: colors.mutedForeground,
+  },
+  typeBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  clientTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: spacing.xs,
+  },
+  clientTagBadge: {
+    backgroundColor: colors.muted,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: radius.sm,
+  },
+  clientTagBadgeText: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  clientTagMore: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+    alignSelf: 'center',
   },
   contactRow: {
     marginTop: spacing.sm,

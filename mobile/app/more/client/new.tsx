@@ -16,6 +16,8 @@ import { useClientsStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import { getBottomNavHeight } from '../../../src/components/BottomNav';
 
+const CLIENT_TYPES = ['Residential', 'Commercial', 'Strata', 'Government'];
+
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
@@ -92,6 +94,32 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingTop: 14,
     textAlignVertical: 'top',
   },
+  pickerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pickerOption: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pickerOptionActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+  },
+  pickerOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  pickerOptionTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -109,6 +137,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.primaryForeground,
+  },
+  inputHint: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });
 
@@ -129,6 +163,9 @@ export default function NewClientScreen() {
     email: '',
     address: '',
     notes: '',
+    clientType: '',
+    referralSource: '',
+    tagsText: '',
   });
 
   useEffect(() => {
@@ -148,6 +185,9 @@ export default function NewClientScreen() {
         email: client.email || '',
         address: client.address || '',
         notes: client.notes || '',
+        clientType: client.clientType || '',
+        referralSource: client.referralSource || '',
+        tagsText: (client.tags || []).join(', '),
       });
     }
     setIsLoadingClient(false);
@@ -161,8 +201,24 @@ export default function NewClientScreen() {
 
     setIsLoading(true);
     
+    const tags = form.tagsText
+      .split(',')
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
+
+    const payload = {
+      name: form.name,
+      phone: form.phone,
+      email: form.email,
+      address: form.address,
+      notes: form.notes,
+      clientType: form.clientType || undefined,
+      referralSource: form.referralSource || undefined,
+      tags,
+    };
+
     if (isEditMode && clientId) {
-      const success = await updateClient(clientId, form);
+      const success = await updateClient(clientId, payload);
       setIsLoading(false);
       
       if (success) {
@@ -173,7 +229,7 @@ export default function NewClientScreen() {
         Alert.alert('Error', 'Failed to update client. Please try again.');
       }
     } else {
-      const client = await createClient(form);
+      const client = await createClient(payload);
       setIsLoading(false);
 
       if (client) {
@@ -190,7 +246,6 @@ export default function NewClientScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
-        {/* Custom Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Feather name="chevron-left" size={24} color={colors.foreground} />
@@ -278,6 +333,67 @@ export default function NewClientScreen() {
             />
           </View>
 
+          <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Classification</Text>
+
+          <View style={styles.inputGroup}>
+            <View style={styles.inputLabel}>
+              <Feather name="layers" size={18} color={colors.primary} />
+              <Text style={styles.inputLabelText}>Client Type</Text>
+            </View>
+            <View style={styles.pickerRow}>
+              {CLIENT_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.pickerOption,
+                    form.clientType === type && styles.pickerOptionActive,
+                  ]}
+                  onPress={() => setForm({ ...form, clientType: form.clientType === type ? '' : type })}
+                >
+                  <Text style={[
+                    styles.pickerOptionText,
+                    form.clientType === type && styles.pickerOptionTextActive,
+                  ]}>
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <View style={styles.inputLabel}>
+              <Feather name="share-2" size={18} color={colors.primary} />
+              <Text style={styles.inputLabelText}>Referral Source</Text>
+            </View>
+            <TextInput
+              style={styles.input}
+              value={form.referralSource}
+              onChangeText={(text) => setForm({ ...form, referralSource: text })}
+              placeholder="e.g. Google, Word of Mouth, Facebook"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="words"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <View style={styles.inputLabel}>
+              <Feather name="tag" size={18} color={colors.primary} />
+              <Text style={styles.inputLabelText}>Tags</Text>
+            </View>
+            <TextInput
+              style={styles.input}
+              value={form.tagsText}
+              onChangeText={(text) => setForm({ ...form, tagsText: text })}
+              placeholder="VIP, Priority, Repeat Customer"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="words"
+            />
+            <Text style={styles.inputHint}>Separate tags with commas</Text>
+          </View>
+
+          <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Additional</Text>
+
           <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
               <Feather name="file-text" size={18} color={colors.primary} />
@@ -304,7 +420,7 @@ export default function NewClientScreen() {
             ) : (
               <>
                 <Feather name="save" size={20} color={colors.white} />
-                <Text style={styles.saveButtonText}>Create Client</Text>
+                <Text style={styles.saveButtonText}>{isEditMode ? 'Update Client' : 'Create Client'}</Text>
               </>
             )}
           </TouchableOpacity>

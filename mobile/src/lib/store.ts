@@ -92,6 +92,9 @@ interface Client {
   phone?: string;
   address?: string;
   notes?: string;
+  tags?: string[];
+  clientType?: string;
+  referralSource?: string;
 }
 
 interface QuoteLineItem {
