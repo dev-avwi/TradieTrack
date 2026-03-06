@@ -3481,17 +3481,18 @@ export default function JobDetailView({
                   return sum + (up > 0 ? up * qty : 0);
                 }, 0);
                 const profit = totalPrice - totalCost;
+                const hasCostData = jobMaterials.some(m => parseFloat(m.unitCost || '0') > 0);
                 return (
                   <div className="flex items-center justify-between pt-2 border-t gap-3 flex-wrap">
-                    <span className="text-sm font-medium">
-                      Cost: ${totalCost.toFixed(2)}
+                    <span className={`text-sm font-medium ${!hasCostData ? 'text-muted-foreground' : ''}`}>
+                      Cost: {hasCostData ? `$${totalCost.toFixed(2)}` : 'Not set'}
                     </span>
                     {totalPrice > 0 && (
                       <span className="text-sm font-medium text-green-700 dark:text-green-400">
                         Revenue: ${totalPrice.toFixed(2)}
                       </span>
                     )}
-                    {totalPrice > 0 && (
+                    {totalPrice > 0 && hasCostData && (
                       <span className={`text-sm font-semibold ${profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         Profit: ${profit.toFixed(2)} ({totalPrice > 0 ? ((profit / totalPrice) * 100).toFixed(0) : 0}%)
                       </span>
