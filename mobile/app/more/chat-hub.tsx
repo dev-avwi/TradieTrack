@@ -13,9 +13,11 @@ import {
 } from 'react-native';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
-import api from '../../src/lib/api';
+import api, { API_URL } from '../../src/lib/api';
 
 interface Client {
   id: string;
@@ -917,11 +919,115 @@ export default function ChatHubScreen() {
     }
   };
 
+  const handleSendPhoto = async (item: ConversationItem) => {
+    let phone: string | undefined;
+    let clientId: string | undefined;
+    let jobId: string | undefined;
+
+    if (item.type === 'job') {
+      const linkedSms = item.data?.linkedSms as SmsConversation | null;
+      phone = linkedSms?.clientPhone || (item.data?.clientId ? getClient(item.data.clientId)?.phone : undefined) || undefined;
+      clientId = linkedSms?.clientId || item.data?.clientId || undefined;
+      jobId = item.data?.id;
+    } else if (item.type === 'sms') {
+      phone = item.phone || item.data?.clientPhone;
+      clientId = item.data?.clientId || undefined;
+      jobId = item.data?.jobId || undefined;
+    }
+
+    if (!phone) {
+      Alert.alert('No Phone Number', 'This contact does not have a phone number for SMS.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: false,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    const uri = asset.uri;
+
+    Alert.alert(
+      'Send Photo via MMS',
+      'Add a message to send with this photo?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send with message',
+          onPress: () => {
+            Alert.prompt?.(
+              'Message',
+              'Enter a message to accompany the photo:',
+              async (text: string) => {
+                await uploadAndSendMms(uri, phone!, text || 'Photo update', clientId, jobId);
+              },
+              'plain-text',
+              'Here\'s a photo update for you.'
+            ) || uploadAndSendMms(uri, phone!, 'Photo update', clientId, jobId);
+          },
+        },
+        {
+          text: 'Send photo only',
+          onPress: () => uploadAndSendMms(uri, phone!, 'Photo update', clientId, jobId),
+        },
+      ]
+    );
+  };
+
+  const uploadAndSendMms = async (uri: string, phone: string, message: string, clientId?: string, jobId?: string) => {
+    try {
+      const token = await api.getToken();
+      const uploadUrl = `${API_URL}/api/sms/upload-media`;
+      const uploadType = FileSystem.FileSystemUploadType?.MULTIPART ?? 1;
+      const uploadResult = await FileSystem.uploadAsync(uploadUrl, uri, {
+        httpMethod: 'POST',
+        uploadType,
+        fieldName: 'file',
+        mimeType: 'image/jpeg',
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (uploadResult.status !== 200) {
+        Alert.alert('Upload Failed', 'Could not upload the photo. Please try again.');
+        return;
+      }
+
+      const { url: mediaUrl } = JSON.parse(uploadResult.body);
+
+      const response = await api.post('/api/sms/send', {
+        clientPhone: phone,
+        message,
+        clientId,
+        jobId,
+        mediaUrls: [mediaUrl],
+      });
+
+      if (response.error) {
+        Alert.alert('Error', 'Photo uploaded but SMS failed to send.');
+      } else {
+        Alert.alert('Sent', 'Photo message sent successfully via MMS.');
+        handleRefresh();
+      }
+    } catch {
+      Alert.alert('Error', 'Could not send photo message. Please try again.');
+    }
+  };
+
   const showQuickActions = (item: ConversationItem) => {
     const buttons = SMS_QUICK_ACTIONS.map(action => ({
       text: action.label,
       onPress: () => handleQuickActionSend(item, action.id),
     }));
+    buttons.push({
+      text: 'Send Photo',
+      onPress: () => handleSendPhoto(item),
+    });
     buttons.push({ text: 'Cancel', onPress: () => {} });
     Alert.alert('Quick SMS', 'Send a quick message:', buttons as any);
   };

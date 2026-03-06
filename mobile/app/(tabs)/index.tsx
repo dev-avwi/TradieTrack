@@ -950,7 +950,8 @@ function TodayJobCard({
   onOnMyWay,
   isUpdating,
   onGetDirections,
-  orderNumber
+  orderNumber,
+  distanceInfo,
 }: { 
   job: any;
   clients: any[];
@@ -962,6 +963,7 @@ function TodayJobCard({
   isUpdating: boolean;
   onGetDirections?: (job: any) => void;
   orderNumber?: number;
+  distanceInfo?: { distanceKm: number; driveMinutes: number };
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -1194,6 +1196,20 @@ function TodayJobCard({
             <View style={styles.jobDetailRow}>
               <Feather name="map-pin" size={iconSizes.md} color={colors.mutedForeground} />
               <Text style={styles.jobDetailText} numberOfLines={1}>{job.address}</Text>
+            </View>
+          )}
+          {distanceInfo && (
+            <View style={styles.jobDetailRow}>
+              <Feather name="navigation" size={iconSizes.md} color={colors.info} />
+              <Text style={[styles.jobDetailText, { color: colors.info, fontWeight: '500' }]}>
+                {distanceInfo.distanceKm < 1 
+                  ? `${Math.round(distanceInfo.distanceKm * 1000)}m away`
+                  : `${distanceInfo.distanceKm} km away`}
+                {' \u00b7 ~'}
+                {distanceInfo.driveMinutes < 60 
+                  ? `${distanceInfo.driveMinutes} min drive`
+                  : `${Math.floor(distanceInfo.driveMinutes / 60)}h ${distanceInfo.driveMinutes % 60}m drive`}
+              </Text>
             </View>
           )}
         </View>
@@ -1534,6 +1550,10 @@ export default function DashboardScreen() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   
+  // Smart distance/ETA state for job cards
+  const [jobDistances, setJobDistances] = useState<Record<string, { distanceKm: number; driveMinutes: number }>>({});
+  const [totalDriveTime, setTotalDriveTime] = useState<number | null>(null);
+  
   // To Invoice count - jobs with status 'done' but no linked invoice
   const [toInvoiceCount, setToInvoiceCount] = useState(0);
   
@@ -1572,6 +1592,105 @@ export default function DashboardScreen() {
       setActivitiesLoading(false);
     }
   }, []);
+
+  // Fetch user location and compute distances to today's jobs
+  const computeJobDistances = useCallback(async () => {
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
+        if (newStatus !== 'granted') return;
+      }
+      
+      const location = await Location.getLastKnownPositionAsync() || await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      if (!location) return;
+      
+      const userLat = location.coords.latitude;
+      const userLon = location.coords.longitude;
+      setUserLocation({ latitude: userLat, longitude: userLon });
+      
+      const distances: Record<string, { distanceKm: number; driveMinutes: number }> = {};
+      
+      for (const job of todaysJobs) {
+        if (job.latitude && job.longitude) {
+          const dist = haversineDistanceCalc(userLat, userLon, job.latitude, job.longitude);
+          const estimatedMinutes = Math.max(1, Math.round((dist / 40) * 60));
+          distances[job.id] = {
+            distanceKm: Math.round(dist * 10) / 10,
+            driveMinutes: estimatedMinutes,
+          };
+        }
+      }
+      
+      setJobDistances(distances);
+      
+      // Calculate total drive time for all jobs in sequence
+      if (todaysJobs.filter((j: any) => j.latitude && j.longitude).length >= 2) {
+        const orderedJobs = isRouteOptimized ? optimizedJobs : todaysJobs;
+        const validJobs = orderedJobs.filter((j: any) => j.latitude && j.longitude);
+        let totalMinutes = 0;
+        
+        // From user to first job
+        if (validJobs.length > 0) {
+          const firstDist = haversineDistanceCalc(userLat, userLon, validJobs[0].latitude, validJobs[0].longitude);
+          totalMinutes += Math.max(1, Math.round((firstDist / 40) * 60));
+        }
+        
+        // Between consecutive jobs
+        for (let i = 0; i < validJobs.length - 1; i++) {
+          const d = haversineDistanceCalc(
+            validJobs[i].latitude, validJobs[i].longitude,
+            validJobs[i + 1].latitude, validJobs[i + 1].longitude
+          );
+          totalMinutes += Math.max(1, Math.round((d / 40) * 60));
+        }
+        
+        setTotalDriveTime(totalMinutes);
+      }
+    } catch (error) {
+      console.log('Error computing job distances:', error);
+    }
+  }, [todaysJobs, isRouteOptimized, optimizedJobs]);
+
+  useEffect(() => {
+    if (todaysJobs.length > 0) {
+      computeJobDistances();
+    }
+  }, [computeJobDistances]);
+
+  // Find nearest job suggestion (non-completed, non-in_progress)
+  const nextJobSuggestion = useMemo(() => {
+    if (!userLocation || Object.keys(jobDistances).length === 0) return null;
+    
+    const eligibleJobs = todaysJobs.filter((job: any) => 
+      (job.status === 'scheduled' || job.status === 'pending') && 
+      jobDistances[job.id]
+    );
+    
+    if (eligibleJobs.length === 0) return null;
+    
+    let nearest = eligibleJobs[0];
+    for (const job of eligibleJobs) {
+      if (jobDistances[job.id].distanceKm < jobDistances[nearest.id].distanceKm) {
+        nearest = job;
+      }
+    }
+    
+    return nearest;
+  }, [userLocation, jobDistances, todaysJobs]);
+
+  // Haversine calc helper (non-hook, used by computeJobDistances)
+  const haversineDistanceCalc = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
 
   // Haversine formula to calculate distance between two coordinates in km
   const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -2572,8 +2691,41 @@ export default function DashboardScreen() {
             </View>
             <Text style={styles.startRouteText}>
               Start Route ({jobsWithCoords.length} stop{jobsWithCoords.length !== 1 ? 's' : ''})
+              {totalDriveTime !== null ? ` \u00b7 ~${totalDriveTime < 60 ? `${totalDriveTime} min` : `${Math.floor(totalDriveTime / 60)}h ${totalDriveTime % 60}m`}` : ''}
             </Text>
             <Feather name="chevron-right" size={18} color={colors.white} />
+          </TouchableOpacity>
+        )}
+
+        {/* Smart Next Job Suggestion */}
+        {nextJobSuggestion && jobDistances[nextJobSuggestion.id] && (
+          <TouchableOpacity 
+            style={styles.nextJobSuggestion}
+            onPress={() => router.push(`/job/${nextJobSuggestion.id}`)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.nextJobSuggestionIcon}>
+              <Feather name="zap" size={16} color={colors.warning} />
+            </View>
+            <View style={styles.nextJobSuggestionContent}>
+              <Text style={styles.nextJobSuggestionLabel}>Nearest Job</Text>
+              <Text style={styles.nextJobSuggestionTitle} numberOfLines={1}>{nextJobSuggestion.title}</Text>
+              <Text style={styles.nextJobSuggestionMeta}>
+                {jobDistances[nextJobSuggestion.id].distanceKm < 1 
+                  ? `${Math.round(jobDistances[nextJobSuggestion.id].distanceKm * 1000)}m`
+                  : `${jobDistances[nextJobSuggestion.id].distanceKm} km`}
+                {' away \u00b7 ~'}
+                {jobDistances[nextJobSuggestion.id].driveMinutes} min drive
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.nextJobGoButton}
+              onPress={() => openDirections(nextJobSuggestion)}
+              activeOpacity={0.7}
+            >
+              <Feather name="navigation" size={14} color={colors.white} />
+              <Text style={styles.nextJobGoButtonText}>Go</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
         )}
 
@@ -2594,6 +2746,7 @@ export default function DashboardScreen() {
                 isUpdating={isUpdating}
                 onGetDirections={openDirections}
                 orderNumber={isRouteOptimized ? index + 1 : undefined}
+                distanceInfo={jobDistances[job.id]}
               />
             ))}
           </View>
@@ -3236,6 +3389,61 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.captionSmall,
     fontWeight: '500',
     color: colors.success,
+  },
+  nextJobSuggestion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: `${colors.warning}10`,
+    borderWidth: 1,
+    borderColor: `${colors.warning}25`,
+    marginBottom: spacing.md,
+  },
+  nextJobSuggestionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: `${colors.warning}20`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextJobSuggestionContent: {
+    flex: 1,
+  },
+  nextJobSuggestionLabel: {
+    ...typography.captionSmall,
+    fontWeight: '600',
+    color: colors.warning,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  nextJobSuggestionTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginTop: 1,
+  },
+  nextJobSuggestionMeta: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 1,
+  },
+  nextJobGoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+  },
+  nextJobGoButtonText: {
+    ...typography.captionSmall,
+    fontWeight: '600',
+    color: colors.white,
   },
   startRouteButton: {
     flexDirection: 'row',

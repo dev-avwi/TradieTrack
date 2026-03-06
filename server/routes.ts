@@ -15210,7 +15210,66 @@ Be specific about materials, colors, and features that would be included.`
       const user = await storage.getUser(req.userId);
       const tradieName = user?.firstName || businessName;
 
-      const { customMessage } = req.body;
+      const { customMessage, latitude, longitude } = req.body;
+
+      // Calculate real ETA using GPS coordinates + OSRM routing
+      let estimatedMinutes = 20;
+      let etaSource = 'default';
+      let distanceKm: number | null = null;
+
+      if (latitude && longitude && job.address) {
+        try {
+          // Get job coordinates - try stored lat/lng first, then geocode address
+          let jobLat = job.latitude ? parseFloat(String(job.latitude)) : null;
+          let jobLng = job.longitude ? parseFloat(String(job.longitude)) : null;
+          
+          if (!jobLat || !jobLng) {
+            const geocoded = await geocodeAddress(job.address);
+            if (geocoded) {
+              jobLat = geocoded.latitude;
+              jobLng = geocoded.longitude;
+            }
+          }
+
+          if (jobLat && jobLng) {
+            // Try OSRM real driving time first
+            const routeETA = await calculateRouteETA(
+              parseFloat(String(latitude)),
+              parseFloat(String(longitude)),
+              jobLat,
+              jobLng
+            );
+
+            if (routeETA) {
+              estimatedMinutes = Math.max(routeETA.durationMinutes, 2);
+              distanceKm = routeETA.distanceKm;
+              etaSource = 'osrm';
+            } else {
+              // Fallback: Haversine distance with speed heuristic
+              const dist = haversineDistance(
+                parseFloat(String(latitude)),
+                parseFloat(String(longitude)),
+                jobLat,
+                jobLng
+              );
+              distanceKm = Math.round(dist * 10) / 10;
+
+              if (dist <= 5) {
+                estimatedMinutes = Math.max(Math.ceil(dist * 3), 3);
+              } else if (dist <= 20) {
+                estimatedMinutes = Math.ceil(dist * 2.5);
+              } else if (dist <= 50) {
+                estimatedMinutes = Math.ceil(dist * 2);
+              } else {
+                estimatedMinutes = Math.ceil(dist * 1.5);
+              }
+              etaSource = 'haversine';
+            }
+          }
+        } catch (etaError) {
+          console.log('[OnMyWay] ETA calculation failed, using default:', etaError);
+        }
+      }
 
       // Generate tracking token
       const trackingToken = randomBytes(16).toString('hex');
@@ -15225,7 +15284,7 @@ Be specific about materials, colors, and features that would be included.`
         jobAddress: job.address || '',
         suburb,
         sentAt: new Date(),
-        estimatedMinutes: 20,
+        estimatedMinutes,
         status: 'on_the_way'
       });
 
@@ -15237,7 +15296,13 @@ Be specific about materials, colors, and features that would be included.`
         : `https://${req.headers.host}`;
       const trackingUrl = `${baseUrl}/track/${trackingToken}`;
 
-      const baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} is on the way to your job at ${job.address || 'your location'}. ETA approximately 15-20 minutes.`;
+      // Build smart ETA message based on calculated driving time
+      const etaText = estimatedMinutes <= 5
+        ? 'should be there in about 5 minutes'
+        : `ETA approximately ${estimatedMinutes} minutes`;
+      const distanceText = distanceKm !== null ? ` (${distanceKm} km away)` : '';
+
+      const baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} is on the way to your job at ${job.address || 'your location'}. ${etaText}${distanceText}.`;
       const message = `${baseMessage}\n\nTrack arrival: ${trackingUrl}`;
       
       // Send SMS via shared Twilio client (supports connector and env vars)
@@ -15252,14 +15317,17 @@ Be specific about materials, colors, and features that would be included.`
         'job_started',
         `On My Way - ${job.title || 'Job'}`,
         smsResult.success 
-          ? `On My Way SMS sent to ${client.firstName || client.email || 'client'} at ${client.phone}`
+          ? `On My Way SMS sent to ${client.firstName || client.email || 'client'} at ${client.phone} (ETA: ${estimatedMinutes} min via ${etaSource})`
           : `On My Way notification failed - SMS not configured`,
         'job',
         job.id,
         { 
           clientName: client.firstName, 
           clientPhone: client.phone,
-          smsSent: smsResult.success
+          smsSent: smsResult.success,
+          estimatedMinutes,
+          distanceKm,
+          etaSource
         }
       );
 
@@ -15273,7 +15341,10 @@ Be specific about materials, colors, and features that would be included.`
       res.json({ 
         success: true, 
         message: 'On My Way notification sent',
-        trackingUrl
+        trackingUrl,
+        estimatedMinutes,
+        distanceKm,
+        etaSource
       });
     } catch (error: any) {
       console.error("Error sending on-my-way notification:", error);
@@ -32704,6 +32775,71 @@ Respond with JSON in this format:
     } catch (error: any) {
       console.error('Error fetching client insights:', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  const smsMediaUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+  });
+
+  app.post("/api/sms/upload-media", requireAuth, smsMediaUpload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedMimes.includes(file.mimetype)) {
+        return res.status(400).json({ error: 'Only JPEG, PNG, GIF, and WebP images are supported for MMS' });
+      }
+
+      const uniqueId = randomBytes(8).toString('hex');
+      const ext = file.originalname?.split('.').pop() || 'jpg';
+      const objectKey = `sms-media/${userId}/${uniqueId}.${ext}`;
+
+      const objectStorageService = new ObjectStorageService();
+      await objectStorageService.uploadFile(objectKey, file.buffer, file.mimetype);
+
+      const PRIVATE_OBJECT_DIR = process.env.PRIVATE_OBJECT_DIR || '';
+      const fullPath = `${PRIVATE_OBJECT_DIR}/${objectKey}`;
+      const { bucketName, objectName } = parseObjectPath(fullPath);
+
+      const signRequest = {
+        bucket_name: bucketName,
+        object_name: objectName,
+        method: 'GET',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      };
+      const signResponse = await fetch(
+        'http://127.0.0.1:1106/object-storage/signed-object-url',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(signRequest),
+        }
+      );
+
+      let mediaUrl: string;
+      if (signResponse.ok) {
+        const { signed_url } = await signResponse.json();
+        mediaUrl = signed_url;
+      } else {
+        const bucket = objectStorageClient.bucket(bucketName);
+        const gcsFile = bucket.file(objectName);
+        const [signedUrl] = await gcsFile.getSignedUrl({
+          action: 'read',
+          expires: Date.now() + 24 * 60 * 60 * 1000,
+        });
+        mediaUrl = signedUrl;
+      }
+
+      res.json({ url: mediaUrl, fileName: file.originalname, mimeType: file.mimetype });
+    } catch (error: any) {
+      console.error('Error uploading SMS media:', error);
+      res.status(500).json({ error: error.message || 'Failed to upload media' });
     }
   });
   

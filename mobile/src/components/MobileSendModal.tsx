@@ -12,11 +12,14 @@ import {
   Platform,
   Alert,
   Linking,
+  Image,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, typography } from '../lib/design-tokens';
-import { api } from '../lib/api';
+import { api, API_URL } from '../lib/api';
 
 interface MobileSendModalProps {
   visible: boolean;
@@ -76,6 +79,8 @@ export function MobileSendModal({
   const [smsMessage, setSmsMessage] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isSendingSms, setIsSendingSms] = useState(false);
+  const [attachedPhoto, setAttachedPhoto] = useState<{ uri: string; fileName: string } | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const hasEmail = !!recipientEmail;
   const hasPhone = !!recipientPhone;
@@ -86,6 +91,7 @@ export function MobileSendModal({
       setEmailSubject(`Your ${typeLabel} from JobRunner`);
       setEmailBody(`Hi ${recipientName},\n\nPlease find your ${documentType} attached.\n\nIf you have any questions, please don't hesitate to reach out.\n\nCheers!`);
       setSmsMessage(SMS_TEMPLATES[documentType]?.[0]?.message || '');
+      setAttachedPhoto(null);
     }
   }, [visible, documentType, recipientName]);
 
@@ -143,6 +149,74 @@ export function MobileSendModal({
     );
   };
 
+  const handlePickPhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: false,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    setAttachedPhoto({
+      uri: asset.uri,
+      fileName: asset.fileName || `photo_${Date.now()}.jpg`,
+    });
+  };
+
+  const handleTakePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Camera permission is needed to take photos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.8,
+      allowsEditing: false,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    setAttachedPhoto({
+      uri: asset.uri,
+      fileName: asset.fileName || `photo_${Date.now()}.jpg`,
+    });
+  };
+
+  const uploadPhotoForMms = async (): Promise<string | null> => {
+    if (!attachedPhoto) return null;
+
+    setIsUploadingPhoto(true);
+    try {
+      const token = await api.getToken();
+      const uploadUrl = `${API_URL}/api/sms/upload-media`;
+      const uploadType = FileSystem.FileSystemUploadType?.MULTIPART ?? 1;
+      const uploadResult = await FileSystem.uploadAsync(uploadUrl, attachedPhoto.uri, {
+        httpMethod: 'POST',
+        uploadType,
+        fieldName: 'file',
+        mimeType: 'image/jpeg',
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (uploadResult.status !== 200) {
+        return null;
+      }
+
+      const { url } = JSON.parse(uploadResult.body);
+      return url;
+    } catch {
+      return null;
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
   const handleSendSms = async () => {
     if (!smsMessage.trim()) {
       Alert.alert('Missing Message', 'Please enter a message to send.');
@@ -151,9 +225,21 @@ export function MobileSendModal({
 
     setIsSendingSms(true);
     try {
+      let mediaUrls: string[] | undefined;
+      if (attachedPhoto) {
+        const mediaUrl = await uploadPhotoForMms();
+        if (!mediaUrl) {
+          Alert.alert('Upload Failed', 'Could not upload the photo. Try sending without the photo.');
+          setIsSendingSms(false);
+          return;
+        }
+        mediaUrls = [mediaUrl];
+      }
+
       const response = await api.post('/api/sms/send', {
         clientPhone: recipientPhone,
         message: smsMessage,
+        mediaUrls,
       });
 
       if (response.error) {
@@ -379,18 +465,46 @@ export function MobileSendModal({
                 </Text>
               </View>
 
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Photo Attachment (MMS)</Text>
+                {attachedPhoto ? (
+                  <View style={styles.photoPreviewRow}>
+                    <Image source={{ uri: attachedPhoto.uri }} style={styles.photoPreviewThumb} />
+                    <View style={{ flex: 1, marginLeft: spacing.md }}>
+                      <Text style={[styles.chipText, { color: colors.foreground }]} numberOfLines={1}>
+                        {attachedPhoto.fileName}
+                      </Text>
+                      <TouchableOpacity onPress={() => setAttachedPhoto(null)} style={{ marginTop: spacing.xs }}>
+                        <Text style={[styles.chipText, { color: colors.destructive || '#ef4444' }]}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.photoButtonsRow}>
+                    <TouchableOpacity style={styles.photoAttachButton} onPress={handlePickPhoto}>
+                      <Feather name="image" size={18} color={colors.primary} />
+                      <Text style={[styles.chipText, { color: colors.primary }]}>Gallery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.photoAttachButton} onPress={handleTakePhoto}>
+                      <Feather name="camera" size={18} color={colors.primary} />
+                      <Text style={[styles.chipText, { color: colors.primary }]}>Camera</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
               <TouchableOpacity
-                style={[styles.sendButton, styles.smsSendButton, (isSendingSms || !smsMessage.trim()) && styles.sendButtonDisabled]}
+                style={[styles.sendButton, styles.smsSendButton, (isSendingSms || isUploadingPhoto || !smsMessage.trim()) && styles.sendButtonDisabled]}
                 onPress={handleSendSms}
-                disabled={isSendingSms || !smsMessage.trim()}
+                disabled={isSendingSms || isUploadingPhoto || !smsMessage.trim()}
               >
-                {isSendingSms ? (
+                {(isSendingSms || isUploadingPhoto) ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <Feather name="send" size={18} color="#fff" />
                 )}
                 <Text style={[styles.sendButtonText, { color: '#fff' }]}>
-                  {isSendingSms ? 'Sending...' : 'Send SMS'}
+                  {isUploadingPhoto ? 'Uploading photo...' : isSendingSms ? 'Sending...' : attachedPhoto ? 'Send MMS' : 'Send SMS'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -593,6 +707,37 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     sendButtonText: {
       ...typography.button,
       color: colors.primaryForeground,
+    },
+    photoPreviewRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: spacing.md,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    photoPreviewThumb: {
+      width: 56,
+      height: 56,
+      borderRadius: radius.md,
+    },
+    photoButtonsRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    photoAttachButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.xs,
+      paddingVertical: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: colors.primary,
+      backgroundColor: isDark ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.05)',
     },
   });
 }

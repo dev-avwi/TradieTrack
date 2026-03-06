@@ -3745,6 +3745,64 @@ export default function JobDetailScreen() {
     }
   };
 
+  const handleSendPhotoSms = async () => {
+    if (!client?.phone) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: false,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    const uri = asset.uri;
+    const phone = client.phone.replace(/\s/g, '');
+    const message = `Hi${client.name ? ` ${client.name.split(' ')[0]}` : ''}, here's a photo update for ${job?.title || 'your job'}.`;
+
+    setIsSendingSms(true);
+    try {
+      const token = await api.getToken();
+      const uploadUrl = `${API_URL}/api/sms/upload-media`;
+      const uploadType = FileSystem.FileSystemUploadType?.MULTIPART ?? 1;
+      const uploadResult = await FileSystem.uploadAsync(uploadUrl, uri, {
+        httpMethod: 'POST',
+        uploadType,
+        fieldName: 'file',
+        mimeType: 'image/jpeg',
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (uploadResult.status !== 200) {
+        Alert.alert('Upload Failed', 'Could not upload the photo. Please try again.');
+        return;
+      }
+
+      const { url: mediaUrl } = JSON.parse(uploadResult.body);
+
+      const response = await api.post('/api/sms/send', {
+        clientPhone: phone,
+        message,
+        clientId: client.id,
+        jobId: job?.id,
+        mediaUrls: [mediaUrl],
+      });
+
+      if (response.error) {
+        fallbackToNativeSms(phone, message);
+      } else {
+        Alert.alert('MMS Sent', `Photo message sent to ${client.name || phone}`);
+      }
+    } catch {
+      Alert.alert('Error', 'Could not send photo message. Please try again.');
+    } finally {
+      setIsSendingSms(false);
+    }
+  };
+
   const handleEmail = () => {
     if (client?.email) {
       Linking.openURL(`mailto:${client.email}`);
@@ -4097,7 +4155,24 @@ export default function JobDetailScreen() {
     
     setIsSendingOnMyWay(true);
     try {
-      const response = await api.post(`/api/jobs/${job.id}/on-my-way`);
+      // Get current GPS location for real ETA calculation
+      let coords: { latitude: number; longitude: number } | null = null;
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+        }
+      } catch (locErr) {
+        console.log('[OnMyWay] Could not get GPS location:', locErr);
+      }
+
+      const response = await api.post(`/api/jobs/${job.id}/on-my-way`, {
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+      });
       
       if (response.data?.demoMode) {
         Alert.alert(
@@ -4108,7 +4183,10 @@ export default function JobDetailScreen() {
       } else if (response.error) {
         Alert.alert('Error', response.error);
       } else {
-        Alert.alert('Sent!', 'Client has been notified via SMS.');
+        const eta = response.data?.estimatedMinutes;
+        const dist = response.data?.distanceKm;
+        const etaInfo = eta ? `\nETA: ~${eta} min${dist ? ` (${dist} km)` : ''}` : '';
+        Alert.alert('Sent!', `Client has been notified via SMS.${etaInfo}`);
       }
     } catch (error: any) {
       const message = error.response?.data?.message || error.message || 'Failed to send notification. Please try again.';
@@ -4909,6 +4987,16 @@ export default function JobDetailScreen() {
               >
                 <Feather name="message-square" size={iconSizes.md} color={colors.scheduled} />
                 <Text style={[styles.clientActionText, { color: colors.scheduled }]}>SMS</Text>
+              </TouchableOpacity>
+            )}
+            {client.phone && (
+              <TouchableOpacity 
+                style={[styles.clientActionButton, { backgroundColor: `${colors.warning}15` }]}
+                onPress={handleSendPhotoSms}
+                activeOpacity={0.7}
+              >
+                <Feather name="image" size={iconSizes.md} color={colors.warning} />
+                <Text style={[styles.clientActionText, { color: colors.warning }]}>Photo</Text>
               </TouchableOpacity>
             )}
             {client.email && (
