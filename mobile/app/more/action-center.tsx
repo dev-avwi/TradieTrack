@@ -551,7 +551,7 @@ export default function ActionCenterScreen() {
             }
           >
             <View style={styles.header}>
-              <Text style={styles.pageTitle}>Action Center</Text>
+              <Text style={styles.pageTitle}>Action Centre</Text>
               <Text style={styles.pageSubtitle}>Items that need your attention</Text>
             </View>
 
