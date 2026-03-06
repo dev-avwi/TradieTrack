@@ -201,6 +201,9 @@ function ServicesInitializer() {
 
       try {
         await location.initialize();
+        // Sync geofences for all jobs that have geofencing enabled
+        const { locationTracking } = await import('../src/lib/location-tracking');
+        locationTracking.syncJobGeofences();
       } catch (error) {
         console.log('[App] Location init failed:', error);
       }

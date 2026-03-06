@@ -34,6 +34,7 @@ import * as Sharing from 'expo-sharing';
 import * as Location from 'expo-location';
 import * as Clipboard from 'expo-clipboard';
 import api, { API_URL } from '../../src/lib/api';
+import { locationTracking } from '../../src/lib/location-tracking';
 import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/store';
 import { Button } from '../../src/components/ui/Button';
 import { AIPhotoAnalysisModal } from '../../src/components/AIPhotoAnalysis';
@@ -7235,6 +7236,18 @@ export default function JobDetailScreen() {
                   // Optimistic UI update
                   setJob({ ...job, geofenceEnabled: value });
                   
+                  // Register/unregister the native geofence on device
+                  if (value && job.latitude && job.longitude) {
+                    await locationTracking.addJobGeofence(
+                      job.id,
+                      job.latitude,
+                      job.longitude,
+                      job.geofenceRadius || 100
+                    );
+                  } else if (!value) {
+                    await locationTracking.removeJobGeofence(job.id);
+                  }
+                  
                   if (!isOnline) {
                     await offlineStorage.updateJobOffline(job.id, { geofenceEnabled: value });
                     Alert.alert('Saved Offline', 'Settings will sync when online');
@@ -7248,6 +7261,12 @@ export default function JobDetailScreen() {
                       await offlineStorage.updateJobOffline(job.id, { geofenceEnabled: value });
                       Alert.alert('Saved Offline', 'Settings will sync when connection is restored');
                     } else {
+                      // Rollback the native geofence too
+                      if (value) {
+                        await locationTracking.removeJobGeofence(job.id);
+                      } else if (previousValue && job.latitude && job.longitude) {
+                        await locationTracking.addJobGeofence(job.id, job.latitude, job.longitude, job.geofenceRadius || 100);
+                      }
                       setJob({ ...job, geofenceEnabled: previousValue });
                       Alert.alert('Error', 'Failed to update geofence settings');
                     }
@@ -7277,6 +7296,12 @@ export default function JobDetailScreen() {
                       // Optimistic UI update
                       setJob({ ...job, geofenceRadius: value });
                       
+                      // Update the native geofence with new radius
+                      if (job.geofenceEnabled && job.latitude && job.longitude) {
+                        await locationTracking.removeJobGeofence(job.id);
+                        await locationTracking.addJobGeofence(job.id, job.latitude, job.longitude, value);
+                      }
+                      
                       if (!isOnline) {
                         await offlineStorage.updateJobOffline(job.id, { geofenceRadius: value });
                         Alert.alert('Saved Offline', 'Radius will sync when online');
@@ -7290,6 +7315,11 @@ export default function JobDetailScreen() {
                           await offlineStorage.updateJobOffline(job.id, { geofenceRadius: value });
                           Alert.alert('Saved Offline', 'Radius will sync when connection is restored');
                         } else {
+                          // Rollback native geofence
+                          if (job.geofenceEnabled && job.latitude && job.longitude) {
+                            await locationTracking.removeJobGeofence(job.id);
+                            await locationTracking.addJobGeofence(job.id, job.latitude, job.longitude, previousValue || 100);
+                          }
                           setJob({ ...job, geofenceRadius: previousValue });
                           setSliderRadius(previousValue || 100);
                           Alert.alert('Error', 'Failed to update radius');

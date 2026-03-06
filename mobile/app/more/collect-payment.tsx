@@ -2775,7 +2775,7 @@ export default function CollectScreen() {
           <PaymentMethodCard
             icon={<Feather name="grid" size={24} color={colors.primary} />}
             title="QR Code"
-            description="Customer scans and pays online"
+            description="Customer scans and pays online ~1.95% + $0.30"
             badge="Works Now"
             badgeVariant="success"
             onPress={handleQRCode}
@@ -2785,7 +2785,7 @@ export default function CollectScreen() {
           <PaymentMethodCard
             icon={<Feather name="credit-card" size={24} color={colors.primary} />}
             title="Payment Link"
-            description="Send via SMS or email"
+            description="Send via SMS or email ~1.95% + $0.30"
             badge="Works Now"
             badgeVariant="success"
             onPress={handlePaymentLink}
@@ -2795,7 +2795,7 @@ export default function CollectScreen() {
           <PaymentMethodCard
             icon={<Feather name="dollar-sign" size={24} color={colors.success} />}
             title="Record Payment"
-            description="Cash, EFTPOS, or bank transfer already received"
+            description="Cash, EFTPOS, or bank transfer - no processing fees"
             badge="No Fees"
             badgeVariant="success"
             onPress={handleOpenRecordPayment}

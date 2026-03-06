@@ -66,3 +66,8 @@ Core architectural and design decisions include:
 
 ### Navigation Architecture
 *   **Web ↔ Mobile Alignment**: The mobile React Native app's More menu (in `mobile/src/lib/navigation-config.ts`) mirrors the web sidebar (`client/src/lib/navigation-config.ts`) with ~17–20 main items. Removed items (Quotes, Invoices, Receipts, Recurring Jobs, Service Reminders, Calculators, Equipment, Form Builder, Manage Team, Dispatch Board, Team Groups, AI Assistant, Rebates) still exist as pages on the filesystem for deep-link navigation from within the app — they were only removed from the navigation menus. The Dispatch Board is accessible through Team Operations (matchPaths includes `/more/dispatch-board`).
+
+### Mobile GPS & Geofencing
+*   **Geofence Registration**: When a user toggles geofencing ON/OFF in job detail, `locationTracking.addJobGeofence()`/`removeJobGeofence()` are called to register/unregister the native device geofence. Radius changes also update the native geofence.
+*   **Auto-Sync on Startup**: `_layout.tsx` calls `locationTracking.syncJobGeofences()` after location initialization, which fetches all active jobs with `geofenceEnabled=true` and re-registers their geofences with the native location service.
+*   **Background Tracking**: Uses `expo-location` with Balanced accuracy (30s/50m intervals) and `expo-task-manager` for background tasks. Requires native build for full background support.

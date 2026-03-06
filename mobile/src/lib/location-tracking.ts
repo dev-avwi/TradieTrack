@@ -304,6 +304,50 @@ class LocationTrackingService {
     }
   }
 
+  /**
+   * Sync geofences for all assigned jobs that have geofencing enabled.
+   * Call on app startup after location is initialized.
+   */
+  async syncJobGeofences(): Promise<void> {
+    try {
+      const response = await api.get('/api/jobs?status=pending,scheduled,in_progress');
+      const jobs = response.data || response || [];
+      
+      if (!Array.isArray(jobs)) return;
+      
+      const geofenceJobs = jobs.filter((j: any) => 
+        j.geofenceEnabled && j.latitude && j.longitude
+      );
+
+      if (geofenceJobs.length === 0) return;
+
+      // Clear existing geofences and re-register
+      this.geofences = [];
+      
+      for (const job of geofenceJobs) {
+        this.geofences.push({
+          identifier: `job_${job.id}`,
+          latitude: Number(job.latitude),
+          longitude: Number(job.longitude),
+          radius: job.geofenceRadius || 100,
+          notifyOnEnter: true,
+          notifyOnExit: true,
+        });
+      }
+
+      if (this.geofences.length > 0) {
+        const isMonitoring = await Location.hasStartedGeofencingAsync(GEOFENCE_TASK_NAME);
+        if (isMonitoring) {
+          await Location.stopGeofencingAsync(GEOFENCE_TASK_NAME);
+        }
+        await Location.startGeofencingAsync(GEOFENCE_TASK_NAME, this.geofences);
+        console.log(`[Location] Synced ${this.geofences.length} job geofences`);
+      }
+    } catch (error) {
+      console.log('[Location] Geofence sync skipped:', (error as any)?.message || 'Not available');
+    }
+  }
+
   getStatus(): TrackingStatus {
     return this.status;
   }
