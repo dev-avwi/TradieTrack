@@ -1255,30 +1255,41 @@ export default function LandingPage() {
 }
 
 function PhoneMockup({ screenshot }: { screenshot: string }) {
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+    const show = () => { img.style.opacity = '1'; };
+    if (img.complete && img.naturalWidth > 0) {
+      show();
+      return;
+    }
+    img.addEventListener('load', show);
+    img.addEventListener('error', show);
+    return () => {
+      img.removeEventListener('load', show);
+      img.removeEventListener('error', show);
+    };
+  }, [screenshot]);
   
   return (
     <div className="relative w-[260px] sm:w-[280px] group">
-      {/* Phone Frame */}
       <div 
         className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-xl group-hover:shadow-2xl transition-shadow duration-500 will-change-auto"
         style={{ transform: 'translateZ(0)' }}
       >
-        {/* Dynamic Island */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-20 h-5 bg-black rounded-full z-20"></div>
         
-        {/* Screen */}
-        <div className="relative bg-white rounded-[2.25rem] overflow-hidden">
-          {/* Placeholder to prevent layout shift */}
-          <div 
-            className={`w-full aspect-[9/19.5] bg-gray-100 transition-opacity duration-300 ${imageLoaded ? 'opacity-0 absolute inset-0' : 'opacity-100'}`}
-          />
+        <div className="relative bg-white rounded-[2.25rem] overflow-hidden aspect-[9/19.5]">
           <img 
+            ref={imgRef}
             src={screenshot} 
             alt="JobRunner App"
-            className={`w-full h-auto transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-            onLoad={() => setImageLoaded(true)}
+            className="w-full h-full object-cover object-top transition-opacity duration-300"
+            style={{ opacity: 0 }}
             loading="eager"
+            decoding="sync"
           />
         </div>
       </div>
