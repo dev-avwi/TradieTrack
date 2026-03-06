@@ -63,3 +63,6 @@ Core architectural and design decisions include:
 *   **Accounting Integration**: Xero, MYOB AccountRight, QuickBooks Online
 *   **Calendar Integration**: Google Calendar
 *   **Weather API**: Open-Meteo
+
+### Navigation Architecture
+*   **Web ↔ Mobile Alignment**: The mobile React Native app's More menu (in `mobile/src/lib/navigation-config.ts`) mirrors the web sidebar (`client/src/lib/navigation-config.ts`) with ~17–20 main items. Removed items (Quotes, Invoices, Receipts, Recurring Jobs, Service Reminders, Calculators, Equipment, Form Builder, Manage Team, Dispatch Board, Team Groups, AI Assistant, Rebates) still exist as pages on the filesystem for deep-link navigation from within the app — they were only removed from the navigation menus. The Dispatch Board is accessible through Team Operations (matchPaths includes `/more/dispatch-board`).

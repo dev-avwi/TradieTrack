@@ -491,7 +491,7 @@ export default function MoreScreen() {
     actions.push({ icon: 'file-text', label: 'Invoice', route: '/more/invoices', bg: colors.successLight, fg: colors.success });
     actions.push({ icon: 'clock', label: 'Time', route: '/more/time-tracking', bg: colors.infoLight, fg: colors.info });
     if (isOwner || isManager) {
-      actions.push({ icon: 'layout', label: 'Dispatch', route: '/more/dispatch-board', bg: colors.warningLight, fg: colors.warning });
+      actions.push({ icon: 'activity', label: 'Team Ops', route: '/more/team-operations', bg: colors.warningLight, fg: colors.warning });
     }
     return actions;
   }, [isStaff, isOwner, isManager, colors]);
@@ -529,10 +529,9 @@ export default function MoreScreen() {
         {renderSectionHeader(categoryKey)}
         <View style={[styles.section, isFeatured && styles.featuredSection]}>
           {items.map((item, index) => {
-            const isDispatch = item.url === '/more/dispatch-board';
             const catMeta = categoryMeta[categoryKey];
             const categoryColor = catMeta?.colorKey || 'primary';
-            const effectiveColor = isDispatch ? 'info' : (item.color !== 'primary' ? item.color : categoryColor) || 'primary';
+            const effectiveColor = (item.color !== 'primary' ? item.color : categoryColor) || 'primary';
             const colorValues = getColorValues(effectiveColor, colors);
             const badgeColorValues = getBadgeColors(item.color, colors);
             const isLast = index === items.length - 1;
