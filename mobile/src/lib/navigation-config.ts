@@ -182,6 +182,18 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
+    title: "Expenses",
+    url: "/more/expenses",
+    icon: "trending-down",
+    description: "Track costs, scan receipts with AI",
+    color: "primary",
+    bgColor: "primary",
+    hideForStaff: true,
+    showInMore: true,
+    category: "money",
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  {
     title: "Receipts",
     url: "/more/receipts",
     icon: "check-square",

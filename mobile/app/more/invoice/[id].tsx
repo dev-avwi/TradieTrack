@@ -97,6 +97,7 @@ export default function InvoiceDetailScreen() {
   const [milestonePreset, setMilestonePreset] = useState<string>('custom');
   const [retentionPercentStr, setRetentionPercentStr] = useState('');
   const [isSavingMilestones, setIsSavingMilestones] = useState(false);
+  const [customMilestones, setCustomMilestones] = useState<{ label: string; percent: number; status: string }[]>([]);
   const [paymentRecords, setPaymentRecords] = useState<any[]>([]);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
   
@@ -1392,7 +1393,12 @@ ${businessName}`;
     
     setIsSavingMilestones(true);
     try {
-      const milestones = PRESET_MAP[milestonePreset] || (invoice.paymentMilestones as any[]) || [];
+      let milestones: { label: string; percent: number; status?: string }[];
+      if (milestonePreset === 'custom') {
+        milestones = customMilestones.filter(m => m.label.trim() && m.percent > 0);
+      } else {
+        milestones = PRESET_MAP[milestonePreset] || [];
+      }
       const retPct = retentionPercentStr ? parseFloat(retentionPercentStr) : undefined;
       
       const authToken = await api.getToken();
@@ -1423,6 +1429,26 @@ ${businessName}`;
       setIsSavingMilestones(false);
     }
   };
+
+  const addCustomMilestone = () => {
+    setCustomMilestones(prev => [...prev, { label: '', percent: 0, status: 'pending' }]);
+  };
+
+  const updateCustomMilestone = (index: number, field: string, value: string | number) => {
+    setCustomMilestones(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const removeCustomMilestone = (index: number) => {
+    setCustomMilestones(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const customMilestoneTotalPercent = useMemo(() => {
+    return customMilestones.reduce((sum, m) => sum + (m.percent || 0), 0);
+  }, [customMilestones]);
 
   const handleCollectPayment = () => {
     router.push(`/(tabs)/collect?invoiceId=${id}`);
@@ -2609,7 +2635,17 @@ ${businessName}`;
                     }}
                     onPress={() => {
                       setRetentionPercentStr(invoice.retentionPercent || '');
-                      setMilestonePreset('custom');
+                      if (invoice.paymentMilestones && Array.isArray(invoice.paymentMilestones) && invoice.paymentMilestones.length > 0) {
+                        setCustomMilestones((invoice.paymentMilestones as any[]).map((m: any) => ({
+                          label: m.label || '',
+                          percent: m.percent || 0,
+                          status: m.status || 'pending',
+                        })));
+                        setMilestonePreset('custom');
+                      } else {
+                        setCustomMilestones([]);
+                        setMilestonePreset('custom');
+                      }
                       setShowMilestonesModal(true);
                     }}
                   >
@@ -2629,7 +2665,13 @@ ${businessName}`;
                       const cumulativeTarget = (invoice.paymentMilestones as any[])
                         .slice(0, idx + 1)
                         .reduce((sum: number, m: any) => sum + (invoice.total * (m.percent || 0)) / 100, 0);
-                      const isMilestonePaid = amountPaidSoFar >= cumulativeTarget;
+                      const milestoneStatus = milestone.status || (amountPaidSoFar >= cumulativeTarget ? 'paid' : 'pending');
+                      const statusConfig: Record<string, { bg: string; fg: string; icon: string; label: string }> = {
+                        pending: { bg: colors.muted, fg: colors.mutedForeground, icon: 'clock', label: 'Pending' },
+                        invoiced: { bg: colors.infoLight, fg: colors.info, icon: 'file-text', label: 'Invoiced' },
+                        paid: { bg: colors.success, fg: colors.white, icon: 'check', label: 'Paid' },
+                      };
+                      const sc = statusConfig[milestoneStatus] || statusConfig.pending;
                       
                       return (
                         <View key={idx} style={{
@@ -2638,7 +2680,7 @@ ${businessName}`;
                           justifyContent: 'space-between',
                           paddingVertical: 10,
                           paddingHorizontal: 12,
-                          backgroundColor: isMilestonePaid ? colors.successLight : colors.background,
+                          backgroundColor: milestoneStatus === 'paid' ? colors.successLight : milestoneStatus === 'invoiced' ? colors.infoLight : colors.background,
                           borderRadius: 8,
                           marginBottom: 6,
                           gap: 8,
@@ -2650,10 +2692,12 @@ ${businessName}`;
                               borderRadius: 12,
                               alignItems: 'center',
                               justifyContent: 'center',
-                              backgroundColor: isMilestonePaid ? colors.success : colors.muted,
+                              backgroundColor: milestoneStatus === 'paid' ? colors.success : milestoneStatus === 'invoiced' ? colors.info : colors.muted,
                             }}>
-                              {isMilestonePaid ? (
+                              {milestoneStatus === 'paid' ? (
                                 <Feather name="check" size={14} color={colors.white} />
+                              ) : milestoneStatus === 'invoiced' ? (
+                                <Feather name="file-text" size={12} color={colors.white} />
                               ) : (
                                 <Text style={{ fontSize: 12, fontWeight: '600', color: colors.mutedForeground }}>{idx + 1}</Text>
                               )}
@@ -2667,16 +2711,41 @@ ${businessName}`;
                               paddingHorizontal: 8,
                               paddingVertical: 3,
                               borderRadius: 10,
-                              backgroundColor: isMilestonePaid ? colors.success : colors.muted,
+                              backgroundColor: sc.bg,
                             }}>
-                              <Text style={{ fontSize: 11, fontWeight: '600', color: isMilestonePaid ? colors.white : colors.mutedForeground }}>
-                                {isMilestonePaid ? 'Paid' : 'Pending'}
+                              <Text style={{ fontSize: 11, fontWeight: '600', color: sc.fg }}>
+                                {sc.label}
                               </Text>
                             </View>
                           </View>
                         </View>
                       );
                     })}
+                    
+                    {/* Milestone progress bar */}
+                    <View style={{ marginTop: 8, paddingHorizontal: 4 }}>
+                      <View style={{ height: 6, backgroundColor: colors.muted, borderRadius: 3, overflow: 'hidden', flexDirection: 'row' }}>
+                        {(invoice.paymentMilestones as any[]).map((milestone: any, idx: number) => {
+                          const milestoneStatus = milestone.status || 'pending';
+                          const barColor = milestoneStatus === 'paid' ? colors.success : milestoneStatus === 'invoiced' ? colors.info : 'transparent';
+                          return (
+                            <View key={idx} style={{ flex: milestone.percent || 0, backgroundColor: barColor }} />
+                          );
+                        })}
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                        <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                          {(invoice.paymentMilestones as any[]).filter((m: any) => m.status === 'paid').length} of {(invoice.paymentMilestones as any[]).length} milestones paid
+                        </Text>
+                        <Text style={{ fontSize: 11, fontWeight: '500', color: colors.foreground }}>
+                          {formatCurrency(
+                            (invoice.paymentMilestones as any[])
+                              .filter((m: any) => m.status === 'paid')
+                              .reduce((sum: number, m: any) => sum + (invoice.total * (m.percent || 0)) / 100, 0)
+                          )} / {formatCurrency(invoice.total)}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
                 )}
               </View>
@@ -3284,7 +3353,7 @@ ${businessName}`;
               Define progress payment stages and retention for construction/trade invoices
             </Text>
 
-            <ScrollView style={styles.paymentMethodScrollContent}>
+            <ScrollView style={styles.paymentMethodScrollContent} keyboardShouldPersistTaps="handled">
               <Text style={styles.paymentMethodSectionTitle}>Milestone Preset</Text>
               <View style={styles.paymentMethodOptions}>
                 {MILESTONE_PRESETS.map((preset) => (
@@ -3294,7 +3363,12 @@ ${businessName}`;
                       styles.paymentMethodOption,
                       milestonePreset === preset.id && styles.paymentMethodOptionSelected,
                     ]}
-                    onPress={() => setMilestonePreset(preset.id)}
+                    onPress={() => {
+                      setMilestonePreset(preset.id);
+                      if (preset.id !== 'custom' && PRESET_MAP[preset.id]) {
+                        setCustomMilestones(PRESET_MAP[preset.id].map(m => ({ ...m, status: 'pending' })));
+                      }
+                    }}
                   >
                     <View style={[
                       styles.paymentMethodIcon,
@@ -3321,22 +3395,159 @@ ${businessName}`;
 
               {milestonePreset !== 'custom' && PRESET_MAP[milestonePreset] && (
                 <View style={{ marginTop: 12, padding: 12, backgroundColor: colors.background, borderRadius: 10 }}>
-                  {PRESET_MAP[milestonePreset].map((m, i) => (
-                    <View key={i} style={{ 
-                      flexDirection: 'row', 
-                      justifyContent: 'space-between', 
-                      paddingVertical: 6,
-                      borderBottomWidth: i < PRESET_MAP[milestonePreset].length - 1 ? 1 : 0,
-                      borderBottomColor: colors.border,
-                    }}>
-                      <Text style={{ fontSize: 14, color: colors.foreground }}>{m.label}</Text>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{m.percent}%</Text>
-                    </View>
-                  ))}
+                  {PRESET_MAP[milestonePreset].map((m, i) => {
+                    const amount = (invoice?.total || 0) * m.percent / 100;
+                    return (
+                      <View key={i} style={{ 
+                        flexDirection: 'row', 
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        paddingVertical: 8,
+                        borderBottomWidth: i < PRESET_MAP[milestonePreset].length - 1 ? 1 : 0,
+                        borderBottomColor: colors.border,
+                      }}>
+                        <Text style={{ fontSize: 14, color: colors.foreground, flex: 1 }}>{m.label}</Text>
+                        <Text style={{ fontSize: 13, color: colors.mutedForeground, marginRight: 8 }}>{formatCurrency(amount)}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{m.percent}%</Text>
+                      </View>
+                    );
+                  })}
                 </View>
               )}
 
-              <Text style={styles.paymentMethodSectionTitle}>Retention Percentage</Text>
+              {milestonePreset === 'custom' && (
+                <>
+                  <Text style={[styles.paymentMethodSectionTitle, { marginTop: 16 }]}>Custom Milestones</Text>
+                  {customMilestones.map((milestone, idx) => {
+                    const amount = (invoice?.total || 0) * (milestone.percent || 0) / 100;
+                    return (
+                      <View key={idx} style={{
+                        backgroundColor: colors.background,
+                        borderRadius: 10,
+                        padding: 12,
+                        marginBottom: 8,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.mutedForeground }}>Stage {idx + 1}</Text>
+                          <TouchableOpacity onPress={() => removeCustomMilestone(idx)}>
+                            <Feather name="x" size={18} color={colors.destructive} />
+                          </TouchableOpacity>
+                        </View>
+                        <TextInput
+                          style={[styles.paymentReferenceInput, { marginBottom: 8 }]}
+                          placeholder="Milestone name (e.g. Deposit, Slab Complete)"
+                          placeholderTextColor={colors.mutedForeground}
+                          value={milestone.label}
+                          onChangeText={(text) => updateCustomMilestone(idx, 'label', text)}
+                        />
+                        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 11, color: colors.mutedForeground, marginBottom: 4 }}>Percentage</Text>
+                            <TextInput
+                              style={styles.paymentReferenceInput}
+                              placeholder="e.g. 25"
+                              placeholderTextColor={colors.mutedForeground}
+                              value={milestone.percent > 0 ? String(milestone.percent) : ''}
+                              onChangeText={(text) => updateCustomMilestone(idx, 'percent', parseFloat(text) || 0)}
+                              keyboardType="decimal-pad"
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 11, color: colors.mutedForeground, marginBottom: 4 }}>Amount</Text>
+                            <View style={[styles.paymentReferenceInput, { justifyContent: 'center' }]}>
+                              <Text style={{ fontSize: 14, color: colors.foreground }}>{formatCurrency(amount)}</Text>
+                            </View>
+                          </View>
+                        </View>
+                        <View>
+                          <Text style={{ fontSize: 11, color: colors.mutedForeground, marginBottom: 4 }}>Status</Text>
+                          <View style={{ flexDirection: 'row', gap: 6 }}>
+                            {(['pending', 'invoiced', 'paid'] as const).map((s) => {
+                              const isActive = milestone.status === s;
+                              const statusColors: Record<string, { bg: string; fg: string }> = {
+                                pending: { bg: colors.muted, fg: colors.mutedForeground },
+                                invoiced: { bg: colors.infoLight, fg: colors.info },
+                                paid: { bg: colors.successLight, fg: colors.success },
+                              };
+                              return (
+                                <TouchableOpacity
+                                  key={s}
+                                  onPress={() => updateCustomMilestone(idx, 'status', s)}
+                                  style={{
+                                    flex: 1,
+                                    paddingVertical: 8,
+                                    borderRadius: 8,
+                                    alignItems: 'center',
+                                    backgroundColor: isActive ? statusColors[s].bg : colors.background,
+                                    borderWidth: 1,
+                                    borderColor: isActive ? statusColors[s].fg : colors.border,
+                                  }}
+                                >
+                                  <Text style={{
+                                    fontSize: 12,
+                                    fontWeight: isActive ? '600' : '400',
+                                    color: isActive ? statusColors[s].fg : colors.mutedForeground,
+                                    textTransform: 'capitalize',
+                                  }}>
+                                    {s}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+                  
+                  <TouchableOpacity
+                    onPress={addCustomMilestone}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      paddingVertical: 12,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: colors.primary,
+                      borderStyle: 'dashed',
+                      marginTop: 4,
+                    }}
+                  >
+                    <Feather name="plus" size={16} color={colors.primary} />
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: colors.primary }}>Add Milestone</Text>
+                  </TouchableOpacity>
+
+                  {customMilestones.length > 0 && (
+                    <View style={{
+                      marginTop: 12,
+                      padding: 10,
+                      borderRadius: 8,
+                      backgroundColor: customMilestoneTotalPercent === 100 ? colors.successLight : customMilestoneTotalPercent > 100 ? colors.destructiveLight : colors.warningLight,
+                    }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 13, color: colors.foreground }}>Total Allocation</Text>
+                        <Text style={{ 
+                          fontSize: 14, fontWeight: '600', 
+                          color: customMilestoneTotalPercent === 100 ? colors.success : customMilestoneTotalPercent > 100 ? colors.destructive : colors.warning,
+                        }}>
+                          {customMilestoneTotalPercent}%
+                        </Text>
+                      </View>
+                      {customMilestoneTotalPercent !== 100 && (
+                        <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 4 }}>
+                          {customMilestoneTotalPercent > 100 ? 'Total exceeds 100%' : `${100 - customMilestoneTotalPercent}% remaining`}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                </>
+              )}
+
+              <Text style={[styles.paymentMethodSectionTitle, { marginTop: 16 }]}>Retention Percentage</Text>
               <TextInput
                 style={styles.paymentReferenceInput}
                 placeholder="e.g. 5"
@@ -3396,6 +3607,7 @@ ${businessName}`;
                   setShowMilestonesModal(false);
                   setMilestonePreset('custom');
                   setRetentionPercentStr('');
+                  setCustomMilestones([]);
                 }}
               >
                 <Text style={styles.paymentMethodCancelText}>Cancel</Text>

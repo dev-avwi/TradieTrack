@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import Svg, { Rect, Path, Line, Text as SvgText, G } from 'react-native-svg';
 import { useReportsStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
+import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -683,6 +685,178 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
 });
 
+interface StripePayment {
+  id: string;
+  amount: number;
+  fee: number;
+  net: number;
+  status: string;
+  paid: boolean;
+  description: string;
+  customer: string | null;
+  paymentMethod: string;
+  created: string;
+}
+
+interface StripePayout {
+  id: string;
+  amount: number;
+  status: string;
+  arrivalDate: string | null;
+  created: string;
+  method: string;
+}
+
+interface StripePaymentsReport {
+  available: boolean;
+  message?: string;
+  balance: { available: number; pending: number; currency: string } | null;
+  payments: StripePayment[];
+  payouts: StripePayout[];
+  totals?: {
+    totalRevenue: number;
+    totalFees: number;
+    totalNet: number;
+    paymentCount: number;
+  };
+}
+
+function SVGBarChart({ data, colors, width }: { data: { label: string; value: number; amount: string }[]; colors: any; width: number }) {
+  if (data.length === 0) return null;
+  const chartWidth = width - 40;
+  const chartHeight = 160;
+  const barWidth = Math.min(28, (chartWidth - 20) / data.length - 8);
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+  const padding = { top: 10, bottom: 40, left: 10, right: 10 };
+  const plotHeight = chartHeight - padding.top - padding.bottom;
+  const plotWidth = chartWidth - padding.left - padding.right;
+  const barSpacing = plotWidth / data.length;
+
+  return (
+    <Svg width={chartWidth} height={chartHeight}>
+      {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => (
+        <Line
+          key={i}
+          x1={padding.left}
+          y1={padding.top + plotHeight * (1 - pct)}
+          x2={chartWidth - padding.right}
+          y2={padding.top + plotHeight * (1 - pct)}
+          stroke={colors.border}
+          strokeWidth={0.5}
+          strokeDasharray="4,4"
+        />
+      ))}
+      {data.map((d, i) => {
+        const barHeight = maxVal > 0 ? (d.value / maxVal) * plotHeight : 0;
+        const x = padding.left + barSpacing * i + (barSpacing - barWidth) / 2;
+        const y = padding.top + plotHeight - barHeight;
+        return (
+          <G key={i}>
+            <Rect
+              x={x}
+              y={padding.top}
+              width={barWidth}
+              height={plotHeight}
+              rx={4}
+              fill={colors.muted}
+              opacity={0.3}
+            />
+            <Rect
+              x={x}
+              y={y}
+              width={barWidth}
+              height={Math.max(barHeight, 2)}
+              rx={4}
+              fill={colors.primary}
+            />
+            <SvgText
+              x={x + barWidth / 2}
+              y={chartHeight - padding.bottom + 14}
+              textAnchor="middle"
+              fontSize={10}
+              fill={colors.mutedForeground}
+            >
+              {d.label}
+            </SvgText>
+            <SvgText
+              x={x + barWidth / 2}
+              y={chartHeight - padding.bottom + 26}
+              textAnchor="middle"
+              fontSize={9}
+              fontWeight="500"
+              fill={colors.foreground}
+            >
+              {d.amount}
+            </SvgText>
+          </G>
+        );
+      })}
+    </Svg>
+  );
+}
+
+function SVGDonutChart({ segments, colors, size }: { segments: { label: string; value: number; color: string }[]; colors: any; size: number }) {
+  const total = segments.reduce((s, seg) => s + seg.value, 0);
+  if (total === 0) return null;
+  const cx = size / 2;
+  const cy = size / 2;
+  const outerR = size / 2 - 4;
+  const innerR = outerR * 0.6;
+  let startAngle = -90;
+
+  const polarToCartesian = (cx: number, cy: number, r: number, angle: number) => {
+    const rad = (angle * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+
+  const arcs = segments.map((seg) => {
+    const pct = seg.value / total;
+    const sweepAngle = pct * 360;
+    const endAngle = startAngle + sweepAngle;
+    const largeArc = sweepAngle > 180 ? 1 : 0;
+    const s1 = polarToCartesian(cx, cy, outerR, startAngle);
+    const e1 = polarToCartesian(cx, cy, outerR, endAngle);
+    const s2 = polarToCartesian(cx, cy, innerR, endAngle);
+    const e2 = polarToCartesian(cx, cy, innerR, startAngle);
+    const d = [
+      `M ${s1.x} ${s1.y}`,
+      `A ${outerR} ${outerR} 0 ${largeArc} 1 ${e1.x} ${e1.y}`,
+      `L ${s2.x} ${s2.y}`,
+      `A ${innerR} ${innerR} 0 ${largeArc} 0 ${e2.x} ${e2.y}`,
+      'Z',
+    ].join(' ');
+    startAngle = endAngle;
+    return { d, color: seg.color, label: seg.label, pct };
+  });
+
+  return (
+    <Svg width={size} height={size}>
+      {arcs.map((arc, i) => (
+        <Path key={i} d={arc.d} fill={arc.color} />
+      ))}
+      <SvgText
+        x={cx}
+        y={cy - 4}
+        textAnchor="middle"
+        fontSize={16}
+        fontWeight="700"
+        fill={colors.foreground}
+      >
+        {total}
+      </SvgText>
+      <SvgText
+        x={cx}
+        y={cy + 12}
+        textAnchor="middle"
+        fontSize={10}
+        fill={colors.mutedForeground}
+      >
+        total
+      </SvgText>
+    </Svg>
+  );
+}
+
 export default function ReportsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -704,10 +878,30 @@ export default function ReportsScreen() {
   
   const [showPeriodPicker, setShowPeriodPicker] = useState(false);
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>('overview');
+  const [stripeData, setStripeData] = useState<StripePaymentsReport | null>(null);
+  const [stripeLoading, setStripeLoading] = useState(false);
+
+  const fetchStripeData = useCallback(async () => {
+    setStripeLoading(true);
+    try {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), 0, 1);
+      const response = await api.get<StripePaymentsReport>(
+        `/api/reports/stripe-payments?startDate=${start.toISOString()}&endDate=${now.toISOString()}`
+      );
+      if (response.data) {
+        setStripeData(response.data);
+      }
+    } catch (e) {
+      // Stripe not connected or error - ignore
+    } finally {
+      setStripeLoading(false);
+    }
+  }, []);
 
   const refreshData = useCallback(async () => {
-    await fetchAllReports();
-  }, [fetchAllReports]);
+    await Promise.all([fetchAllReports(), fetchStripeData()]);
+  }, [fetchAllReports, fetchStripeData]);
 
   useEffect(() => {
     refreshData();
@@ -1076,6 +1270,52 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                 </View>
               </View>
 
+              {summary.jobs.total > 0 && (
+                <View style={styles.chartSection}>
+                  <View style={styles.chartHeader}>
+                    <Feather name="pie-chart" size={16} color={colors.foreground} />
+                    <Text style={styles.chartTitle}>Job Completion Rate</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                    <SVGDonutChart
+                      size={120}
+                      colors={colors}
+                      segments={[
+                        { label: 'Completed', value: summary.jobs.completed, color: colors.success },
+                        { label: 'In Progress', value: summary.jobs.inProgress, color: colors.info },
+                        { label: 'Other', value: Math.max(0, summary.jobs.total - summary.jobs.completed - summary.jobs.inProgress), color: colors.muted },
+                      ].filter(s => s.value > 0)}
+                    />
+                    <View style={{ flex: 1, gap: spacing.sm }}>
+                      {[
+                        { label: 'Completed', value: summary.jobs.completed, color: colors.success },
+                        { label: 'In Progress', value: summary.jobs.inProgress, color: colors.info },
+                        { label: 'Other', value: Math.max(0, summary.jobs.total - summary.jobs.completed - summary.jobs.inProgress), color: colors.muted },
+                      ].filter(s => s.value > 0).map((seg, i) => (
+                        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: seg.color }} />
+                          <Text style={{ flex: 1, fontSize: 13, color: colors.foreground }}>{seg.label}</Text>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>{seg.value}</Text>
+                          <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                            ({summary.jobs.total > 0 ? ((seg.value / summary.jobs.total) * 100).toFixed(0) : 0}%)
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {monthlyData.length > 0 && (
+                <View style={styles.chartSection}>
+                  <View style={styles.chartHeader}>
+                    <Feather name="bar-chart-2" size={16} color={colors.foreground} />
+                    <Text style={styles.chartTitle}>Revenue Trend</Text>
+                  </View>
+                  <SVGBarChart data={monthlyData} colors={colors} width={SCREEN_WIDTH - pageShell.paddingHorizontal * 2} />
+                </View>
+              )}
+
               {summary.jobs.total === 0 && summary.quotes.total === 0 && summary.invoices.total === 0 && (
                 <View style={styles.emptyCard}>
                   <View style={styles.emptyIconContainer}>
@@ -1112,6 +1352,58 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                 </View>
               </View>
 
+              {stripeData?.available && stripeData.payouts.length > 0 && (
+                <>
+                  <Text style={styles.sectionTitle}>STRIPE PAYOUTS</Text>
+                  {stripeData.balance && (
+                    <View style={styles.statsRow}>
+                      <View style={styles.statCard}>
+                        <Text style={styles.statTitle}>AVAILABLE</Text>
+                        <Text style={[styles.statValue, { color: colors.success }]}>{formatCurrency(stripeData.balance.available)}</Text>
+                      </View>
+                      <View style={styles.statCard}>
+                        <Text style={styles.statTitle}>PENDING</Text>
+                        <Text style={[styles.statValue, { color: colors.warning }]}>{formatCurrency(stripeData.balance.pending)}</Text>
+                      </View>
+                    </View>
+                  )}
+                  {stripeData.payouts.slice(0, 5).map((payout) => (
+                    <View key={payout.id} style={styles.clientCard}>
+                      <View style={[styles.clientRank, { 
+                        backgroundColor: payout.status === 'paid' ? colors.successLight : colors.warningLight 
+                      }]}>
+                        <Feather 
+                          name={payout.status === 'paid' ? 'check' : 'clock'} 
+                          size={14} 
+                          color={payout.status === 'paid' ? colors.success : colors.warning} 
+                        />
+                      </View>
+                      <View style={styles.clientInfo}>
+                        <Text style={styles.clientName}>{formatCurrency(payout.amount)}</Text>
+                        <Text style={styles.clientMeta}>
+                          {payout.arrivalDate 
+                            ? new Date(payout.arrivalDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : new Date(payout.created).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+                          }
+                        </Text>
+                      </View>
+                      <View style={{ 
+                        paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+                        backgroundColor: payout.status === 'paid' ? colors.successLight : colors.warningLight,
+                      }}>
+                        <Text style={{ 
+                          fontSize: 11, fontWeight: '600', 
+                          color: payout.status === 'paid' ? colors.success : colors.warning,
+                          textTransform: 'capitalize',
+                        }}>
+                          {payout.status}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+
               <View style={styles.insightsCard}>
                 <View style={styles.insightsIconContainer}>
                   <Feather name="zap" size={40} color={colors.primary} />
@@ -1133,16 +1425,8 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                     <Text style={styles.chartTitle}>Revenue Overview</Text>
                     <Text style={styles.chartSubtitle}>{revenueReport.year}</Text>
                   </View>
-                  <View style={styles.chartContainer}>
-                    {monthlyData.map((data, index) => (
-                      <View key={index} style={styles.chartBarContainer}>
-                        <View style={styles.chartBarWrapper}>
-                          <View style={[styles.chartBar, { height: `${maxChartValue > 0 ? (data.value / maxChartValue) * 100 : 0}%` }]} />
-                        </View>
-                        <Text style={styles.chartBarLabel}>{data.label}</Text>
-                        <Text style={styles.chartBarAmount}>{data.amount}</Text>
-                      </View>
-                    ))}
+                  <View style={{ alignItems: 'center' }}>
+                    <SVGBarChart data={monthlyData} colors={colors} width={SCREEN_WIDTH - pageShell.paddingHorizontal * 2} />
                   </View>
                   <View style={styles.chartYearTotal}>
                     <Text style={styles.chartYearLabel}>Year Total</Text>

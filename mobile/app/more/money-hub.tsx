@@ -793,8 +793,10 @@ export default function MoneyHubScreen() {
         <Text style={styles.sectionTitle}>Expenses Summary</Text>
       </View>
       <View style={styles.sectionContent}>
-        <View 
+        <TouchableOpacity 
           style={styles.expenseSummaryCard}
+          onPress={() => router.push('/more/expenses')}
+          activeOpacity={0.7}
         >
           <View style={styles.expenseSummaryRow}>
             <View>
@@ -808,8 +810,9 @@ export default function MoneyHubScreen() {
           </View>
           <View style={styles.expenseSummaryFooter}>
             <Text style={styles.expenseSummaryCount}>{expenseSummary.expenseCount} expenses recorded</Text>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
           </View>
-        </View>
+        </TouchableOpacity>
       </View>
     </View>
   );

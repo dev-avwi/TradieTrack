@@ -29,6 +29,140 @@ import { TrustBanner } from '../../src/components/ui/TrustBanner';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import UsageLimitBanner from '../../src/components/UsageLimitBanner';
 
+interface WeatherData {
+  temperature: number;
+  apparentTemperature: number;
+  weatherCode: number;
+  humidity: number;
+  windSpeed: number;
+  precipitation: number;
+  isDay: boolean;
+  daily?: {
+    temperatureMax: number[];
+    temperatureMin: number[];
+    weatherCode: number[];
+    precipitationProbability: number[];
+  };
+}
+
+const WEATHER_CODES: Record<number, { label: string; icon: keyof typeof Feather.glyphMap }> = {
+  0: { label: "Clear", icon: "sun" },
+  1: { label: "Mainly Clear", icon: "sun" },
+  2: { label: "Partly Cloudy", icon: "cloud" },
+  3: { label: "Overcast", icon: "cloud" },
+  45: { label: "Foggy", icon: "cloud" },
+  48: { label: "Foggy", icon: "cloud" },
+  51: { label: "Light Drizzle", icon: "cloud-drizzle" },
+  53: { label: "Drizzle", icon: "cloud-drizzle" },
+  55: { label: "Heavy Drizzle", icon: "cloud-drizzle" },
+  56: { label: "Freezing Drizzle", icon: "cloud-drizzle" },
+  57: { label: "Freezing Drizzle", icon: "cloud-drizzle" },
+  61: { label: "Light Rain", icon: "cloud-rain" },
+  63: { label: "Rain", icon: "cloud-rain" },
+  65: { label: "Heavy Rain", icon: "cloud-rain" },
+  66: { label: "Freezing Rain", icon: "cloud-rain" },
+  67: { label: "Freezing Rain", icon: "cloud-rain" },
+  71: { label: "Light Snow", icon: "cloud-snow" },
+  73: { label: "Snow", icon: "cloud-snow" },
+  75: { label: "Heavy Snow", icon: "cloud-snow" },
+  77: { label: "Snow Grains", icon: "cloud-snow" },
+  80: { label: "Light Showers", icon: "cloud-rain" },
+  81: { label: "Showers", icon: "cloud-rain" },
+  82: { label: "Heavy Showers", icon: "cloud-rain" },
+  85: { label: "Snow Showers", icon: "cloud-snow" },
+  86: { label: "Heavy Snow Showers", icon: "cloud-snow" },
+  95: { label: "Thunderstorm", icon: "cloud-lightning" },
+  96: { label: "Thunderstorm", icon: "cloud-lightning" },
+  99: { label: "Severe Thunderstorm", icon: "cloud-lightning" },
+};
+
+function getWeatherInfo(code: number) {
+  return WEATHER_CODES[code] || { label: "Unknown", icon: "cloud" as keyof typeof Feather.glyphMap };
+}
+
+function WeatherWidget() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadWeather();
+  }, []);
+
+  const loadWeather = async () => {
+    try {
+      const response = await api.get<WeatherData>('/api/weather');
+      if (response.data) {
+        setWeather(response.data);
+      }
+    } catch (error) {
+      console.log('Error loading weather:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.weatherWidget}>
+        <ActivityIndicator size="small" color={colors.mutedForeground} />
+      </View>
+    );
+  }
+
+  if (!weather) return null;
+
+  const info = getWeatherInfo(weather.weatherCode);
+  const rainChance = weather.daily?.precipitationProbability?.[0] ?? 0;
+  const showRainWarning = weather.precipitation > 0 || weather.weatherCode >= 51 || rainChance > 50;
+
+  return (
+    <View style={styles.weatherWidget}>
+      <View style={styles.weatherMainRow}>
+        <View style={[styles.weatherIconContainer, { backgroundColor: weather.isDay ? colorWithOpacity(colors.warning, 0.12) : colorWithOpacity(colors.info, 0.12) }]}>
+          <Feather
+            name={info.icon}
+            size={24}
+            color={weather.isDay ? colors.warning : colors.info}
+          />
+        </View>
+        <View style={styles.weatherTextContent}>
+          <View style={styles.weatherTempRow}>
+            <Text style={styles.weatherTemp}>{Math.round(weather.temperature)}</Text>
+            <Text style={styles.weatherDegree}>°C</Text>
+            <Text style={styles.weatherLabel}>{info.label}</Text>
+          </View>
+          <View style={styles.weatherDetailsRow}>
+            <View style={styles.weatherDetailItem}>
+              <Feather name="thermometer" size={12} color={colors.mutedForeground} />
+              <Text style={styles.weatherDetailText}>Feels {Math.round(weather.apparentTemperature)}°</Text>
+            </View>
+            <View style={styles.weatherDetailItem}>
+              <Feather name="droplet" size={12} color={colors.mutedForeground} />
+              <Text style={styles.weatherDetailText}>{weather.humidity}%</Text>
+            </View>
+            <View style={styles.weatherDetailItem}>
+              <Feather name="wind" size={12} color={colors.mutedForeground} />
+              <Text style={styles.weatherDetailText}>{Math.round(weather.windSpeed)} km/h</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+      {showRainWarning && (
+        <View style={[styles.weatherRainWarning, { backgroundColor: colorWithOpacity(colors.info, 0.08) }]}>
+          <Feather name="cloud-rain" size={14} color={colors.info} />
+          <Text style={[styles.weatherRainText, { color: colors.info }]}>
+            {weather.precipitation > 0
+              ? `Rain expected (${weather.precipitation}mm)`
+              : `${rainChance}% chance of rain today`}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // Activity Feed Component - matches web Recent Activity section
 function ActivityFeed({ 
   activities, 
@@ -1388,10 +1522,29 @@ export default function DashboardScreen() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   
+  // To Invoice count - jobs with status 'done' but no linked invoice
+  const [toInvoiceCount, setToInvoiceCount] = useState(0);
+  
   // Activity feed state
   const [activities, setActivities] = useState<any[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   
+  const fetchToInvoiceCount = useCallback(async () => {
+    try {
+      const response = await api.get<any[]>('/api/jobs');
+      if (response.data) {
+        const doneJobs = response.data.filter((job: any) => job.status === 'done');
+        const invoicesRes = await api.get<any[]>('/api/invoices');
+        const invoices = invoicesRes.data || [];
+        const jobIdsWithInvoice = new Set(invoices.map((inv: any) => inv.jobId).filter(Boolean));
+        const uninvoicedCount = doneJobs.filter((job: any) => !jobIdsWithInvoice.has(job.id)).length;
+        setToInvoiceCount(uninvoicedCount);
+      }
+    } catch (error) {
+      console.log('Error fetching to-invoice count:', error);
+    }
+  }, []);
+
   const fetchActivities = useCallback(async () => {
     setActivitiesLoading(true);
     try {
@@ -1600,6 +1753,7 @@ export default function DashboardScreen() {
   const fetchActivitiesRef = useRef(fetchActivities);
   const fetchTeamStateRef = useRef(fetchTeamState);
   const fetchMyAllJobsRef = useRef(fetchMyAllJobs);
+  const fetchToInvoiceCountRef = useRef(fetchToInvoiceCount);
   
   // Keep refs updated
   fetchTodaysJobsRef.current = fetchTodaysJobs;
@@ -1608,6 +1762,7 @@ export default function DashboardScreen() {
   fetchActivitiesRef.current = fetchActivities;
   fetchTeamStateRef.current = fetchTeamState;
   fetchMyAllJobsRef.current = fetchMyAllJobs;
+  fetchToInvoiceCountRef.current = fetchToInvoiceCount;
 
   const refreshData = useCallback(async () => {
     await Promise.all([
@@ -1615,7 +1770,8 @@ export default function DashboardScreen() {
       fetchStatsRef.current(),
       fetchClientsRef.current(),
       fetchActivitiesRef.current(),
-      fetchMyAllJobsRef.current(), // Also refresh staff's all jobs for My Stats
+      fetchMyAllJobsRef.current(),
+      fetchToInvoiceCountRef.current(),
     ]);
     // Mark initial load as complete on first data fetch
     setInitialLoadComplete(true);
@@ -2020,6 +2176,11 @@ export default function DashboardScreen() {
       {/* Usage Limit Warning - Free Plan Users */}
       <UsageLimitBanner />
 
+      {/* Weather Widget */}
+      <View style={styles.section}>
+        <WeatherWidget />
+      </View>
+
       {/* Time Tracking Widget - Staff Only */}
       {isStaffUser && (
         <View style={styles.section}>
@@ -2116,6 +2277,38 @@ export default function DashboardScreen() {
           )}
         </View>
       </View>
+
+      {/* To Invoice & Action Centre - Owner Only */}
+      {!isStaffUser && (
+        <View style={styles.section}>
+          <View style={styles.kpiGrid}>
+            <KPICard
+              title="To Invoice"
+              value={toInvoiceCount}
+              icon="file-plus"
+              iconBg={toInvoiceCount > 0 ? colors.warningLight : colors.muted}
+              iconColor={toInvoiceCount > 0 ? colors.warning : colors.mutedForeground}
+              onPress={() => router.push('/(tabs)/jobs')}
+            />
+            <TouchableOpacity
+              style={styles.actionCentreCard}
+              onPress={() => router.push('/more/action-center')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.kpiCardContent}>
+                <View style={[styles.kpiIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
+                  <Feather name="crosshair" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.kpiTextContainer}>
+                  <Text style={[styles.kpiTitle, { marginTop: 0 }]}>Action Centre</Text>
+                  <Text style={styles.actionCentreSubtext}>What needs attention</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Revenue Chart - Owner Only */}
       {isOwnerUser && heavySectionsReady && (
@@ -3559,5 +3752,93 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   complianceAlertDescription: {
     ...typography.captionSmall,
     color: colors.mutedForeground,
+  },
+
+  weatherWidget: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing.lg,
+    ...shadows.sm,
+  },
+  weatherMainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  weatherIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weatherTextContent: {
+    flex: 1,
+  },
+  weatherTempRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.xs,
+  },
+  weatherTemp: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.foreground,
+    letterSpacing: -0.5,
+  },
+  weatherDegree: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  weatherLabel: {
+    ...typography.bodySmall,
+    color: colors.mutedForeground,
+    marginLeft: spacing.xs,
+  },
+  weatherDetailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.xs,
+  },
+  weatherDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  weatherDetailText: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+  },
+  weatherRainWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+  },
+  weatherRainText: {
+    ...typography.captionSmall,
+    fontWeight: '500',
+  },
+
+  actionCentreCard: {
+    flex: 1,
+    minWidth: '46%',
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  actionCentreSubtext: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 2,
   },
 });

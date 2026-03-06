@@ -32,6 +32,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as Location from 'expo-location';
+import * as Clipboard from 'expo-clipboard';
 import api, { API_URL } from '../../src/lib/api';
 import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/store';
 import { Button } from '../../src/components/ui/Button';
@@ -1905,6 +1906,20 @@ export default function JobDetailScreen() {
     });
   }, [availableForms, formSubmissions]);
 
+  const hasIncompleteSwms = useMemo(() => {
+    if (swmsDocuments.length === 0) return false;
+    return swmsDocuments.some(s => s.status === 'draft' || (s.signatureCount ?? 0) === 0);
+  }, [swmsDocuments]);
+
+  const hasNoSafetyDocs = useMemo(() => {
+    const completedForms = formSubmissions.filter(s => {
+      const form = availableForms.find((f: any) => f.id === s.formId);
+      return form && isSafetyForm(form) && s.status === 'submitted';
+    });
+    const activeSwms = swmsDocuments.filter(s => s.status === 'active');
+    return completedForms.length === 0 && activeSwms.length === 0;
+  }, [availableForms, formSubmissions, swmsDocuments]);
+
   // Forms data is loaded by JobForms component and passed via onFormsChange/onSubmissionsChange callbacks
   // This eliminates duplicate API calls
   
@@ -1965,6 +1980,31 @@ export default function JobDetailScreen() {
   
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendModalDefaultTab, setSendModalDefaultTab] = useState<'email' | 'sms'>('email');
+
+  const [isGeneratingProofPack, setIsGeneratingProofPack] = useState(false);
+  const [portalEnabled, setPortalEnabled] = useState(false);
+  const [portalLinks, setPortalLinks] = useState<{ id: string; url: string; token: string; expiresAt?: string; createdAt?: string }[]>([]);
+  const [isTogglingPortal, setIsTogglingPortal] = useState(false);
+  const [isGeneratingPortalLink, setIsGeneratingPortalLink] = useState(false);
+
+  interface ProfitabilityData {
+    jobId: string;
+    jobTitle: string;
+    jobStatus: string;
+    clientName: string;
+    quoted: { amount: number; gst: number; quoteNumber: string } | null;
+    revenue: { invoiced: number; pending: number; received: number };
+    costs: { labour: number; subcontractor: number; materials: number; otherExpenses: number; total: number };
+    profit: { amount: number; margin: number; vsQuote: number | null };
+    hours: { total: number; billable: number; nonBillable: number };
+    status: 'profitable' | 'tight' | 'loss';
+    materials: Array<{ id: string; name: string; quantity: number; unitCost: number; totalCost: number; supplier: string; status: string }>;
+  }
+  const [profitabilityData, setProfitabilityData] = useState<ProfitabilityData | null>(null);
+  const [isLoadingProfitability, setIsLoadingProfitability] = useState(false);
+
+  const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
+  const [rollbackTargetStatus, setRollbackTargetStatus] = useState<string | null>(null);
   
   const { updateJobStatus, updateJobNotes } = useJobsStore();
   const { businessSettings, roleInfo, user, hasPermission } = useAuthStore();
@@ -2041,6 +2081,9 @@ export default function JobDetailScreen() {
     loadJobExpenses();
     loadAutomationSettings();
     loadSubcontractorTokens();
+    loadProfitability();
+    loadPortalLinks();
+    loadSwmsDocuments();
     // Forms data is loaded by JobForms component via callbacks
     
     // Auto-refresh when app comes to foreground
@@ -2888,6 +2931,7 @@ export default function JobDetailScreen() {
         setJob(response.data);
         setEditedNotes(response.data.notes || '');
         setSliderRadius(response.data.geofenceRadius || 100);
+        setPortalEnabled(!!(response.data as any).portalEnabled);
         if (response.data.clientId) {
           const clientResponse = await api.get<Client>(`/api/clients/${response.data.clientId}`);
           if (clientResponse.data) {
@@ -3278,9 +3322,176 @@ export default function JobDetailScreen() {
       loadActivityLog(),
       loadJobExpenses(),
       loadSubcontractorTokens(),
-      // Forms data is refreshed by JobForms component
+      loadProfitability(),
+      loadPortalLinks(),
     ]);
     setRefreshing(false);
+  };
+
+  const loadProfitability = useCallback(async () => {
+    if (!id) return;
+    setIsLoadingProfitability(true);
+    try {
+      const res = await api.get<ProfitabilityData>(`/api/jobs/${id}/profitability`);
+      if (res.data) {
+        setProfitabilityData(res.data);
+      }
+    } catch (e) {
+      console.log('Profitability data not available:', e);
+    } finally {
+      setIsLoadingProfitability(false);
+    }
+  }, [id]);
+
+  const loadPortalLinks = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await api.get<any[]>(`/api/jobs/${id}/portal-links`);
+      if (Array.isArray(res.data)) {
+        setPortalLinks(res.data);
+      }
+    } catch (e) {
+      console.log('Portal links not available:', e);
+    }
+  }, [id]);
+
+  const handleGenerateProofPack = async () => {
+    if (!job) return;
+    setIsGeneratingProofPack(true);
+    try {
+      const token = await api.getToken();
+      const pdfUrl = `${API_URL}/api/jobs/${job.id}/proof-pack`;
+      const filename = `proof-pack-${job.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      const localUri = `${FileSystem.cacheDirectory}${filename}`;
+
+      const downloadResult = await FileSystem.downloadAsync(pdfUrl, localUri, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      if (downloadResult.status === 200) {
+        const isSharingAvailable = await Sharing.isAvailableAsync();
+        if (isSharingAvailable) {
+          await Sharing.shareAsync(downloadResult.uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Share Proof Pack',
+          });
+        } else {
+          Alert.alert('Success', 'Proof Pack PDF downloaded successfully');
+        }
+      } else {
+        Alert.alert('Error', 'Failed to generate Proof Pack PDF');
+      }
+    } catch (error: any) {
+      console.error('Proof pack error:', error);
+      Alert.alert('Error', error.message || 'Failed to generate Proof Pack');
+    } finally {
+      setIsGeneratingProofPack(false);
+    }
+  };
+
+  const handleTogglePortal = async () => {
+    if (!job) return;
+    setIsTogglingPortal(true);
+    const newValue = !portalEnabled;
+    try {
+      await api.patch(`/api/jobs/${job.id}`, { portalEnabled: newValue });
+      setPortalEnabled(newValue);
+      setJob({ ...job, portalEnabled: newValue } as any);
+      if (newValue) {
+        loadPortalLinks();
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to toggle client portal');
+    } finally {
+      setIsTogglingPortal(false);
+    }
+  };
+
+  const handleGeneratePortalLink = async () => {
+    if (!job) return;
+    setIsGeneratingPortalLink(true);
+    try {
+      const res = await api.post<any>(`/api/jobs/${job.id}/portal-links`, {});
+      if (res.data) {
+        setPortalLinks(prev => [...prev, res.data!]);
+        Alert.alert('Success', 'Portal link generated');
+      } else {
+        Alert.alert('Error', res.error || 'Failed to generate portal link');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to generate portal link');
+    } finally {
+      setIsGeneratingPortalLink(false);
+    }
+  };
+
+  const handleCopyPortalLink = async (url: string) => {
+    try {
+      await Clipboard.setStringAsync(url);
+      Alert.alert('Copied', 'Portal link copied to clipboard');
+    } catch {
+      Alert.alert('Share Link', url);
+    }
+  };
+
+  const handleSharePortalLink = async (url: string) => {
+    try {
+      const isSharingAvailable = await Sharing.isAvailableAsync();
+      if (isSharingAvailable) {
+        const tempFile = `${FileSystem.cacheDirectory}portal-link.txt`;
+        await FileSystem.writeAsStringAsync(tempFile, url);
+        await Sharing.shareAsync(tempFile, { mimeType: 'text/plain' });
+      } else {
+        Linking.openURL(url);
+      }
+    } catch {
+      Linking.openURL(url);
+    }
+  };
+
+  const STATUS_ORDER: Job['status'][] = ['pending', 'scheduled', 'in_progress', 'done', 'invoiced'];
+
+  const handleStatusRollback = () => {
+    if (!job) return;
+    const currentIndex = STATUS_ORDER.indexOf(job.status);
+    if (currentIndex <= 0) return;
+
+    const previousStatus = STATUS_ORDER[currentIndex - 1];
+    const statusLabels: Record<string, string> = {
+      pending: 'Pending',
+      scheduled: 'Scheduled',
+      in_progress: 'In Progress',
+      done: 'Done',
+      invoiced: 'Invoiced',
+    };
+
+    Alert.alert(
+      'Rollback Status',
+      `Are you sure you want to change the status from "${statusLabels[job.status]}" back to "${statusLabels[previousStatus]}"?\n\nThis will undo the current status change.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Rollback',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await api.patch(`/api/jobs/${job.id}`, { status: previousStatus });
+              if (response.data) {
+                setJob({ ...job, status: previousStatus });
+                const { fetchJobs, fetchTodaysJobs } = useJobsStore.getState();
+                fetchJobs();
+                fetchTodaysJobs();
+                Alert.alert('Success', `Status rolled back to "${statusLabels[previousStatus]}"`);
+              } else {
+                Alert.alert('Error', 'Failed to rollback status');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to rollback status');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Use pre-calculated total tracked hours from completed time entries
@@ -3650,6 +3861,19 @@ export default function JobDetailScreen() {
     );
   };
 
+  const proceedWithTimerStart = async () => {
+    if (!job) return;
+    const success = await startTimer(job.id, `Working on: ${job.title}`);
+    if (success) {
+      if (job.status === 'scheduled') {
+        await updateJobStatus(job.id, 'in_progress');
+        setJob({ ...job, status: 'in_progress' });
+      }
+    } else {
+      Alert.alert('Error', 'Failed to start timer. Please try again.');
+    }
+  };
+
   const handleStartTimer = async () => {
     if (!job) return;
     
@@ -3667,15 +3891,7 @@ export default function JobDetailScreen() {
                 Alert.alert('Error', 'Failed to stop the existing timer. Please try again.');
                 return;
               }
-              const success = await startTimer(job.id, `Working on: ${job.title}`);
-              if (success) {
-                if (job.status === 'scheduled') {
-                  await updateJobStatus(job.id, 'in_progress');
-                  setJob({ ...job, status: 'in_progress' });
-                }
-              } else {
-                Alert.alert('Error', 'Failed to start timer. Please try again.');
-              }
+              await proceedWithTimerStart();
             }
           }
         ]
@@ -3683,15 +3899,20 @@ export default function JobDetailScreen() {
       return;
     }
 
-    const success = await startTimer(job.id, `Working on: ${job.title}`);
-    if (success) {
-      if (job.status === 'scheduled') {
-        await updateJobStatus(job.id, 'in_progress');
-        setJob({ ...job, status: 'in_progress' });
-      }
-    } else {
-      Alert.alert('Error', 'Failed to start timer. Please try again.');
+    if (job.status === 'scheduled' && (pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs)) {
+      Alert.alert(
+        'Safety Check Required',
+        'Safety documentation is incomplete. Starting the timer will transition this job to "In Progress". Complete safety docs first?',
+        [
+          { text: 'Complete Safety Docs', onPress: () => setActiveTab('safety') },
+          { text: 'Start Anyway', onPress: () => proceedWithTimerStart(), style: 'destructive' },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
+      return;
     }
+
+    await proceedWithTimerStart();
   };
 
   const handleStopTimer = async () => {
@@ -3786,13 +4007,30 @@ export default function JobDetailScreen() {
       return;
     }
 
-    // For other transitions (scheduled -> in_progress), show confirmation
-    if (action.next === 'in_progress' && pendingSafetyForms.length > 0) {
+    // Safety check enforcement: check both custom safety forms and SWMS documents
+    if (action.next === 'in_progress' && (pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs)) {
+      const warnings: string[] = [];
+      if (pendingSafetyForms.length > 0) {
+        warnings.push(`${pendingSafetyForms.length} safety form${pendingSafetyForms.length > 1 ? 's' : ''} pending`);
+      }
+      if (hasIncompleteSwms) {
+        const draftCount = swmsDocuments.filter(s => s.status === 'draft').length;
+        const unsignedCount = swmsDocuments.filter(s => (s.signatureCount ?? 0) === 0 && s.status !== 'draft').length;
+        if (draftCount > 0) warnings.push(`${draftCount} SWMS in draft`);
+        if (unsignedCount > 0) warnings.push(`${unsignedCount} SWMS unsigned`);
+      }
+      if (hasNoSafetyDocs && warnings.length === 0) {
+        warnings.push('No completed safety forms or SWMS');
+      }
+
+      const warningMsg = warnings.join(', ');
+      const complianceNote = '\n\nWHS Compliance: SWMS documents are legally required for high-risk construction work including work at heights, near electrical installations, in confined spaces, or involving hazardous substances.';
+
       Alert.alert(
-        'Safety Check',
-        `There are ${pendingSafetyForms.length} safety forms (SWMS/JSA) pending. It is recommended to complete these before starting work. Do you want to continue?`,
+        'Safety Check Required',
+        `${warningMsg}. It is recommended to complete safety documentation before starting work.${complianceNote}`,
         [
-          { text: 'Go to Forms', onPress: () => setActiveTab('documents') },
+          { text: 'Complete Safety Docs', onPress: () => setActiveTab('safety') },
           { 
             text: 'Start Anyway', 
             onPress: async () => {
@@ -4076,6 +4314,7 @@ export default function JobDetailScreen() {
           { text: 'Before (Site Condition)', onPress: () => uploadMedia(uri, mediaType, 'before') },
           { text: 'After (Completed Work)', onPress: () => uploadMedia(uri, mediaType, 'after') },
           { text: 'Progress', onPress: () => uploadMedia(uri, mediaType, 'progress') },
+          { text: 'Materials', onPress: () => uploadMedia(uri, mediaType, 'materials') },
           { text: 'General', onPress: () => uploadMedia(uri, mediaType, 'general') },
         ]
       );
@@ -4180,6 +4419,11 @@ export default function JobDetailScreen() {
         if (responseData.success) {
           setPhotos(prev => prev.filter(p => p.id !== tempId));
           await loadPhotos();
+          if (mediaType === 'image' && category === 'general') {
+            setTimeout(async () => {
+              await loadPhotos();
+            }, 3000);
+          }
           Alert.alert('Success', `${mediaType === 'video' ? 'Video' : 'Photo'} uploaded successfully`);
         } else {
           setPhotos(prev => prev.filter(p => p.id !== tempId));
@@ -4209,6 +4453,7 @@ export default function JobDetailScreen() {
         { text: 'Before (Site Condition)', onPress: () => updatePhotoCategory(photo, 'before') },
         { text: 'After (Completed Work)', onPress: () => updatePhotoCategory(photo, 'after') },
         { text: 'Progress', onPress: () => updatePhotoCategory(photo, 'progress') },
+        { text: 'Materials', onPress: () => updatePhotoCategory(photo, 'materials') },
         { text: 'General', onPress: () => updatePhotoCategory(photo, 'general') },
         { text: 'Cancel', style: 'cancel' }
       ]
@@ -4456,6 +4701,10 @@ export default function JobDetailScreen() {
         jobStatus={job.status}
         urgency={getJobUrgency(job.scheduledAt, job.status)}
         onStartJob={async () => {
+          if (pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) {
+            handleStatusChange();
+            return;
+          }
           try {
             await updateJobStatus(job.id, 'in_progress');
             await loadJob();
@@ -4478,35 +4727,41 @@ export default function JobDetailScreen() {
       />
 
       {/* Safety & Compliance Section - Prominent before work starts */}
-      {(job.status === 'scheduled' || job.status === 'in_progress') && availableForms.some(isSafetyForm) && (
+      {(job.status === 'scheduled' || job.status === 'in_progress') && (availableForms.some(isSafetyForm) || swmsDocuments.length > 0 || hasNoSafetyDocs) && (
         <View style={[
           styles.card, 
-          pendingSafetyForms.length > 0 && { borderColor: colors.warning, borderWidth: 2, backgroundColor: `${colors.warning}05` }
+          (pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) && { borderColor: colors.warning, borderWidth: 2, backgroundColor: `${colors.warning}05` }
         ]}>
-          <View style={[styles.cardIconContainer, { backgroundColor: pendingSafetyForms.length > 0 ? `${colors.warning}15` : `${colors.success}15` }]}>
+          <View style={[styles.cardIconContainer, { backgroundColor: (pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) ? `${colors.warning}15` : `${colors.success}15` }]}>
             <Feather 
-              name={pendingSafetyForms.length > 0 ? "alert-triangle" : "shield-check"} 
+              name={(pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) ? "alert-triangle" : "shield-check"} 
               size={iconSizes.xl} 
-              color={pendingSafetyForms.length > 0 ? colors.warning : colors.success} 
+              color={(pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) ? colors.warning : colors.success} 
             />
           </View>
           <View style={styles.cardContent}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
               <Text style={styles.cardLabel}>Safety & Compliance</Text>
-              {pendingSafetyForms.length > 0 && (
+              {(pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) && (
                 <View style={{ backgroundColor: colors.warning, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
                   <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>REQUIRED</Text>
                 </View>
               )}
             </View>
-            <Text style={[styles.cardValue, pendingSafetyForms.length > 0 && { color: colors.warning, fontWeight: '700' }]}>
-              {pendingSafetyForms.length > 0 
+            <Text style={[styles.cardValue, (pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) && { color: colors.warning, fontWeight: '700' }]}>
+              {pendingSafetyForms.length > 0 && hasIncompleteSwms
+                ? `${pendingSafetyForms.length} form${pendingSafetyForms.length > 1 ? 's' : ''} + SWMS pending`
+                : pendingSafetyForms.length > 0
                 ? `${pendingSafetyForms.length} safety form${pendingSafetyForms.length > 1 ? 's' : ''} pending`
-                : 'All safety forms completed'}
+                : hasIncompleteSwms
+                ? 'SWMS incomplete or unsigned'
+                : hasNoSafetyDocs
+                ? 'No safety documentation'
+                : 'All safety docs completed'}
             </Text>
           </View>
           <TouchableOpacity 
-            onPress={() => setActiveTab('documents')}
+            onPress={() => setActiveTab('safety')}
             style={{ padding: spacing.sm }}
           >
             <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
@@ -4701,36 +4956,150 @@ export default function JobDetailScreen() {
         );
       })()}
 
-      {/* Job Profitability Card */}
-      {(job.estimatedCost !== undefined || materials.length > 0) && (
-        <View style={styles.card}>
-          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.success}15` }]}>
-            <Feather name="trending-up" size={iconSizes.xl} color={colors.success} />
-          </View>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Job Value</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }}>
-              {job.estimatedCost !== undefined && (
-                <Text style={styles.cardValue}>Est. ${Number(job.estimatedCost).toFixed(2)}</Text>
-              )}
-              {materials.length > 0 && (() => {
-                const profHasCost = materials.some(m => Number(m.unitCost || 0) > 0);
-                const profMatCost = materials.reduce((s, m) => s + (Number(m.totalCost) || 0), 0);
-                return (
-                <Text style={[styles.cardValue, { color: colors.mutedForeground }]}>
-                  · Materials {profHasCost ? `$${profMatCost.toFixed(2)}` : 'Not set'}
-                </Text>
-                );
-              })()}
-              {invoice && (
-                <Text style={[styles.cardValue, { color: colors.success }]}>
-                  · Invoice ${Number(invoice.total).toFixed(2)}
-                </Text>
-              )}
+      {/* Job Profitability Card - Detailed Breakdown */}
+      {(() => {
+        const pd = profitabilityData;
+        const hasFinancialData = pd && (pd.revenue.invoiced > 0 || pd.revenue.pending > 0 || pd.costs.total > 0);
+        
+        if (isLoadingProfitability) {
+          return (
+            <View style={styles.costingCard}>
+              <View style={styles.costingHeader}>
+                <View style={[styles.costingIconContainer, { backgroundColor: `${colors.success}15` }]}>
+                  <Feather name="dollar-sign" size={iconSizes.lg} color={colors.success} />
+                </View>
+                <Text style={styles.costingTitle}>Profitability</Text>
+              </View>
+              <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.md }} />
             </View>
+          );
+        }
+
+        if (!hasFinancialData) {
+          if (job.estimatedCost !== undefined || materials.length > 0) {
+            return (
+              <View style={styles.card}>
+                <View style={[styles.cardIconContainer, { backgroundColor: `${colors.success}15` }]}>
+                  <Feather name="trending-up" size={iconSizes.xl} color={colors.success} />
+                </View>
+                <View style={styles.cardContent}>
+                  <Text style={styles.cardLabel}>Job Value</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }}>
+                    {job.estimatedCost !== undefined && (
+                      <Text style={styles.cardValue}>Est. ${Number(job.estimatedCost).toFixed(2)}</Text>
+                    )}
+                    {materials.length > 0 && (() => {
+                      const profHasCost = materials.some(m => Number(m.unitCost || 0) > 0);
+                      const profMatCost = materials.reduce((s, m) => s + (Number(m.totalCost) || 0), 0);
+                      return (
+                        <Text style={[styles.cardValue, { color: colors.mutedForeground }]}>
+                          · Materials {profHasCost ? `$${profMatCost.toFixed(2)}` : 'Not set'}
+                        </Text>
+                      );
+                    })()}
+                    {invoice && (
+                      <Text style={[styles.cardValue, { color: colors.success }]}>
+                        · Invoice ${Number(invoice.total).toFixed(2)}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            );
+          }
+          return null;
+        }
+
+        const profitColor = pd.status === 'profitable' ? colors.success : pd.status === 'tight' ? colors.warning : colors.destructive;
+        const marginCapped = Math.min(Math.max(pd.profit.margin, 0), 100);
+
+        return (
+          <View style={styles.costingCard}>
+            <View style={styles.costingHeader}>
+              <View style={[styles.costingIconContainer, { backgroundColor: `${profitColor}15` }]}>
+                <Feather name="dollar-sign" size={iconSizes.lg} color={profitColor} />
+              </View>
+              <Text style={styles.costingTitle}>Profitability</Text>
+              <View style={{ marginLeft: 'auto', backgroundColor: `${profitColor}15`, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.md }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: profitColor, textTransform: 'capitalize' }}>
+                  {pd.status}
+                </Text>
+              </View>
+            </View>
+
+            {pd.quoted?.amount ? (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Quoted</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{formatCurrency(pd.quoted.amount)}</Text>
+              </View>
+            ) : null}
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Revenue</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{formatCurrency(pd.revenue.invoiced)}</Text>
+            </View>
+
+            <View style={{ paddingTop: spacing.sm }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: spacing.sm }}>Costs</Text>
+              <View style={{ gap: spacing.xs }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 14, color: colors.mutedForeground }}>
+                    Labour{pd.hours.total > 0 ? ` (${pd.hours.total}hrs)` : ''}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: colors.foreground }}>{formatCurrency(pd.costs.labour)}</Text>
+                </View>
+                {pd.costs.subcontractor > 0 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Subcontractors</Text>
+                    <Text style={{ fontSize: 14, color: colors.foreground }}>{formatCurrency(pd.costs.subcontractor)}</Text>
+                  </View>
+                )}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Materials</Text>
+                  <Text style={{ fontSize: 14, color: colors.foreground }}>{formatCurrency(pd.costs.materials)}</Text>
+                </View>
+                {pd.costs.otherExpenses > 0 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Other</Text>
+                    <Text style={{ fontSize: 14, color: colors.foreground }}>{formatCurrency(pd.costs.otherExpenses)}</Text>
+                  </View>
+                )}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.mutedForeground }}>Total costs</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{formatCurrency(pd.costs.total)}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={{ paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.sm }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: spacing.sm }}>Result</Text>
+              <View style={{ gap: spacing.xs }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Profit</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: profitColor }}>{formatCurrency(pd.profit.amount)}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Margin</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: profitColor }}>{pd.profit.margin.toFixed(1)}%</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={{ marginTop: spacing.md }}>
+              <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.muted, overflow: 'hidden' }}>
+                <View style={{ height: '100%', borderRadius: 3, backgroundColor: profitColor, width: `${marginCapped}%` }} />
+              </View>
+              <Text style={{ fontSize: 11, color: profitColor, marginTop: 4 }}>{pd.profit.margin.toFixed(1)}% margin</Text>
+            </View>
+
+            {pd.profit.vsQuote != null && pd.profit.vsQuote !== 0 && (
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: spacing.xs }}>
+                {formatCurrency(Math.abs(pd.profit.vsQuote))} {pd.profit.vsQuote < 0 ? 'under' : 'over'} quoted
+              </Text>
+            )}
           </View>
-        </View>
-      )}
+        );
+      })()}
 
       {/* Time Tracking Card with Pulse Animation */}
       {(job.status === 'scheduled' || job.status === 'in_progress') && (() => {
@@ -5273,6 +5642,151 @@ export default function JobDetailScreen() {
         </View>
       )}
 
+      {/* Proof Pack Button */}
+      {(job.status === 'done' || job.status === 'invoiced') && (isOwnerOrManager || isSoloOwner) && (
+        <View style={styles.costingCard}>
+          <View style={styles.costingHeader}>
+            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+              <Feather name="file-text" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <Text style={styles.costingTitle}>Proof Pack</Text>
+          </View>
+          <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.md, lineHeight: 19 }}>
+            Generate a comprehensive PDF with job timeline, photos, signatures, and compliance records to share with your client.
+          </Text>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: spacing.sm,
+              backgroundColor: colors.primary,
+              paddingVertical: spacing.md,
+              borderRadius: radius.lg,
+              opacity: isGeneratingProofPack ? 0.6 : 1,
+              minHeight: 44,
+            }}
+            onPress={handleGenerateProofPack}
+            activeOpacity={0.8}
+            disabled={isGeneratingProofPack}
+          >
+            {isGeneratingProofPack ? (
+              <ActivityIndicator size="small" color={colors.primaryForeground} />
+            ) : (
+              <>
+                <Feather name="share" size={18} color={colors.primaryForeground} />
+                <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
+                  Generate & Share Proof Pack
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Client Portal Section */}
+      {(isOwnerOrManager || isSoloOwner) && client && (
+        <View style={styles.costingCard}>
+          <View style={styles.costingHeader}>
+            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.invoiced}15` }]}>
+              <Feather name="globe" size={iconSizes.lg} color={colors.invoiced} />
+            </View>
+            <Text style={styles.costingTitle}>Client Portal</Text>
+          </View>
+          
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, color: colors.foreground, fontWeight: '500' }}>Enable Portal</Text>
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                Let your client view job progress online
+              </Text>
+            </View>
+            {isTogglingPortal ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Switch
+                value={portalEnabled}
+                onValueChange={handleTogglePortal}
+                trackColor={{ false: colors.muted, true: colors.primary }}
+                thumbColor={portalEnabled ? colors.primaryForeground : colors.foreground}
+              />
+            )}
+          </View>
+
+          {portalEnabled && (
+            <View style={{ marginTop: spacing.md }}>
+              {portalLinks.length > 0 ? (
+                <View style={{ gap: spacing.sm }}>
+                  {portalLinks.map((link) => (
+                    <View
+                      key={link.id}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: colors.muted,
+                        borderRadius: radius.lg,
+                        padding: spacing.md,
+                        gap: spacing.sm,
+                      }}
+                    >
+                      <Feather name="link" size={16} color={colors.primary} />
+                      <Text
+                        style={{ flex: 1, fontSize: 13, color: colors.foreground }}
+                        numberOfLines={1}
+                        ellipsizeMode="middle"
+                      >
+                        {link.url || `Portal link #${link.id.slice(0, 8)}`}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleSharePortalLink(link.url)}
+                        style={{ padding: spacing.xs }}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="share-2" size={16} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.sm }}>
+                  No portal links yet. Generate one to share with your client.
+                </Text>
+              )}
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.sm,
+                  backgroundColor: colors.card,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.lg,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  marginTop: spacing.sm,
+                  opacity: isGeneratingPortalLink ? 0.6 : 1,
+                  minHeight: 44,
+                }}
+                onPress={handleGeneratePortalLink}
+                activeOpacity={0.8}
+                disabled={isGeneratingPortalLink}
+              >
+                {isGeneratingPortalLink ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <>
+                    <Feather name="plus" size={16} color={colors.foreground} />
+                    <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>
+                      Generate Portal Link
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Duplicate Job Button */}
       <View style={styles.costingCard}>
         <TouchableOpacity
@@ -5296,6 +5810,32 @@ export default function JobDetailScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Status Rollback Button */}
+      {(isOwnerOrManager || isSoloOwner) && job.status !== 'pending' && (
+        <View style={styles.costingCard}>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: spacing.sm,
+              backgroundColor: colors.card,
+              paddingVertical: spacing.md,
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.warning + '50',
+            }}
+            onPress={handleStatusRollback}
+            activeOpacity={0.8}
+          >
+            <Feather name="rotate-ccw" size={18} color={colors.warning} />
+            <Text style={{ color: colors.warning, fontWeight: '600', fontSize: 14 }}>
+              Rollback Status
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Main Action Button */}
       <View style={styles.actionButtonContainer}>
@@ -6368,7 +6908,8 @@ export default function JobDetailScreen() {
                     <View style={[styles.photoCategoryBadge, 
                       photo.category === 'before' && { backgroundColor: colors.info || '#3b82f6' },
                       photo.category === 'after' && { backgroundColor: colors.success || '#22c55e' },
-                      photo.category === 'progress' && { backgroundColor: colors.warning || '#f59e0b' }
+                      photo.category === 'progress' && { backgroundColor: colors.warning || '#f59e0b' },
+                      photo.category === 'materials' && { backgroundColor: '#8b5cf6' }
                     ]}>
                       <Text style={styles.photoCategoryBadgeText}>
                         {photo.category.charAt(0).toUpperCase()}
@@ -7369,7 +7910,8 @@ export default function JobDetailScreen() {
                         <View style={[styles.photoCategoryBadge, 
                           photo.category === 'before' && { backgroundColor: colors.info || '#3b82f6' },
                           photo.category === 'after' && { backgroundColor: colors.success || '#22c55e' },
-                          photo.category === 'progress' && { backgroundColor: colors.warning || '#f59e0b' }
+                          photo.category === 'progress' && { backgroundColor: colors.warning || '#f59e0b' },
+                          photo.category === 'materials' && { backgroundColor: '#8b5cf6' }
                         ]}>
                           <Text style={styles.photoCategoryBadgeText}>
                             {photo.category.charAt(0).toUpperCase()}
@@ -7454,6 +7996,7 @@ export default function JobDetailScreen() {
                     backgroundColor: selectedPhoto.category === 'before' ? colors.info + '30' : 
                                     selectedPhoto.category === 'after' ? colors.success + '30' : 
                                     selectedPhoto.category === 'progress' ? colors.warning + '30' : 
+                                    selectedPhoto.category === 'materials' ? '#8b5cf630' :
                                     'rgba(255,255,255,0.15)',
                     paddingHorizontal: 12,
                     paddingVertical: 6,
@@ -7467,12 +8010,14 @@ export default function JobDetailScreen() {
                       size={14} 
                       color={selectedPhoto.category === 'before' ? colors.info : 
                              selectedPhoto.category === 'after' ? colors.success : 
-                             selectedPhoto.category === 'progress' ? colors.warning : '#fff'} 
+                             selectedPhoto.category === 'progress' ? colors.warning : 
+                             selectedPhoto.category === 'materials' ? '#8b5cf6' : '#fff'} 
                     />
                     <Text style={{ 
                       color: selectedPhoto.category === 'before' ? colors.info : 
                              selectedPhoto.category === 'after' ? colors.success : 
-                             selectedPhoto.category === 'progress' ? colors.warning : '#fff',
+                             selectedPhoto.category === 'progress' ? colors.warning : 
+                             selectedPhoto.category === 'materials' ? '#8b5cf6' : '#fff',
                       fontWeight: '600',
                       fontSize: 13,
                     }}>
