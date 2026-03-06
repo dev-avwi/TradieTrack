@@ -33695,10 +33695,12 @@ Respond with JSON in this format:
   app.get("/api/payment-chaser/summary", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const userContext = getUserContext(req);
+      const userContext = await getUserContext(userId);
 
-      const allInvoices = await storage.getInvoices(userContext.effectiveUserId);
-      const allClients = await storage.getClients(userContext.effectiveUserId);
+      const [allInvoices, allClients] = await Promise.all([
+        storage.getInvoices(userContext.effectiveUserId),
+        storage.getClients(userContext.effectiveUserId),
+      ]);
       const clientMap = new Map(allClients.map(c => [c.id, c]));
 
       const now = new Date();
@@ -33708,13 +33710,23 @@ Respond with JSON in this format:
       );
 
       const reminderLogsByInvoice = new Map<string, any[]>();
-      for (const inv of outstandingInvoices) {
+      if (outstandingInvoices.length > 0) {
+        const invoiceIds = outstandingInvoices.map(inv => inv.id);
         try {
-          const logs = await storage.getInvoiceReminderLogs(inv.id, userContext.effectiveUserId);
-          if (logs.length > 0) {
-            reminderLogsByInvoice.set(inv.id, logs);
+          const allLogs = await db.select().from(invoiceReminderLogs)
+            .where(and(
+              inArray(invoiceReminderLogs.invoiceId, invoiceIds),
+              eq(invoiceReminderLogs.userId, userContext.effectiveUserId)
+            ))
+            .orderBy(desc(invoiceReminderLogs.createdAt));
+          for (const log of allLogs) {
+            const existing = reminderLogsByInvoice.get(log.invoiceId) || [];
+            existing.push(log);
+            reminderLogsByInvoice.set(log.invoiceId, existing);
           }
-        } catch (e) {}
+        } catch (e) {
+          console.error('Error fetching reminder logs:', e);
+        }
       }
 
       const chaserItems: any[] = [];
@@ -33849,7 +33861,7 @@ Respond with JSON in this format:
   app.post("/api/payment-chaser/ai-insights", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const userContext = getUserContext(req);
+      const userContext = await getUserContext(userId);
 
       const allInvoices = await storage.getInvoices(userContext.effectiveUserId);
       const allClients = await storage.getClients(userContext.effectiveUserId);
@@ -39574,7 +39586,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   app.post("/api/swms/scan-hazards", requireAuth, hazardScanUpload.array('photos', 10), async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const userContext = await getUserContext(req);
+      const userContext = await getUserContext(userId);
       const effectiveUserId = userContext.effectiveUserId;
       const { jobId, jobContext } = req.body;
       let imageBuffers: Buffer[] = [];
