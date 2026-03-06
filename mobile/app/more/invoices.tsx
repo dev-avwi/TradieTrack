@@ -244,28 +244,27 @@ export default function InvoicesScreen() {
     return client?.name || 'Unknown Client';
   };
 
-  // Format currency from dollar amounts (database stores as decimal)
   const formatCurrency = (amount: number | string) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
     if (isNaN(num)) return '$0.00';
-    return `$${num.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
+    return `$${num.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const totalOutstanding = invoices
     .filter(i => i.status === 'sent' || i.status === 'overdue')
-    .reduce((sum, i) => sum + (i.total || 0), 0);
+    .reduce((sum, i) => sum + parseFloat(String(i.total || 0)), 0);
 
   const totalPaid = invoices
     .filter(i => i.status === 'paid')
-    .reduce((sum, i) => sum + (i.total || 0), 0);
+    .reduce((sum, i) => sum + parseFloat(String(i.total || 0)), 0);
 
   const totalOverdue = invoices
     .filter(i => i.status === 'overdue')
-    .reduce((sum, i) => sum + (i.total || 0), 0);
+    .reduce((sum, i) => sum + parseFloat(String(i.total || 0)), 0);
 
   const totalAll = invoices
     .filter(i => !(i as any).archived)
-    .reduce((sum, i) => sum + (i.total || 0), 0);
+    .reduce((sum, i) => sum + parseFloat(String(i.total || 0)), 0);
 
   const filterCounts = {
     all: invoices.filter(i => !(i as any).archived).length,

@@ -2505,10 +2505,15 @@ export default function JobDetailScreen() {
 
   const getStatusColor = useCallback((status?: string) => {
     switch (status) {
+      case 'pending': return colors.pending;
+      case 'scheduled': return colors.scheduled;
+      case 'in_progress': return colors.inProgress;
+      case 'done': return colors.done;
+      case 'invoiced': return colors.invoiced;
       case 'draft': return colors.mutedForeground;
       case 'active': return colors.success;
       case 'closed': return colors.primary;
-      default: return colors.mutedForeground;
+      default: return colors.primary;
     }
   }, [colors]);
 
@@ -5844,7 +5849,7 @@ export default function JobDetailScreen() {
                   paddingHorizontal: spacing.md,
                   borderRadius: radius.lg,
                   borderWidth: 2,
-                  borderColor: isSmsReady ? colors.info : colors.muted,
+                  borderColor: colors.info,
                   backgroundColor: colors.card,
                   opacity: isSendingOnMyWay ? 0.6 : 1,
                   minHeight: 52,
@@ -5854,9 +5859,9 @@ export default function JobDetailScreen() {
                 disabled={isSendingOnMyWay}
                 data-testid="button-on-my-way"
               >
-                <Feather name="navigation" size={18} color={isSmsReady ? colors.info : colors.mutedForeground} />
+                <Feather name="navigation" size={18} color={colors.info} />
                 <Text style={{ 
-                  color: isSmsReady ? colors.info : colors.mutedForeground, 
+                  color: colors.info, 
                   fontWeight: '600', 
                   fontSize: 14 
                 }}>
