@@ -1899,6 +1899,8 @@ export default function JobDetailScreen() {
     return name.includes('swms') || name.includes('jsa') || name.includes('safety') || name.includes('compliance');
   };
 
+  const [swmsDocuments, setSwmsDocuments] = useState<SwmsDocument[]>([]);
+
   const pendingSafetyForms = useMemo(() => {
     return availableForms.filter(f => {
       if (!isSafetyForm(f)) return false;
@@ -1935,7 +1937,6 @@ export default function JobDetailScreen() {
   const [costPromptValue, setCostPromptValue] = useState('');
   const [showCostPromptModal, setShowCostPromptModal] = useState(false);
 
-  const [swmsDocuments, setSwmsDocuments] = useState<SwmsDocument[]>([]);
   const [isLoadingSwms, setIsLoadingSwms] = useState(false);
   const [expandedSwmsId, setExpandedSwmsId] = useState<string | null>(null);
   const [showCreateSwmsModal, setShowCreateSwmsModal] = useState(false);

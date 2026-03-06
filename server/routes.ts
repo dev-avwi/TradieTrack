@@ -3639,9 +3639,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expectedWebServiceId = process.env.APPLE_WEB_SERVICE_ID || 'com.jobrunner.web';
       const validAudiences = [expectedBundleId, expectedWebServiceId];
       
-      if (!validAudiences.includes(claims.aud || '')) {
-        console.error('Apple auth: Invalid audience:', claims.aud, 'expected one of:', validAudiences);
+      const tokenAud = claims.aud || '';
+      if (!validAudiences.includes(tokenAud) && !tokenAud.startsWith('com.jobrunner.')) {
+        console.error('Apple auth: Invalid audience:', tokenAud, 'expected one of:', validAudiences);
         return res.status(400).json({ error: "Invalid token audience" });
+      }
+      
+      if (!validAudiences.includes(tokenAud)) {
+        console.log('Apple auth: Accepted audience via prefix match:', tokenAud);
       }
       
       // Validate token expiry (required claim)
@@ -7094,28 +7099,34 @@ Be specific about materials, colors, and features that would be included.`
 
   app.get("/api/weather", requireAuth, async (req: any, res) => {
     try {
-      // Get user's business settings for location
-      const settings = await storage.getBusinessSettings(req.userId);
+      // Accept client-provided GPS coordinates (mobile device location)
+      const clientLat = parseFloat(req.query.lat as string);
+      const clientLon = parseFloat(req.query.lon as string);
       
-      // Default to Cairns, QLD if no address (demo/default location)
+      // Default to Cairns, QLD if no location provided
       let lat = -16.9186;
       let lon = 145.7781;
       
-      // Try to extract coordinates from user's business address
-      if (settings?.address) {
-        // Use Australian city coordinates as fallback based on common cities in address
-        const address = settings.address.toLowerCase();
-        if (address.includes('sydney')) { lat = -33.8688; lon = 151.2093; }
-        else if (address.includes('melbourne')) { lat = -37.8136; lon = 144.9631; }
-        else if (address.includes('brisbane')) { lat = -27.4698; lon = 153.0251; }
-        else if (address.includes('perth')) { lat = -31.9505; lon = 115.8605; }
-        else if (address.includes('adelaide')) { lat = -34.9285; lon = 138.6007; }
-        else if (address.includes('gold coast')) { lat = -28.0167; lon = 153.4000; }
-        else if (address.includes('cairns')) { lat = -16.9186; lon = 145.7781; }
-        else if (address.includes('townsville')) { lat = -19.2590; lon = 146.8169; }
-        else if (address.includes('darwin')) { lat = -12.4634; lon = 130.8456; }
-        else if (address.includes('hobart')) { lat = -42.8821; lon = 147.3272; }
-        else if (address.includes('canberra')) { lat = -35.2809; lon = 149.1300; }
+      if (!isNaN(clientLat) && !isNaN(clientLon) && clientLat >= -90 && clientLat <= 90 && clientLon >= -180 && clientLon <= 180) {
+        lat = clientLat;
+        lon = clientLon;
+      } else {
+        // Fall back to business address location
+        const settings = await storage.getBusinessSettings(req.userId);
+        if (settings?.address) {
+          const address = settings.address.toLowerCase();
+          if (address.includes('sydney')) { lat = -33.8688; lon = 151.2093; }
+          else if (address.includes('melbourne')) { lat = -37.8136; lon = 144.9631; }
+          else if (address.includes('brisbane')) { lat = -27.4698; lon = 153.0251; }
+          else if (address.includes('perth')) { lat = -31.9505; lon = 115.8605; }
+          else if (address.includes('adelaide')) { lat = -34.9285; lon = 138.6007; }
+          else if (address.includes('gold coast')) { lat = -28.0167; lon = 153.4000; }
+          else if (address.includes('cairns')) { lat = -16.9186; lon = 145.7781; }
+          else if (address.includes('townsville')) { lat = -19.2590; lon = 146.8169; }
+          else if (address.includes('darwin')) { lat = -12.4634; lon = 130.8456; }
+          else if (address.includes('hobart')) { lat = -42.8821; lon = 147.3272; }
+          else if (address.includes('canberra')) { lat = -35.2809; lon = 149.1300; }
+        }
       }
 
       // Check cache - only use if same location

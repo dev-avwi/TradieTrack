@@ -92,7 +92,19 @@ function WeatherWidget() {
 
   const loadWeather = async () => {
     try {
-      const response = await api.get<WeatherData>('/api/weather');
+      let params = '';
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getLastKnownPositionAsync();
+          if (loc) {
+            params = `?lat=${loc.coords.latitude}&lon=${loc.coords.longitude}`;
+          }
+        }
+      } catch (locErr) {
+        // Location unavailable, fall back to server-side location
+      }
+      const response = await api.get<WeatherData>(`/api/weather${params}`);
       if (response.data) {
         setWeather(response.data);
       }
