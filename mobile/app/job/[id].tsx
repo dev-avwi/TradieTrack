@@ -4620,17 +4620,6 @@ export default function JobDetailScreen() {
     });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return colors.pending;
-      case 'scheduled': return colors.scheduled;
-      case 'in_progress': return colors.inProgress;
-      case 'done': return colors.done;
-      case 'invoiced': return colors.invoiced;
-      default: return colors.primary;
-    }
-  };
-
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
