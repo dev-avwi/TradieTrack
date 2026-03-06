@@ -264,6 +264,8 @@ export default function JobDetailView({
   const [materialTrackingUrl, setMaterialTrackingUrl] = useState('');
   const [materialNotes, setMaterialNotes] = useState('');
   const [materialMarkupPercent, setMaterialMarkupPercent] = useState('');
+  const [costPromptMaterial, setCostPromptMaterial] = useState<{ id: string; name: string; status: string } | null>(null);
+  const [costPromptValue, setCostPromptValue] = useState('');
   
   const [showSiteUpdateDialog, setShowSiteUpdateDialog] = useState(false);
   const [siteUpdateNote, setSiteUpdateNote] = useState('');
@@ -1005,14 +1007,48 @@ export default function JobDetailView({
   });
 
   const updateMaterialStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const res = await apiRequest('PATCH', `/api/materials/${id}`, { status });
+    mutationFn: async ({ id, status, unitCost }: { id: string; status: string; unitCost?: string }) => {
+      const body: any = { status };
+      if (unitCost !== undefined) body.unitCost = unitCost;
+      const res = await apiRequest('PATCH', `/api/materials/${id}`, body);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'materials'] });
     },
   });
+
+  const handleMaterialStatusChange = (mat: any, newStatus: string) => {
+    const hasCost = parseFloat(mat.unitCost || '0') > 0;
+    if ((newStatus === 'received' || newStatus === 'installed') && !hasCost && !isTradie) {
+      setCostPromptMaterial({ id: mat.id, name: mat.name, status: newStatus });
+      setCostPromptValue('');
+    } else {
+      updateMaterialStatusMutation.mutate({ id: mat.id, status: newStatus });
+    }
+  };
+
+  const handleCostPromptSubmit = () => {
+    if (!costPromptMaterial) return;
+    const cost = costPromptValue ? costPromptValue : '0';
+    updateMaterialStatusMutation.mutate({
+      id: costPromptMaterial.id,
+      status: costPromptMaterial.status,
+      unitCost: cost,
+    });
+    setCostPromptMaterial(null);
+    setCostPromptValue('');
+  };
+
+  const handleCostPromptSkip = () => {
+    if (!costPromptMaterial) return;
+    updateMaterialStatusMutation.mutate({
+      id: costPromptMaterial.id,
+      status: costPromptMaterial.status,
+    });
+    setCostPromptMaterial(null);
+    setCostPromptValue('');
+  };
 
   const deleteMaterialMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -3448,7 +3484,7 @@ export default function JobDetailView({
                           </Button>
                           <Select
                             value={mat.status}
-                            onValueChange={(val) => updateMaterialStatusMutation.mutate({ id: mat.id, status: val })}
+                            onValueChange={(val) => handleMaterialStatusChange(mat, val)}
                           >
                             <SelectTrigger className="h-7 w-[90px] text-xs">
                               <SelectValue />
@@ -4042,6 +4078,38 @@ export default function JobDetailView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!costPromptMaterial} onOpenChange={(open) => { if (!open) { setCostPromptMaterial(null); setCostPromptValue(''); } }}>
+        <DialogContent className="sm:max-w-[360px]">
+          <DialogHeader>
+            <DialogTitle>Enter Material Cost</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            How much did <span className="font-medium text-foreground">{costPromptMaterial?.name}</span> cost you?
+          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">$</span>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Unit cost"
+              value={costPromptValue}
+              onChange={(e) => setCostPromptValue(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCostPromptSubmit(); }}
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" size="sm" onClick={handleCostPromptSkip}>
+              Skip
+            </Button>
+            <Button size="sm" onClick={handleCostPromptSubmit}>
+              Save & Mark {costPromptMaterial?.status === 'installed' ? 'Installed' : 'Received'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Job Invite Modal */}
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
