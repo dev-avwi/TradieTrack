@@ -4100,11 +4100,17 @@ export default function JobDetailView({
               onKeyDown={(e) => { if (e.key === 'Enter') handleCostPromptSubmit(); }}
             />
           </div>
+          <p className="text-xs text-muted-foreground">
+            Tracking costs helps you see your real profit on each job.
+          </p>
           <DialogFooter className="gap-2">
-            <Button variant="ghost" size="sm" onClick={handleCostPromptSkip}>
-              Skip
+            <Button variant="outline" size="sm" onClick={() => { setCostPromptMaterial(null); setCostPromptValue(''); }}>
+              Cancel
             </Button>
-            <Button size="sm" onClick={handleCostPromptSubmit}>
+            <Button variant="ghost" size="sm" onClick={handleCostPromptSkip}>
+              Skip — No Cost
+            </Button>
+            <Button size="sm" onClick={handleCostPromptSubmit} disabled={!costPromptValue || parseFloat(costPromptValue) <= 0}>
               Save & Mark {costPromptMaterial?.status === 'installed' ? 'Installed' : 'Received'}
             </Button>
           </DialogFooter>
