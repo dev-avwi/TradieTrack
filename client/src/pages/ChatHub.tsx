@@ -1093,14 +1093,6 @@ export default function ChatHub() {
         if (m.id) assigneeLookup.set(m.id, m);
       });
 
-      const usedSmsConversationIds = new Set<string>();
-      jobSmsMap.forEach(sms => usedSmsConversationIds.add(sms.id));
-      const clientsWithSmsAssigned = new Set<string>();
-      jobSmsMap.forEach((sms, jobId) => {
-        const job = jobs.find(j => j.id === jobId);
-        if (job?.clientId) clientsWithSmsAssigned.add(job.clientId);
-      });
-      
       const sortedJobs = [...jobs].sort((a, b) => {
         const aTime = a.scheduledAt ? new Date(a.scheduledAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
         const bTime = b.scheduledAt ? new Date(b.scheduledAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
@@ -1110,24 +1102,18 @@ export default function ChatHub() {
       sortedJobs.forEach(job => {
         const directSms = jobSmsMap.get(job.id);
         let clientSms: SmsConversation | undefined;
-        if (!directSms && job.clientId && !clientsWithSmsAssigned.has(job.clientId)) {
+        if (!directSms && job.clientId) {
           const clientConvos = clientSmsMap.get(job.clientId) || [];
-          clientSms = clientConvos.find(sms => !usedSmsConversationIds.has(sms.id));
+          clientSms = clientConvos[0];
         }
         const smsConvo = directSms || clientSms;
-        if (smsConvo) {
-          if (!directSms) usedSmsConversationIds.add(smsConvo.id);
-          if (job.clientId) clientsWithSmsAssigned.add(job.clientId);
-        }
         
         const sitePhotoUrl = jobPhotosMap[job.id];
 
         const resolvedClientName = smsConvo?.clientName || (job.clientId ? clientLookup.get(job.clientId)?.name : undefined);
         const resolvedClientPhone = smsConvo?.clientPhone || (job.clientId ? clientLookup.get(job.clientId)?.phone : undefined);
         
-        const canCreateNewSms = resolvedClientPhone && 
-          !smsConvo && 
-          !(job.clientId && clientsWithSmsAssigned.has(job.clientId));
+        const canCreateNewSms = resolvedClientPhone && !smsConvo;
         
         const effectiveSmsConvo = smsConvo || (canCreateNewSms ? {
           id: 'new' as string,
@@ -1140,10 +1126,6 @@ export default function ChatHub() {
           unreadCount: 0,
           deletedAt: null,
         } as SmsConversation : undefined);
-        
-        if (canCreateNewSms && job.clientId) {
-          clientsWithSmsAssigned.add(job.clientId);
-        }
 
         // Resolve assigned worker
         const assignee = job.assignedTo ? assigneeLookup.get(job.assignedTo) : undefined;

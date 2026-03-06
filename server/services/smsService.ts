@@ -80,7 +80,7 @@ export async function getOrCreateConversation(options: {
       isArchived: false,
       deletedAt: null,
     });
-  } else if (options.jobId && conversation.jobId !== options.jobId) {
+  } else if (options.jobId && !conversation.jobId) {
     conversation = await storage.updateSmsConversation(conversation.id, {
       jobId: options.jobId,
     });
