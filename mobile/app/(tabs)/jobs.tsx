@@ -17,7 +17,7 @@ import {
   Platform,
 } from 'react-native';
 
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useContentWidth, isTablet } from '../../src/lib/device';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
@@ -314,8 +314,9 @@ export default function JobsScreen() {
   
   const { jobs, fetchJobs, isLoading, updateJobStatus } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
+  const params = useLocalSearchParams<{ filter?: string }>();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState(params.filter || 'all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   // Sort state matching Documents page pattern
@@ -338,6 +339,12 @@ export default function JobsScreen() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [savingFilter, setSavingFilter] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (params.filter) {
+      setActiveFilter(params.filter);
+    }
+  }, [params.filter]);
 
   const hasAdvancedFilters = useMemo(() => {
     return advancedFilters.statuses.length > 0 ||

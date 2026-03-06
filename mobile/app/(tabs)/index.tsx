@@ -2213,7 +2213,7 @@ export default function DashboardScreen() {
             icon="briefcase"
             iconBg={colors.primaryLight}
             iconColor={colors.primary}
-            onPress={() => router.push('/(tabs)/jobs')}
+            onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
             trend={!isStaffUser ? jobsCompletedTrend : undefined}
             trendLabel={!isStaffUser ? "completed vs last mo" : undefined}
           />
@@ -2225,7 +2225,7 @@ export default function DashboardScreen() {
                 icon="clipboard"
                 iconBg={colors.muted}
                 iconColor={colors.mutedForeground}
-                onPress={() => router.push('/(tabs)/jobs')}
+                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
               />
               <KPICard
                 title="In Progress"
@@ -2233,7 +2233,7 @@ export default function DashboardScreen() {
                 icon="clock"
                 iconBg={colors.warningLight}
                 iconColor={colors.warning}
-                onPress={() => router.push('/(tabs)/jobs')}
+                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'in_progress' } })}
               />
               <KPICard
                 title="Completed"
@@ -2241,7 +2241,7 @@ export default function DashboardScreen() {
                 icon="check-circle"
                 iconBg={colors.successLight}
                 iconColor={colors.success}
-                onPress={() => router.push('/(tabs)/jobs')}
+                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
               />
             </>
           ) : (
@@ -2300,7 +2300,7 @@ export default function DashboardScreen() {
               icon="file-plus"
               iconBg={toInvoiceCount > 0 ? colors.warningLight : colors.muted}
               iconColor={toInvoiceCount > 0 ? colors.warning : colors.mutedForeground}
-              onPress={() => router.push('/(tabs)/jobs')}
+              onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
             />
             <TouchableOpacity
               style={styles.actionCentreCard}
