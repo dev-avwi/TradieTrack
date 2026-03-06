@@ -23993,6 +23993,76 @@ Respond with JSON in this format:
     }
   });
 
+  app.get("/api/time-entries/active", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const activeEntry = await storage.getActiveTimeEntry(userId);
+      res.json(activeEntry || null);
+    } catch (error) {
+      console.error('Error fetching active time entry:', error);
+      res.status(500).json({ error: 'Failed to fetch active time entry' });
+    }
+  });
+
+  app.get("/api/time-entries/stale-check", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+
+      if (!userContext.isOwner && !userContext.permissions.includes('manage_team')) {
+        return res.status(403).json({ error: 'Only owners and managers can check stale timers' });
+      }
+
+      const effectiveUserId = userContext.effectiveUserId;
+      const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
+
+      const staleEntries = await db.select().from(timeEntries)
+        .where(and(
+          eq(timeEntries.userId, effectiveUserId),
+          isNull(timeEntries.endTime),
+          lte(timeEntries.startTime, eightHoursAgo)
+        ))
+        .orderBy(desc(timeEntries.startTime));
+
+      const teamMembers = await storage.getTeamMembers(effectiveUserId);
+      const teamMemberUserIds = teamMembers.map((m: any) => m.memberId).filter(Boolean);
+
+      let teamStaleEntries: any[] = [];
+      if (teamMemberUserIds.length > 0) {
+        teamStaleEntries = await db.select().from(timeEntries)
+          .where(and(
+            inArray(timeEntries.userId, teamMemberUserIds),
+            isNull(timeEntries.endTime),
+            lte(timeEntries.startTime, eightHoursAgo)
+          ))
+          .orderBy(desc(timeEntries.startTime));
+      }
+
+      const allStale = [...staleEntries, ...teamStaleEntries];
+
+      const enriched = await Promise.all(allStale.map(async (entry: any) => {
+        const user = await storage.getUser(entry.userId);
+        const job = entry.jobId ? await storage.getJob(entry.jobId, effectiveUserId) : null;
+        const runningHours = Math.round((Date.now() - new Date(entry.startTime).getTime()) / (1000 * 60 * 60) * 10) / 10;
+        return {
+          ...entry,
+          userName: user?.name || user?.firstName || 'Unknown',
+          jobTitle: job?.title || null,
+          runningHours,
+        };
+      }));
+
+      res.json({
+        staleTimers: enriched,
+        count: enriched.length,
+        threshold: '8 hours',
+      });
+    } catch (error) {
+      console.error('Error checking stale timers:', error);
+      res.status(500).json({ error: 'Failed to check stale timers' });
+    }
+  });
+
   app.get("/api/time-entries/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
@@ -24426,65 +24496,6 @@ Respond with JSON in this format:
     }
   });
 
-  app.get("/api/time-entries/stale-check", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const userContext = await getUserContext(userId);
-
-      if (!userContext.isOwner && !userContext.permissions.includes('manage_team')) {
-        return res.status(403).json({ error: 'Only owners and managers can check stale timers' });
-      }
-
-      const effectiveUserId = userContext.effectiveUserId;
-      const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
-
-      const staleEntries = await db.select().from(timeEntries)
-        .where(and(
-          eq(timeEntries.userId, effectiveUserId),
-          isNull(timeEntries.endTime),
-          lte(timeEntries.startTime, eightHoursAgo)
-        ))
-        .orderBy(desc(timeEntries.startTime));
-
-      const teamMembers = await storage.getTeamMembers(effectiveUserId);
-      const teamMemberUserIds = teamMembers.map((m: any) => m.memberId).filter(Boolean);
-
-      let teamStaleEntries: any[] = [];
-      if (teamMemberUserIds.length > 0) {
-        teamStaleEntries = await db.select().from(timeEntries)
-          .where(and(
-            inArray(timeEntries.userId, teamMemberUserIds),
-            isNull(timeEntries.endTime),
-            lte(timeEntries.startTime, eightHoursAgo)
-          ))
-          .orderBy(desc(timeEntries.startTime));
-      }
-
-      const allStale = [...staleEntries, ...teamStaleEntries];
-
-      const enriched = await Promise.all(allStale.map(async (entry: any) => {
-        const user = await storage.getUser(entry.userId);
-        const job = entry.jobId ? await storage.getJob(entry.jobId, effectiveUserId) : null;
-        const runningHours = Math.round((Date.now() - new Date(entry.startTime).getTime()) / (1000 * 60 * 60) * 10) / 10;
-        return {
-          ...entry,
-          userName: user?.name || user?.firstName || 'Unknown',
-          jobTitle: job?.title || null,
-          runningHours,
-        };
-      }));
-
-      res.json({
-        staleTimers: enriched,
-        count: enriched.length,
-        threshold: '8 hours',
-      });
-    } catch (error) {
-      console.error('Error checking stale timers:', error);
-      res.status(500).json({ error: 'Failed to check stale timers' });
-    }
-  });
-
   app.post("/api/time-entries/:id/resume", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
@@ -24597,17 +24608,6 @@ Respond with JSON in this format:
         return res.status(400).json({ error: 'Invalid time entry data', details: error.errors });
       }
       res.status(500).json({ error: 'Failed to update time entry' });
-    }
-  });
-
-  app.get("/api/time-entries/active", requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.userId!;
-      const activeEntry = await storage.getActiveTimeEntry(userId);
-      res.json(activeEntry || null);
-    } catch (error) {
-      console.error('Error fetching active time entry:', error);
-      res.status(500).json({ error: 'Failed to fetch active time entry' });
     }
   });
 
