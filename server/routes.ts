@@ -8047,6 +8047,7 @@ Be specific about materials, colors, and features that would be included.`
         notifyTeamLocations: settings?.notifyTeamLocations ?? true,
         notifyDailySummary: settings?.notifyDailySummary ?? false,
         notifyWeeklySummary: settings?.notifyWeeklySummary ?? false,
+        smartRunningLateEnabled: settings?.smartRunningLateEnabled ?? true,
       });
     } catch (error) {
       console.error("Error getting notification preferences:", error);
@@ -8072,6 +8073,7 @@ Be specific about materials, colors, and features that would be included.`
         'notifyTeamLocations',
         'notifyDailySummary',
         'notifyWeeklySummary',
+        'smartRunningLateEnabled',
       ];
       
       const filteredUpdates: Record<string, boolean> = {};
@@ -14277,6 +14279,38 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  app.get("/api/jobs/:id/site-attendance", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const jobId = req.params.id;
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) return res.status(404).json({ error: "Job not found" });
+
+      const alerts = await db.select().from(geofence_alerts).where(eq(geofence_alerts.jobId, jobId));
+      const sorted = alerts.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      const arrivals = sorted.filter((a: any) => a.alertType === 'geofence_enter' || a.alertType === 'arrival');
+      const departures = sorted.filter((a: any) => a.alertType === 'geofence_exit' || a.alertType === 'departure');
+
+      res.json({
+        events: sorted.map((a: any) => ({
+          id: a.id,
+          type: a.alertType === 'geofence_enter' || a.alertType === 'arrival' ? 'arrival' : 'departure',
+          timestamp: a.createdAt,
+          latitude: a.latitude,
+          longitude: a.longitude,
+        })),
+        arrivalCount: arrivals.length,
+        departureCount: departures.length,
+        firstArrival: arrivals[0]?.createdAt || null,
+        lastDeparture: departures[departures.length - 1]?.createdAt || null,
+      });
+    } catch (error: any) {
+      console.error("Error fetching site attendance:", error);
+      res.status(500).json({ error: "Failed to fetch site attendance" });
+    }
+  });
+
   app.post("/api/jobs", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       // Use effectiveUserId (business owner's ID) for multi-tenant data scoping
@@ -16450,8 +16484,32 @@ Be specific about materials, colors, and features that would be included.`
       const user = await storage.getUser(req.userId);
       const tradieName = user?.firstName || businessName;
 
-      const { customMessage } = req.body;
-      const message = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} here. Running a bit late for your job at ${job.address || 'your location'}. Apologies for the delay - will be there as soon as possible.`;
+      const { customMessage, latitude, longitude } = req.body;
+
+      // Calculate real ETA if GPS coordinates provided
+      let etaText = 'will be there as soon as possible';
+      if (latitude && longitude && job.address) {
+        try {
+          let jobLat = job.latitude ? parseFloat(String(job.latitude)) : null;
+          let jobLng = job.longitude ? parseFloat(String(job.longitude)) : null;
+          if (!jobLat || !jobLng) {
+            const geocoded = await geocodeAddress(job.address);
+            if (geocoded) { jobLat = geocoded.latitude; jobLng = geocoded.longitude; }
+          }
+          if (jobLat && jobLng) {
+            const routeETA = await calculateRouteETA(parseFloat(String(latitude)), parseFloat(String(longitude)), jobLat, jobLng);
+            if (routeETA) {
+              etaText = `should be there in about ${routeETA.durationMinutes} minutes`;
+            } else {
+              const dist = haversineDistance(parseFloat(String(latitude)), parseFloat(String(longitude)), jobLat, jobLng);
+              const mins = dist <= 5 ? Math.max(Math.ceil(dist * 3), 3) : dist <= 20 ? Math.ceil(dist * 2.5) : Math.ceil(dist * 2);
+              etaText = `should be there in about ${mins} minutes`;
+            }
+          }
+        } catch (e) { console.log('[RunningLate] ETA calc failed:', e); }
+      }
+
+      const message = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} here. Running a bit late for your job at ${job.address || 'your location'}. Apologies for the delay - ${etaText}.`;
       
       // Send SMS via shared Twilio client (supports connector and env vars)
       const smsResult = await sendSMS({
@@ -16490,6 +16548,121 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error: any) {
       console.error("Error sending running-late notification:", error);
       res.status(500).json({ error: error.message || "Failed to send notification" });
+    }
+  });
+
+  // Smart running late detection — checks if user can make their next scheduled job on time
+  app.post("/api/smart-running-late/check", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { latitude, longitude } = req.body;
+
+      if (!latitude || !longitude) {
+        return res.json({ runningLate: false, reason: 'no_gps' });
+      }
+
+      // Get today's jobs, find the next upcoming scheduled one
+      const allJobs = await storage.getJobs(userContext.effectiveUserId);
+      const now = new Date();
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date(now);
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const upcomingJobs = allJobs
+        .filter((j: any) => {
+          if (j.status !== 'scheduled') return false;
+          if (!j.scheduledAt) return false;
+          const scheduled = new Date(j.scheduledAt);
+          return scheduled >= now && scheduled <= todayEnd;
+        })
+        .sort((a: any, b: any) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime());
+
+      if (upcomingJobs.length === 0) {
+        return res.json({ runningLate: false, reason: 'no_upcoming_jobs' });
+      }
+
+      const nextJob = upcomingJobs[0];
+      const scheduledTime = new Date(nextJob.scheduledAt!);
+      const minutesUntilJob = (scheduledTime.getTime() - now.getTime()) / 60000;
+
+      // Only check if job is within the next 60 minutes
+      if (minutesUntilJob > 60) {
+        return res.json({ runningLate: false, reason: 'job_too_far_ahead' });
+      }
+
+      // Get job coordinates
+      let jobLat = nextJob.latitude ? parseFloat(String(nextJob.latitude)) : null;
+      let jobLng = nextJob.longitude ? parseFloat(String(nextJob.longitude)) : null;
+
+      if (!jobLat || !jobLng) {
+        if (nextJob.address) {
+          const geocoded = await geocodeAddress(nextJob.address);
+          if (geocoded) {
+            jobLat = geocoded.latitude;
+            jobLng = geocoded.longitude;
+          }
+        }
+      }
+
+      if (!jobLat || !jobLng) {
+        return res.json({ runningLate: false, reason: 'no_job_coordinates' });
+      }
+
+      // Calculate real driving time
+      let etaMinutes = 20;
+      let distanceKm: number | null = null;
+
+      const routeETA = await calculateRouteETA(
+        parseFloat(String(latitude)),
+        parseFloat(String(longitude)),
+        jobLat,
+        jobLng
+      );
+
+      if (routeETA) {
+        etaMinutes = routeETA.durationMinutes;
+        distanceKm = routeETA.distanceKm;
+      } else {
+        const dist = haversineDistance(
+          parseFloat(String(latitude)),
+          parseFloat(String(longitude)),
+          jobLat,
+          jobLng
+        );
+        distanceKm = Math.round(dist * 10) / 10;
+        if (dist <= 5) etaMinutes = Math.max(Math.ceil(dist * 3), 3);
+        else if (dist <= 20) etaMinutes = Math.ceil(dist * 2.5);
+        else if (dist <= 50) etaMinutes = Math.ceil(dist * 2);
+        else etaMinutes = Math.ceil(dist * 1.5);
+      }
+
+      // Add 5 minute buffer for parking/setup
+      const arrivalMinutes = etaMinutes + 5;
+      const willBeLate = arrivalMinutes > minutesUntilJob;
+
+      // Get client info for the notification
+      let clientName = 'the client';
+      if (nextJob.clientId) {
+        const client = await storage.getClient(nextJob.clientId, userContext.effectiveUserId);
+        if (client) clientName = client.firstName || client.email || 'the client';
+      }
+
+      res.json({
+        runningLate: willBeLate,
+        jobId: nextJob.id,
+        jobTitle: nextJob.title || 'Upcoming Job',
+        jobAddress: nextJob.address,
+        scheduledAt: nextJob.scheduledAt,
+        minutesUntilJob: Math.round(minutesUntilJob),
+        etaMinutes,
+        distanceKm,
+        clientName,
+        lateByMinutes: willBeLate ? Math.round(arrivalMinutes - minutesUntilJob) : 0,
+      });
+    } catch (error: any) {
+      console.error("Error checking running late:", error);
+      res.json({ runningLate: false, reason: 'error' });
     }
   });
 
@@ -21223,6 +21396,109 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error) {
       console.error("Error fetching dashboard activity:", error);
       res.status(500).json({ error: "Failed to fetch activity" });
+    }
+  });
+
+  app.get("/api/dashboard/daily-summary", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
+
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+      const dayAfterTomorrow = new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000);
+
+      let [allJobs, allInvoices, timeEntriesData] = await Promise.all([
+        storage.getJobs(effectiveUserId),
+        storage.getInvoices(effectiveUserId),
+        db.select().from(timeEntries).where(
+          and(
+            eq(timeEntries.userId, req.userId),
+            gte(timeEntries.startTime, today),
+            lte(timeEntries.startTime, tomorrow)
+          )
+        ),
+      ]);
+
+      if (!hasViewAll && userContext.teamMemberId) {
+        allJobs = allJobs.filter(job => job.assignedTo === userContext.teamMemberId || job.assignedTo === req.userId);
+      }
+
+      const todaysJobs = allJobs.filter((j: any) => {
+        if (!j.scheduledAt) return false;
+        const d = new Date(j.scheduledAt);
+        return d >= today && d < tomorrow;
+      });
+
+      const jobsCompletedToday = todaysJobs.filter((j: any) => j.status === 'done' || j.status === 'invoiced').length;
+
+      let totalHoursTracked = 0;
+      for (const entry of timeEntriesData) {
+        if (entry.duration) {
+          totalHoursTracked += entry.duration / 60;
+        } else if (entry.endTime) {
+          const start = new Date(entry.startTime!).getTime();
+          const end = new Date(entry.endTime).getTime();
+          totalHoursTracked += (end - start) / 3600000;
+        }
+      }
+      totalHoursTracked = Math.round(totalHoursTracked * 10) / 10;
+
+      const invoicesCreatedToday = allInvoices.filter((inv: any) => {
+        if (!inv.createdAt) return false;
+        const d = new Date(inv.createdAt);
+        return d >= today && d < tomorrow;
+      }).length;
+
+      const moneyCollectedToday = allInvoices
+        .filter((inv: any) => {
+          if (inv.status !== 'paid' || !inv.paidAt) return false;
+          const d = new Date(inv.paidAt);
+          return d >= today && d < tomorrow;
+        })
+        .reduce((sum: number, inv: any) => sum + parseFloat(inv.total || '0'), 0);
+
+      const tomorrowsJobs = allJobs
+        .filter((j: any) => {
+          if (!j.scheduledAt) return false;
+          const d = new Date(j.scheduledAt);
+          return d >= tomorrow && d < dayAfterTomorrow && j.status !== 'done' && j.status !== 'cancelled';
+        })
+        .sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+      let tomorrowFirstJob = null;
+      if (tomorrowsJobs.length > 0) {
+        const firstJob = tomorrowsJobs[0];
+        const allClients = await storage.getClients(effectiveUserId);
+        const client = allClients.find((c: any) => c.id === firstJob.clientId);
+        tomorrowFirstJob = {
+          id: firstJob.id,
+          title: firstJob.title || 'Untitled Job',
+          address: firstJob.address || firstJob.location || null,
+          scheduledAt: firstJob.scheduledAt,
+          clientName: client?.name || null,
+          latitude: firstJob.latitude || null,
+          longitude: firstJob.longitude || null,
+        };
+      }
+
+      const allJobsDone = todaysJobs.length > 0 && todaysJobs.every((j: any) => j.status === 'done' || j.status === 'invoiced' || j.status === 'cancelled');
+
+      res.json({
+        totalHoursTracked,
+        jobsCompletedToday,
+        totalJobsToday: todaysJobs.length,
+        invoicesCreatedToday,
+        moneyCollectedToday,
+        tomorrowFirstJob,
+        tomorrowJobCount: tomorrowsJobs.length,
+        allJobsDone,
+      });
+    } catch (error) {
+      console.error("Error fetching daily summary:", error);
+      res.status(500).json({ error: "Failed to fetch daily summary" });
     }
   });
 
@@ -29150,6 +29426,8 @@ Respond with JSON in this format:
       res.json({ 
         success: true, 
         alertId: alert.id,
+        jobTitle: job.title || 'Job site',
+        jobId,
         timeEntryAction,
         coordinatesValid,
         geofenceSettings: {

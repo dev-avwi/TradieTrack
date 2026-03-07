@@ -656,6 +656,8 @@ export default function AutopilotScreen() {
   const [formData, setFormData] = useState<AutomationFormData>({ ...EMPTY_FORM });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [runningLateEnabled, setRunningLateEnabled] = useState(false);
+  const [togglingRunningLate, setTogglingRunningLate] = useState(false);
 
   const activeCount = useMemo(() => automations.filter(a => a.isActive).length, [automations]);
   const totalCount = automations.length;
@@ -688,12 +690,39 @@ export default function AutopilotScreen() {
 
   useEffect(() => {
     fetchData();
+    api.get('/api/notification-preferences').then(res => {
+      if (res.data && !res.error) {
+        setRunningLateEnabled(res.data.smartRunningLateEnabled !== false);
+      }
+    });
   }, [fetchData]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
+    api.get('/api/notification-preferences').then(res => {
+      if (res.data && !res.error) {
+        setRunningLateEnabled(res.data.smartRunningLateEnabled !== false);
+      }
+    });
   }, [fetchData]);
+
+  const handleRunningLateToggle = useCallback(async (value: boolean) => {
+    setTogglingRunningLate(true);
+    setRunningLateEnabled(value);
+    try {
+      const res = await api.patch('/api/notification-preferences', { smartRunningLateEnabled: value });
+      if (res.error) {
+        setRunningLateEnabled(!value);
+        Alert.alert('Error', 'Failed to update running late detection');
+      }
+    } catch {
+      setRunningLateEnabled(!value);
+      Alert.alert('Error', 'Failed to update setting');
+    } finally {
+      setTogglingRunningLate(false);
+    }
+  }, []);
 
   const handleToggle = useCallback(async (automation: Automation) => {
     const newActive = !automation.isActive;
@@ -1547,7 +1576,36 @@ export default function AutopilotScreen() {
 
           {!isLoading && !error && activeTab === 'automations' && (
             <>
-              <Text style={styles.sectionTitle}>YOUR AUTOMATIONS</Text>
+              {/* Smart GPS Features */}
+              <Text style={styles.sectionTitle}>SMART GPS FEATURES</Text>
+              <View style={[styles.card, { borderColor: runningLateEnabled ? colors.success + '40' : colors.border }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                  <View style={{ width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather name="navigation" size={18} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.cardTitle, { marginBottom: 2 }]}>Running Late Detection</Text>
+                    <Text style={[styles.cardDescription, { fontSize: typography.sizes.xs }]}>
+                      Uses GPS to detect if you can't make your next job on time. Auto-notifies you with a one-tap client alert.
+                    </Text>
+                  </View>
+                  <Switch
+                    value={runningLateEnabled}
+                    onValueChange={handleRunningLateToggle}
+                    disabled={togglingRunningLate}
+                    trackColor={{ false: colors.muted, true: colors.success + '60' }}
+                    thumbColor={runningLateEnabled ? colors.success : colors.mutedForeground}
+                  />
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm, paddingLeft: 48 }}>
+                  <Feather name="info" size={12} color={colors.mutedForeground} />
+                  <Text style={{ fontSize: typography.sizes.xs, color: colors.mutedForeground }}>
+                    Checks every 5 min when you have upcoming jobs within the hour
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={[styles.sectionTitle, { marginTop: spacing.md }]}>YOUR AUTOMATIONS</Text>
               {automations.length === 0
                 ? renderEmptyState('automations')
                 : automations.map(renderAutomationCard)}

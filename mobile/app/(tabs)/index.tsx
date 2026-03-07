@@ -1561,6 +1561,26 @@ export default function DashboardScreen() {
   const [activities, setActivities] = useState<any[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   
+  // Day Summary state
+  const [dailySummary, setDailySummary] = useState<{
+    totalHoursTracked: number;
+    jobsCompletedToday: number;
+    totalJobsToday: number;
+    invoicesCreatedToday: number;
+    moneyCollectedToday: number;
+    tomorrowFirstJob: {
+      id: string;
+      title: string;
+      address: string | null;
+      scheduledAt: string;
+      clientName: string | null;
+      latitude: number | null;
+      longitude: number | null;
+    } | null;
+    tomorrowJobCount: number;
+    allJobsDone: boolean;
+  } | null>(null);
+  
   const fetchToInvoiceCount = useCallback(async () => {
     try {
       const response = await api.get<any[]>('/api/jobs');
@@ -1590,6 +1610,17 @@ export default function DashboardScreen() {
       setActivities([]);
     } finally {
       setActivitiesLoading(false);
+    }
+  }, []);
+
+  const fetchDailySummary = useCallback(async () => {
+    try {
+      const response = await api.get('/api/dashboard/daily-summary');
+      if (response.data) {
+        setDailySummary(response.data as any);
+      }
+    } catch (error) {
+      console.log('Error fetching daily summary:', error);
     }
   }, []);
 
@@ -1885,6 +1916,7 @@ export default function DashboardScreen() {
   const fetchTeamStateRef = useRef(fetchTeamState);
   const fetchMyAllJobsRef = useRef(fetchMyAllJobs);
   const fetchToInvoiceCountRef = useRef(fetchToInvoiceCount);
+  const fetchDailySummaryRef = useRef(fetchDailySummary);
   
   // Keep refs updated
   fetchTodaysJobsRef.current = fetchTodaysJobs;
@@ -1894,6 +1926,7 @@ export default function DashboardScreen() {
   fetchTeamStateRef.current = fetchTeamState;
   fetchMyAllJobsRef.current = fetchMyAllJobs;
   fetchToInvoiceCountRef.current = fetchToInvoiceCount;
+  fetchDailySummaryRef.current = fetchDailySummary;
 
   const refreshData = useCallback(async () => {
     await Promise.all([
@@ -1903,6 +1936,7 @@ export default function DashboardScreen() {
       fetchActivitiesRef.current(),
       fetchMyAllJobsRef.current(),
       fetchToInvoiceCountRef.current(),
+      fetchDailySummaryRef.current(),
     ]);
     // Mark initial load as complete on first data fetch
     setInitialLoadComplete(true);
@@ -2234,6 +2268,12 @@ export default function DashboardScreen() {
       return jobDate > today && jobDate <= endOfWeek && jobDate.toDateString() !== today.toDateString();
     });
   }, [todaysJobs]);
+
+  const showDaySummary = useMemo(() => {
+    if (!dailySummary) return false;
+    const currentHour = new Date().getHours();
+    return currentHour >= 16 || dailySummary.allJobsDone;
+  }, [dailySummary]);
 
   const isLoading = jobsLoading || statsLoading;
 
@@ -2615,6 +2655,106 @@ export default function DashboardScreen() {
                 </TouchableOpacity>
               );
             })}
+          </View>
+        </View>
+      )}
+
+      {/* Day Summary Card - shows after 4pm or when all jobs done */}
+      {heavySectionsReady && showDaySummary && dailySummary && (
+        <View style={styles.section}>
+          <View style={styles.daySummaryCard}>
+            <View style={styles.daySummaryHeader}>
+              <View style={styles.daySummaryTitleRow}>
+                <View style={[styles.daySummaryIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
+                  <Feather name="sunset" size={20} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.daySummaryTitle}>Day Summary</Text>
+                  <Text style={styles.daySummarySubtitle}>
+                    {dailySummary.allJobsDone ? 'All jobs complete' : 'Your day so far'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.daySummaryStatsGrid}>
+              <View style={styles.daySummaryStat}>
+                <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.info, 0.1) }]}>
+                  <Feather name="clock" size={16} color={colors.info} />
+                </View>
+                <Text style={styles.daySummaryStatValue}>{dailySummary.totalHoursTracked}h</Text>
+                <Text style={styles.daySummaryStatLabel}>Hours</Text>
+              </View>
+              <View style={styles.daySummaryStat}>
+                <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
+                  <Feather name="check-circle" size={16} color={colors.success} />
+                </View>
+                <Text style={styles.daySummaryStatValue}>
+                  {dailySummary.jobsCompletedToday}/{dailySummary.totalJobsToday}
+                </Text>
+                <Text style={styles.daySummaryStatLabel}>Jobs Done</Text>
+              </View>
+              <View style={styles.daySummaryStat}>
+                <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.warning, 0.1) }]}>
+                  <Feather name="file-text" size={16} color={colors.warning} />
+                </View>
+                <Text style={styles.daySummaryStatValue}>{dailySummary.invoicesCreatedToday}</Text>
+                <Text style={styles.daySummaryStatLabel}>Invoices</Text>
+              </View>
+              <View style={styles.daySummaryStat}>
+                <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
+                  <Feather name="dollar-sign" size={16} color={colors.success} />
+                </View>
+                <Text style={styles.daySummaryStatValue}>
+                  ${dailySummary.moneyCollectedToday.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </Text>
+                <Text style={styles.daySummaryStatLabel}>Collected</Text>
+              </View>
+            </View>
+
+            {dailySummary.tomorrowFirstJob && (
+              <TouchableOpacity
+                style={styles.daySummaryTomorrow}
+                onPress={() => router.push(`/job/${dailySummary.tomorrowFirstJob!.id}`)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.daySummaryTomorrowHeader}>
+                  <Feather name="sunrise" size={14} color={colors.primary} />
+                  <Text style={styles.daySummaryTomorrowLabel}>
+                    Tomorrow{dailySummary.tomorrowJobCount > 1 ? ` (${dailySummary.tomorrowJobCount} jobs)` : ''}
+                  </Text>
+                </View>
+                <Text style={styles.daySummaryTomorrowTitle} numberOfLines={1}>
+                  {dailySummary.tomorrowFirstJob.title}
+                </Text>
+                <View style={styles.daySummaryTomorrowMeta}>
+                  {dailySummary.tomorrowFirstJob.scheduledAt && (
+                    <View style={styles.daySummaryTomorrowMetaItem}>
+                      <Feather name="clock" size={12} color={colors.mutedForeground} />
+                      <Text style={styles.daySummaryTomorrowMetaText}>
+                        {new Date(dailySummary.tomorrowFirstJob.scheduledAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                      </Text>
+                    </View>
+                  )}
+                  {dailySummary.tomorrowFirstJob.address && (
+                    <View style={styles.daySummaryTomorrowMetaItem}>
+                      <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                      <Text style={styles.daySummaryTomorrowMetaText} numberOfLines={1}>
+                        {dailySummary.tomorrowFirstJob.address}
+                      </Text>
+                    </View>
+                  )}
+                  {dailySummary.tomorrowFirstJob.clientName && (
+                    <View style={styles.daySummaryTomorrowMetaItem}>
+                      <Feather name="user" size={12} color={colors.mutedForeground} />
+                      <Text style={styles.daySummaryTomorrowMetaText}>
+                        {dailySummary.tomorrowFirstJob.clientName}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
@@ -4045,6 +4185,101 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   weatherRainText: {
     ...typography.captionSmall,
     fontWeight: '500',
+  },
+
+  daySummaryCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing.lg,
+    ...shadows.sm,
+  },
+  daySummaryHeader: {
+    marginBottom: spacing.lg,
+  },
+  daySummaryTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  daySummaryIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  daySummaryTitle: {
+    ...typography.bodySemibold,
+    color: colors.foreground,
+  },
+  daySummarySubtitle: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 1,
+  },
+  daySummaryStatsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  daySummaryStat: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  daySummaryStatIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  daySummaryStatValue: {
+    ...typography.bodySemibold,
+    color: colors.foreground,
+    fontSize: 16,
+  },
+  daySummaryStatLabel: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+  },
+  daySummaryTomorrow: {
+    marginTop: spacing.lg,
+    backgroundColor: colors.muted,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+  },
+  daySummaryTomorrowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  daySummaryTomorrowLabel: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  daySummaryTomorrowTitle: {
+    ...typography.bodySemibold,
+    color: colors.foreground,
+    marginBottom: spacing.xs,
+  },
+  daySummaryTomorrowMeta: {
+    gap: spacing.xs,
+  },
+  daySummaryTomorrowMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  daySummaryTomorrowMetaText: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    flex: 1,
   },
 
   actionCentreCard: {

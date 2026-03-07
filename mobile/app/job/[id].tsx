@@ -1852,6 +1852,10 @@ export default function JobDetailScreen() {
   const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [isUploadingVoiceNote, setIsUploadingVoiceNote] = useState(false);
+  const [showFABVoiceModal, setShowFABVoiceModal] = useState(false);
+  const [isFABRecording, setIsFABRecording] = useState(false);
+  const [isUploadingFABVoice, setIsUploadingFABVoice] = useState(false);
+  const fabPulseAnim = useRef(new Animated.Value(1)).current;
   
   const [signatures, setSignatures] = useState<DigitalSignature[]>([]);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
@@ -1864,6 +1868,7 @@ export default function JobDetailScreen() {
   const [sliderRadius, setSliderRadius] = useState(100);
   
   const [timeEntries, setTimeEntries] = useState<CompletedTimeEntry[]>([]);
+  const [siteAttendance, setSiteAttendance] = useState<{ events: any[]; arrivalCount: number; departureCount: number; firstArrival: string | null; lastDeparture: string | null } | null>(null);
   const [activityLog, setActivityLog] = useState<ActivityItem[]>([]);
   const [isConvertingToInvoice, setIsConvertingToInvoice] = useState(false);
   
@@ -2067,6 +2072,31 @@ export default function JobDetailScreen() {
       pulseAnim.setValue(1);
     }
   }, [isTimerForThisJob]);
+
+  useEffect(() => {
+    if (isFABRecording) {
+      const fabPulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(fabPulseAnim, {
+            toValue: 1.15,
+            duration: 800,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(fabPulseAnim, {
+            toValue: 1,
+            duration: 800,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      fabPulse.start();
+      return () => fabPulse.stop();
+    } else {
+      fabPulseAnim.setValue(1);
+    }
+  }, [isFABRecording]);
 
   // Create ref for AppState tracking
   const appStateRef = useRef(AppState.currentState);
@@ -2712,7 +2742,9 @@ export default function JobDetailScreen() {
           return true;
 
         case 'mark_complete':
-          // Route through completion modal for review instead of direct completion
+          api.get(`/api/jobs/${job.id}/site-attendance`).then(res => {
+            if (res.data && !res.error) setSiteAttendance(res.data);
+          }).catch(() => {});
           setShowCompletionModal(true);
           return true;
 
@@ -3029,6 +3061,76 @@ export default function JobDetailScreen() {
       Alert.alert('Error', 'Failed to upload voice note');
     } finally {
       setIsUploadingVoiceNote(false);
+    }
+  };
+
+  const handleFABVoiceNoteSave = async (uri: string, duration: number) => {
+    if (!job) return;
+    
+    setIsUploadingFABVoice(true);
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+      const audioData = await base64Promise;
+      
+      const uploadResponse = await api.post<{ id: string }>(`/api/jobs/${job.id}/voice-notes`, {
+        audioData,
+        fileName: `voice-note-${Date.now()}.m4a`,
+        mimeType: 'audio/m4a',
+        duration,
+      });
+      
+      await loadVoiceNotes();
+      setShowFABVoiceModal(false);
+      setIsFABRecording(false);
+      
+      const noteId = uploadResponse.data?.id;
+      if (noteId) {
+        try {
+          const transcribeResponse = await api.post<{ transcription: string }>(`/api/jobs/${job.id}/voice-notes/${noteId}/transcribe`);
+          if (transcribeResponse.data?.transcription) {
+            const transcribedText = transcribeResponse.data.transcription;
+            
+            setVoiceNotes(prev => prev.map(v => 
+              v.id === noteId ? { ...v, transcription: transcribedText } : v
+            ));
+            
+            const currentNotes = job.notes || '';
+            const newNotes = currentNotes 
+              ? `${currentNotes}\n\n[Voice Note]\n${transcribedText}`
+              : `[Voice Note]\n${transcribedText}`;
+            
+            setJob({ ...job, notes: newNotes });
+            
+            const { isOnline } = useOfflineStore.getState();
+            if (!isOnline) {
+              await offlineStorage.updateJobOffline(job.id, { notes: newNotes });
+            } else {
+              await api.patch(`/api/jobs/${job.id}`, { notes: newNotes });
+            }
+            
+            Alert.alert('Voice Note Saved', 'Recording transcribed and added to job notes.');
+          } else {
+            Alert.alert('Voice Note Saved', 'Recording saved. Transcription unavailable.');
+          }
+        } catch (transcribeError) {
+          console.error('Transcription failed:', transcribeError);
+          Alert.alert('Voice Note Saved', 'Recording saved but transcription failed.');
+        }
+      } else {
+        Alert.alert('Success', 'Voice note saved');
+      }
+    } catch (error) {
+      console.error('Error uploading FAB voice note:', error);
+      Alert.alert('Error', 'Failed to upload voice note');
+    } finally {
+      setIsUploadingFABVoice(false);
     }
   };
 
@@ -4061,6 +4163,9 @@ export default function JobDetailScreen() {
           return;
         }
       }
+      api.get(`/api/jobs/${job.id}/site-attendance`).then(res => {
+        if (res.data && !res.error) setSiteAttendance(res.data);
+      }).catch(() => {});
       setShowCompletionModal(true);
       return;
     }
@@ -7665,7 +7770,111 @@ export default function JobDetailScreen() {
         {activeTab === 'chat' && renderChatTab()}
         {activeTab === 'safety' && renderSafetyTab()}
       </ScrollView>
+
+      {/* Floating Voice Dictation FAB */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          bottom: 24,
+          right: 20,
+          transform: [{ scale: fabPulseAnim }],
+          zIndex: 999,
+        }}
+      >
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => {
+            setShowFABVoiceModal(true);
+          }}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: isFABRecording ? colors.destructive : colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+            ...shadows.lg,
+            elevation: 8,
+            shadowColor: isFABRecording ? colors.destructive : colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+          }}
+        >
+          <Feather name="mic" size={24} color={colors.primaryForeground} />
+        </TouchableOpacity>
+      </Animated.View>
+
       </View>
+
+      {/* FAB Voice Recording Modal */}
+      <Modal visible={showFABVoiceModal} animationType="slide" transparent>
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          justifyContent: 'flex-end',
+        }}>
+          <View style={{
+            backgroundColor: colors.card,
+            borderTopLeftRadius: radius.xl,
+            borderTopRightRadius: radius.xl,
+            padding: spacing.xl,
+            paddingBottom: 40,
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+          }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: spacing.lg,
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <View style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: `${colors.primary}15`,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Feather name="mic" size={18} color={colors.primary} />
+                </View>
+                <Text style={{ fontSize: 17, fontWeight: '600', color: colors.foreground }}>
+                  Quick Voice Note
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowFABVoiceModal(false);
+                  setIsFABRecording(false);
+                }}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: colors.muted,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Feather name="x" size={18} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.lg }}>
+              Record a voice note. It will be auto-transcribed and added to job notes.
+            </Text>
+            <VoiceRecorder
+              onSave={handleFABVoiceNoteSave}
+              onCancel={() => {
+                setShowFABVoiceModal(false);
+                setIsFABRecording(false);
+              }}
+              isUploading={isUploadingFABVoice}
+            />
+          </View>
+        </View>
+      </Modal>
 
       {/* Add/Edit Material Modal */}
       <Modal visible={showAddMaterialModal} animationType="slide" transparent>
@@ -8471,6 +8680,40 @@ export default function JobDetailScreen() {
                     </Text>
                   </View>
                 </View>
+              </View>
+
+              {/* Site Attendance Section */}
+              <View style={styles.completionSection}>
+                <View style={styles.completionSectionHeader}>
+                  <View style={[styles.completionSectionIcon, { backgroundColor: (siteAttendance && siteAttendance.arrivalCount > 0) ? colors.success + '15' : colors.destructive + '15' }]}>
+                    <Feather name="map-pin" size={18} color={(siteAttendance && siteAttendance.arrivalCount > 0) ? colors.success : colors.destructive} />
+                  </View>
+                  <Text style={styles.completionSectionTitle}>Site Attendance</Text>
+                  <View style={styles.completionSectionStatus}>
+                    <Feather 
+                      name={(siteAttendance && siteAttendance.arrivalCount > 0) ? 'check-circle' : 'x-circle'} 
+                      size={18} 
+                      color={(siteAttendance && siteAttendance.arrivalCount > 0) ? colors.success : colors.destructive} 
+                    />
+                    <Text style={[styles.completionStatusText, { color: (siteAttendance && siteAttendance.arrivalCount > 0) ? colors.success : colors.destructive }]}>
+                      {(siteAttendance && siteAttendance.arrivalCount > 0) 
+                        ? `${siteAttendance.arrivalCount} visit${siteAttendance.arrivalCount !== 1 ? 's' : ''} logged`
+                        : 'No GPS data'}
+                    </Text>
+                  </View>
+                </View>
+                {siteAttendance && siteAttendance.firstArrival && (
+                  <View style={{ marginTop: spacing.xs, gap: spacing.xxs || 2 }}>
+                    <Text style={[styles.completionSectionDetail]}>
+                      Arrived: {new Date(siteAttendance.firstArrival).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                    {siteAttendance.lastDeparture && (
+                      <Text style={[styles.completionSectionDetail]}>
+                        Departed: {new Date(siteAttendance.lastDeparture).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    )}
+                  </View>
+                )}
               </View>
 
               {/* Empty Job Warning */}

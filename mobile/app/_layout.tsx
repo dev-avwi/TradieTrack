@@ -124,6 +124,9 @@ function ServicesInitializer() {
   const { fetchNotifications } = useNotificationsStore();
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const terminalInitializedRef = useRef(false);
+  const runningLateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastRunningLateJobRef = useRef<string | null>(null);
+  const geofenceListenerRef = useRef(false);
 
   useEffect(() => {
     async function initServices() {
@@ -182,6 +185,18 @@ function ServicesInitializer() {
               }
               break;
               
+            case 'geofence':
+              if (data?.jobId) {
+                router.push(`/job/${data.jobId}`);
+              }
+              break;
+
+            case 'running_late':
+              if (data?.jobId) {
+                router.push(`/job/${data.jobId}`);
+              }
+              break;
+
             case 'general':
             default:
               // Default to notifications inbox and refresh
@@ -201,12 +216,103 @@ function ServicesInitializer() {
 
       try {
         await location.initialize();
-        // Sync geofences for all jobs that have geofencing enabled
         const { locationTracking } = await import('../src/lib/location-tracking');
+        
+        // Sync geofences for all jobs that have geofencing enabled
         locationTracking.syncJobGeofences();
+
+        // Listen for geofence enter/exit events and show notifications (guard against duplicate registration)
+        if (!geofenceListenerRef.current) {
+        geofenceListenerRef.current = true;
+        location.onGeofenceEvent(async (event) => {
+          console.log('[App] Geofence event:', event);
+          const jobId = event.identifier.replace('job_', '');
+          
+          try {
+            // Post to server — handles auto clock-in/out and returns result
+            const response = await api.post('/api/geofence-events', {
+              identifier: event.identifier,
+              action: event.action,
+              timestamp: event.timestamp,
+            });
+
+            const data = response.data || response;
+            const jobTitle = data?.jobTitle || 'Job site';
+            const timeAction = data?.timeEntryAction;
+
+            let title = '';
+            let body = '';
+
+            if (event.action === 'enter') {
+              if (timeAction?.type === 'clock_in') {
+                title = 'Arrived — Timer Started';
+                body = `You've arrived at ${jobTitle}. Time tracking has been auto-started.`;
+              } else {
+                title = 'Arrived on Site';
+                body = `You've arrived at ${jobTitle}. Tap to view job details.`;
+              }
+            } else {
+              if (timeAction?.type === 'clock_out') {
+                const dur = timeAction.duration ? ` (${Math.round(timeAction.duration / 60)} min logged)` : '';
+                title = 'Left Site — Timer Stopped';
+                body = `You've left ${jobTitle}. Time tracking auto-stopped${dur}.`;
+              } else {
+                title = 'Left Job Site';
+                body = `You've left ${jobTitle}. Don't forget to log your time.`;
+              }
+            }
+
+            await notificationService.scheduleLocalNotification(title, body, {
+              type: 'geofence',
+              jobId,
+              action: event.action,
+            });
+          } catch (err) {
+            console.log('[App] Geofence event handling error:', err);
+            // Still show a basic notification even if server call fails
+            const action = event.action === 'enter' ? 'Arrived on site' : 'Left site';
+            await notificationService.scheduleLocalNotification(action, 'Tap to view job details.', {
+              type: 'geofence',
+              jobId,
+            });
+          }
+        });
+        } // end geofence listener guard
       } catch (error) {
         console.log('[App] Location init failed:', error);
       }
+
+      // Smart Running Late Detection — check every 5 minutes
+      if (runningLateIntervalRef.current) clearInterval(runningLateIntervalRef.current);
+      runningLateIntervalRef.current = setInterval(async () => {
+        try {
+          // Get current preference
+          const prefsRes = await api.get('/api/notification-preferences');
+          if (prefsRes.error || prefsRes.data?.smartRunningLateEnabled === false || prefsRes.data?.pushNotificationsEnabled === false) return;
+
+          // Get GPS
+          const loc = await location.getCurrentLocation();
+          if (!loc?.latitude) return;
+
+          const checkRes = await api.post('/api/smart-running-late/check', {
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+          });
+
+          const result = checkRes.data || checkRes;
+          if (result?.runningLate && result.jobId && result.jobId !== lastRunningLateJobRef.current) {
+            lastRunningLateJobRef.current = result.jobId;
+            const scheduledTime = result.scheduledAt ? new Date(result.scheduledAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }) : '';
+            await notificationService.scheduleLocalNotification(
+              `Running Late for ${result.jobTitle}`,
+              `You're ~${result.lateByMinutes} min behind for ${scheduledTime ? `your ${scheduledTime} job` : 'your next job'}. Tap to notify ${result.clientName}.`,
+              { type: 'running_late', jobId: result.jobId }
+            );
+          }
+        } catch (err) {
+          console.log('[App] Running late check error:', err);
+        }
+      }, 5 * 60 * 1000);
 
       // Apple Requirement 1.4: Initialize/warm Terminal at app launch for faster checkout
       // Only initialize if Tap to Pay is available on this device
@@ -243,6 +349,10 @@ function ServicesInitializer() {
 
     return () => {
       subscription.remove();
+      if (runningLateIntervalRef.current) {
+        clearInterval(runningLateIntervalRef.current);
+        runningLateIntervalRef.current = null;
+      }
     };
   }, []);
 

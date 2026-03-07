@@ -529,6 +529,7 @@ export const integrationSettings = pgTable("integration_settings", {
   notifyTeamMessages: boolean("notify_team_messages").default(true),
   notifyTeamLocations: boolean("notify_team_locations").default(true),
   notifyDailySummary: boolean("notify_daily_summary").default(false),
+  smartRunningLateEnabled: boolean("smart_running_late_enabled").default(true),
   pushNotificationsEnabled: boolean("push_notifications_enabled").default(true),
   // Google Calendar Integration
   googleCalendarConnected: boolean("google_calendar_connected").default(false),
