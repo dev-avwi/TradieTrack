@@ -152,7 +152,7 @@ class ApiClient {
         if (isJson) {
           const errorData = await response.json().catch(() => ({}));
           console.log(`[API] Error ${response.status}:`, errorData);
-          return { error: errorData.error || errorData.message || `Request failed: ${response.status}` };
+          return { error: errorData.error || errorData.message || `Request failed: ${response.status}`, data: errorData as T };
         } else {
           const text = await response.text().catch(() => '');
           console.log(`[API] Non-JSON Error ${response.status}:`, text.substring(0, 100));

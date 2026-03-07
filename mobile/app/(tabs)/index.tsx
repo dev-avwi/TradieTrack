@@ -12,7 +12,6 @@ import {
   Platform,
   AppState,
   AppStateStatus,
-  InteractionManager
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -1516,16 +1515,6 @@ export default function DashboardScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [heavySectionsReady, setHeavySectionsReady] = useState(false);
-  
-  useEffect(() => {
-    if (initialLoadComplete && !heavySectionsReady) {
-      const handle = InteractionManager.runAfterInteractions(() => {
-        setHeavySectionsReady(true);
-      });
-      return () => handle.cancel();
-    }
-  }, [initialLoadComplete, heavySectionsReady]);
   
   // Job Scheduler state for team owners
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
@@ -2482,24 +2471,17 @@ export default function DashboardScreen() {
       )}
 
       {/* Revenue Chart - Owner Only */}
-      {isOwnerUser && heavySectionsReady && (
+      {isOwnerUser && (
         <RevenueChart isOwner={isOwnerUser} />
       )}
 
       {/* Compliance Alerts - Owner Only */}
-      {isOwnerUser && heavySectionsReady && (
+      {isOwnerUser && (
         <ComplianceAlerts isOwner={isOwnerUser} />
       )}
 
-      {/* Deferred heavy sections - rendered after interactions settle to keep UI responsive */}
-      {!heavySectionsReady && (
-        <View style={{ paddingVertical: spacing.xl, alignItems: 'center' }}>
-          <ActivityIndicator size="small" color={colors.mutedForeground} />
-        </View>
-      )}
-
       {/* Job Scheduler - Team Owners Only (show loading state or content) */}
-      {heavySectionsReady && isOwnerUser && (hasActiveTeam || isTeamDataLoading) && (
+      {isOwnerUser && (hasActiveTeam || isTeamDataLoading) && (
         <View 
           style={styles.section}
           onLayout={(event) => setSchedulerY(event.nativeEvent.layout.y)}
@@ -2660,7 +2642,7 @@ export default function DashboardScreen() {
       )}
 
       {/* Day Summary Card - shows after 4pm or when all jobs done */}
-      {heavySectionsReady && showDaySummary && dailySummary && (
+      {showDaySummary && dailySummary && (
         <View style={styles.section}>
           <View style={styles.daySummaryCard}>
             <View style={styles.daySummaryHeader}>
@@ -2760,7 +2742,7 @@ export default function DashboardScreen() {
       )}
 
       {/* Today's Schedule */}
-      {heavySectionsReady && <View style={styles.section}>
+      {<View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <View style={styles.sectionTitleIcon}>
@@ -2894,7 +2876,7 @@ export default function DashboardScreen() {
       </View>}
 
       {/* This Week Section - Staff Only */}
-      {heavySectionsReady && isStaffUser && thisWeeksJobs.length > 0 && (
+      {isStaffUser && thisWeeksJobs.length > 0 && (
         <ThisWeekSection 
           jobs={thisWeeksJobs} 
           onViewJob={(id) => router.push(`/job/${id}`)} 
@@ -2902,7 +2884,7 @@ export default function DashboardScreen() {
       )}
 
       {/* Recent Activity */}
-      {heavySectionsReady && <View style={styles.section}>
+      {<View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <View style={styles.sectionTitleIcon}>

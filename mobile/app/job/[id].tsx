@@ -4279,14 +4279,16 @@ export default function JobDetailScreen() {
         longitude: coords?.longitude,
       });
       
-      if (response.data?.demoMode) {
-        Alert.alert(
-          'SMS Not Configured',
-          'Twilio SMS is not set up. The "On My Way" action was logged but no message was sent to the client.\n\nSet up Twilio in Settings > Integrations to enable real SMS notifications.',
-          [{ text: 'OK' }]
-        );
-      } else if (response.error) {
-        Alert.alert('Error', response.error);
+      if (response.error) {
+        if (response.data?.notConfigured) {
+          Alert.alert(
+            'SMS Not Configured',
+            'Twilio SMS is not set up. Set up Twilio in Settings > Integrations to send SMS notifications to clients.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert('Error', response.error);
+        }
       } else {
         const eta = response.data?.estimatedMinutes;
         const dist = response.data?.distanceKm;
@@ -5617,17 +5619,23 @@ export default function JobDetailScreen() {
             <Feather name="credit-card" size={iconSizes.lg} color={colors.destructive} />
           </View>
           <Text style={styles.costingTitle}>Job Expenses</Text>
-          <View style={{ marginLeft: 'auto', padding: spacing.xs }}>
-            <Feather name="plus" size={iconSizes.lg} color={colors.mutedForeground} />
-          </View>
+          <TouchableOpacity 
+            style={{ marginLeft: 'auto', padding: spacing.xs }}
+            onPress={() => router.push(`/more/expenses?jobId=${job.id}`)}
+            activeOpacity={0.6}
+          >
+            <Feather name="plus" size={iconSizes.lg} color={colors.primary} />
+          </TouchableOpacity>
         </View>
         
         {jobExpenses.length > 0 ? (
           <>
             <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
               {jobExpenses.slice(0, 3).map((expense) => (
-                <View 
+                <TouchableOpacity 
                   key={expense.id} 
+                  onPress={() => router.push(`/more/expenses?jobId=${job.id}`)}
+                  activeOpacity={0.7}
                   style={{
                     flexDirection: 'row',
                     justifyContent: 'space-between',
@@ -5645,18 +5653,21 @@ export default function JobDetailScreen() {
                       {expense.categoryName || 'Expense'} • {new Date(expense.expenseDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
                     </Text>
                   </View>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
-                    {formatCurrency(parseFloat(expense.amount) || 0)}
-                  </Text>
-                </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
+                      {formatCurrency(parseFloat(expense.amount) || 0)}
+                    </Text>
+                    <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+                  </View>
+                </TouchableOpacity>
               ))}
             </View>
             {jobExpenses.length > 3 && (
-              <View>
-                <Text style={{ fontSize: 13, color: colors.mutedForeground, fontWeight: '500' }}>
+              <TouchableOpacity onPress={() => router.push(`/more/expenses?jobId=${job.id}`)}>
+                <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>
                   +{jobExpenses.length - 3} more expenses
                 </Text>
-              </View>
+              </TouchableOpacity>
             )}
             <View style={{ 
               flexDirection: 'row', 
@@ -5676,17 +5687,21 @@ export default function JobDetailScreen() {
             </View>
           </>
         ) : (
-          <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+          <TouchableOpacity 
+            style={{ alignItems: 'center', paddingVertical: spacing.lg }}
+            onPress={() => router.push(`/more/expenses?jobId=${job.id}`)}
+            activeOpacity={0.7}
+          >
             <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
-              <Feather name="credit-card" size={24} color={colors.mutedForeground} />
+              <Feather name="credit-card" size={24} color={colors.primary} />
             </View>
-            <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.xs }}>
-              No expenses recorded
+            <Text style={{ ...typography.body, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs, fontWeight: '500' }}>
+              Add Expense
             </Text>
             <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', paddingHorizontal: spacing.md }}>
               Track costs, receipts, and billable expenses for this job
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
       </View>
 

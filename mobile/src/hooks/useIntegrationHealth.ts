@@ -4,13 +4,13 @@ import { API_URL } from '../lib/api';
 
 export interface IntegrationHealth {
   allReady: boolean;
-  servicesReady: {
-    sendgrid: boolean;
-    twilio: boolean;
-    stripe: boolean;
+  servicesReady: boolean;
+  services: {
+    payments?: { verified: boolean; status: string };
+    email?: { verified: boolean; status: string };
+    sendgrid?: { verified: boolean; status: string };
+    twilio?: { verified: boolean; status: string };
   };
-  warnings: string[];
-  fixes: { service: string; action: string; url?: string }[];
 }
 
 export function useIntegrationHealth() {
@@ -56,8 +56,8 @@ export function useIntegrationHealth() {
     isLoading,
     error,
     refetch: fetchHealth,
-    isEmailReady: health?.servicesReady?.sendgrid ?? false,
-    isSmsReady: health?.servicesReady?.twilio ?? false,
-    isPaymentReady: health?.servicesReady?.stripe ?? false,
+    isEmailReady: health?.services?.sendgrid?.verified ?? health?.services?.email?.verified ?? false,
+    isSmsReady: health?.services?.twilio?.verified ?? false,
+    isPaymentReady: health?.services?.payments?.verified ?? false,
   };
 }

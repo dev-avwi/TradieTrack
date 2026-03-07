@@ -65,6 +65,12 @@ Core architectural and design decisions include:
 *   **Smart Job Dashboard**: Today's job cards show "X km away / ~Y min drive" based on real GPS. Nearest Job suggestion banner shows closest scheduled job with distance and one-tap directions. Route optimization shows total estimated drive time.
 *   **Photo MMS**: Photos can be sent via SMS using Twilio MMS. New `/api/sms/upload-media` endpoint handles photo upload to object storage. Available in Chat Hub, Send Modal, and Job Detail.
 
+### Mobile App UX
+*   **Dashboard Loading**: All dashboard sections render simultaneously once initial data loads — no two-phase loading. Removed `heavySectionsReady` / `InteractionManager` deferred rendering.
+*   **Integration Health Hook** (`mobile/src/hooks/useIntegrationHealth.ts`): Reads `services.twilio.verified`, `services.sendgrid.verified`, `services.payments.verified` from server response. Determines `isSmsReady`, `isEmailReady`, `isPaymentReady` for feature gating (e.g., On My Way button).
+*   **On My Way SMS**: Fixed to detect `notConfigured` flag from server 400 response. API error responses now include full error data for flag checking.
+*   **Job Expenses Access**: + button in Job Expenses section navigates to `/more/expenses?jobId=X`. Expense items are tappable. Empty state is tappable. Expenses screen accepts `jobId` search param to pre-filter and pre-fill new expense form.
+
 ### Mobile GPS & Geofencing
 *   **Geofence Registration**: When a user toggles geofencing ON/OFF in job detail, `locationTracking.addJobGeofence()`/`removeJobGeofence()` are called to register/unregister the native device geofence. Radius changes also update the native geofence.
 *   **Auto-Sync on Startup**: `_layout.tsx` calls `locationTracking.syncJobGeofences()` after location initialization, which fetches all active jobs with `geofenceEnabled=true` and re-registers their geofences with the native location service.
