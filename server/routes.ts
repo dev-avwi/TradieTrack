@@ -158,7 +158,7 @@ import {
 import { getSafetyFormTemplates, getSafetyFormTemplate } from "./safetyTemplates";
 import { generateAISuggestions, chatWithAI, analyzeReceipt, detectHazards, type BusinessContext } from "./ai";
 import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted, notifyJobAssigned as notifyJobAssignedDB, notifyTeamMemberInvited, notifySmsReceived, notifyTimesheetSubmitted, notifyChatMessage, notifyQuoteAccepted as notifyQuoteAcceptedDB, notifyQuoteRejected as notifyQuoteRejectedDB, notifyGeofenceCheckIn, notifyGeofenceCheckOut, notifyRecurringJobCreated, notifyRecurringInvoiceCreated, notifyInvoiceOverdue as notifyInvoiceOverdueDB, notifyQuoteExpiring, notifyPaymentFailed } from "./notifications";
-import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected, notifyTeamMessage, notifyInvoiceOverdue } from "./pushNotifications";
+import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected, notifyTeamMessage, notifyInvoiceOverdue, notifySmsReceived as notifySmsReceivedPush, notifyGeofenceEvent, notifyTimesheetSubmitted as notifyTimesheetSubmittedPush, notifyQuoteExpiring as notifyQuoteExpiringPush, notifyPaymentFailed as notifyPaymentFailedPush, notifyTrialExpiring as notifyTrialExpiringPush } from "./pushNotifications";
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
 import { checkTwilioAvailability, sendSMS } from "./twilioClient";
@@ -25651,7 +25651,9 @@ Respond with JSON in this format:
         const userContext = await getUserContext(userId);
         if (userContext.effectiveUserId !== userId) {
           const user = await storage.getUser(userId);
-          await notifyTimesheetSubmitted(storage, userContext.effectiveUserId, user || { firstName: 'Team member' }, timesheet);
+          const workerName = user?.firstName || user?.username || 'Team member';
+          await notifyTimesheetSubmitted(storage, userContext.effectiveUserId, user || { firstName: workerName }, timesheet);
+          await notifyTimesheetSubmittedPush(userContext.effectiveUserId, workerName, `${new Date().toLocaleDateString('en-AU')}`);
         }
       } catch (notifErr) {
         console.error('Failed to send timesheet submitted notification:', notifErr);
@@ -29302,7 +29304,7 @@ Respond with JSON in this format:
         alertId: alert.id
       }));
 
-      // Create in-app notification for geofence events
+      // Create in-app notification and push notification for geofence events
       try {
         const user = await storage.getUser(userId);
         const memberName = user?.firstName || user?.username || 'Team member';
@@ -29310,6 +29312,10 @@ Respond with JSON in this format:
           await notifyGeofenceCheckIn(storage, effectiveUserId, job, { firstName: memberName });
         } else {
           await notifyGeofenceCheckOut(storage, effectiveUserId, job, { firstName: memberName }, '');
+        }
+        // Send push notification to business owner (if worker is not the owner)
+        if (userId !== effectiveUserId) {
+          await notifyGeofenceEvent(effectiveUserId, memberName, job.title || 'Job', job.id, action === 'enter' ? 'checkin' : 'checkout');
         }
       } catch (e) { console.error('Failed to create geofence notification:', e); }
       

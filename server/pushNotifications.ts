@@ -34,14 +34,33 @@ export type NotificationType =
   | 'job_assigned'
   | 'job_update'
   | 'job_reminder'
+  | 'job_scheduled'
+  | 'job_started'
+  | 'job_completed'
   | 'payment_received'
+  | 'payment_failed'
   | 'quote_accepted'
   | 'quote_rejected'
-  | 'team_message'
-  | 'team_location'
+  | 'quote_sent'
+  | 'quote_expiring'
+  | 'invoice_sent'
   | 'invoice_overdue'
+  | 'installment_due'
+  | 'installment_received'
+  | 'recurring_job_created'
+  | 'recurring_invoice_created'
+  | 'team_message'
+  | 'chat_message'
+  | 'sms_received'
+  | 'team_invite'
+  | 'team_location'
+  | 'timesheet_submitted'
+  | 'geofence_checkin'
+  | 'geofence_checkout'
+  | 'trial_expiring'
   | 'daily_summary'
   | 'weekly_summary'
+  | 'automation'
   | 'general';
 
 interface SendNotificationOptions {
@@ -50,6 +69,7 @@ interface SendNotificationOptions {
   title: string;
   body: string;
   data?: Record<string, any>;
+  skipInAppNotification?: boolean;
 }
 
 /**
@@ -68,28 +88,48 @@ async function shouldSendNotification(userId: string, type: NotificationType): P
     switch (type) {
       case 'quote_accepted':
       case 'quote_rejected':
+      case 'quote_sent':
+      case 'quote_expiring':
         return settings.notifyQuoteResponses !== false;
       case 'payment_received':
+      case 'payment_failed':
+      case 'installment_due':
+      case 'installment_received':
         return settings.notifyPaymentConfirmations !== false;
       case 'invoice_overdue':
+      case 'invoice_sent':
+      case 'recurring_invoice_created':
         return settings.notifyOverdueInvoices !== false;
       case 'job_assigned':
         return settings.notifyJobAssigned !== false;
       case 'job_update':
+      case 'job_scheduled':
+      case 'job_started':
+      case 'job_completed':
+      case 'recurring_job_created':
         return settings.notifyJobUpdates !== false;
       case 'job_reminder':
         return settings.notifyJobReminders !== false;
       case 'team_message':
+      case 'chat_message':
+      case 'sms_received':
         return settings.notifyTeamMessages !== false;
       case 'team_location':
+      case 'geofence_checkin':
+      case 'geofence_checkout':
         return settings.notifyTeamLocations !== false;
+      case 'team_invite':
+      case 'timesheet_submitted':
+        return settings.notifyJobAssigned !== false;
       case 'daily_summary':
-        return settings.notifyDailySummary === true; // Opt-in, default false
+        return settings.notifyDailySummary === true;
       case 'weekly_summary':
-        return settings.notifyWeeklySummary === true; // Opt-in, default false
+        return settings.notifyWeeklySummary === true;
+      case 'trial_expiring':
+      case 'automation':
       case 'general':
       default:
-        return true; // Default to sending for unknown types
+        return true;
     }
   } catch (error) {
     console.error('[PushNotification] Error checking preferences:', error);
@@ -153,15 +193,16 @@ export async function sendPushNotification(options: SendNotificationOptions): Pr
       }
     }
     
-    // Also create an in-app notification
-    await storage.createNotification({
-      userId,
-      type,
-      title,
-      message: body,
-      relatedId: data?.jobId || data?.invoiceId || data?.quoteId,
-      relatedType: data?.relatedType,
-    });
+    if (!options.skipInAppNotification) {
+      await storage.createNotification({
+        userId,
+        type,
+        title,
+        message: body,
+        relatedId: data?.jobId || data?.invoiceId || data?.quoteId,
+        relatedType: data?.relatedType,
+      });
+    }
     
     return true;
   } catch (error) {
@@ -224,14 +265,31 @@ function getChannelId(type: NotificationType): string {
     case 'job_assigned':
     case 'job_update':
     case 'job_reminder':
+    case 'job_scheduled':
+    case 'job_started':
+    case 'job_completed':
+    case 'recurring_job_created':
+    case 'geofence_checkin':
+    case 'geofence_checkout':
+    case 'timesheet_submitted':
       return 'jobs';
     case 'payment_received':
+    case 'payment_failed':
     case 'invoice_overdue':
+    case 'invoice_sent':
+    case 'installment_due':
+    case 'installment_received':
+    case 'recurring_invoice_created':
       return 'payments';
     case 'quote_accepted':
     case 'quote_rejected':
+    case 'quote_sent':
+    case 'quote_expiring':
       return 'quotes';
     case 'team_message':
+    case 'chat_message':
+    case 'sms_received':
+    case 'team_invite':
       return 'messages';
     default:
       return 'default';
@@ -308,5 +366,70 @@ export async function notifyInvoiceOverdue(userId: string, invoiceNumber: string
     title: 'Invoice Overdue',
     body: `Invoice ${invoiceNumber} is ${daysOverdue} days overdue`,
     data: { invoiceId, daysOverdue, relatedType: 'invoice' },
+  });
+}
+
+export async function notifySmsReceived(userId: string, senderName: string, messagePreview: string, conversationId?: string): Promise<void> {
+  await sendPushNotification({
+    userId,
+    type: 'sms_received',
+    title: `SMS from ${senderName}`,
+    body: messagePreview.slice(0, 120),
+    data: { conversationId, relatedType: 'sms' },
+    skipInAppNotification: true,
+  });
+}
+
+export async function notifyGeofenceEvent(userId: string, workerName: string, jobTitle: string, jobId: string, eventType: 'checkin' | 'checkout'): Promise<void> {
+  const type = eventType === 'checkin' ? 'geofence_checkin' : 'geofence_checkout';
+  const action = eventType === 'checkin' ? 'arrived at' : 'left';
+  await sendPushNotification({
+    userId,
+    type,
+    title: eventType === 'checkin' ? 'Worker Arrived' : 'Worker Left Site',
+    body: `${workerName} ${action} ${jobTitle}`,
+    data: { jobId, workerName, relatedType: 'job' },
+    skipInAppNotification: true,
+  });
+}
+
+export async function notifyTimesheetSubmitted(userId: string, workerName: string, periodLabel: string): Promise<void> {
+  await sendPushNotification({
+    userId,
+    type: 'timesheet_submitted',
+    title: 'Timesheet Submitted',
+    body: `${workerName} submitted their timesheet for ${periodLabel}`,
+    data: { relatedType: 'timesheet' },
+    skipInAppNotification: true,
+  });
+}
+
+export async function notifyQuoteExpiring(userId: string, quoteNumber: string, quoteId: string, daysLeft: number): Promise<void> {
+  await sendPushNotification({
+    userId,
+    type: 'quote_expiring',
+    title: 'Quote Expiring Soon',
+    body: `Quote ${quoteNumber} expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
+    data: { quoteId, relatedType: 'quote' },
+  });
+}
+
+export async function notifyPaymentFailed(userId: string, invoiceNumber: string, invoiceId: string): Promise<void> {
+  await sendPushNotification({
+    userId,
+    type: 'payment_failed',
+    title: 'Payment Failed',
+    body: `Payment for invoice ${invoiceNumber} failed — follow up required`,
+    data: { invoiceId, relatedType: 'invoice' },
+  });
+}
+
+export async function notifyTrialExpiring(userId: string, daysLeft: number): Promise<void> {
+  await sendPushNotification({
+    userId,
+    type: 'trial_expiring',
+    title: 'Trial Ending Soon',
+    body: `Your free trial expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Upgrade to keep all your features.`,
+    data: { relatedType: 'subscription' },
   });
 }

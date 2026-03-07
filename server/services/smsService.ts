@@ -11,6 +11,7 @@ import type { SmsConversation, SmsMessage, InsertSmsConversation, InsertSmsMessa
 import { broadcastSmsNotification } from '../websocket';
 import { detectSmsJobIntent } from '../ai';
 import { notifySmsReceived } from '../notifications';
+import { notifySmsReceived as notifySmsReceivedPush } from '../pushNotifications';
 
 interface SendSmsOptions {
   businessOwnerId: string;
@@ -940,6 +941,12 @@ export async function handleIncomingSms(
         recipientId,
         targetConversation.clientName || formattedFromPhone,
         messageBody.slice(0, 100),
+        targetConversation.id
+      );
+      await notifySmsReceivedPush(
+        recipientId,
+        targetConversation.clientName || formattedFromPhone,
+        messageBody,
         targetConversation.id
       );
     } catch (notifErr) {

@@ -155,27 +155,42 @@ function ServicesInitializer() {
             case 'job_assigned':
             case 'job_update':
             case 'job_reminder':
+            case 'job_scheduled':
+            case 'job_started':
+            case 'job_completed':
+            case 'geofence_checkin':
+            case 'geofence_checkout':
+            case 'geofence':
+            case 'running_late':
+            case 'recurring_job_created':
               if (data?.jobId) {
                 router.push(`/job/${data.jobId}`);
               }
               break;
-              
+
             case 'quote_accepted':
             case 'quote_rejected':
+            case 'quote_sent':
+            case 'quote_expiring':
               if (data?.quoteId) {
                 router.push(`/more/quote/${data.quoteId}`);
               }
               break;
-              
+
             case 'payment_received':
+            case 'payment_failed':
             case 'invoice_overdue':
+            case 'invoice_sent':
+            case 'installment_due':
+            case 'installment_received':
+            case 'recurring_invoice_created':
               if (data?.invoiceId) {
                 router.push(`/more/invoice/${data.invoiceId}`);
               }
               break;
-              
+
             case 'team_message':
-              // Navigate to appropriate chat based on chatType or conversationId
+            case 'chat_message':
               if (data?.chatType === 'team') {
                 router.push('/more/team-chat');
               } else if (data?.chatType === 'direct' || data?.conversationId) {
@@ -184,22 +199,32 @@ function ServicesInitializer() {
                 router.push('/more/chat-hub');
               }
               break;
-              
-            case 'geofence':
-              if (data?.jobId) {
-                router.push(`/job/${data.jobId}`);
+
+            case 'sms_received':
+              if (data?.conversationId) {
+                router.push(`/more/sms/${data.conversationId}`);
+              } else {
+                router.push('/more/sms');
               }
               break;
 
-            case 'running_late':
-              if (data?.jobId) {
-                router.push(`/job/${data.jobId}`);
-              }
+            case 'team_invite':
+              router.push('/more/team');
               break;
 
+            case 'timesheet_submitted':
+              router.push('/more/timesheets');
+              break;
+
+            case 'trial_expiring':
+              router.push('/more/subscription');
+              break;
+
+            case 'daily_summary':
+            case 'weekly_summary':
+            case 'automation':
             case 'general':
             default:
-              // Default to notifications inbox and refresh
               fetchNotifications();
               router.push('/more/notifications-inbox');
           }
