@@ -71,6 +71,14 @@ Core architectural and design decisions include:
 *   **On My Way SMS**: Fixed to detect `notConfigured` flag from server 400 response. API error responses now include full error data for flag checking.
 *   **Job Expenses Access**: + button in Job Expenses section navigates to `/more/expenses?jobId=X`. Expense items are tappable. Empty state is tappable. Expenses screen accepts `jobId` search param to pre-filter and pre-fill new expense form.
 
+### Mobile Visual Polish
+*   **Design Tokens** (`mobile/src/lib/design-tokens.ts`): Shadows upgraded across the board — sm/md/lg all more visible. New `header` (downward glow) and `nav` (upward glow) shadow presets. Subtitle typography refined to 16px/700 for stronger section headers.
+*   **Header** (`mobile/src/components/Header.tsx`): Shadow replaces hairline border. Brand name bolder (20px/800). Avatar larger (34px) with primary-colored border ring. Icon spacing increased (4px gaps). Overall more spacious.
+*   **Bottom Nav** (`mobile/src/components/BottomNav.tsx`): Upward shadow for floating feel. Active tab gets a colored indicator line at top. Icons larger (22px). Active label bolder (700 weight).
+*   **Dashboard** (`mobile/app/(tabs)/index.tsx`): Greeting area more prominent (24px/800). Role badge is pill-shaped. KPI values larger (26px/800) with 48px icon containers. Section header icons 32px. All major cards use `shadows.md` for more depth. Start Route button taller (52px) with shadow. Empty state has 56px icon.
+*   **Jobs Screen** (`mobile/app/(tabs)/jobs.tsx`): Cards use stronger shadows (md). KPI icons larger (40px) with xl radius.
+*   **Profile Screen** (`mobile/app/(tabs)/profile.tsx`): Profile header and menu sections use stronger shadows (md). More spacing between profile header and menu sections.
+
 ### Mobile GPS & Geofencing
 *   **Geofence Registration**: When a user toggles geofencing ON/OFF in job detail, `locationTracking.addJobGeofence()`/`removeJobGeofence()` are called to register/unregister the native device geofence. Radius changes also update the native geofence.
 *   **Auto-Sync on Startup**: `_layout.tsx` calls `locationTracking.syncJobGeofences()` after location initialization, which fetches all active jobs with `geofenceEnabled=true` and re-registers their geofences with the native location service.

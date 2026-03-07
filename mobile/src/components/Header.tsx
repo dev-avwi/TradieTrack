@@ -8,7 +8,7 @@ import { useTheme, ThemeColors } from '../lib/theme';
 import { useAdvancedThemeStore } from '../lib/advanced-theme-store';
 import { useNotificationsStore } from '../lib/notifications-store';
 import { useUserRole } from '../hooks/use-user-role';
-import { HEADER_HEIGHT } from '../lib/design-tokens';
+import { HEADER_HEIGHT, shadows } from '../lib/design-tokens';
 import { BackgroundLocationIndicator } from './BackgroundLocationIndicator';
 
 const isIOS = Platform.OS === 'ios';
@@ -320,8 +320,6 @@ export function Header({
           )}
         </View>
       </View>
-      
-      <View style={styles.headerBorder} />
     </View>
   );
 }
@@ -330,49 +328,46 @@ const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.creat
   header: {
     backgroundColor: colors.background,
     paddingTop: isIOS ? topInset : 0,
+    ...shadows.header as object,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     height: HEADER_HEIGHT,
-  },
-  headerBorder: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
   },
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 8,
+    gap: 10,
     minWidth: 0,
   },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
     marginLeft: 8,
   },
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     flex: 1,
     minWidth: 0,
   },
   logo: {
-    width: 36,
-    height: 36,
-    borderRadius: 6,
+    width: 34,
+    height: 34,
+    borderRadius: 8,
   },
   brandName: {
-    fontSize: 19,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: colors.primary,
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
     flexShrink: 1,
   },
   pageTitleWithBack: {
@@ -383,13 +378,15 @@ const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.creat
     flex: 1,
   },
   avatarButton: {
-    marginLeft: 4,
+    marginLeft: 2,
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: colors.primaryLight,
+    borderWidth: 2,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -2941,9 +2941,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     zIndex: 1000,
   },
 
-  // Header
   header: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   headerContent: {
     flexDirection: 'row',
@@ -2956,20 +2955,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerTitle: {
     ...typography.pageTitle,
     color: colors.foreground,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
     ...typography.caption,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
+    fontSize: 14,
   },
   roleBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 3,
+    borderRadius: radius.full,
   },
   roleBadgeText: {
     ...typography.captionSmall,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   headerRight: {
     flexDirection: 'row',
@@ -2988,7 +2992,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   // Activity Feed - compact
   activityList: {
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
@@ -3040,9 +3044,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.sm,
   },
 
-  // Sections - consistent 24px section gaps to match web space-y-6
   section: {
-    marginBottom: spacing['3xl'],
+    marginBottom: spacing['3xl'] + 4,
   },
   sectionLabel: {
     ...typography.label,
@@ -3053,7 +3056,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   sectionTitleRow: {
     flexDirection: 'row',
@@ -3061,10 +3064,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.md,
   },
   sectionTitleIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.md,
-    backgroundColor: `${colors.primary}12`,
+    width: 32,
+    height: 32,
+    borderRadius: radius.lg,
+    backgroundColor: `${colors.primary}15`,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3086,7 +3089,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
 
-  // KPI Grid - matches web grid-cols-2 gap-3
   kpiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -3099,7 +3101,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...shadows.md,
   },
   kpiCardContent: {
     flexDirection: 'row',
@@ -3108,8 +3110,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.lg,
   },
   kpiIconContainer: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: radius.xl,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
@@ -3125,8 +3127,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexWrap: 'wrap',
   },
   kpiValue: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '800',
     color: colors.foreground,
     letterSpacing: -0.5,
   },
@@ -3322,7 +3324,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Job Cards - with left accent bar
   jobsList: {
     gap: spacing.md,
   },
@@ -3330,11 +3331,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.xl,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...shadows.md,
   },
   jobCardAccent: {
     width: 4,
@@ -3571,25 +3572,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.lg,
+    gap: spacing.md,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.xl,
     backgroundColor: colors.primary,
     marginBottom: spacing.md,
-    minHeight: 48,
+    minHeight: 52,
+    ...shadows.md,
   },
   startRouteIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   startRouteText: {
     ...typography.body,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.white,
     flex: 1,
   },
@@ -3617,9 +3619,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.xs,
     paddingVertical: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.success,
     minHeight: 44,
+    ...shadows.xs,
   },
   secondaryActionButton: {
     flex: 1,
@@ -3628,9 +3631,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.xs,
     paddingVertical: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.info,
     minHeight: 44,
+    ...shadows.xs,
   },
   secondaryActionButtonText: {
     ...typography.caption,
@@ -3661,58 +3665,59 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
 
-  // Empty State - compact
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing['3xl'],
+    paddingVertical: spacing['4xl'],
+    paddingHorizontal: spacing.xl,
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
   },
   emptyStateIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
+    width: 56,
+    height: 56,
+    borderRadius: radius.xl,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   emptyStateTitle: {
-    ...typography.caption,
+    ...typography.body,
     color: colors.mutedForeground,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    textAlign: 'center',
   },
   scheduleJobButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    minHeight: 44,
+    borderRadius: radius.lg,
+    minHeight: 48,
+    ...shadows.sm,
   },
   scheduleJobButtonText: {
-    ...typography.caption,
+    ...typography.body,
     fontWeight: '600',
     color: colors.white,
   },
 
-  // Time Tracking Widget
   timeTrackingWidget: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 2,
     borderColor: colors.cardBorder,
-    padding: spacing.md,
-    ...shadows.sm,
+    padding: spacing.lg,
+    ...shadows.md,
   },
   timeTrackingWidgetActive: {
     borderColor: colors.primary,
@@ -4016,6 +4021,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     padding: spacing.lg,
+    ...shadows.md,
   },
   revenueChartLoading: {
     height: 160,
@@ -4102,7 +4108,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     padding: spacing.lg,
-    ...shadows.sm,
+    ...shadows.md,
   },
   weatherMainRow: {
     flexDirection: 'row',
@@ -4175,7 +4181,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     padding: spacing.lg,
-    ...shadows.sm,
+    ...shadows.md,
   },
   daySummaryHeader: {
     marginBottom: spacing.lg,
@@ -4271,7 +4277,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    ...shadows.sm,
+    ...shadows.md,
   },
   actionCentreSubtext: {
     ...typography.captionSmall,

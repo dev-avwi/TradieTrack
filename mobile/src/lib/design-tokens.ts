@@ -116,7 +116,7 @@ export const shadows = {
     ios: {
       shadowColor: '#1c2130',
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.03,
+      shadowOpacity: 0.04,
       shadowRadius: 1,
     },
     android: {
@@ -127,7 +127,7 @@ export const shadows = {
     ios: {
       shadowColor: '#1c2130',
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
+      shadowOpacity: 0.05,
       shadowRadius: 2,
     },
     android: {
@@ -137,31 +137,31 @@ export const shadows = {
   sm: Platform.select({
     ios: {
       shadowColor: '#1c2130',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.07,
+      shadowRadius: 4,
     },
     android: {
-      elevation: 1.5,
+      elevation: 2,
     },
   }) as object,
   md: Platform.select({
     ios: {
       shadowColor: '#1c2130',
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.06,
-      shadowRadius: 6,
+      shadowOpacity: 0.09,
+      shadowRadius: 8,
     },
     android: {
-      elevation: 3,
+      elevation: 4,
     },
   }) as object,
   lg: Platform.select({
     ios: {
       shadowColor: '#1c2130',
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.08,
-      shadowRadius: 15,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.1,
+      shadowRadius: 16,
     },
     android: {
       elevation: 6,
@@ -170,12 +170,34 @@ export const shadows = {
   xl: Platform.select({
     ios: {
       shadowColor: '#1c2130',
-      shadowOffset: { width: 0, height: 20 },
-      shadowOpacity: 0.1,
-      shadowRadius: 25,
+      shadowOffset: { width: 0, height: 16 },
+      shadowOpacity: 0.12,
+      shadowRadius: 24,
     },
     android: {
       elevation: 10,
+    },
+  }) as object,
+  header: Platform.select({
+    ios: {
+      shadowColor: '#1c2130',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+    },
+    android: {
+      elevation: 3,
+    },
+  }) as object,
+  nav: Platform.select({
+    ios: {
+      shadowColor: '#1c2130',
+      shadowOffset: { width: 0, height: -3 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+    },
+    android: {
+      elevation: 8,
     },
   }) as object,
 } as const;
@@ -214,14 +236,15 @@ export const typography = {
   cardTitle: {
     fontSize: 17,
     fontWeight: '600' as const,
-    lineHeight: 22,
+    lineHeight: 23,
     letterSpacing: -0.2,
   },
   // Subtitle (section headers)
   subtitle: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    lineHeight: 20,
+    fontSize: 16,
+    fontWeight: '700' as const,
+    lineHeight: 22,
+    letterSpacing: -0.2,
   },
   // iOS Body - 15px on web (.ios-body)
   body: {

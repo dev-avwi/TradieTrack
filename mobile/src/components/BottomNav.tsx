@@ -7,6 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useScrollToTop } from '../contexts/ScrollContext';
 import { isIPad } from '../lib/device';
+import { shadows } from '../lib/design-tokens';
 
 interface NavItem {
   title: string;
@@ -112,9 +113,10 @@ function NavButton({
           { transform: [{ scale }], opacity }
         ]}
       >
+        {active && <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />}
         <Feather 
           name={item.icon} 
-          size={isPad ? 24 : 20}
+          size={isPad ? 24 : 22}
           color={active ? colors.primary : colors.mutedForeground}
         />
         <Text style={[
@@ -209,25 +211,33 @@ const createStyles = (colors: ThemeColors, isPad: boolean = false) => StyleSheet
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     zIndex: 100,
-    elevation: 100,
+    ...shadows.nav as object,
   },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-evenly',
     height: isPad ? BOTTOM_NAV_HEIGHT_IPAD : BOTTOM_NAV_HEIGHT,
-    paddingHorizontal: isPad ? 24 : 12,
+    paddingHorizontal: isPad ? 24 : 8,
   },
   navButton: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: isPad ? 12 : 8,
-    paddingHorizontal: isPad ? 32 : 20,
+    paddingHorizontal: isPad ? 32 : 22,
     borderRadius: 9999,
     gap: isPad ? 4 : 2,
+    position: 'relative',
   },
   navButtonActive: {
     backgroundColor: colors.primaryLight,
+  },
+  activeIndicator: {
+    position: 'absolute',
+    top: 0,
+    width: 20,
+    height: 3,
+    borderRadius: 2,
   },
   navLabel: {
     fontSize: isPad ? 13 : 11,
@@ -237,7 +247,7 @@ const createStyles = (colors: ThemeColors, isPad: boolean = false) => StyleSheet
     letterSpacing: 0.1,
   },
   navLabelActive: {
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.primary,
   },
 });

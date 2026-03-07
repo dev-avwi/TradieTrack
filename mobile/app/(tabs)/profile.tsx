@@ -45,11 +45,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     padding: spacing.lg,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     minHeight: 80,
-    ...shadows.sm,
+    ...shadows.md,
   },
   avatar: {
     width: sizes.avatarLg,
@@ -205,7 +205,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.cardBorder,
     marginBottom: spacing.lg,
     overflow: 'hidden',
-    ...shadows.sm,
+    ...shadows.md,
   },
   featuredSection: {
     borderColor: colors.warning,
