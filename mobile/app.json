@@ -32,6 +32,7 @@
         "NSPhotoLibraryUsageDescription": "JobRunner needs photo library access to upload job photos",
         "NSLocationWhenInUseUsageDescription": "JobRunner needs location access to track job sites",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "JobRunner needs location access for team tracking",
+        "NSMicrophoneUsageDescription": "JobRunner needs microphone access to record voice notes for jobs",
         "NFCReaderUsageDescription": "JobRunner uses NFC for Tap to Pay contactless payments",
         "UIBackgroundModes": [
           "fetch",

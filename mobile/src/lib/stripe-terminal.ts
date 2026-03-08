@@ -139,7 +139,7 @@ export const requestAndroidPermissions = async (): Promise<boolean> => {
       });
       return result === 'granted';
     } catch (error) {
-      console.error('[StripeTerminal] Permission request failed:', error);
+      if (__DEV__) console.error('[StripeTerminal] Permission request failed:', error);
       return false;
     }
   }

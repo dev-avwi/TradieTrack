@@ -106,7 +106,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       }
       return true;
     } catch (error) {
-      console.error('Error requesting permissions:', error);
+      if (__DEV__) console.error('Error requesting permissions:', error);
       Alert.alert(
         'Permission Error',
         'Could not check microphone permissions. Please try again.',
@@ -147,7 +147,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       if (__DEV__) console.log('[VoiceRecorder] Recording started successfully');
       
     } catch (error: any) {
-      console.error('Error starting recording:', error);
+      if (__DEV__) console.error('Error starting recording:', error);
       
       try {
         await Audio.setAudioModeAsync({
@@ -199,7 +199,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       setIsPaused(false);
       
     } catch (error) {
-      console.error('Error stopping recording:', error);
+      if (__DEV__) console.error('Error stopping recording:', error);
     }
   };
 
@@ -222,7 +222,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
         }
       }
     } catch (error) {
-      console.error('Error pausing recording:', error);
+      if (__DEV__) console.error('Error pausing recording:', error);
     }
   };
 
@@ -259,7 +259,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       });
       
     } catch (error) {
-      console.error('Error playing recording:', error);
+      if (__DEV__) console.error('Error playing recording:', error);
     }
   };
 
@@ -509,13 +509,13 @@ export function VoiceNotePlayer({
                   playUri = downloadResult.uri;
                   if (__DEV__) console.log('[VoiceNotePlayer] Downloaded to:', playUri, 'size:', downloadedInfo.size);
                 } else {
-                  console.error('[VoiceNotePlayer] Downloaded file is empty or too small');
+                  if (__DEV__) console.error('[VoiceNotePlayer] Downloaded file is empty or too small');
                   // Delete the bad cached file
                   await FileSystem.deleteAsync(localPath, { idempotent: true });
                   return false;
                 }
               } else {
-                console.error('[VoiceNotePlayer] Download failed with status:', downloadResult.status);
+                if (__DEV__) console.error('[VoiceNotePlayer] Download failed with status:', downloadResult.status);
                 return false;
               }
             }
@@ -531,12 +531,12 @@ export function VoiceNotePlayer({
               playUri = downloadResult.uri;
               if (__DEV__) console.log('[VoiceNotePlayer] Downloaded to:', playUri);
             } else {
-              console.error('[VoiceNotePlayer] Download failed with status:', downloadResult.status);
+              if (__DEV__) console.error('[VoiceNotePlayer] Download failed with status:', downloadResult.status);
               return false;
             }
           }
         } catch (downloadError) {
-          console.error('[VoiceNotePlayer] Download error:', downloadError);
+          if (__DEV__) console.error('[VoiceNotePlayer] Download error:', downloadError);
           return false;
         }
       }
@@ -560,7 +560,7 @@ export function VoiceNotePlayer({
           }
         }
         if (status.error) {
-          console.error('[VoiceNotePlayer] Playback error:', status.error);
+          if (__DEV__) console.error('[VoiceNotePlayer] Playback error:', status.error);
           setHasError(true);
           setIsPlaying(false);
           // Clear cached file on playback error
@@ -573,7 +573,7 @@ export function VoiceNotePlayer({
       
       return true;
     } catch (error) {
-      console.error('[VoiceNotePlayer] Error loading audio:', error);
+      if (__DEV__) console.error('[VoiceNotePlayer] Error loading audio:', error);
       // Clear cached file on error
       if (noteId) {
         const localPath = `${FileSystem.cacheDirectory}voice_note_${noteId}.m4a`;
@@ -643,7 +643,7 @@ export function VoiceNotePlayer({
       Alert.alert('Playback Error', 'Unable to play this voice note. Please try again later.');
       
     } catch (error) {
-      console.error('Error playing audio:', error);
+      if (__DEV__) console.error('Error playing audio:', error);
       setIsLoading(false);
       setHasError(true);
       Alert.alert('Error', 'Failed to play voice note.');
@@ -686,7 +686,7 @@ export function VoiceNotePlayer({
         onTranscriptionUpdate?.(response.data.transcription);
       }
     } catch (error) {
-      console.error('Transcription error:', error);
+      if (__DEV__) console.error('Transcription error:', error);
       Alert.alert('Error', 'Failed to transcribe voice note');
     } finally {
       setIsTranscribing(false);

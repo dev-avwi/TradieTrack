@@ -128,7 +128,7 @@ export function PhotoAnnotationEditor({
       setImageBase64(base64Data);
       setIsPreparingImage(false);
     } catch (error: any) {
-      console.error('Failed to load image for annotation:', error);
+      if (__DEV__) console.error('Failed to load image for annotation:', error);
       setLoadError(error.message || 'Failed to load image');
       setIsPreparingImage(false);
     }
@@ -149,7 +149,7 @@ export function PhotoAnnotationEditor({
         setIsLoaded(true);
       }
     } catch (e) {
-      console.error('Failed to parse message:', e);
+      if (__DEV__) console.error('Failed to parse message:', e);
       setIsSaving(false);
     }
   };

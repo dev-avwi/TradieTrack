@@ -113,7 +113,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
       set({ notifications, unreadCount });
       get().updateBadgeCount();
     } catch (error: any) {
-      console.error('Failed to mark notification as read:', error);
+      if (__DEV__) console.error('Failed to mark notification as read:', error);
     }
   },
 
@@ -125,7 +125,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
       set({ notifications, unreadCount: 0 });
       get().updateBadgeCount();
     } catch (error: any) {
-      console.error('Failed to mark all notifications as read:', error);
+      if (__DEV__) console.error('Failed to mark all notifications as read:', error);
       // Optimistically update UI anyway
       const notifications = get().notifications.map(n => ({ ...n, read: true }));
       set({ notifications, unreadCount: 0 });
@@ -143,7 +143,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
       set({ notifications, unreadCount });
       get().updateBadgeCount();
     } catch (error: any) {
-      console.error('Failed to dismiss notification:', error);
+      if (__DEV__) console.error('Failed to dismiss notification:', error);
     }
   },
 

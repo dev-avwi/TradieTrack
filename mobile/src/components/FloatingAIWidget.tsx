@@ -98,7 +98,7 @@ export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) 
         setSuggestions(response.data.suggestions);
       }
     } catch (error) {
-      console.error('Failed to fetch AI suggestions:', error);
+      if (__DEV__) console.error('Failed to fetch AI suggestions:', error);
     }
   };
 
@@ -142,7 +142,7 @@ export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) 
         }
       }
     } catch (error) {
-      console.error('AI chat error:', error);
+      if (__DEV__) console.error('AI chat error:', error);
       setChatHistory(prev => [
         ...prev,
         { role: 'assistant', content: 'Sorry, I had trouble processing that. Please try again.' },

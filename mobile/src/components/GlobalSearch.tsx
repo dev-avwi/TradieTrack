@@ -303,7 +303,7 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
       
       setResults(allResults.slice(0, 20));
     } catch (error) {
-      console.error('Search failed:', error);
+      if (__DEV__) console.error('Search failed:', error);
       setResults([]);
     } finally {
       setIsLoading(false);

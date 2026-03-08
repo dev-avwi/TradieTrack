@@ -137,7 +137,7 @@ export function useBusinessTemplates() {
       }
       return null;
     } catch (err) {
-      console.error(`Failed to fetch purposes for ${family}:`, err);
+      if (__DEV__) console.error(`Failed to fetch purposes for ${family}:`, err);
       return null;
     }
   }, [isAuthenticated]);
@@ -208,7 +208,7 @@ export function useBusinessTemplates() {
     } catch (err: any) {
       // Handle errors
       setError('Failed to load templates. Please try again.');
-      console.error('Failed to fetch business templates:', err);
+      if (__DEV__) console.error('Failed to fetch business templates:', err);
       
       // Still try to set fallback purposes so page can render
       const allFamilies = Object.keys(FAMILY_CONFIG) as BusinessTemplateFamily[];
@@ -230,7 +230,7 @@ export function useBusinessTemplates() {
       await api.post('/api/business-templates/seed');
       await fetchTemplates();
     } catch (err) {
-      console.error('Failed to seed templates:', err);
+      if (__DEV__) console.error('Failed to seed templates:', err);
     }
   }, [isAuthenticated, fetchTemplates]);
 

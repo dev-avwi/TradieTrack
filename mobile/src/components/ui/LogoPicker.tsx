@@ -223,7 +223,7 @@ export function LogoPicker({ value, onChange, label }: LogoPickerProps) {
         await uploadImage(result.assets[0]);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      if (__DEV__) console.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to select image. Please try again.');
     }
   };
@@ -308,7 +308,7 @@ export function LogoPicker({ value, onChange, label }: LogoPickerProps) {
         setUploading(false);
       }
     } catch (error) {
-      console.error('Upload error:', error);
+      if (__DEV__) console.error('Upload error:', error);
       Alert.alert('Upload Failed', 'Could not upload your logo. Please try again.');
       setUploading(false);
       setPreviewUri(null);

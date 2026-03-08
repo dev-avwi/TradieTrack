@@ -91,7 +91,7 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
         onSubmissionsChange?.(submissionsRes.data);
       }
     } catch (error) {
-      console.error('Error loading forms:', error);
+      if (__DEV__) console.error('Error loading forms:', error);
     } finally {
       setIsLoading(false);
     }

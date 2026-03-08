@@ -129,7 +129,7 @@ export function ConflictResolutionPanel() {
       const unresolvedConflicts = await offlineStorage.getConflicts(false);
       setConflicts(unresolvedConflicts);
     } catch (error) {
-      console.error('Failed to load conflicts:', error);
+      if (__DEV__) console.error('Failed to load conflicts:', error);
     } finally {
       setLoading(false);
     }
@@ -144,7 +144,7 @@ export function ConflictResolutionPanel() {
         await offlineStorage.syncPendingChanges();
       }
     } catch (error) {
-      console.error('Failed to resolve conflict:', error);
+      if (__DEV__) console.error('Failed to resolve conflict:', error);
     }
   };
   

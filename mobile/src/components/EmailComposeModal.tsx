@@ -136,7 +136,7 @@ export function EmailComposeModal({
         setAiSuggestion(response.data);
       }
     } catch (error) {
-      console.error('AI suggestion error:', error);
+      if (__DEV__) console.error('AI suggestion error:', error);
       Alert.alert('Error', 'Failed to generate AI suggestion. Please try again.');
     } finally {
       setIsGeneratingAI(false);
@@ -294,7 +294,7 @@ export function EmailComposeModal({
         );
       }
     } catch (error: any) {
-      console.error('Error opening email app:', error);
+      if (__DEV__) console.error('Error opening email app:', error);
       Alert.alert('Error', 'Failed to open email app. Please try again.');
     } finally {
       setIsOpeningEmailApp(false);

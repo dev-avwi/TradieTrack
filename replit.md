@@ -47,7 +47,12 @@ Core architectural and design decisions include:
 
 ### Mobile Production Readiness
 *   **Production domain**: All API URLs and links use `jobrunner.com.au` (previously `jobrunner.com`). Updated in `api.ts`, `app.json`, `eas.json`, `branding.tsx`, `support.tsx`, `LogoPicker.tsx`, and `APP_STORE_SUBMISSION.md`.
-*   **Console log guards**: All `console.log` and `console.warn` calls across mobile app screens (`mobile/app/`) and source files (`mobile/src/`) are now wrapped in `if (__DEV__)` guards so they don't execute in production builds.
+*   **Console log guards**: All `console.log`, `console.warn`, and `console.error` calls across mobile app screens (`mobile/app/`) and source files (`mobile/src/`) are wrapped in `if (__DEV__)` guards so they don't execute in production builds.
+*   **Config consolidation**: `app.config.ts` now simply passes through `app.json` values and only overrides `extra.apiUrl` from `EXPO_PUBLIC_API_URL` env var. `app.json` is the single source of truth for all static config.
+*   **iOS microphone permission**: Added `NSMicrophoneUsageDescription` to `app.json` for voice note recording functionality.
+*   **API request timeouts**: All API requests in `api.ts` use `AbortController` with 15s timeout (default) and 60s for file uploads. Timeout errors return user-friendly messages.
+*   **EAS build env vars**: All EAS profiles (development, preview, production) now include `EXPO_PUBLIC_API_URL` pointing to `https://jobrunner.com.au`.
+*   **expo-build-properties**: Installed as a dependency (was referenced in plugins but not installed).
 *   **Theme-aware ConflictResolutionPanel**: Replaced all hardcoded hex colors with theme tokens (`colors.destructive`, `colors.card`, `colors.foreground`, etc.) so the conflict resolution UI works correctly in both light and dark modes.
 
 ### Mobile Bug Fixes

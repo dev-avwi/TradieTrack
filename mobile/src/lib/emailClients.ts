@@ -77,11 +77,11 @@ export async function openEmailClient(client: EmailClient, options: ComposeEmail
       if (client !== 'default') {
         return openEmailClient('default', options);
       }
-      console.error('Cannot open email client');
+      if (__DEV__) console.error('Cannot open email client');
       return false;
     }
   } catch (error) {
-    console.error('Error opening email client:', error);
+    if (__DEV__) console.error('Error opening email client:', error);
     return false;
   }
 }

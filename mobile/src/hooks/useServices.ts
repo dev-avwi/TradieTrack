@@ -106,7 +106,7 @@ export function useStripeTerminal() {
         return success;
       }
     } catch (err: any) {
-      console.error('[useStripeTerminal] Initialize error:', err);
+      if (__DEV__) console.error('[useStripeTerminal] Initialize error:', err);
       // Handle osVersionNotSupported error (Apple Requirement 1.3)
       if (err.code === 'osVersionNotSupported' || 
           err.message?.includes('osVersionNotSupported')) {
@@ -182,7 +182,7 @@ export function useStripeTerminal() {
         return null;
       }
     } catch (err: any) {
-      console.error('[useStripeTerminal] Connect error:', err);
+      if (__DEV__) console.error('[useStripeTerminal] Connect error:', err);
       setError(err.message || 'Failed to connect to reader');
       setStatus('error');
       return null;
@@ -258,7 +258,7 @@ export function useStripeTerminal() {
         return result.paymentIntent;
       }
     } catch (err: any) {
-      console.error('[useStripeTerminal] Collect payment error:', err);
+      if (__DEV__) console.error('[useStripeTerminal] Collect payment error:', err);
       setError(err.message || 'Payment collection failed');
       setStatus('error');
       return null;
@@ -278,7 +278,7 @@ export function useStripeTerminal() {
       setIsProcessing(false);
       setStatus('connected');
     } catch (err) {
-      console.error('[useStripeTerminal] Cancel error:', err);
+      if (__DEV__) console.error('[useStripeTerminal] Cancel error:', err);
     }
   }, [sdkHook]);
 
@@ -293,7 +293,7 @@ export function useStripeTerminal() {
       setReader(null);
       setStatus('ready');
     } catch (err) {
-      console.error('[useStripeTerminal] Disconnect error:', err);
+      if (__DEV__) console.error('[useStripeTerminal] Disconnect error:', err);
     }
   }, [sdkHook]);
 
@@ -376,7 +376,7 @@ export function useOfflineStorage() {
       await offlineStorage.initialize();
       return true;
     } catch (error) {
-      console.error('Failed to initialize offline storage:', error);
+      if (__DEV__) console.error('Failed to initialize offline storage:', error);
       return false;
     }
   }, []);

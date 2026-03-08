@@ -67,7 +67,7 @@ class ApiClient {
       this.sessionToken = await SecureStore.getItemAsync('session_token');
       this.tokenLoaded = true;
     } catch (error) {
-      console.error('Failed to load session token:', error);
+      if (__DEV__) console.error('Failed to load session token:', error);
     }
     return this.sessionToken;
   }
@@ -82,7 +82,7 @@ class ApiClient {
         await SecureStore.deleteItemAsync('session_token');
       }
     } catch (error) {
-      console.error('Failed to save session token:', error);
+      if (__DEV__) console.error('Failed to save session token:', error);
     }
   }
 
@@ -119,8 +119,12 @@ class ApiClient {
     method: string,
     endpoint: string,
     body?: any,
-    options?: { headers?: Record<string, string> }
+    options?: { headers?: Record<string, string>; timeoutMs?: number }
   ): Promise<ApiResponse<T>> {
+    const controller = new AbortController();
+    const timeoutMs = options?.timeoutMs ?? 15000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
       const headers = await this.getHeaders();
       if (options?.headers) {
@@ -129,6 +133,7 @@ class ApiClient {
       const config: RequestInit = {
         method,
         headers,
+        signal: controller.signal,
       };
 
       if (body && method !== 'GET') {
@@ -168,6 +173,9 @@ class ApiClient {
       const data = await response.json();
       return { data };
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return { error: 'Request timed out. Please check your connection and try again.' };
+      }
       const online = await this.isOnline();
       if (!online) {
         if (__DEV__) console.log(`[API] Offline - skipping ${method} ${endpoint}`);
@@ -175,6 +183,8 @@ class ApiClient {
       }
       if (__DEV__) console.warn(`[API] Network Error [${method} ${endpoint}]:`, error);
       return { error: error instanceof Error ? error.message : 'Network error' };
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -194,7 +204,10 @@ class ApiClient {
     return this.request<T>('DELETE', endpoint);
   }
 
-  async uploadFile<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+  async uploadFile<T>(endpoint: string, formData: FormData, timeoutMs: number = 60000): Promise<ApiResponse<T>> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
       const token = await this.getToken();
       const headers: HeadersInit = {};
@@ -210,6 +223,7 @@ class ApiClient {
         method: 'POST',
         headers,
         body: formData,
+        signal: controller.signal,
       });
       
       const contentType = response.headers.get('content-type') || '';
@@ -232,6 +246,9 @@ class ApiClient {
       const data = await response.json();
       return { data };
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return { error: 'Upload timed out. Please check your connection and try again.' };
+      }
       const online = await this.isOnline();
       if (!online) {
         if (__DEV__) console.log(`[API] Offline - skipping upload ${endpoint}`);
@@ -239,6 +256,8 @@ class ApiClient {
       }
       if (__DEV__) console.warn(`[API] Upload Error [${endpoint}]:`, error);
       return { error: error instanceof Error ? error.message : 'Upload failed' };
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

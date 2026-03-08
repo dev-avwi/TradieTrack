@@ -46,7 +46,7 @@ export function SignaturePad({
         onClear?.();
       }
     } catch (e) {
-      console.error('Failed to parse signature message:', e);
+      if (__DEV__) console.error('Failed to parse signature message:', e);
     }
   };
 

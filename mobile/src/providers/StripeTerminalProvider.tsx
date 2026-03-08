@@ -77,7 +77,7 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       
       return response.data.secret;
     } catch (error) {
-      console.error('[StripeTerminal] Connection token fetch failed:', error);
+      if (__DEV__) console.error('[StripeTerminal] Connection token fetch failed:', error);
       throw error;
     }
   }, []);

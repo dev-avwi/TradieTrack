@@ -160,7 +160,7 @@ export function AIPhotoAnalysisModal({
       if (error.name === 'AbortError') {
         return;
       }
-      console.error('Photo analysis error:', error);
+      if (__DEV__) console.error('Photo analysis error:', error);
       Alert.alert('Analysis Failed', error.message || 'Failed to analyse photos. Please try again.');
     } finally {
       if (!isAbortedRef.current) {
@@ -207,7 +207,7 @@ export function AIPhotoAnalysisModal({
       onNotesUpdated?.();
       onClose();
     } catch (error: any) {
-      console.error('Error adding to notes:', error);
+      if (__DEV__) console.error('Error adding to notes:', error);
       Alert.alert('Error', 'Failed to add analysis to notes. Please try again.');
     } finally {
       setIsAddingToNotes(false);

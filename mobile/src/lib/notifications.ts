@@ -138,7 +138,7 @@ class NotificationService {
       this.isInitializing = false;
       return this.pushToken;
     } catch (error) {
-      console.error('[Notifications] Initialization failed:', error);
+      if (__DEV__) console.error('[Notifications] Initialization failed:', error);
       this.isInitializing = false;
       return null;
     }
@@ -260,7 +260,7 @@ class NotificationService {
       });
       if (__DEV__) console.log('[Notifications] Token registered with backend');
     } catch (error) {
-      console.error('[Notifications] Failed to register token:', error);
+      if (__DEV__) console.error('[Notifications] Failed to register token:', error);
     }
   }
 

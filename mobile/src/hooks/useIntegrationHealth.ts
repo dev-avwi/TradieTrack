@@ -38,7 +38,7 @@ export function useIntegrationHealth() {
       }
     } catch (err) {
       setError('Network error checking integrations');
-      console.error('Failed to fetch integration health:', err);
+      if (__DEV__) console.error('Failed to fetch integration health:', err);
     }
     
     setIsLoading(false);

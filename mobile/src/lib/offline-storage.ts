@@ -472,7 +472,7 @@ class OfflineStorageService {
       
       if (__DEV__) console.log('[OfflineStorage] Initialized successfully');
     } catch (error) {
-      console.error('[OfflineStorage] Initialization failed:', error);
+      if (__DEV__) console.error('[OfflineStorage] Initialization failed:', error);
       throw error;
     }
   }
@@ -640,7 +640,7 @@ class OfflineStorageService {
       }
       
     } catch (error) {
-      console.error('[OfflineStorage] Migration error:', error);
+      if (__DEV__) console.error('[OfflineStorage] Migration error:', error);
       // Don't throw - we don't want to block initialization
     }
   }
@@ -1975,7 +1975,7 @@ class OfflineStorageService {
         }
       }
     } catch (error) {
-      console.error('[OfflineStorage] Failed to get pending sync counts:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to get pending sync counts:', error);
     }
     
     return counts;
@@ -2074,7 +2074,7 @@ class OfflineStorageService {
       
       await this.updatePendingSyncCount();
     } catch (error) {
-      console.error('[OfflineStorage] Failed to cleanup failed sync items:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to cleanup failed sync items:', error);
     }
   }
 
@@ -2155,7 +2155,7 @@ class OfflineStorageService {
             if (__DEV__) console.log(`[OfflineStorage] Sync failed, retry #${item.retryCount + 1} in ${nextDelay / 1000}s`);
           }
         } catch (error: any) {
-          console.error(`[OfflineStorage] Failed to sync item ${item.id}:`, error);
+          if (__DEV__) console.error(`[OfflineStorage] Failed to sync item ${item.id}:`, error);
           
           // Update with error, increment retry count, and record attempt time
           await this.db!.runAsync(
@@ -2176,7 +2176,7 @@ class OfflineStorageService {
       if (__DEV__) console.log(`[OfflineStorage] Sync complete: ${synced} synced, ${failed} failed`);
       return { success: failed === 0, synced, failed };
     } catch (error: any) {
-      console.error('[OfflineStorage] Sync failed:', error);
+      if (__DEV__) console.error('[OfflineStorage] Sync failed:', error);
       useOfflineStore.getState().setSyncError(error.message || 'Sync failed');
       return { success: false, synced, failed };
     } finally {
@@ -2200,13 +2200,13 @@ class OfflineStorageService {
       try {
         const response = await api.post(`/api/jobs/${data.id}/on-my-way`);
         if (response.error) {
-          console.error(`[OfflineStorage] API error for on_my_way:`, response.error);
+          if (__DEV__) console.error(`[OfflineStorage] API error for on_my_way:`, response.error);
           return false;
         }
         if (__DEV__) console.log(`[OfflineStorage] Successfully synced on_my_way notification`);
         return true;
       } catch (error) {
-        console.error(`[OfflineStorage] Failed to sync on_my_way:`, error);
+        if (__DEV__) console.error(`[OfflineStorage] Failed to sync on_my_way:`, error);
         return false;
       }
     }
@@ -2221,7 +2221,7 @@ class OfflineStorageService {
     
     const endpoint = endpoints[type];
     if (!endpoint) {
-      console.error(`[OfflineStorage] Unknown type: ${type}`);
+      if (__DEV__) console.error(`[OfflineStorage] Unknown type: ${type}`);
       return false;
     }
     
@@ -2265,19 +2265,19 @@ class OfflineStorageService {
           break;
           
         default:
-          console.error(`[OfflineStorage] Unknown action: ${action}`);
+          if (__DEV__) console.error(`[OfflineStorage] Unknown action: ${action}`);
           return false;
       }
       
       if (response.error) {
-        console.error(`[OfflineStorage] API error for ${type} ${action}:`, response.error);
+        if (__DEV__) console.error(`[OfflineStorage] API error for ${type} ${action}:`, response.error);
         return false;
       }
       
       if (__DEV__) console.log(`[OfflineStorage] Successfully synced ${type} ${action}`);
       return true;
     } catch (error) {
-      console.error(`[OfflineStorage] Failed to sync ${type} ${action}:`, error);
+      if (__DEV__) console.error(`[OfflineStorage] Failed to sync ${type} ${action}:`, error);
       return false;
     }
   }
@@ -2292,7 +2292,7 @@ class OfflineStorageService {
         // Delete attachment from server
         const response = await api.delete(`/api/attachments/${data.id}`);
         if (response.error) {
-          console.error('[OfflineStorage] Failed to delete attachment:', response.error);
+          if (__DEV__) console.error('[OfflineStorage] Failed to delete attachment:', response.error);
           return false;
         }
         // Remove from local cache - processSyncQueue will handle sync_queue cleanup
@@ -2330,7 +2330,7 @@ class OfflineStorageService {
         const response = await api.uploadFile(endpoint, formData);
         
         if (response.error || !response.data) {
-          console.error('[OfflineStorage] Failed to upload attachment:', response.error);
+          if (__DEV__) console.error('[OfflineStorage] Failed to upload attachment:', response.error);
           return false;
         }
         
@@ -2344,7 +2344,7 @@ class OfflineStorageService {
           // updateLocalIdWithServerId sets id, clears local_id, and sets pending_sync=0
           const idUpdated = await this.updateLocalIdWithServerId('attachment', data.localId, serverId);
           if (!idUpdated) {
-            console.error('[OfflineStorage] Failed to reconcile attachment ID');
+            if (__DEV__) console.error('[OfflineStorage] Failed to reconcile attachment ID');
             return false;
           }
           
@@ -2356,7 +2356,7 @@ class OfflineStorageService {
           
           // Verify the URL update succeeded
           if ((urlResult as any)?.changes === 0) {
-            console.error('[OfflineStorage] Failed to update remote_url after ID reconciliation');
+            if (__DEV__) console.error('[OfflineStorage] Failed to update remote_url after ID reconciliation');
             return false;
           }
         } else {
@@ -2372,7 +2372,7 @@ class OfflineStorageService {
           
           // Verify the update succeeded
           if ((result as any)?.changes === 0) {
-            console.error('[OfflineStorage] Failed to update attachment record');
+            if (__DEV__) console.error('[OfflineStorage] Failed to update attachment record');
             return false;
           }
         }
@@ -2382,10 +2382,10 @@ class OfflineStorageService {
         return true;
       }
       
-      console.error('[OfflineStorage] Unknown attachment action:', action);
+      if (__DEV__) console.error('[OfflineStorage] Unknown attachment action:', action);
       return false;
     } catch (error) {
-      console.error('[OfflineStorage] Failed to sync attachment:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to sync attachment:', error);
       return false;
     }
   }
@@ -2448,7 +2448,7 @@ class OfflineStorageService {
       return true;
     }
     
-    console.error(`[OfflineStorage] Failed to update ${type} ID: row not found for localId=${localId}`);
+    if (__DEV__) console.error(`[OfflineStorage] Failed to update ${type} ID: row not found for localId=${localId}`);
     return false;
   }
 
@@ -2552,7 +2552,7 @@ class OfflineStorageService {
       await this.setDeltaSyncTimestamp('jobs', Date.now());
       if (__DEV__) console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} jobs`);
     } catch (error) {
-      console.error('[OfflineStorage] Delta sync jobs failed:', error);
+      if (__DEV__) console.error('[OfflineStorage] Delta sync jobs failed:', error);
     }
   }
 
@@ -2578,7 +2578,7 @@ class OfflineStorageService {
       await this.setDeltaSyncTimestamp('clients', Date.now());
       if (__DEV__) console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} clients`);
     } catch (error) {
-      console.error('[OfflineStorage] Delta sync clients failed:', error);
+      if (__DEV__) console.error('[OfflineStorage] Delta sync clients failed:', error);
     }
   }
 
@@ -2604,7 +2604,7 @@ class OfflineStorageService {
       await this.setDeltaSyncTimestamp('quotes', Date.now());
       if (__DEV__) console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} quotes`);
     } catch (error) {
-      console.error('[OfflineStorage] Delta sync quotes failed:', error);
+      if (__DEV__) console.error('[OfflineStorage] Delta sync quotes failed:', error);
     }
   }
 
@@ -2630,7 +2630,7 @@ class OfflineStorageService {
       await this.setDeltaSyncTimestamp('invoices', Date.now());
       if (__DEV__) console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} invoices`);
     } catch (error) {
-      console.error('[OfflineStorage] Delta sync invoices failed:', error);
+      if (__DEV__) console.error('[OfflineStorage] Delta sync invoices failed:', error);
     }
   }
 
@@ -2836,7 +2836,7 @@ class OfflineStorageService {
       useOfflineStore.getState().setBackgroundSyncEnabled(false);
       if (__DEV__) console.log('[OfflineStorage] Background sync unregistered');
     } catch (error) {
-      console.error('[OfflineStorage] Failed to unregister background sync:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to unregister background sync:', error);
     }
   }
 
@@ -2868,7 +2868,7 @@ class OfflineStorageService {
       if (__DEV__) console.log('[OfflineStorage] Background sync complete');
       return true; // NewData
     } catch (error) {
-      console.error('[OfflineStorage] Background sync failed:', error);
+      if (__DEV__) console.error('[OfflineStorage] Background sync failed:', error);
       throw error; // Rethrow so task handler can catch it
     }
   }
@@ -2916,7 +2916,7 @@ class OfflineStorageService {
         // Verify file was actually written
         const newFileInfo = await FileSystem.getInfoAsync(localPath);
         if (!newFileInfo.exists) {
-          console.error('[OfflineStorage] Download reported success but file not found');
+          if (__DEV__) console.error('[OfflineStorage] Download reported success but file not found');
           return null;
         }
         
@@ -2929,7 +2929,7 @@ class OfflineStorageService {
             );
           } catch (dbError) {
             // DB update failed - remove downloaded file to stay consistent
-            console.error('[OfflineStorage] DB update failed, cleaning up file:', dbError);
+            if (__DEV__) console.error('[OfflineStorage] DB update failed, cleaning up file:', dbError);
             await FileSystem.deleteAsync(localPath, { idempotent: true });
             return null;
           }
@@ -2939,10 +2939,10 @@ class OfflineStorageService {
         return localPath;
       }
       
-      console.error(`[OfflineStorage] Download failed with status: ${downloadResult.status}`);
+      if (__DEV__) console.error(`[OfflineStorage] Download failed with status: ${downloadResult.status}`);
       return null;
     } catch (error) {
-      console.error('[OfflineStorage] Failed to download attachment:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to download attachment:', error);
       return null;
     }
   }
@@ -3027,7 +3027,7 @@ class OfflineStorageService {
         await this.db.runAsync('UPDATE attachments SET local_uri = NULL WHERE remote_url IS NOT NULL');
       }
     } catch (error) {
-      console.error('[OfflineStorage] Failed to clear attachment cache:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to clear attachment cache:', error);
     }
   }
 
@@ -3051,7 +3051,7 @@ class OfflineStorageService {
       
       return totalSize;
     } catch (error) {
-      console.error('[OfflineStorage] Failed to get cache size:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to get cache size:', error);
       return 0;
     }
   }
@@ -3087,7 +3087,7 @@ class OfflineStorageService {
       useOfflineStore.getState().setLastSyncTime(Date.now());
       if (__DEV__) console.log('[OfflineStorage] Full sync complete');
     } catch (error) {
-      console.error('[OfflineStorage] Full sync failed:', error);
+      if (__DEV__) console.error('[OfflineStorage] Full sync failed:', error);
     } finally {
       useOfflineStore.getState().setSyncing(false);
     }
@@ -3106,7 +3106,7 @@ class OfflineStorageService {
       );
       if (__DEV__) console.log(`[OfflineStorage] Removed ${entityType} ${id} from cache`);
     } catch (error) {
-      console.error(`[OfflineStorage] Failed to remove ${entityType} from cache:`, error);
+      if (__DEV__) console.error(`[OfflineStorage] Failed to remove ${entityType} from cache:`, error);
     }
   }
 
@@ -3144,7 +3144,7 @@ class OfflineStorageService {
       );
       if (__DEV__) console.log('[OfflineStorage] Cached auth data for offline access');
     } catch (error) {
-      console.error('[OfflineStorage] Failed to cache auth data:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to cache auth data:', error);
     }
   }
 
@@ -3182,7 +3182,7 @@ class OfflineStorageService {
         cachedAt: result.cached_at,
       };
     } catch (error) {
-      console.error('[OfflineStorage] Failed to get cached auth data:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to get cached auth data:', error);
       return null;
     }
   }
@@ -3197,7 +3197,7 @@ class OfflineStorageService {
       await this.db.runAsync('DELETE FROM cached_auth');
       if (__DEV__) console.log('[OfflineStorage] Cleared cached auth data');
     } catch (error) {
-      console.error('[OfflineStorage] Failed to clear cached auth data:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to clear cached auth data:', error);
     }
   }
 
@@ -3234,7 +3234,7 @@ class OfflineStorageService {
       );
       if (__DEV__) console.log(`[OfflineStorage] Cached subscription data for key: ${key}`);
     } catch (error) {
-      console.error('[OfflineStorage] Failed to cache subscription data:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to cache subscription data:', error);
     }
   }
 
@@ -3264,7 +3264,7 @@ class OfflineStorageService {
       
       return JSON.parse(result.data) as T;
     } catch (error) {
-      console.error('[OfflineStorage] Failed to get cached subscription data:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to get cached subscription data:', error);
       return null;
     }
   }
@@ -3290,7 +3290,7 @@ class OfflineStorageService {
       
       return now <= expiresAt;
     } catch (error) {
-      console.error('[OfflineStorage] Failed to check subscription cache validity:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to check subscription cache validity:', error);
       return false;
     }
   }
@@ -3311,7 +3311,7 @@ class OfflineStorageService {
         if (__DEV__) console.log('[OfflineStorage] Invalidated all subscription caches');
       }
     } catch (error) {
-      console.error('[OfflineStorage] Failed to invalidate subscription cache:', error);
+      if (__DEV__) console.error('[OfflineStorage] Failed to invalidate subscription cache:', error);
     }
   }
 }
@@ -3330,7 +3330,7 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
     }
     return BackgroundFetch.BackgroundFetchResult.NoData;
   } catch (error) {
-    console.error('[BackgroundSync] Task failed:', error);
+    if (__DEV__) console.error('[BackgroundSync] Task failed:', error);
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
 });

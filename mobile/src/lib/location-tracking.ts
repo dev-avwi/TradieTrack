@@ -147,7 +147,7 @@ class LocationTrackingService {
         throw bgError; // Re-throw other errors
       }
     } catch (error) {
-      console.error('[Location] Failed to start tracking:', error);
+      if (__DEV__) console.error('[Location] Failed to start tracking:', error);
       this.updateStatus('error');
       return false;
     }
@@ -166,7 +166,7 @@ class LocationTrackingService {
       if (__DEV__) console.log('[Location] Tracking stopped');
       this.updateStatus('stopped');
     } catch (error) {
-      console.error('[Location] Failed to stop tracking:', error);
+      if (__DEV__) console.error('[Location] Failed to stop tracking:', error);
     }
   }
 
@@ -192,7 +192,7 @@ class LocationTrackingService {
       this.currentLocation = update;
       return update;
     } catch (error) {
-      console.error('[Location] Failed to get current location:', error);
+      if (__DEV__) console.error('[Location] Failed to get current location:', error);
       return null;
     }
   }
@@ -230,7 +230,7 @@ class LocationTrackingService {
       if (__DEV__) console.log(`[Location] Added geofence for job ${jobId}`);
       return true;
     } catch (error) {
-      console.error('[Location] Failed to add geofence:', error);
+      if (__DEV__) console.error('[Location] Failed to add geofence:', error);
       return false;
     }
   }
@@ -254,7 +254,7 @@ class LocationTrackingService {
       
       if (__DEV__) console.log(`[Location] Removed geofence for job ${jobId}`);
     } catch (error) {
-      console.error('[Location] Failed to remove geofence:', error);
+      if (__DEV__) console.error('[Location] Failed to remove geofence:', error);
     }
   }
 
@@ -272,7 +272,7 @@ class LocationTrackingService {
         timestamp: new Date(location.timestamp).toISOString(),
       });
     } catch (error) {
-      console.error('[Location] Failed to send location to server:', error);
+      if (__DEV__) console.error('[Location] Failed to send location to server:', error);
     }
   }
 
@@ -386,7 +386,7 @@ class LocationTrackingService {
 // Define the background task for location updates
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   if (error) {
-    console.error('[Location Task] Error:', error);
+    if (__DEV__) console.error('[Location Task] Error:', error);
     return;
   }
   
@@ -413,7 +413,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 // Define the background task for geofence events
 TaskManager.defineTask(GEOFENCE_TASK_NAME, async ({ data, error }) => {
   if (error) {
-    console.error('[Geofence Task] Error:', error);
+    if (__DEV__) console.error('[Geofence Task] Error:', error);
     return;
   }
   

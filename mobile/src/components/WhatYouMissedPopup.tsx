@@ -246,7 +246,7 @@ export function WhatYouMissedPopup() {
           setCountdown(AUTO_DISMISS_DELAY);
         }
       } catch (error) {
-        console.error('Failed to fetch missed notifications:', error);
+        if (__DEV__) console.error('Failed to fetch missed notifications:', error);
       }
     };
 
@@ -279,7 +279,7 @@ export function WhatYouMissedPopup() {
     try {
       await api.patch(`/api/notifications/${notification.id}/read`);
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
+      if (__DEV__) console.error('Failed to mark notification as read:', error);
     }
 
     setIsOpen(false);
