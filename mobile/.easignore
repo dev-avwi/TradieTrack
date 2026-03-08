@@ -5,6 +5,9 @@ node_modules/
 ios/
 android/
 
+# Build output
+dist/
+
 # Expo cache
 .expo/
 
@@ -23,8 +26,7 @@ __tests__/
 *.spec.tsx
 
 # Documentation
-*.md
-!README.md
+APP_STORE_SUBMISSION.md
 
 # Misc
 .DS_Store
@@ -32,3 +34,6 @@ __tests__/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Credentials (managed by EAS)
+credentials/
