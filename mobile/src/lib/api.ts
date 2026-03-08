@@ -173,7 +173,7 @@ class ApiClient {
       const data = await response.json();
       return { data };
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
+      if (error && typeof error === 'object' && 'name' in error && (error as any).name === 'AbortError') {
         return { error: 'Request timed out. Please check your connection and try again.' };
       }
       const online = await this.isOnline();
@@ -246,7 +246,7 @@ class ApiClient {
       const data = await response.json();
       return { data };
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
+      if (error && typeof error === 'object' && 'name' in error && (error as any).name === 'AbortError') {
         return { error: 'Upload timed out. Please check your connection and try again.' };
       }
       const online = await this.isOnline();
