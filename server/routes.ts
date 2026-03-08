@@ -40148,9 +40148,19 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       const tableHeaderColor = tmpl.tableStyle === 'minimal' ? '#1a1a1a' : 'white';
       const tableHeaderBorder = tmpl.tableStyle === 'minimal' ? `border-bottom: 2px solid ${ac};` : `border: 1px solid ${ac};`;
       const getTableRowCss = () => {
-        if (tmpl.tableStyle === 'striped') return 'tbody tr:nth-child(odd) { background: #f9fafb; } td { border-bottom: none; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; }';
-        if (tmpl.tableStyle === 'minimal') return 'td { border-bottom: 1px solid #e5e7eb; }';
-        return 'td { border: 1px solid #e2e8f0; }';
+        if (tmpl.tableStyle === 'striped') return 'table tbody tr:nth-child(odd) { background: #f9fafb; } table tbody tr:nth-child(even) { background: transparent; } table td { border-bottom: none; }';
+        if (tmpl.tableStyle === 'minimal') return 'table td { border-bottom: 1px solid #e5e7eb; }';
+        return 'table td { border-bottom: 1px solid #eee; }';
+      };
+
+      const headerBorder = tmpl.showHeaderDivider
+        ? `border-bottom: ${tmpl.headerBorderWidth} solid ${ac};`
+        : 'border-bottom: none;';
+
+      const getNoteStyle = () => {
+        if (tmpl.noteStyle === 'highlighted') return `background: linear-gradient(135deg, ${ac}10, ${ac}05); border: 1px solid ${ac}30; border-radius: 6px; padding: 8px 12px;`;
+        if (tmpl.noteStyle === 'simple') return `background: transparent; border-top: 1px solid #e5e7eb; padding: 8px 0;`;
+        return `background: #fafafa; border-left: 4px solid ${ac}; border-radius: 0 6px 6px 0; padding: 8px 12px;`;
       };
 
       const html = `<!DOCTYPE html>
@@ -40159,20 +40169,30 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  body { font-family: '${tmpl.fontFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: ${tmpl.baseFontSize}; color: #222; margin: 0; padding: 20px; }
-  .header { background: ${ac}; color: white; padding: 20px 24px; border-radius: 4px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
-  .header-text h1 { margin: 0 0 4px 0; font-size: 18px; font-weight: ${tmpl.headingWeight}; letter-spacing: 0.5px; }
-  .header-text p { margin: 2px 0; font-size: 11px; opacity: 0.9; }
-  .header-logo img { max-height: 50px; max-width: 120px; border-radius: 4px; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: ${tmpl.fontFamily}; font-size: ${tmpl.baseFontSize}; font-weight: ${tmpl.bodyWeight}; line-height: 1.5; color: #1a1a1a; background: #fff; }
+  .document { max-width: 800px; margin: 0 auto; padding: 15px 20px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; padding-bottom: 10px; ${headerBorder} }
+  .company-info { flex: 1; }
+  .company-name { font-size: 24px; font-weight: ${tmpl.headingWeight}; color: ${ac}; margin-bottom: 4px; }
+  .company-details { color: #666; font-size: 10px; line-height: 1.6; }
+  .company-details p { margin: 2px 0; }
+  .document-type { text-align: right; }
+  .document-title { font-size: 28px; font-weight: ${tmpl.headingWeight}; color: ${ac}; text-transform: uppercase; letter-spacing: 1px; line-height: 1.2; white-space: nowrap; }
+  .document-subtitle { font-size: 12px; color: #666; margin-top: 4px; }
+  .logo { max-width: 150px; max-height: 60px; object-fit: contain; margin-bottom: 12px; }
   .section { margin-bottom: 14px; }
-  .section-title { font-size: 13px; font-weight: ${tmpl.headingWeight}; color: ${ac}; border-bottom: ${tmpl.headerBorderWidth} solid ${ac}; padding-bottom: 4px; margin-bottom: 8px; }
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
-  .info-item label { font-weight: 600; color: #555; font-size: 9px; text-transform: uppercase; display: block; }
-  .info-item span { font-size: 11px; font-weight: ${tmpl.bodyWeight}; }
-  table { width: 100%; border-collapse: collapse; font-size: 10px; }
-  th { background: ${tableHeaderBg}; color: ${tableHeaderColor}; padding: 6px 8px; text-align: left; ${tableHeaderBorder} font-size: 9px; text-transform: uppercase; font-weight: 600; }
+  .section-title { font-size: 12px; font-weight: ${tmpl.headingWeight}; color: ${ac}; text-transform: uppercase; letter-spacing: 1px; border-bottom: ${tmpl.headerBorderWidth} solid ${ac}; padding-bottom: 4px; margin-bottom: 8px; }
+  .info-section { display: flex; justify-content: space-between; margin-bottom: 10px; gap: 20px; }
+  .info-block { flex: 1; }
+  .info-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 4px; font-weight: 600; }
+  .info-value { color: #1a1a1a; line-height: 1.5; font-size: 11px; }
+  .note-block { ${getNoteStyle()} margin-bottom: 10px; font-size: 11px; color: #444; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 10px; }
+  th { background: ${tableHeaderBg}; color: ${tableHeaderColor}; padding: 6px 8px; text-align: left; ${tableHeaderBorder} font-size: 9px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
   ${getTableRowCss()}
   td { padding: 6px 8px; vertical-align: top; }
+  table tr:last-child td { border-bottom: 2px solid ${ac}; }
   .risk-badge { padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; text-transform: uppercase; display: inline-block; }
   .ppe-grid { display: flex; flex-wrap: wrap; gap: 6px; }
   .ppe-item { background: ${ac}10; border: 1px solid ${ac}30; border-radius: 4px; padding: 4px 10px; font-size: 10px; color: ${ac}; font-weight: 500; }
@@ -40184,33 +40204,53 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   .footer { margin-top: 20px; text-align: center; font-size: 9px; color: #999; border-top: 1px solid #eee; padding-top: 8px; }
   @page { size: A4; margin: 10mm; }
 </style></head><body>
+<div class="document">
   <div class="header">
-    <div class="header-text">
-      <h1>SAFE WORK METHOD STATEMENT</h1>
-      <p>${doc.title}</p>
-      <p>${businessName}${abn ? ` | ABN: ${abn}` : ''}</p>
+    <div class="company-info">
+      ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="${businessName}" />` : ''}
+      <div class="company-name">${businessName}</div>
+      <div class="company-details">
+        ${abn ? `<p>ABN: ${abn}</p>` : ''}
+      </div>
     </div>
-    ${logoUrl ? `<div class="header-logo"><img src="${logoUrl}" alt="${businessName}" /></div>` : ''}
-  </div>
-
-  <div class="section">
-    <div class="section-title">1. General Information</div>
-    <div class="info-grid">
-      <div class="info-item"><label>Document Title</label><span>${doc.title}</span></div>
-      <div class="info-item"><label>Status</label><span>${(doc.status || 'draft').toUpperCase()}</span></div>
-      <div class="info-item"><label>Site Address</label><span>${doc.siteAddress || 'Not specified'}</span></div>
-      <div class="info-item"><label>Date Created</label><span>${doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('en-AU') : '-'}</span></div>
+    <div class="document-type">
+      <div class="document-title">SWMS</div>
+      <div class="document-subtitle">Safe Work Method Statement</div>
     </div>
-    ${doc.description ? `<p style="margin-top:8px">${doc.description}</p>` : ''}
   </div>
 
   <div class="section">
-    <div class="section-title">2. Work Activity Description</div>
-    <p>${doc.workActivityDescription || 'Not specified'}</p>
+    <div class="section-title">General Information</div>
+    <div class="info-section">
+      <div class="info-block">
+        <div class="info-label">Document Title</div>
+        <div class="info-value">${doc.title}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Status</div>
+        <div class="info-value">${(doc.status || 'draft').toUpperCase()}</div>
+      </div>
+    </div>
+    <div class="info-section">
+      <div class="info-block">
+        <div class="info-label">Site Address</div>
+        <div class="info-value">${doc.siteAddress || 'Not specified'}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">Date Created</div>
+        <div class="info-value">${doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('en-AU') : '-'}</div>
+      </div>
+    </div>
+    ${doc.description ? `<div class="note-block">${doc.description}</div>` : ''}
   </div>
 
   <div class="section">
-    <div class="section-title">3. Hazard Identification & Risk Assessment</div>
+    <div class="section-title">Work Activity Description</div>
+    <div class="note-block">${doc.workActivityDescription || 'Not specified'}</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Hazard Identification & Risk Assessment</div>
     ${hazards.length > 0 ? `<table>
       <thead><tr>
         <th style="width:5%">#</th>
@@ -40236,20 +40276,26 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   </div>
 
   <div class="section">
-    <div class="section-title">4. PPE Requirements</div>
+    <div class="section-title">PPE Requirements</div>
     ${ppeList ? `<div class="ppe-grid">${(doc.ppeRequirements as string[] || []).map((p: string) => `<div class="ppe-item">${PPE_LABELS[p] || p}</div>`).join('')}</div>` : '<p>No PPE requirements specified</p>'}
   </div>
 
   <div class="section">
-    <div class="section-title">5. Emergency Information</div>
-    <div class="info-grid">
-      <div class="info-item"><label>Emergency Contact</label><span>${doc.emergencyContact || 'Not specified'}</span></div>
-      <div class="info-item"><label>First Aid Location</label><span>${doc.firstAidLocation || 'Not specified'}</span></div>
+    <div class="section-title">Emergency Information</div>
+    <div class="info-section">
+      <div class="info-block">
+        <div class="info-label">Emergency Contact</div>
+        <div class="info-value">${doc.emergencyContact || 'Not specified'}</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">First Aid Location</div>
+        <div class="info-value">${doc.firstAidLocation || 'Not specified'}</div>
+      </div>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-title">6. Worker Sign-off</div>
+    <div class="section-title">Worker Sign-off</div>
     <p style="font-size:10px;color:#555;margin-bottom:8px">I have read and understood this SWMS and agree to follow the safe work procedures described.</p>
     ${signatures.length > 0 ? `<div class="sig-grid">${signatures.map(s => `<div class="sig-card">
       <div class="sig-name">${s.workerName}</div>
@@ -40263,6 +40309,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     <p>Generated by JobRunner &bull; ${new Date().toLocaleDateString('en-AU')}</p>
     <p>This SWMS must be reviewed when work conditions change or a new hazard is identified.</p>
   </div>
+</div>
 </body></html>`;
 
       const { generatePDFBuffer } = await import('./pdfService');
