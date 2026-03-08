@@ -40004,6 +40004,13 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         longitude: longitude || null,
         address: address || null,
       }).returning();
+
+      if (doc.status === 'draft') {
+        await db.update(swmsDocuments)
+          .set({ status: 'active' })
+          .where(eq(swmsDocuments.id, req.params.id));
+      }
+
       res.json(sig);
     } catch (error: any) {
       console.error("Error signing SWMS:", error);

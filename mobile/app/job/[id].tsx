@@ -6525,29 +6525,58 @@ export default function JobDetailScreen() {
                           padding: spacing.md,
                           marginBottom: spacing.sm,
                         }}>
-                          <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground, marginBottom: 4 }}>
-                            {hazard.hazardDescription}
-                          </Text>
-                          {hazard.riskRating && (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 4 }}>
-                              <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Risk:</Text>
-                              <View style={{
-                                paddingHorizontal: 6,
-                                paddingVertical: 1,
-                                borderRadius: radius.sm,
-                                backgroundColor: `${getRiskColor(hazard.riskRating)}20`,
-                              }}>
-                                <Text style={{ fontSize: 11, fontWeight: '600', color: getRiskColor(hazard.riskRating), textTransform: 'capitalize' }}>
-                                  {hazard.riskRating}
-                                </Text>
-                              </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
+                            <View style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: 12,
+                              backgroundColor: `${getRiskColor(hazard.riskRating)}20`,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginTop: 1,
+                            }}>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: getRiskColor(hazard.riskRating) }}>
+                                {idx + 1}
+                              </Text>
                             </View>
-                          )}
-                          {hazard.controlMeasures && (
-                            <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
-                              Controls: {hazard.controlMeasures}
-                            </Text>
-                          )}
+                            <View style={{ flex: 1 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap', marginBottom: 4 }}>
+                                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, flex: 1 }}>
+                                  {hazard.hazardDescription}
+                                </Text>
+                                {hazard.riskRating && (
+                                  <View style={{
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 2,
+                                    borderRadius: radius.pill,
+                                    backgroundColor: `${getRiskColor(hazard.riskRating)}20`,
+                                    borderWidth: 1,
+                                    borderColor: `${getRiskColor(hazard.riskRating)}40`,
+                                  }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '700', color: getRiskColor(hazard.riskRating), textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                                      {hazard.riskRating}
+                                    </Text>
+                                  </View>
+                                )}
+                              </View>
+                              {hazard.responsiblePerson && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                                  <Feather name="user" size={10} color={colors.mutedForeground} />
+                                  <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                                    {hazard.responsiblePerson}
+                                  </Text>
+                                </View>
+                              )}
+                              {hazard.controlMeasures && (
+                                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 2 }}>
+                                  <Feather name="shield" size={11} color={colors.primary} style={{ marginTop: 2 }} />
+                                  <Text style={{ fontSize: 12, color: colors.foreground, flex: 1, lineHeight: 18 }}>
+                                    {hazard.controlMeasures}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          </View>
                         </View>
                       ))}
                     </View>
@@ -7109,6 +7138,192 @@ export default function JobDetailScreen() {
                 <Feather name="edit-3" size={18} color={colors.primaryForeground} />
                 <Text style={styles.takePhotoInlineText}>Capture Signature</Text>
               </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Proof Pack - accessible from Docs tab */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={styles.photosCard}>
+          <View style={styles.photosHeader}>
+            <View style={[styles.photosIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+              <Feather name="package" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <Text style={styles.photosHeaderLabel}>Proof Pack</Text>
+            {(job.status === 'done' || job.status === 'invoiced') && (
+              <View style={{ backgroundColor: `${colors.success}20`, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.success }}>Ready</Text>
+              </View>
+            )}
+          </View>
+          <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.md, lineHeight: 19 }}>
+            Generate a comprehensive PDF with job timeline, photos, signatures, and compliance records to share with your client.
+          </Text>
+          {(job.status === 'done' || job.status === 'invoiced') ? (
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: spacing.sm,
+                backgroundColor: colors.primary,
+                paddingVertical: spacing.md,
+                borderRadius: radius.lg,
+                opacity: isGeneratingProofPack ? 0.6 : 1,
+                minHeight: 44,
+              }}
+              onPress={handleGenerateProofPack}
+              activeOpacity={0.8}
+              disabled={isGeneratingProofPack}
+            >
+              {isGeneratingProofPack ? (
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
+              ) : (
+                <>
+                  <Feather name="share" size={18} color={colors.primaryForeground} />
+                  <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
+                    Generate & Share Proof Pack
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          ) : (
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+              backgroundColor: colors.muted,
+              paddingVertical: spacing.md,
+              paddingHorizontal: spacing.md,
+              borderRadius: radius.lg,
+            }}>
+              <Feather name="info" size={16} color={colors.mutedForeground} />
+              <Text style={{ fontSize: 13, color: colors.mutedForeground, flex: 1 }}>
+                Available once the job is marked as completed
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Client Portal - accessible from Docs tab */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={styles.photosCard}>
+          <View style={styles.photosHeader}>
+            <View style={[styles.photosIconContainer, { backgroundColor: `${colors.invoiced}15` }]}>
+              <Feather name="globe" size={iconSizes.lg} color={colors.invoiced} />
+            </View>
+            <Text style={styles.photosHeaderLabel}>Client Portal</Text>
+          </View>
+
+          {client ? (
+            <>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, color: colors.foreground, fontWeight: '500' }}>Enable Portal</Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                    Let your client view job progress online
+                  </Text>
+                </View>
+                {isTogglingPortal ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Switch
+                    value={portalEnabled}
+                    onValueChange={handleTogglePortal}
+                    trackColor={{ false: colors.muted, true: colors.primary }}
+                    thumbColor={portalEnabled ? colors.primaryForeground : colors.foreground}
+                  />
+                )}
+              </View>
+
+              {portalEnabled && (
+                <View style={{ marginTop: spacing.md }}>
+                  {portalLinks.length > 0 ? (
+                    <View style={{ gap: spacing.sm }}>
+                      {portalLinks.map((link) => (
+                        <View
+                          key={link.id}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: colors.muted,
+                            borderRadius: radius.lg,
+                            padding: spacing.md,
+                            gap: spacing.sm,
+                          }}
+                        >
+                          <Feather name="link" size={16} color={colors.primary} />
+                          <Text
+                            style={{ flex: 1, fontSize: 13, color: colors.foreground }}
+                            numberOfLines={1}
+                            ellipsizeMode="middle"
+                          >
+                            {link.url || `Portal link #${link.id.slice(0, 8)}`}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => handleSharePortalLink(link.url)}
+                            style={{ padding: spacing.xs }}
+                            activeOpacity={0.7}
+                          >
+                            <Feather name="share-2" size={16} color={colors.primary} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.sm }}>
+                      No portal links yet. Generate one to share with your client.
+                    </Text>
+                  )}
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: spacing.sm,
+                      backgroundColor: colors.card,
+                      paddingVertical: spacing.md,
+                      borderRadius: radius.lg,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      marginTop: spacing.sm,
+                      opacity: isGeneratingPortalLink ? 0.6 : 1,
+                      minHeight: 44,
+                    }}
+                    onPress={handleGeneratePortalLink}
+                    activeOpacity={0.8}
+                    disabled={isGeneratingPortalLink}
+                  >
+                    {isGeneratingPortalLink ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <>
+                        <Feather name="plus" size={16} color={colors.foreground} />
+                        <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>
+                          Generate Portal Link
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
+          ) : (
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+              backgroundColor: colors.muted,
+              paddingVertical: spacing.md,
+              paddingHorizontal: spacing.md,
+              borderRadius: radius.lg,
+            }}>
+              <Feather name="info" size={16} color={colors.mutedForeground} />
+              <Text style={{ fontSize: 13, color: colors.mutedForeground, flex: 1 }}>
+                Add a client to this job to enable the client portal
+              </Text>
             </View>
           )}
         </View>
