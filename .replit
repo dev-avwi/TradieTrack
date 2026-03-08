@@ -85,11 +85,10 @@ externalPort = 3001
 [userenv]
 
 [userenv.shared]
-VITE_APP_URL = "https://tradietrack.com"
+VITE_APP_URL = "https://jobrunner.com.au"
+APP_DOMAIN = "jobrunner.com.au"
 
 [userenv.production]
 ENABLE_DEMO_DATA = "true"
-APP_DOMAIN = "tradietrack.com"
 
 [userenv.development]
-APP_DOMAIN = "tradietrack.com"

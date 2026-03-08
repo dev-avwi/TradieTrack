@@ -15330,9 +15330,7 @@ Be specific about materials, colors, and features that would be included.`
       // Auto-expire after 2 hours
       setTimeout(() => trackingTokens.delete(trackingToken), 2 * 60 * 60 * 1000);
 
-      const baseUrl = process.env.REPLIT_DOMAINS 
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` 
-        : `https://${req.headers.host}`;
+      const baseUrl = getProductionBaseUrl(req);
       const trackingUrl = `${baseUrl}/track/${trackingToken}`;
 
       // Build smart ETA message based on calculated driving time

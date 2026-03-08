@@ -1166,11 +1166,11 @@ export async function generateTrackingLink(
     const { randomBytes } = await import('crypto');
     
     // Check if there's already an active tracking link
+    const { getProductionBaseUrl } = await import('../urlHelper');
+    
     const existingLink = await storage.getSmsTrackingLinkByJobId(jobId);
     if (existingLink && existingLink.isActive && new Date(existingLink.expiresAt) > new Date()) {
-      const baseUrl = process.env.REPLIT_DOMAIN 
-        ? `https://${process.env.REPLIT_DOMAIN}`
-        : process.env.BASE_URL || 'http://localhost:5000';
+      const baseUrl = getProductionBaseUrl();
       return {
         url: `${baseUrl}/track/${existingLink.token}`,
         token: existingLink.token,
@@ -1195,9 +1195,7 @@ export async function generateTrackingLink(
       estimatedArrival: null,
     });
     
-    const baseUrl = process.env.REPLIT_DOMAIN 
-      ? `https://${process.env.REPLIT_DOMAIN}`
-      : process.env.BASE_URL || 'http://localhost:5000';
+    const baseUrl = getProductionBaseUrl();
     
     return {
       url: `${baseUrl}/track/${token}`,
