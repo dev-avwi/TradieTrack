@@ -36,7 +36,7 @@ Core architectural and design decisions include:
 *   **CRM & Client Management**: Client tags, type classification, referral tracking, and smart segment filtering.
 *   **Deep-Link Navigation**: KPI widgets and action items deep-link to specific filtered views.
 *   **Documents Hub**: Consolidated view of quotes, invoices, and receipts with relationship links.
-*   **Client Portal Enhancement**: Enhanced Job Portal with visual progress timelines and custom messages.
+*   **Client Portal Enhancement**: Enhanced Job Portal with visual progress timelines and custom messages. All client-facing pages (tracking, quotes, invoices, receipts) use a consistent branded design with `bg-brand` header, business logo, contact info, and "Powered by JobRunner" footer.
 *   **Voice-to-Action Detection**: AI analysis of voice notes to detect and log action items.
 *   **Photo Auto-Tagging**: AI categorization of uploaded photos (before/after/progress/materials/general).
 *   **Expenses Page**: Standalone page for tracking business expenses with a receipt scanner.

@@ -15318,6 +15318,9 @@ Be specific about materials, colors, and features that would be included.`
 
       trackingTokens.set(trackingToken, {
         businessName,
+        businessLogo: business?.logoUrl || null,
+        businessPhone: business?.phone || null,
+        businessEmail: business?.email || null,
         tradieName,
         jobAddress: job.address || '',
         suburb,
@@ -34171,6 +34174,9 @@ Respond with JSON in this format:
         
         return res.json({
           businessName: etaInfo.businessName,
+          businessLogo: etaInfo.businessLogo || null,
+          businessPhone: etaInfo.businessPhone || null,
+          businessEmail: etaInfo.businessEmail || null,
           tradieName: etaInfo.tradieName,
           suburb: etaInfo.suburb,
           sentAt: sentAt.toISOString(),
@@ -34242,6 +34248,8 @@ Respond with JSON in this format:
         business: {
           name: businessSettings?.businessName || 'Your Tradesperson',
           logoUrl: businessSettings?.logoUrl || null,
+          phone: businessSettings?.phone || null,
+          email: businessSettings?.email || null,
         },
         worker: {
           firstName: workerFirstName,

@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { MapPin, Clock, Phone, RefreshCw, Navigation, AlertCircle, CheckCircle2, Car } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useLayoutEffect, useState } from "react";
+import { Clock, Phone, RefreshCw, AlertCircle, CheckCircle2, Car, Mail, MessageCircle, ShieldCheck } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
 
 interface TrackingData {
   id: string;
@@ -20,20 +20,18 @@ interface TrackingData {
   } | null;
   estimatedArrival: string | null;
   job: {
-    id: string;
     title: string;
-    address: string;
-    scheduledAt: string | null;
     scheduledTime: string | null;
     status: string;
   };
   business: {
     name: string;
     phone: string | null;
+    email: string | null;
     logoUrl: string | null;
   };
   worker: {
-    name: string;
+    firstName: string;
   };
   trackingType?: undefined;
 }
@@ -41,6 +39,9 @@ interface TrackingData {
 interface ETATrackingData {
   trackingType: 'eta';
   businessName: string;
+  businessLogo?: string | null;
+  businessPhone?: string | null;
+  businessEmail?: string | null;
   tradieName: string;
   suburb: string;
   sentAt: string;
@@ -123,23 +124,6 @@ function formatTimeAgo(dateString: string): string {
   }
 }
 
-function formatScheduledTime(scheduledAt: string | null, scheduledTime: string | null): string {
-  if (!scheduledAt && !scheduledTime) return "Time not set";
-  
-  const parts: string[] = [];
-  
-  if (scheduledAt) {
-    const date = new Date(scheduledAt);
-    parts.push(date.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }));
-  }
-  
-  if (scheduledTime) {
-    parts.push(scheduledTime);
-  }
-  
-  return parts.join(' at ');
-}
-
 function formatETA(etaString: string): string {
   const eta = new Date(etaString);
   const now = new Date();
@@ -157,7 +141,116 @@ function formatETA(etaString: string): string {
   }
 }
 
+function useForceLight() {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const previousTheme = root.classList.contains('dark') ? 'dark' : 'light';
+    root.classList.remove('dark');
+    root.style.setProperty('--background', '210 40% 98%');
+    root.style.setProperty('--foreground', '222.2 84% 4.9%');
+    root.style.setProperty('--card', '0 0% 100%');
+    root.style.setProperty('--card-foreground', '222.2 84% 4.9%');
+    root.style.setProperty('--muted', '210 40% 96.1%');
+    root.style.setProperty('--muted-foreground', '215.4 16.3% 46.9%');
+    root.style.setProperty('--border', '214.3 31.8% 91.4%');
+    root.style.setProperty('color-scheme', 'light');
+    return () => {
+      if (previousTheme === 'dark') root.classList.add('dark');
+      root.style.removeProperty('--background');
+      root.style.removeProperty('--foreground');
+      root.style.removeProperty('--card');
+      root.style.removeProperty('--card-foreground');
+      root.style.removeProperty('--muted');
+      root.style.removeProperty('--muted-foreground');
+      root.style.removeProperty('--border');
+      root.style.removeProperty('color-scheme');
+    };
+  }, []);
+}
+
+function BrandedHeader({ businessName, businessLogo, businessPhone, businessEmail }: {
+  businessName: string;
+  businessLogo?: string | null;
+  businessPhone?: string | null;
+  businessEmail?: string | null;
+}) {
+  return (
+    <header className="bg-brand text-white sticky top-0 z-20">
+      <div className="px-4 py-4">
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            {businessLogo ? (
+              <img
+                src={businessLogo}
+                alt={businessName}
+                className="w-11 h-11 object-contain rounded-md bg-white/15 p-0.5 flex-shrink-0"
+              />
+            ) : (
+              <div className="w-11 h-11 rounded-md bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
+                <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <h1 className="font-bold text-base truncate text-white">{businessName}</h1>
+              <div className="flex gap-3 text-xs text-white/70">
+                {businessPhone && (
+                  <a href={`tel:${businessPhone}`} className="hover:text-white flex items-center gap-1">
+                    <Phone className="w-3 h-3" /> {businessPhone}
+                  </a>
+                )}
+                {businessEmail && (
+                  <a href={`mailto:${businessEmail}`} className="hover:text-white flex items-center gap-1 hidden sm:flex">
+                    <Mail className="w-3 h-3" /> {businessEmail}
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {businessPhone && (
+              <a href={`tel:${businessPhone}`}>
+                <Button variant="ghost" size="icon" className="text-white bg-white/15 backdrop-blur-sm rounded-full">
+                  <Phone className="w-4 h-4" />
+                </Button>
+              </a>
+            )}
+            {businessPhone && (
+              <a href={`sms:${businessPhone}`}>
+                <Button variant="ghost" size="icon" className="text-white bg-white/15 backdrop-blur-sm rounded-full">
+                  <MessageCircle className="w-4 h-4" />
+                </Button>
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function BrandedFooter({ businessName, businessPhone }: { businessName: string; businessPhone?: string | null }) {
+  return (
+    <footer className="bg-white border-t border-slate-100 py-5 px-4 mt-auto">
+      <div className="max-w-2xl mx-auto text-center space-y-2">
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <ShieldCheck className="w-4 h-4 text-brand" />
+          <span>Secure & encrypted</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Powered by <span className="text-brand font-medium">JobRunner</span>
+          {businessPhone && (
+            <> · Questions? Contact{' '}
+              <a href={`tel:${businessPhone}`} className="hover:underline text-slate-600">{businessName}</a>
+            </>
+          )}
+        </p>
+      </div>
+    </footer>
+  );
+}
+
 function ETATrackingView({ data }: { data: ETATrackingData }) {
+  useForceLight();
   const [now, setNow] = useState(Date.now());
   
   useEffect(() => {
@@ -173,54 +266,67 @@ function ETATrackingView({ data }: { data: ETATrackingData }) {
   const statusText = isArrivingSoon ? 'Arriving soon' : `Arriving in ${remainingMinutes} min`;
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-4">
-        <div className="text-center space-y-1">
-          <h1 className="text-xl font-bold">{data.businessName}</h1>
-        </div>
+    <div className="min-h-screen flex flex-col bg-white">
+      <BrandedHeader
+        businessName={data.businessName}
+        businessLogo={data.businessLogo}
+        businessPhone={data.businessPhone}
+        businessEmail={data.businessEmail}
+      />
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Navigation className="h-7 w-7 text-primary" />
+      <main className="flex-1 px-4 py-6">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <Card className="border-blue-100 overflow-hidden">
+            <div className="bg-blue-50 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="relative flex-shrink-0">
+                  <div className="w-14 h-14 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-lg">
+                    {data.tradieName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-green-500 border-2 border-white" />
                 </div>
-                <span className="absolute bottom-0 right-0 flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-primary"></span>
-                </span>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg font-bold text-slate-900">{data.tradieName} is on the way</h2>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Car className="h-3.5 w-3.5 text-blue-500" />
+                    <p className="text-sm text-blue-600 font-medium">
+                      Heading to {data.suburb}
+                    </p>
+                  </div>
+                </div>
               </div>
-
-              <div className="space-y-1">
-                <h2 className="text-lg font-semibold">{data.tradieName} is on the way</h2>
-                <p className="text-sm text-muted-foreground">
-                  Heading to {data.suburb}
-                </p>
-              </div>
-
-              <div className="w-full bg-muted rounded-lg p-4">
-                <p className="text-2xl font-bold text-primary">
-                  {statusText}
-                </p>
-                {!isArrivingSoon && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Estimated {data.estimatedMinutes} min travel time
-                  </p>
-                )}
-              </div>
-
-              <Badge variant={isArrivingSoon ? "default" : "secondary"}>
-                {isArrivingSoon ? "Arriving Soon" : "On the Way"}
-              </Badge>
             </div>
-          </CardContent>
-        </Card>
+            <CardContent className="pt-5 pb-5">
+              <div className="text-center space-y-3">
+                <div className="bg-slate-50 rounded-xl p-5">
+                  <p className="text-3xl font-bold text-brand">
+                    {statusText}
+                  </p>
+                  {!isArrivingSoon && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Estimated {data.estimatedMinutes} min travel time
+                    </p>
+                  )}
+                </div>
 
-        <div className="text-center text-xs text-muted-foreground pt-4">
-          <p>Powered by JobRunner</p>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="relative flex-shrink-0">
+                    <div className={`w-2.5 h-2.5 rounded-full ${isArrivingSoon ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                    {!isArrivingSoon && (
+                      <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping opacity-50" />
+                    )}
+                  </div>
+                  <span className="text-sm font-medium text-slate-600">
+                    {isArrivingSoon ? "Almost there" : "On the Way"}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </main>
+
+      <BrandedFooter businessName={data.businessName} businessPhone={data.businessPhone} />
     </div>
   );
 }
@@ -230,8 +336,8 @@ interface TrackArrivalProps {
 }
 
 export default function TrackArrival({ token }: TrackArrivalProps) {
+  useForceLight();
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   
   const { data, isLoading, error, refetch, isFetching } = useQuery<AnyTrackingData>({
     queryKey: ['/api/track', token],
@@ -239,23 +345,13 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
     retry: 1,
   });
 
-  useEffect(() => {
-    if (!isFetching) {
-      setLastRefresh(new Date());
-    }
-  }, [isFetching]);
-
-  const handleManualRefresh = () => {
-    refetch();
-  };
-
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-md mx-auto space-y-4">
+      <div className="min-h-screen bg-white">
+        <div className="bg-brand h-16" />
+        <div className="max-w-2xl mx-auto p-4 space-y-4 -mt-2">
           <Skeleton className="h-12 w-3/4" />
           <Skeleton className="h-64 w-full rounded-lg" />
-          <Skeleton className="h-24 w-full rounded-lg" />
           <Skeleton className="h-24 w-full rounded-lg" />
         </div>
       </div>
@@ -268,24 +364,35 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
     const isNotFound = errorMessage.includes("not found") || errorMessage.includes("404");
     
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-              <AlertCircle className="h-8 w-8 text-muted-foreground" />
+      <div className="min-h-screen flex flex-col bg-white">
+        <header className="bg-brand text-white px-4 py-4">
+          <div className="max-w-2xl mx-auto flex items-center gap-3">
+            <div className="w-11 h-11 rounded-md bg-white/20 flex items-center justify-center">
+              <img src={jobrunnerLogo} alt="JobRunner" className="w-8 h-8 object-contain" />
             </div>
-            <h2 className="text-xl font-semibold mb-2" data-testid="text-error-title">
-              {isExpired ? "Tracking Link Expired" : isNotFound ? "This tracking link has expired" : "Unable to Load"}
-            </h2>
-            <p className="text-muted-foreground" data-testid="text-error-message">
-              {isExpired 
-                ? "This tracking link has expired. Please contact the business for updated information."
-                : isNotFound
-                  ? "This tracking link has expired or is no longer available."
-                  : "There was a problem loading the tracking information. Please try again later."}
-            </p>
-          </CardContent>
-        </Card>
+            <h1 className="font-bold text-base text-white">Live Tracking</h1>
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full">
+            <CardContent className="pt-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+                <AlertCircle className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2" data-testid="text-error-title">
+                {isExpired ? "Tracking Link Expired" : isNotFound ? "Link No Longer Available" : "Unable to Load"}
+              </h2>
+              <p className="text-muted-foreground" data-testid="text-error-message">
+                {isExpired 
+                  ? "This tracking link has expired. Please contact the business for updated information."
+                  : isNotFound
+                    ? "This tracking link has expired or is no longer available."
+                    : "There was a problem loading the tracking information. Please try again later."}
+              </p>
+            </CardContent>
+          </Card>
+        </main>
+        <BrandedFooter businessName="your tradie" />
       </div>
     );
   }
@@ -300,219 +407,222 @@ export default function TrackArrival({ token }: TrackArrivalProps) {
 
   const trackingData = data as TrackingData;
   const { job, business, worker, lastLocation, estimatedArrival, isActive } = trackingData;
+  const workerName = worker.firstName;
   const jobCompleted = job.status === 'done' || job.status === 'completed';
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto p-4 space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            {business.logoUrl ? (
-              <img 
-                src={business.logoUrl} 
-                alt={business.name} 
-                className="h-10 object-contain"
-                data-testid="img-business-logo"
-              />
-            ) : (
-              <h1 className="text-xl font-bold" data-testid="text-business-name">{business.name}</h1>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge 
-              variant={isActive && !jobCompleted ? "default" : "secondary"}
-              data-testid="badge-status"
-            >
-              {jobCompleted ? "Completed" : isActive ? "Live Tracking" : "Inactive"}
-            </Badge>
-          </div>
-        </div>
+    <div className="min-h-screen flex flex-col bg-white">
+      <BrandedHeader
+        businessName={business.name}
+        businessLogo={business.logoUrl}
+        businessPhone={business.phone}
+        businessEmail={business.email}
+      />
 
-        {jobCompleted ? (
-          <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                  <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <h2 className="font-semibold text-green-800 dark:text-green-200" data-testid="text-completed-title">
-                    Work Completed
-                  </h2>
-                  <p className="text-sm text-green-700 dark:text-green-300" data-testid="text-completed-message">
-                    {worker.name} has finished the job
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-blue-100 dark:border-blue-900/50">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="w-14 h-14 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-lg">
-                      {worker.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+      <main className="flex-1">
+        <div className="max-w-2xl mx-auto">
+          {jobCompleted ? (
+            <div className="px-4 py-6 space-y-4">
+              <Card className="border-emerald-200 bg-emerald-50 overflow-hidden">
+                <CardContent className="pt-6 pb-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle2 className="h-7 w-7 text-emerald-600" />
                     </div>
-                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-green-500 border-2 border-white" />
+                    <div>
+                      <h2 className="font-bold text-lg text-emerald-800" data-testid="text-completed-title">
+                        Work Completed
+                      </h2>
+                      <p className="text-sm text-emerald-700 mt-0.5" data-testid="text-completed-message">
+                        {workerName} has finished the job
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-semibold" data-testid="text-worker-name">{worker.name}</h2>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <Car className="h-3.5 w-3.5 text-blue-500" />
-                      {estimatedArrival ? (
-                        <p className="text-sm text-blue-600 dark:text-blue-400 font-semibold" data-testid="text-eta">
-                          {formatETA(estimatedArrival)}
-                        </p>
-                      ) : lastLocation ? (
-                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium" data-testid="text-on-the-way">
-                          On the way
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground" data-testid="text-waiting">
-                          Waiting for update
-                        </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-5 space-y-4">
+                  <h3 className="font-semibold text-base" data-testid="text-job-title">{job.title}</h3>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <>
+              <div className="px-4 pt-4 pb-2">
+                <Card className="border-blue-100 overflow-hidden">
+                  <div className="bg-blue-50 px-5 py-4">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex-shrink-0">
+                          <div className="w-14 h-14 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-lg">
+                            {workerName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                          </div>
+                          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-green-500 border-2 border-white" />
+                        </div>
+                        <div>
+                          <h2 className="font-bold text-base text-slate-900" data-testid="text-worker-name">{workerName}</h2>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <Car className="h-3.5 w-3.5 text-blue-500" />
+                            {estimatedArrival ? (
+                              <p className="text-sm text-blue-600 font-semibold" data-testid="text-eta">
+                                {formatETA(estimatedArrival)}
+                              </p>
+                            ) : lastLocation ? (
+                              <p className="text-sm text-blue-600 font-medium" data-testid="text-on-the-way">
+                                On the way
+                              </p>
+                            ) : (
+                              <p className="text-sm text-muted-foreground" data-testid="text-waiting">
+                                Waiting for update
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => refetch()}
+                        disabled={isFetching}
+                        data-testid="button-refresh"
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </Button>
+                    </div>
+                  </div>
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-shrink-0">
+                          <div className={`w-2.5 h-2.5 rounded-full ${isActive ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                          {isActive && (
+                            <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping opacity-50" />
+                          )}
+                        </div>
+                        <span className="text-sm font-medium text-slate-600">
+                          {isActive ? "Live Tracking Active" : "Tracking Inactive"}
+                        </span>
+                      </div>
+                      {lastLocation && (
+                        <span className="text-xs text-muted-foreground" data-testid="text-last-updated">
+                          Updated {formatTimeAgo(lastLocation.updatedAt)}
+                        </span>
                       )}
                     </div>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleManualRefresh}
-                  disabled={isFetching}
-                  data-testid="button-refresh"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
+                  </CardContent>
+                </Card>
               </div>
+
               {lastLocation && (
-                <p className="text-xs text-muted-foreground mt-3" data-testid="text-last-updated">
-                  Location updated {formatTimeAgo(lastLocation.updatedAt)}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {lastLocation && !jobCompleted && (
-          <Card>
-            <CardContent className="p-0 overflow-hidden rounded-lg">
-              <style>{`
-                @keyframes uber-pulse {
-                  0% { transform: scale(1); opacity: 0.3; }
-                  100% { transform: scale(2); opacity: 0; }
-                }
-                .uber-worker-marker, .uber-destination-marker {
-                  background: transparent !important;
-                  border: none !important;
-                }
-                .uber-worker-marker {
-                  transition: transform 0.8s ease-out !important;
-                }
-              `}</style>
-              <div className="h-[50vh] min-h-[320px] max-h-[500px] relative" data-testid="container-map">
-                <MapContainer
-                  center={[lastLocation.lat, lastLocation.lng]}
-                  zoom={15}
-                  className="h-full w-full"
-                  scrollWheelZoom={false}
-                  zoomControl={false}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                  />
-                  <Marker position={[lastLocation.lat, lastLocation.lng]} icon={createWorkerIcon(worker.name)}>
-                    <Popup>
-                      <div className="text-center p-1">
-                        <p className="font-bold text-sm">{worker.name}</p>
-                        <p className="text-xs text-blue-600 mt-1">
-                          {estimatedArrival ? formatETA(estimatedArrival) : "On the way"}
-                        </p>
+                <div className="px-4 py-2">
+                  <Card className="overflow-hidden">
+                    <CardContent className="p-0">
+                      <style>{`
+                        @keyframes uber-pulse {
+                          0% { transform: scale(1); opacity: 0.3; }
+                          100% { transform: scale(2); opacity: 0; }
+                        }
+                        .uber-worker-marker, .uber-destination-marker {
+                          background: transparent !important;
+                          border: none !important;
+                        }
+                        .uber-worker-marker {
+                          transition: transform 0.8s ease-out !important;
+                        }
+                      `}</style>
+                      <div className="h-[50vh] min-h-[320px] max-h-[500px] relative" data-testid="container-map">
+                        <MapContainer
+                          center={[lastLocation.lat, lastLocation.lng]}
+                          zoom={15}
+                          className="h-full w-full"
+                          scrollWheelZoom={false}
+                          zoomControl={false}
+                        >
+                          <TileLayer
+                            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                          />
+                          <Marker position={[lastLocation.lat, lastLocation.lng]} icon={createWorkerIcon(workerName)}>
+                            <Popup>
+                              <div className="text-center p-1">
+                                <p className="font-bold text-sm">{workerName}</p>
+                                <p className="text-xs text-blue-600 mt-1">
+                                  {estimatedArrival ? formatETA(estimatedArrival) : "On the way"}
+                                </p>
+                              </div>
+                            </Popup>
+                          </Marker>
+                          <Circle 
+                            center={[lastLocation.lat, lastLocation.lng]} 
+                            radius={100} 
+                            pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.08, weight: 1 }}
+                          />
+                        </MapContainer>
+                        <div className="absolute bottom-3 left-3 z-[1000] flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-md border border-gray-200">
+                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                          <span className="text-xs font-medium text-gray-700">Live tracking</span>
+                        </div>
                       </div>
-                    </Popup>
-                  </Marker>
-                  <Circle 
-                    center={[lastLocation.lat, lastLocation.lng]} 
-                    radius={100} 
-                    pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.08, weight: 1 }}
-                  />
-                </MapContainer>
-                <div className="absolute bottom-3 left-3 z-[1000] flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-md border border-gray-200">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-xs font-medium text-gray-700">Live tracking</span>
+                    </CardContent>
+                  </Card>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              )}
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base" data-testid="text-job-title">{job.title}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {job.address && (
-              <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Address</p>
-                  <p className="text-sm" data-testid="text-job-address">{job.address}</p>
-                </div>
-              </div>
-            )}
-            {(job.scheduledAt || job.scheduledTime) && (
-              <div className="flex items-start gap-3">
-                <Clock className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Scheduled</p>
-                  <p className="text-sm" data-testid="text-scheduled-time">
-                    {formatScheduledTime(job.scheduledAt, job.scheduledTime)}
-                  </p>
-                </div>
-              </div>
-            )}
-            {business.phone && (
-              <div className="flex items-start gap-3">
-                <Phone className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Contact</p>
-                  <a 
-                    href={`tel:${business.phone}`} 
-                    className="text-sm text-primary hover:underline"
-                    data-testid="link-phone"
+              <div className="px-4 py-2 space-y-4">
+                <Card>
+                  <CardContent className="pt-5 space-y-4">
+                    <h3 className="font-semibold text-base" data-testid="text-job-title">{job.title}</h3>
+                    {job.scheduledTime && (
+                      <div className="flex items-start gap-3">
+                        <Clock className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Scheduled</p>
+                          <p className="text-sm" data-testid="text-scheduled-time">
+                            {job.scheduledTime}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {business.phone && (
+                      <div className="flex items-start gap-3">
+                        <Phone className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Contact</p>
+                          <a 
+                            href={`tel:${business.phone}`} 
+                            className="text-sm text-brand hover:underline"
+                            data-testid="link-phone"
+                          >
+                            {business.phone}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <div className="flex items-center justify-between flex-wrap gap-2 text-sm text-muted-foreground">
+                  <span data-testid="text-auto-refresh-status">
+                    Auto-refresh: {autoRefreshEnabled ? "On (every 10s)" : "Off"}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+                    data-testid="button-toggle-auto-refresh"
                   >
-                    {business.phone}
-                  </a>
+                    {autoRefreshEnabled ? "Disable" : "Enable"}
+                  </Button>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {!jobCompleted && (
-          <div className="flex items-center justify-between flex-wrap gap-2 text-sm text-muted-foreground">
-            <span data-testid="text-auto-refresh-status">
-              Auto-refresh: {autoRefreshEnabled ? "On (every 10s)" : "Off"}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-              data-testid="button-toggle-auto-refresh"
-            >
-              {autoRefreshEnabled ? "Disable" : "Enable"}
-            </Button>
-          </div>
-        )}
-
-        <div className="text-center text-xs text-muted-foreground pt-4">
-          <p>Powered by JobRunner</p>
+            </>
+          )}
         </div>
-      </div>
+      </main>
+
+      <BrandedFooter businessName={business.name} businessPhone={business.phone} />
     </div>
   );
 }
