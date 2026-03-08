@@ -51,14 +51,14 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
         clearInterval(durationInterval.current);
       }
       if (soundRef.current && isAudioAvailable) {
-        soundRef.current.unloadAsync().catch((e: any) => 
-          if (__DEV__) console.warn('[VoiceRecorder] Error unloading sound on cleanup:', e)
-        );
+        soundRef.current.unloadAsync().catch((e: any) => {
+          if (__DEV__) console.warn('[VoiceRecorder] Error unloading sound on cleanup:', e);
+        });
       }
       if (recordingRef.current && isAudioAvailable) {
-        recordingRef.current.stopAndUnloadAsync().catch((e: any) =>
-          if (__DEV__) console.warn('[VoiceRecorder] Error stopping recording on cleanup:', e)
-        );
+        recordingRef.current.stopAndUnloadAsync().catch((e: any) => {
+          if (__DEV__) console.warn('[VoiceRecorder] Error stopping recording on cleanup:', e);
+        });
       }
       if (isAudioAvailable && Audio) {
         Audio.setAudioModeAsync({
