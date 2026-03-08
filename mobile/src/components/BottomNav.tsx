@@ -113,7 +113,6 @@ function NavButton({
           { transform: [{ scale }], opacity }
         ]}
       >
-        {active && <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />}
         <Feather 
           name={item.icon} 
           size={isPad ? 24 : 22}
@@ -231,13 +230,6 @@ const createStyles = (colors: ThemeColors, isPad: boolean = false) => StyleSheet
   },
   navButtonActive: {
     backgroundColor: colors.primaryLight,
-  },
-  activeIndicator: {
-    position: 'absolute',
-    top: 0,
-    width: 20,
-    height: 3,
-    borderRadius: 2,
   },
   navLabel: {
     fontSize: isPad ? 13 : 11,
