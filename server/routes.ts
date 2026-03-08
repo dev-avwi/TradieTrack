@@ -40062,35 +40062,59 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         return 'background:#7f1d1d;color:#fff';
       };
 
+      const { getSwmsTemplateSettings, resolveLogoUrl } = await import('./pdfService');
+      const templateSettings = getSwmsTemplateSettings(businessRaw as any);
+      const ac = templateSettings.accentColor;
+      const tmpl = templateSettings.template;
+      const logoUrl = await resolveLogoUrl(businessRaw?.logoUrl) || '';
+
+      const tableHeaderBg = tmpl.tableStyle === 'minimal' ? 'transparent' : ac;
+      const tableHeaderColor = tmpl.tableStyle === 'minimal' ? '#1a1a1a' : 'white';
+      const tableHeaderBorder = tmpl.tableStyle === 'minimal' ? `border-bottom: 2px solid ${ac};` : `border: 1px solid ${ac};`;
+      const getTableRowCss = () => {
+        if (tmpl.tableStyle === 'striped') return 'tbody tr:nth-child(odd) { background: #f9fafb; } td { border-bottom: none; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; }';
+        if (tmpl.tableStyle === 'minimal') return 'td { border-bottom: 1px solid #e5e7eb; }';
+        return 'td { border: 1px solid #e2e8f0; }';
+      };
+
       const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>SWMS - ${doc.title}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  body { font-family: Arial, sans-serif; font-size: 11px; color: #222; margin: 0; padding: 20px; }
-  .header { background: #1e3a5f; color: white; padding: 20px; border-radius: 6px; margin-bottom: 16px; }
-  .header h1 { margin: 0 0 4px 0; font-size: 20px; }
-  .header p { margin: 2px 0; font-size: 11px; opacity: 0.9; }
+  body { font-family: '${tmpl.fontFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: ${tmpl.baseFontSize}; color: #222; margin: 0; padding: 20px; }
+  .header { background: ${ac}; color: white; padding: 20px 24px; border-radius: 4px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .header-text h1 { margin: 0 0 4px 0; font-size: 18px; font-weight: ${tmpl.headingWeight}; letter-spacing: 0.5px; }
+  .header-text p { margin: 2px 0; font-size: 11px; opacity: 0.9; }
+  .header-logo img { max-height: 50px; max-width: 120px; border-radius: 4px; }
   .section { margin-bottom: 14px; }
-  .section-title { font-size: 13px; font-weight: 700; color: #1e3a5f; border-bottom: 2px solid #1e3a5f; padding-bottom: 4px; margin-bottom: 8px; }
+  .section-title { font-size: 13px; font-weight: ${tmpl.headingWeight}; color: ${ac}; border-bottom: ${tmpl.headerBorderWidth} solid ${ac}; padding-bottom: 4px; margin-bottom: 8px; }
   .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
   .info-item label { font-weight: 600; color: #555; font-size: 9px; text-transform: uppercase; display: block; }
-  .info-item span { font-size: 11px; }
+  .info-item span { font-size: 11px; font-weight: ${tmpl.bodyWeight}; }
   table { width: 100%; border-collapse: collapse; font-size: 10px; }
-  th { background: #f1f5f9; padding: 6px 8px; text-align: left; border: 1px solid #e2e8f0; font-size: 9px; text-transform: uppercase; color: #475569; }
-  td { padding: 6px 8px; border: 1px solid #e2e8f0; vertical-align: top; }
+  th { background: ${tableHeaderBg}; color: ${tableHeaderColor}; padding: 6px 8px; text-align: left; ${tableHeaderBorder} font-size: 9px; text-transform: uppercase; font-weight: 600; }
+  ${getTableRowCss()}
+  td { padding: 6px 8px; vertical-align: top; }
   .risk-badge { padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; text-transform: uppercase; display: inline-block; }
   .ppe-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-  .ppe-item { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; padding: 4px 10px; font-size: 10px; color: #1e40af; }
+  .ppe-item { background: ${ac}10; border: 1px solid ${ac}30; border-radius: 4px; padding: 4px 10px; font-size: 10px; color: ${ac}; font-weight: 500; }
   .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .sig-card { border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; }
   .sig-card img { max-width: 180px; max-height: 60px; }
   .sig-name { font-weight: 700; font-size: 12px; }
   .sig-meta { font-size: 9px; color: #666; margin-top: 2px; }
   .footer { margin-top: 20px; text-align: center; font-size: 9px; color: #999; border-top: 1px solid #eee; padding-top: 8px; }
+  @page { size: A4; margin: 10mm; }
 </style></head><body>
   <div class="header">
-    <h1>SAFE WORK METHOD STATEMENT</h1>
-    <p>${doc.title}</p>
-    <p>${businessName}${abn ? ` | ABN: ${abn}` : ''}</p>
+    <div class="header-text">
+      <h1>SAFE WORK METHOD STATEMENT</h1>
+      <p>${doc.title}</p>
+      <p>${businessName}${abn ? ` | ABN: ${abn}` : ''}</p>
+    </div>
+    ${logoUrl ? `<div class="header-logo"><img src="${logoUrl}" alt="${businessName}" /></div>` : ''}
   </div>
 
   <div class="section">

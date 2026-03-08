@@ -4297,6 +4297,13 @@ export const generateJobProofPackPDF = (data: {
 </html>`;
 };
 
+export function getSwmsTemplateSettings(business: BusinessSettings | null): { template: DocumentTemplate; accentColor: string } {
+  if (!business) {
+    return { template: DOCUMENT_TEMPLATES.professional, accentColor: DOCUMENT_ACCENT_COLOR };
+  }
+  return getTemplateFromBusinessSettings(business);
+}
+
 // Convert HTML to actual PDF using Puppeteer
 export const generatePDFBuffer = async (html: string): Promise<Buffer> => {
   await acquirePdfSlot();
