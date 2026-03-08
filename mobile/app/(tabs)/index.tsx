@@ -2313,8 +2313,9 @@ export default function DashboardScreen() {
     return 'Good evening';
   };
 
-  const formatCurrency = (amount: number) => {
-    return `$${amount.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  const formatCurrency = (amount: number | undefined | null) => {
+    const val = amount ?? 0;
+    return `$${val.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   const handleStartJob = async (jobId: string) => {
@@ -2884,7 +2885,7 @@ export default function DashboardScreen() {
                   <Feather name="dollar-sign" size={16} color={colors.success} />
                 </View>
                 <Text style={styles.daySummaryStatValue}>
-                  ${dailySummary.moneyCollectedToday.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  ${(dailySummary.moneyCollectedToday ?? 0).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </Text>
                 <Text style={styles.daySummaryStatLabel}>Collected</Text>
               </View>
