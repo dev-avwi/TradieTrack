@@ -484,7 +484,9 @@ function TimeTrackingWidget() {
     activeTimer, 
     fetchActiveTimer, 
     startTimer: storeStartTimer, 
-    stopTimer: storeStopTimer 
+    stopTimer: storeStopTimer,
+    pauseTimer: storePauseTimer,
+    resumeTimer: storeResumeTimer,
   } = useTimeTrackingStore();
   
   // Local state only for UI concerns
@@ -624,29 +626,47 @@ function TimeTrackingWidget() {
     }
   };
 
-  const handlePauseResume = async () => {
+  const handleTakeBreak = async () => {
     if (!activeTimer) return;
     setIsPausing(true);
     try {
       const { isOnline } = useOfflineStore.getState();
       
       if (!isOnline) {
-        Alert.alert('Offline', 'Cannot pause/resume timer while offline');
+        Alert.alert('Offline', 'Cannot take a break while offline');
         setIsPausing(false);
         return;
       }
       
-      const { default: api } = await import('../../src/lib/api');
-      const endpoint = activeTimer.isPaused 
-        ? `/api/time-entries/${activeTimer.id}/resume`
-        : `/api/time-entries/${activeTimer.id}/pause`;
-      
-      await api.post(endpoint, {});
-      
-      // Refresh from store to get updated state
-      fetchActiveTimer();
+      const success = await storePauseTimer();
+      if (!success) {
+        Alert.alert('Error', 'Failed to start break');
+      }
     } catch (error: any) {
-      Alert.alert('Error', `Failed to ${activeTimer.isPaused ? 'resume' : 'pause'} timer`);
+      Alert.alert('Error', 'Failed to start break');
+    } finally {
+      setIsPausing(false);
+    }
+  };
+
+  const handleResumeWork = async () => {
+    if (!activeTimer) return;
+    setIsPausing(true);
+    try {
+      const { isOnline } = useOfflineStore.getState();
+      
+      if (!isOnline) {
+        Alert.alert('Offline', 'Cannot resume work while offline');
+        setIsPausing(false);
+        return;
+      }
+      
+      const success = await storeResumeTimer();
+      if (!success) {
+        Alert.alert('Error', 'Failed to resume work');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to resume work');
     } finally {
       setIsPausing(false);
     }
@@ -746,7 +766,7 @@ function TimeTrackingWidget() {
 
   const hours = Math.floor(totalMinutesToday / 60);
   const mins = totalMinutesToday % 60;
-  const isPaused = activeTimer?.isPaused;
+  const isOnBreak = activeTimer?.isBreak === true;
 
   // Helper to format duration for entries
   const formatEntryDuration = (entry: any) => {
@@ -780,11 +800,13 @@ function TimeTrackingWidget() {
             disabled={!activeTimer.jobId}
             activeOpacity={0.7}
           >
-            <View style={[styles.todayEntryDot, { backgroundColor: colors.success }]} />
-            <Text style={[styles.todayEntryJobTitle, { color: colors.success }]} numberOfLines={1}>
-              {activeTimer.description || activeTimer.jobTitle || 'General time'}
+            <View style={[styles.todayEntryDot, { backgroundColor: activeTimer.isBreak ? '#f59e0b' : colors.success }]} />
+            <Text style={[styles.todayEntryJobTitle, { color: activeTimer.isBreak ? '#f59e0b' : colors.success }]} numberOfLines={1}>
+              {activeTimer.isBreak ? 'On Break' : (activeTimer.description || activeTimer.jobTitle || 'General time')}
             </Text>
-            <Text style={[styles.todayEntryDuration, { color: colors.success }]}>tracking</Text>
+            <Text style={[styles.todayEntryDuration, { color: activeTimer.isBreak ? '#f59e0b' : colors.success }]}>
+              {activeTimer.isBreak ? 'break' : 'tracking'}
+            </Text>
           </TouchableOpacity>
         )}
         
@@ -877,21 +899,21 @@ function TimeTrackingWidget() {
 
   return (
     <View style={[styles.timerActiveContainer]}>
-      <View style={[styles.timeTrackingWidget, styles.timeTrackingWidgetActive]}>
+      <View style={[styles.timeTrackingWidget, styles.timeTrackingWidgetActive, isOnBreak && styles.timeTrackingWidgetBreak]}>
         <View style={styles.timeTrackingContent}>
-          <View style={[styles.timerIconContainer, styles.timerIconContainerActive, isPaused && styles.timerIconContainerPaused]}>
-            {isPaused ? (
-              <Feather name="pause" size={24} color={colors.warning} />
+          <View style={[styles.timerIconContainer, styles.timerIconContainerActive, isOnBreak && styles.timerIconContainerBreak]}>
+            {isOnBreak ? (
+              <Feather name="coffee" size={24} color="#f59e0b" />
             ) : (
               <View style={styles.pulsingDot} />
             )}
           </View>
           <View style={styles.timerTextContent}>
             <View style={styles.timerTimeRow}>
-              <Text style={[styles.elapsedTime, isPaused && styles.elapsedTimePaused]}>{elapsedTime}</Text>
-              {isPaused && (
-                <View style={styles.pausedBadge}>
-                  <Text style={styles.pausedBadgeText}>PAUSED</Text>
+              <Text style={[styles.elapsedTime, isOnBreak && styles.elapsedTimeBreak]}>{elapsedTime}</Text>
+              {isOnBreak && (
+                <View style={styles.breakBadge}>
+                  <Text style={styles.breakBadgeText}>BREAK</Text>
                 </View>
               )}
             </View>
@@ -901,7 +923,7 @@ function TimeTrackingWidget() {
               activeOpacity={0.7}
             >
               <Text style={[styles.timerJobTitle, activeTimer.jobId && styles.timerJobTitleLink]} numberOfLines={1}>
-                {activeTimer.description || activeTimer.jobTitle || 'General time'}
+                {isOnBreak ? 'On Break' : (activeTimer.description || activeTimer.jobTitle || 'General time')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -909,28 +931,41 @@ function TimeTrackingWidget() {
       </View>
       
       <View style={styles.timerControlsRow}>
-        <TouchableOpacity
-          style={[styles.timerControlButton, styles.pauseResumeButton, isPaused && styles.resumeButton]}
-          onPress={handlePauseResume}
-          disabled={isPausing}
-          activeOpacity={0.8}
-          data-testid="button-pause-resume-timer"
-        >
-          {isPausing ? (
-            <ActivityIndicator size="small" color={isPaused ? colors.white : colors.foreground} />
-          ) : (
-            <>
-              <Feather 
-                name={isPaused ? 'play' : 'pause'} 
-                size={16} 
-                color={isPaused ? colors.white : colors.foreground} 
-              />
-              <Text style={[styles.timerControlText, isPaused && styles.resumeButtonText]}>
-                {isPaused ? 'Resume' : 'Pause'}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {isOnBreak ? (
+          <TouchableOpacity
+            style={[styles.timerControlButton, styles.resumeButton]}
+            onPress={handleResumeWork}
+            disabled={isPausing}
+            activeOpacity={0.8}
+            data-testid="button-resume-timer"
+          >
+            {isPausing ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <>
+                <Feather name="play" size={16} color={colors.white} />
+                <Text style={styles.resumeButtonText}>Resume</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.timerControlButton, styles.breakButton]}
+            onPress={handleTakeBreak}
+            disabled={isPausing}
+            activeOpacity={0.8}
+            data-testid="button-break-timer"
+          >
+            {isPausing ? (
+              <ActivityIndicator size="small" color="#f59e0b" />
+            ) : (
+              <>
+                <Feather name="coffee" size={16} color="#f59e0b" />
+                <Text style={styles.breakButtonText}>Break</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
         
         <TouchableOpacity
           style={[styles.timerControlButton, styles.stopButton]}
@@ -3884,6 +3919,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: `${colors.primary}05`,
   },
+  timeTrackingWidgetBreak: {
+    borderColor: '#f59e0b',
+    backgroundColor: '#f59e0b08',
+  },
   timeTrackingContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3901,8 +3940,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   timerIconContainerActive: {
     backgroundColor: `${colors.primary}15`,
   },
-  timerIconContainerPaused: {
-    backgroundColor: `${colors.warning}15`,
+  timerIconContainerBreak: {
+    backgroundColor: '#f59e0b15',
   },
   timerTextContent: {
     flex: 1,
@@ -3918,8 +3957,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontFamily: 'monospace',
     color: colors.primary,
   },
-  elapsedTimePaused: {
-    color: colors.warning,
+  elapsedTimeBreak: {
+    color: '#f59e0b',
   },
   totalTimeToday: {
     fontSize: 18,
@@ -3940,16 +3979,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   timerJobTitleLink: {
     color: colors.primary,
   },
-  pausedBadge: {
-    backgroundColor: `${colors.warning}20`,
+  breakBadge: {
+    backgroundColor: '#f59e0b20',
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: radius.sm,
   },
-  pausedBadgeText: {
+  breakBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: colors.warning,
+    color: '#f59e0b',
     letterSpacing: 0.5,
   },
   pulsingDot: {
@@ -4081,18 +4120,27 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.button,
     color: colors.foreground,
   },
-  pauseResumeButton: {
+  breakButton: {
     flex: 1,
-    backgroundColor: colors.muted,
+    backgroundColor: '#f59e0b15',
     borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderColor: '#f59e0b40',
+  },
+  breakButtonText: {
+    ...typography.button,
+    color: '#f59e0b',
+    fontWeight: '600',
   },
   resumeButton: {
+    flex: 1,
     backgroundColor: colors.success,
+    borderWidth: 1,
     borderColor: colors.success,
   },
   resumeButtonText: {
+    ...typography.button,
     color: colors.white,
+    fontWeight: '600',
   },
   stopButton: {
     flex: 1,
