@@ -65,6 +65,13 @@ Core architectural and design decisions include:
 *   **Autopilot tab padding**: Increased horizontal padding and gap between tabs and badges for better visual spacing.
 *   **Job view workflow consolidation**: Merged ScheduleNotificationCard, SmsContactCard, and NextActionCard into a single consolidated workflow card. Shows one primary action with urgency info and secondary "Text On My Way" option.
 *   **Payment Hub Smart Chaser declutter**: Hidden global KPI cards when on Smart Chaser tab (avoids 8 KPI cards), simplified chase queue buttons to icon-only for View/Call, removed verbose recommendation text.
+*   **Team member display**: Team member assignment on create-job now shows name/email instead of just role. Uses fallback chain: `name || email.split('@')[0] || username || 'Team Member'`.
+*   **Time picker**: Time picker on create-job is now always enabled (was incorrectly disabled on initial load).
+*   **Invoice KPI stats**: KPI cards on invoices page now display whole dollar amounts without decimals using `formatCurrency(amount, false)`.
+*   **Quote link generation**: Quote copy-link now generates acceptance token on demand via `/api/quotes/:id/generate-token` instead of requiring quote to be sent first.
+*   **Quote/invoice PATCH line items**: PATCH endpoints for quotes and invoices now sync line items (delete+recreate) when `lineItems` array is provided in request body. Computes `total` field from quantity*unitPrice.
+*   **Quote PDF signature**: PDF generation now falls back to `acceptanceSignatureData` field on quote record when no digital signature record exists. Added `?hideSignature=true` query param support.
+*   **Voice recorder error handling**: Improved error handling to distinguish permission errors, "already recording" state, and generic failures. Uses `error.name === 'AbortError'` instead of DOMException.
 
 ### Auto-Receipt Sending
 *   **Automatic receipt dispatch**: After any payment is collected (Tap to Pay, Payment Link/QR code, manual recording), the system now automatically sends a receipt via email (with PDF attachment) and SMS (with public receipt link) to the client. This is handled by the `autoSendReceiptAfterPayment` helper in `server/routes.ts`. The helper creates a receipt record if one doesn't exist, sends email via SendGrid with PDF, and sends SMS via Twilio with a public receipt URL. Runs asynchronously so it doesn't block the payment response. Wired into: `/api/terminal/payment-success`, `/api/public/payment-request/:token/confirm-payment`, and the `handleRecordPayment` handler.

@@ -18411,12 +18411,35 @@ Be specific about materials, colors, and features that would be included.`
   app.patch("/api/quotes/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const data = updateQuoteSchema.parse(req.body);
+      const { lineItems, ...quoteBody } = req.body;
+      const data = updateQuoteSchema.parse(quoteBody);
       const quote = await storage.updateQuote(req.params.id, userContext.effectiveUserId, data);
       if (!quote) {
         return res.status(404).json({ error: "Quote not found" });
       }
-      res.json(quote);
+      
+      if (lineItems && Array.isArray(lineItems)) {
+        const existingItems = await storage.getQuoteLineItems(req.params.id);
+        for (const existing of existingItems) {
+          await storage.deleteQuoteLineItem(existing.id, userContext.effectiveUserId);
+        }
+        for (let i = 0; i < lineItems.length; i++) {
+          const item = lineItems[i];
+          const qty = parseFloat(String(item.quantity || 1));
+          const price = parseFloat(String(item.unitPrice || 0));
+          const total = (qty * price).toFixed(2);
+          const lineItemData = insertQuoteLineItemSchema.parse({ 
+            ...item, 
+            quoteId: req.params.id, 
+            total,
+            sortOrder: item.sortOrder ?? i,
+          });
+          await storage.createQuoteLineItem(lineItemData, userContext.effectiveUserId);
+        }
+      }
+      
+      const quoteWithItems = await storage.getQuoteWithLineItems(req.params.id, userContext.effectiveUserId);
+      res.json(quoteWithItems);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid input", details: error.errors });
@@ -18438,6 +18461,27 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error) {
       console.error("Error deleting quote:", error);
       res.status(500).json({ error: "Failed to delete quote" });
+    }
+  });
+
+  app.post("/api/quotes/:id/generate-token", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const quote = await storage.getQuote(req.params.id, userContext.effectiveUserId);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      if (quote.acceptanceToken) {
+        return res.json({ acceptanceToken: quote.acceptanceToken });
+      }
+      const token = await storage.generateQuoteAcceptanceToken(req.params.id, userContext.effectiveUserId);
+      if (!token) {
+        return res.status(500).json({ error: "Failed to generate token" });
+      }
+      res.json({ acceptanceToken: token });
+    } catch (error) {
+      console.error("Error generating quote token:", error);
+      res.status(500).json({ error: "Failed to generate token" });
     }
   });
 
@@ -18809,8 +18853,17 @@ Be specific about materials, colors, and features that would be included.`
             signatureData: signatures[0].signatureData,
             signedAt: signatures[0].signedAt,
           };
+        } else if ((quoteWithItems as any).acceptanceSignatureData) {
+          acceptanceSignature = {
+            id: 'inline',
+            signerName: (quoteWithItems as any).acceptedBy || 'Client',
+            signatureData: (quoteWithItems as any).acceptanceSignatureData,
+            signedAt: (quoteWithItems as any).acceptedAt || new Date(),
+          };
         }
       }
+      
+      const hideSignature = req.query.hideSignature === 'true';
       
       let beforePhotos: Array<{ url: string; caption?: string; category: string }> | undefined;
       if (req.query.includeBeforePhotos === 'true' && job) {
@@ -18831,7 +18884,7 @@ Be specific about materials, colors, and features that would be included.`
         business: businessForPdf,
         job,
         jobSignatures,
-        signature: acceptanceSignature,
+        signature: hideSignature ? undefined : acceptanceSignature,
         beforePhotos,
       });
       
@@ -19388,7 +19441,8 @@ Be specific about materials, colors, and features that would be included.`
   app.patch("/api/invoices/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const data = updateInvoiceSchema.parse(req.body);
+      const { lineItems, ...invoiceBody } = req.body;
+      const data = updateInvoiceSchema.parse(invoiceBody);
 
       const existingInvoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
       if (!existingInvoice) {
@@ -19403,7 +19457,29 @@ Be specific about materials, colors, and features that would be included.`
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }
-      res.json(invoice);
+      
+      if (lineItems && Array.isArray(lineItems)) {
+        const existingItems = await storage.getInvoiceLineItems(req.params.id);
+        for (const existing of existingItems) {
+          await storage.deleteInvoiceLineItem(existing.id, userContext.effectiveUserId);
+        }
+        for (let i = 0; i < lineItems.length; i++) {
+          const item = lineItems[i];
+          const qty = parseFloat(String(item.quantity || 1));
+          const price = parseFloat(String(item.unitPrice || 0));
+          const total = (qty * price).toFixed(2);
+          const lineItemData = insertInvoiceLineItemSchema.parse({ 
+            ...item, 
+            invoiceId: req.params.id, 
+            total,
+            sortOrder: item.sortOrder ?? i,
+          });
+          await storage.createInvoiceLineItem(lineItemData, userContext.effectiveUserId);
+        }
+      }
+      
+      const invoiceWithItems = await storage.getInvoiceWithLineItems(req.params.id, userContext.effectiveUserId);
+      res.json(invoiceWithItems);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid input", details: error.errors });

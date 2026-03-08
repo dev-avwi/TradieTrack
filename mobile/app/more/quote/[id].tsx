@@ -1040,14 +1040,18 @@ ${businessName}`;
   };
 
   const handleCopyLink = async () => {
-    if (!quote?.acceptanceToken) {
-      Alert.alert('Link Not Available', 'This quote does not have a shareable link. Try sending the quote first.');
-      return;
-    }
-    
-    const publicUrl = `${API_URL.replace('/api', '')}/q/${quote.acceptanceToken}`;
-    
     try {
+      let token = quote?.acceptanceToken;
+      if (!token) {
+        const response = await api.post(`/api/quotes/${quote?.id}/generate-token`);
+        token = response.data?.acceptanceToken;
+        if (!token) {
+          Alert.alert('Error', 'Could not generate a shareable link. Please try again.');
+          return;
+        }
+      }
+      
+      const publicUrl = `${API_URL.replace('/api', '')}/q/${token}`;
       await Clipboard.setStringAsync(publicUrl);
       Alert.alert('Link Copied', 'The quote link has been copied to your clipboard. Share it with your client so they can view and accept the quote online.');
     } catch (error) {

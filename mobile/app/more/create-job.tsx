@@ -879,7 +879,7 @@ export default function CreateJobScreen() {
 
   const handleTimeChange = (time: Date) => {
     const newDate = scheduledAt ? new Date(scheduledAt) : new Date();
-    newDate.setHours(time.getHours(), time.getMinutes());
+    newDate.setHours(time.getHours(), time.getMinutes(), 0, 0);
     setScheduledAt(newDate);
   };
 
@@ -1133,14 +1133,14 @@ export default function CreateJobScreen() {
               >
                 {selectedTeamMember ? (
                   <View style={styles.selectedItem}>
-                    <View style={[styles.clientAvatar, { backgroundColor: colors.primary + '20' }]}>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
-                        {(selectedTeamMember.name || selectedTeamMember.username || '?').charAt(0).toUpperCase()}
+                    <View style={[styles.clientAvatar, { backgroundColor: (selectedTeamMember.themeColor || colors.primary) + '20' }]}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: selectedTeamMember.themeColor || colors.primary }}>
+                        {(selectedTeamMember.name || selectedTeamMember.email || selectedTeamMember.username || '?').charAt(0).toUpperCase()}
                       </Text>
                     </View>
                     <View style={styles.selectedItemText}>
-                      <Text style={styles.selectedItemName}>{selectedTeamMember.name || selectedTeamMember.username}</Text>
-                      <Text style={styles.selectedItemDetail}>{selectedTeamMember.role || 'Team Member'}</Text>
+                      <Text style={styles.selectedItemName}>{selectedTeamMember.name || selectedTeamMember.email?.split('@')[0] || selectedTeamMember.username || 'Team Member'}</Text>
+                      <Text style={styles.selectedItemDetail}>{selectedTeamMember.email || (selectedTeamMember.role ? selectedTeamMember.role.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Team Member')}</Text>
                     </View>
                   </View>
                 ) : (
@@ -1166,7 +1166,6 @@ export default function CreateJobScreen() {
                   <TimePicker
                     value={scheduledAt || new Date()}
                     onChange={handleTimeChange}
-                    disabled={!scheduledAt}
                   />
                 </View>
               </View>
@@ -1405,14 +1404,14 @@ export default function CreateJobScreen() {
                 >
                   <View style={styles.clientItemContent}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <View style={[styles.clientAvatar, { backgroundColor: colors.primary + '20' }]}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
-                          {(member.name || member.username || '?').charAt(0).toUpperCase()}
+                      <View style={[styles.clientAvatar, { backgroundColor: (member.themeColor || colors.primary) + '20' }]}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: member.themeColor || colors.primary }}>
+                          {(member.name || member.email || member.username || '?').charAt(0).toUpperCase()}
                         </Text>
                       </View>
                       <View>
-                        <Text style={styles.clientItemName}>{member.name || member.username}</Text>
-                        <Text style={styles.clientItemEmail}>{member.role || 'Team Member'}</Text>
+                        <Text style={styles.clientItemName}>{member.name || member.email?.split('@')[0] || member.username || 'Team Member'}</Text>
+                        <Text style={styles.clientItemEmail}>{member.email || (member.role ? member.role.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Team Member')}</Text>
                       </View>
                     </View>
                   </View>

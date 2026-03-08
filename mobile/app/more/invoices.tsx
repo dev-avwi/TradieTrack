@@ -244,9 +244,12 @@ export default function InvoicesScreen() {
     return client?.name || 'Unknown Client';
   };
 
-  const formatCurrency = (amount: number | string) => {
+  const formatCurrency = (amount: number | string, showDecimals = true) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    if (isNaN(num)) return '$0.00';
+    if (isNaN(num)) return '$0';
+    if (!showDecimals) {
+      return `$${Math.round(num).toLocaleString('en-AU')}`;
+    }
     return `$${num.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
@@ -462,7 +465,7 @@ export default function InvoicesScreen() {
                     <Feather name="dollar-sign" size={16} color={colors.primary} />
                   </View>
                   <Text style={styles.kpiLabel}>Total Value</Text>
-                  <Text style={styles.kpiValue}>{formatCurrency(totalAll)}</Text>
+                  <Text style={styles.kpiValue}>{formatCurrency(totalAll, false)}</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
@@ -474,7 +477,7 @@ export default function InvoicesScreen() {
                     <Feather name="alert-circle" size={16} color={colors.warning} />
                   </View>
                   <Text style={styles.kpiLabel}>Unpaid</Text>
-                  <Text style={styles.kpiValue}>{formatCurrency(totalOutstanding)}</Text>
+                  <Text style={styles.kpiValue}>{formatCurrency(totalOutstanding, false)}</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
@@ -486,7 +489,7 @@ export default function InvoicesScreen() {
                     <Feather name="check-circle" size={16} color={colors.success} />
                   </View>
                   <Text style={styles.kpiLabel}>Paid</Text>
-                  <Text style={[styles.kpiValue, { color: colors.success }]}>{formatCurrency(totalPaid)}</Text>
+                  <Text style={[styles.kpiValue, { color: colors.success }]}>{formatCurrency(totalPaid, false)}</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
@@ -498,7 +501,7 @@ export default function InvoicesScreen() {
                     <Feather name="clock" size={16} color={colors.destructive} />
                   </View>
                   <Text style={styles.kpiLabel}>Overdue</Text>
-                  <Text style={[styles.kpiValue, { color: colors.destructive }]}>{formatCurrency(totalOverdue)}</Text>
+                  <Text style={[styles.kpiValue, { color: colors.destructive }]}>{formatCurrency(totalOverdue, false)}</Text>
                 </TouchableOpacity>
               </View>
 

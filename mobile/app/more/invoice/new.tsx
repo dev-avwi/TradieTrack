@@ -651,6 +651,7 @@ export default function NewInvoiceScreen() {
   const [showCatalog, setShowCatalog] = useState(false);
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState('');
   const [showQuickAddClient, setShowQuickAddClient] = useState(false);
   const [quickAddForm, setQuickAddForm] = useState({ name: '', email: '', phone: '' });
   const [isCreatingClient, setIsCreatingClient] = useState(false);
@@ -1746,48 +1747,132 @@ export default function NewInvoiceScreen() {
         visible={showCatalog}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowCatalog(false)}
+        onRequestClose={() => { setShowCatalog(false); setCatalogSearch(''); }}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Product Catalog</Text>
-            <TouchableOpacity onPress={() => setShowCatalog(false)}>
+            <TouchableOpacity onPress={() => { setShowCatalog(false); setCatalogSearch(''); }}>
               <Feather name="x" size={24} color={colors.foreground} />
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.modalContent}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: colors.muted,
+              borderRadius: 10,
+              paddingHorizontal: 12,
+              gap: 8,
+            }}>
+              <Feather name="search" size={16} color={colors.mutedForeground} />
+              <TextInput
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  fontSize: 15,
+                  color: colors.foreground,
+                }}
+                value={catalogSearch}
+                onChangeText={setCatalogSearch}
+                placeholder="Search catalog..."
+                placeholderTextColor={colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {catalogSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setCatalogSearch('')}>
+                  <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+          <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
             {isLoadingCatalog ? (
               <View style={styles.emptyState}>
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
-            ) : catalogItems.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Feather name="book-open" size={48} color={colors.mutedForeground} />
-                <Text style={styles.emptyStateText}>No catalog items found</Text>
-                <Text style={{ fontSize: 12, color: colors.mutedForeground, textAlign: 'center' }}>
-                  Add items to your catalog from the web app
-                </Text>
-              </View>
-            ) : (
-              catalogItems.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.clientOption}
-                  onPress={() => handleAddCatalogItem(item)}
-                >
-                  <View style={[styles.clientOptionAvatar, { backgroundColor: colors.muted }]}>
-                    <Feather name="package" size={18} color={colors.foreground} />
-                  </View>
-                  <View style={styles.clientOptionInfo}>
-                    <Text style={styles.clientOptionName}>{item.name || item.description}</Text>
-                    <Text style={styles.clientOptionEmail}>
-                      {formatCurrency(item.price || item.unitPrice || 0)}
+            ) : (() => {
+              const searchLower = catalogSearch.toLowerCase().trim();
+              const filtered = searchLower
+                ? catalogItems.filter(item =>
+                    (item.name || item.description || '').toLowerCase().includes(searchLower) ||
+                    (item.category || '').toLowerCase().includes(searchLower)
+                  )
+                : catalogItems;
+
+              if (filtered.length === 0) {
+                return (
+                  <View style={styles.emptyState}>
+                    <Feather name={catalogSearch ? 'search' : 'book-open'} size={48} color={colors.mutedForeground} />
+                    <Text style={styles.emptyStateText}>
+                      {catalogSearch ? 'No items match your search' : 'No catalog items found'}
                     </Text>
+                    {!catalogSearch && (
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground, textAlign: 'center' }}>
+                        Add items to your catalog from the web app
+                      </Text>
+                    )}
                   </View>
-                  <Feather name="plus" size={20} color={colors.primary} />
-                </TouchableOpacity>
-              ))
-            )}
+                );
+              }
+
+              const grouped: Record<string, any[]> = {};
+              filtered.forEach(item => {
+                const cat = item.category || 'Uncategorized';
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(item);
+              });
+              const categoryKeys = Object.keys(grouped).sort((a, b) => {
+                if (a === 'Uncategorized') return 1;
+                if (b === 'Uncategorized') return -1;
+                return a.localeCompare(b);
+              });
+              const hasCategories = categoryKeys.length > 1 || (categoryKeys.length === 1 && categoryKeys[0] !== 'Uncategorized');
+
+              return categoryKeys.map(category => (
+                <View key={category}>
+                  {hasCategories && (
+                    <View style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 4,
+                      marginTop: 8,
+                      borderBottomWidth: 1,
+                      borderBottomColor: colors.border,
+                    }}>
+                      <Text style={{
+                        fontSize: 12,
+                        fontWeight: '600',
+                        color: colors.mutedForeground,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                      }}>
+                        {category}
+                      </Text>
+                    </View>
+                  )}
+                  {grouped[category].map((item: any) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.clientOption}
+                      onPress={() => { handleAddCatalogItem(item); setCatalogSearch(''); }}
+                    >
+                      <View style={[styles.clientOptionAvatar, { backgroundColor: colors.muted }]}>
+                        <Feather name="package" size={18} color={colors.foreground} />
+                      </View>
+                      <View style={styles.clientOptionInfo}>
+                        <Text style={styles.clientOptionName}>{item.name || item.description}</Text>
+                        <Text style={styles.clientOptionEmail}>
+                          {formatCurrency(item.price || item.unitPrice || 0)}
+                          {item.category ? ` · ${item.category}` : ''}
+                        </Text>
+                      </View>
+                      <Feather name="plus" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ));
+            })()}
           </ScrollView>
         </View>
       </Modal>

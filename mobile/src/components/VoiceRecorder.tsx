@@ -158,14 +158,30 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
         if (__DEV__) console.warn('Could not reset audio mode:', resetError);
       }
       
-      if (error?.message?.includes('permission') || error?.message?.includes('Permission')) {
+      const msg = error?.message || '';
+      if (msg.includes('permission') || msg.includes('Permission')) {
         Alert.alert(
           'Microphone Permission Required',
           'Please enable microphone access in your device settings to record voice notes.',
           [{ text: 'OK' }]
         );
+      } else if (msg.includes('already recording') || msg.includes('Cannot record')) {
+        try {
+          if (recordingRef.current) {
+            await recordingRef.current.stopAndUnloadAsync().catch(() => {});
+            recordingRef.current = null;
+            setRecording(null);
+          }
+          Alert.alert('Recording Reset', 'Previous recording session was cleared. Please try again.');
+        } catch (e) {
+          Alert.alert('Error', 'Could not reset recording. Please close and reopen this screen.');
+        }
       } else {
-        Alert.alert('Error', 'Could not start recording. Please try again.');
+        Alert.alert(
+          'Recording Error',
+          'Could not start recording. Make sure no other app is using the microphone, then try again.',
+          [{ text: 'OK' }]
+        );
       }
     }
   };
