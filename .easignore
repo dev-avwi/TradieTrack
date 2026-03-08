@@ -1,0 +1,22 @@
+# Only include mobile/ for EAS builds
+# Exclude web app and server
+client/
+server/
+shared/
+dist/
+attached_assets/
+.local/
+.agents/
+generated-icon.png
+*.config.ts
+*.config.js
+drizzle/
+drizzle.config.ts
+public/
+
+# Large files
+node_modules/
+
+# Dev files
+.expo/
+.git/

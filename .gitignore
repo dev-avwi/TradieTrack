@@ -6,5 +6,4 @@ dist
 build
 
 # Exclude from deployment bundle (large directories not needed in production)
-mobile/
 attached_assets/
