@@ -581,17 +581,23 @@ function TimeTrackingWidget() {
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (activeTimer && !activeTimer.isPaused) {
-      timer = setInterval(() => {
+      const updateElapsed = () => {
         const startTime = new Date(activeTimer.startTime).getTime();
+        if (isNaN(startTime)) {
+          setElapsedTime('00:00:00');
+          return;
+        }
         const pausedDuration = activeTimer.pausedDuration || 0;
-        const elapsed = Date.now() - startTime - (pausedDuration * 60000);
+        const elapsed = Math.max(0, Date.now() - startTime - (pausedDuration * 60000));
         const hours = Math.floor(elapsed / 3600000);
         const minutes = Math.floor((elapsed % 3600000) / 60000);
         const seconds = Math.floor((elapsed % 60000) / 1000);
         setElapsedTime(
           `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
         );
-      }, 1000);
+      };
+      updateElapsed();
+      timer = setInterval(updateElapsed, 1000);
     }
     return () => clearInterval(timer);
   }, [activeTimer]);

@@ -3758,8 +3758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.redirect('/auth?error=apple_not_configured');
     }
 
-    const baseUrl = process.env.VITE_APP_URL ||
-      (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000');
+    const baseUrl = getProductionBaseUrl(req);
     const redirectUri = `${baseUrl}/api/auth/apple/callback`;
     const state = randomBytes(16).toString('hex');
 
@@ -15339,7 +15338,8 @@ Be specific about materials, colors, and features that would be included.`
         : `ETA approximately ${estimatedMinutes} minutes`;
       const distanceText = distanceKm !== null ? ` (${distanceKm} km away)` : '';
 
-      const baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} is on the way to your job at ${job.address || 'your location'}. ${etaText}${distanceText}.`;
+      let baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} is on the way to your job at ${job.address || 'your location'}. ${etaText}${distanceText}.`;
+      baseMessage = baseMessage.replace(/\n*Track arrival:.*$/i, '').replace(/\n*\[link will be added\].*$/i, '').trim();
       const message = `${baseMessage}\n\nTrack arrival: ${trackingUrl}`;
       
       // Send SMS via shared Twilio client (supports connector and env vars)
@@ -15397,9 +15397,7 @@ Be specific about materials, colors, and features that would be included.`
   app.post("/api/jobs/:jobId/assignments/:assignmentId/on-my-way", requireAuth, async (req: any, res) => {
     try {
       const { handleOnMyWay } = await import('./services/assignmentWorkflowService');
-      const baseUrl = process.env.REPLIT_DOMAINS 
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : `https://${req.headers.host}`;
+      const baseUrl = getProductionBaseUrl(req);
       
       const result = await handleOnMyWay({
         jobId: req.params.jobId,
@@ -15431,9 +15429,7 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(400).json({ error: 'Invalid status. Must be: arrived, in_progress, or completed' });
       }
 
-      const baseUrl = process.env.REPLIT_DOMAINS 
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : `https://${req.headers.host}`;
+      const baseUrl = getProductionBaseUrl(req);
 
       const result = await handleWorkerStatusChange({
         jobId: req.params.jobId,
@@ -15463,9 +15459,7 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(400).json({ error: 'newEtaMinutes is required and must be a positive number' });
       }
 
-      const baseUrl = process.env.REPLIT_DOMAINS 
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : `https://${req.headers.host}`;
+      const baseUrl = getProductionBaseUrl(req);
 
       const result = await handleDelayedNotification({
         jobId: req.params.jobId,
@@ -16929,9 +16923,7 @@ Be specific about materials, colors, and features that would be included.`
       // Try assignment-based workflow first
       const assignment = await storage.getJobAssignmentForUser(req.params.id, req.userId);
       if (assignment) {
-        const baseUrl = process.env.REPLIT_DOMAINS 
-          ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-          : `https://${req.headers.host}`;
+        const baseUrl = getProductionBaseUrl(req);
 
         if (workerStatus === 'on_my_way') {
           const { handleOnMyWay } = await import('./services/assignmentWorkflowService');
@@ -17123,9 +17115,7 @@ Be specific about materials, colors, and features that would be included.`
               await storage.updateJob(req.params.id, effectiveUserId, { portalEnabled: true });
             }
             
-            const baseUrl = process.env.REPLIT_DOMAINS 
-              ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-              : 'http://localhost:5000';
+            const baseUrl = getProductionBaseUrl(req);
             portalUrl = `${baseUrl}/p/${activeToken.token}`;
             
             let smsBody = '';
@@ -17240,9 +17230,7 @@ Be specific about materials, colors, and features that would be included.`
       if (!job) {
         return res.status(404).json({ error: 'Job not found' });
       }
-      const baseUrl = process.env.REPLIT_DOMAINS 
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : 'http://localhost:5000';
+      const baseUrl = getProductionBaseUrl(req);
       let activeToken = await storage.getActiveJobPortalToken(job.id);
       if (!activeToken) {
         const cryptoModule = await import('crypto');
@@ -17274,9 +17262,7 @@ Be specific about materials, colors, and features that would be included.`
       
       let activeToken = await storage.getActiveJobPortalToken(job.id);
       if (activeToken) {
-        const baseUrl = process.env.REPLIT_DOMAINS 
-          ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-          : 'http://localhost:5000';
+        const baseUrl = getProductionBaseUrl(req);
         return res.json({ 
           token: activeToken,
           url: `${baseUrl}/p/${activeToken.token}`,
@@ -17298,9 +17284,7 @@ Be specific about materials, colors, and features that would be included.`
       
       await storage.updateJob(req.params.id, effectiveUserId, { portalEnabled: true });
       
-      const baseUrl = process.env.REPLIT_DOMAINS 
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : 'http://localhost:5000';
+      const baseUrl = getProductionBaseUrl(req);
       
       res.json({
         token: portalToken,
@@ -17389,9 +17373,7 @@ Be specific about materials, colors, and features that would be included.`
       const settings = await storage.getBusinessSettings(effectiveUserId);
       const businessName = settings?.businessName || 'Your tradesperson';
 
-      const baseUrl = process.env.REPLIT_DOMAINS
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : 'http://localhost:5000';
+      const baseUrl = getProductionBaseUrl(req);
       const portalUrl = `${baseUrl}/p/${activeToken.token}`;
 
       const { sendSMS } = await import('./twilioClient');
@@ -17438,9 +17420,7 @@ Be specific about materials, colors, and features that would be included.`
       const settings = await storage.getBusinessSettings(effectiveUserId);
       const businessName = settings?.businessName || 'Your tradesperson';
 
-      const baseUrl = process.env.REPLIT_DOMAINS
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : 'http://localhost:5000';
+      const baseUrl = getProductionBaseUrl(req);
       const portalUrl = `${baseUrl}/p/${activeToken.token}`;
 
       const { sendEmail } = await import('./emailService');
