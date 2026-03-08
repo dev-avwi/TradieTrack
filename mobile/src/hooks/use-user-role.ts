@@ -316,8 +316,8 @@ export function useUserRole() {
   
   // Subscription tier checks
   const subscriptionTier = user?.subscriptionTier || 'free';
-  const hasTeamSubscription = subscriptionTier === 'team';
-  const hasProSubscription = subscriptionTier === 'pro' || subscriptionTier === 'team';
+  const hasTeamSubscription = subscriptionTier === 'team' || subscriptionTier === 'beta';
+  const hasProSubscription = subscriptionTier === 'pro' || subscriptionTier === 'team' || subscriptionTier === 'beta';
   
   // Team access requires both role permission AND team subscription
   // Pro users can see team features but should get upgrade prompts

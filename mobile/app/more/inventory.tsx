@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
@@ -160,6 +161,7 @@ const defaultPOForm = {
 
 export default function InventoryScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [activeTab, setActiveTab] = useState<TabType>('items');
@@ -888,7 +890,7 @@ export default function InventoryScreen() {
     return (
       <Modal visible={showDetailModal} animationType="slide" onRequestClose={() => setShowDetailModal(false)}>
         <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
             <TouchableOpacity onPress={() => setShowDetailModal(false)} activeOpacity={0.7}>
               <Feather name="x" size={24} color={colors.foreground} />
             </TouchableOpacity>
@@ -1055,7 +1057,7 @@ export default function InventoryScreen() {
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.modalHeader}>
+        <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
           <TouchableOpacity onPress={() => setShowItemModal(false)} activeOpacity={0.7}>
             <Feather name="x" size={24} color={colors.foreground} />
           </TouchableOpacity>
@@ -1202,7 +1204,7 @@ export default function InventoryScreen() {
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.modalHeader}>
+        <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
           <TouchableOpacity onPress={() => setShowAdjustmentModal(false)} activeOpacity={0.7}>
             <Feather name="x" size={24} color={colors.foreground} />
           </TouchableOpacity>
@@ -1305,7 +1307,7 @@ export default function InventoryScreen() {
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.modalHeader}>
+        <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
           <TouchableOpacity onPress={() => setShowPOModal(false)} activeOpacity={0.7}>
             <Feather name="x" size={24} color={colors.foreground} />
           </TouchableOpacity>

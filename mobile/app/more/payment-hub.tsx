@@ -1084,15 +1084,7 @@ export default function PaymentHubScreen() {
                             Due {format(new Date(item.dueDate), 'dd MMM')}
                           </Text>
                         )}
-                        {item.daysSinceLastContact != null && (
-                          <Text style={styles.documentSubtitle}>
-                            Last contact {item.daysSinceLastContact}d ago
-                          </Text>
-                        )}
                       </View>
-                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontStyle: 'italic', marginTop: 2 }} numberOfLines={2}>
-                        {item.recommendedAction}
-                      </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={[styles.documentAmount, { fontSize: 16 }]}>{formatCurrency(item.outstanding)}</Text>
@@ -1122,12 +1114,9 @@ export default function PaymentHubScreen() {
                             {isSending ? (
                               <ActivityIndicator size="small" color={tone === item.recommendedTone ? colors.primaryForeground : colors.primary} />
                             ) : (
-                              <>
-                                <Feather name="send" size={12} color={tone === item.recommendedTone ? colors.primaryForeground : colors.primary} />
-                                <Text style={{ fontSize: 12, fontWeight: '500', color: tone === item.recommendedTone ? colors.primaryForeground : colors.foreground }}>
-                                  {tone.charAt(0).toUpperCase() + tone.slice(1)}
-                                </Text>
-                              </>
+                              <Text style={{ fontSize: 12, fontWeight: '500', color: tone === item.recommendedTone ? colors.primaryForeground : colors.foreground }}>
+                                {tone.charAt(0).toUpperCase() + tone.slice(1)}
+                              </Text>
                             )}
                           </TouchableOpacity>
                         ))}
@@ -1147,15 +1136,14 @@ export default function PaymentHubScreen() {
                           activeOpacity={0.7}
                         >
                           <Feather name="send" size={12} color={colors.primaryForeground} />
-                          <Text style={{ fontSize: 12, fontWeight: '500', color: colors.primaryForeground }}>Send Reminder</Text>
+                          <Text style={{ fontSize: 12, fontWeight: '500', color: colors.primaryForeground }}>Chase</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={[styles.chaserActionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
                           onPress={() => router.push(`/more/invoice/${item.invoiceId}`)}
                           activeOpacity={0.7}
                         >
-                          <Feather name="file-text" size={12} color={colors.foreground} />
-                          <Text style={{ fontSize: 12, fontWeight: '500', color: colors.foreground }}>View</Text>
+                          <Feather name="eye" size={12} color={colors.foreground} />
                         </TouchableOpacity>
                         {item.clientPhone && (
                           <TouchableOpacity
@@ -1164,17 +1152,6 @@ export default function PaymentHubScreen() {
                             activeOpacity={0.7}
                           >
                             <Feather name="phone" size={12} color={colors.foreground} />
-                            <Text style={{ fontSize: 12, fontWeight: '500', color: colors.foreground }}>Call</Text>
-                          </TouchableOpacity>
-                        )}
-                        {item.clientEmail && (
-                          <TouchableOpacity
-                            style={[styles.chaserActionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-                            onPress={() => Linking.openURL(`mailto:${item.clientEmail}`)}
-                            activeOpacity={0.7}
-                          >
-                            <Feather name="mail" size={12} color={colors.foreground} />
-                            <Text style={{ fontSize: 12, fontWeight: '500', color: colors.foreground }}>Email</Text>
                           </TouchableOpacity>
                         )}
                       </>
@@ -1278,40 +1255,42 @@ export default function PaymentHubScreen() {
       >
         {renderStripeConnectCard()}
         
-        <View style={styles.kpiGrid}>
-          {renderKPICard(
-            'Outstanding',
-            formatCurrency(stats.outstandingTotal),
-            `${stats.outstandingCount} invoices`,
-            'clock',
-            colors.warning,
-            stats.outstandingCount > 0 ? 'warning' : 'default'
-          )}
-          {renderKPICard(
-            'Overdue',
-            formatCurrency(stats.overdueTotal),
-            `${stats.overdueCount} invoices`,
-            'alert-triangle',
-            colors.destructive,
-            stats.overdueCount > 0 ? 'danger' : 'default'
-          )}
-          {renderKPICard(
-            'Paid (30d)',
-            formatCurrency(stats.recentPaidTotal),
-            `${stats.recentPaidCount} invoices`,
-            'check-circle',
-            colors.success,
-            'success'
-          )}
-          {renderKPICard(
-            'Pending Quotes',
-            formatCurrency(stats.pendingQuotesTotal),
-            `${stats.pendingQuotesCount} awaiting`,
-            'file',
-            colors.scheduled,
-            'default'
-          )}
-        </View>
+        {activeTab !== 'chaser' && (
+          <View style={styles.kpiGrid}>
+            {renderKPICard(
+              'Outstanding',
+              formatCurrency(stats.outstandingTotal),
+              `${stats.outstandingCount} invoices`,
+              'clock',
+              colors.warning,
+              stats.outstandingCount > 0 ? 'warning' : 'default'
+            )}
+            {renderKPICard(
+              'Overdue',
+              formatCurrency(stats.overdueTotal),
+              `${stats.overdueCount} invoices`,
+              'alert-triangle',
+              colors.destructive,
+              stats.overdueCount > 0 ? 'danger' : 'default'
+            )}
+            {renderKPICard(
+              'Paid (30d)',
+              formatCurrency(stats.recentPaidTotal),
+              `${stats.recentPaidCount} invoices`,
+              'check-circle',
+              colors.success,
+              'success'
+            )}
+            {renderKPICard(
+              'Pending Quotes',
+              formatCurrency(stats.pendingQuotesTotal),
+              `${stats.pendingQuotesCount} awaiting`,
+              'file',
+              colors.scheduled,
+              'default'
+            )}
+          </View>
+        )}
 
         <View style={styles.tabsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>

@@ -35,6 +35,7 @@ interface Job {
   id: string;
   title?: string;
   status?: string;
+  photos?: any[];
 }
 
 type FilterTab = 'all' | 'photos' | 'documents' | 'compliance';
@@ -763,9 +764,9 @@ export default function FilesScreen() {
     fetchData();
   }, [fetchData]);
 
-  const activeJobs = jobs.filter(j => j.status !== 'cancelled').length;
+  const jobsWithPhotos = jobs.filter(j => j.status !== 'cancelled' && Array.isArray(j.photos) && j.photos.length > 0).length;
   const complianceCount = complianceDocs.length;
-  const totalFiles = activeJobs + complianceCount;
+  const totalFiles = jobsWithPhotos + complianceCount;
 
   const docsWithStatus = useMemo(() => complianceDocs.map(doc => ({
     ...doc,
@@ -1233,8 +1234,8 @@ export default function FilesScreen() {
           <View style={[styles.statIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
             <Feather name="camera" size={16} color={CATEGORY_COLORS.photos.color} />
           </View>
-          <Text style={styles.statValue}>{activeJobs}</Text>
-          <Text style={styles.statLabel}>JOBS</Text>
+          <Text style={styles.statValue}>{jobsWithPhotos}</Text>
+          <Text style={styles.statLabel}>WITH PHOTOS</Text>
         </View>
 
         <View style={styles.statCard}>

@@ -46,7 +46,7 @@ import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecord
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
 import SmartActionsPanel, { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
-import { JobProgressBar, LinkedDocumentsCard, NextActionCard, PaymentCollectionCard, ScheduleNotificationCard, SmsContactCard } from '../../src/components/JobWorkflowComponents';
+import { JobProgressBar, LinkedDocumentsCard, NextActionCard, PaymentCollectionCard } from '../../src/components/JobWorkflowComponents';
 import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { getJobUrgency } from '../../src/lib/jobUrgency';
@@ -4911,36 +4911,6 @@ export default function JobDetailScreen() {
       {/* Job Progress Bar - Visual workflow indicator */}
       <JobProgressBar status={job.status} />
 
-      {/* Schedule Notification Card - Shows scheduled time and Start Now */}
-      <ScheduleNotificationCard
-        jobStatus={job.status}
-        urgency={getJobUrgency(job.scheduledAt, job.status)}
-        onStartJob={async () => {
-          if (pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) {
-            handleStatusChange();
-            return;
-          }
-          try {
-            await updateJobStatus(job.id, 'in_progress');
-            await loadJob();
-          } catch (error) {
-            console.error('Failed to start job:', error);
-          }
-        }}
-      />
-
-      {/* SMS Contact Card - "Heading to the job?" */}
-      <SmsContactCard
-        jobStatus={job.status}
-        clientPhone={client?.phone}
-        clientName={client?.name?.split(' ')[0]}
-        isOverdue={getJobUrgency(job.scheduledAt, job.status)?.level === 'overdue'}
-        jobId={job.id}
-        jobAddress={job.address}
-        businessName={businessSettings?.businessName}
-        tradieName={user?.firstName || user?.name?.split(' ')[0]}
-      />
-
       {/* Safety & Compliance Section - Prominent before work starts */}
       {(job.status === 'scheduled' || job.status === 'in_progress') && (availableForms.some(isSafetyForm) || swmsDocuments.length > 0 || hasNoSafetyDocs) && (
         <View style={[
@@ -4992,6 +4962,14 @@ export default function JobDetailScreen() {
         quoteStatus={(quote as any)?.status}
         invoiceStatus={(invoice as any)?.status}
         scheduledAt={job.scheduledAt}
+        urgencyLabel={getJobUrgency(job.scheduledAt, job.status)?.label}
+        isOverdue={getJobUrgency(job.scheduledAt, job.status)?.level === 'overdue'}
+        clientPhone={client?.phone}
+        clientName={client?.name?.split(' ')[0]}
+        jobId={job.id}
+        jobAddress={job.address}
+        businessName={businessSettings?.businessName}
+        tradieName={user?.firstName || user?.name?.split(' ')[0]}
         onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onSendQuote={async () => {

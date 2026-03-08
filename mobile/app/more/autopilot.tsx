@@ -251,7 +251,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     flexDirection: 'row',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   tab: {
     flex: 1,
@@ -259,9 +259,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.xl,
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   activeTab: {
     backgroundColor: colors.primary + '15',

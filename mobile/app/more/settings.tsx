@@ -11,13 +11,11 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
-  Alert,
-  Image
+  Alert
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { API_URL, api } from '../../src/lib/api';
@@ -36,24 +34,14 @@ const PLAN_FEATURES = [
 
 const SETTINGS_TABS = [
   { key: 'account', label: 'Account', icon: 'user' },
-  { key: 'brand', label: 'Brand', icon: 'palette' },
   { key: 'templates', label: 'Templates', icon: 'file-text' },
   { key: 'alerts', label: 'Alerts', icon: 'bell' },
   { key: 'plan', label: 'Plan', icon: 'award' },
   { key: 'help', label: 'Help', icon: 'help-circle' },
 ];
 
-const BRAND_COLORS = [
-  '#2563EB', '#1877F2', '#0A66C2', '#2563EB', '#3B82F6',
-  '#059669', '#10B981', '#22C55E', '#84CC16', '#EAB308',
-  '#F59E0B', '#E8862E', '#EF4444', '#DC2626', '#E11D48',
-  '#EC4899', '#D946EF', '#A855F7', '#8B5CF6', '#6366F1',
-  '#475569', '#334155', '#1E293B', '#0F172A', '#000000',
-];
-
 const GEOFENCE_STORAGE_KEY = '@jobrunner/global_geofence_settings';
 const NOTIFICATION_SETTINGS_KEY = '@jobrunner/notification_settings';
-const BRAND_SETTINGS_KEY = '@jobrunner/brand_settings';
 
 interface NotificationSettings {
   push: {
@@ -470,55 +458,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: 2,
   },
-  colorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  colorSwatch: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  colorSwatchSelected: {
-    borderWidth: 3,
-    borderColor: colors.foreground,
-  },
-  logoSection: {
-    marginTop: spacing.lg,
-  },
-  logoPreview: {
-    width: 80,
-    height: 80,
-    borderRadius: radius.lg,
-    backgroundColor: colors.muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-    overflow: 'hidden',
-  },
-  logoImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'contain',
-  },
-  uploadButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-  },
-  uploadButtonText: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.primary,
-  },
   templateStatsRow: {
     flexDirection: 'row',
     gap: spacing.md,
@@ -883,7 +822,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { businessSettings, user, refreshUser, updateBusinessSettings } = useAuthStore();
+  const { user, refreshUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('account');
   const [showTour, setShowTour] = useState(false);
@@ -893,11 +832,6 @@ export default function SettingsScreen() {
   const [geofenceRadius, setGeofenceRadius] = useState(100);
   const [autoClockIn, setAutoClockIn] = useState(true);
   const [autoClockOut, setAutoClockOut] = useState(true);
-
-  // Brand tab settings
-  const [selectedColor, setSelectedColor] = useState('#2563EB');
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Notification settings
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
@@ -976,97 +910,6 @@ export default function SettingsScreen() {
     setAutoClockOut(value);
     saveGeofenceSettings({ enabled: geofenceEnabled, radius: geofenceRadius, autoClockIn, autoClockOut: value });
   }, [saveGeofenceSettings, geofenceEnabled, geofenceRadius, autoClockIn]);
-
-  // Load brand settings - prioritize server businessSettings, fallback to local storage
-  const loadBrandSettings = useCallback(async () => {
-    try {
-      // First try to use server-synced business settings
-      if (businessSettings?.brandColor || businessSettings?.logoUrl) {
-        setSelectedColor(businessSettings.brandColor || '#2563EB');
-        setLogoUrl(businessSettings.logoUrl || null);
-        // Also save locally for offline access
-        await AsyncStorage.setItem(BRAND_SETTINGS_KEY, JSON.stringify({ 
-          color: businessSettings.brandColor || '#2563EB', 
-          logoUrl: businessSettings.logoUrl || null 
-        }));
-        return;
-      }
-      // Fallback to local storage
-      const stored = await AsyncStorage.getItem(BRAND_SETTINGS_KEY);
-      if (stored) {
-        const settings = JSON.parse(stored);
-        setSelectedColor(settings.color || '#2563EB');
-        setLogoUrl(settings.logoUrl || null);
-      }
-    } catch (error) {
-      console.error('Failed to load brand settings:', error);
-    }
-  }, [businessSettings]);
-
-  const saveBrandSettings = useCallback(async (color: string, logo: string | null) => {
-    try {
-      // Save locally first for immediate feedback
-      await AsyncStorage.setItem(BRAND_SETTINGS_KEY, JSON.stringify({ color, logoUrl: logo }));
-      
-      // Sync to server
-      const success = await updateBusinessSettings({ 
-        brandColor: color, 
-        logoUrl: logo || undefined 
-      });
-      
-      if (!success) {
-        console.error('Failed to sync brand settings to server');
-      }
-    } catch (error) {
-      console.error('Failed to save brand settings:', error);
-    }
-  }, [updateBusinessSettings]);
-
-  const handleColorSelect = useCallback((color: string) => {
-    setSelectedColor(color);
-    saveBrandSettings(color, logoUrl);
-  }, [saveBrandSettings, logoUrl]);
-
-  const handlePickLogo = useCallback(async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please allow access to your photo library to upload a logo.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setIsUploadingLogo(true);
-        const localUri = result.assets[0].uri;
-        
-        // Upload to server
-        const response = await api.uploadBusinessLogo(localUri);
-        
-        if (response.data?.logoUrl) {
-          const serverLogoUrl = response.data.logoUrl;
-          setLogoUrl(serverLogoUrl);
-          await saveBrandSettings(selectedColor, serverLogoUrl);
-        } else {
-          Alert.alert('Upload Failed', response.error || 'Failed to upload logo to server.');
-          // Fallback to local URI for preview if server fails? 
-          // Better to keep it consistent and only use server URLs if possible
-        }
-        
-        setIsUploadingLogo(false);
-      }
-    } catch (error) {
-      console.error('Failed to pick logo:', error);
-      setIsUploadingLogo(false);
-      Alert.alert('Error', 'Failed to upload logo. Please try again.');
-    }
-  }, [selectedColor, saveBrandSettings]);
 
   // Notification settings handlers
   const loadNotificationSettings = useCallback(async () => {
@@ -1328,11 +1171,10 @@ export default function SettingsScreen() {
       refreshUser(),
       loadGeofenceSettings(), 
       loadNotificationSettings(),
-      loadBrandSettings(),
       loadTemplates(),
     ]);
     setIsLoading(false);
-  }, [refreshUser, loadGeofenceSettings, loadNotificationSettings, loadBrandSettings, loadTemplates]);
+  }, [refreshUser, loadGeofenceSettings, loadNotificationSettings, loadTemplates]);
 
   useEffect(() => {
     refreshData();
@@ -1586,32 +1428,6 @@ export default function SettingsScreen() {
                   </TouchableOpacity>
                 </View>
               )}
-            </View>
-          )}
-
-          {activeTab === 'brand' && (
-            <View style={styles.tabContentSection}>
-              <TouchableOpacity 
-                style={styles.settingsCard}
-                onPress={() => router.push('/more/branding')}
-                data-testid="button-theme-branding"
-              >
-                <View style={styles.settingsCardHeader}>
-                  <Feather name="droplet" size={20} color={colors.primary} />
-                  <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>Theme & Branding</Text>
-                    <Text style={styles.settingsCardSubtitle}>Customize colors, logo, typography & appearance</Text>
-                  </View>
-                </View>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
-
-              <View style={styles.settingsInfoCard}>
-                <Text style={styles.settingsInfoTitle}>Brand Synchronization</Text>
-                <Text style={styles.settingsInfoText}>
-                  Your brand settings sync across all your devices. Changes made here will appear on quotes, invoices, and documents sent to clients.
-                </Text>
-              </View>
             </View>
           )}
 

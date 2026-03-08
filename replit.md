@@ -58,6 +58,13 @@ Core architectural and design decisions include:
 ### Mobile Bug Fixes
 *   **Photo Annotation Multi-Color**: Fixed WebView HTML template to use stable refs instead of React state for color/stroke values. Color changes now go through `injectJavaScript` without regenerating the WebView, preserving existing annotations.
 *   **SWMS PDF Download**: Fixed "Authentication required" error by using authenticated `fetch` with Bearer token instead of `Linking.openURL`. PDF is saved to cache and opened via `expo-sharing`.
+*   **Modal safe area**: Expense and inventory form modals now use `useSafeAreaInsets()` to prevent Cancel/Save buttons from overlapping the phone status bar.
+*   **Beta/team gating**: `use-user-role.ts` now treats `'beta'` tier as having team and pro access. Team Operations page no longer shows "Upgrade to Team Plan" banner for beta users.
+*   **Files page counts**: Stats now show actual document counts and jobs with photos, not raw job counts. "JOBS" label changed to "WITH PHOTOS".
+*   **Settings Brand tab removed**: Removed redundant Brand tab from Settings page; standalone branding page at `mobile/app/more/branding.tsx` remains.
+*   **Autopilot tab padding**: Increased horizontal padding and gap between tabs and badges for better visual spacing.
+*   **Job view workflow consolidation**: Merged ScheduleNotificationCard, SmsContactCard, and NextActionCard into a single consolidated workflow card. Shows one primary action with urgency info and secondary "Text On My Way" option.
+*   **Payment Hub Smart Chaser declutter**: Hidden global KPI cards when on Smart Chaser tab (avoids 8 KPI cards), simplified chase queue buttons to icon-only for View/Call, removed verbose recommendation text.
 
 ### Auto-Receipt Sending
 *   **Automatic receipt dispatch**: After any payment is collected (Tap to Pay, Payment Link/QR code, manual recording), the system now automatically sends a receipt via email (with PDF attachment) and SMS (with public receipt link) to the client. This is handled by the `autoSendReceiptAfterPayment` helper in `server/routes.ts`. The helper creates a receipt record if one doesn't exist, sends email via SendGrid with PDF, and sends SMS via Twilio with a public receipt URL. Runs asynchronously so it doesn't block the payment response. Wired into: `/api/terminal/payment-success`, `/api/public/payment-request/:token/confirm-payment`, and the `handleRecordPayment` handler.

@@ -18,6 +18,7 @@ import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
@@ -141,6 +142,7 @@ function ExpenseCard({
 
 export default function ExpensesScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { jobId: routeJobId } = useLocalSearchParams<{ jobId?: string }>();
 
@@ -616,7 +618,7 @@ export default function ExpensesScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={[styles.modalContainer, { backgroundColor: colors.background }]}
           >
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
               <TouchableOpacity
                 onPress={() => {
                   setShowExpenseModal(false);
@@ -793,7 +795,7 @@ export default function ExpensesScreen() {
           onRequestClose={() => setShowCategoryModal(false)}
         >
           <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
               <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
                 <Text style={[styles.modalCancel, { color: colors.primary }]}>Cancel</Text>
               </TouchableOpacity>
@@ -838,7 +840,7 @@ export default function ExpensesScreen() {
           onRequestClose={() => setShowCategoryPicker(false)}
         >
           <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
               <TouchableOpacity onPress={() => setShowCategoryPicker(false)}>
                 <Text style={[styles.modalCancel, { color: colors.primary }]}>Done</Text>
               </TouchableOpacity>
@@ -901,7 +903,7 @@ export default function ExpensesScreen() {
           onRequestClose={() => setShowJobPicker(false)}
         >
           <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
               <TouchableOpacity onPress={() => setShowJobPicker(false)}>
                 <Text style={[styles.modalCancel, { color: colors.primary }]}>Done</Text>
               </TouchableOpacity>
