@@ -49,12 +49,12 @@ export default function LoginScreen() {
       if (Platform.OS === 'ios' && AppleAuthentication) {
         try {
           const isAvailable = await AppleAuthentication.isAvailableAsync();
-          console.log('🍎 Apple Sign In availability check:', isAvailable);
+          if (__DEV__) console.log('🍎 Apple Sign In availability check:', isAvailable);
           // Always show button on iOS, even if isAvailableAsync returns false
           // Some iPad models may report false incorrectly
           setAppleAuthAvailable(true);
         } catch (e) {
-          console.log('🍎 Apple Sign In availability check error:', e);
+          if (__DEV__) console.log('🍎 Apple Sign In availability check error:', e);
           // Still show button on iOS - let the error happen on press
           setAppleAuthAvailable(true);
         }
@@ -209,7 +209,7 @@ export default function LoginScreen() {
       // Double-check availability
       try {
         const isAvailable = await AppleAuthentication.isAvailableAsync();
-        console.log('🍎 Apple Sign In isAvailableAsync (on press):', isAvailable);
+        if (__DEV__) console.log('🍎 Apple Sign In isAvailableAsync (on press):', isAvailable);
         if (!isAvailable) {
           Alert.alert(
             'Sign in with Apple Unavailable',
@@ -218,11 +218,11 @@ export default function LoginScreen() {
           return;
         }
       } catch (availErr) {
-        console.log('🍎 Apple Sign In availability check failed on press:', availErr);
+        if (__DEV__) console.log('🍎 Apple Sign In availability check failed on press:', availErr);
         // Continue anyway - let signInAsync fail if needed
       }
       
-      console.log('🍎 Starting Apple Sign In...');
+      if (__DEV__) console.log('🍎 Starting Apple Sign In...');
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -230,7 +230,7 @@ export default function LoginScreen() {
         ],
       });
       
-      console.log('🍎 Apple credential received, has token:', !!credential.identityToken);
+      if (__DEV__) console.log('🍎 Apple credential received, has token:', !!credential.identityToken);
       
       if (credential.identityToken) {
         const response = await api.post<{ success: boolean; sessionToken: string; isNewUser: boolean }>('/api/auth/apple', {
@@ -240,7 +240,7 @@ export default function LoginScreen() {
         });
         
         if (response.error) {
-          console.log('🍎 Server error:', response.error);
+          if (__DEV__) console.log('🍎 Server error:', response.error);
           Alert.alert('Error', response.error);
           return;
         }
@@ -257,13 +257,13 @@ export default function LoginScreen() {
         const redirectPath = getRedirectPath(isNewUser, isPlatformAdmin);
         router.replace(redirectPath);
       } else {
-        console.log('🍎 No identity token received from Apple');
+        if (__DEV__) console.log('🍎 No identity token received from Apple');
         Alert.alert('Error', 'No identity token received from Apple. Please try again.');
       }
     } catch (err: any) {
       // User canceled the sign-in
       if (err.code === 'ERR_REQUEST_CANCELED' || err.code === 'ERR_CANCELED') {
-        console.log('🍎 Apple Sign In canceled by user');
+        if (__DEV__) console.log('🍎 Apple Sign In canceled by user');
         return;
       }
       

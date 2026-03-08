@@ -66,12 +66,12 @@ class NotificationService {
   async initialize(): Promise<string | null> {
     // Guard: prevent multiple initializations
     if (this.isInitialized && this.pushToken) {
-      console.log('[Notifications] Already initialized, returning existing token');
+      if (__DEV__) console.log('[Notifications] Already initialized, returning existing token');
       return this.pushToken;
     }
     
     if (this.isInitializing) {
-      console.log('[Notifications] Initialization already in progress, skipping');
+      if (__DEV__) console.log('[Notifications] Initialization already in progress, skipping');
       return null;
     }
     
@@ -80,7 +80,7 @@ class NotificationService {
     try {
       // Check if we're on a physical device
       if (!Device.isDevice) {
-        console.log('[Notifications] Push notifications require a physical device');
+        if (__DEV__) console.log('[Notifications] Push notifications require a physical device');
         this.isInitializing = false;
         return null;
       }
@@ -95,7 +95,7 @@ class NotificationService {
       }
       
       if (finalStatus !== 'granted') {
-        console.log('[Notifications] Permission not granted');
+        if (__DEV__) console.log('[Notifications] Permission not granted');
         this.isInitializing = false;
         return null;
       }
@@ -110,8 +110,8 @@ class NotificationService {
       // Validate projectId is a valid UUID before attempting to get push token
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!projectId || !uuidRegex.test(projectId)) {
-        console.log('[Notifications] No valid projectId available - push notifications disabled in dev');
-        console.log('[Notifications] To enable, add EAS projectId to app.config or run eas build');
+        if (__DEV__) console.log('[Notifications] No valid projectId available - push notifications disabled in dev');
+        if (__DEV__) console.log('[Notifications] To enable, add EAS projectId to app.config or run eas build');
         this.isInitializing = false;
         return null;
       }
@@ -121,7 +121,7 @@ class NotificationService {
       });
       
       this.pushToken = tokenData.data;
-      console.log('[Notifications] Push token:', this.pushToken);
+      if (__DEV__) console.log('[Notifications] Push token:', this.pushToken);
 
       // Set up notification channels for Android
       if (Platform.OS === 'android') {
@@ -196,7 +196,7 @@ class NotificationService {
     // Listener for notifications received while app is foregrounded
     this.notificationListener = Notifications.addNotificationReceivedListener(
       notification => {
-        console.log('[Notifications] Received:', notification);
+        if (__DEV__) console.log('[Notifications] Received:', notification);
         
         const payload = this.parseNotification(notification);
         if (this.onNotificationReceived && payload) {
@@ -208,7 +208,7 @@ class NotificationService {
     // Listener for when user taps on a notification
     this.responseListener = Notifications.addNotificationResponseReceivedListener(
       response => {
-        console.log('[Notifications] Tapped:', response);
+        if (__DEV__) console.log('[Notifications] Tapped:', response);
         
         const payload = this.parseNotification(response.notification);
         const actionId = response.actionIdentifier;
@@ -258,7 +258,7 @@ class NotificationService {
         platform: Platform.OS,
         deviceName: Device.deviceName,
       });
-      console.log('[Notifications] Token registered with backend');
+      if (__DEV__) console.log('[Notifications] Token registered with backend');
     } catch (error) {
       console.error('[Notifications] Failed to register token:', error);
     }

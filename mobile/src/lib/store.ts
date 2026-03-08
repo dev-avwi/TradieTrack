@@ -332,13 +332,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Guard: prevent multiple simultaneous auth checks
     const state = get();
     if (state.isLoading) {
-      console.log('[Auth] checkAuth already in progress, skipping');
+      if (__DEV__) console.log('[Auth] checkAuth already in progress, skipping');
       return;
     }
     
     // Guard: if already initialized and authenticated, don't re-check
     if (state.isInitialized && state.isAuthenticated && state.user) {
-      console.log('[Auth] Already authenticated, skipping checkAuth');
+      if (__DEV__) console.log('[Auth] Already authenticated, skipping checkAuth');
       return;
     }
     
@@ -362,7 +362,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     
     if (!isOnline) {
       // We're offline - try to use cached auth data
-      console.log('[Auth] Offline mode - attempting to use cached auth data');
+      if (__DEV__) console.log('[Auth] Offline mode - attempting to use cached auth data');
       const cachedAuth = await offlineStorage.getCachedAuthData();
       
       if (cachedAuth && cachedAuth.userData) {
@@ -388,7 +388,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (cachedAuth.businessSettings?.themeMode) {
           useThemeStore.getState().initializeFromServer(cachedAuth.businessSettings.themeMode as ThemeMode);
         }
-        console.log('[Auth] Using cached auth data for offline access');
+        if (__DEV__) console.log('[Auth] Using cached auth data for offline access');
         return;
       } else {
         // No cached data and offline - can't authenticate
@@ -415,7 +415,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       if (isAuthError) {
         // Token is invalid - clear everything and require re-login
-        console.log('[Auth] Token invalid, clearing auth state');
+        if (__DEV__) console.log('[Auth] Token invalid, clearing auth state');
         await api.setToken(null);
         await offlineStorage.clearCachedAuthData();
         set({ 
@@ -432,7 +432,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const cachedAuth = await offlineStorage.getCachedAuthData();
       
       if (cachedAuth && cachedAuth.userData) {
-        console.log('[Auth] Network error, using cached auth data for offline mode');
+        if (__DEV__) console.log('[Auth] Network error, using cached auth data for offline mode');
         // Normalize permissions to array to prevent runtime errors from old cache data
         const normalizedRoleInfo = cachedAuth.roleInfo ? {
           ...cachedAuth.roleInfo,
@@ -661,7 +661,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
       });
     } catch (e) {
-      console.log('[Auth] Failed to fetch team state:', e);
+      if (__DEV__) console.log('[Auth] Failed to fetch team state:', e);
       set({
         teamState: {
           ...get().teamState,
@@ -720,7 +720,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         });
         return;
       } catch (e) {
-        console.log('[JobsStore] Offline cache read failed:', e);
+        if (__DEV__) console.log('[JobsStore] Offline cache read failed:', e);
         set({ isLoading: false, error: null, isOfflineData: true });
         return;
       }
@@ -741,7 +741,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
           return;
         }
       } catch (e) {
-        console.log('[JobsStore] Cache fallback failed:', e);
+        if (__DEV__) console.log('[JobsStore] Cache fallback failed:', e);
       }
       set({ isLoading: false, error: null, isOfflineData: true });
       return;
@@ -750,7 +750,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     try {
       await offlineStorage.cacheJobs(response.data || []);
     } catch (e) {
-      console.log('[JobsStore] Failed to cache jobs:', e);
+      if (__DEV__) console.log('[JobsStore] Failed to cache jobs:', e);
     }
 
     set({ jobs: response.data || [], isLoading: false, isOfflineData: false });
@@ -776,7 +776,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         });
         return;
       } catch (e) {
-        console.log('[JobsStore] Offline cache read failed:', e);
+        if (__DEV__) console.log('[JobsStore] Offline cache read failed:', e);
         set({ isLoading: false, error: null, isOfflineData: true });
         return;
       }
@@ -798,7 +798,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         });
         return;
       } catch (e) {
-        console.log('[JobsStore] Cache fallback failed:', e);
+        if (__DEV__) console.log('[JobsStore] Cache fallback failed:', e);
       }
       set({ isLoading: false, error: null, isOfflineData: true });
       return;
@@ -856,7 +856,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         }
       } catch (e) {
         // Network error - queue for offline sync
-        console.log('[JobsStore] Network error, queueing status update:', e);
+        if (__DEV__) console.log('[JobsStore] Network error, queueing status update:', e);
         await offlineStorage.updateJobOffline(jobId, { status });
       }
     } else {
@@ -864,7 +864,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
       try {
         await offlineStorage.updateJobOffline(jobId, { status });
       } catch (e) {
-        console.log('[JobsStore] Failed to queue offline update:', e);
+        if (__DEV__) console.log('[JobsStore] Failed to queue offline update:', e);
       }
     }
 
@@ -889,7 +889,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         // API error - fall through to offline creation
       } catch (e) {
         // Network error - create offline
-        console.log('[JobsStore] Network error, creating job offline:', e);
+        if (__DEV__) console.log('[JobsStore] Network error, creating job offline:', e);
       }
       
       // Fall back to offline creation
@@ -899,7 +899,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         set({ jobs: [...jobs, offlineJob as Job] });
         return offlineJob as Job;
       } catch (e) {
-        console.log('[JobsStore] Failed to create offline job:', e);
+        if (__DEV__) console.log('[JobsStore] Failed to create offline job:', e);
         return null;
       }
     } else {
@@ -910,7 +910,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         set({ jobs: [...jobs, offlineJob as Job] });
         return offlineJob as Job;
       } catch (e) {
-        console.log('[JobsStore] Failed to create offline job:', e);
+        if (__DEV__) console.log('[JobsStore] Failed to create offline job:', e);
         return null;
       }
     }
@@ -955,7 +955,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
         });
         return;
       } catch (e) {
-        console.log('[ClientsStore] Offline cache read failed:', e);
+        if (__DEV__) console.log('[ClientsStore] Offline cache read failed:', e);
         set({ isLoading: false, error: null, isOfflineData: true });
         return;
       }
@@ -977,7 +977,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
           return;
         }
       } catch (e) {
-        console.log('[ClientsStore] Cache fallback failed:', e);
+        if (__DEV__) console.log('[ClientsStore] Cache fallback failed:', e);
       }
       set({ isLoading: false, error: null, isOfflineData: true });
       return;
@@ -987,7 +987,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
     try {
       await offlineStorage.cacheClients(response.data || []);
     } catch (e) {
-      console.log('[ClientsStore] Failed to cache clients:', e);
+      if (__DEV__) console.log('[ClientsStore] Failed to cache clients:', e);
     }
 
     set({ clients: response.data || [], isLoading: false, isOfflineData: false });
@@ -1002,7 +1002,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
         const cached = await offlineStorage.getCachedClient(id);
         return cached as Client | null;
       } catch (e) {
-        console.log('[ClientsStore] Offline cache read failed:', e);
+        if (__DEV__) console.log('[ClientsStore] Offline cache read failed:', e);
         return null;
       }
     }
@@ -1039,7 +1039,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
         // API error - fall through to offline creation
       } catch (e) {
         // Network error - create offline
-        console.log('[ClientsStore] Network error, creating client offline:', e);
+        if (__DEV__) console.log('[ClientsStore] Network error, creating client offline:', e);
       }
       
       // Fall back to offline creation
@@ -1049,7 +1049,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
         set({ clients: [...clients, offlineClient as Client] });
         return offlineClient as Client;
       } catch (e) {
-        console.log('[ClientsStore] Failed to create offline client:', e);
+        if (__DEV__) console.log('[ClientsStore] Failed to create offline client:', e);
         return null;
       }
     } else {
@@ -1060,7 +1060,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
         set({ clients: [...clients, offlineClient as Client] });
         return offlineClient as Client;
       } catch (e) {
-        console.log('[ClientsStore] Failed to create offline client:', e);
+        if (__DEV__) console.log('[ClientsStore] Failed to create offline client:', e);
         return null;
       }
     }
@@ -1086,7 +1086,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
         }
       } catch (e) {
         // Network error - queue for offline sync
-        console.log('[ClientsStore] Network error, queueing update:', e);
+        if (__DEV__) console.log('[ClientsStore] Network error, queueing update:', e);
         await offlineStorage.updateClientOffline(id, client);
       }
     } else {
@@ -1094,7 +1094,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
       try {
         await offlineStorage.updateClientOffline(id, client);
       } catch (e) {
-        console.log('[ClientsStore] Failed to queue offline update:', e);
+        if (__DEV__) console.log('[ClientsStore] Failed to queue offline update:', e);
       }
     }
     return true;
@@ -1106,7 +1106,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
     
     if (!isOnline) {
       // Can't delete while offline - inform user
-      console.log('[ClientsStore] Cannot delete while offline');
+      if (__DEV__) console.log('[ClientsStore] Cannot delete while offline');
       return false;
     }
     
@@ -1126,7 +1126,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
       return true;
     } catch (e) {
       // Network error - revert optimistic update
-      console.log('[ClientsStore] Network error during delete:', e);
+      if (__DEV__) console.log('[ClientsStore] Network error during delete:', e);
       set({ clients });
       return false;
     }
@@ -1172,7 +1172,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
         });
         return;
       } catch (e) {
-        console.log('[QuotesStore] Offline cache read failed:', e);
+        if (__DEV__) console.log('[QuotesStore] Offline cache read failed:', e);
         set({ isLoading: false, error: null, isOfflineData: true });
         return;
       }
@@ -1194,7 +1194,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
           return;
         }
       } catch (e) {
-        console.log('[QuotesStore] Cache fallback failed:', e);
+        if (__DEV__) console.log('[QuotesStore] Cache fallback failed:', e);
       }
       set({ isLoading: false, error: null, isOfflineData: true });
       return;
@@ -1204,7 +1204,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
     try {
       await offlineStorage.cacheQuotes(response.data || []);
     } catch (e) {
-      console.log('[QuotesStore] Failed to cache quotes:', e);
+      if (__DEV__) console.log('[QuotesStore] Failed to cache quotes:', e);
     }
 
     set({ quotes: response.data || [], isLoading: false, isOfflineData: false });
@@ -1219,7 +1219,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
         const cached = await offlineStorage.getCachedQuote(id);
         return cached as Quote | null;
       } catch (e) {
-        console.log('[QuotesStore] Offline cache read failed:', e);
+        if (__DEV__) console.log('[QuotesStore] Offline cache read failed:', e);
         return null;
       }
     }
@@ -1256,7 +1256,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
         // API error - fall through to offline creation
       } catch (e) {
         // Network error - create offline
-        console.log('[QuotesStore] Network error, creating quote offline:', e);
+        if (__DEV__) console.log('[QuotesStore] Network error, creating quote offline:', e);
       }
       
       // Fall back to offline creation
@@ -1266,7 +1266,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
         set({ quotes: [...quotes, offlineQuote as Quote] });
         return offlineQuote as Quote;
       } catch (e) {
-        console.log('[QuotesStore] Failed to create offline quote:', e);
+        if (__DEV__) console.log('[QuotesStore] Failed to create offline quote:', e);
         return null;
       }
     } else {
@@ -1277,7 +1277,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
         set({ quotes: [...quotes, offlineQuote as Quote] });
         return offlineQuote as Quote;
       } catch (e) {
-        console.log('[QuotesStore] Failed to create offline quote:', e);
+        if (__DEV__) console.log('[QuotesStore] Failed to create offline quote:', e);
         return null;
       }
     }
@@ -1302,7 +1302,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
         }
       } catch (e) {
         // Network error - queue for offline sync
-        console.log('[QuotesStore] Network error, queueing update:', e);
+        if (__DEV__) console.log('[QuotesStore] Network error, queueing update:', e);
         await offlineStorage.updateQuoteOffline(id, quote);
       }
     } else {
@@ -1310,7 +1310,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
       try {
         await offlineStorage.updateQuoteOffline(id, quote);
       } catch (e) {
-        console.log('[QuotesStore] Failed to queue offline update:', e);
+        if (__DEV__) console.log('[QuotesStore] Failed to queue offline update:', e);
       }
     }
     return true;
@@ -1333,14 +1333,14 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
           await offlineStorage.cacheQuotes([response.data]);
         }
       } catch (e) {
-        console.log('[QuotesStore] Network error, queueing status update:', e);
+        if (__DEV__) console.log('[QuotesStore] Network error, queueing status update:', e);
         await offlineStorage.updateQuoteOffline(id, { status });
       }
     } else {
       try {
         await offlineStorage.updateQuoteOffline(id, { status });
       } catch (e) {
-        console.log('[QuotesStore] Failed to queue offline update:', e);
+        if (__DEV__) console.log('[QuotesStore] Failed to queue offline update:', e);
       }
     }
     return true;
@@ -1352,7 +1352,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
     
     if (!isOnline) {
       // Can't delete while offline - inform user
-      console.log('[QuotesStore] Cannot delete while offline');
+      if (__DEV__) console.log('[QuotesStore] Cannot delete while offline');
       return false;
     }
     
@@ -1369,7 +1369,7 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
       await offlineStorage.removeFromCache('quotes', id);
       return true;
     } catch (e) {
-      console.log('[QuotesStore] Network error during delete:', e);
+      if (__DEV__) console.log('[QuotesStore] Network error during delete:', e);
       set({ quotes });
       return false;
     }
@@ -1415,7 +1415,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
         });
         return;
       } catch (e) {
-        console.log('[InvoicesStore] Offline cache read failed:', e);
+        if (__DEV__) console.log('[InvoicesStore] Offline cache read failed:', e);
         set({ isLoading: false, error: null, isOfflineData: true });
         return;
       }
@@ -1437,7 +1437,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
           return;
         }
       } catch (e) {
-        console.log('[InvoicesStore] Cache fallback failed:', e);
+        if (__DEV__) console.log('[InvoicesStore] Cache fallback failed:', e);
       }
       set({ isLoading: false, error: null, isOfflineData: true });
       return;
@@ -1447,7 +1447,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
     try {
       await offlineStorage.cacheInvoices(response.data || []);
     } catch (e) {
-      console.log('[InvoicesStore] Failed to cache invoices:', e);
+      if (__DEV__) console.log('[InvoicesStore] Failed to cache invoices:', e);
     }
 
     set({ invoices: response.data || [], isLoading: false, isOfflineData: false });
@@ -1462,7 +1462,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
         const cached = await offlineStorage.getCachedInvoice(id);
         return cached as Invoice | null;
       } catch (e) {
-        console.log('[InvoicesStore] Offline cache read failed:', e);
+        if (__DEV__) console.log('[InvoicesStore] Offline cache read failed:', e);
         return null;
       }
     }
@@ -1499,7 +1499,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
         // API error - fall through to offline creation
       } catch (e) {
         // Network error - create offline
-        console.log('[InvoicesStore] Network error, creating invoice offline:', e);
+        if (__DEV__) console.log('[InvoicesStore] Network error, creating invoice offline:', e);
       }
       
       // Fall back to offline creation
@@ -1509,7 +1509,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
         set({ invoices: [...invoices, offlineInvoice as Invoice] });
         return offlineInvoice as Invoice;
       } catch (e) {
-        console.log('[InvoicesStore] Failed to create offline invoice:', e);
+        if (__DEV__) console.log('[InvoicesStore] Failed to create offline invoice:', e);
         return null;
       }
     } else {
@@ -1520,7 +1520,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
         set({ invoices: [...invoices, offlineInvoice as Invoice] });
         return offlineInvoice as Invoice;
       } catch (e) {
-        console.log('[InvoicesStore] Failed to create offline invoice:', e);
+        if (__DEV__) console.log('[InvoicesStore] Failed to create offline invoice:', e);
         return null;
       }
     }
@@ -1545,7 +1545,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
         }
       } catch (e) {
         // Network error - queue for offline sync
-        console.log('[InvoicesStore] Network error, queueing update:', e);
+        if (__DEV__) console.log('[InvoicesStore] Network error, queueing update:', e);
         await offlineStorage.updateInvoiceOffline(id, invoice);
       }
     } else {
@@ -1553,7 +1553,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
       try {
         await offlineStorage.updateInvoiceOffline(id, invoice);
       } catch (e) {
-        console.log('[InvoicesStore] Failed to queue offline update:', e);
+        if (__DEV__) console.log('[InvoicesStore] Failed to queue offline update:', e);
       }
     }
     return true;
@@ -1576,14 +1576,14 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
           await offlineStorage.cacheInvoices([response.data]);
         }
       } catch (e) {
-        console.log('[InvoicesStore] Network error, queueing status update:', e);
+        if (__DEV__) console.log('[InvoicesStore] Network error, queueing status update:', e);
         await offlineStorage.updateInvoiceOffline(id, { status });
       }
     } else {
       try {
         await offlineStorage.updateInvoiceOffline(id, { status });
       } catch (e) {
-        console.log('[InvoicesStore] Failed to queue offline update:', e);
+        if (__DEV__) console.log('[InvoicesStore] Failed to queue offline update:', e);
       }
     }
     return true;
@@ -1595,7 +1595,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
     
     if (!isOnline) {
       // Can't delete while offline - inform user
-      console.log('[InvoicesStore] Cannot delete while offline');
+      if (__DEV__) console.log('[InvoicesStore] Cannot delete while offline');
       return false;
     }
     
@@ -1612,7 +1612,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
       await offlineStorage.removeFromCache('invoices', id);
       return true;
     } catch (e) {
-      console.log('[InvoicesStore] Network error during delete:', e);
+      if (__DEV__) console.log('[InvoicesStore] Network error during delete:', e);
       set({ invoices });
       return false;
     }
@@ -1681,7 +1681,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
         quotes = cachedQuotes as Quote[];
         invoices = cachedInvoices as Invoice[];
       } catch (e) {
-        console.log('[DashboardStore] Offline cache read failed:', e);
+        if (__DEV__) console.log('[DashboardStore] Offline cache read failed:', e);
         set({ isLoading: false });
         return;
       }
@@ -1705,7 +1705,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
           quotes = cachedQuotes as Quote[];
           invoices = cachedInvoices as Invoice[];
         } catch (e) {
-          console.log('[DashboardStore] Cache fallback failed:', e);
+          if (__DEV__) console.log('[DashboardStore] Cache fallback failed:', e);
           set({ isLoading: false });
           return;
         }
@@ -1897,12 +1897,12 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
             
             // Update status if job is in a state that should transition to in_progress
             if (job && (job.status === 'scheduled' || job.status === 'pending')) {
-              console.log('[TimeTracking] Auto-updating job status to in_progress');
+              if (__DEV__) console.log('[TimeTracking] Auto-updating job status to in_progress');
               await jobsStore.updateJobStatus(jobId, 'in_progress');
             }
           } catch (e) {
             // Non-critical - don't fail the timer start if job update fails
-            console.log('[TimeTracking] Could not auto-update job status:', e);
+            if (__DEV__) console.log('[TimeTracking] Could not auto-update job status:', e);
           }
         }
         
@@ -2285,7 +2285,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
       
       set({ summary: response.data, isLoading: false, error: null });
     } catch (e) {
-      console.log('[ReportsStore] Error fetching summary:', e);
+      if (__DEV__) console.log('[ReportsStore] Error fetching summary:', e);
       set({ isLoading: false, error: 'Failed to load report summary' });
     }
   },
@@ -2311,7 +2311,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
       
       set({ revenueReport: response.data, isLoading: false, error: null });
     } catch (e) {
-      console.log('[ReportsStore] Error fetching revenue report:', e);
+      if (__DEV__) console.log('[ReportsStore] Error fetching revenue report:', e);
       set({ isLoading: false, error: 'Failed to load revenue report' });
     }
   },
@@ -2336,7 +2336,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
       
       set({ clientReport: response.data, isLoading: false, error: null });
     } catch (e) {
-      console.log('[ReportsStore] Error fetching client report:', e);
+      if (__DEV__) console.log('[ReportsStore] Error fetching client report:', e);
       set({ isLoading: false, error: 'Failed to load client report' });
     }
   },
@@ -2363,7 +2363,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
       
       set({ profitabilityReport: response.data, isLoading: false, error: null });
     } catch (e) {
-      console.log('[ReportsStore] Error fetching profitability report:', e);
+      if (__DEV__) console.log('[ReportsStore] Error fetching profitability report:', e);
       set({ isLoading: false, error: 'Failed to load profitability report' });
     }
   },
@@ -2383,7 +2383,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
       }
       set({ agedReceivablesReport: response.data || null, isLoading: false, error: null });
     } catch (e) {
-      console.log('[ReportsStore] Error fetching aged receivables:', e);
+      if (__DEV__) console.log('[ReportsStore] Error fetching aged receivables:', e);
       set({ isLoading: false, error: 'Failed to load aged receivables' });
     }
   },
@@ -2405,7 +2405,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
       }
       set({ payrollReport: response.data || null, isLoading: false, error: null });
     } catch (e) {
-      console.log('[ReportsStore] Error fetching payroll:', e);
+      if (__DEV__) console.log('[ReportsStore] Error fetching payroll:', e);
       set({ isLoading: false, error: 'Failed to load payroll report' });
     }
   },
@@ -2427,7 +2427,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
       }
       set({ utilisationReport: response.data || null, isLoading: false, error: null });
     } catch (e) {
-      console.log('[ReportsStore] Error fetching utilisation:', e);
+      if (__DEV__) console.log('[ReportsStore] Error fetching utilisation:', e);
       set({ isLoading: false, error: 'Failed to load utilisation report' });
     }
   },
@@ -2468,7 +2468,7 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
         error: null,
       });
     } catch (e) {
-      console.log('[ReportsStore] Error fetching all reports:', e);
+      if (__DEV__) console.log('[ReportsStore] Error fetching all reports:', e);
       set({ isLoading: false, error: 'Failed to load reports' });
     }
   },

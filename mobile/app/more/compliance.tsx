@@ -780,7 +780,7 @@ export default function ComplianceScreen() {
       }
       return null;
     } catch (err) {
-      console.log('Attachment upload failed:', err);
+      if (__DEV__) console.log('Attachment upload failed:', err);
       return null;
     }
   };

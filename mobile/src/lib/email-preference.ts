@@ -12,7 +12,7 @@ export async function getEmailPreference(): Promise<EmailAppPreference> {
     }
     return 'ask';
   } catch (error) {
-    console.warn('Failed to get email preference:', error);
+    if (__DEV__) console.warn('Failed to get email preference:', error);
     return 'ask';
   }
 }
@@ -21,7 +21,7 @@ export async function setEmailPreference(preference: EmailAppPreference): Promis
   try {
     await SecureStore.setItemAsync(EMAIL_PREFERENCE_KEY, preference);
   } catch (error) {
-    console.warn('Failed to save email preference:', error);
+    if (__DEV__) console.warn('Failed to save email preference:', error);
   }
 }
 
@@ -29,7 +29,7 @@ export async function clearEmailPreference(): Promise<void> {
   try {
     await SecureStore.deleteItemAsync(EMAIL_PREFERENCE_KEY);
   } catch (error) {
-    console.warn('Failed to clear email preference:', error);
+    if (__DEV__) console.warn('Failed to clear email preference:', error);
   }
 }
 

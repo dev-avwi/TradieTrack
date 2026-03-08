@@ -1346,7 +1346,7 @@ export default function TeamManagementScreen() {
         setSubscriptionStatus(statusRes.data);
       }
     } catch (error) {
-      console.log('Error fetching team:', error);
+      if (__DEV__) console.log('Error fetching team:', error);
     }
     setIsLoading(false);
   }, []);
@@ -1457,7 +1457,7 @@ export default function TeamManagementScreen() {
       }
       
     } catch (error) {
-      console.log('Error fetching member details:', error);
+      if (__DEV__) console.log('Error fetching member details:', error);
     }
     setIsLoadingDetail(false);
   }, []);
@@ -1713,7 +1713,7 @@ export default function TeamManagementScreen() {
       ).slice(0, 50); // Limit to 50 jobs
       setAvailableJobs(jobs);
     } catch (error) {
-      console.log('Error fetching jobs:', error);
+      if (__DEV__) console.log('Error fetching jobs:', error);
       setAvailableJobs([]);
     }
     setIsLoadingJobs(false);

@@ -17,14 +17,14 @@ const secureStorage: StateStorage = {
     try {
       await SecureStore.setItemAsync(name, value);
     } catch {
-      console.warn('Failed to save maps preference');
+      if (__DEV__) console.warn('Failed to save maps preference');
     }
   },
   removeItem: async (name: string) => {
     try {
       await SecureStore.deleteItemAsync(name);
     } catch {
-      console.warn('Failed to remove maps preference');
+      if (__DEV__) console.warn('Failed to remove maps preference');
     }
   },
 };

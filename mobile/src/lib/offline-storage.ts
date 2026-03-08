@@ -467,10 +467,10 @@ class OfflineStorageService {
       
       // Register background sync (non-blocking)
       this.registerBackgroundSync().catch(err => {
-        console.warn('[OfflineStorage] Background sync registration failed:', err);
+        if (__DEV__) console.warn('[OfflineStorage] Background sync registration failed:', err);
       });
       
-      console.log('[OfflineStorage] Initialized successfully');
+      if (__DEV__) console.log('[OfflineStorage] Initialized successfully');
     } catch (error) {
       console.error('[OfflineStorage] Initialization failed:', error);
       throw error;
@@ -490,7 +490,7 @@ class OfflineStorageService {
       const quoteNumberCol = (quotesInfo as any[]).find((c: any) => c.name === 'quote_number');
       
       if (quoteNumberCol && quoteNumberCol.notnull === 1) {
-        console.log('[OfflineStorage] Migrating quotes table to allow NULL quote_number...');
+        if (__DEV__) console.log('[OfflineStorage] Migrating quotes table to allow NULL quote_number...');
         await this.db.execAsync(`
           BEGIN TRANSACTION;
           
@@ -527,7 +527,7 @@ class OfflineStorageService {
           
           COMMIT;
         `);
-        console.log('[OfflineStorage] Quotes table migrated successfully');
+        if (__DEV__) console.log('[OfflineStorage] Quotes table migrated successfully');
       }
       
       // Check if we need to migrate invoices table
@@ -535,7 +535,7 @@ class OfflineStorageService {
       const invoiceNumberCol = (invoicesInfo as any[]).find((c: any) => c.name === 'invoice_number');
       
       if (invoiceNumberCol && invoiceNumberCol.notnull === 1) {
-        console.log('[OfflineStorage] Migrating invoices table to allow NULL invoice_number...');
+        if (__DEV__) console.log('[OfflineStorage] Migrating invoices table to allow NULL invoice_number...');
         await this.db.execAsync(`
           BEGIN TRANSACTION;
           
@@ -575,7 +575,7 @@ class OfflineStorageService {
           
           COMMIT;
         `);
-        console.log('[OfflineStorage] Invoices table migrated successfully');
+        if (__DEV__) console.log('[OfflineStorage] Invoices table migrated successfully');
       }
       
       // Check if we need to migrate attachments table (local_uri should be nullable)
@@ -583,7 +583,7 @@ class OfflineStorageService {
       const localUriCol = (attachmentsInfo as any[]).find((c: any) => c.name === 'local_uri');
       
       if (localUriCol && localUriCol.notnull === 1) {
-        console.log('[OfflineStorage] Migrating attachments table to allow NULL local_uri...');
+        if (__DEV__) console.log('[OfflineStorage] Migrating attachments table to allow NULL local_uri...');
         await this.db.execAsync(`
           BEGIN TRANSACTION;
           
@@ -616,7 +616,7 @@ class OfflineStorageService {
           
           COMMIT;
         `);
-        console.log('[OfflineStorage] Attachments table migrated successfully');
+        if (__DEV__) console.log('[OfflineStorage] Attachments table migrated successfully');
       }
       
       // Check if clients table is missing the "notes" column (added in a later version)
@@ -624,9 +624,9 @@ class OfflineStorageService {
       const clientsNotesCol = (clientsInfo as any[]).find((c: any) => c.name === 'notes');
       
       if (!clientsNotesCol) {
-        console.log('[OfflineStorage] Adding missing "notes" column to clients table...');
+        if (__DEV__) console.log('[OfflineStorage] Adding missing "notes" column to clients table...');
         await this.db.execAsync(`ALTER TABLE clients ADD COLUMN notes TEXT`);
-        console.log('[OfflineStorage] Clients table "notes" column added successfully');
+        if (__DEV__) console.log('[OfflineStorage] Clients table "notes" column added successfully');
       }
       
       // Check if jobs table is missing the "client_name" column (added in a later version)
@@ -634,9 +634,9 @@ class OfflineStorageService {
       const jobsClientNameCol = (jobsInfo as any[]).find((c: any) => c.name === 'client_name');
       
       if (!jobsClientNameCol) {
-        console.log('[OfflineStorage] Adding missing "client_name" column to jobs table...');
+        if (__DEV__) console.log('[OfflineStorage] Adding missing "client_name" column to jobs table...');
         await this.db.execAsync(`ALTER TABLE jobs ADD COLUMN client_name TEXT`);
-        console.log('[OfflineStorage] Jobs table "client_name" column added successfully');
+        if (__DEV__) console.log('[OfflineStorage] Jobs table "client_name" column added successfully');
       }
       
     } catch (error) {
@@ -653,7 +653,7 @@ class OfflineStorageService {
     
     // If we just came online, trigger sync
     if (wasOffline && isNowOnline) {
-      console.log('[OfflineStorage] Network restored, triggering sync...');
+      if (__DEV__) console.log('[OfflineStorage] Network restored, triggering sync...');
       await this.syncPendingChanges();
     }
   };
@@ -679,7 +679,7 @@ class OfflineStorageService {
     }
     
     await this.setMetadata('last_jobs_sync', now.toString());
-    console.log(`[OfflineStorage] Cached ${jobs.length} jobs`);
+    if (__DEV__) console.log(`[OfflineStorage] Cached ${jobs.length} jobs`);
   }
 
   async getCachedJobs(status?: string): Promise<CachedJob[]> {
@@ -840,7 +840,7 @@ class OfflineStorageService {
       });
       await this.updatePendingSyncCount();
       
-      console.log(`[OfflineStorage] Updated job ${jobId} status: ${previousStatus} -> ${newStatus}`);
+      if (__DEV__) console.log(`[OfflineStorage] Updated job ${jobId} status: ${previousStatus} -> ${newStatus}`);
     }
   }
 
@@ -863,7 +863,7 @@ class OfflineStorageService {
     }
     
     await this.setMetadata('last_clients_sync', now.toString());
-    console.log(`[OfflineStorage] Cached ${clients.length} clients`);
+    if (__DEV__) console.log(`[OfflineStorage] Cached ${clients.length} clients`);
   }
 
   async getCachedClients(): Promise<CachedClient[]> {
@@ -993,7 +993,7 @@ class OfflineStorageService {
     }
     
     await this.setMetadata('last_quotes_sync', now.toString());
-    console.log(`[OfflineStorage] Cached ${quotes.length} quotes`);
+    if (__DEV__) console.log(`[OfflineStorage] Cached ${quotes.length} quotes`);
   }
 
   async getCachedQuotes(): Promise<CachedQuote[]> {
@@ -1144,7 +1144,7 @@ class OfflineStorageService {
     });
     await this.updatePendingSyncCount();
     
-    console.log(`[OfflineStorage] Saved quote offline: ${id}`);
+    if (__DEV__) console.log(`[OfflineStorage] Saved quote offline: ${id}`);
     return { 
       id, 
       quoteNumber: '', 
@@ -1184,7 +1184,7 @@ class OfflineStorageService {
       );
     }
     
-    console.log(`[OfflineStorage] Cached ${lineItems.length} line items for quote ${quoteId}`);
+    if (__DEV__) console.log(`[OfflineStorage] Cached ${lineItems.length} line items for quote ${quoteId}`);
   }
 
   async getCachedQuoteLineItems(quoteId: string): Promise<CachedQuoteLineItem[]> {
@@ -1227,7 +1227,7 @@ class OfflineStorageService {
     }
     
     await this.setMetadata('last_invoices_sync', now.toString());
-    console.log(`[OfflineStorage] Cached ${invoices.length} invoices`);
+    if (__DEV__) console.log(`[OfflineStorage] Cached ${invoices.length} invoices`);
   }
 
   async getCachedInvoices(): Promise<CachedInvoice[]> {
@@ -1391,7 +1391,7 @@ class OfflineStorageService {
     });
     await this.updatePendingSyncCount();
     
-    console.log(`[OfflineStorage] Saved invoice offline: ${id}`);
+    if (__DEV__) console.log(`[OfflineStorage] Saved invoice offline: ${id}`);
     return { 
       id, 
       invoiceNumber: '', 
@@ -1434,7 +1434,7 @@ class OfflineStorageService {
       );
     }
     
-    console.log(`[OfflineStorage] Cached ${lineItems.length} line items for invoice ${invoiceId}`);
+    if (__DEV__) console.log(`[OfflineStorage] Cached ${lineItems.length} line items for invoice ${invoiceId}`);
   }
 
   async getCachedInvoiceLineItems(invoiceId: string): Promise<CachedInvoiceLineItem[]> {
@@ -1476,7 +1476,7 @@ class OfflineStorageService {
     }
     
     await this.setMetadata('last_time_entries_sync', now.toString());
-    console.log(`[OfflineStorage] Cached ${entries.length} time entries`);
+    if (__DEV__) console.log(`[OfflineStorage] Cached ${entries.length} time entries`);
   }
 
   async getCachedTimeEntries(): Promise<CachedTimeEntry[]> {
@@ -1556,7 +1556,7 @@ class OfflineStorageService {
     await this.addToSyncQueue('timeEntry', 'create', entry);
     await this.updatePendingSyncCount();
     
-    console.log(`[OfflineStorage] Started time entry offline: ${localId}`);
+    if (__DEV__) console.log(`[OfflineStorage] Started time entry offline: ${localId}`);
     return entry;
   }
 
@@ -1577,7 +1577,7 @@ class OfflineStorageService {
     ) as any;
     
     if (!row) {
-      console.warn(`[OfflineStorage] Time entry ${entryId} not found`);
+      if (__DEV__) console.warn(`[OfflineStorage] Time entry ${entryId} not found`);
       return null;
     }
     
@@ -1612,7 +1612,7 @@ class OfflineStorageService {
     });
     await this.updatePendingSyncCount();
     
-    console.log(`[OfflineStorage] Stopped time entry offline: ${entryId}`);
+    if (__DEV__) console.log(`[OfflineStorage] Stopped time entry offline: ${entryId}`);
     return entry;
   }
 
@@ -1638,7 +1638,7 @@ class OfflineStorageService {
     }
     
     await this.setMetadata('last_attachments_sync', now.toString());
-    console.log(`[OfflineStorage] Cached ${attachments.length} attachments`);
+    if (__DEV__) console.log(`[OfflineStorage] Cached ${attachments.length} attachments`);
   }
 
   async getCachedAttachments(filter?: { jobId?: string; quoteId?: string; invoiceId?: string; clientId?: string; type?: string }): Promise<CachedAttachment[]> {
@@ -1746,7 +1746,7 @@ class OfflineStorageService {
     await this.addToSyncQueue('attachment', 'create', { ...attachment, id, localId });
     await this.updatePendingSyncCount();
     
-    console.log(`[OfflineStorage] Saved attachment offline: ${attachment.filename}`);
+    if (__DEV__) console.log(`[OfflineStorage] Saved attachment offline: ${attachment.filename}`);
     return { ...attachment, id, cachedAt: now, pendingSync: true, syncAction: 'create', localId } as CachedAttachment;
   }
 
@@ -1794,7 +1794,7 @@ class OfflineStorageService {
     );
     
     await this.updatePendingSyncCount();
-    console.log(`[OfflineStorage] Queued on_my_way notification for job ${jobId}`);
+    if (__DEV__) console.log(`[OfflineStorage] Queued on_my_way notification for job ${jobId}`);
   }
 
   private async addToSyncQueue(
@@ -1828,7 +1828,7 @@ class OfflineStorageService {
       );
     }
     
-    console.log(`[OfflineStorage] Added to sync queue: ${type} ${action}`);
+    if (__DEV__) console.log(`[OfflineStorage] Added to sync queue: ${type} ${action}`);
   }
 
   /**
@@ -2046,11 +2046,11 @@ class OfflineStorageService {
       
       if (failedItems.length === 0) return;
       
-      console.log(`[OfflineStorage] Cleaning up ${failedItems.length} permanently failed sync items`);
+      if (__DEV__) console.log(`[OfflineStorage] Cleaning up ${failedItems.length} permanently failed sync items`);
       
       for (const item of failedItems) {
         // Log the failed item for debugging
-        console.warn(`[OfflineStorage] Permanently failed: ${item.type} ${item.action} - ${item.last_error}`);
+        if (__DEV__) console.warn(`[OfflineStorage] Permanently failed: ${item.type} ${item.action} - ${item.last_error}`);
         
         // Mark the cached item as having a sync failure
         const data = JSON.parse(item.data);
@@ -2094,11 +2094,11 @@ class OfflineStorageService {
   async syncPendingChanges(): Promise<{ success: boolean; synced: number; failed: number }> {
     if (!this.db) return { success: false, synced: 0, failed: 0 };
     if (this.syncInProgress) {
-      console.log('[OfflineStorage] Sync already in progress');
+      if (__DEV__) console.log('[OfflineStorage] Sync already in progress');
       return { success: false, synced: 0, failed: 0 };
     }
     if (!useOfflineStore.getState().isOnline) {
-      console.log('[OfflineStorage] Cannot sync - offline');
+      if (__DEV__) console.log('[OfflineStorage] Cannot sync - offline');
       return { success: false, synced: 0, failed: 0 };
     }
     
@@ -2113,13 +2113,13 @@ class OfflineStorageService {
       const items = await this.getPendingSyncItems();
       
       if (items.length === 0) {
-        console.log('[OfflineStorage] No pending changes to sync');
+        if (__DEV__) console.log('[OfflineStorage] No pending changes to sync');
         this.syncInProgress = false;
         useOfflineStore.getState().setSyncing(false);
         return { success: true, synced: 0, failed: 0 };
       }
       
-      console.log(`[OfflineStorage] Syncing ${items.length} pending changes...`);
+      if (__DEV__) console.log(`[OfflineStorage] Syncing ${items.length} pending changes...`);
       
       for (const item of items) {
         try {
@@ -2152,7 +2152,7 @@ class OfflineStorageService {
             
             // Log backoff info
             const nextDelay = this.getBackoffDelay(item.retryCount + 1);
-            console.log(`[OfflineStorage] Sync failed, retry #${item.retryCount + 1} in ${nextDelay / 1000}s`);
+            if (__DEV__) console.log(`[OfflineStorage] Sync failed, retry #${item.retryCount + 1} in ${nextDelay / 1000}s`);
           }
         } catch (error: any) {
           console.error(`[OfflineStorage] Failed to sync item ${item.id}:`, error);
@@ -2166,14 +2166,14 @@ class OfflineStorageService {
           
           // Log backoff info
           const nextDelay = this.getBackoffDelay(item.retryCount + 1);
-          console.log(`[OfflineStorage] Sync error, retry #${item.retryCount + 1} in ${nextDelay / 1000}s`);
+          if (__DEV__) console.log(`[OfflineStorage] Sync error, retry #${item.retryCount + 1} in ${nextDelay / 1000}s`);
         }
       }
       
       await this.updatePendingSyncCount();
       useOfflineStore.getState().setLastSyncTime(Date.now());
       
-      console.log(`[OfflineStorage] Sync complete: ${synced} synced, ${failed} failed`);
+      if (__DEV__) console.log(`[OfflineStorage] Sync complete: ${synced} synced, ${failed} failed`);
       return { success: failed === 0, synced, failed };
     } catch (error: any) {
       console.error('[OfflineStorage] Sync failed:', error);
@@ -2203,7 +2203,7 @@ class OfflineStorageService {
           console.error(`[OfflineStorage] API error for on_my_way:`, response.error);
           return false;
         }
-        console.log(`[OfflineStorage] Successfully synced on_my_way notification`);
+        if (__DEV__) console.log(`[OfflineStorage] Successfully synced on_my_way notification`);
         return true;
       } catch (error) {
         console.error(`[OfflineStorage] Failed to sync on_my_way:`, error);
@@ -2274,7 +2274,7 @@ class OfflineStorageService {
         return false;
       }
       
-      console.log(`[OfflineStorage] Successfully synced ${type} ${action}`);
+      if (__DEV__) console.log(`[OfflineStorage] Successfully synced ${type} ${action}`);
       return true;
     } catch (error) {
       console.error(`[OfflineStorage] Failed to sync ${type} ${action}:`, error);
@@ -2378,7 +2378,7 @@ class OfflineStorageService {
         }
         
         // processSyncQueue will handle sync_queue cleanup
-        console.log('[OfflineStorage] Successfully uploaded attachment:', data.filename);
+        if (__DEV__) console.log('[OfflineStorage] Successfully uploaded attachment:', data.filename);
         return true;
       }
       
@@ -2433,7 +2433,7 @@ class OfflineStorageService {
     );
     
     if ((result as any).changes > 0) {
-      console.log(`[OfflineStorage] Updated ${type} ID from ${localId} to ${serverId}`);
+      if (__DEV__) console.log(`[OfflineStorage] Updated ${type} ID from ${localId} to ${serverId}`);
       return true;
     }
     
@@ -2444,7 +2444,7 @@ class OfflineStorageService {
     );
     
     if ((fallbackResult as any).changes > 0) {
-      console.log(`[OfflineStorage] Updated ${type} ID from ${localId} to ${serverId} (fallback)`);
+      if (__DEV__) console.log(`[OfflineStorage] Updated ${type} ID from ${localId} to ${serverId} (fallback)`);
       return true;
     }
     
@@ -2497,7 +2497,7 @@ class OfflineStorageService {
     await this.updatePendingSyncCount();
     useOfflineStore.getState().setLastSyncTime(null);
     
-    console.log('[OfflineStorage] Cache cleared');
+    if (__DEV__) console.log('[OfflineStorage] Cache cleared');
   }
 
   // ============ DELTA SYNC ============
@@ -2550,7 +2550,7 @@ class OfflineStorageService {
       }
       
       await this.setDeltaSyncTimestamp('jobs', Date.now());
-      console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} jobs`);
+      if (__DEV__) console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} jobs`);
     } catch (error) {
       console.error('[OfflineStorage] Delta sync jobs failed:', error);
     }
@@ -2576,7 +2576,7 @@ class OfflineStorageService {
       }
       
       await this.setDeltaSyncTimestamp('clients', Date.now());
-      console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} clients`);
+      if (__DEV__) console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} clients`);
     } catch (error) {
       console.error('[OfflineStorage] Delta sync clients failed:', error);
     }
@@ -2602,7 +2602,7 @@ class OfflineStorageService {
       }
       
       await this.setDeltaSyncTimestamp('quotes', Date.now());
-      console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} quotes`);
+      if (__DEV__) console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} quotes`);
     } catch (error) {
       console.error('[OfflineStorage] Delta sync quotes failed:', error);
     }
@@ -2628,7 +2628,7 @@ class OfflineStorageService {
       }
       
       await this.setDeltaSyncTimestamp('invoices', Date.now());
-      console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} invoices`);
+      if (__DEV__) console.log(`[OfflineStorage] Delta synced ${response.data?.length || 0} invoices`);
     } catch (error) {
       console.error('[OfflineStorage] Delta sync invoices failed:', error);
     }
@@ -2667,7 +2667,7 @@ class OfflineStorageService {
     // If this is a pending create with a local_id, the server returned the same record
     // This means our create was successful - update local ID mapping instead of conflict
     if (localRow.sync_action === 'create' && localRow.local_id) {
-      console.log(`[OfflineStorage] Pending create matched server record, updating ID mapping`);
+      if (__DEV__) console.log(`[OfflineStorage] Pending create matched server record, updating ID mapping`);
       await this.updateLocalIdWithServerId(entityType, localRow.local_id, entityId);
       return false; // Not a conflict
     }
@@ -2697,7 +2697,7 @@ class OfflineStorageService {
     );
     
     await this.updateUnresolvedConflictCount();
-    console.log(`[OfflineStorage] Saved conflict for ${entityType} ${entityId}`);
+    if (__DEV__) console.log(`[OfflineStorage] Saved conflict for ${entityType} ${entityId}`);
   }
 
   /**
@@ -2769,11 +2769,11 @@ class OfflineStorageService {
       );
     } else if (resolution === 'kept_local') {
       // Keep local and retry sync
-      console.log(`[OfflineStorage] Keeping local version for ${entityType} ${entityId}`);
+      if (__DEV__) console.log(`[OfflineStorage] Keeping local version for ${entityType} ${entityId}`);
     } else if (resolution === 'merged' && mergedData) {
       // Apply merged data
       // This would need entity-specific logic to update the local cache
-      console.log(`[OfflineStorage] Applied merged data for ${entityType} ${entityId}`);
+      if (__DEV__) console.log(`[OfflineStorage] Applied merged data for ${entityType} ${entityId}`);
     }
     
     // Mark conflict as resolved
@@ -2813,15 +2813,15 @@ class OfflineStorageService {
       });
       
       useOfflineStore.getState().setBackgroundSyncEnabled(true);
-      console.log('[OfflineStorage] Background sync registered');
+      if (__DEV__) console.log('[OfflineStorage] Background sync registered');
       return true;
     } catch (error: any) {
       // Background fetch requires native configuration (UIBackgroundModes in Info.plist)
       // This is expected to fail in Expo Go/development - only works in standalone builds
       if (error?.message?.includes('Background Fetch has not been configured')) {
-        console.log('[OfflineStorage] Background sync not available (requires standalone build)');
+        if (__DEV__) console.log('[OfflineStorage] Background sync not available (requires standalone build)');
       } else {
-        console.log('[OfflineStorage] Background sync registration skipped:', error?.message || error);
+        if (__DEV__) console.log('[OfflineStorage] Background sync registration skipped:', error?.message || error);
       }
       return false;
     }
@@ -2834,7 +2834,7 @@ class OfflineStorageService {
     try {
       await BackgroundFetch.unregisterTaskAsync(BACKGROUND_SYNC_TASK);
       useOfflineStore.getState().setBackgroundSyncEnabled(false);
-      console.log('[OfflineStorage] Background sync unregistered');
+      if (__DEV__) console.log('[OfflineStorage] Background sync unregistered');
     } catch (error) {
       console.error('[OfflineStorage] Failed to unregister background sync:', error);
     }
@@ -2845,10 +2845,10 @@ class OfflineStorageService {
    * Returns true if sync completed successfully, false if skipped/failed
    */
   async executeBackgroundSync(): Promise<boolean> {
-    console.log('[OfflineStorage] Executing background sync...');
+    if (__DEV__) console.log('[OfflineStorage] Executing background sync...');
     
     if (!useOfflineStore.getState().isOnline) {
-      console.log('[OfflineStorage] Background sync skipped - offline');
+      if (__DEV__) console.log('[OfflineStorage] Background sync skipped - offline');
       return false; // NoData - offline
     }
     
@@ -2865,7 +2865,7 @@ class OfflineStorageService {
       ]);
       
       useOfflineStore.getState().setLastSyncTime(Date.now());
-      console.log('[OfflineStorage] Background sync complete');
+      if (__DEV__) console.log('[OfflineStorage] Background sync complete');
       return true; // NewData
     } catch (error) {
       console.error('[OfflineStorage] Background sync failed:', error);
@@ -2935,7 +2935,7 @@ class OfflineStorageService {
           }
         }
         
-        console.log(`[OfflineStorage] Downloaded attachment: ${attachment.filename}`);
+        if (__DEV__) console.log(`[OfflineStorage] Downloaded attachment: ${attachment.filename}`);
         return localPath;
       }
       
@@ -2985,7 +2985,7 @@ class OfflineStorageService {
       [jobId]
     ) as any[];
     
-    console.log(`[OfflineStorage] Caching ${attachments.length} attachments for job ${jobId}`);
+    if (__DEV__) console.log(`[OfflineStorage] Caching ${attachments.length} attachments for job ${jobId}`);
     
     for (const row of attachments) {
       const attachment: CachedAttachment = {
@@ -3019,7 +3019,7 @@ class OfflineStorageService {
       const dirInfo = await FileSystem.getInfoAsync(this.ATTACHMENTS_DIR);
       if (dirInfo.exists) {
         await FileSystem.deleteAsync(this.ATTACHMENTS_DIR, { idempotent: true });
-        console.log('[OfflineStorage] Cleared attachment cache');
+        if (__DEV__) console.log('[OfflineStorage] Cleared attachment cache');
       }
       
       // Clear local_uri from database
@@ -3061,7 +3061,7 @@ class OfflineStorageService {
    */
   async fullSync(): Promise<void> {
     if (!useOfflineStore.getState().isOnline) {
-      console.log('[OfflineStorage] Cannot full sync - offline');
+      if (__DEV__) console.log('[OfflineStorage] Cannot full sync - offline');
       return;
     }
     
@@ -3085,7 +3085,7 @@ class OfflineStorageService {
       if (invoicesRes.data) await this.cacheInvoices(invoicesRes.data);
       
       useOfflineStore.getState().setLastSyncTime(Date.now());
-      console.log('[OfflineStorage] Full sync complete');
+      if (__DEV__) console.log('[OfflineStorage] Full sync complete');
     } catch (error) {
       console.error('[OfflineStorage] Full sync failed:', error);
     } finally {
@@ -3104,7 +3104,7 @@ class OfflineStorageService {
         `DELETE FROM ${entityType} WHERE id = ?`,
         [id]
       );
-      console.log(`[OfflineStorage] Removed ${entityType} ${id} from cache`);
+      if (__DEV__) console.log(`[OfflineStorage] Removed ${entityType} ${id} from cache`);
     } catch (error) {
       console.error(`[OfflineStorage] Failed to remove ${entityType} from cache:`, error);
     }
@@ -3142,7 +3142,7 @@ class OfflineStorageService {
           Date.now()
         ]
       );
-      console.log('[OfflineStorage] Cached auth data for offline access');
+      if (__DEV__) console.log('[OfflineStorage] Cached auth data for offline access');
     } catch (error) {
       console.error('[OfflineStorage] Failed to cache auth data:', error);
     }
@@ -3171,7 +3171,7 @@ class OfflineStorageService {
       // Check if cache is too old (7 days)
       const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
       if (Date.now() - result.cached_at > sevenDaysMs) {
-        console.log('[OfflineStorage] Cached auth data expired (>7 days old)');
+        if (__DEV__) console.log('[OfflineStorage] Cached auth data expired (>7 days old)');
         return null;
       }
       
@@ -3195,7 +3195,7 @@ class OfflineStorageService {
     
     try {
       await this.db.runAsync('DELETE FROM cached_auth');
-      console.log('[OfflineStorage] Cleared cached auth data');
+      if (__DEV__) console.log('[OfflineStorage] Cleared cached auth data');
     } catch (error) {
       console.error('[OfflineStorage] Failed to clear cached auth data:', error);
     }
@@ -3232,7 +3232,7 @@ class OfflineStorageService {
          VALUES (?, ?, ?, ?)`,
         [key, JSON.stringify(data), now, ttl]
       );
-      console.log(`[OfflineStorage] Cached subscription data for key: ${key}`);
+      if (__DEV__) console.log(`[OfflineStorage] Cached subscription data for key: ${key}`);
     } catch (error) {
       console.error('[OfflineStorage] Failed to cache subscription data:', error);
     }
@@ -3258,7 +3258,7 @@ class OfflineStorageService {
       const expiresAt = result.cached_at + result.ttl_ms;
       
       if (now > expiresAt) {
-        console.log(`[OfflineStorage] Subscription cache expired for key: ${key}`);
+        if (__DEV__) console.log(`[OfflineStorage] Subscription cache expired for key: ${key}`);
         return null;
       }
       
@@ -3305,10 +3305,10 @@ class OfflineStorageService {
     try {
       if (key) {
         await this.db.runAsync('DELETE FROM subscription_cache WHERE key = ?', [key]);
-        console.log(`[OfflineStorage] Invalidated subscription cache for key: ${key}`);
+        if (__DEV__) console.log(`[OfflineStorage] Invalidated subscription cache for key: ${key}`);
       } else {
         await this.db.runAsync('DELETE FROM subscription_cache');
-        console.log('[OfflineStorage] Invalidated all subscription caches');
+        if (__DEV__) console.log('[OfflineStorage] Invalidated all subscription caches');
       }
     } catch (error) {
       console.error('[OfflineStorage] Failed to invalidate subscription cache:', error);
@@ -3323,7 +3323,7 @@ export default offlineStorage;
 // Define the background sync task handler
 TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
   try {
-    console.log('[BackgroundSync] Task started');
+    if (__DEV__) console.log('[BackgroundSync] Task started');
     const hasNewData = await offlineStorage.executeBackgroundSync();
     if (hasNewData) {
       return BackgroundFetch.BackgroundFetchResult.NewData;

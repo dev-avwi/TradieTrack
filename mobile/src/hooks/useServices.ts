@@ -30,7 +30,7 @@ import api from '../lib/api';
 // Stripe Terminal SDK temporarily disabled pending Apple production approval
 // The SDK package was removed to allow App Store builds
 let useStripeTerminalSDK: any = null;
-console.log('[useStripeTerminal] SDK removed - pending Apple Tap to Pay production approval');
+if (__DEV__) console.log('[useStripeTerminal] SDK removed - pending Apple Tap to Pay production approval');
 
 /**
  * Hook for Stripe Terminal (Tap to Pay)

@@ -233,7 +233,7 @@ export function LogoPicker({ value, onChange, label }: LogoPickerProps) {
     setUploadProgress(0);
 
     try {
-      const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://jobrunner.com';
+      const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://jobrunner.com.au';
       
       const filename = `logo-${Date.now()}.${asset.uri.split('.').pop() || 'jpg'}`;
       const mimeType = asset.mimeType || 'image/jpeg';

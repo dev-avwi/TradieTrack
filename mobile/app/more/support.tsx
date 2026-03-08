@@ -607,7 +607,7 @@ export default function SupportScreen() {
   };
 
   const handleOpenDocs = () => {
-    Linking.openURL('https://jobrunner.com/docs');
+    Linking.openURL('https://jobrunner.com.au/docs');
   };
 
   return (

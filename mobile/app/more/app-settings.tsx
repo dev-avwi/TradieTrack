@@ -475,7 +475,7 @@ export default function AppSettingsScreen() {
         }
       }
     } catch (error) {
-      console.log('Failed to load colors:', error);
+      if (__DEV__) console.log('Failed to load colors:', error);
     } finally {
       setIsLoadingColors(false);
     }

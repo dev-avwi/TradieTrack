@@ -343,7 +343,7 @@ export default function DirectMessagesScreen() {
       setConversations(conversationsRes.data || []);
       setTeamMembers(teamRes.data || []);
     } catch (error) {
-      console.log('Failed to fetch data:', error);
+      if (__DEV__) console.log('Failed to fetch data:', error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -570,7 +570,7 @@ function ChatView({
       const response = await api.get(`/api/direct-messages/${selectedUser.id}`);
       setMessages(response.data || []);
     } catch (error) {
-      console.log('Failed to fetch messages:', error);
+      if (__DEV__) console.log('Failed to fetch messages:', error);
     } finally {
       setIsLoading(false);
     }

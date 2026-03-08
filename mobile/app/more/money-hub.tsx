@@ -202,7 +202,7 @@ export default function MoneyHubScreen() {
         nextAppState === 'active' && 
         wasConnecting.current
       ) {
-        console.log('App has come to the foreground after Stripe connect - refreshing status');
+        if (__DEV__) console.log('App has come to the foreground after Stripe connect - refreshing status');
         setStripeLoading(true);
         fetchStripeData();
         wasConnecting.current = false;
@@ -235,7 +235,7 @@ export default function MoneyHubScreen() {
           setStripeLoading(true);
           fetchStripeData();
         } catch (browserError) {
-          console.log('WebBrowser failed, trying Linking:', browserError);
+          if (__DEV__) console.log('WebBrowser failed, trying Linking:', browserError);
           const canOpen = await Linking.canOpenURL(url);
           if (canOpen) {
             await Linking.openURL(url);
@@ -277,7 +277,7 @@ export default function MoneyHubScreen() {
             fetchStripeData();
           }
         } catch (browserError) {
-          console.log('WebBrowser failed, trying Linking:', browserError);
+          if (__DEV__) console.log('WebBrowser failed, trying Linking:', browserError);
           const canOpen = await Linking.canOpenURL(url);
           if (canOpen) {
             await Linking.openURL(url);

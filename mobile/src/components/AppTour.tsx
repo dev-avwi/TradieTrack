@@ -257,7 +257,7 @@ export default function AppTour({ visible, onClose }: AppTourProps) {
     try {
       await AsyncStorage.setItem(STORAGE_KEY, new Date().toISOString());
     } catch (e) {
-      console.warn('Failed to save tour completion:', e);
+      if (__DEV__) console.warn('Failed to save tour completion:', e);
     }
     router.push('/(tabs)');
     onClose();
@@ -267,7 +267,7 @@ export default function AppTour({ visible, onClose }: AppTourProps) {
     try {
       await AsyncStorage.setItem(STORAGE_KEY + '-skipped', 'true');
     } catch (e) {
-      console.warn('Failed to save tour skip:', e);
+      if (__DEV__) console.warn('Failed to save tour skip:', e);
     }
     onClose();
   };
@@ -366,6 +366,6 @@ export async function resetTour(): Promise<void> {
     await AsyncStorage.removeItem(STORAGE_KEY);
     await AsyncStorage.removeItem(STORAGE_KEY + '-skipped');
   } catch (e) {
-    console.warn('Failed to reset tour:', e);
+    if (__DEV__) console.warn('Failed to reset tour:', e);
   }
 }

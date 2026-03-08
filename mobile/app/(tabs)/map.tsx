@@ -725,18 +725,18 @@ export default function MapScreen() {
   const fetchMapJobs = useCallback(async () => {
     try {
       setMapJobsLoading(true);
-      console.log('[Map] Fetching geocoded jobs from /api/map/jobs...');
+      if (__DEV__) console.log('[Map] Fetching geocoded jobs from /api/map/jobs...');
       const response = await api.get<any[]>('/api/map/jobs');
       
       if (response.error) {
-        console.log('[Map] Map jobs API error:', response.error);
+        if (__DEV__) console.log('[Map] Map jobs API error:', response.error);
         setMapJobs([]);
         return false;
       }
       
       const data = response.data;
       if (!Array.isArray(data)) {
-        console.log('[Map] Map jobs response is not an array:', data);
+        if (__DEV__) console.log('[Map] Map jobs response is not an array:', data);
         setMapJobs([]);
         return false;
       }
@@ -753,11 +753,11 @@ export default function MapScreen() {
         assignedTo: job.assignedTo,
       }));
       
-      console.log(`[Map] Loaded ${transformedJobs.length} geocoded jobs`);
+      if (__DEV__) console.log(`[Map] Loaded ${transformedJobs.length} geocoded jobs`);
       setMapJobs(transformedJobs);
       return true;
     } catch (error) {
-      console.log('[Map] Failed to fetch map jobs:', error);
+      if (__DEV__) console.log('[Map] Failed to fetch map jobs:', error);
       setMapJobs([]);
       return false;
     } finally {
@@ -772,19 +772,19 @@ export default function MapScreen() {
 
   const fetchTeamLocations = useCallback(async () => {
     try {
-      console.log('[Map] Fetching team locations...');
+      if (__DEV__) console.log('[Map] Fetching team locations...');
       const response = await api.get<any[]>('/api/team/locations');
       // API returns { data, error } - not a raw fetch response
       if (response.error) {
-        console.log('[Map] Team locations API error:', response.error);
+        if (__DEV__) console.log('[Map] Team locations API error:', response.error);
         setTeamMembers([]);
         return;
       }
       const data = response.data;
-      console.log('[Map] Team locations response:', Array.isArray(data) ? `${data.length} members` : 'not an array');
+      if (__DEV__) console.log('[Map] Team locations response:', Array.isArray(data) ? `${data.length} members` : 'not an array');
       // Defensive check for array response
       if (!Array.isArray(data)) {
-        console.log('[Map] Team locations response is not an array:', data);
+        if (__DEV__) console.log('[Map] Team locations response is not an array:', data);
         setTeamMembers([]);
         return;
       }
@@ -832,12 +832,12 @@ export default function MapScreen() {
             }
           } else if (lastKnown) {
             // API returned invalid coords - use last known good position
-            console.log(`[Map] Using cached position for ${m.name} (API returned invalid coords)`);
+            if (__DEV__) console.log(`[Map] Using cached position for ${m.name} (API returned invalid coords)`);
             useLat = lastKnown.lat;
             useLng = lastKnown.lng;
           } else {
             // No valid coords and no cache - skip this member
-            console.log(`[Map] Skipping ${m.name} - no valid coordinates available`);
+            if (__DEV__) console.log(`[Map] Skipping ${m.name} - no valid coordinates available`);
             return null;
           }
           
@@ -878,7 +878,7 @@ export default function MapScreen() {
       
       setTeamMembers(uniqueMembers);
     } catch (error) {
-      console.log('Failed to fetch team locations:', error);
+      if (__DEV__) console.log('Failed to fetch team locations:', error);
     }
   }, []);
 
@@ -888,7 +888,7 @@ export default function MapScreen() {
       const response = await api.get<GeofenceAlert[]>('/api/map/geofence-alerts');
       // API returns { data, error } - not a raw fetch response
       if (response.error) {
-        console.log('Geofence alerts API error:', response.error);
+        if (__DEV__) console.log('Geofence alerts API error:', response.error);
         setGeofenceAlerts([]);
         return;
       }
@@ -898,7 +898,7 @@ export default function MapScreen() {
         setGeofenceAlerts([]);
       }
     } catch (error) {
-      console.log('Failed to fetch geofence alerts:', error);
+      if (__DEV__) console.log('Failed to fetch geofence alerts:', error);
       setGeofenceAlerts([]);
     }
   }, [canViewTeamMode]);
@@ -910,7 +910,7 @@ export default function MapScreen() {
         a.id === alertId ? { ...a, isRead: true } : a
       ));
     } catch (error) {
-      console.log('Failed to mark alert read:', error);
+      if (__DEV__) console.log('Failed to mark alert read:', error);
     }
   };
 
@@ -929,7 +929,7 @@ export default function MapScreen() {
         });
       }
     } catch (error) {
-      console.log('Location error:', error);
+      if (__DEV__) console.log('Location error:', error);
     }
   };
 
@@ -1032,16 +1032,16 @@ export default function MapScreen() {
           setTeamMarkersReady(true);
         }, 150);
       }).catch(err => {
-        console.log('[Map] Initial location fetch failed:', err);
+        if (__DEV__) console.log('[Map] Initial location fetch failed:', err);
       });
       
       // Set up frequent polling for live tracking (every 10 seconds)
       locationPollRef.current = setInterval(() => {
         fetchTeamLocations().then(() => {
           setLastLocationUpdate(new Date());
-          console.log('[Map] Live location update received');
+          if (__DEV__) console.log('[Map] Live location update received');
         }).catch(err => {
-          console.log('[Map] Live location poll failed:', err);
+          if (__DEV__) console.log('[Map] Live location poll failed:', err);
         });
       }, LOCATION_POLL_INTERVAL);
     }
@@ -1067,19 +1067,19 @@ export default function MapScreen() {
       const wsHost = API_URL.replace(/^https?:\/\//, '');
       const wsUrl = `${wsProtocol}//${wsHost}/ws/location?businessId=${user?.id}&isTradie=false`;
       
-      console.log('[Map] WebSocket connecting to:', wsUrl.replace(/businessId=[^&]*/, 'businessId=***'));
+      if (__DEV__) console.log('[Map] WebSocket connecting to:', wsUrl.replace(/businessId=[^&]*/, 'businessId=***'));
       
       ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
-        console.log('[Map] WebSocket connected for real-time location updates');
+        if (__DEV__) console.log('[Map] WebSocket connected for real-time location updates');
       };
       
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'team_location_update') {
-            console.log('[Map] Real-time location update received:', data.userId);
+            if (__DEV__) console.log('[Map] Real-time location update received:', data.userId);
             // Refresh team locations on any update
             fetchTeamLocations();
           }
@@ -1089,14 +1089,14 @@ export default function MapScreen() {
       };
       
       ws.onerror = () => {
-        console.warn('[Map] WebSocket unavailable — using polling for location updates');
+        if (__DEV__) console.warn('[Map] WebSocket unavailable — using polling for location updates');
       };
       
       ws.onclose = () => {
-        console.log('[Map] WebSocket closed');
+        if (__DEV__) console.log('[Map] WebSocket closed');
       };
     } catch (error) {
-      console.warn('[Map] WebSocket connection failed (using polling):', error instanceof Error ? error.message : String(error));
+      if (__DEV__) console.warn('[Map] WebSocket connection failed (using polling):', error instanceof Error ? error.message : String(error));
     }
     
     return () => {
@@ -1640,7 +1640,7 @@ export default function MapScreen() {
           const coordLat = Number(member.lastLocation.latitude);
           const coordLng = Number(member.lastLocation.longitude);
           if (!Number.isFinite(coordLat) || !Number.isFinite(coordLng)) {
-            console.log(`[Map] Skipping ${member.user?.firstName} - non-finite coords:`, coordLat, coordLng);
+            if (__DEV__) console.log(`[Map] Skipping ${member.user?.firstName} - non-finite coords:`, coordLat, coordLng);
             return null;
           }
           
@@ -2065,7 +2065,7 @@ export default function MapScreen() {
           <TouchableOpacity 
             style={[styles.cancelButton, { minWidth: 70, alignItems: 'center' }]}
             onPress={() => {
-              console.log('[Map] Cancel button pressed - clearing selection');
+              if (__DEV__) console.log('[Map] Cancel button pressed - clearing selection');
               setSelectedWorker(null);
             }}
             activeOpacity={0.6}

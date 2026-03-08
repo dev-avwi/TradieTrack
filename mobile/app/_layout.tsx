@@ -109,7 +109,7 @@ function DeepLinkHandler() {
         }
       }
     } catch (error) {
-      console.log('[DeepLink] Error handling deep link:', error);
+      if (__DEV__) console.log('[DeepLink] Error handling deep link:', error);
     }
   };
   
@@ -139,14 +139,14 @@ function ServicesInitializer() {
         
         // Handle notification received while app is open
         notificationService.onReceived((notification) => {
-          console.log('[App] Notification received:', notification);
+          if (__DEV__) console.log('[App] Notification received:', notification);
           // Refresh in-app notifications when push arrives
           fetchNotifications();
         });
         
         // Handle notification tapped - navigate to relevant screen
         notificationService.onTapped((notification, action) => {
-          console.log('[App] Notification tapped:', notification);
+          if (__DEV__) console.log('[App] Notification tapped:', notification);
           
           // Navigate based on notification type
           const { type, data } = notification;
@@ -230,13 +230,13 @@ function ServicesInitializer() {
           }
         });
       } catch (error) {
-        console.log('[App] Notifications not available (requires device)');
+        if (__DEV__) console.log('[App] Notifications not available (requires device)');
       }
 
       try {
         await offline.initialize();
       } catch (error) {
-        console.log('[App] Offline storage init failed:', error);
+        if (__DEV__) console.log('[App] Offline storage init failed:', error);
       }
 
       try {
@@ -250,7 +250,7 @@ function ServicesInitializer() {
         if (!geofenceListenerRef.current) {
         geofenceListenerRef.current = true;
         location.onGeofenceEvent(async (event) => {
-          console.log('[App] Geofence event:', event);
+          if (__DEV__) console.log('[App] Geofence event:', event);
           const jobId = event.identifier.replace('job_', '');
           
           try {
@@ -293,7 +293,7 @@ function ServicesInitializer() {
               action: event.action,
             });
           } catch (err) {
-            console.log('[App] Geofence event handling error:', err);
+            if (__DEV__) console.log('[App] Geofence event handling error:', err);
             // Still show a basic notification even if server call fails
             const action = event.action === 'enter' ? 'Arrived on site' : 'Left site';
             await notificationService.scheduleLocalNotification(action, 'Tap to view job details.', {
@@ -304,7 +304,7 @@ function ServicesInitializer() {
         });
         } // end geofence listener guard
       } catch (error) {
-        console.log('[App] Location init failed:', error);
+        if (__DEV__) console.log('[App] Location init failed:', error);
       }
 
       // Smart Running Late Detection — check every 5 minutes
@@ -335,7 +335,7 @@ function ServicesInitializer() {
             );
           }
         } catch (err) {
-          console.log('[App] Running late check error:', err);
+          if (__DEV__) console.log('[App] Running late check error:', err);
         }
       }, 5 * 60 * 1000);
 
@@ -343,11 +343,11 @@ function ServicesInitializer() {
       // Only initialize if Tap to Pay is available on this device
       if (isTapToPayAvailable() && !terminalInitializedRef.current) {
         try {
-          console.log('[App] Warming up Stripe Terminal for faster checkout...');
+          if (__DEV__) console.log('[App] Warming up Stripe Terminal for faster checkout...');
           await terminal.initialize();
           terminalInitializedRef.current = true;
         } catch (error) {
-          console.log('[App] Terminal warm-up failed (non-critical):', error);
+          if (__DEV__) console.log('[App] Terminal warm-up failed (non-critical):', error);
         }
       }
     }
@@ -362,11 +362,11 @@ function ServicesInitializer() {
         nextAppState === 'active' &&
         isTapToPayAvailable()
       ) {
-        console.log('[App] App came to foreground - warming Terminal...');
+        if (__DEV__) console.log('[App] App came to foreground - warming Terminal...');
         try {
           await terminal.initialize();
         } catch (error) {
-          console.log('[App] Terminal foreground warm-up failed (non-critical):', error);
+          if (__DEV__) console.log('[App] Terminal foreground warm-up failed (non-critical):', error);
         }
       }
       appState.current = nextAppState;
@@ -650,7 +650,7 @@ function RootLayoutContent() {
             useClientsStore.getState().fetchClients(),
           ]);
         } catch (error) {
-          console.log('[App] Data preload error (non-fatal):', error);
+          if (__DEV__) console.log('[App] Data preload error (non-fatal):', error);
         } finally {
           setAppReady(true);
         }

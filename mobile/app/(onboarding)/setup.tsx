@@ -212,7 +212,7 @@ export default function OnboardingSetupScreen() {
         await api.post('/api/onboarding/seed-demo-data', {});
         setDemoDataSeeded(true);
       } catch (error) {
-        console.log('Demo data seeding skipped:', error);
+        if (__DEV__) console.log('Demo data seeding skipped:', error);
         // Don't block onboarding if demo data fails
       }
       

@@ -76,7 +76,7 @@ export const useLocationStore = create<LocationStore>()(
             }
           }
         } catch (error: any) {
-          console.log('[LocationStore] Initialization:', error?.message || 'Skipped');
+          if (__DEV__) console.log('[LocationStore] Initialization:', error?.message || 'Skipped');
           set({ errorMessage: error?.message || 'Location tracking unavailable' });
         }
       },

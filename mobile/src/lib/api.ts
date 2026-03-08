@@ -22,14 +22,14 @@ const getApiBaseUrl = (): string => {
   }
   
   // Production builds use the production domain
-  return 'https://jobrunner.com';
+  return 'https://jobrunner.com.au';
 };
 
 const API_BASE_URL = getApiBaseUrl();
 
 // Log mode only in development (don't expose URLs in production logs)
 if (__DEV__) {
-  console.log(`[API] Development mode, connecting to dev server`);
+  if (__DEV__) console.log(`[API] Development mode, connecting to dev server`);
 }
 
 export const API_URL = API_BASE_URL;

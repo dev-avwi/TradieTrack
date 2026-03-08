@@ -215,14 +215,14 @@ const asyncStorage: StateStorage = {
     try {
       await AsyncStorage.setItem(name, value);
     } catch {
-      console.warn('Failed to save theme preference');
+      if (__DEV__) console.warn('Failed to save theme preference');
     }
   },
   removeItem: async (name: string) => {
     try {
       await AsyncStorage.removeItem(name);
     } catch {
-      console.warn('Failed to remove theme preference');
+      if (__DEV__) console.warn('Failed to remove theme preference');
     }
   },
 };

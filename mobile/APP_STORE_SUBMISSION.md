@@ -76,15 +76,15 @@ Welcome to JobRunner 1.0! This is our first release, packed with everything you 
 
 ## Support URL
 
-https://jobrunner.com/support
+https://jobrunner.com.au/support
 
 ## Marketing URL
 
-https://jobrunner.com
+https://jobrunner.com.au
 
 ## Privacy Policy URL
 
-https://jobrunner.com/privacy
+https://jobrunner.com.au/privacy
 
 ---
 

@@ -184,7 +184,7 @@ export default function ReceiptDetailScreen() {
     const fileUri = `${FileSystem.cacheDirectory}Receipt-${receipt.receiptNumber || id}_${Date.now()}.pdf`;
     const pdfUrl = `${API_URL}/api/receipts/${id}/pdf`;
     
-    console.log('[PDF] Downloading from:', pdfUrl);
+    if (__DEV__) console.log('[PDF] Downloading from:', pdfUrl);
     
     // Use createDownloadResumable for cancellation support
     const downloadResumable = FileSystem.createDownloadResumable(
@@ -223,7 +223,7 @@ export default function ReceiptDetailScreen() {
         throw new Error('Download failed. Please try again.');
       }
       
-      console.log('[PDF] Download result status:', downloadResult.status);
+      if (__DEV__) console.log('[PDF] Download result status:', downloadResult.status);
 
       if (downloadResult.status === 401) {
         throw new Error('Session expired. Please log in again.');
@@ -246,7 +246,7 @@ export default function ReceiptDetailScreen() {
       return downloadResult.uri;
     } catch (error: any) {
       if (timeoutId) clearTimeout(timeoutId);
-      console.log('[PDF] Download error:', error);
+      if (__DEV__) console.log('[PDF] Download error:', error);
       throw error;
     }
   }, [receipt, id]);
@@ -272,7 +272,7 @@ export default function ReceiptDetailScreen() {
         Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
       }
     } catch (error: any) {
-      console.log('Share PDF error:', error);
+      if (__DEV__) console.log('Share PDF error:', error);
       const message = error?.message || 'Failed to share PDF. Please try again.';
       Alert.alert('PDF Download', message);
     } finally {
@@ -386,7 +386,7 @@ ${businessName}`;
         Alert.alert('Email Not Available', 'Unable to open email app. Please send manually.');
       }
     } catch (error: any) {
-      console.log('Error composing receipt email:', error);
+      if (__DEV__) console.log('Error composing receipt email:', error);
       Alert.alert('Error', 'Failed to compose email. Please try again.');
     } finally {
       setIsDownloadingPdf(false);
@@ -438,7 +438,7 @@ ${businessName}`;
         Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
       }
     } catch (error: any) {
-      console.log('Error sharing as image:', error);
+      if (__DEV__) console.log('Error sharing as image:', error);
       Alert.alert('Error', 'Failed to generate image. Try sharing as PDF instead.');
     } finally {
       setIsDownloadingPdf(false);
@@ -467,7 +467,7 @@ ${businessName}`;
         Alert.alert('Sharing Not Available', 'Please use "JobRunner" to send with PDF attached.');
       }
     } catch (error: any) {
-      console.log('Share receipt PDF error:', error);
+      if (__DEV__) console.log('Share receipt PDF error:', error);
       const message = error?.message || 'Failed to share PDF. Please try again.';
       Alert.alert('Error', message);
     } finally {

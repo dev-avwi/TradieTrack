@@ -229,7 +229,7 @@ export default function InvoiceDetailScreen() {
           });
         }
       } catch (err) {
-        console.log('Could not fetch quote signature:', err);
+        if (__DEV__) console.log('Could not fetch quote signature:', err);
       }
     }
     
@@ -249,7 +249,7 @@ export default function InvoiceDetailScreen() {
           });
         }
       } catch (err) {
-        console.log('Could not fetch job signatures:', err);
+        if (__DEV__) console.log('Could not fetch job signatures:', err);
       }
     }
     
@@ -265,7 +265,7 @@ export default function InvoiceDetailScreen() {
         });
       }
     } catch (err) {
-      console.log('Could not fetch invoice signatures:', err);
+      if (__DEV__) console.log('Could not fetch invoice signatures:', err);
     }
     
     setAllSignatures(signatures);
@@ -283,7 +283,7 @@ export default function InvoiceDetailScreen() {
           setLinkedJob(null);
         }
       } catch (err) {
-        console.log('Could not fetch linked job:', err);
+        if (__DEV__) console.log('Could not fetch linked job:', err);
         setLinkedJob(null);
       }
     } else {
@@ -306,7 +306,7 @@ export default function InvoiceDetailScreen() {
         setLinkedReceipt(null);
       }
     } catch (err) {
-      console.log('Could not fetch linked receipt:', err);
+      if (__DEV__) console.log('Could not fetch linked receipt:', err);
       setLinkedReceipt(null);
     }
     
@@ -324,7 +324,7 @@ export default function InvoiceDetailScreen() {
         setPaymentSummary(null);
       }
     } catch (err) {
-      console.log('Could not fetch payment records:', err);
+      if (__DEV__) console.log('Could not fetch payment records:', err);
       setPaymentRecords([]);
       setPaymentSummary(null);
     }
@@ -497,7 +497,7 @@ ${businessName}`;
         Alert.alert('Email Not Available', `Payment link copied to clipboard:\n${publicUrl}`);
       }
     } catch (error: any) {
-      console.log('Error composing email:', error);
+      if (__DEV__) console.log('Error composing email:', error);
       Alert.alert('Error', 'Failed to compose email. Please try again.');
     } finally {
       setIsDownloadingPdf(false);
@@ -565,7 +565,7 @@ ${businessName}`;
         Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
       }
     } catch (error: any) {
-      console.log('Error sharing as image:', error);
+      if (__DEV__) console.log('Error sharing as image:', error);
       Alert.alert('Error', 'Failed to generate image. Try sharing as PDF instead.');
     } finally {
       setIsDownloadingPdf(false);
@@ -620,7 +620,7 @@ ${businessName}`;
         Alert.alert('Sharing Not Available', 'Please use "JobRunner" option to send with PDF attached.');
       }
     } catch (error: any) {
-      console.log('Error preparing PDF:', error);
+      if (__DEV__) console.log('Error preparing PDF:', error);
       Alert.alert('Error', error.message || 'Failed to prepare PDF. Please try "JobRunner" option instead.');
     } finally {
       setIsDownloadingPdf(false);
@@ -665,7 +665,7 @@ ${businessName}`;
         Alert.alert('Error', error.error || 'Failed to send invoice');
       }
     } catch (error) {
-      console.log('Error sending invoice:', error);
+      if (__DEV__) console.log('Error sending invoice:', error);
       Alert.alert('Error', 'Failed to send invoice. Please try again.');
     } finally {
       setIsSendingInvoice(false);
@@ -744,7 +744,7 @@ ${businessName}`;
       Alert.alert('Invoice Updated', 'Invoice has been processed.');
 
     } catch (networkError) {
-      console.log('Network error sending invoice:', networkError);
+      if (__DEV__) console.log('Network error sending invoice:', networkError);
       throw new Error('Unable to send invoice. Please check your connection and try again.');
     }
   };
@@ -859,7 +859,7 @@ ${businessName}`;
         Alert.alert('Error', error.error || 'Failed to record payment');
       }
     } catch (error) {
-      console.log('Error recording payment:', error);
+      if (__DEV__) console.log('Error recording payment:', error);
       Alert.alert('Error', 'Failed to record payment. Please try again.');
     } finally {
       setIsRecordingPayment(false);
@@ -902,7 +902,7 @@ ${businessName}`;
                 Alert.alert('Error', error.error || 'Failed to record payment');
               }
             } catch (error) {
-              console.log('Error recording on-site payment:', error);
+              if (__DEV__) console.log('Error recording on-site payment:', error);
               Alert.alert('Error', 'Failed to record payment. Please try again.');
             } finally {
               setIsRecordingOnSitePayment(false);
@@ -982,7 +982,7 @@ ${businessName}`;
     const fileUri = `${FileSystem.cacheDirectory}Receipt-${receiptNumber}_${Date.now()}.pdf`;
     const pdfUrl = `${API_URL}/api/receipts/${linkedReceipt.id}/pdf`;
     
-    console.log('[PDF] Downloading receipt from:', pdfUrl);
+    if (__DEV__) console.log('[PDF] Downloading receipt from:', pdfUrl);
     
     const downloadResumable = FileSystem.createDownloadResumable(
       pdfUrl,
@@ -1028,7 +1028,7 @@ ${businessName}`;
       return downloadResult.uri;
     } catch (error: any) {
       if (timeoutId) clearTimeout(timeoutId);
-      console.log('[PDF] Receipt download error:', error);
+      if (__DEV__) console.log('[PDF] Receipt download error:', error);
       throw error;
     }
   }, [linkedReceipt]);
@@ -1091,7 +1091,7 @@ ${businessName}`;
         Alert.alert('Email Not Available', 'Unable to open email app. Please send manually.');
       }
     } catch (error: any) {
-      console.log('Error composing receipt email:', error);
+      if (__DEV__) console.log('Error composing receipt email:', error);
       Alert.alert('Error', 'Failed to compose email. Please try again.');
     } finally {
       setIsSendingReceipt(false);
@@ -1144,7 +1144,7 @@ ${businessName}`;
         Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
       }
     } catch (error: any) {
-      console.log('Error sharing receipt as image:', error);
+      if (__DEV__) console.log('Error sharing receipt as image:', error);
       Alert.alert('Error', 'Failed to generate image. Try sharing as PDF instead.');
     } finally {
       setIsSendingReceipt(false);
@@ -1180,7 +1180,7 @@ ${businessName}`;
         Alert.alert('Sharing Not Available', 'Please use "JobRunner" to send with PDF attached.');
       }
     } catch (error: any) {
-      console.log('Share receipt PDF error:', error);
+      if (__DEV__) console.log('Share receipt PDF error:', error);
       const message = error?.message || 'Failed to share PDF. Please try again.';
       Alert.alert('Error', message);
     } finally {
@@ -1225,7 +1225,7 @@ ${businessName}`;
         Alert.alert('Error', error.error || 'Failed to send receipt');
       }
     } catch (error) {
-      console.log('Error sending receipt:', error);
+      if (__DEV__) console.log('Error sending receipt:', error);
       Alert.alert('Error', 'Failed to send receipt. Please try again.');
     } finally {
       setIsSendingReceipt(false);
@@ -1299,7 +1299,7 @@ ${businessName}`;
         Alert.alert('Error', error.error || 'Failed to generate payment link');
       }
     } catch (error) {
-      console.log('Error generating payment link:', error);
+      if (__DEV__) console.log('Error generating payment link:', error);
       Alert.alert('Error', 'Failed to generate payment link. Please try again.');
     } finally {
       setIsGeneratingPaymentLink(false);
@@ -1339,7 +1339,7 @@ ${businessName}`;
         title: `Invoice ${invoice.invoiceNumber} Payment Link`,
       });
     } catch (error) {
-      console.log('Error sharing payment link:', error);
+      if (__DEV__) console.log('Error sharing payment link:', error);
       Alert.alert('Error', 'Failed to share link');
     }
   };
@@ -1381,7 +1381,7 @@ ${businessName}`;
         Alert.alert('Payment Link Sent', message);
       }
     } catch (error) {
-      console.log('Error sending payment link email:', error);
+      if (__DEV__) console.log('Error sending payment link email:', error);
       Alert.alert('Error', 'Failed to send payment link. Please try again.');
     } finally {
       setIsSendingPaymentLinkEmail(false);
@@ -1423,7 +1423,7 @@ ${businessName}`;
       await loadData();
       Alert.alert('Success', 'Payment milestones and retention settings saved.');
     } catch (error: any) {
-      console.log('Error saving milestones:', error);
+      if (__DEV__) console.log('Error saving milestones:', error);
       Alert.alert('Error', error.message || 'Failed to save milestones');
     } finally {
       setIsSavingMilestones(false);
@@ -1475,7 +1475,7 @@ ${businessName}`;
     const queryString = params.toString();
     const pdfUrl = `${API_URL}/api/invoices/${id}/pdf${queryString ? `?${queryString}` : ''}`;
     
-    console.log('[PDF] Downloading from:', pdfUrl);
+    if (__DEV__) console.log('[PDF] Downloading from:', pdfUrl);
     
     // Use createDownloadResumable for cancellation support
     const downloadResumable = FileSystem.createDownloadResumable(
@@ -1513,7 +1513,7 @@ ${businessName}`;
         throw new Error('Download failed: No response from server.');
       }
       
-      console.log('[PDF] Download result status:', downloadResult.status);
+      if (__DEV__) console.log('[PDF] Download result status:', downloadResult.status);
 
       if (downloadResult.status === 401) {
         throw new Error('Session expired. Please log in again.');
@@ -1546,7 +1546,7 @@ ${businessName}`;
         throw new Error('Network error: Please check your internet connection and try again.');
       }
 
-      console.log('[PDF] Download error details:', error);
+      if (__DEV__) console.log('[PDF] Download error details:', error);
       throw error;
     }
   }, [invoice, id, includeBeforePhotos, includeAfterPhotos, includeNotes]);
@@ -1577,7 +1577,7 @@ ${businessName}`;
         Alert.alert('Saved', `PDF saved to app documents: ${fileName}`);
       }
     } catch (error: any) {
-      console.log('PDF download error:', error);
+      if (__DEV__) console.log('PDF download error:', error);
       const message = error?.message || 'Failed to download PDF. Please try again.';
       Alert.alert('PDF Download', message);
     } finally {
@@ -1606,7 +1606,7 @@ ${businessName}`;
         Alert.alert('Sharing Not Available', 'Sharing is not available on this device. Try saving to device instead.');
       }
     } catch (error: any) {
-      console.log('Share PDF error:', error);
+      if (__DEV__) console.log('Share PDF error:', error);
       const errorMessage = error?.message || 'Failed to share PDF.';
       Alert.alert(
         'PDF Share Failed',
@@ -1647,7 +1647,7 @@ ${businessName}`;
         Alert.alert('Saved', `PDF saved to app documents: ${fileName}`);
       }
     } catch (error: any) {
-      console.log('Save to device error:', error);
+      if (__DEV__) console.log('Save to device error:', error);
       const errorMessage = error?.message || 'Failed to save PDF.';
       Alert.alert(
         'Save Failed',

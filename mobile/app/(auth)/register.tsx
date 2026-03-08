@@ -52,12 +52,12 @@ export default function RegisterScreen() {
       if (Platform.OS === 'ios' && AppleAuthentication) {
         try {
           const isAvailable = await AppleAuthentication.isAvailableAsync();
-          console.log('🍎 Apple Sign In availability check (register):', isAvailable);
+          if (__DEV__) console.log('🍎 Apple Sign In availability check (register):', isAvailable);
           // Always show button on iOS, even if isAvailableAsync returns false
           // Some iPad models may report false incorrectly
           setAppleAuthAvailable(true);
         } catch (e) {
-          console.log('🍎 Apple Sign In availability check error (register):', e);
+          if (__DEV__) console.log('🍎 Apple Sign In availability check error (register):', e);
           // Still show button on iOS - let the error happen on press
           setAppleAuthAvailable(true);
         }
@@ -165,7 +165,7 @@ export default function RegisterScreen() {
       // Double-check availability
       try {
         const isAvailable = await AppleAuthentication.isAvailableAsync();
-        console.log('🍎 Apple Sign In isAvailableAsync (register, on press):', isAvailable);
+        if (__DEV__) console.log('🍎 Apple Sign In isAvailableAsync (register, on press):', isAvailable);
         if (!isAvailable) {
           Alert.alert(
             'Sign in with Apple Unavailable',
@@ -174,11 +174,11 @@ export default function RegisterScreen() {
           return;
         }
       } catch (availErr) {
-        console.log('🍎 Apple Sign In availability check failed on press (register):', availErr);
+        if (__DEV__) console.log('🍎 Apple Sign In availability check failed on press (register):', availErr);
         // Continue anyway - let signInAsync fail if needed
       }
       
-      console.log('🍎 Starting Apple Sign Up...');
+      if (__DEV__) console.log('🍎 Starting Apple Sign Up...');
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -186,7 +186,7 @@ export default function RegisterScreen() {
         ],
       });
       
-      console.log('🍎 Apple credential received (register), has token:', !!credential.identityToken);
+      if (__DEV__) console.log('🍎 Apple credential received (register), has token:', !!credential.identityToken);
       
       if (credential.identityToken) {
         const response = await api.post<{ success: boolean; sessionToken: string; isNewUser: boolean }>('/api/auth/apple', {
@@ -196,7 +196,7 @@ export default function RegisterScreen() {
         });
         
         if (response.error) {
-          console.log('🍎 Server error (register):', response.error);
+          if (__DEV__) console.log('🍎 Server error (register):', response.error);
           Alert.alert('Error', response.error);
           return;
         }
@@ -208,13 +208,13 @@ export default function RegisterScreen() {
         await checkAuth();
         router.replace('/(onboarding)/setup');
       } else {
-        console.log('🍎 No identity token received from Apple (register)');
+        if (__DEV__) console.log('🍎 No identity token received from Apple (register)');
         Alert.alert('Error', 'No identity token received from Apple. Please try again.');
       }
     } catch (err: any) {
       // User canceled the sign-in
       if (err.code === 'ERR_REQUEST_CANCELED' || err.code === 'ERR_CANCELED') {
-        console.log('🍎 Apple Sign Up canceled by user');
+        if (__DEV__) console.log('🍎 Apple Sign Up canceled by user');
         return;
       }
       

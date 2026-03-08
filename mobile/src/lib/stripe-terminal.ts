@@ -64,7 +64,7 @@ let StripeTerminalSDK: any = null;
 let sdkAvailable = false;
 
 // SDK temporarily disabled - will be re-enabled after Apple production approval
-console.log('[StripeTerminal] SDK temporarily disabled - using simulation mode until Apple production approval');
+if (__DEV__) console.log('[StripeTerminal] SDK temporarily disabled - using simulation mode until Apple production approval');
 
 /**
  * Check if Stripe Terminal SDK is available (native build)
@@ -157,7 +157,7 @@ class StripeTerminalSimulator {
   private reader: Reader | null = null;
 
   async initialize(): Promise<boolean> {
-    console.log('[StripeTerminal Simulator] Initializing...');
+    if (__DEV__) console.log('[StripeTerminal Simulator] Initializing...');
     this.updateStatus('initializing');
     await this.delay(800);
     this.updateStatus('ready');
@@ -198,7 +198,7 @@ class StripeTerminalSimulator {
 
   async collectPaymentMethod(clientSecret: string): Promise<CollectPaymentResult> {
     this.updateStatus('collecting');
-    console.log('[StripeTerminal Simulator] Waiting for card tap...');
+    if (__DEV__) console.log('[StripeTerminal Simulator] Waiting for card tap...');
     
     // Simulate waiting for card tap (3 seconds)
     await this.delay(3000);
@@ -220,12 +220,12 @@ class StripeTerminalSimulator {
   }
 
   async cancelCollecting(): Promise<void> {
-    console.log('[StripeTerminal Simulator] Canceling collection');
+    if (__DEV__) console.log('[StripeTerminal Simulator] Canceling collection');
     this.updateStatus('connected');
   }
 
   async disconnect(): Promise<void> {
-    console.log('[StripeTerminal Simulator] Disconnecting');
+    if (__DEV__) console.log('[StripeTerminal Simulator] Disconnecting');
     this.reader = null;
     this.updateStatus('ready');
   }

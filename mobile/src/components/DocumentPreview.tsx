@@ -88,7 +88,7 @@ export function DocumentPreview({
         title: `${type === 'quote' ? 'Quote' : 'Invoice'} ${document.number}`,
       });
     } catch (error) {
-      console.log('Share error:', error);
+      if (__DEV__) console.log('Share error:', error);
     }
   };
 

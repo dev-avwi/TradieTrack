@@ -18,14 +18,14 @@ const secureStorage: StateStorage = {
     try {
       await SecureStore.setItemAsync(name, value);
     } catch {
-      console.warn('Failed to save theme preference');
+      if (__DEV__) console.warn('Failed to save theme preference');
     }
   },
   removeItem: async (name: string) => {
     try {
       await SecureStore.deleteItemAsync(name);
     } catch {
-      console.warn('Failed to remove theme preference');
+      if (__DEV__) console.warn('Failed to remove theme preference');
     }
   },
 };
@@ -51,7 +51,7 @@ export const useThemeStore = create<ThemeState>()(
       setModeWithSync: (mode: ThemeMode) => {
         set({ mode });
         apiClient.request('PATCH', '/api/user/preferences', { themeMode: mode })
-          .catch(err => console.warn('Failed to sync theme to server:', err));
+          .catch(err => { if (__DEV__) console.warn('Failed to sync theme to server:', err); });
       },
       
       toggleTheme: () => {
@@ -59,7 +59,7 @@ export const useThemeStore = create<ThemeState>()(
         const newMode = currentMode === 'light' ? 'dark' : 'light';
         set({ mode: newMode });
         apiClient.request('PATCH', '/api/user/preferences', { themeMode: newMode })
-          .catch(err => console.warn('Failed to sync theme to server:', err));
+          .catch(err => { if (__DEV__) console.warn('Failed to sync theme to server:', err); });
       },
       
       getEffectiveTheme: () => {

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useOfflineStore } from '../lib/offline-storage';
 import offlineStorage, { ConflictRecord } from '../lib/offline-storage';
+import { useTheme } from '../lib/theme';
 
 interface ConflictItemProps {
   conflict: ConflictRecord;
@@ -11,6 +12,7 @@ interface ConflictItemProps {
 
 function ConflictItem({ conflict, onResolve }: ConflictItemProps) {
   const [expanded, setExpanded] = useState(false);
+  const { colors } = useTheme();
   
   const localData = JSON.parse(conflict.localData);
   const serverData = JSON.parse(conflict.serverData);
@@ -42,44 +44,44 @@ function ConflictItem({ conflict, onResolve }: ConflictItemProps) {
   };
   
   return (
-    <View style={styles.conflictItem}>
+    <View style={[styles.conflictItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <TouchableOpacity 
         style={styles.conflictHeader}
         onPress={() => setExpanded(!expanded)}
         activeOpacity={0.7}
       >
         <View style={styles.conflictInfo}>
-          <View style={styles.conflictBadge}>
-            <Text style={styles.conflictBadgeText}>{getEntityLabel(conflict.entityType)}</Text>
+          <View style={[styles.conflictBadge, { backgroundColor: colors.destructiveLight }]}>
+            <Text style={[styles.conflictBadgeText, { color: colors.destructive }]}>{getEntityLabel(conflict.entityType)}</Text>
           </View>
-          <Text style={styles.conflictTitle} numberOfLines={1}>{getEntityTitle()}</Text>
+          <Text style={[styles.conflictTitle, { color: colors.foreground }]} numberOfLines={1}>{getEntityTitle()}</Text>
         </View>
         <Ionicons 
           name={expanded ? 'chevron-up' : 'chevron-down'} 
           size={20} 
-          color="#6b7280" 
+          color={colors.mutedForeground} 
         />
       </TouchableOpacity>
       
       {expanded && (
-        <View style={styles.conflictDetails}>
-          <Text style={styles.conflictTime}>
+        <View style={[styles.conflictDetails, { borderTopColor: colors.border }]}>
+          <Text style={[styles.conflictTime, { color: colors.mutedForeground }]}>
             Conflict detected: {formatTime(conflict.conflictedAt)}
           </Text>
           
           <View style={styles.dataComparison}>
             <View style={styles.dataColumn}>
-              <Text style={styles.dataLabel}>Your Changes</Text>
-              <ScrollView style={styles.dataContent} nestedScrollEnabled>
-                <Text style={styles.dataText}>
+              <Text style={[styles.dataLabel, { color: colors.secondaryText }]}>Your Changes</Text>
+              <ScrollView style={[styles.dataContent, { backgroundColor: colors.muted }]} nestedScrollEnabled>
+                <Text style={[styles.dataText, { color: colors.secondaryText }]}>
                   {JSON.stringify(localData, null, 2).slice(0, 500)}
                 </Text>
               </ScrollView>
             </View>
             <View style={styles.dataColumn}>
-              <Text style={styles.dataLabel}>Server Version</Text>
-              <ScrollView style={styles.dataContent} nestedScrollEnabled>
-                <Text style={styles.dataText}>
+              <Text style={[styles.dataLabel, { color: colors.secondaryText }]}>Server Version</Text>
+              <ScrollView style={[styles.dataContent, { backgroundColor: colors.muted }]} nestedScrollEnabled>
+                <Text style={[styles.dataText, { color: colors.secondaryText }]}>
                   {JSON.stringify(serverData, null, 2).slice(0, 500)}
                 </Text>
               </ScrollView>
@@ -88,18 +90,18 @@ function ConflictItem({ conflict, onResolve }: ConflictItemProps) {
           
           <View style={styles.resolutionButtons}>
             <TouchableOpacity 
-              style={[styles.resolutionButton, styles.serverButton]}
+              style={[styles.resolutionButton, { backgroundColor: colors.primary + '15' }]}
               onPress={() => onResolve('kept_server')}
             >
-              <Ionicons name="cloud-outline" size={16} color="#3b82f6" />
-              <Text style={styles.serverButtonText}>Use Server</Text>
+              <Ionicons name="cloud-outline" size={16} color={colors.primary} />
+              <Text style={[styles.resolutionButtonText, { color: colors.primary }]}>Use Server</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.resolutionButton, styles.localButton]}
+              style={[styles.resolutionButton, { backgroundColor: colors.warning + '15' }]}
               onPress={() => onResolve('kept_local')}
             >
-              <Ionicons name="phone-portrait-outline" size={16} color="#f59e0b" />
-              <Text style={styles.localButtonText}>Keep Mine</Text>
+              <Ionicons name="phone-portrait-outline" size={16} color={colors.warning} />
+              <Text style={[styles.resolutionButtonText, { color: colors.warning }]}>Keep Mine</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -110,6 +112,7 @@ function ConflictItem({ conflict, onResolve }: ConflictItemProps) {
 
 export function ConflictResolutionPanel() {
   const { unresolvedConflictCount, isOnline } = useOfflineStore();
+  const { colors } = useTheme();
   const [conflicts, setConflicts] = useState<ConflictRecord[]>([]);
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -152,16 +155,16 @@ export function ConflictResolutionPanel() {
   return (
     <>
       <TouchableOpacity 
-        style={styles.conflictBanner}
+        style={[styles.conflictBanner, { backgroundColor: colors.destructiveLight, borderBottomColor: colors.destructive + '30' }]}
         onPress={() => setVisible(true)}
         activeOpacity={0.7}
         data-testid="banner-sync-conflicts"
       >
-        <Ionicons name="alert-circle" size={18} color="#dc2626" />
-        <Text style={styles.conflictBannerText}>
+        <Ionicons name="alert-circle" size={18} color={colors.destructive} />
+        <Text style={[styles.conflictBannerText, { color: colors.destructive }]}>
           {unresolvedConflictCount} sync conflict{unresolvedConflictCount !== 1 ? 's' : ''} need attention
         </Text>
-        <Ionicons name="chevron-forward" size={18} color="#dc2626" />
+        <Ionicons name="chevron-forward" size={18} color={colors.destructive} />
       </TouchableOpacity>
       
       <Modal
@@ -170,30 +173,30 @@ export function ConflictResolutionPanel() {
         presentationStyle="pageSheet"
         onRequestClose={() => setVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Sync Conflicts</Text>
+        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Sync Conflicts</Text>
             <TouchableOpacity 
               onPress={() => setVisible(false)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               data-testid="button-close-conflicts"
             >
-              <Ionicons name="close" size={24} color="#6b7280" />
+              <Ionicons name="close" size={24} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
           
-          <Text style={styles.modalDescription}>
+          <Text style={[styles.modalDescription, { color: colors.secondaryText }]}>
             These items were changed on both your device and the server. Choose which version to keep.
           </Text>
           
           {loading ? (
             <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading conflicts...</Text>
+              <Text style={[styles.loadingText, { color: colors.secondaryText }]}>Loading conflicts...</Text>
             </View>
           ) : conflicts.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="checkmark-circle" size={48} color="#10b981" />
-              <Text style={styles.emptyText}>All conflicts resolved!</Text>
+              <Ionicons name="checkmark-circle" size={48} color={colors.success} />
+              <Text style={[styles.emptyText, { color: colors.success }]}>All conflicts resolved!</Text>
             </View>
           ) : (
             <ScrollView style={styles.conflictList}>
@@ -216,40 +219,32 @@ const styles = StyleSheet.create({
   conflictBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fef2f2',
     paddingHorizontal: 16,
     paddingVertical: 10,
     gap: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#fecaca',
   },
   conflictBannerText: {
     flex: 1,
-    color: '#dc2626',
     fontSize: 14,
     fontWeight: '500',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#f9fafb',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
   },
   modalDescription: {
     padding: 16,
-    color: '#6b7280',
     fontSize: 14,
     lineHeight: 20,
   },
@@ -259,7 +254,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    color: '#6b7280',
     fontSize: 14,
   },
   emptyContainer: {
@@ -269,7 +263,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyText: {
-    color: '#10b981',
     fontSize: 16,
     fontWeight: '500',
   },
@@ -278,12 +271,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   conflictItem: {
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     marginBottom: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
   conflictHeader: {
     flexDirection: 'row',
@@ -298,30 +289,25 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   conflictBadge: {
-    backgroundColor: '#fef2f2',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
   conflictBadgeText: {
-    color: '#dc2626',
     fontSize: 12,
     fontWeight: '500',
   },
   conflictTitle: {
     flex: 1,
-    color: '#111827',
     fontSize: 15,
     fontWeight: '500',
   },
   conflictDetails: {
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
     padding: 16,
     gap: 12,
   },
   conflictTime: {
-    color: '#9ca3af',
     fontSize: 12,
   },
   dataComparison: {
@@ -333,18 +319,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   dataLabel: {
-    color: '#374151',
     fontSize: 12,
     fontWeight: '600',
   },
   dataContent: {
-    backgroundColor: '#f3f4f6',
     borderRadius: 8,
     padding: 10,
     maxHeight: 120,
   },
   dataText: {
-    color: '#4b5563',
     fontSize: 11,
     fontFamily: 'monospace',
   },
@@ -362,19 +345,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
   },
-  serverButton: {
-    backgroundColor: '#eff6ff',
-  },
-  serverButtonText: {
-    color: '#3b82f6',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  localButton: {
-    backgroundColor: '#fffbeb',
-  },
-  localButtonText: {
-    color: '#f59e0b',
+  resolutionButtonText: {
     fontSize: 14,
     fontWeight: '500',
   },

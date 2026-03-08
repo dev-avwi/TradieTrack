@@ -108,7 +108,7 @@ export function OnboardingTour({ forceShow = false, onComplete }: OnboardingTour
         setVisible(true);
       }
     } catch (error) {
-      console.log('Error checking onboarding status:', error);
+      if (__DEV__) console.log('Error checking onboarding status:', error);
     }
   };
   
@@ -116,7 +116,7 @@ export function OnboardingTour({ forceShow = false, onComplete }: OnboardingTour
     try {
       await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
     } catch (error) {
-      console.log('Error saving onboarding status:', error);
+      if (__DEV__) console.log('Error saving onboarding status:', error);
     }
     setVisible(false);
     onComplete?.();
@@ -246,7 +246,7 @@ export async function resetOnboarding() {
   try {
     await AsyncStorage.removeItem(ONBOARDING_KEY);
   } catch (error) {
-    console.log('Error resetting onboarding:', error);
+    if (__DEV__) console.log('Error resetting onboarding:', error);
   }
 }
 

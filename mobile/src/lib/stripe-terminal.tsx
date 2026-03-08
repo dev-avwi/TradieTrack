@@ -90,7 +90,7 @@ export const terminalSimulator = {
     // No-op in stub
   },
   initialize: async (): Promise<boolean> => {
-    console.log('[StripeTerminal] Simulator not available - SDK removed pending Apple approval');
+    if (__DEV__) console.log('[StripeTerminal] Simulator not available - SDK removed pending Apple approval');
     return false;
   },
   discoverReaders: async (): Promise<Reader[]> => {
@@ -121,7 +121,7 @@ export function StripeTerminalProvider({ children }: StripeTerminalProviderProps
   });
 
   const notAvailable = useCallback(async () => {
-    console.log('[StripeTerminal] SDK not available - pending Apple production approval');
+    if (__DEV__) console.log('[StripeTerminal] SDK not available - pending Apple production approval');
     return false;
   }, []);
 

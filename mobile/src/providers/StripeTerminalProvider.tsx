@@ -26,7 +26,7 @@ try {
   StripeTerminalProviderSDK = sdk.StripeTerminalProvider;
   useStripeTerminalSDK = sdk.useStripeTerminal;
 } catch (e) {
-  console.log('[StripeTerminal] SDK not available - using fallback mode');
+  if (__DEV__) console.log('[StripeTerminal] SDK not available - using fallback mode');
 }
 
 // Check if SDK is available (native build)
@@ -89,7 +89,7 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
 
   // If SDK is not available (Expo Go), just render children
   if (!StripeTerminalProviderSDK) {
-    console.log('[StripeTerminal] Running in fallback mode (Expo Go)');
+    if (__DEV__) console.log('[StripeTerminal] Running in fallback mode (Expo Go)');
     return <>{children}</>;
   }
 

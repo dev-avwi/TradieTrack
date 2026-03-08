@@ -21,7 +21,7 @@ try {
   Audio = expoAv.Audio;
   isAudioAvailable = true;
 } catch (e) {
-  console.warn('[VoiceRecorder] expo-av not available - voice recording disabled');
+  if (__DEV__) console.warn('[VoiceRecorder] expo-av not available - voice recording disabled');
   isAudioAvailable = false;
 }
 
@@ -52,19 +52,19 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       }
       if (soundRef.current && isAudioAvailable) {
         soundRef.current.unloadAsync().catch((e: any) => 
-          console.warn('[VoiceRecorder] Error unloading sound on cleanup:', e)
+          if (__DEV__) console.warn('[VoiceRecorder] Error unloading sound on cleanup:', e)
         );
       }
       if (recordingRef.current && isAudioAvailable) {
         recordingRef.current.stopAndUnloadAsync().catch((e: any) =>
-          console.warn('[VoiceRecorder] Error stopping recording on cleanup:', e)
+          if (__DEV__) console.warn('[VoiceRecorder] Error stopping recording on cleanup:', e)
         );
       }
       if (isAudioAvailable && Audio) {
         Audio.setAudioModeAsync({
           allowsRecordingIOS: false,
           playsInSilentModeIOS: true,
-        }).catch((e: any) => console.warn('[VoiceRecorder] Error resetting audio mode on cleanup:', e));
+        }).catch((e: any) => { if (__DEV__) console.warn('[VoiceRecorder] Error resetting audio mode on cleanup:', e); });
       }
     };
   }, []);
@@ -128,7 +128,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
       });
-      console.log('[VoiceRecorder] Audio mode configured with allowsRecordingIOS: true');
+      if (__DEV__) console.log('[VoiceRecorder] Audio mode configured with allowsRecordingIOS: true');
 
       const { recording: newRecording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
@@ -144,7 +144,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
         setRecordingDuration(prev => prev + 1);
       }, 1000);
 
-      console.log('[VoiceRecorder] Recording started successfully');
+      if (__DEV__) console.log('[VoiceRecorder] Recording started successfully');
       
     } catch (error: any) {
       console.error('Error starting recording:', error);
@@ -155,7 +155,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
           playsInSilentModeIOS: true,
         });
       } catch (resetError) {
-        console.warn('Could not reset audio mode:', resetError);
+        if (__DEV__) console.warn('Could not reset audio mode:', resetError);
       }
       
       if (error?.message?.includes('permission') || error?.message?.includes('Permission')) {
@@ -187,7 +187,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       });
 
       const uri = recording.getURI();
-      console.log('[VoiceRecorder] Recording stopped, URI:', uri);
+      if (__DEV__) console.log('[VoiceRecorder] Recording stopped, URI:', uri);
       
       if (uri) {
         setRecordedUri(uri);
@@ -464,7 +464,7 @@ export function VoiceNotePlayer({
 
   const loadAndPlayAudio = async (audioUri: string, forceDownload: boolean = false): Promise<boolean> => {
     try {
-      console.log('[VoiceNotePlayer] Attempting to load:', audioUri);
+      if (__DEV__) console.log('[VoiceNotePlayer] Attempting to load:', audioUri);
       
       // Always clean up before loading new audio
       await cleanupSound();
@@ -484,11 +484,11 @@ export function VoiceNotePlayer({
             const fileInfo = await FileSystem.getInfoAsync(localPath);
             if (fileInfo.exists && fileInfo.size && fileInfo.size > 500) {
               // Cached file is valid (>500 bytes for audio)
-              console.log('[VoiceNotePlayer] Using cached file:', localPath, 'size:', fileInfo.size);
+              if (__DEV__) console.log('[VoiceNotePlayer] Using cached file:', localPath, 'size:', fileInfo.size);
               playUri = localPath;
             } else if (fileInfo.exists && (!fileInfo.size || fileInfo.size <= 500)) {
               // Cached file is too small/invalid - delete and redownload
-              console.log('[VoiceNotePlayer] Cached file invalid, deleting:', localPath);
+              if (__DEV__) console.log('[VoiceNotePlayer] Cached file invalid, deleting:', localPath);
               await FileSystem.deleteAsync(localPath, { idempotent: true });
               // Fall through to download fresh
             }
@@ -496,7 +496,7 @@ export function VoiceNotePlayer({
             // Only download if playUri hasn't been set to cache
             if (playUri === audioUri) {
               // Download fresh
-              console.log('[VoiceNotePlayer] Downloading audio with auth to:', localPath);
+              if (__DEV__) console.log('[VoiceNotePlayer] Downloading audio with auth to:', localPath);
               
               const downloadResult = await FileSystem.downloadAsync(audioUri, localPath, {
                 headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -507,7 +507,7 @@ export function VoiceNotePlayer({
                 const downloadedInfo = await FileSystem.getInfoAsync(downloadResult.uri);
                 if (downloadedInfo.exists && downloadedInfo.size && downloadedInfo.size > 100) {
                   playUri = downloadResult.uri;
-                  console.log('[VoiceNotePlayer] Downloaded to:', playUri, 'size:', downloadedInfo.size);
+                  if (__DEV__) console.log('[VoiceNotePlayer] Downloaded to:', playUri, 'size:', downloadedInfo.size);
                 } else {
                   console.error('[VoiceNotePlayer] Downloaded file is empty or too small');
                   // Delete the bad cached file
@@ -521,7 +521,7 @@ export function VoiceNotePlayer({
             }
           } else {
             // No noteId or forceDownload - always download fresh
-            console.log('[VoiceNotePlayer] Downloading audio with auth to:', localPath);
+            if (__DEV__) console.log('[VoiceNotePlayer] Downloading audio with auth to:', localPath);
             
             const downloadResult = await FileSystem.downloadAsync(audioUri, localPath, {
               headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -529,7 +529,7 @@ export function VoiceNotePlayer({
             
             if (downloadResult.status === 200) {
               playUri = downloadResult.uri;
-              console.log('[VoiceNotePlayer] Downloaded to:', playUri);
+              if (__DEV__) console.log('[VoiceNotePlayer] Downloaded to:', playUri);
             } else {
               console.error('[VoiceNotePlayer] Download failed with status:', downloadResult.status);
               return false;
@@ -629,7 +629,7 @@ export function VoiceNotePlayer({
       
       // Try fallback URL if primary fails
       if (fallbackUri && fallbackUri.length > 0) {
-        console.log('[VoiceNotePlayer] Primary URL failed, trying fallback:', fallbackUri);
+        if (__DEV__) console.log('[VoiceNotePlayer] Primary URL failed, trying fallback:', fallbackUri);
         const success = await loadAndPlayAudio(fallbackUri, true); // Always force download for fallback
         if (success) {
           setIsLoading(false);

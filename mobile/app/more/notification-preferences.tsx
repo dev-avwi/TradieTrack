@@ -272,7 +272,7 @@ export default function NotificationPreferencesScreen() {
           masterEnabled: serverPrefs.pushNotificationsEnabled !== false,
         }));
       } catch (serverError) {
-        console.log('[Notifications] Server fetch failed, using local cache');
+        if (__DEV__) console.log('[Notifications] Server fetch failed, using local cache');
         // Fallback to local storage if server fails
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored) {
@@ -332,7 +332,7 @@ export default function NotificationPreferencesScreen() {
       };
       
       await apiClient.patch('/api/notification-preferences', serverPrefs);
-      console.log('[Notifications] Synced preferences to server');
+      if (__DEV__) console.log('[Notifications] Synced preferences to server');
     } catch (error) {
       console.error('[Notifications] Failed to sync to server:', error);
     }

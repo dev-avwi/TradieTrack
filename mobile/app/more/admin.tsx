@@ -137,7 +137,7 @@ export default function AdminDashboard() {
       if (statsRes.data) setStats(statsRes.data);
       if (usersRes.data?.users) setUsers(usersRes.data.users);
     } catch (error: any) {
-      console.log('Admin data fetch error:', error.message);
+      if (__DEV__) console.log('Admin data fetch error:', error.message);
     } finally {
       setLoading(false);
     }

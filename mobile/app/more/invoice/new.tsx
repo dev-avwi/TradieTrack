@@ -755,7 +755,7 @@ export default function NewInvoiceScreen() {
         }
       }
     } catch (error) {
-      console.log('Error loading invoice for editing:', error);
+      if (__DEV__) console.log('Error loading invoice for editing:', error);
       Alert.alert('Error', 'Failed to load invoice data');
     } finally {
       setIsLoading(false);
@@ -785,7 +785,7 @@ export default function NewInvoiceScreen() {
         }
       }
     } catch (error) {
-      console.log('Error fetching job data:', error);
+      if (__DEV__) console.log('Error fetching job data:', error);
     } finally {
       setIsLoadingJob(false);
     }
@@ -799,7 +799,7 @@ export default function NewInvoiceScreen() {
         setJobExpenses(response.data);
       }
     } catch (error) {
-      console.log('Error fetching job expenses:', error);
+      if (__DEV__) console.log('Error fetching job expenses:', error);
     } finally {
       setIsLoadingExpenses(false);
     }

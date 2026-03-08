@@ -45,6 +45,11 @@ Core architectural and design decisions include:
 *   **Smart GPS Features**: Real ETA in "On My Way" SMS using OSRM, Smart Job Dashboard showing distance and drive time, Photo MMS via Twilio.
 *   **Mobile GPS & Geofencing**: Geofence registration, auto-sync on startup, background tracking, geofence notifications, smart running late detection, and running late SMS with real ETA. Full push notification system with tap routing for various event types.
 
+### Mobile Production Readiness
+*   **Production domain**: All API URLs and links use `jobrunner.com.au` (previously `jobrunner.com`). Updated in `api.ts`, `app.json`, `eas.json`, `branding.tsx`, `support.tsx`, `LogoPicker.tsx`, and `APP_STORE_SUBMISSION.md`.
+*   **Console log guards**: All `console.log` and `console.warn` calls across mobile app screens (`mobile/app/`) and source files (`mobile/src/`) are now wrapped in `if (__DEV__)` guards so they don't execute in production builds.
+*   **Theme-aware ConflictResolutionPanel**: Replaced all hardcoded hex colors with theme tokens (`colors.destructive`, `colors.card`, `colors.foreground`, etc.) so the conflict resolution UI works correctly in both light and dark modes.
+
 ### Mobile Bug Fixes
 *   **Photo Annotation Multi-Color**: Fixed WebView HTML template to use stable refs instead of React state for color/stroke values. Color changes now go through `injectJavaScript` without regenerating the WebView, preserving existing annotations.
 *   **SWMS PDF Download**: Fixed "Authentication required" error by using authenticated `fetch` with Bearer token instead of `Linking.openURL`. PDF is saved to cache and opened via `expo-sharing`.

@@ -167,13 +167,13 @@ export function useBusinessTemplates() {
       if (templatesRes.data) {
         setTemplates(templatesRes.data || []);
       } else if (templatesRes.error) {
-        console.warn('Templates fetch returned error:', templatesRes.error);
+        if (__DEV__) console.warn('Templates fetch returned error:', templatesRes.error);
       }
 
       if (familiesRes.data) {
         setFamiliesMeta(familiesRes.data || []);
       } else if (familiesRes.error) {
-        console.warn('Families fetch returned error:', familiesRes.error);
+        if (__DEV__) console.warn('Families fetch returned error:', familiesRes.error);
       }
 
       // Prefetch purposes for all families - use fallback if API fails
@@ -203,7 +203,7 @@ export function useBusinessTemplates() {
       setPurposesLoaded(true);
       
       if (usedFallback) {
-        console.warn('Some purposes loaded from fallback - API fetch failed for some families');
+        if (__DEV__) console.warn('Some purposes loaded from fallback - API fetch failed for some families');
       }
     } catch (err: any) {
       // Handle errors

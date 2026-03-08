@@ -530,7 +530,7 @@ export default function BrandingScreen() {
     setIsUploadingLogo(true);
 
     try {
-      const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://jobrunner.com';
+      const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://jobrunner.com.au';
       const token = await api.getToken();
       
       const filename = `logo-${Date.now()}.${asset.uri.split('.').pop() || 'jpg'}`;

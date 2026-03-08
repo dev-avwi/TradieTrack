@@ -487,7 +487,7 @@ export default function AIAssistantScreen() {
           setDismissedIds(JSON.parse(stored));
         }
       } catch (e) {
-        console.log('Failed to load dismissed notifications:', e);
+        if (__DEV__) console.log('Failed to load dismissed notifications:', e);
       }
     };
     loadDismissed();
@@ -499,7 +499,7 @@ export default function AIAssistantScreen() {
       const response = await api.get('/api/ai/suggestions');
       setSuggestions(response.data?.suggestions || []);
     } catch (error) {
-      console.log('Failed to fetch AI suggestions:', error);
+      if (__DEV__) console.log('Failed to fetch AI suggestions:', error);
       setSuggestions([]);
     } finally {
       setIsLoadingSuggestions(false);
@@ -512,7 +512,7 @@ export default function AIAssistantScreen() {
       const data = response.data?.notifications ?? response.data ?? [];
       setNotifications(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.log('Failed to fetch AI notifications:', error);
+      if (__DEV__) console.log('Failed to fetch AI notifications:', error);
       setNotifications([]);
     }
   }, []);
@@ -532,7 +532,7 @@ export default function AIAssistantScreen() {
     try {
       await AsyncStorage.setItem(DISMISSED_NOTIFICATIONS_KEY, JSON.stringify(newDismissed));
     } catch (e) {
-      console.log('Failed to save dismissed notifications:', e);
+      if (__DEV__) console.log('Failed to save dismissed notifications:', e);
     }
   };
 

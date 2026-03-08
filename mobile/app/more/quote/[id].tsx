@@ -164,19 +164,19 @@ export default function QuoteDetailScreen() {
     try {
       await fetchClients();
     } catch (e) {
-      console.log('Could not fetch clients:', e);
+      if (__DEV__) console.log('Could not fetch clients:', e);
     }
     
     // Fetch invoices and jobs for related documents (optional, don't block)
     try {
       await fetchInvoices();
     } catch (e) {
-      console.log('Could not fetch invoices:', e);
+      if (__DEV__) console.log('Could not fetch invoices:', e);
     }
     try {
       await fetchJobs();
     } catch (e) {
-      console.log('Could not fetch jobs:', e);
+      if (__DEV__) console.log('Could not fetch jobs:', e);
     }
     
     const signatures: Signature[] = [];
@@ -194,7 +194,7 @@ export default function QuoteDetailScreen() {
         });
       }
     } catch (err) {
-      console.log('Could not fetch quote signature:', err);
+      if (__DEV__) console.log('Could not fetch quote signature:', err);
     }
     
     // Fetch job signatures if quote has jobId
@@ -213,7 +213,7 @@ export default function QuoteDetailScreen() {
           });
         }
       } catch (err) {
-        console.log('Could not fetch job signatures:', err);
+        if (__DEV__) console.log('Could not fetch job signatures:', err);
       }
     }
     
@@ -351,7 +351,7 @@ export default function QuoteDetailScreen() {
         Alert.alert('Error', error.error || 'Failed to send quote');
       }
     } catch (error) {
-      console.log('Error sending quote:', error);
+      if (__DEV__) console.log('Error sending quote:', error);
       Alert.alert('Error', 'Failed to send quote. Please try again.');
     } finally {
       setIsSendingQuote(false);
@@ -453,7 +453,7 @@ ${businessName}`;
         Alert.alert('Email Not Available', `Quote link copied to clipboard:\n${publicUrl}`);
       }
     } catch (error: any) {
-      console.log('Error composing email:', error);
+      if (__DEV__) console.log('Error composing email:', error);
       Alert.alert('Error', 'Failed to compose email. Please try again.');
     } finally {
       setIsDownloadingPdf(false);
@@ -521,7 +521,7 @@ ${businessName}`;
         Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
       }
     } catch (error: any) {
-      console.log('Error sharing as image:', error);
+      if (__DEV__) console.log('Error sharing as image:', error);
       Alert.alert('Error', 'Failed to generate image. Try sharing as PDF instead.');
     } finally {
       setIsDownloadingPdf(false);
@@ -599,7 +599,7 @@ ${businessName}`;
         }
       }
     } catch (error: any) {
-      console.log('Error preparing email:', error);
+      if (__DEV__) console.log('Error preparing email:', error);
       Alert.alert('Error', error.message || 'Failed to prepare email with PDF. Please try "Use JobRunner" option instead.');
     } finally {
       setIsDownloadingPdf(false);
@@ -678,7 +678,7 @@ ${businessName}`;
       Alert.alert('Quote Updated', 'Quote has been processed.');
 
     } catch (networkError) {
-      console.log('Network error sending quote:', networkError);
+      if (__DEV__) console.log('Network error sending quote:', networkError);
       throw new Error('Unable to send quote. Please check your connection and try again.');
     }
   };
@@ -760,7 +760,7 @@ ${businessName}`;
                 Alert.alert('Error', error.error || 'Failed to create invoice');
               }
             } catch (error) {
-              console.log('Error creating invoice from quote:', error);
+              if (__DEV__) console.log('Error creating invoice from quote:', error);
               Alert.alert('Error', 'Failed to create invoice. Please try again.');
             } finally {
               setIsCreatingInvoice(false);
@@ -816,7 +816,7 @@ ${businessName}`;
                 Alert.alert('Error', error.error || 'Failed to create job');
               }
             } catch (error) {
-              console.log('Error creating job from quote:', error);
+              if (__DEV__) console.log('Error creating job from quote:', error);
               Alert.alert('Error', 'Failed to create job. Please try again.');
             } finally {
               setIsCreatingJob(false);
@@ -840,7 +840,7 @@ ${businessName}`;
         Alert.alert('Error', 'Failed to update quote status');
       }
     } catch (error) {
-      console.log('Error marking quote as sent:', error);
+      if (__DEV__) console.log('Error marking quote as sent:', error);
       Alert.alert('Error', 'Failed to update quote status');
     } finally {
       setIsMarkingSent(false);
@@ -866,7 +866,7 @@ ${businessName}`;
     const queryString = params.toString();
     const pdfUrl = `${API_URL}/api/quotes/${id}/pdf${queryString ? `?${queryString}` : ''}`;
     
-    console.log('[PDF] Downloading from:', pdfUrl);
+    if (__DEV__) console.log('[PDF] Downloading from:', pdfUrl);
     
     // Use createDownloadResumable for cancellation support
     const downloadResumable = FileSystem.createDownloadResumable(
@@ -904,7 +904,7 @@ ${businessName}`;
         throw new Error('Download failed: No response from server.');
       }
       
-      console.log('[PDF] Download result status:', downloadResult.status);
+      if (__DEV__) console.log('[PDF] Download result status:', downloadResult.status);
 
       if (downloadResult.status === 401) {
         throw new Error('Session expired. Please log in again.');
@@ -937,7 +937,7 @@ ${businessName}`;
         throw new Error('Network error: Please check your internet connection and try again.');
       }
 
-      console.log('[PDF] Download error details:', error);
+      if (__DEV__) console.log('[PDF] Download error details:', error);
       throw error;
     }
   }, [quote, id, includeBeforePhotos, includeNotes]);
@@ -968,7 +968,7 @@ ${businessName}`;
         Alert.alert('Saved', `PDF saved to app documents: ${fileName}`);
       }
     } catch (error: any) {
-      console.log('PDF download error:', error);
+      if (__DEV__) console.log('PDF download error:', error);
       const message = error?.message || 'Failed to download PDF. Please try again.';
       Alert.alert('PDF Download', message);
     } finally {
@@ -996,7 +996,7 @@ ${businessName}`;
         Alert.alert('Sharing Not Available', 'Sharing is not available on this device. Try saving to device instead.');
       }
     } catch (error) {
-      console.log('Share PDF error:', error);
+      if (__DEV__) console.log('Share PDF error:', error);
       Alert.alert('Error', 'Failed to share PDF. Please try again.');
     }
   };
@@ -1027,7 +1027,7 @@ ${businessName}`;
         Alert.alert('Saved', `PDF saved to app documents: ${fileName}`);
       }
     } catch (error) {
-      console.log('Save to device error:', error);
+      if (__DEV__) console.log('Save to device error:', error);
       Alert.alert('Error', 'Failed to save PDF. Please try again.');
     } finally {
       setIsDownloadingPdf(false);

@@ -591,7 +591,7 @@ export default function CreateJobScreen() {
         setShowAddressSuggestions(false);
       }
     } catch (error) {
-      console.log('Address search error:', error);
+      if (__DEV__) console.log('Address search error:', error);
       setAddressSuggestions([]);
       setShowAddressSuggestions(false);
     } finally {
@@ -624,7 +624,7 @@ export default function CreateJobScreen() {
           setAddressLatLng({ lat: response.data.lat, lng: response.data.lng });
         }
       } catch (error) {
-        console.log('Address details error:', error);
+        if (__DEV__) console.log('Address details error:', error);
       }
     }
   }, []);
@@ -696,7 +696,7 @@ export default function CreateJobScreen() {
         setTeamMembers(response.data);
       }
     } catch (error) {
-      console.log('Team members not available:', error);
+      if (__DEV__) console.log('Team members not available:', error);
     } finally {
       setLoadingTeam(false);
     }
@@ -743,7 +743,7 @@ export default function CreateJobScreen() {
         }
       }
     } catch (error) {
-      console.log('Pre-fill suggestions not available:', error);
+      if (__DEV__) console.log('Pre-fill suggestions not available:', error);
       setPrefillSuggestions(null);
     } finally {
       setLoadingPrefill(false);

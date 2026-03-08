@@ -302,7 +302,7 @@ export default function TeamChatScreen() {
       const response = await api.get('/api/team-chat');
       setMessages(response.data || []);
     } catch (error) {
-      console.log('Failed to fetch team chat:', error);
+      if (__DEV__) console.log('Failed to fetch team chat:', error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);

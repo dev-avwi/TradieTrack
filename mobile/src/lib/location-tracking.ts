@@ -71,7 +71,7 @@ class LocationTrackingService {
         await Location.requestForegroundPermissionsAsync();
       
       if (foregroundStatus !== 'granted') {
-        console.log('[Location] Foreground permission denied');
+        if (__DEV__) console.log('[Location] Foreground permission denied');
         return false;
       }
 
@@ -80,19 +80,19 @@ class LocationTrackingService {
         await Location.requestBackgroundPermissionsAsync();
       
       if (backgroundStatus !== 'granted') {
-        console.log('[Location] Background permission denied');
+        if (__DEV__) console.log('[Location] Background permission denied');
         // Can still work with foreground only
       }
 
-      console.log('[Location] Initialized successfully');
+      if (__DEV__) console.log('[Location] Initialized successfully');
       return true;
     } catch (error: any) {
       // In Expo Go, location permissions may not be fully available
       // This is expected - full location tracking requires a native build
       if (error?.message?.includes('NSLocation') || error?.message?.includes('Info.plist')) {
-        console.log('[Location] Running in Expo Go - location tracking requires native build');
+        if (__DEV__) console.log('[Location] Running in Expo Go - location tracking requires native build');
       } else {
-        console.log('[Location] Initialization skipped:', error?.message || 'Unknown error');
+        if (__DEV__) console.log('[Location] Initialization skipped:', error?.message || 'Unknown error');
       }
       return false;
     }
@@ -108,7 +108,7 @@ class LocationTrackingService {
       // Check if already tracking
       const isTracking = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
       if (isTracking) {
-        console.log('[Location] Already tracking');
+        if (__DEV__) console.log('[Location] Already tracking');
         this.updateStatus('tracking');
         return true;
       }
@@ -129,14 +129,14 @@ class LocationTrackingService {
           activityType: Location.ActivityType.AutomotiveNavigation,
         });
 
-        console.log('[Location] Background tracking started');
+        if (__DEV__) console.log('[Location] Background tracking started');
         this.updateStatus('tracking');
         return true;
       } catch (bgError: any) {
         // Check if this is a background mode configuration error
         const errorMessage = bgError?.message || '';
         if (errorMessage.includes('UIBackgroundModes') || errorMessage.includes('Background location')) {
-          console.warn('[Location] Background location not configured in Info.plist, using foreground tracking only');
+          if (__DEV__) console.warn('[Location] Background location not configured in Info.plist, using foreground tracking only');
           // Fall back to foreground-only tracking - just get current location
           const location = await this.getCurrentLocation();
           if (location) {
@@ -163,7 +163,7 @@ class LocationTrackingService {
         await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
       }
       
-      console.log('[Location] Tracking stopped');
+      if (__DEV__) console.log('[Location] Tracking stopped');
       this.updateStatus('stopped');
     } catch (error) {
       console.error('[Location] Failed to stop tracking:', error);
@@ -227,7 +227,7 @@ class LocationTrackingService {
 
       await Location.startGeofencingAsync(GEOFENCE_TASK_NAME, this.geofences);
       
-      console.log(`[Location] Added geofence for job ${jobId}`);
+      if (__DEV__) console.log(`[Location] Added geofence for job ${jobId}`);
       return true;
     } catch (error) {
       console.error('[Location] Failed to add geofence:', error);
@@ -252,7 +252,7 @@ class LocationTrackingService {
         }
       }
       
-      console.log(`[Location] Removed geofence for job ${jobId}`);
+      if (__DEV__) console.log(`[Location] Removed geofence for job ${jobId}`);
     } catch (error) {
       console.error('[Location] Failed to remove geofence:', error);
     }
@@ -341,10 +341,10 @@ class LocationTrackingService {
           await Location.stopGeofencingAsync(GEOFENCE_TASK_NAME);
         }
         await Location.startGeofencingAsync(GEOFENCE_TASK_NAME, this.geofences);
-        console.log(`[Location] Synced ${this.geofences.length} job geofences`);
+        if (__DEV__) console.log(`[Location] Synced ${this.geofences.length} job geofences`);
       }
     } catch (error) {
-      console.log('[Location] Geofence sync skipped:', (error as any)?.message || 'Not available');
+      if (__DEV__) console.log('[Location] Geofence sync skipped:', (error as any)?.message || 'Not available');
     }
   }
 

@@ -8,7 +8,7 @@ export const appBadge = {
         await Notifications.setBadgeCountAsync(count);
       }
     } catch (error) {
-      console.log('Failed to set badge count:', error);
+      if (__DEV__) console.log('Failed to set badge count:', error);
     }
   },
   
@@ -18,7 +18,7 @@ export const appBadge = {
         await Notifications.setBadgeCountAsync(0);
       }
     } catch (error) {
-      console.log('Failed to clear badge count:', error);
+      if (__DEV__) console.log('Failed to clear badge count:', error);
     }
   },
   
@@ -29,7 +29,7 @@ export const appBadge = {
       }
       return 0;
     } catch (error) {
-      console.log('Failed to get badge count:', error);
+      if (__DEV__) console.log('Failed to get badge count:', error);
       return 0;
     }
   },
@@ -41,7 +41,7 @@ export const appBadge = {
         await Notifications.setBadgeCountAsync(current + 1);
       }
     } catch (error) {
-      console.log('Failed to increment badge count:', error);
+      if (__DEV__) console.log('Failed to increment badge count:', error);
     }
   },
   
@@ -54,7 +54,7 @@ export const appBadge = {
         }
       }
     } catch (error) {
-      console.log('Failed to decrement badge count:', error);
+      if (__DEV__) console.log('Failed to decrement badge count:', error);
     }
   },
 };

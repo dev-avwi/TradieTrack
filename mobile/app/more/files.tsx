@@ -876,7 +876,7 @@ export default function FilesScreen() {
       }
       return null;
     } catch (err) {
-      console.log('Attachment upload failed:', err);
+      if (__DEV__) console.log('Attachment upload failed:', err);
       return null;
     }
   };
