@@ -189,7 +189,8 @@ export function PhotoAnnotationEditor({
     loadImageAsBase64();
   };
 
-  const strokeWidthValue = STROKE_WIDTHS.find(w => w.name === strokeWidth)?.value || 4;
+  const initialColor = useRef(COLORS[0].value);
+  const initialStrokeWidth = useRef(4);
 
   const htmlContent = imageBase64 ? `
 <!DOCTYPE html>
@@ -234,8 +235,8 @@ export function PhotoAnnotationEditor({
       position: absolute;
       display: none;
       background: transparent;
-      border: 2px dashed ${selectedColor};
-      color: ${selectedColor};
+      border: 2px dashed ${initialColor.current};
+      color: ${initialColor.current};
       font-size: 18px;
       font-weight: 600;
       padding: 4px 8px;
@@ -265,8 +266,8 @@ export function PhotoAnnotationEditor({
     const textInput = document.getElementById('textInput');
     
     let currentTool = 'pen';
-    let currentColor = '${selectedColor}';
-    let currentStrokeWidth = ${strokeWidthValue};
+    let currentColor = '${initialColor.current}';
+    let currentStrokeWidth = ${initialStrokeWidth.current};
     let isDrawing = false;
     let lastX = 0;
     let lastY = 0;

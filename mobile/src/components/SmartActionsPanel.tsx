@@ -4,9 +4,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Switch,
   ActivityIndicator,
-  ScrollView,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
@@ -119,43 +117,33 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  actionItemEnabled: {
-    borderColor: colors.primary + '40',
-    backgroundColor: colors.primary + '05',
-  },
-  actionItemDisabled: {
-    opacity: 0.6,
-  },
-  actionHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: spacing.sm,
   },
+  actionItemCompleted: {
+    borderColor: colors.success + '40',
+    backgroundColor: colors.success + '05',
+  },
+  actionItemRunning: {
+    borderColor: colors.warning + '40',
+    backgroundColor: colors.warning + '05',
+  },
+  actionItemDisabled: {
+    opacity: 0.5,
+  },
   actionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    backgroundColor: colors.muted,
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary + '10',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionIconEnabled: {
-    backgroundColor: colors.primary + '15',
+  actionIconCompleted: {
+    backgroundColor: colors.success + '15',
   },
   actionContent: {
-    flex: 1,
-  },
-  actionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 2,
-  },
-  actionTitleLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
     flex: 1,
   },
   actionTitle: {
@@ -163,129 +151,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
     color: colors.foreground,
   },
-  statusBadge: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 1,
-    borderRadius: radius.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  statusSuggested: {
-    backgroundColor: colors.muted,
-  },
-  statusRunning: {
-    backgroundColor: colors.warning + '20',
-  },
-  statusCompleted: {
-    backgroundColor: colors.success + '20',
-  },
-  statusBadgeText: {
-    fontSize: 10,
-    fontWeight: '500',
-  },
   actionDescription: {
     fontSize: 12,
     color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  chevron: {
+    marginLeft: spacing.xs,
   },
   missingRequirements: {
     backgroundColor: colors.warning + '15',
     padding: spacing.sm,
     borderRadius: radius.md,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   missingText: {
     fontSize: 11,
     color: colors.warning,
-  },
-  aiSuggestion: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.xs,
-    backgroundColor: colors.primary + '10',
-    padding: spacing.sm,
-    borderRadius: radius.md,
-    marginTop: spacing.sm,
-  },
-  aiText: {
-    fontSize: 11,
-    color: colors.primary,
-    flex: 1,
-  },
-  previewSection: {
-    backgroundColor: colors.muted,
-    padding: spacing.sm,
-    borderRadius: radius.md,
-    marginTop: spacing.sm,
-  },
-  previewRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  previewLabel: {
-    fontSize: 11,
-    color: colors.mutedForeground,
-  },
-  previewValue: {
-    fontSize: 11,
-    color: colors.foreground,
-    fontWeight: '500',
-    textAlign: 'right',
-    flex: 1,
-    marginLeft: spacing.sm,
-  },
-  previewAmount: {
-    color: colors.primary,
-  },
-  footer: {
-    padding: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  footerText: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-  },
-  skipButton: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  skipButtonText: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-  },
-  executeButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  executeButtonDisabled: {
-    backgroundColor: colors.muted,
-  },
-  executeButtonText: {
-    color: colors.primaryForeground,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  executeButtonTextDisabled: {
-    color: colors.mutedForeground,
-  },
-  note: {
-    fontSize: 11,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    marginTop: spacing.sm,
   },
   emptyState: {
     alignItems: 'center',
@@ -300,123 +182,73 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
 function SmartActionItem({
   action,
-  onToggle,
   onExecute,
   isExecuting,
   colors,
   styles,
 }: {
   action: SmartAction;
-  onToggle: (enabled: boolean) => void;
   onExecute: () => void;
   isExecuting?: boolean;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const hasMissingRequirements = action.missingRequirements && action.missingRequirements.length > 0;
-  const isDisabled = isExecuting || action.status === 'completed' || action.status === 'running';
-
-  const getStatusColor = () => {
-    switch (action.status) {
-      case 'running': return colors.warning;
-      case 'completed': return colors.success;
-      default: return colors.mutedForeground;
-    }
-  };
+  const isCompleted = action.status === 'completed';
+  const isRunning = action.status === 'running';
+  const isDisabled = isExecuting || isCompleted || isRunning || hasMissingRequirements;
 
   return (
     <TouchableOpacity
       activeOpacity={0.7}
       style={[
         styles.actionItem,
-        action.enabled && !hasMissingRequirements && styles.actionItemEnabled,
-        hasMissingRequirements && styles.actionItemDisabled,
+        isCompleted && styles.actionItemCompleted,
+        isRunning && styles.actionItemRunning,
+        (hasMissingRequirements && !isCompleted) && styles.actionItemDisabled,
       ]}
-      onPress={() => setIsExpanded(!isExpanded)}
+      onPress={() => {
+        if (!isDisabled) onExecute();
+      }}
+      disabled={!!isDisabled}
     >
-      <View style={styles.actionHeader}>
-        <View style={[
-          styles.actionIcon,
-          action.enabled && !hasMissingRequirements && styles.actionIconEnabled,
-        ]}>
+      <View style={[
+        styles.actionIcon,
+        isCompleted && styles.actionIconCompleted,
+      ]}>
+        {isRunning ? (
+          <ActivityIndicator size={18} color={colors.warning} />
+        ) : isCompleted ? (
+          <Feather name="check" size={18} color={colors.success} />
+        ) : (
           <Feather
             name={getActionIcon(action.icon)}
             size={18}
-            color={action.enabled && !hasMissingRequirements ? colors.primary : colors.mutedForeground}
+            color={hasMissingRequirements ? colors.mutedForeground : colors.primary}
           />
-        </View>
-
-        <View style={styles.actionContent}>
-          <View style={styles.actionTitleRow}>
-            <View style={styles.actionTitleLeft}>
-              <Text style={styles.actionTitle}>{action.title}</Text>
-              {action.status !== 'suggested' && (
-                <View style={[
-                  styles.statusBadge,
-                  action.status === 'running' && styles.statusRunning,
-                  action.status === 'completed' && styles.statusCompleted,
-                  action.status === 'suggested' && styles.statusSuggested,
-                ]}>
-                  {action.status === 'running' && (
-                    <ActivityIndicator size={8} color={colors.warning} />
-                  )}
-                  {action.status === 'completed' && (
-                    <Feather name="check" size={10} color={colors.success} />
-                  )}
-                  <Text style={[styles.statusBadgeText, { color: getStatusColor() }]}>
-                    {action.status === 'running' ? 'Running' : action.status === 'completed' ? 'Done' : ''}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Switch
-              value={action.enabled}
-              onValueChange={onToggle}
-              disabled={isDisabled || hasMissingRequirements}
-              trackColor={{ false: colors.muted, true: colors.primary + '60' }}
-              thumbColor={action.enabled ? colors.primary : colors.mutedForeground}
-            />
-          </View>
-          <Text style={styles.actionDescription}>{action.description}</Text>
-        </View>
+        )}
       </View>
 
-      {hasMissingRequirements && (
-        <View style={styles.missingRequirements}>
-          <Text style={styles.missingText}>
-            Missing: {action.missingRequirements?.join(', ')}
-          </Text>
-        </View>
-      )}
+      <View style={styles.actionContent}>
+        <Text style={[styles.actionTitle, isCompleted && { color: colors.success }]}>
+          {isCompleted ? `${action.title} ` : action.title}
+          {isCompleted && <Feather name="check-circle" size={13} color={colors.success} />}
+        </Text>
+        <Text style={styles.actionDescription}>
+          {isRunning ? 'Running...' : action.description}
+        </Text>
+        {hasMissingRequirements && !isCompleted && (
+          <View style={styles.missingRequirements}>
+            <Text style={styles.missingText}>
+              Missing: {action.missingRequirements?.join(', ')}
+            </Text>
+          </View>
+        )}
+      </View>
 
-      {action.aiSuggestion && action.enabled && !hasMissingRequirements && (
-        <View style={styles.aiSuggestion}>
-          <Feather name="zap" size={12} color={colors.primary} />
-          <Text style={styles.aiText}>{action.aiSuggestion}</Text>
-        </View>
-      )}
-
-      {isExpanded && action.preview && action.enabled && !hasMissingRequirements && (
-        <View style={styles.previewSection}>
-          {action.preview.recipient && (
-            <View style={styles.previewRow}>
-              <Text style={styles.previewLabel}>To:</Text>
-              <Text style={styles.previewValue} numberOfLines={1}>{action.preview.recipient}</Text>
-            </View>
-          )}
-          {action.preview.subject && (
-            <View style={styles.previewRow}>
-              <Text style={styles.previewLabel}>Subject:</Text>
-              <Text style={styles.previewValue} numberOfLines={1}>{action.preview.subject}</Text>
-            </View>
-          )}
-          {action.preview.amount && (
-            <View style={styles.previewRow}>
-              <Text style={styles.previewLabel}>Amount:</Text>
-              <Text style={[styles.previewValue, styles.previewAmount]}>{action.preview.amount}</Text>
-            </View>
-          )}
+      {!isCompleted && !isRunning && !hasMissingRequirements && (
+        <View style={styles.chevron}>
+          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         </View>
       )}
     </TouchableOpacity>
@@ -437,9 +269,7 @@ export default function SmartActionsPanel({
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const enabledActions = actions.filter(a => a.enabled && (!a.missingRequirements || a.missingRequirements.length === 0));
   const completedActions = actions.filter(a => a.status === 'completed');
-  const hasActionsToRun = enabledActions.length > 0 && enabledActions.some(a => a.status !== 'completed');
 
   if (actions.length === 0) {
     return (
@@ -489,7 +319,6 @@ export default function SmartActionsPanel({
           <SmartActionItem
             key={action.id}
             action={action}
-            onToggle={(enabled) => onActionToggle(action.id, enabled)}
             onExecute={() => onActionExecute(action.id)}
             isExecuting={isExecuting}
             colors={colors}
@@ -497,53 +326,10 @@ export default function SmartActionsPanel({
           />
         ))}
       </View>
-
-      <View style={styles.footer}>
-        <View style={styles.footerRow}>
-          <Text style={styles.footerText}>
-            {enabledActions.length} action{enabledActions.length !== 1 ? 's' : ''} selected
-          </Text>
-          <TouchableOpacity style={styles.skipButton} onPress={onSkipAll} disabled={isExecuting}>
-            <Text style={styles.skipButtonText}>Skip all</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.executeButton,
-            (!hasActionsToRun || isExecuting) && styles.executeButtonDisabled,
-          ]}
-          onPress={onExecuteAll}
-          disabled={!hasActionsToRun || isExecuting}
-          activeOpacity={0.8}
-        >
-          {isExecuting ? (
-            <>
-              <ActivityIndicator size={16} color={colors.primaryForeground} />
-              <Text style={styles.executeButtonText}>Running actions...</Text>
-            </>
-          ) : (
-            <>
-              <Feather name="arrow-right" size={18} color={hasActionsToRun ? colors.primaryForeground : colors.mutedForeground} />
-              <Text style={[
-                styles.executeButtonText,
-                !hasActionsToRun && styles.executeButtonTextDisabled,
-              ]}>
-                Run {enabledActions.length} Action{enabledActions.length !== 1 ? 's' : ''}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        <Text style={styles.note}>
-          Review each action above before running. Nothing happens until you tap Run.
-        </Text>
-      </View>
     </View>
   );
 }
 
-// Helper function to generate smart actions for a job
 export function getJobSmartActions(job: any, client: any, linkedQuote?: any, linkedInvoice?: any): SmartAction[] {
   const actions: SmartAction[] = [];
   const clientEmail = client?.email;
@@ -616,7 +402,6 @@ export function getJobSmartActions(job: any, client: any, linkedQuote?: any, lin
     }
   }
 
-  // Add Collect Payment action when invoice exists and isn't paid
   if (linkedInvoice && linkedInvoice.status !== 'paid') {
     const invoiceTotal = linkedInvoice.total || 0;
     const amountPaid = linkedInvoice.amountPaid || linkedInvoice.paidAmount || 0;
@@ -651,7 +436,7 @@ export function getJobSmartActions(job: any, client: any, linkedQuote?: any, lin
         description: `Generate quote for ${job.title}`,
         icon: 'invoice',
         status: 'suggested',
-        enabled: false,
+        enabled: true,
         preview: {
           recipient: clientName,
         },
@@ -668,7 +453,7 @@ export function getJobSmartActions(job: any, client: any, linkedQuote?: any, lin
       description: 'Confirm booking with client',
       icon: 'email',
       status: 'suggested',
-      enabled: false,
+      enabled: true,
       preview: {
         recipient: clientEmail,
         subject: `Booking Confirmed: ${job.title}`,

@@ -1952,6 +1952,8 @@ export default function JobDetailScreen() {
   const [showSignSwmsModal, setShowSignSwmsModal] = useState(false);
   const [signingSwmsId, setSigningSwmsId] = useState<string | null>(null);
   const [signWorkerName, setSignWorkerName] = useState('');
+  const [swmsSignatureData, setSwmsSignatureData] = useState<string | null>(null);
+  const swmsSignWebViewRef = useRef<any>(null);
   const [isSigningSwms, setIsSigningSwms] = useState(false);
   const [isSavingSwms, setIsSavingSwms] = useState(false);
   const [swmsForm, setSwmsForm] = useState({
@@ -2437,7 +2439,7 @@ export default function JobDetailScreen() {
 
       const res = await api.post(`/api/swms/${signingSwmsId}/sign`, {
         workerName: signWorkerName.trim(),
-        signatureData: 'mobile-text-signature',
+        signatureData: swmsSignatureData || 'mobile-text-signature',
         latitude,
         longitude,
         address,
@@ -2447,6 +2449,7 @@ export default function JobDetailScreen() {
       } else {
         setShowSignSwmsModal(false);
         setSignWorkerName('');
+        setSwmsSignatureData(null);
         setSigningSwmsId(null);
         loadSwmsDocuments();
         Alert.alert('Success', 'SWMS signed successfully');
@@ -2456,13 +2459,45 @@ export default function JobDetailScreen() {
     } finally {
       setIsSigningSwms(false);
     }
-  }, [signingSwmsId, signWorkerName, loadSwmsDocuments]);
+  }, [signingSwmsId, signWorkerName, swmsSignatureData, loadSwmsDocuments]);
 
-  const handleDownloadSwmsPdf = useCallback((swmsId: string) => {
-    const url = `${API_URL}/api/swms/${swmsId}/pdf`;
-    Linking.openURL(url).catch(() => {
-      Alert.alert('Error', 'Could not open PDF');
-    });
+  const handleDownloadSwmsPdf = useCallback(async (swmsId: string) => {
+    try {
+      const token = await api.getToken();
+      const url = `${API_URL}/api/swms/${swmsId}/pdf`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'x-mobile-app': 'true',
+        },
+      });
+      if (!response.ok) throw new Error('Failed to download PDF');
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64 = (reader.result as string).split(',')[1];
+          const fileUri = `${FileSystem.cacheDirectory}swms_${swmsId}.pdf`;
+          await FileSystem.writeAsStringAsync(fileUri, base64, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(fileUri, {
+              mimeType: 'application/pdf',
+              dialogTitle: 'SWMS Document',
+              UTI: 'com.adobe.pdf',
+            });
+          } else {
+            Alert.alert('Success', 'PDF saved to device');
+          }
+        } catch (e) {
+          Alert.alert('Error', 'Failed to save PDF');
+        }
+      };
+      reader.readAsDataURL(blob);
+    } catch (e) {
+      Alert.alert('Error', 'Could not download PDF');
+    }
   }, []);
 
   const toggleSwmsExpand = useCallback((swmsId: string) => {
@@ -9508,22 +9543,17 @@ export default function JobDetailScreen() {
       <Modal visible={showSignSwmsModal} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
+            <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Sign SWMS</Text>
-                <TouchableOpacity onPress={() => { setShowSignSwmsModal(false); setSigningSwmsId(null); }}>
+                <TouchableOpacity onPress={() => { setShowSignSwmsModal(false); setSigningSwmsId(null); setSwmsSignatureData(null); }}>
                   <Feather name="x" size={24} color={colors.foreground} />
                 </TouchableOpacity>
               </View>
-              <View style={styles.modalContent}>
-                <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
-                  <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
-                    <Feather name="edit-3" size={28} color={colors.primary} />
-                  </View>
-                  <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: 'center' }}>
-                    By signing, you confirm you have read and understood the Safe Work Method Statement.
-                  </Text>
-                </View>
+              <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+                <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.md }}>
+                  By signing, you confirm you have read and understood the Safe Work Method Statement.
+                </Text>
                 <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Worker Name *</Text>
                 <TextInput
                   style={[styles.singleLineInput, { marginBottom: spacing.md }]}
@@ -9531,20 +9561,49 @@ export default function JobDetailScreen() {
                   onChangeText={setSignWorkerName}
                   placeholder="Enter your full name"
                   placeholderTextColor={colors.mutedForeground}
-                  autoFocus
                 />
+                <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Signature *</Text>
+                <View style={{ borderWidth: 1, borderColor: swmsSignatureData ? colors.primary : colors.border, borderRadius: radius.lg, overflow: 'hidden', height: 160, marginBottom: spacing.sm, backgroundColor: '#ffffff' }}>
+                  <WebView
+                    ref={swmsSignWebViewRef}
+                    style={{ flex: 1, backgroundColor: 'transparent' }}
+                    scrollEnabled={false}
+                    bounces={false}
+                    originWhitelist={['*']}
+                    source={{ html: `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>*{margin:0;padding:0}html,body{width:100%;height:100%;overflow:hidden;touch-action:none;background:#fff}canvas{width:100%;height:100%;touch-action:none}</style></head><body><canvas id="c"></canvas><script>const c=document.getElementById('c');const ctx=c.getContext('2d');let drawing=false,hasDrawn=false,lx=0,ly=0;function resize(){c.width=c.offsetWidth*2;c.height=c.offsetHeight*2;ctx.scale(2,2);ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#1e293b'}resize();window.onresize=resize;function gp(e){const r=c.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top}}c.addEventListener('touchstart',function(e){e.preventDefault();drawing=true;const p=gp(e);lx=p.x;ly=p.y},{passive:false});c.addEventListener('touchmove',function(e){if(!drawing)return;e.preventDefault();const p=gp(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;if(!hasDrawn){hasDrawn=true;window.ReactNativeWebView.postMessage(JSON.stringify({type:'started'}))}},{passive:false});c.addEventListener('touchend',function(){drawing=false;if(hasDrawn){const d=c.toDataURL('image/png');window.ReactNativeWebView.postMessage(JSON.stringify({type:'sig',data:d}))}});c.addEventListener('mousedown',function(e){drawing=true;const p=gp(e);lx=p.x;ly=p.y});c.addEventListener('mousemove',function(e){if(!drawing)return;const p=gp(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;if(!hasDrawn){hasDrawn=true;window.ReactNativeWebView.postMessage(JSON.stringify({type:'started'}))}});c.addEventListener('mouseup',function(){drawing=false;if(hasDrawn){const d=c.toDataURL('image/png');window.ReactNativeWebView.postMessage(JSON.stringify({type:'sig',data:d}))}});function clearSig(){ctx.clearRect(0,0,c.width,c.height);hasDrawn=false;window.ReactNativeWebView.postMessage(JSON.stringify({type:'cleared'}))}</script></body></html>` }}
+                    onMessage={(event: any) => {
+                      try {
+                        const msg = JSON.parse(event.nativeEvent.data);
+                        if (msg.type === 'sig') {
+                          setSwmsSignatureData(msg.data);
+                        } else if (msg.type === 'cleared') {
+                          setSwmsSignatureData(null);
+                        }
+                      } catch {}
+                    }}
+                  />
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    swmsSignWebViewRef.current?.injectJavaScript('clearSig(); true;');
+                    setSwmsSignatureData(null);
+                  }}
+                  style={{ alignSelf: 'flex-end', marginBottom: spacing.md }}
+                >
+                  <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>Clear Signature</Text>
+                </TouchableOpacity>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: `${colors.primary}10`, padding: spacing.md, borderRadius: radius.lg }}>
                   <Feather name="map-pin" size={16} color={colors.primary} />
                   <Text style={{ fontSize: 13, color: colors.mutedForeground, flex: 1 }}>
                     GPS location will be recorded with your signature
                   </Text>
                 </View>
-              </View>
+              </ScrollView>
               <View style={styles.modalFooter}>
-                <Button variant="outline" onPress={() => { setShowSignSwmsModal(false); setSigningSwmsId(null); }} style={{ flex: 1, marginRight: 8 }}>
+                <Button variant="outline" onPress={() => { setShowSignSwmsModal(false); setSigningSwmsId(null); setSwmsSignatureData(null); }} style={{ flex: 1, marginRight: 8 }}>
                   Cancel
                 </Button>
-                <Button onPress={handleSignSwms} disabled={isSigningSwms || !signWorkerName.trim()} style={{ flex: 1 }}>
+                <Button onPress={handleSignSwms} disabled={isSigningSwms || !signWorkerName.trim() || !swmsSignatureData} style={{ flex: 1 }}>
                   {isSigningSwms ? 'Signing...' : 'Sign SWMS'}
                 </Button>
               </View>
