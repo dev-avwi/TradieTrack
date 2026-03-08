@@ -156,7 +156,7 @@ export default function NotificationsScreen() {
       const { status } = await Notifications.getPermissionsAsync();
       setPermissionStatus(status);
     } catch (error) {
-      console.log('Could not check permission status');
+      if (__DEV__) console.log('Could not check permission status');
     }
   };
 
@@ -173,7 +173,7 @@ export default function NotificationsScreen() {
       const { status } = await Notifications.requestPermissionsAsync();
       setPermissionStatus(status);
     } catch (error) {
-      console.log('Could not request permission');
+      if (__DEV__) console.log('Could not request permission');
     }
   };
 

@@ -170,7 +170,7 @@ function WeatherWidget() {
         setWeather(response.data);
       }
     } catch (error) {
-      console.log('Error loading weather:', error);
+      if (__DEV__) console.log('Error loading weather:', error);
     } finally {
       setIsLoading(false);
     }
@@ -543,7 +543,7 @@ function TimeTrackingWidget() {
         setTodaysJobs(activeJobs);
       }
     } catch (error) {
-      console.log('Error loading todays jobs for timer:', error);
+      if (__DEV__) console.log('Error loading todays jobs for timer:', error);
       setTodaysJobs([]);
     }
   };
@@ -618,7 +618,7 @@ function TimeTrackingWidget() {
         setTotalMinutesToday(total);
       }
     } catch (error) {
-      console.log('Error loading dashboard data:', error);
+      if (__DEV__) console.log('Error loading dashboard data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -1458,7 +1458,7 @@ function RevenueChart({ isOwner }: { isOwner: boolean }) {
         setRevenueData(months);
       }
     } catch (error) {
-      console.log('Error loading revenue data:', error);
+      if (__DEV__) console.log('Error loading revenue data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -1576,7 +1576,7 @@ function ComplianceAlerts({ isOwner }: { isOwner: boolean }) {
         setAlerts(expiringOrExpired);
       }
     } catch (error) {
-      console.log('Error loading compliance data:', error);
+      if (__DEV__) console.log('Error loading compliance data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -1743,7 +1743,7 @@ export default function DashboardScreen() {
         setToInvoiceCount(uninvoicedCount);
       }
     } catch (error) {
-      console.log('Error fetching to-invoice count:', error);
+      if (__DEV__) console.log('Error fetching to-invoice count:', error);
     }
   }, []);
 
@@ -1756,7 +1756,7 @@ export default function DashboardScreen() {
         setActivities(response.data);
       }
     } catch (error) {
-      console.log('Error fetching activities:', error);
+      if (__DEV__) console.log('Error fetching activities:', error);
       setActivities([]);
     } finally {
       setActivitiesLoading(false);
@@ -1770,7 +1770,7 @@ export default function DashboardScreen() {
         setDailySummary(response.data as any);
       }
     } catch (error) {
-      console.log('Error fetching daily summary:', error);
+      if (__DEV__) console.log('Error fetching daily summary:', error);
     }
   }, []);
 
@@ -1829,7 +1829,7 @@ export default function DashboardScreen() {
         setTotalDriveTime(totalMinutes);
       }
     } catch (error) {
-      console.log('Error computing job distances:', error);
+      if (__DEV__) console.log('Error computing job distances:', error);
     }
   }, [todaysJobs, isRouteOptimized, optimizedJobs]);
 
@@ -1951,7 +1951,7 @@ export default function DashboardScreen() {
       setIsRouteOptimized(true);
       Alert.alert('Route Optimized', `Your ${route.length} jobs have been reordered for the most efficient route.`);
     } catch (error) {
-      console.log('Error optimizing route:', error);
+      if (__DEV__) console.log('Error optimizing route:', error);
       Alert.alert('Error', 'Failed to optimize route. Please try again.');
     } finally {
       setIsOptimizing(false);
@@ -2054,7 +2054,7 @@ export default function DashboardScreen() {
         setMyAllJobs(response.data);
       }
     } catch (error) {
-      console.log('Error fetching my jobs:', error);
+      if (__DEV__) console.log('Error fetching my jobs:', error);
     }
   }, [isStaffUser]);
 
@@ -2138,7 +2138,7 @@ export default function DashboardScreen() {
         setUnassignedJobs(unassignedRes.data);
       }
     } catch (error) {
-      console.log('Error fetching team data:', error);
+      if (__DEV__) console.log('Error fetching team data:', error);
     } finally {
       setIsTeamDataLoading(false);
     }

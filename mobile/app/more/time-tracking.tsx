@@ -780,7 +780,7 @@ export default function TimeTrackingScreen() {
         setTimeEntries(response.data);
       }
     } catch (error) {
-      console.log('Failed to fetch time entries:', error);
+      if (__DEV__) console.log('Failed to fetch time entries:', error);
     } finally {
       setIsLoadingEntries(false);
     }
@@ -808,7 +808,7 @@ export default function TimeTrackingScreen() {
         setWeeklyData(weekly);
       }
     } catch (error) {
-      console.log('Failed to fetch weekly data:', error);
+      if (__DEV__) console.log('Failed to fetch weekly data:', error);
     }
   }, []);
 
@@ -850,7 +850,7 @@ export default function TimeTrackingScreen() {
         });
       }
     } catch (error) {
-      console.log('Failed to fetch time stats:', error);
+      if (__DEV__) console.log('Failed to fetch time stats:', error);
     }
   }, []);
 

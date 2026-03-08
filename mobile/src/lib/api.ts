@@ -141,7 +141,7 @@ class ApiClient {
       }
 
       const url = `${this.baseUrl}${endpoint}`;
-      console.log(`[API] ${method} ${endpoint}`);
+      if (__DEV__) console.log(`[API] ${method} ${endpoint}`);
       
       const response = await fetch(url, config);
       
@@ -151,17 +151,17 @@ class ApiClient {
       if (!response.ok) {
         if (isJson) {
           const errorData = await response.json().catch(() => ({}));
-          console.log(`[API] Error ${response.status}:`, errorData);
+          if (__DEV__) console.log(`[API] Error ${response.status}:`, errorData);
           return { error: errorData.error || errorData.message || `Request failed: ${response.status}`, data: errorData as T };
         } else {
           const text = await response.text().catch(() => '');
-          console.log(`[API] Non-JSON Error ${response.status}:`, text.substring(0, 100));
+          if (__DEV__) console.log(`[API] Non-JSON Error ${response.status}:`, text.substring(0, 100));
           return { error: `Server error (${response.status}). Please try again.` };
         }
       }
 
       if (!isJson) {
-        console.log(`[API] Warning: Non-JSON response for ${endpoint}`);
+        if (__DEV__) console.log(`[API] Warning: Non-JSON response for ${endpoint}`);
         return { data: {} as T };
       }
 
@@ -170,10 +170,10 @@ class ApiClient {
     } catch (error) {
       const online = await this.isOnline();
       if (!online) {
-        console.log(`[API] Offline - skipping ${method} ${endpoint}`);
+        if (__DEV__) console.log(`[API] Offline - skipping ${method} ${endpoint}`);
         return { error: 'offline', isOffline: true };
       }
-      console.warn(`[API] Network Error [${method} ${endpoint}]:`, error);
+      if (__DEV__) console.warn(`[API] Network Error [${method} ${endpoint}]:`, error);
       return { error: error instanceof Error ? error.message : 'Network error' };
     }
   }
@@ -194,11 +194,6 @@ class ApiClient {
     return this.request<T>('DELETE', endpoint);
   }
 
-  /**
-   * Upload a file using FormData
-   * @param endpoint The API endpoint to upload to
-   * @param formData FormData containing the file and metadata
-   */
   async uploadFile<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
     try {
       const token = await this.getToken();
@@ -207,10 +202,9 @@ class ApiClient {
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
-      // Note: Don't set Content-Type for FormData - let fetch set it with boundary
       
       const url = `${this.baseUrl}${endpoint}`;
-      console.log(`[API] POST (upload) ${endpoint}`);
+      if (__DEV__) console.log(`[API] POST (upload) ${endpoint}`);
       
       const response = await fetch(url, {
         method: 'POST',
@@ -224,7 +218,7 @@ class ApiClient {
       if (!response.ok) {
         if (isJson) {
           const errorData = await response.json().catch(() => ({}));
-          console.log(`[API] Upload Error ${response.status}:`, errorData);
+          if (__DEV__) console.log(`[API] Upload Error ${response.status}:`, errorData);
           return { error: errorData.error || errorData.message || `Upload failed: ${response.status}` };
         } else {
           return { error: `Upload failed (${response.status})` };
@@ -240,10 +234,10 @@ class ApiClient {
     } catch (error) {
       const online = await this.isOnline();
       if (!online) {
-        console.log(`[API] Offline - skipping upload ${endpoint}`);
+        if (__DEV__) console.log(`[API] Offline - skipping upload ${endpoint}`);
         return { error: 'offline', isOffline: true };
       }
-      console.warn(`[API] Upload Error [${endpoint}]:`, error);
+      if (__DEV__) console.warn(`[API] Upload Error [${endpoint}]:`, error);
       return { error: error instanceof Error ? error.message : 'Upload failed' };
     }
   }

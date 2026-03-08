@@ -2434,7 +2434,7 @@ export default function JobDetailScreen() {
           }
         }
       } catch (locErr) {
-        console.log('Location not available for SWMS signing');
+        if (__DEV__) console.log('Location not available for SWMS signing');
       }
 
       const res = await api.post(`/api/swms/${signingSwmsId}/sign`, {
@@ -2747,7 +2747,7 @@ export default function JobDetailScreen() {
           setClientSavedSignature(null);
         }
       } catch (error) {
-        console.log('No saved signature for client:', error);
+        if (__DEV__) console.log('No saved signature for client:', error);
         setClientSavedSignature(null);
       }
     };
@@ -3033,7 +3033,7 @@ export default function JobDetailScreen() {
         });
       }
     } catch (error) {
-      console.log('Could not load automation settings:', error);
+      if (__DEV__) console.log('Could not load automation settings:', error);
       // Default to no photo requirements if settings can't be loaded
       setAutomationSettings({
         requirePhotoBeforeStart: false,
@@ -3049,7 +3049,7 @@ export default function JobDetailScreen() {
         setPhotos(response.data);
       }
     } catch (error) {
-      console.log('No photos or error loading:', error);
+      if (__DEV__) console.log('No photos or error loading:', error);
       setPhotos([]);
     }
   };
@@ -3061,7 +3061,7 @@ export default function JobDetailScreen() {
         setVoiceNotes(response.data);
       }
     } catch (error) {
-      console.log('No voice notes or error loading:', error);
+      if (__DEV__) console.log('No voice notes or error loading:', error);
       setVoiceNotes([]);
     }
   };
@@ -3230,7 +3230,7 @@ export default function JobDetailScreen() {
         setSignatures(response.data);
       }
     } catch (error) {
-      console.log('No signatures or error loading:', error);
+      if (__DEV__) console.log('No signatures or error loading:', error);
       setSignatures([]);
     }
   };
@@ -3357,7 +3357,7 @@ export default function JobDetailScreen() {
         }
       }
     } catch (error) {
-      console.log('Error loading linked documents:', error);
+      if (__DEV__) console.log('Error loading linked documents:', error);
       // Clear the state on error
       setQuote(null);
       setInvoice(null);
@@ -3372,7 +3372,7 @@ export default function JobDetailScreen() {
         setTimeEntries(response.data);
       }
     } catch (error) {
-      console.log('Error loading time entries:', error);
+      if (__DEV__) console.log('Error loading time entries:', error);
       setTimeEntries([]);
     }
   };
@@ -3430,7 +3430,7 @@ export default function JobDetailScreen() {
         setJobExpenses(response.data);
       }
     } catch (error) {
-      console.log('Error loading job expenses:', error);
+      if (__DEV__) console.log('Error loading job expenses:', error);
       setJobExpenses([]);
     } finally {
       setIsLoadingExpenses(false);
@@ -3481,7 +3481,7 @@ export default function JobDetailScreen() {
         setProfitabilityData(res.data);
       }
     } catch (e) {
-      console.log('Profitability data not available:', e);
+      if (__DEV__) console.log('Profitability data not available:', e);
     } finally {
       setIsLoadingProfitability(false);
     }
@@ -3495,7 +3495,7 @@ export default function JobDetailScreen() {
         setPortalLinks(res.data);
       }
     } catch (e) {
-      console.log('Portal links not available:', e);
+      if (__DEV__) console.log('Portal links not available:', e);
     }
   }, [id]);
 
@@ -4306,7 +4306,7 @@ export default function JobDetailScreen() {
           coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
         }
       } catch (locErr) {
-        console.log('[OnMyWay] Could not get GPS location:', locErr);
+        if (__DEV__) console.log('[OnMyWay] Could not get GPS location:', locErr);
       }
 
       const response = await api.post(`/api/jobs/${job.id}/on-my-way`, {
