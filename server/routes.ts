@@ -15339,7 +15339,7 @@ Be specific about materials, colors, and features that would be included.`
       const distanceText = distanceKm !== null ? ` (${distanceKm} km away)` : '';
 
       let baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} is on the way to your job at ${job.address || 'your location'}. ${etaText}${distanceText}.`;
-      baseMessage = baseMessage.replace(/\n*Track arrival:.*$/i, '').replace(/\n*\[link will be added\].*$/i, '').trim();
+      baseMessage = baseMessage.replace(/\n*Track arrival:.*$/gims, '').replace(/\n*\[link will be added\].*$/gims, '').replace(/\n*Track arrival:\s*$/gim, '').trim();
       const message = `${baseMessage}\n\nTrack arrival: ${trackingUrl}`;
       
       // Send SMS via shared Twilio client (supports connector and env vars)
@@ -16506,7 +16506,9 @@ Be specific about materials, colors, and features that would be included.`
         } catch (e) { console.log('[RunningLate] ETA calc failed:', e); }
       }
 
-      const message = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} here. Running a bit late for your job at ${job.address || 'your location'}. Apologies for the delay - ${etaText}.`;
+      let baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} here. Running a bit late for your job at ${job.address || 'your location'}. Apologies for the delay - ${etaText}.`;
+      baseMessage = baseMessage.replace(/\n*Track arrival:.*$/gims, '').replace(/\n*\[link will be added\].*$/gims, '').replace(/\n*Track arrival:\s*$/gim, '').trim();
+      const message = baseMessage;
       
       // Send SMS via shared Twilio client (supports connector and env vars)
       const smsResult = await sendSMS({

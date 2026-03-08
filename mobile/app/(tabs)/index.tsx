@@ -2349,6 +2349,9 @@ export default function DashboardScreen() {
   };
 
   const handleOnMyWay = async (jobId: string, clientId?: string) => {
+    router.push(`/job/${jobId}`);
+    return;
+    // Legacy code below kept for reference
     Alert.alert(
       'On My Way?',
       'Notify the client that you\'re heading to the job site?',
@@ -2363,8 +2366,6 @@ export default function DashboardScreen() {
               
               if (!isOnline) {
                 if (clientId) {
-                  // Queue the on-my-way notification as a special action type
-                  // Don't update status to invalid 'en_route' - just queue the notification
                   await offlineStorage.queueOnMyWayNotification(jobId);
                   Alert.alert('Saved Offline', 'On my way notification will be sent when online');
                 }
@@ -2387,7 +2388,6 @@ export default function DashboardScreen() {
               router.push(`/job/${jobId}`);
             } catch (error: any) {
               if (error.message?.includes('Network') && clientId) {
-                // Queue the notification for later sync instead of invalid status update
                 await offlineStorage.queueOnMyWayNotification(jobId);
                 Alert.alert('Saved Offline', 'Notification will be sent when connection restored');
               }
