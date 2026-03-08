@@ -19803,6 +19803,16 @@ Be specific about materials, colors, and features that would be included.`
           console.error('Failed to create receipt:', receiptError);
         }
       }
+
+      autoSendReceiptAfterPayment(
+        userContext.effectiveUserId,
+        invoice.id,
+        parsedAmount,
+        paymentMethod,
+        reference || null,
+        `${isFullyPaid ? 'Final payment' : 'Progress payment'} for Invoice ${invoice.number || String(invoice.id).substring(0, 8).toUpperCase()}`,
+        req,
+      ).catch(err => console.error('[Record Payment] Auto-receipt send failed:', err));
       
       const paymentRecordsList = await storage.getPaymentRecords(invoice.id);
       
@@ -22274,6 +22284,143 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  async function autoSendReceiptAfterPayment(
+    userId: string,
+    invoiceId: string | number | null,
+    paymentAmount: number,
+    paymentMethod: string,
+    paymentReference?: string | null,
+    description?: string,
+    req?: any,
+  ) {
+    try {
+      if (!invoiceId) {
+        console.log('[Auto-Receipt] No invoice linked, skipping auto-send');
+        return;
+      }
+
+      const invoice = await storage.getInvoice(invoiceId as any, userId);
+      if (!invoice) {
+        console.log(`[Auto-Receipt] Invoice ${invoiceId} not found, skipping auto-send`);
+        return;
+      }
+
+      const clientId = invoice.clientId;
+      if (!clientId) {
+        console.log(`[Auto-Receipt] No client linked to invoice ${invoiceId}, skipping auto-send`);
+        return;
+      }
+
+      const client = await storage.getClientById(clientId);
+      if (!client) {
+        console.log(`[Auto-Receipt] Client ${clientId} not found, skipping auto-send`);
+        return;
+      }
+
+      const settings = await storage.getBusinessSettingsByUserId(userId);
+
+      let receipt = await storage.getReceiptByInvoiceId(invoice.id, userId);
+      if (!receipt) {
+        const receiptNumber = await storage.generateReceiptNumber(userId);
+        const gstAmount = paymentAmount / 11;
+        const subtotal = paymentAmount - gstAmount;
+
+        receipt = await storage.createReceipt({
+          userId,
+          receiptNumber,
+          invoiceId: invoice.id,
+          jobId: invoice.jobId,
+          clientId,
+          amount: paymentAmount.toFixed(2),
+          gstAmount: gstAmount.toFixed(2),
+          subtotal: subtotal.toFixed(2),
+          paymentMethod,
+          paymentReference: paymentReference || null,
+          description: description || `Payment for Invoice ${invoice.number || String(invoice.id).substring(0, 8).toUpperCase()}`,
+          paidAt: new Date(),
+        });
+
+        console.log(`[Auto-Receipt] Created receipt ${receiptNumber}`);
+      }
+
+      if (client.email && settings) {
+        try {
+          const { sendReceiptEmailWithPdf } = await import('./emailService');
+          await sendReceiptEmailWithPdf(storage, invoice, client, settings, receipt, userId);
+          console.log(`[Auto-Receipt] Email sent to ${client.email}`);
+        } catch (emailError) {
+          console.error('[Auto-Receipt] Email failed:', emailError);
+        }
+      }
+
+      if (client.phone) {
+        try {
+          const { sendSmsToClient } = await import('./services/smsService');
+          const { smsTemplates } = await import('./twilioClient');
+          const crypto = await import('crypto');
+
+          let viewToken = receipt.viewToken;
+          if (!viewToken) {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+            const bytes = crypto.randomBytes(12);
+            viewToken = '';
+            for (let i = 0; i < 12; i++) {
+              viewToken += chars[bytes[i] % chars.length];
+            }
+            await storage.updateReceipt(receipt.id, userId, { viewToken });
+          }
+
+          const receiptUrl = getReceiptPublicUrl(viewToken, req);
+          const businessName = settings?.businessName || 'Your tradie';
+          const businessPhone = settings?.phone || undefined;
+          const amount = `$${paymentAmount.toFixed(2)}`;
+          const message = smsTemplates.paymentReceived(client.name || 'Customer', amount, businessName, receiptUrl, businessPhone);
+
+          await sendSmsToClient({
+            businessOwnerId: userId,
+            clientId: client.id,
+            clientPhone: client.phone,
+            clientName: client.name || undefined,
+            jobId: invoice.jobId || undefined,
+            message,
+            senderUserId: userId,
+          });
+
+          await storage.updateReceipt(receipt.id, userId, {
+            smsSentAt: new Date(),
+            recipientPhone: client.phone,
+          });
+
+          console.log(`[Auto-Receipt] SMS sent to ${client.phone}`);
+        } catch (smsError) {
+          console.error('[Auto-Receipt] SMS failed:', smsError);
+        }
+      }
+
+      const sentVia: string[] = [];
+      if (client.email && settings) sentVia.push('email');
+      if (client.phone) sentVia.push('SMS');
+
+      if (sentVia.length > 0) {
+        await logActivity(
+          userId,
+          'payment_received',
+          `Receipt auto-sent via ${sentVia.join(' and ')}`,
+          `Receipt for $${paymentAmount.toFixed(2)} auto-sent via ${sentVia.join(' and ')} to ${client.name || 'customer'}`,
+          'invoice',
+          invoice.id,
+          { receiptId: receipt.id, receiptNumber: receipt.receiptNumber, amount: paymentAmount.toFixed(2), paymentMethod, autoSent: true, sentVia }
+        );
+      } else {
+        console.log(`[Auto-Receipt] Receipt created but no email/phone on client to send to`);
+      }
+
+      console.log(`[Auto-Receipt] Complete for invoice ${invoice.number || invoiceId}`);
+    } catch (error) {
+      console.error('[Auto-Receipt] Failed:', error);
+    }
+  }
+
   // Confirm terminal payment succeeded (webhook or client callback)
   app.post("/api/terminal/payment-success", requireAuth, async (req: any, res) => {
     try {
@@ -22305,6 +22452,17 @@ Be specific about materials, colors, and features that would be included.`
           lockedReason: 'payment_received',
           paidAmount: updatedPayment.amount,
         });
+
+        const paymentAmount = parseFloat(String(updatedPayment.amount || '0'));
+        autoSendReceiptAfterPayment(
+          req.userId,
+          updatedPayment.invoiceId,
+          paymentAmount,
+          'card_present',
+          paymentIntentId,
+          'Tap to Pay payment',
+          req,
+        ).catch(err => console.error('[Terminal] Auto-receipt failed:', err));
       }
       
       res.json({ 
@@ -23181,9 +23339,18 @@ Be specific about materials, colors, and features that would be included.`
         );
         
         console.log(`✅ Auto-created receipt ${receiptNumber} for online payment`);
+
+        autoSendReceiptAfterPayment(
+          request.userId,
+          request.invoiceId,
+          amount,
+          paymentMethod || 'card',
+          paymentIntentId,
+          'Online payment',
+          req,
+        ).catch(err => console.error('[Public Payment] Auto-receipt send failed:', err));
       } catch (receiptError) {
         console.error('Failed to auto-create receipt for online payment:', receiptError);
-        // Don't fail the payment confirmation if receipt creation fails
       }
       
       res.json({ success: true });

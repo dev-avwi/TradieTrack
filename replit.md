@@ -48,6 +48,9 @@ Core architectural and design decisions include:
 ### Mobile Bug Fixes
 *   **Photo Annotation Multi-Color**: Fixed WebView HTML template to use stable refs instead of React state for color/stroke values. Color changes now go through `injectJavaScript` without regenerating the WebView, preserving existing annotations.
 *   **SWMS PDF Download**: Fixed "Authentication required" error by using authenticated `fetch` with Bearer token instead of `Linking.openURL`. PDF is saved to cache and opened via `expo-sharing`.
+
+### Auto-Receipt Sending
+*   **Automatic receipt dispatch**: After any payment is collected (Tap to Pay, Payment Link/QR code, manual recording), the system now automatically sends a receipt via email (with PDF attachment) and SMS (with public receipt link) to the client. This is handled by the `autoSendReceiptAfterPayment` helper in `server/routes.ts`. The helper creates a receipt record if one doesn't exist, sends email via SendGrid with PDF, and sends SMS via Twilio with a public receipt URL. Runs asynchronously so it doesn't block the payment response. Wired into: `/api/terminal/payment-success`, `/api/public/payment-request/:token/confirm-payment`, and the `handleRecordPayment` handler.
 *   **SWMS Signature Pad**: Sign SWMS modal now includes a WebView-based canvas for drawing signatures, in addition to the name field. Signature data captured as PNG base64.
 *   **Smart Actions Tap-to-Execute**: Replaced toggle switches + "Run X Actions" button with simple tap-to-execute action items. Each action is a tappable row that immediately executes on press.
 
