@@ -7,18 +7,34 @@ import type { Express } from 'express';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
-// Use VITE_APP_URL for production only, Replit domain for development
+// Use APP_DOMAIN in production, Replit dev domain in development
 const getBaseUrl = () => {
-  // In production mode, use custom domain if available
-  if (process.env.NODE_ENV === 'production' && process.env.VITE_APP_URL) {
+  const isDev = process.env.NODE_ENV === 'development';
+  if (isDev) {
+    if (process.env.REPLIT_DEV_DOMAIN) {
+      return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+    }
+    const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
+    if (domains[0]) {
+      return `https://${domains[0]}`;
+    }
+    return process.env.REPL_URL || 'http://localhost:5000';
+  }
+  if (process.env.APP_DOMAIN) {
+    return `https://${process.env.APP_DOMAIN}`;
+  }
+  if (process.env.VITE_APP_URL) {
     return process.env.VITE_APP_URL;
   }
-  // In development, use Replit domain so OAuth works with the dev environment
-  const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0];
-  if (replitDomain) {
-    return `https://${replitDomain}`;
+  const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
+  const customDomain = domains.find(d => !d.endsWith('.replit.app') && !d.endsWith('.replit.dev') && !d.endsWith('.repl.co'));
+  if (customDomain) {
+    return `https://${customDomain}`;
   }
-  return process.env.REPL_URL || 'http://localhost:5000';
+  if (domains[0]) {
+    return `https://${domains[0]}`;
+  }
+  return 'http://localhost:5000';
 };
 const BASE_URL = getBaseUrl();
 

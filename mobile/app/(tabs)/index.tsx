@@ -491,6 +491,7 @@ function TimeTrackingWidget() {
   
   // Local state only for UI concerns
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [totalMinutesToday, setTotalMinutesToday] = useState(0);
   const [todayEntries, setTodayEntries] = useState<any[]>([]);
   const [todaysJobs, setTodaysJobs] = useState<any[]>([]);
@@ -578,16 +579,28 @@ function TimeTrackingWidget() {
     }
   };
 
+  const activeTimerRef = useRef(activeTimer);
+  activeTimerRef.current = activeTimer;
+
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+
     if (activeTimer && !activeTimer.isPaused) {
       const updateElapsed = () => {
-        const startTime = new Date(activeTimer.startTime).getTime();
+        const current = activeTimerRef.current;
+        if (!current || current.isPaused) {
+          setElapsedTime('00:00:00');
+          return;
+        }
+        const startTime = new Date(current.startTime).getTime();
         if (isNaN(startTime)) {
           setElapsedTime('00:00:00');
           return;
         }
-        const pausedDuration = activeTimer.pausedDuration || 0;
+        const pausedDuration = parseFloat(String(current.pausedDuration || 0));
         const elapsed = Math.max(0, Date.now() - startTime - (pausedDuration * 60000));
         const hours = Math.floor(elapsed / 3600000);
         const minutes = Math.floor((elapsed % 3600000) / 60000);
@@ -597,10 +610,18 @@ function TimeTrackingWidget() {
         );
       };
       updateElapsed();
-      timer = setInterval(updateElapsed, 1000);
+      timerIntervalRef.current = setInterval(updateElapsed, 1000);
+    } else if (!activeTimer) {
+      setElapsedTime('00:00:00');
     }
-    return () => clearInterval(timer);
-  }, [activeTimer]);
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, [activeTimer?.id, activeTimer?.isPaused, activeTimer?.startTime]);
 
   // Load dashboard data (today's entries and stats) - activeTimer comes from the store
   const loadDashboardData = async () => {

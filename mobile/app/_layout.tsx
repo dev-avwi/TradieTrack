@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
+import * as Updates from 'expo-updates';
 import { useAuthStore } from '../src/lib/store';
 import "../global.css";
 import { useNotifications, useOfflineStorage, useLocationTracking, useStripeTerminal } from '../src/hooks/useServices';
@@ -37,6 +38,26 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+async function checkForOTAUpdate() {
+  if (__DEV__) return;
+  try {
+    const update = await Updates.checkForUpdateAsync();
+    if (update.isAvailable) {
+      await Updates.fetchUpdateAsync();
+      Alert.alert(
+        'Update Available',
+        'A new version has been downloaded. Restart to apply?',
+        [
+          { text: 'Later', style: 'cancel' },
+          { text: 'Restart', onPress: () => Updates.reloadAsync() },
+        ]
+      );
+    }
+  } catch (e) {
+    // Silently fail - OTA check is non-critical
+  }
+}
 
 // Deep link handler for email flows (verify-email, accept-invite, reset-password)
 function DeepLinkHandler() {
@@ -622,6 +643,7 @@ function RootLayoutContent() {
 
   useEffect(() => {
     checkAuth();
+    checkForOTAUpdate();
     
     const minTimer = setTimeout(() => {
       setMinTimeElapsed(true);

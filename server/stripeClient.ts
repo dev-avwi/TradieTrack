@@ -183,7 +183,10 @@ export async function initializeStripe(): Promise<{ stripe: Stripe | null; webho
     }
 
     console.log('Setting up managed webhook...');
-    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+    const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
+    const customDomain = domains.find(d => !d.endsWith('.replit.app') && !d.endsWith('.replit.dev') && !d.endsWith('.repl.co'));
+    const webhookDomain = process.env.APP_DOMAIN || customDomain || domains[0] || 'localhost:5000';
+    const webhookBaseUrl = `https://${webhookDomain}`;
     const { webhook, uuid } = await sync.findOrCreateManagedWebhook(
       `${webhookBaseUrl}/api/stripe/webhook`,
       {
