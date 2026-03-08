@@ -3639,6 +3639,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expectedWebServiceId = process.env.APPLE_WEB_SERVICE_ID || 'com.jobrunner.web';
       const validAudiences = [expectedBundleId, expectedWebServiceId];
       
+      // In development, Expo Go uses its own bundle ID for Apple Sign In tokens
+      if (process.env.NODE_ENV !== 'production') {
+        validAudiences.push('host.exp.Exponent');
+      }
+      
       const tokenAud = claims.aud || '';
       if (!validAudiences.includes(tokenAud) && !tokenAud.startsWith('com.jobrunner.')) {
         console.error('Apple auth: Invalid audience:', tokenAud, 'expected one of:', validAudiences);
