@@ -2861,7 +2861,7 @@ export default function DashboardScreen() {
                 <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.info, 0.1) }]}>
                   <Feather name="clock" size={16} color={colors.info} />
                 </View>
-                <Text style={styles.daySummaryStatValue}>{dailySummary.totalHoursTracked}h</Text>
+                <Text style={styles.daySummaryStatValue}>{dailySummary.totalHoursTracked ?? 0}h</Text>
                 <Text style={styles.daySummaryStatLabel}>Hours</Text>
               </View>
               <View style={styles.daySummaryStat}>
@@ -2869,7 +2869,7 @@ export default function DashboardScreen() {
                   <Feather name="check-circle" size={16} color={colors.success} />
                 </View>
                 <Text style={styles.daySummaryStatValue}>
-                  {dailySummary.jobsCompletedToday}/{dailySummary.totalJobsToday}
+                  {dailySummary.jobsCompletedToday ?? 0}/{dailySummary.totalJobsToday ?? 0}
                 </Text>
                 <Text style={styles.daySummaryStatLabel}>Jobs Done</Text>
               </View>
@@ -2877,7 +2877,7 @@ export default function DashboardScreen() {
                 <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.warning, 0.1) }]}>
                   <Feather name="file-text" size={16} color={colors.warning} />
                 </View>
-                <Text style={styles.daySummaryStatValue}>{dailySummary.invoicesCreatedToday}</Text>
+                <Text style={styles.daySummaryStatValue}>{dailySummary.invoicesCreatedToday ?? 0}</Text>
                 <Text style={styles.daySummaryStatLabel}>Invoices</Text>
               </View>
               <View style={styles.daySummaryStat}>
