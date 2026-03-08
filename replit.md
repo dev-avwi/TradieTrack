@@ -74,10 +74,20 @@ Core architectural and design decisions include:
 ### Mobile Visual Polish
 *   **Design Tokens** (`mobile/src/lib/design-tokens.ts`): Shadows upgraded across the board — sm/md/lg all more visible. New `header` (downward glow) and `nav` (upward glow) shadow presets. Subtitle typography refined to 16px/700 for stronger section headers.
 *   **Header** (`mobile/src/components/Header.tsx`): Shadow replaces hairline border. Brand name bolder (20px/800). Avatar larger (34px) with primary-colored border ring. Icon spacing increased (4px gaps). Overall more spacious.
-*   **Bottom Nav** (`mobile/src/components/BottomNav.tsx`): Upward shadow for floating feel. Active tab gets a colored indicator line at top. Icons larger (22px). Active label bolder (700 weight).
+*   **Bottom Nav** (`mobile/src/components/BottomNav.tsx`): Upward shadow for floating feel. Icons larger (22px). Active label bolder (700 weight).
 *   **Dashboard** (`mobile/app/(tabs)/index.tsx`): Greeting area more prominent (24px/800). Role badge is pill-shaped. KPI values larger (26px/800) with 48px icon containers. Section header icons 32px. All major cards use `shadows.md` for more depth. Start Route button taller (52px) with shadow. Empty state has 56px icon.
+*   **Weather Widget** (`mobile/app/(tabs)/index.tsx`): Settings icon opens bottom sheet to choose Live GPS location, manual city (15 Australian cities), or hide weather entirely. Preferences stored in AsyncStorage.
 *   **Jobs Screen** (`mobile/app/(tabs)/jobs.tsx`): Cards use stronger shadows (md). KPI icons larger (40px) with xl radius.
 *   **Profile Screen** (`mobile/app/(tabs)/profile.tsx`): Profile header and menu sections use stronger shadows (md). More spacing between profile header and menu sections.
+
+### Mobile Bug Fixes & Features
+*   **Job Detail Tabs**: Merged "Docs" and "Safety" tabs into one "Docs" tab — now shows Documents, Checklist, SWMS, and Signatures in a single view. Reduced from 7 tabs to 6.
+*   **Team Member Names**: Server `/api/team/members` endpoint now returns computed `name`, `username`, and `email` fields built from `firstName`/`lastName` or user record data. Previously mobile saw "?" because those fields were missing.
+*   **Address Autocomplete**: Mobile job creation (`create-job.tsx`) now calls `/api/address-search` as user types (debounced 400ms), shows suggestions dropdown, and stores lat/lng on selection.
+*   **Integration Health Fix**: Mobile integrations screen (`integrations.tsx`) now reads `services.email.verified` and `services.sendgrid.verified` from the nested API response. Previously read non-existent root-level fields, causing "Not Configured" false alarms.
+*   **Tab Bar Flash**: Native expo-router tab bar suppressed via `tabBarButton: () => null`, `height: 0`, `opacity: 0`, and `animation: 'none'` to prevent flash on first load.
+*   **Insights Charts**: Mobile insights page now includes bar charts (revenue breakdown, cost breakdown, cashflow) and a donut margin indicator using pure React Native Views.
+*   **Autopilot Padding**: Tab container and buttons have increased padding (`spacing.sm`/`spacing.md`), larger text (12px), and proper gaps between elements.
 
 ### Mobile GPS & Geofencing
 *   **Geofence Registration**: When a user toggles geofencing ON/OFF in job detail, `locationTracking.addJobGeofence()`/`removeJobGeofence()` are called to register/unregister the native device geofence. Radius changes also update the native geofence.

@@ -26492,9 +26492,10 @@ Respond with JSON in this format:
       // Auto-persist default colors if not already set
       const memberUserPromises = teamMembers.map(async (member, index) => {
         let themeColor = TEAM_MEMBER_COLOR_PALETTE[index % TEAM_MEMBER_COLOR_PALETTE.length];
+        let memberUser: any = null;
         
         if (member.memberId) {
-          const memberUser = await storage.getUser(member.memberId);
+          memberUser = await storage.getUser(member.memberId);
           if (memberUser?.themeColor) {
             themeColor = memberUser.themeColor;
           } else if (memberUser) {
@@ -26508,10 +26509,17 @@ Respond with JSON in this format:
         const roleData = roleMap.get(member.roleId);
         const roleName = roleData?.name || 'Team Member';
         const roleNormalized = roleName.toLowerCase().replace(/\s+/g, '_');
+        const displayName = [member.firstName, member.lastName].filter(Boolean).join(' ') 
+          || (memberUser ? [memberUser.firstName, memberUser.lastName].filter(Boolean).join(' ') : '')
+          || memberUser?.email?.split('@')[0]
+          || '';
         return {
           ...member,
-          userId: member.memberId, // Mobile app expects userId, database stores memberId
-          role: roleNormalized, // Normalized role for filtering: 'owner', 'admin', 'staff', 'supervisor'
+          userId: member.memberId,
+          name: displayName,
+          username: memberUser?.username || memberUser?.email || displayName,
+          email: memberUser?.email || member.email || '',
+          role: roleNormalized,
           roleName: roleName,
           roleDescription: roleData?.description || '',
           themeColor,

@@ -1931,7 +1931,7 @@ export default function JobDetailScreen() {
   // Forms data is loaded by JobForms component and passed via onFormsChange/onSubmissionsChange callbacks
   // This eliminates duplicate API calls
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes' | 'materials' | 'chat' | 'safety'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes' | 'materials' | 'chat'>('overview');
 
   const [materials, setMaterials] = useState<JobMaterial[]>([]);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
@@ -2555,7 +2555,7 @@ export default function JobDetailScreen() {
     if (activeTab === 'materials' && id) {
       loadMaterials();
     }
-    if (activeTab === 'safety' && id) {
+    if (activeTab === 'documents' && id) {
       loadSwmsDocuments();
     }
   }, [activeTab, id]);
@@ -4071,7 +4071,7 @@ export default function JobDetailScreen() {
         'Safety Check Required',
         'Safety documentation is incomplete. Starting the timer will transition this job to "In Progress". Complete safety docs first?',
         [
-          { text: 'Complete Safety Docs', onPress: () => setActiveTab('safety') },
+          { text: 'Complete Safety Docs', onPress: () => setActiveTab('documents') },
           { text: 'Start Anyway', onPress: () => proceedWithTimerStart(), style: 'destructive' },
           { text: 'Cancel', style: 'cancel' }
         ]
@@ -4200,7 +4200,7 @@ export default function JobDetailScreen() {
         'Safety Check Required',
         `${warningMsg}. It is recommended to complete safety documentation before starting work.${complianceNote}`,
         [
-          { text: 'Complete Safety Docs', onPress: () => setActiveTab('safety') },
+          { text: 'Complete Safety Docs', onPress: () => setActiveTab('documents') },
           { 
             text: 'Start Anyway', 
             onPress: async () => {
@@ -4852,7 +4852,6 @@ export default function JobDetailScreen() {
     { id: 'photos' as const, label: 'Photos', icon: 'camera' as const },
     { id: 'notes' as const, label: 'Notes', icon: 'file' as const },
     { id: 'chat' as const, label: 'Chat', icon: 'message-circle' as const },
-    { id: 'safety' as const, label: 'Safety', icon: 'shield' as const },
   ];
 
   const renderOverviewTab = () => (
@@ -4942,7 +4941,7 @@ export default function JobDetailScreen() {
             </Text>
           </View>
           <TouchableOpacity 
-            onPress={() => setActiveTab('safety')}
+            onPress={() => setActiveTab('documents')}
             style={{ padding: spacing.sm }}
           >
             <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
@@ -6780,6 +6779,11 @@ export default function JobDetailScreen() {
         />
       </View>
 
+      {/* SWMS / Safety Section */}
+      <View style={styles.photosCard}>
+        {renderSafetyTab()}
+      </View>
+
       {/* Client Signature Section */}
       {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
         <View style={styles.photosCard}>
@@ -7783,7 +7787,6 @@ export default function JobDetailScreen() {
         {activeTab === 'photos' && renderPhotosTab()}
         {activeTab === 'notes' && renderNotesTab()}
         {activeTab === 'chat' && renderChatTab()}
-        {activeTab === 'safety' && renderSafetyTab()}
       </ScrollView>
 
       {/* Floating Voice Dictation FAB */}

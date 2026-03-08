@@ -12,7 +12,10 @@ import {
   Platform,
   AppState,
   AppStateStatus,
+  Modal,
+  TextInput,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -79,29 +82,88 @@ function getWeatherInfo(code: number) {
   return WEATHER_CODES[code] || { label: "Unknown", icon: "cloud" as keyof typeof Feather.glyphMap };
 }
 
+const WEATHER_STORAGE_KEY = 'weather_settings';
+const AUSTRALIAN_CITIES = [
+  { name: 'Sydney, NSW', lat: -33.8688, lon: 151.2093 },
+  { name: 'Melbourne, VIC', lat: -37.8136, lon: 144.9631 },
+  { name: 'Brisbane, QLD', lat: -27.4698, lon: 153.0251 },
+  { name: 'Perth, WA', lat: -31.9505, lon: 115.8605 },
+  { name: 'Adelaide, SA', lat: -34.9285, lon: 138.6007 },
+  { name: 'Gold Coast, QLD', lat: -28.0167, lon: 153.4000 },
+  { name: 'Canberra, ACT', lat: -35.2809, lon: 149.1300 },
+  { name: 'Hobart, TAS', lat: -42.8821, lon: 147.3272 },
+  { name: 'Darwin, NT', lat: -12.4634, lon: 130.8456 },
+  { name: 'Cairns, QLD', lat: -16.9186, lon: 145.7781 },
+  { name: 'Townsville, QLD', lat: -19.2590, lon: 146.8169 },
+  { name: 'Newcastle, NSW', lat: -32.9283, lon: 151.7817 },
+  { name: 'Wollongong, NSW', lat: -34.4248, lon: 150.8931 },
+  { name: 'Geelong, VIC', lat: -38.1499, lon: 144.3617 },
+  { name: 'Sunshine Coast, QLD', lat: -26.6500, lon: 153.0667 },
+];
+
+interface WeatherSettings {
+  mode: 'live' | 'manual' | 'hidden';
+  manualCity?: string;
+  manualLat?: number;
+  manualLon?: number;
+}
+
 function WeatherWidget() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState<WeatherSettings>({ mode: 'live' });
+  const [citySearch, setCitySearch] = useState('');
 
   useEffect(() => {
-    loadWeather();
+    loadSettings();
   }, []);
 
-  const loadWeather = async () => {
+  const loadSettings = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(WEATHER_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as WeatherSettings;
+        setSettings(parsed);
+        loadWeather(parsed);
+      } else {
+        loadWeather({ mode: 'live' });
+      }
+    } catch {
+      loadWeather({ mode: 'live' });
+    }
+  };
+
+  const saveSettings = async (newSettings: WeatherSettings) => {
+    setSettings(newSettings);
+    await AsyncStorage.setItem(WEATHER_STORAGE_KEY, JSON.stringify(newSettings));
+    setShowSettings(false);
+    setIsLoading(true);
+    loadWeather(newSettings);
+  };
+
+  const loadWeather = async (ws: WeatherSettings) => {
+    if (ws.mode === 'hidden') {
+      setIsLoading(false);
+      setWeather(null);
+      return;
+    }
     try {
       let params = '';
-      try {
-        const { status } = await Location.getForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const loc = await Location.getLastKnownPositionAsync();
-          if (loc) {
-            params = `?lat=${loc.coords.latitude}&lon=${loc.coords.longitude}`;
+      if (ws.mode === 'manual' && ws.manualLat && ws.manualLon) {
+        params = `?lat=${ws.manualLat}&lon=${ws.manualLon}`;
+      } else {
+        try {
+          const { status } = await Location.getForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const loc = await Location.getLastKnownPositionAsync();
+            if (loc) {
+              params = `?lat=${loc.coords.latitude}&lon=${loc.coords.longitude}`;
+            }
           }
-        }
-      } catch (locErr) {
-        // Location unavailable, fall back to server-side location
+        } catch (locErr) {}
       }
       const response = await api.get<WeatherData>(`/api/weather${params}`);
       if (response.data) {
@@ -113,6 +175,27 @@ function WeatherWidget() {
       setIsLoading(false);
     }
   };
+
+  const filteredCities = citySearch.length > 0
+    ? AUSTRALIAN_CITIES.filter(c => c.name.toLowerCase().includes(citySearch.toLowerCase()))
+    : AUSTRALIAN_CITIES;
+
+  if (settings.mode === 'hidden') {
+    return (
+      <TouchableOpacity
+        style={[styles.weatherWidget, { alignItems: 'center', paddingVertical: spacing.md }]}
+        onPress={() => setShowSettings(true)}
+        activeOpacity={0.7}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <Feather name="cloud-off" size={16} color={colors.mutedForeground} />
+          <Text style={{ fontSize: 13, color: colors.mutedForeground }}>Weather hidden</Text>
+          <Feather name="settings" size={14} color={colors.mutedForeground} />
+        </View>
+        {renderSettingsModal()}
+      </TouchableOpacity>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -128,6 +211,74 @@ function WeatherWidget() {
   const rainChance = weather.daily?.precipitationProbability?.[0] ?? 0;
   const showRainWarning = weather.precipitation > 0 || weather.weatherCode >= 51 || rainChance > 50;
 
+  function renderSettingsModal() {
+    return (
+      <Modal visible={showSettings} animationType="slide" transparent>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, maxHeight: '70%' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.foreground }}>Weather Settings</Text>
+              <TouchableOpacity onPress={() => setShowSettings(false)} style={{ padding: spacing.xs }}>
+                <Feather name="x" size={22} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: radius.lg, backgroundColor: settings.mode === 'live' ? colorWithOpacity(colors.primary, 0.1) : 'transparent', borderWidth: 1, borderColor: settings.mode === 'live' ? colors.primary : colors.border, marginBottom: spacing.sm }}
+              onPress={() => saveSettings({ mode: 'live' })}
+              activeOpacity={0.7}
+            >
+              <Feather name="navigation" size={18} color={settings.mode === 'live' ? colors.primary : colors.mutedForeground} />
+              <View style={{ marginLeft: spacing.md, flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>Use Live Location</Text>
+                <Text style={{ fontSize: 13, color: colors.mutedForeground }}>Weather based on your GPS</Text>
+              </View>
+              {settings.mode === 'live' && <Feather name="check" size={18} color={colors.primary} />}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: radius.lg, backgroundColor: settings.mode === 'hidden' ? colorWithOpacity(colors.primary, 0.1) : 'transparent', borderWidth: 1, borderColor: settings.mode === 'hidden' ? colors.primary : colors.border, marginBottom: spacing.lg }}
+              onPress={() => saveSettings({ mode: 'hidden' })}
+              activeOpacity={0.7}
+            >
+              <Feather name="eye-off" size={18} color={settings.mode === 'hidden' ? colors.primary : colors.mutedForeground} />
+              <View style={{ marginLeft: spacing.md, flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>Hide Weather</Text>
+                <Text style={{ fontSize: 13, color: colors.mutedForeground }}>Remove from dashboard</Text>
+              </View>
+              {settings.mode === 'hidden' && <Feather name="check" size={18} color={colors.primary} />}
+            </TouchableOpacity>
+
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.mutedForeground, marginBottom: spacing.sm }}>Or choose a city:</Text>
+            <TextInput
+              style={{ backgroundColor: colors.background, borderRadius: radius.lg, padding: spacing.md, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm }}
+              placeholder="Search cities..."
+              placeholderTextColor={colors.mutedForeground}
+              value={citySearch}
+              onChangeText={setCitySearch}
+            />
+            <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
+              {filteredCities.map((city) => (
+                <TouchableOpacity
+                  key={city.name}
+                  style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: radius.md, backgroundColor: settings.manualCity === city.name ? colorWithOpacity(colors.primary, 0.1) : 'transparent' }}
+                  onPress={() => {
+                    setCitySearch('');
+                    saveSettings({ mode: 'manual', manualCity: city.name, manualLat: city.lat, manualLon: city.lon });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="map-pin" size={16} color={settings.manualCity === city.name ? colors.primary : colors.mutedForeground} />
+                  <Text style={{ fontSize: 15, color: settings.manualCity === city.name ? colors.primary : colors.foreground, marginLeft: spacing.sm, fontWeight: settings.manualCity === city.name ? '600' : '400' }}>{city.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
   return (
     <View style={styles.weatherWidget}>
       <View style={styles.weatherMainRow}>
@@ -138,7 +289,7 @@ function WeatherWidget() {
             color={weather.isDay ? colors.warning : colors.info}
           />
         </View>
-        <View style={styles.weatherTextContent}>
+        <View style={[styles.weatherTextContent, { flex: 1 }]}>
           <View style={styles.weatherTempRow}>
             <Text style={styles.weatherTemp}>{Math.round(weather.temperature)}</Text>
             <Text style={styles.weatherDegree}>°C</Text>
@@ -159,7 +310,16 @@ function WeatherWidget() {
             </View>
           </View>
         </View>
+        <TouchableOpacity onPress={() => setShowSettings(true)} style={{ padding: spacing.xs }} activeOpacity={0.7}>
+          <Feather name="settings" size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
       </View>
+      {settings.mode === 'manual' && settings.manualCity && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.xs }}>
+          <Feather name="map-pin" size={11} color={colors.mutedForeground} />
+          <Text style={{ fontSize: 12, color: colors.mutedForeground }}>{settings.manualCity}</Text>
+        </View>
+      )}
       {showRainWarning && (
         <View style={[styles.weatherRainWarning, { backgroundColor: colorWithOpacity(colors.info, 0.08) }]}>
           <Feather name="cloud-rain" size={14} color={colors.info} />
@@ -170,6 +330,7 @@ function WeatherWidget() {
           </Text>
         </View>
       )}
+      {renderSettingsModal()}
     </View>
   );
 }

@@ -84,7 +84,18 @@ interface IntegrationHealth {
   services?: {
     twilio?: {
       status: 'ready' | 'demo' | 'not_connected';
+      verified?: boolean;
       description?: string;
+    };
+    email?: {
+      verified?: boolean;
+      provider?: string;
+    };
+    sendgrid?: {
+      verified?: boolean;
+    };
+    payments?: {
+      verified?: boolean;
     };
   };
 }
@@ -879,7 +890,7 @@ export default function IntegrationsScreen() {
 
   const isStripeFullyConnected = stripeStatus?.connected && stripeStatus?.chargesEnabled;
   const isStripePartiallyConnected = stripeStatus?.connected && !stripeStatus?.chargesEnabled;
-  const hasEmailService = integrationHealth?.emailVerified || integrationHealth?.gmailConnected;
+  const hasEmailService = integrationHealth?.services?.email?.verified || integrationHealth?.services?.sendgrid?.verified || integrationHealth?.emailVerified || integrationHealth?.gmailConnected;
 
   return (
     <>
@@ -1078,7 +1089,7 @@ export default function IntegrationsScreen() {
                   <View style={styles.integrationInfo}>
                     <Text style={styles.integrationTitle}>Email Service</Text>
                     <Text style={styles.integrationSubtitle}>
-                      {integrationHealth?.gmailConnected ? 'Gmail' : 'SendGrid'}
+                      {integrationHealth?.gmailConnected ? 'Gmail' : integrationHealth?.services?.email?.provider || 'SendGrid'}
                     </Text>
                   </View>
                   <View style={styles.integrationBadgeBuiltIn}>

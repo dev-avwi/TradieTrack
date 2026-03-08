@@ -302,6 +302,60 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
 });
 
+function SimpleBarChart({ 
+  data, 
+  colors: themeColors 
+}: { 
+  data: { label: string; value: number; color: string }[];
+  colors: any;
+}) {
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+  return (
+    <View style={{ backgroundColor: themeColors.card, borderRadius: radius.xl, padding: spacing.md, borderWidth: 1, borderColor: themeColors.cardBorder, ...shadows.sm, marginBottom: spacing.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', height: 120, paddingTop: spacing.sm }}>
+        {data.map((item, i) => {
+          const barHeight = maxVal > 0 ? (item.value / maxVal) * 90 : 4;
+          return (
+            <View key={i} style={{ alignItems: 'center', flex: 1, gap: 4 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: themeColors.foreground }}>
+                {item.value >= 1000 ? `$${(item.value / 1000).toFixed(1)}k` : `$${item.value}`}
+              </Text>
+              <View style={{ width: '60%', height: Math.max(barHeight, 4), backgroundColor: item.color, borderRadius: radius.md }} />
+              <Text style={{ fontSize: 10, color: themeColors.mutedForeground, textAlign: 'center' }} numberOfLines={1}>{item.label}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function DonutIndicator({
+  value,
+  maxValue,
+  label,
+  color,
+  colors: themeColors,
+}: {
+  value: number;
+  maxValue: number;
+  label: string;
+  color: string;
+  colors: any;
+}) {
+  const pct = maxValue > 0 ? Math.min((value / maxValue) * 100, 100) : 0;
+  return (
+    <View style={{ backgroundColor: themeColors.card, borderRadius: radius.xl, padding: spacing.md, borderWidth: 1, borderColor: themeColors.cardBorder, ...shadows.sm, marginBottom: spacing.md, alignItems: 'center' }}>
+      <View style={{ width: 100, height: 100, borderRadius: 50, borderWidth: 8, borderColor: themeColors.border, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm, overflow: 'hidden' }}>
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${pct}%` as any, backgroundColor: color + '30' }} />
+        <Text style={{ fontSize: 22, fontWeight: '800', color: color }}>{pct.toFixed(0)}%</Text>
+      </View>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: themeColors.foreground }}>{label}</Text>
+      <Text style={{ fontSize: 12, color: themeColors.mutedForeground }}>{fmtAud(value)} of {fmtAud(maxValue)}</Text>
+    </View>
+  );
+}
+
 function HeroCard({
   icon,
   iconBg,
@@ -479,6 +533,14 @@ export default function InsightsScreen() {
       />
 
       <Text style={[styles.sectionTitle, { marginTop: spacing.sm }]}>Revenue Breakdown</Text>
+      <SimpleBarChart
+        data={[
+          { label: 'Today', value: profit?.revenueToday ?? 0, color: colors.success || '#22c55e' },
+          { label: 'This Week', value: profit?.revenueThisWeek ?? 0, color: colors.primary || '#3b82f6' },
+          { label: 'This Month', value: profit?.revenueThisMonth ?? 0, color: '#8b5cf6' },
+        ]}
+        colors={colors}
+      />
       <View style={styles.statsRow}>
         <StatCard
           icon="dollar-sign"
@@ -501,6 +563,22 @@ export default function InsightsScreen() {
       </View>
 
       <Text style={[styles.sectionTitle, { marginTop: spacing.sm }]}>Margins & Costs</Text>
+      <DonutIndicator
+        value={profit?.grossProfit ?? 0}
+        maxValue={profit?.revenueThisMonth ?? 1}
+        label="Gross Margin"
+        color={getMarginColor(profit?.grossMargin ?? 0)}
+        colors={colors}
+      />
+      <SimpleBarChart
+        data={[
+          { label: 'Revenue', value: profit?.revenueThisMonth ?? 0, color: colors.success || '#22c55e' },
+          { label: 'Labour', value: profit?.labourCostThisMonth ?? 0, color: colors.warning || '#f59e0b' },
+          { label: 'Materials', value: profit?.materialCostThisMonth ?? 0, color: '#8b5cf6' },
+          { label: 'Profit', value: profit?.grossProfit ?? 0, color: colors.primary || '#3b82f6' },
+        ]}
+        colors={colors}
+      />
       <View style={styles.statsRow}>
         <StatCard
           icon="percent"
@@ -568,6 +646,15 @@ export default function InsightsScreen() {
       />
 
       <Text style={[styles.sectionTitle, { marginTop: spacing.sm }]}>Collections</Text>
+      <SimpleBarChart
+        data={[
+          { label: 'Today', value: profit?.cashCollectedToday ?? 0, color: colors.success || '#22c55e' },
+          { label: 'Due', value: cashflow?.dueThisWeek ?? 0, color: colors.warning || '#f59e0b' },
+          { label: 'This Month', value: cashflow?.thisMonthCollected ?? 0, color: colors.primary || '#3b82f6' },
+          { label: 'Overdue', value: cashflow?.overdueTotal ?? 0, color: colors.destructive || '#ef4444' },
+        ]}
+        colors={colors}
+      />
       <View style={styles.statsRow}>
         <StatCard
           icon="dollar-sign"

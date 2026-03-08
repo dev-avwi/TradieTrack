@@ -8,8 +8,12 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { display: 'none' },
-        animation: 'shift',
+        tabBarStyle: { display: 'none', height: 0, position: 'absolute', opacity: 0 },
+        tabBarShowLabel: false,
+        tabBarIconStyle: { display: 'none' },
+        tabBarButton: () => null,
+        animation: 'none',
+        lazy: false,
       }}
     >
       <Tabs.Screen

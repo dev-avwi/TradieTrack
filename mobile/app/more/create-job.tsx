@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -336,6 +336,35 @@ function createStyles(colors: ThemeColors) {
       fontSize: 13,
       color: colors.mutedForeground,
     },
+    addressSuggestionsContainer: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginTop: 4,
+      overflow: 'hidden',
+    },
+    addressSuggestionItem: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      gap: 10,
+    },
+    addressSuggestionText: {
+      flex: 1,
+      fontSize: 14,
+      color: colors.foreground,
+    },
+    addressLoadingRow: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      gap: 8,
+    },
   });
 }
 
@@ -538,6 +567,68 @@ export default function CreateJobScreen() {
   const [quickClientPhone, setQuickClientPhone] = useState('');
   const [isAddingClient, setIsAddingClient] = useState(false);
 
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [addressSearching, setAddressSearching] = useState(false);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [addressLatLng, setAddressLatLng] = useState<{ lat: number; lng: number } | null>(null);
+  const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchAddresses = useCallback(async (query: string) => {
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+      return;
+    }
+    setAddressSearching(true);
+    try {
+      const encoded = encodeURIComponent(query);
+      const response = await api.get<any[]>(`/api/address-search?q=${encoded}`);
+      if (response.data && response.data.length > 0) {
+        setAddressSuggestions(response.data);
+        setShowAddressSuggestions(true);
+      } else {
+        setAddressSuggestions([]);
+        setShowAddressSuggestions(false);
+      }
+    } catch (error) {
+      console.log('Address search error:', error);
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+    } finally {
+      setAddressSearching(false);
+    }
+  }, []);
+
+  const handleAddressChange = useCallback((text: string) => {
+    setAddress(text);
+    setAddressLatLng(null);
+    if (addressDebounceRef.current) {
+      clearTimeout(addressDebounceRef.current);
+    }
+    addressDebounceRef.current = setTimeout(() => {
+      searchAddresses(text);
+    }, 400);
+  }, [searchAddresses]);
+
+  const handleAddressSelect = useCallback(async (suggestion: any) => {
+    setAddress(suggestion.description);
+    setShowAddressSuggestions(false);
+    setAddressSuggestions([]);
+
+    if (suggestion.lat && suggestion.lng) {
+      setAddressLatLng({ lat: parseFloat(suggestion.lat), lng: parseFloat(suggestion.lng) });
+    } else if (suggestion.place_id && suggestion.provider === 'google') {
+      try {
+        const response = await api.get<any>(`/api/address-search/details?place_id=${suggestion.place_id}`);
+        if (response.data?.lat && response.data?.lng) {
+          setAddressLatLng({ lat: response.data.lat, lng: response.data.lng });
+        }
+      } catch (error) {
+        console.log('Address details error:', error);
+      }
+    }
+  }, []);
+
   // Recurring job state
   const [isRecurring, setIsRecurring] = useState(params.recurring === 'true');
   const [recurrencePattern, setRecurrencePattern] = useState<'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'yearly'>('monthly');
@@ -681,6 +772,8 @@ export default function CreateJobScreen() {
       clientId: clientId || null,
       clientName: selectedClient?.name,
       address: address.trim() || null,
+      latitude: addressLatLng?.lat?.toString() || null,
+      longitude: addressLatLng?.lng?.toString() || null,
       status,
       priority,
       assignedTo: assignedToId || null,
@@ -919,12 +1012,50 @@ export default function CreateJobScreen() {
                 <Feather name="map-pin" size={18} color={colors.mutedForeground} style={styles.addressIcon} />
                 <TextInput
                   style={styles.addressField}
-                  placeholder="Job site address"
+                  placeholder="Start typing an address..."
                   placeholderTextColor={colors.mutedForeground}
                   value={address}
-                  onChangeText={setAddress}
+                  onChangeText={handleAddressChange}
+                  onBlur={() => {
+                    setTimeout(() => setShowAddressSuggestions(false), 400);
+                  }}
                 />
+                {addressSearching && (
+                  <ActivityIndicator size="small" color={colors.mutedForeground} style={{ marginRight: 10 }} />
+                )}
+                {address.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setAddress('');
+                      setAddressLatLng(null);
+                      setAddressSuggestions([]);
+                      setShowAddressSuggestions(false);
+                    }}
+                    style={{ marginRight: 10 }}
+                  >
+                    <Feather name="x-circle" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                )}
               </View>
+              {showAddressSuggestions && addressSuggestions.length > 0 && (
+                <View style={styles.addressSuggestionsContainer}>
+                  {addressSuggestions.map((suggestion, index) => (
+                    <TouchableOpacity
+                      key={`${suggestion.description}-${index}`}
+                      style={[
+                        styles.addressSuggestionItem,
+                        index === addressSuggestions.length - 1 && { borderBottomWidth: 0 },
+                      ]}
+                      onPress={() => handleAddressSelect(suggestion)}
+                    >
+                      <Feather name="map-pin" size={16} color={colors.primary} />
+                      <Text style={styles.addressSuggestionText} numberOfLines={2}>
+                        {suggestion.description}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
 
             {/* Past Job Suggestions */}
