@@ -189,7 +189,7 @@ export default function LoginScreen() {
         }
       }
     } catch (err) {
-      console.error('Google Sign-In error:', err);
+      if (__DEV__) console.error('Google Sign-In error:', err);
       Alert.alert('Error', 'Failed to sign in with Google. Please try again.');
     } finally {
       setGoogleLoading(false);
@@ -267,9 +267,11 @@ export default function LoginScreen() {
         return;
       }
       
-      console.error('🍎 Apple Sign-In error:', err);
-      console.error('🍎 Error code:', err.code);
-      console.error('🍎 Error message:', err.message);
+      if (__DEV__) {
+        console.error('🍎 Apple Sign-In error:', err);
+        console.error('🍎 Error code:', err.code);
+        console.error('🍎 Error message:', err.message);
+      }
       
       // Provide more helpful error messages
       let errorMessage = 'Failed to sign in with Apple. Please try again.';

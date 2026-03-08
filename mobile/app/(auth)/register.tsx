@@ -123,6 +123,8 @@ export default function RegisterScreen() {
         const error = url.searchParams.get('error');
         const token = url.searchParams.get('token');
         
+        const isNewUser = url.searchParams.get('isNewUser') === 'true';
+        
         if ((auth === 'success' || auth === 'google_success') && token) {
           // Save the session token from OAuth
           const api = (await import('../../src/lib/api')).default;
@@ -130,13 +132,25 @@ export default function RegisterScreen() {
           
           // Now check auth state from server with the token
           await checkAuth();
-          router.replace('/(onboarding)/setup');
+          
+          if (isNewUser) {
+            router.replace('/(onboarding)/setup');
+          } else {
+            const { user: currentUser } = useAuthStore.getState();
+            const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
+            router.replace(isPlatformAdmin ? '/more/admin' as const : '/(tabs)' as const);
+          }
         } else if (auth === 'success' || auth === 'google_success') {
           // No token but auth success - try checkAuth anyway
           await checkAuth();
-          const { isAuthenticated } = useAuthStore.getState();
+          const { isAuthenticated, user: currentUser } = useAuthStore.getState();
           if (isAuthenticated) {
-            router.replace('/(onboarding)/setup' as const);
+            if (isNewUser) {
+              router.replace('/(onboarding)/setup' as const);
+            } else {
+              const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
+              router.replace(isPlatformAdmin ? '/more/admin' as const : '/(tabs)' as const);
+            }
           } else {
             Alert.alert('Error', 'Failed to complete sign-up. Please try again.');
           }
@@ -145,7 +159,7 @@ export default function RegisterScreen() {
         }
       }
     } catch (error) {
-      console.error('Google Sign-Up error:', error);
+      if (__DEV__) console.error('Google Sign-Up error:', error);
       Alert.alert('Error', 'Failed to sign up with Google. Please try again.');
     } finally {
       setGoogleLoading(false);
@@ -206,7 +220,15 @@ export default function RegisterScreen() {
         }
         
         await checkAuth();
-        router.replace('/(onboarding)/setup');
+        
+        const isNewUser = response.data?.isNewUser !== false;
+        if (isNewUser) {
+          router.replace('/(onboarding)/setup');
+        } else {
+          const { user: currentUser } = useAuthStore.getState();
+          const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
+          router.replace(isPlatformAdmin ? '/more/admin' as const : '/(tabs)' as const);
+        }
       } else {
         if (__DEV__) console.log('🍎 No identity token received from Apple (register)');
         Alert.alert('Error', 'No identity token received from Apple. Please try again.');
@@ -218,9 +240,11 @@ export default function RegisterScreen() {
         return;
       }
       
-      console.error('🍎 Apple Sign-Up error:', err);
-      console.error('🍎 Error code:', err.code);
-      console.error('🍎 Error message:', err.message);
+      if (__DEV__) {
+        console.error('🍎 Apple Sign-Up error:', err);
+        console.error('🍎 Error code:', err.code);
+        console.error('🍎 Error message:', err.message);
+      }
       
       // Provide more helpful error messages
       let errorMessage = 'Failed to sign up with Apple. Please try again.';
