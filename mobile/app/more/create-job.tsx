@@ -681,7 +681,21 @@ export default function CreateJobScreen() {
   ];
 
   const selectedPriorityOption = PRIORITY_OPTIONS.find((p) => p.value === priority);
-  const selectedTeamMember = teamMembers.find((m) => String(m.id) === assignedToId);
+  const selectedTeamMember = teamMembers.find((m) => String(m.memberId || m.id) === assignedToId);
+
+  const getTeamMemberDisplayName = (member: any): string => {
+    if (member.name && member.name.trim()) return member.name;
+    const fullName = [member.firstName, member.lastName].filter(Boolean).join(' ');
+    if (fullName.trim()) return fullName;
+    if (member.email) return member.email.split('@')[0];
+    if (member.username) return member.username;
+    return member.roleName || 'Team Member';
+  };
+
+  const getTeamMemberSubtitle = (member: any): string => {
+    if (member.email) return member.email;
+    return member.roleName || member.role?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) || 'Team Member';
+  };
 
   useEffect(() => {
     fetchClients();
@@ -1135,12 +1149,12 @@ export default function CreateJobScreen() {
                   <View style={styles.selectedItem}>
                     <View style={[styles.clientAvatar, { backgroundColor: (selectedTeamMember.themeColor || colors.primary) + '20' }]}>
                       <Text style={{ fontSize: 14, fontWeight: '600', color: selectedTeamMember.themeColor || colors.primary }}>
-                        {(selectedTeamMember.name || selectedTeamMember.email || selectedTeamMember.username || '?').charAt(0).toUpperCase()}
+                        {getTeamMemberDisplayName(selectedTeamMember).charAt(0).toUpperCase()}
                       </Text>
                     </View>
                     <View style={styles.selectedItemText}>
-                      <Text style={styles.selectedItemName}>{selectedTeamMember.name || selectedTeamMember.email?.split('@')[0] || selectedTeamMember.username || 'Team Member'}</Text>
-                      <Text style={styles.selectedItemDetail}>{selectedTeamMember.email || (selectedTeamMember.role ? selectedTeamMember.role.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Team Member')}</Text>
+                      <Text style={styles.selectedItemName}>{getTeamMemberDisplayName(selectedTeamMember)}</Text>
+                      <Text style={styles.selectedItemDetail}>{getTeamMemberSubtitle(selectedTeamMember)}</Text>
                     </View>
                   </View>
                 ) : (
@@ -1406,12 +1420,12 @@ export default function CreateJobScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       <View style={[styles.clientAvatar, { backgroundColor: (member.themeColor || colors.primary) + '20' }]}>
                         <Text style={{ fontSize: 14, fontWeight: '600', color: member.themeColor || colors.primary }}>
-                          {(member.name || member.email || member.username || '?').charAt(0).toUpperCase()}
+                          {getTeamMemberDisplayName(member).charAt(0).toUpperCase()}
                         </Text>
                       </View>
                       <View>
-                        <Text style={styles.clientItemName}>{member.name || member.email?.split('@')[0] || member.username || 'Team Member'}</Text>
-                        <Text style={styles.clientItemEmail}>{member.email || (member.role ? member.role.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Team Member')}</Text>
+                        <Text style={styles.clientItemName}>{getTeamMemberDisplayName(member)}</Text>
+                        <Text style={styles.clientItemEmail}>{getTeamMemberSubtitle(member)}</Text>
                       </View>
                     </View>
                   </View>

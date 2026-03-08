@@ -12,10 +12,13 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
-  Animated
+  Animated,
+  Image
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { VoiceRecorder } from '../../../src/components/VoiceRecorder';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore, useClientsStore, useQuotesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors, getVisibleButtonColors } from '../../../src/lib/theme';
@@ -595,6 +598,9 @@ export default function NewQuoteScreen() {
   const [showCatalog, setShowCatalog] = useState(false);
   const [aiDescription, setAiDescription] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiPhotos, setAiPhotos] = useState<string[]>([]);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState('');
@@ -870,13 +876,15 @@ export default function NewQuoteScreen() {
         ? await api.patch(`/api/quotes/${params.editQuoteId}`, quoteData)
         : await api.post('/api/quotes', quoteData);
 
-      if (response.data) {
+      if (response.error) {
+        Alert.alert('Error', response.error || `Failed to ${isEditing ? 'update' : 'create'} quote`);
+      } else if (response.data) {
         await fetchQuotes();
         Alert.alert('Success', isEditing ? 'Quote updated successfully' : 'Quote created successfully', [
           { text: 'OK', onPress: () => router.back() }
         ]);
       } else {
-        Alert.alert('Error', response.error || `Failed to ${isEditing ? 'update' : 'create'} quote`);
+        Alert.alert('Error', `Failed to ${isEditing ? 'update' : 'create'} quote`);
       }
     } catch (error: any) {
       // Network error - save offline
@@ -899,16 +907,105 @@ export default function NewQuoteScreen() {
     setIsLoading(false);
   };
 
+  const handlePickAIPhoto = async (source: 'camera' | 'gallery') => {
+    try {
+      let result: ImagePicker.ImagePickerResult;
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Required', 'Camera access is needed to take photos.');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ['images'],
+          quality: 0.8,
+        });
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Required', 'Photo library access is needed to select photos.');
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          quality: 0.8,
+          allowsMultipleSelection: true,
+          selectionLimit: 5,
+        });
+      }
+      if (!result.canceled && result.assets?.length > 0) {
+        const newUris = result.assets.map(a => a.uri);
+        setAiPhotos(prev => [...prev, ...newUris].slice(0, 10));
+      }
+    } catch (error) {
+      if (__DEV__) console.error('Error picking photo:', error);
+      Alert.alert('Error', 'Could not pick photo. Please try again.');
+    }
+  };
+
+  const handleRemoveAIPhoto = (index: number) => {
+    setAiPhotos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleVoiceRecordingDone = async (uri: string, duration: number) => {
+    setShowVoiceRecorder(false);
+    try {
+      const formData = new FormData();
+      const filename = uri.split('/').pop() || 'voice.m4a';
+      formData.append('file', {
+        uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+        name: filename,
+        type: 'audio/m4a',
+      } as any);
+      const uploadResponse = await api.uploadFile<{ url: string }>('/api/upload', formData);
+      if (uploadResponse.data?.url) {
+        const transcribeResponse = await api.post<{ transcription: string }>('/api/voice-notes/transcribe', {
+          audioUrl: uploadResponse.data.url,
+        });
+        if (transcribeResponse.data?.transcription) {
+          setAiDescription(prev => prev ? `${prev}\n${transcribeResponse.data!.transcription}` : transcribeResponse.data!.transcription);
+        } else {
+          Alert.alert('Note', 'Voice was recorded but could not be transcribed. Please type your description instead.');
+        }
+      }
+    } catch (error) {
+      if (__DEV__) console.error('Voice transcription error:', error);
+      Alert.alert('Error', 'Could not process voice recording. Please type your description instead.');
+    }
+  };
+
   const handleGenerateAI = async () => {
-    if (!aiDescription.trim()) {
-      Alert.alert('Error', 'Please describe the job');
+    if (!aiDescription.trim() && aiPhotos.length === 0) {
+      Alert.alert('Error', 'Please describe the job or add photos');
       return;
     }
     setIsGeneratingAI(true);
     try {
+      let photoUrls: string[] = [];
+      if (aiPhotos.length > 0) {
+        setIsUploadingPhotos(true);
+        for (const photoUri of aiPhotos) {
+          const formData = new FormData();
+          const filename = photoUri.split('/').pop() || 'photo.jpg';
+          const match = /\.(\w+)$/.exec(filename);
+          const type = match ? `image/${match[1]}` : 'image/jpeg';
+          formData.append('file', {
+            uri: Platform.OS === 'ios' ? photoUri.replace('file://', '') : photoUri,
+            name: filename,
+            type,
+          } as any);
+          const uploadResponse = await api.uploadFile<{ url: string }>('/api/upload', formData);
+          if (uploadResponse.data?.url) {
+            photoUrls.push(uploadResponse.data.url);
+          }
+        }
+        setIsUploadingPhotos(false);
+      }
+
       const response = await api.post('/api/ai/generate-quote', {
         jobId: jobId || undefined,
-        jobDescription: aiDescription.trim(),
+        jobDescription: aiDescription.trim() || undefined,
+        photoUrls: photoUrls.length > 0 ? photoUrls : undefined,
       });
       if (response.data && response.data.lineItems) {
         const aiItems = response.data.lineItems.map((item: any) => ({
@@ -923,14 +1020,17 @@ export default function NewQuoteScreen() {
         }
         setShowAIGenerator(false);
         setAiDescription('');
+        setAiPhotos([]);
         Alert.alert('Success', `Added ${aiItems.length} items from AI`);
       } else {
         Alert.alert('Error', response.data?.notes?.[0] || 'Could not generate quote');
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to generate quote. Please try again.');
+    } finally {
+      setIsGeneratingAI(false);
+      setIsUploadingPhotos(false);
     }
-    setIsGeneratingAI(false);
   };
 
   const handleOpenCatalog = async () => {
@@ -1612,18 +1712,18 @@ export default function NewQuoteScreen() {
         visible={showAIGenerator}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowAIGenerator(false)}
+        onRequestClose={() => { setShowAIGenerator(false); setShowVoiceRecorder(false); }}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>AI Quote Generator</Text>
-            <TouchableOpacity onPress={() => setShowAIGenerator(false)}>
+            <TouchableOpacity onPress={() => { setShowAIGenerator(false); setShowVoiceRecorder(false); }}>
               <Feather name="x" size={24} color={colors.foreground} />
             </TouchableOpacity>
           </View>
-          <View style={styles.modalContent}>
+          <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
             <Text style={{ fontSize: 14, color: colors.mutedForeground, marginBottom: 16 }}>
-              Describe the job and AI will generate quote line items with realistic pricing.
+              Describe the job, add photos, or use voice input. AI will generate quote line items with realistic pricing.
             </Text>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Job Description</Text>
@@ -1637,21 +1737,134 @@ export default function NewQuoteScreen() {
                 textAlignVertical="top"
               />
             </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  backgroundColor: colors.muted,
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+                onPress={() => handlePickAIPhoto('camera')}
+              >
+                <Feather name="camera" size={18} color={colors.foreground} />
+                <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  backgroundColor: colors.muted,
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+                onPress={() => handlePickAIPhoto('gallery')}
+              >
+                <Feather name="image" size={18} color={colors.foreground} />
+                <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>Gallery</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  backgroundColor: showVoiceRecorder ? colors.primaryLight : colors.muted,
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  borderWidth: 1,
+                  borderColor: showVoiceRecorder ? colors.primary : colors.border,
+                }}
+                onPress={() => setShowVoiceRecorder(!showVoiceRecorder)}
+              >
+                <Feather name="mic" size={18} color={showVoiceRecorder ? colors.primary : colors.foreground} />
+                <Text style={{ fontSize: 14, fontWeight: '500', color: showVoiceRecorder ? colors.primary : colors.foreground }}>Voice</Text>
+              </TouchableOpacity>
+            </View>
+
+            {aiPhotos.length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={[styles.inputLabel, { marginBottom: 8 }]}>
+                  Photos ({aiPhotos.length})
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                  {aiPhotos.map((uri, index) => (
+                    <View key={`${uri}-${index}`} style={{ marginRight: 10, position: 'relative' }}>
+                      <Image
+                        source={{ uri }}
+                        style={{ width: 80, height: 80, borderRadius: 10, backgroundColor: colors.muted }}
+                      />
+                      <TouchableOpacity
+                        style={{
+                          position: 'absolute',
+                          top: -6,
+                          right: -6,
+                          width: 22,
+                          height: 22,
+                          borderRadius: 11,
+                          backgroundColor: colors.destructive,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        onPress={() => handleRemoveAIPhoto(index)}
+                      >
+                        <Feather name="x" size={12} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {showVoiceRecorder && (
+              <View style={{
+                marginBottom: 16,
+                backgroundColor: colors.muted,
+                borderRadius: 12,
+                padding: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}>
+                <VoiceRecorder
+                  onSave={handleVoiceRecordingDone}
+                  onCancel={() => setShowVoiceRecorder(false)}
+                />
+              </View>
+            )}
+
             <TouchableOpacity
-              style={[styles.saveItemButton, isGeneratingAI && { opacity: 0.6 }]}
+              style={[styles.saveItemButton, (isGeneratingAI || isUploadingPhotos) && { opacity: 0.6 }]}
               onPress={handleGenerateAI}
-              disabled={isGeneratingAI}
+              disabled={isGeneratingAI || isUploadingPhotos}
             >
-              {isGeneratingAI ? (
-                <ActivityIndicator size="small" color={colors.white} />
+              {isGeneratingAI || isUploadingPhotos ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  <Text style={styles.saveItemButtonText}>
+                    {isUploadingPhotos ? 'Uploading Photos...' : 'Generating...'}
+                  </Text>
+                </View>
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Feather name="zap" size={18} color={colors.white} />
+                  <Feather name="zap" size={18} color={colors.primaryForeground} />
                   <Text style={styles.saveItemButtonText}>Generate Quote Items</Text>
                 </View>
               )}
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 

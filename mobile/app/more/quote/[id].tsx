@@ -87,6 +87,7 @@ export default function QuoteDetailScreen() {
   const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
   const [includeAfterPhotos, setIncludeAfterPhotos] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(true);
+  const [hideSignature, setHideSignature] = useState(false);
   const [jobPhotos, setJobPhotos] = useState<any[]>([]);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [isCreatingJob, setIsCreatingJob] = useState(false);
@@ -863,6 +864,7 @@ ${businessName}`;
     if (includeBeforePhotos) params.set('includeBeforePhotos', 'true');
     if (includeAfterPhotos) params.set('includeAfterPhotos', 'true');
     if (!includeNotes) params.set('excludeNotes', 'true');
+    if (hideSignature) params.set('hideSignature', 'true');
     const queryString = params.toString();
     const pdfUrl = `${API_URL}/api/quotes/${id}/pdf${queryString ? `?${queryString}` : ''}`;
     
@@ -940,7 +942,7 @@ ${businessName}`;
       if (__DEV__) console.log('[PDF] Download error details:', error);
       throw error;
     }
-  }, [quote, id, includeBeforePhotos, includeNotes]);
+  }, [quote, id, includeBeforePhotos, includeAfterPhotos, includeNotes, hideSignature]);
 
   const handleDownloadPdf = async () => {
     if (!quote || isDownloadingPdf) return;
@@ -1703,7 +1705,7 @@ ${businessName}`;
               </TouchableOpacity>
             </View>
           </View>
-          {(quote.jobId || quote.notes) && (
+          {(quote.jobId || quote.notes || (quote.status === 'accepted' && allSignatures.length > 0)) && (
             <View style={styles.previewOptionsRow}>
               {quote.jobId && (
                 <TouchableOpacity
@@ -1730,6 +1732,15 @@ ${businessName}`;
                 >
                   <Feather name={includeNotes ? "check-square" : "square"} size={14} color={includeNotes ? colors.primary : colors.mutedForeground} />
                   <Text style={[styles.previewOptionChipText, includeNotes && { color: colors.primary }]}>Notes</Text>
+                </TouchableOpacity>
+              )}
+              {quote.status === 'accepted' && allSignatures.length > 0 && (
+                <TouchableOpacity
+                  style={[styles.previewOptionChip, !hideSignature && styles.previewOptionChipActive]}
+                  onPress={() => setHideSignature(!hideSignature)}
+                >
+                  <Feather name={!hideSignature ? "check-square" : "square"} size={14} color={!hideSignature ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.previewOptionChipText, !hideSignature && { color: colors.primary }]}>Signature</Text>
                 </TouchableOpacity>
               )}
             </View>

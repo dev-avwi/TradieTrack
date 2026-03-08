@@ -18837,6 +18837,7 @@ Be specific about materials, colors, and features that would be included.`
           signerName: sig.signerName,
           signatureData: sig.signatureData,
           signedAt: sig.signedAt,
+          documentType: sig.documentType,
         }));
       }
       
@@ -18866,12 +18867,20 @@ Be specific about materials, colors, and features that would be included.`
       const hideSignature = req.query.hideSignature === 'true';
       
       let beforePhotos: Array<{ url: string; caption?: string; category: string }> | undefined;
-      if (req.query.includeBeforePhotos === 'true' && job) {
+      let afterPhotos: Array<{ url: string; caption?: string; category: string }> | undefined;
+      if ((req.query.includeBeforePhotos === 'true' || req.query.includeAfterPhotos === 'true') && job) {
         const { getJobPhotos } = await import('./photoService');
         const allPhotos = await getJobPhotos(job.id, userContext.effectiveUserId);
-        beforePhotos = allPhotos
-          .filter(p => p.category === 'before')
-          .map(p => ({ url: p.signedUrl || '', caption: p.caption || undefined, category: p.category }));
+        if (req.query.includeBeforePhotos === 'true') {
+          beforePhotos = allPhotos
+            .filter(p => p.category === 'before')
+            .map(p => ({ url: p.signedUrl || '', caption: p.caption || undefined, category: p.category }));
+        }
+        if (req.query.includeAfterPhotos === 'true') {
+          afterPhotos = allPhotos
+            .filter(p => p.category === 'after')
+            .map(p => ({ url: p.signedUrl || '', caption: p.caption || undefined, category: p.category }));
+        }
       }
       
       const excludeNotes = req.query.excludeNotes === 'true';
@@ -18886,6 +18895,7 @@ Be specific about materials, colors, and features that would be included.`
         jobSignatures,
         signature: hideSignature ? undefined : acceptanceSignature,
         beforePhotos,
+        afterPhotos,
       });
       
       const pdfBuffer = await generatePDFBuffer(html);
@@ -26740,6 +26750,7 @@ Respond with JSON in this format:
         const displayName = [member.firstName, member.lastName].filter(Boolean).join(' ') 
           || (memberUser ? [memberUser.firstName, memberUser.lastName].filter(Boolean).join(' ') : '')
           || memberUser?.email?.split('@')[0]
+          || member.email?.split('@')[0]
           || '';
         return {
           ...member,

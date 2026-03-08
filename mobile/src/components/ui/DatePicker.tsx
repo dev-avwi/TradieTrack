@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { colors } from '../../lib/colors';
+import { useTheme, ThemeColors } from '../../lib/theme';
 
 interface DatePickerProps {
   value: Date;
@@ -24,7 +24,138 @@ const MONTHS = [
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    label: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.foreground,
+      marginBottom: 8,
+    },
+    dateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 14,
+      gap: 12,
+    },
+    dateButtonText: {
+      fontSize: 16,
+      color: colors.foreground,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    pickerContainer: {
+      backgroundColor: colors.background,
+      borderRadius: 16,
+      width: '100%',
+      maxWidth: 360,
+      padding: 16,
+    },
+    pickerHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    pickerTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.foreground,
+    },
+    monthHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    monthButton: {
+      padding: 8,
+    },
+    monthTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.foreground,
+    },
+    daysHeader: {
+      flexDirection: 'row',
+      marginBottom: 8,
+    },
+    dayHeaderCell: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    dayHeaderText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.mutedForeground,
+    },
+    calendarGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
+    dayCell: {
+      width: '14.28%',
+      aspectRatio: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    dayText: {
+      fontSize: 14,
+      color: colors.foreground,
+    },
+    selectedDay: {
+      backgroundColor: colors.primary,
+      borderRadius: 20,
+    },
+    selectedDayText: {
+      color: colors.primaryForeground || '#ffffff',
+      fontWeight: '600',
+    },
+    todayDay: {
+      borderWidth: 1,
+      borderColor: colors.primary,
+      borderRadius: 20,
+    },
+    todayDayText: {
+      color: colors.primary,
+      fontWeight: '500',
+    },
+    disabledDay: {
+      opacity: 0.3,
+    },
+    disabledDayText: {
+      color: colors.mutedForeground,
+    },
+    pickerFooter: {
+      marginTop: 16,
+      alignItems: 'center',
+    },
+    todayButton: {
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+    },
+    todayButtonText: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: '500',
+    },
+  });
+}
+
 export function DatePicker({ value, onChange, minimumDate, label }: DatePickerProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [showPicker, setShowPicker] = useState(false);
   const [viewMonth, setViewMonth] = useState(value.getMonth());
   const [viewYear, setViewYear] = useState(value.getFullYear());
@@ -100,12 +231,10 @@ export function DatePicker({ value, onChange, minimumDate, label }: DatePickerPr
     const firstDay = getFirstDayOfMonth(viewMonth, viewYear);
     const days = [];
 
-    // Add empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       days.push(<View key={`empty-${i}`} style={styles.dayCell} />);
     }
 
-    // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const disabled = isDateDisabled(day);
       const selected = isSelectedDate(day);
@@ -146,6 +275,7 @@ export function DatePicker({ value, onChange, minimumDate, label }: DatePickerPr
       <TouchableOpacity
         style={styles.dateButton}
         onPress={() => setShowPicker(true)}
+        activeOpacity={0.7}
       >
         <Feather name="calendar" size={20} color={colors.primary} />
         <Text style={styles.dateButtonText}>{formatDate(value)}</Text>
@@ -201,132 +331,5 @@ export function DatePicker({ value, onChange, minimumDate, label }: DatePickerPr
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.foreground,
-    marginBottom: 8,
-  },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  dateButtonText: {
-    fontSize: 16,
-    color: colors.foreground,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  pickerContainer: {
-    backgroundColor: colors.background,
-    borderRadius: 16,
-    width: '100%',
-    maxWidth: 360,
-    padding: 16,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  pickerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.foreground,
-  },
-  monthHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  monthButton: {
-    padding: 8,
-  },
-  monthTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.foreground,
-  },
-  daysHeader: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  dayHeaderCell: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  dayHeaderText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.mutedForeground,
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  dayCell: {
-    width: '14.28%',
-    aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dayText: {
-    fontSize: 14,
-    color: colors.foreground,
-  },
-  selectedDay: {
-    backgroundColor: colors.primary,
-    borderRadius: 20,
-  },
-  selectedDayText: {
-    color: colors.white,
-    fontWeight: '600',
-  },
-  todayDay: {
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 20,
-  },
-  todayDayText: {
-    color: colors.primary,
-    fontWeight: '500',
-  },
-  disabledDay: {
-    opacity: 0.3,
-  },
-  disabledDayText: {
-    color: colors.mutedForeground,
-  },
-  pickerFooter: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  todayButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  todayButtonText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: '500',
-  },
-});
 
 export default DatePicker;

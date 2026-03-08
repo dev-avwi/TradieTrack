@@ -116,11 +116,61 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
     }
   };
 
+  const cleanupExistingSession = async () => {
+    if (durationInterval.current) {
+      clearInterval(durationInterval.current);
+      durationInterval.current = null;
+    }
+
+    if (soundRef.current) {
+      try {
+        await soundRef.current.unloadAsync();
+      } catch (e) {
+        if (__DEV__) console.warn('[VoiceRecorder] Error unloading sound during cleanup:', e);
+      }
+      soundRef.current = null;
+      setSound(null);
+      setIsPlaying(false);
+    }
+
+    if (recordingRef.current) {
+      try {
+        const status = await recordingRef.current.getStatusAsync();
+        if (status.isRecording || status.isDoneRecording) {
+          await recordingRef.current.stopAndUnloadAsync();
+        }
+      } catch (e) {
+        try {
+          await recordingRef.current.stopAndUnloadAsync();
+        } catch (e2) {
+          if (__DEV__) console.warn('[VoiceRecorder] Force cleanup of stale recording:', e2);
+        }
+      }
+      recordingRef.current = null;
+      setRecording(null);
+    }
+
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
+    } catch (e) {
+      if (__DEV__) console.warn('[VoiceRecorder] Error resetting audio mode during cleanup:', e);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, Platform.OS === 'ios' ? 150 : 50));
+  };
+
   const startRecording = async () => {
     try {
       const hasPermission = await requestPermissions();
       if (!hasPermission) return;
 
+      if (__DEV__) console.log('[VoiceRecorder] Cleaning up existing audio session before recording...');
+      await cleanupExistingSession();
+
+      if (__DEV__) console.log('[VoiceRecorder] Setting audio mode for recording...');
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
@@ -130,6 +180,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       });
       if (__DEV__) console.log('[VoiceRecorder] Audio mode configured with allowsRecordingIOS: true');
 
+      if (__DEV__) console.log('[VoiceRecorder] Creating recording instance...');
       const { recording: newRecording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
@@ -147,7 +198,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       if (__DEV__) console.log('[VoiceRecorder] Recording started successfully');
       
     } catch (error: any) {
-      if (__DEV__) console.error('Error starting recording:', error);
+      if (__DEV__) console.error('[VoiceRecorder] Error starting recording:', error, JSON.stringify(error));
       
       try {
         await Audio.setAudioModeAsync({
@@ -155,39 +206,87 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
           playsInSilentModeIOS: true,
         });
       } catch (resetError) {
-        if (__DEV__) console.warn('Could not reset audio mode:', resetError);
+        if (__DEV__) console.warn('[VoiceRecorder] Could not reset audio mode:', resetError);
       }
       
-      const msg = error?.message || '';
-      if (msg.includes('permission') || msg.includes('Permission')) {
+      const msg = error?.message || error?.toString?.() || '';
+      const code = error?.code || '';
+      
+      if (msg.includes('permission') || msg.includes('Permission') || code === 'E_AUDIO_NOPERMISSION') {
         Alert.alert(
           'Microphone Permission Required',
           'Please enable microphone access in your device settings to record voice notes.',
           [{ text: 'OK' }]
         );
-      } else if (msg.includes('already recording') || msg.includes('Cannot record')) {
+      } else if (msg.includes('already recording') || msg.includes('Cannot record') || msg.includes('another recording')) {
+        if (__DEV__) console.log('[VoiceRecorder] Stale recording detected, performing deep cleanup and retry...');
         try {
           if (recordingRef.current) {
             await recordingRef.current.stopAndUnloadAsync().catch(() => {});
             recordingRef.current = null;
             setRecording(null);
           }
-          Alert.alert('Recording Reset', 'Previous recording session was cleared. Please try again.');
-        } catch (e) {
-          Alert.alert('Error', 'Could not reset recording. Please close and reopen this screen.');
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            playsInSilentModeIOS: true,
+          });
+          await new Promise(resolve => setTimeout(resolve, 300));
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: true,
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: false,
+            shouldDuckAndroid: true,
+            playThroughEarpieceAndroid: false,
+          });
+          const { recording: retryRecording } = await Audio.Recording.createAsync(
+            Audio.RecordingOptionsPresets.HIGH_QUALITY
+          );
+          setRecording(retryRecording);
+          recordingRef.current = retryRecording;
+          setIsRecording(true);
+          setIsPaused(false);
+          setRecordingDuration(0);
+          durationInterval.current = setInterval(() => {
+            setRecordingDuration(prev => prev + 1);
+          }, 1000);
+          if (__DEV__) console.log('[VoiceRecorder] Retry recording started successfully');
+          return;
+        } catch (retryError) {
+          if (__DEV__) console.error('[VoiceRecorder] Retry also failed:', retryError);
+          Alert.alert(
+            'Recording Busy',
+            'The microphone is still in use. Please wait a moment and try again, or restart the app.',
+            [{ text: 'OK' }]
+          );
         }
+      } else if (msg.includes('not found') || msg.includes('not installed') || msg.includes('native module')) {
+        Alert.alert(
+          'Recording Not Available',
+          'Voice recording requires a development build with native audio support. It is not available in Expo Go.',
+          [{ text: 'OK' }]
+        );
+      } else if (msg.includes('interrupted') || msg.includes('deactivated') || msg.includes('session')) {
+        Alert.alert(
+          'Audio Session Error',
+          'The audio session was interrupted (possibly by a call or another app). Please try again.',
+          [{ text: 'Try Again', onPress: () => setTimeout(startRecording, 500) },
+           { text: 'Cancel', style: 'cancel' }]
+        );
       } else {
         Alert.alert(
           'Recording Error',
-          'Could not start recording. Make sure no other app is using the microphone, then try again.',
-          [{ text: 'OK' }]
+          `Could not start recording. ${Platform.OS === 'ios' ? 'Make sure no other app is using the microphone and Silent Mode is not blocking audio.' : 'Make sure no other app is using the microphone.'}\n\nDetails: ${msg || 'Unknown error'}`,
+          [{ text: 'Try Again', onPress: () => setTimeout(startRecording, 500) },
+           { text: 'Cancel', style: 'cancel' }]
         );
       }
     }
   };
 
   const stopRecording = async () => {
-    if (!recording) return;
+    if (!recording && !recordingRef.current) return;
+
+    const activeRecording = recording || recordingRef.current;
 
     try {
       if (durationInterval.current) {
@@ -195,14 +294,28 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
         durationInterval.current = null;
       }
 
-      await recording.stopAndUnloadAsync();
+      let uri: string | null = null;
+      try {
+        await activeRecording.stopAndUnloadAsync();
+        uri = activeRecording.getURI();
+      } catch (stopError: any) {
+        if (__DEV__) console.warn('[VoiceRecorder] Error during stopAndUnload:', stopError);
+        try {
+          uri = activeRecording.getURI();
+        } catch (e) {
+          if (__DEV__) console.warn('[VoiceRecorder] Could not get URI after stop error');
+        }
+      }
       
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-      });
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        });
+      } catch (e) {
+        if (__DEV__) console.warn('[VoiceRecorder] Error resetting audio mode after stop:', e);
+      }
 
-      const uri = recording.getURI();
       if (__DEV__) console.log('[VoiceRecorder] Recording stopped, URI:', uri);
       
       if (uri) {
@@ -215,7 +328,11 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
       setIsPaused(false);
       
     } catch (error) {
-      if (__DEV__) console.error('Error stopping recording:', error);
+      if (__DEV__) console.error('[VoiceRecorder] Error stopping recording:', error);
+      setRecording(null);
+      recordingRef.current = null;
+      setIsRecording(false);
+      setIsPaused(false);
     }
   };
 

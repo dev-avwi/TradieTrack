@@ -999,13 +999,15 @@ export default function NewInvoiceScreen() {
         ? await api.patch(`/api/invoices/${params.editInvoiceId}`, invoiceData)
         : await api.post('/api/invoices', invoiceData);
 
-      if (response.data) {
+      if (response.error) {
+        Alert.alert('Error', response.error || (isEditing ? 'Failed to update invoice' : 'Failed to create invoice'));
+      } else if (response.data) {
         await fetchInvoices();
         Alert.alert('Success', isEditing ? 'Invoice updated successfully' : 'Invoice created successfully', [
           { text: 'OK', onPress: () => router.back() }
         ]);
       } else {
-        Alert.alert('Error', response.error || (isEditing ? 'Failed to update invoice' : 'Failed to create invoice'));
+        Alert.alert('Error', isEditing ? 'Failed to update invoice' : 'Failed to create invoice');
       }
     } catch (error: any) {
       // Network error - save offline (only for create, not edit)

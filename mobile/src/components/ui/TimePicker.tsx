@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { colors } from '../../lib/colors';
+import { useTheme, ThemeColors } from '../../lib/theme';
 
 interface TimePickerProps {
   value: Date;
@@ -17,7 +17,129 @@ interface TimePickerProps {
   disabled?: boolean;
 }
 
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    label: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.foreground,
+      marginBottom: 8,
+    },
+    timeButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 14,
+      gap: 12,
+    },
+    disabledButton: {
+      opacity: 0.5,
+    },
+    timeButtonText: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.foreground,
+    },
+    disabledText: {
+      color: colors.mutedForeground,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    pickerContainer: {
+      backgroundColor: colors.background,
+      borderRadius: 16,
+      width: '100%',
+      maxWidth: 320,
+      padding: 16,
+    },
+    pickerHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    pickerTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.foreground,
+    },
+    timeColumns: {
+      flexDirection: 'row',
+      gap: 16,
+    },
+    column: {
+      flex: 1,
+    },
+    columnLabel: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.mutedForeground,
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+    scrollColumn: {
+      height: 200,
+    },
+    timeOption: {
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    selectedOption: {
+      backgroundColor: colors.primary,
+    },
+    timeOptionText: {
+      fontSize: 16,
+      color: colors.foreground,
+    },
+    selectedOptionText: {
+      color: colors.primaryForeground || '#ffffff',
+      fontWeight: '600',
+    },
+    preview: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 16,
+      gap: 8,
+    },
+    previewLabel: {
+      fontSize: 14,
+      color: colors.mutedForeground,
+    },
+    previewTime: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    confirmButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      paddingVertical: 14,
+      alignItems: 'center',
+      marginTop: 16,
+    },
+    confirmButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primaryForeground || '#ffffff',
+    },
+  });
+}
+
 export function TimePicker({ value, onChange, label, disabled }: TimePickerProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [showPicker, setShowPicker] = useState(false);
   const [selectedHour, setSelectedHour] = useState(value.getHours());
   const [selectedMinute, setSelectedMinute] = useState(value.getMinutes());
@@ -47,11 +169,13 @@ export function TimePicker({ value, onChange, label, disabled }: TimePickerProps
         style={[styles.timeButton, disabled && styles.disabledButton]}
         onPress={() => !disabled && setShowPicker(true)}
         disabled={disabled}
+        activeOpacity={0.7}
       >
         <Feather name="clock" size={20} color={disabled ? colors.mutedForeground : colors.primary} />
         <Text style={[styles.timeButtonText, disabled && styles.disabledText]}>
           {formatTime(value)}
         </Text>
+        <Feather name="chevron-down" size={16} color={disabled ? colors.mutedForeground : colors.mutedForeground} />
       </TouchableOpacity>
 
       <Modal visible={showPicker} transparent animationType="fade">
@@ -65,7 +189,6 @@ export function TimePicker({ value, onChange, label, disabled }: TimePickerProps
             </View>
 
             <View style={styles.timeColumns}>
-              {/* Hour Column */}
               <View style={styles.column}>
                 <Text style={styles.columnLabel}>Hour</Text>
                 <ScrollView style={styles.scrollColumn} showsVerticalScrollIndicator={false}>
@@ -95,7 +218,6 @@ export function TimePicker({ value, onChange, label, disabled }: TimePickerProps
                 </ScrollView>
               </View>
 
-              {/* Minute Column */}
               <View style={styles.column}>
                 <Text style={styles.columnLabel}>Minute</Text>
                 <ScrollView style={styles.scrollColumn} showsVerticalScrollIndicator={false}>
@@ -139,122 +261,5 @@ export function TimePicker({ value, onChange, label, disabled }: TimePickerProps
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.foreground,
-    marginBottom: 8,
-  },
-  timeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  timeButtonText: {
-    fontSize: 16,
-    color: colors.foreground,
-  },
-  disabledText: {
-    color: colors.mutedForeground,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  pickerContainer: {
-    backgroundColor: colors.background,
-    borderRadius: 16,
-    width: '100%',
-    maxWidth: 320,
-    padding: 16,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  pickerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.foreground,
-  },
-  timeColumns: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  column: {
-    flex: 1,
-  },
-  columnLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  scrollColumn: {
-    height: 200,
-  },
-  timeOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  selectedOption: {
-    backgroundColor: colors.primary,
-  },
-  timeOptionText: {
-    fontSize: 16,
-    color: colors.foreground,
-  },
-  selectedOptionText: {
-    color: colors.white,
-    fontWeight: '600',
-  },
-  preview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-    gap: 8,
-  },
-  previewLabel: {
-    fontSize: 14,
-    color: colors.mutedForeground,
-  },
-  previewTime: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  confirmButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  confirmButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.white,
-  },
-});
 
 export default TimePicker;
