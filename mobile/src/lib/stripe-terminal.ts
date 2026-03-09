@@ -58,13 +58,16 @@ export interface CollectPaymentResult {
   error?: string;
 }
 
-// Stripe Terminal SDK is temporarily disabled while awaiting Apple Tap to Pay production approval
-// Once Apple approves the production entitlement, this will be re-enabled with full SDK support
 let StripeTerminalSDK: any = null;
 let sdkAvailable = false;
 
-// SDK temporarily disabled - will be re-enabled after Apple production approval
-if (__DEV__) console.log('[StripeTerminal] SDK temporarily disabled - using simulation mode until Apple production approval');
+try {
+  StripeTerminalSDK = require('@stripe/stripe-terminal-react-native');
+  sdkAvailable = true;
+  if (__DEV__) console.log('[StripeTerminal] SDK loaded successfully');
+} catch (e) {
+  if (__DEV__) console.log('[StripeTerminal] SDK not available - using simulation mode (Expo Go or missing native module)');
+}
 
 /**
  * Check if Stripe Terminal SDK is available (native build)

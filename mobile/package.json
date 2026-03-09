@@ -55,6 +55,7 @@
     "expo-task-manager": "~14.0.9",
     "expo-updates": "~29.0.16",
     "expo-web-browser": "~15.0.10",
+    "@stripe/stripe-terminal-react-native": "^0.0.1-beta.29",
     "lucide-react-native": "^0.468.0",
     "nativewind": "^4.0.1",
     "react": "19.1.0",

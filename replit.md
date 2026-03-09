@@ -104,3 +104,4 @@ Core architectural and design decisions include:
 *   **Calendar Integration**: Google Calendar
 *   **Weather API**: Open-Meteo
 *   **Routing/ETA**: OSRM (Open Source Routing Machine) for real driving time calculation, Haversine fallback
+*   **Tap to Pay (Stripe Terminal)**: `@stripe/stripe-terminal-react-native` SDK for contactless NFC payments on iPhone (iOS 17.6+). Apple entitlement `com.apple.developer.proximity-reader.payment.acceptance` granted. SDK loaded via try/catch `require()` in `stripe-terminal.ts`, `useServices.ts`, and `StripeTerminalProvider.tsx` — falls back to simulation mode in Expo Go. Requires EAS native build (`eas build --platform ios`). Build number 24.

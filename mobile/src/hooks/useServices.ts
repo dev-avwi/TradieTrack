@@ -27,10 +27,14 @@ import offlineStorage, { useOfflineStore, CachedJob, CachedClient, CachedQuote, 
 import locationTracking, { TrackingStatus, LocationUpdate, GeofenceEvent } from '../lib/location-tracking';
 import api from '../lib/api';
 
-// Stripe Terminal SDK temporarily disabled pending Apple production approval
-// The SDK package was removed to allow App Store builds
 let useStripeTerminalSDK: any = null;
-if (__DEV__) console.log('[useStripeTerminal] SDK removed - pending Apple Tap to Pay production approval');
+try {
+  const sdk = require('@stripe/stripe-terminal-react-native');
+  useStripeTerminalSDK = sdk.useStripeTerminal;
+  if (__DEV__) console.log('[useStripeTerminal] SDK hook loaded successfully');
+} catch (e) {
+  if (__DEV__) console.log('[useStripeTerminal] SDK not available - using simulation mode');
+}
 
 /**
  * Hook for Stripe Terminal (Tap to Pay)

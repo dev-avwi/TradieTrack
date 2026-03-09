@@ -21,10 +21,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jobrunner.app",
-      "buildNumber": "23",
+      "buildNumber": "24",
       "usesAppleSignIn": true,
       "config": {
         "usesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.proximity-reader.payment.acceptance": true
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -74,6 +77,7 @@
     "plugins": [
       "expo-router",
       "expo-apple-authentication",
+      "@stripe/stripe-terminal-react-native",
       [
         "expo-build-properties",
         {

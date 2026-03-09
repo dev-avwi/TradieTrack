@@ -41,9 +41,8 @@ export const isTapToPaySupported = (): boolean => {
   }
   
   if (Platform.OS === 'ios') {
-    // iPhone XS or later, iOS 16+
-    const version = parseInt(Platform.Version as string, 10);
-    return version >= 16;
+    const version = parseFloat(Platform.Version as string);
+    return version >= 17.6;
   }
   
   if (Platform.OS === 'android') {

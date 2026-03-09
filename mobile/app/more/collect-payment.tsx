@@ -1070,18 +1070,20 @@ export default function CollectScreen() {
     }
 
     try {
-      if (!terminal.isAvailable) {
+      if (!terminal.isInitialized) {
         const initialized = await terminal.initialize();
-        if (!initialized && !useNativeSDK) {
-          setPaymentStep('error');
+        if (!initialized) {
+          if (!useNativeSDK) setPaymentStep('error');
+          else Alert.alert('Terminal Error', 'Failed to initialize Tap to Pay. Please try again.');
           return;
         }
       }
 
       if (!terminal.reader) {
         const connected = await terminal.connectReader();
-        if (!connected && !useNativeSDK) {
-          setPaymentStep('error');
+        if (!connected) {
+          if (!useNativeSDK) setPaymentStep('error');
+          else Alert.alert('Connection Error', 'Failed to connect to reader. Please try again.');
           return;
         }
       }
@@ -2758,16 +2760,19 @@ export default function CollectScreen() {
 
           <Text style={styles.sectionLabel}>Payment Methods</Text>
 
-          {/* Apple Requirement 5.5: Use SF Symbol wave.3.right.circle for Tap to Pay
-              In native builds, replace Feather 'radio' with actual SF Symbol via react-native-sfsymbols
-              The 'radio' icon from Feather resembles the wave pattern as a fallback */}
           <PaymentMethodCard
-            icon={<Feather name="radio" size={24} color={colors.mutedForeground} />}
+            icon={<Feather name="radio" size={24} color={tapToPaySupported ? colors.primary : colors.mutedForeground} />}
             title="Tap to Pay"
-            description="Contactless NFC payments via Stripe Terminal"
-            badge="Requires Stripe Terminal"
-            badgeVariant="warning"
-            onPress={() => Alert.alert('Tap to Pay', 'Tap to Pay requires a Stripe Terminal reader paired with your device. Connect a Stripe Terminal reader in Settings to enable contactless payments.')}
+            description={tapToPaySupported ? "Accept contactless payments on this device" : "Requires iPhone XS+ with iOS 17.6+"}
+            badge={tapToPaySupported ? (terminal.isSimulation ? "Simulation" : "Ready") : "Not Available"}
+            badgeVariant={tapToPaySupported ? "success" : "warning"}
+            onPress={() => {
+              if (!tapToPaySupported) {
+                Alert.alert('Not Available', 'Tap to Pay requires iPhone XS or later with iOS 17.6+, or Android with NFC support.');
+                return;
+              }
+              handleTapToPay();
+            }}
             disabled={false}
             colors={colors}
           />
