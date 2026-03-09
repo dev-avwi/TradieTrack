@@ -77,7 +77,12 @@
     "plugins": [
       "expo-router",
       "expo-apple-authentication",
-      "@stripe/stripe-terminal-react-native",
+      [
+        "@stripe/stripe-terminal-react-native",
+        {
+          "bluetoothBackgroundMode": false
+        }
+      ],
       [
         "expo-build-properties",
         {
