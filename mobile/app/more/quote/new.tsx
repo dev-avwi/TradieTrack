@@ -26,6 +26,11 @@ import api from '../../../src/lib/api';
 import offlineStorage, { useOfflineStore } from '../../../src/lib/offline-storage';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { getBottomNavHeight } from '../../../src/components/BottomNav';
+import { DatePicker } from '../../../src/components/ui/DatePicker';
+
+const formatLocalDate = (d: Date): string => {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
@@ -618,8 +623,8 @@ export default function NewQuoteScreen() {
     description: '',
     notes: '',
     terms: '',
-    validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    quoteDate: new Date().toISOString().split('T')[0],
+    validUntil: formatLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+    quoteDate: formatLocalDate(new Date()),
     requireDeposit: false,
     depositPercent: '50',
   });
@@ -670,8 +675,8 @@ export default function NewQuoteScreen() {
             description: q.description || '',
             notes: q.notes || '',
             terms: q.terms || '',
-            validUntil: q.validUntil ? new Date(q.validUntil).toISOString().split('T')[0] : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            quoteDate: q.quoteDate ? new Date(q.quoteDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            validUntil: q.validUntil ? formatLocalDate(new Date(q.validUntil)) : formatLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+            quoteDate: q.quoteDate ? formatLocalDate(new Date(q.quoteDate)) : formatLocalDate(new Date()),
             requireDeposit: !!q.depositRequired || !!q.depositAmount,
             depositPercent: q.depositPercent ? String(q.depositPercent) : '50',
           });
@@ -1292,17 +1297,12 @@ export default function NewQuoteScreen() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Valid Until</Text>
-                  <View style={styles.dateInputWrapper}>
-                    <Feather name="calendar" size={16} color={colors.mutedForeground} style={styles.dateIcon} />
-                    <TextInput
-                      style={[styles.input, styles.dateInput]}
-                      value={form.validUntil}
-                      onChangeText={(text) => setForm({ ...form, validUntil: text })}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor={colors.mutedForeground}
-                    />
-                  </View>
+                  <DatePicker
+                    label="Valid Until"
+                    value={new Date(form.validUntil + 'T00:00:00')}
+                    onChange={(date) => setForm({ ...form, validUntil: formatLocalDate(date) })}
+                    minimumDate={new Date()}
+                  />
                 </View>
               </View>
 

@@ -223,7 +223,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   primaryButton: {
-    backgroundColor: '#1e3a5f',
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 10,
@@ -233,7 +233,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: 8,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground || '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -463,23 +463,15 @@ export default function RegisterScreen() {
               </View>
 
               <TouchableOpacity
-                style={{
-                  backgroundColor: '#1e3a5f',
-                  paddingVertical: 14,
-                  paddingHorizontal: 20,
-                  borderRadius: 10,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '100%',
-                }}
+                style={styles.primaryButton}
                 onPress={handleRegister}
                 disabled={isLoading}
                 activeOpacity={0.8}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={colors.primaryForeground} />
                 ) : (
-                  <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Create Account</Text>
+                  <Text style={styles.primaryButtonText}>Create Account</Text>
                 )}
               </TouchableOpacity>
             </CardContent>
@@ -520,10 +512,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 24,
   },
   logoGradientContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 18,
-    padding: 2,
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    padding: 3,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
@@ -537,13 +529,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   logoInner: {
     flex: 1,
     backgroundColor: colors.background,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   logo: {
-    width: 48,
-    height: 48,
+    width: 100,
+    height: 100,
   },
   appNameContainer: {
     flexDirection: 'row',
@@ -551,12 +544,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 8,
   },
   appNameBlue: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#2563eb',
   },
   appNameOrange: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#E8862E',
   },
@@ -701,6 +694,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     fontSize: 15,
+  },
+  primaryButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  primaryButtonText: {
+    color: colors.primaryForeground,
+    fontSize: 16,
+    fontWeight: '600',
   },
   trialInfoCard: {
     backgroundColor: colors.card,

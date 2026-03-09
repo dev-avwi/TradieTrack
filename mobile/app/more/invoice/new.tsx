@@ -23,6 +23,11 @@ import api from '../../../src/lib/api';
 import offlineStorage, { useOfflineStore } from '../../../src/lib/offline-storage';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { getBottomNavHeight } from '../../../src/components/BottomNav';
+import { DatePicker } from '../../../src/components/ui/DatePicker';
+
+const formatLocalDate = (d: Date): string => {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
@@ -666,8 +671,8 @@ export default function NewInvoiceScreen() {
     description: '',
     notes: '',
     terms: '',
-    invoiceDate: new Date().toISOString().split('T')[0],
-    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    invoiceDate: formatLocalDate(new Date()),
+    dueDate: formatLocalDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)),
   });
   
   const [isRecurring, setIsRecurring] = useState(false);
@@ -1287,17 +1292,12 @@ export default function NewInvoiceScreen() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Due Date</Text>
-                  <View style={styles.dateInputWrapper}>
-                    <Feather name="calendar" size={16} color={colors.mutedForeground} style={styles.dateIcon} />
-                    <TextInput
-                      style={[styles.input, styles.dateInput]}
-                      value={form.dueDate}
-                      onChangeText={(text) => setForm({ ...form, dueDate: text })}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor={colors.mutedForeground}
-                    />
-                  </View>
+                  <DatePicker
+                    label="Due Date"
+                    value={new Date(form.dueDate + 'T00:00:00')}
+                    onChange={(date) => setForm({ ...form, dueDate: formatLocalDate(date) })}
+                    minimumDate={new Date()}
+                  />
                 </View>
               </View>
 
@@ -1349,20 +1349,30 @@ export default function NewInvoiceScreen() {
                     </View>
 
                     <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>End Date (optional)</Text>
-                      <View style={styles.dateInputWrapper}>
-                        <Feather name="calendar" size={16} color={colors.mutedForeground} style={styles.dateIcon} />
-                        <TextInput
-                          style={[styles.input, styles.dateInput]}
-                          value={recurrenceEndDate}
-                          onChangeText={setRecurrenceEndDate}
-                          placeholder="Leave empty for no end date"
-                          placeholderTextColor={colors.mutedForeground}
-                        />
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text style={styles.inputLabel}>End Date (optional)</Text>
+                        {recurrenceEndDate ? (
+                          <TouchableOpacity onPress={() => setRecurrenceEndDate('')} activeOpacity={0.7}>
+                            <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>Clear</Text>
+                          </TouchableOpacity>
+                        ) : null}
                       </View>
-                      <Text style={styles.inputHint}>
-                        Leave empty to generate invoices indefinitely
-                      </Text>
+                      {recurrenceEndDate ? (
+                        <DatePicker
+                          value={new Date(recurrenceEndDate + 'T00:00:00')}
+                          onChange={(date) => setRecurrenceEndDate(formatLocalDate(date))}
+                          minimumDate={new Date(form.dueDate + 'T00:00:00')}
+                        />
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.input, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}
+                          onPress={() => setRecurrenceEndDate(formatLocalDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)))}
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="calendar" size={16} color={colors.mutedForeground} />
+                          <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>No end date (runs indefinitely)</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
 
                     <View style={styles.recurringPreview}>

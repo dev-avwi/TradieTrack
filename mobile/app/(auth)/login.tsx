@@ -392,23 +392,15 @@ export default function LoginScreen() {
               ) : null}
 
               <TouchableOpacity
-                style={{
-                  backgroundColor: '#1e3a5f',
-                  paddingVertical: 14,
-                  paddingHorizontal: 20,
-                  borderRadius: 10,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '100%',
-                }}
+                style={styles.primaryButton}
                 onPress={handleLogin}
                 disabled={isLoading}
                 activeOpacity={0.8}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={colors.primaryForeground} />
                 ) : (
-                  <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Sign In</Text>
+                  <Text style={styles.primaryButtonText}>Sign In</Text>
                 )}
               </TouchableOpacity>
 
@@ -502,9 +494,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 32,
   },
   logoGradientContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 22,
+    width: 80,
+    height: 80,
+    borderRadius: 20,
     padding: 3,
     marginBottom: 16,
     shadowColor: '#000',
@@ -519,14 +511,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   logoInner: {
     flex: 1,
     backgroundColor: colors.background,
-    borderRadius: 18,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   logo: {
-    width: 125,
-    height: 125,
+    width: 100,
+    height: 100,
   },
   appNameContainer: {
     flexDirection: 'row',
@@ -710,5 +702,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     fontSize: 15,
+  },
+  primaryButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  primaryButtonText: {
+    color: colors.primaryForeground,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

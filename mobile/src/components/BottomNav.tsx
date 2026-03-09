@@ -8,6 +8,7 @@ import { useTheme, ThemeColors } from '../lib/theme';
 import { useScrollToTop } from '../contexts/ScrollContext';
 import { isIPad } from '../lib/device';
 import { shadows } from '../lib/design-tokens';
+import { useNotificationsStore } from '../lib/notifications-store';
 
 interface NavItem {
   title: string;
@@ -30,6 +31,12 @@ const navItems: NavItem[] = [
     matchPaths: ['/jobs', '/job']
   },
   { 
+    title: 'Map', 
+    icon: 'map-pin', 
+    path: '/map',
+    matchPaths: ['/map']
+  },
+  { 
     title: 'Chat', 
     icon: 'message-circle', 
     path: '/more/chat-hub',
@@ -39,7 +46,7 @@ const navItems: NavItem[] = [
     title: 'More', 
     icon: 'more-horizontal', 
     path: '/profile',
-    matchPaths: ['/profile', '/more', '/map', '/money', '/more/invoices', '/more/quotes', '/more/money-hub', '/collect']
+    matchPaths: ['/profile', '/more', '/money', '/more/invoices', '/more/quotes', '/more/money-hub', '/collect']
   },
 ];
 
@@ -54,6 +61,7 @@ function NavButton({
   colors,
   styles,
   isPad,
+  badgeCount,
 }: { 
   item: NavItem; 
   active: boolean; 
@@ -61,6 +69,7 @@ function NavButton({
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
   isPad: boolean;
+  badgeCount?: number;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(1)).current;
@@ -113,11 +122,20 @@ function NavButton({
           { transform: [{ scale }], opacity }
         ]}
       >
-        <Feather 
-          name={item.icon} 
-          size={isPad ? 24 : 22}
-          color={active ? colors.primary : colors.mutedForeground}
-        />
+        <View style={{ position: 'relative' }}>
+          <Feather 
+            name={item.icon} 
+            size={isPad ? 24 : 22}
+            color={active ? colors.primary : colors.mutedForeground}
+          />
+          {badgeCount != null && badgeCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {badgeCount > 99 ? '99+' : badgeCount}
+              </Text>
+            </View>
+          )}
+        </View>
         <Text style={[
           styles.navLabel,
           active && styles.navLabelActive,
@@ -136,6 +154,7 @@ export function BottomNav() {
   const isPadDevice = isIPad();
   const styles = useMemo(() => createStyles(colors, isPadDevice), [colors, isPadDevice]);
   const { triggerScrollToTop } = useScrollToTop();
+  const unreadCount = useNotificationsStore((s) => s.unreadCount);
 
   const isActive = (item: NavItem) => {
     const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'];
@@ -188,6 +207,7 @@ export function BottomNav() {
             colors={colors}
             styles={styles}
             isPad={isPadDevice}
+            badgeCount={item.title === 'Chat' ? unreadCount : undefined}
           />
         ))}
       </View>
@@ -223,7 +243,7 @@ const createStyles = (colors: ThemeColors, isPad: boolean = false) => StyleSheet
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: isPad ? 12 : 8,
-    paddingHorizontal: isPad ? 32 : 22,
+    paddingHorizontal: isPad ? 24 : 16,
     borderRadius: 9999,
     gap: isPad ? 4 : 2,
     position: 'relative',
@@ -241,5 +261,24 @@ const createStyles = (colors: ThemeColors, isPad: boolean = false) => StyleSheet
   navLabelActive: {
     fontWeight: '700',
     color: colors.primary,
+  },
+  badge: {
+    position: 'absolute' as const,
+    top: -4,
+    right: -8,
+    backgroundColor: colors.destructive || '#ef4444',
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingHorizontal: 4,
+    zIndex: 10,
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '700' as const,
+    textAlign: 'center' as const,
   },
 });
