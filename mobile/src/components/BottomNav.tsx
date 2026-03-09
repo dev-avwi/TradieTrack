@@ -31,12 +31,6 @@ const navItems: NavItem[] = [
     matchPaths: ['/jobs', '/job']
   },
   { 
-    title: 'Map', 
-    icon: 'map-pin', 
-    path: '/map',
-    matchPaths: ['/map']
-  },
-  { 
     title: 'Chat', 
     icon: 'message-circle', 
     path: '/more/chat-hub',

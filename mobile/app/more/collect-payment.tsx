@@ -819,7 +819,7 @@ export default function CollectScreen() {
   
   // Invoice Picker Modal state
   const [showInvoicePickerModal, setShowInvoicePickerModal] = useState(false);
-  const [pendingPaymentMethod, setPendingPaymentMethod] = useState<'record' | 'qr' | 'link' | null>(null);
+  const [pendingPaymentMethod, setPendingPaymentMethod] = useState<'record' | 'qr' | 'link' | 'tap' | null>(null);
   
   // Custom Amount Modal state (for entering amount when no invoice selected)
   const [showCustomAmountModal, setShowCustomAmountModal] = useState(false);
@@ -1055,7 +1055,7 @@ export default function CollectScreen() {
   const handleTapToPay = async () => {
     const amountCents = getAmountInCents();
     if (amountCents < 50) {
-      Alert.alert('Minimum Amount', 'Tap to Pay requires a minimum of $0.50');
+      handleShowInvoicePicker('tap');
       return;
     }
 
@@ -1655,16 +1655,19 @@ export default function CollectScreen() {
   };
 
   // Invoice Picker handlers
-  const handleShowInvoicePicker = (method: 'record' | 'qr' | 'link') => {
+  const handleShowInvoicePicker = (method: 'record' | 'qr' | 'link' | 'tap') => {
     // If amount is already entered or invoice selected, skip the picker
     if (amount && parseFloat(amount) > 0) {
       proceedToPaymentMethod(method);
       return;
     }
     
-    // If no pending invoices, skip the picker
+    // If no pending invoices, show custom amount modal directly
     if (pendingInvoices.length === 0) {
-      proceedToPaymentMethod(method);
+      setPendingPaymentMethod(method);
+      setCustomAmountValue('');
+      setCustomAmountDescription('');
+      setShowCustomAmountModal(true);
       return;
     }
     
@@ -1740,6 +1743,9 @@ export default function CollectScreen() {
           case 'link':
             handlePaymentLinkDirectWithAmount(amountNum);
             break;
+          case 'tap':
+            handleTapToPay();
+            break;
         }
         setPendingPaymentMethod(null);
       }, 100);
@@ -1811,7 +1817,7 @@ export default function CollectScreen() {
     setPendingPaymentMethod(null);
   };
 
-  const proceedToPaymentMethod = (method: 'record' | 'qr' | 'link') => {
+  const proceedToPaymentMethod = (method: 'record' | 'qr' | 'link' | 'tap') => {
     switch (method) {
       case 'record':
         handleOpenRecordPaymentDirect();
@@ -1821,6 +1827,9 @@ export default function CollectScreen() {
         break;
       case 'link':
         handlePaymentLinkDirect();
+        break;
+      case 'tap':
+        handleTapToPay();
         break;
     }
   };
@@ -2679,7 +2688,7 @@ export default function CollectScreen() {
             />
           </View>
           <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: spacing.xs }}>
-            Minimum amount: $5.00
+            Minimum amount: $0.50
           </Text>
           
           <Text style={[styles.sectionLabel, { marginTop: spacing.md }]}>Description (Optional)</Text>
@@ -2697,7 +2706,7 @@ export default function CollectScreen() {
             variant="default" 
             onPress={handleSubmitCustomAmount} 
             fullWidth
-            disabled={!customAmountValue || parseFloat(customAmountValue) < 5}
+            disabled={!customAmountValue || parseFloat(customAmountValue) < 0.50}
           >
             <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
             <Text style={{ marginLeft: spacing.xs, color: colors.primaryForeground, fontWeight: '600' }}>

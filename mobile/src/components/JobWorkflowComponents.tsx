@@ -463,6 +463,7 @@ interface NextActionCardProps {
   jobAddress?: string;
   businessName?: string;
   tradieName?: string;
+  workerStatus?: string | null;
 }
 
 type NextActionPriority = 'high' | 'medium' | 'low';
@@ -604,7 +605,7 @@ export function NextActionCard(props: NextActionCardProps) {
 
   const pColors = priorityColors[nextAction.priority];
 
-  const showOnMyWay = props.jobStatus === 'scheduled' && !!props.clientPhone;
+  const showOnMyWay = props.jobStatus === 'scheduled' && !!props.clientPhone && (!props.workerStatus || props.workerStatus === 'assigned');
   const showUrgency = props.jobStatus === 'scheduled' && !!props.urgencyLabel;
 
   const getDefaultSmsMessage = () => {
@@ -1288,6 +1289,7 @@ interface SmsContactCardProps {
   jobAddress?: string;
   businessName?: string;
   tradieName?: string;
+  workerStatus?: string | null;
 }
 
 export function SmsContactCard({
@@ -1299,6 +1301,7 @@ export function SmsContactCard({
   jobAddress,
   businessName,
   tradieName,
+  workerStatus,
 }: SmsContactCardProps) {
   const { colors } = useTheme();
   const styles = createSmsCardStyles(colors);
@@ -1307,6 +1310,10 @@ export function SmsContactCard({
   const [previewMessage, setPreviewMessage] = useState('');
 
   if (!clientPhone || (jobStatus !== 'scheduled' && jobStatus !== 'in_progress')) {
+    return null;
+  }
+
+  if (workerStatus && workerStatus !== 'assigned') {
     return null;
   }
 

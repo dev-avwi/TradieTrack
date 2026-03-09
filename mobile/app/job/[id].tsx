@@ -4970,6 +4970,7 @@ export default function JobDetailScreen() {
         jobAddress={job.address}
         businessName={businessSettings?.businessName}
         tradieName={user?.firstName || user?.name?.split(' ')[0]}
+        workerStatus={job.workerStatus}
         onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onSendQuote={async () => {
@@ -6262,14 +6263,18 @@ export default function JobDetailScreen() {
                         activeOpacity={0.7}
                         style={{
                           backgroundColor: statusColor.bg,
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
                           borderRadius: radius.sm,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 4,
                         }}
                       >
                         <Text style={{ fontSize: 11, fontWeight: '700', color: statusColor.text, textTransform: 'capitalize' }}>
                           {matStatus}
                         </Text>
+                        <Feather name="chevron-down" size={10} color={statusColor.text} />
                       </TouchableOpacity>
                       <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
                         Qty: {material.quantity} {Number(material.unitCost || 0) > 0 ? `× $${Number(material.unitCost || 0).toFixed(2)}` : ''}

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -601,6 +601,7 @@ export default function ChatHubScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const conversationsScrollRef = useRef<ScrollView>(null);
   
   const [jobs, setJobs] = useState<Job[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -913,6 +914,7 @@ export default function ChatHubScreen() {
       } else {
         Alert.alert('Sent', `"${template.label}" message sent successfully.`);
         handleRefresh();
+        setTimeout(() => conversationsScrollRef.current?.scrollTo({ y: 0, animated: true }), 300);
       }
     } catch {
       Alert.alert('Error', 'Could not send SMS. Please try again.');
@@ -1013,6 +1015,7 @@ export default function ChatHubScreen() {
       } else {
         Alert.alert('Sent', 'Photo message sent successfully via MMS.');
         handleRefresh();
+        setTimeout(() => conversationsScrollRef.current?.scrollTo({ y: 0, animated: true }), 300);
       }
     } catch {
       Alert.alert('Error', 'Could not send photo message. Please try again.');
@@ -1436,6 +1439,7 @@ export default function ChatHubScreen() {
         )}
         
         <ScrollView
+          ref={conversationsScrollRef}
           style={styles.conversationsList}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />

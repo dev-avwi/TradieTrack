@@ -15364,6 +15364,36 @@ Be specific about materials, colors, and features that would be included.`
         console.log('[OnMyWay] Could not update worker status:', statusErr);
       }
 
+      // Update assignment status to en_route so crew-locations endpoint returns this worker
+      try {
+        const jobAssignments = await storage.getJobAssignments(job.id);
+        const myAssignment = jobAssignments.find((a: any) => a.userId === req.userId && a.isActive);
+        if (myAssignment) {
+          await storage.updateJobAssignment(myAssignment.id, {
+            assignmentStatus: 'en_route',
+            travelStartedAt: new Date(),
+            etaMinutes: estimatedMinutes,
+            etaUpdatedAt: new Date(),
+          });
+          // Store initial location ping so the map shows the worker immediately
+          if (latitude && longitude) {
+            try {
+              await storage.createLocationPing({
+                assignmentId: myAssignment.id,
+                latitude: parseFloat(String(latitude)),
+                longitude: parseFloat(String(longitude)),
+                accuracyMeters: null,
+                recordedAt: new Date(),
+              });
+            } catch (pingErr) {
+              console.log('[OnMyWay] Could not store initial location ping:', pingErr);
+            }
+          }
+        }
+      } catch (assignErr) {
+        console.log('[OnMyWay] Could not update assignment status:', assignErr);
+      }
+
       const trackingUrl = portalUrl;
 
       // Build smart ETA message based on calculated driving time
