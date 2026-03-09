@@ -64,7 +64,7 @@ export function BackgroundLocationIndicator({
   const { colors } = useTheme();
   const { isEnabled, status, isMoving } = useLocationStore();
   
-  const isActive = isEnabled && (status === 'tracking' || status === 'starting');
+  const isActive = isEnabled && (status === 'tracking' || status === 'starting' || status === 'foreground_only');
   const activityStatus = getActivityStatus(useLocationStore.getState());
   
   const styles = useMemo(() => createStyles(colors, isActive), [colors, isActive]);
@@ -151,7 +151,7 @@ export function BackgroundLocationBanner() {
   const { isEnabled, status } = useLocationStore();
   const styles = useMemo(() => bannerStyles(colors), [colors]);
   
-  const isActive = isEnabled && (status === 'tracking' || status === 'starting');
+  const isActive = isEnabled && (status === 'tracking' || status === 'starting' || status === 'foreground_only');
   
   if (!isActive) {
     return null;
@@ -161,7 +161,7 @@ export function BackgroundLocationBanner() {
     router.push('/more/app-settings');
   };
   
-  const statusText = status === 'starting' ? 'Starting...' : 'Active';
+  const statusText = status === 'starting' ? 'Starting...' : status === 'foreground_only' ? 'Foreground Only' : 'Active';
 
   return (
     <TouchableOpacity 

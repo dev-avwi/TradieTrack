@@ -35,7 +35,8 @@ const SMS_TEMPLATES = [
   "G'day! Quick question about your property - give me a call when you get a chance.",
 ];
 
-const SMS_MAX_LENGTH = 160;
+const SMS_MAX_LENGTH = 1600;
+const SMS_SEGMENT_LENGTH = 160;
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
@@ -402,10 +403,11 @@ export default function NewSmsConversation() {
 
     setIsSending(true);
     try {
-      const response = await api.post('/api/sms/conversations', {
+      const response = await api.post('/api/sms/send', {
         clientId: selectedClient.id,
-        phoneNumber: selectedClient.phone,
-        initialMessage: message.trim()
+        clientPhone: selectedClient.phone,
+        clientName: `${selectedClient.firstName} ${selectedClient.lastName}`.trim(),
+        message: message.trim()
       });
       
       if (response.data) {
@@ -506,10 +508,10 @@ export default function NewSmsConversation() {
               value={message}
               onChangeText={setMessage}
               editable={!isSending}
-              maxLength={160}
+              maxLength={SMS_MAX_LENGTH}
             />
             <Text style={[styles.charCount, isOverLimit && styles.charCountWarning]}>
-              {charCount} / {SMS_MAX_LENGTH} characters
+              {charCount} / {SMS_MAX_LENGTH} characters{charCount > SMS_SEGMENT_LENGTH ? ` (${Math.ceil(charCount / SMS_SEGMENT_LENGTH)} SMS segments)` : ''}
             </Text>
           </ScrollView>
 

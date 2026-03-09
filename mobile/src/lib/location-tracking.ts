@@ -13,7 +13,7 @@
 
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import { Platform } from 'react-native';
+import { Platform, Alert, Linking } from 'react-native';
 import api from './api';
 
 const LOCATION_TASK_NAME = 'jobrunner-location-tracking';
@@ -48,6 +48,7 @@ export type TrackingStatus =
   | 'stopped'
   | 'starting'
   | 'tracking'
+  | 'foreground_only'
   | 'paused'
   | 'error';
 
@@ -72,6 +73,14 @@ class LocationTrackingService {
       
       if (foregroundStatus !== 'granted') {
         if (__DEV__) console.log('[Location] Foreground permission denied');
+        Alert.alert(
+          'Location Permission Required',
+          'JobRunner needs location access for team tracking, job navigation, and On My Way notifications. Please enable location access in Settings.',
+          [
+            { text: 'Not Now', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
         return false;
       }
 
@@ -81,7 +90,14 @@ class LocationTrackingService {
       
       if (backgroundStatus !== 'granted') {
         if (__DEV__) console.log('[Location] Background permission denied');
-        // Can still work with foreground only
+        Alert.alert(
+          'Background Location',
+          'For best results, allow "Always" location access so your team can see your location even when the app is in the background.',
+          [
+            { text: 'Continue Without', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
       }
 
       if (__DEV__) console.log('[Location] Initialized successfully');
@@ -133,18 +149,16 @@ class LocationTrackingService {
         this.updateStatus('tracking');
         return true;
       } catch (bgError: any) {
-        // Check if this is a background mode configuration error
         const errorMessage = bgError?.message || '';
         if (errorMessage.includes('UIBackgroundModes') || errorMessage.includes('Background location')) {
           if (__DEV__) console.warn('[Location] Background location not configured in Info.plist, using foreground tracking only');
-          // Fall back to foreground-only tracking - just get current location
           const location = await this.getCurrentLocation();
           if (location) {
-            this.updateStatus('tracking');
+            this.updateStatus('foreground_only');
             return true;
           }
         }
-        throw bgError; // Re-throw other errors
+        throw bgError;
       }
     } catch (error) {
       if (__DEV__) console.error('[Location] Failed to start tracking:', error);

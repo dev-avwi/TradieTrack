@@ -543,7 +543,7 @@ export function useLocationTracking() {
     status,
     currentLocation,
     isInitialized,
-    isTracking: status === 'tracking',
+    isTracking: status === 'tracking' || status === 'foreground_only',
     initialize,
     startTracking,
     stopTracking,

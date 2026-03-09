@@ -620,13 +620,13 @@ export default function ChatHubScreen() {
     setIsLoading(true);
     try {
       const [jobsRes, clientsRes, smsRes, twilioRes, unreadRes, dmRes, teamRes] = await Promise.all([
-        api.get<Job[]>('/api/jobs'),
-        api.get<Client[]>('/api/clients'),
-        api.get<SmsConversation[]>('/api/sms/conversations').catch(() => ({ data: [] })),
+        api.get<Job[]>('/api/jobs').catch(() => ({ data: [] as Job[] })),
+        api.get<Client[]>('/api/clients').catch(() => ({ data: [] as Client[] })),
+        api.get<SmsConversation[]>('/api/sms/conversations').catch(() => ({ data: [] as SmsConversation[] })),
         api.get<TwilioStatus>('/api/sms/status').catch(() => ({ data: null })),
         api.get<UnreadCounts>('/api/chat/unread-counts').catch(() => ({ data: null })),
-        api.get<DirectMessageConversation[]>('/api/direct-messages/conversations').catch(() => ({ data: [] })),
-        api.get<TeamMember[]>('/api/team/members').catch(() => ({ data: [] })),
+        api.get<DirectMessageConversation[]>('/api/direct-messages/conversations').catch(() => ({ data: [] as DirectMessageConversation[] })),
+        api.get<TeamMember[]>('/api/team/members').catch(() => ({ data: [] as TeamMember[] })),
       ]);
       setJobs(jobsRes.data || []);
       setClients(clientsRes.data || []);

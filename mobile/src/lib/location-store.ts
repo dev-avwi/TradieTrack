@@ -174,7 +174,7 @@ export const useLocationStore = create<LocationStore>()(
 );
 
 export function getActivityStatus(store: LocationState): string {
-  if (!store.isEnabled || store.status !== 'tracking') {
+  if (!store.isEnabled || (store.status !== 'tracking' && store.status !== 'foreground_only')) {
     return 'Offline';
   }
   
