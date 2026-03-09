@@ -217,6 +217,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
     color: colors.isDark ? colors.info : colors.mutedForeground,
   },
+  textClientBannerBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: colors.isDark ? 'rgba(37,99,235,0.15)' : 'rgba(37,99,235,0.1)',
+  },
+  textClientBannerBtnText: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: colors.primary,
+  },
   contactClientBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1085,13 +1099,23 @@ export default function JobChatScreen() {
           <View style={styles.emptyIconCircle}>
             <Feather name="message-circle" size={34} color={colors.primary} />
           </View>
-          <Text style={styles.emptyText}>No messages yet</Text>
+          <Text style={styles.emptyText}>No team notes yet</Text>
           <Text style={styles.emptySubtext}>
-            Start a conversation with your team about this job
+            Add internal notes about this job — only your team can see these
           </Text>
+          {client?.phone && (
+            <TouchableOpacity
+              style={[styles.contactClientBtn, { marginTop: 12 }]}
+              onPress={handleContactClient}
+              activeOpacity={0.7}
+            >
+              <Feather name="smartphone" size={14} color={colors.primaryForeground} />
+              <Text style={[styles.contactClientBtnText, { fontSize: 13 }]}>Text Client Instead</Text>
+            </TouchableOpacity>
+          )}
           <View style={styles.emptyHint}>
             <Feather name="arrow-down" size={14} color={colors.mutedForeground} />
-            <Text style={styles.emptyHintText}>Type below to get started</Text>
+            <Text style={styles.emptyHintText}>Add a note below</Text>
           </View>
         </View>
       );
@@ -1234,7 +1258,7 @@ export default function JobChatScreen() {
             <Feather name="message-circle" size={16} color={colors.primary} />
           </View>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle} numberOfLines={1}>Job Chat</Text>
+            <Text style={styles.headerTitle} numberOfLines={1}>Team Notes</Text>
             <Text style={styles.headerSubtitle} numberOfLines={1}>{job?.title}</Text>
           </View>
           <View style={styles.headerActions}>
@@ -1256,8 +1280,18 @@ export default function JobChatScreen() {
             <Feather name="lock" size={10} color={colors.white} />
           </View>
           <Text style={styles.internalBannerText}>
-            Internal team chat{smsMessages.length > 0 ? ' \u00B7 SMS messages included' : ''}
+            Internal notes — only your team sees these
           </Text>
+          {client?.phone && (
+            <TouchableOpacity
+              style={styles.textClientBannerBtn}
+              onPress={handleContactClient}
+              activeOpacity={0.7}
+            >
+              <Feather name="smartphone" size={10} color={colors.primary} />
+              <Text style={styles.textClientBannerBtnText}>Text Client</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <ScrollView
@@ -1290,7 +1324,7 @@ export default function JobChatScreen() {
                 style={styles.composerInput}
                 value={messageText}
                 onChangeText={setMessageText}
-                placeholder="Type a message..."
+                placeholder="Add a team note..."
                 placeholderTextColor={colors.mutedForeground}
                 multiline
                 maxLength={1000}
