@@ -28,10 +28,15 @@ import locationTracking, { TrackingStatus, LocationUpdate, GeofenceEvent } from 
 import api from '../lib/api';
 
 let useStripeTerminalSDK: any = null;
+const TAP_TO_PAY_ENABLED = false;
 try {
-  const sdk = require('@stripe/stripe-terminal-react-native');
-  useStripeTerminalSDK = sdk.useStripeTerminal;
-  if (__DEV__) console.log('[useStripeTerminal] SDK hook loaded successfully');
+  if (TAP_TO_PAY_ENABLED) {
+    const sdk = require('@stripe/stripe-terminal-react-native');
+    useStripeTerminalSDK = sdk.useStripeTerminal;
+    if (__DEV__) console.log('[useStripeTerminal] SDK hook loaded successfully');
+  } else {
+    if (__DEV__) console.log('[useStripeTerminal] SDK disabled - pending Apple Tap to Pay approval (Case-ID 18817353)');
+  }
 } catch (e) {
   if (__DEV__) console.log('[useStripeTerminal] SDK not available - using simulation mode');
 }
@@ -61,6 +66,12 @@ export function useStripeTerminal() {
   // Initialize Terminal (SDK or simulator)
   const initialize = useCallback(async (): Promise<boolean> => {
     try {
+      if (!TAP_TO_PAY_ENABLED) {
+        setError('Tap to Pay is temporarily unavailable pending Apple approval.');
+        setStatus('error');
+        return false;
+      }
+      
       setError(null);
       setStatus('initializing');
 

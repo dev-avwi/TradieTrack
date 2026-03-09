@@ -60,4 +60,4 @@ Core architectural and design decisions include:
 *   **Calendar Integration**: Google Calendar
 *   **Weather API**: Open-Meteo
 *   **Routing/ETA**: OSRM (Open Source Routing Machine)
-*   **Tap to Pay (Stripe Terminal)**: `@stripe/stripe-terminal-react-native` SDK (for iOS 17.6+)
+*   **Tap to Pay (Stripe Terminal)**: `@stripe/stripe-terminal-react-native` SDK (for iOS 17.6+). SDK loading disabled via `TAP_TO_PAY_ENABLED = false` in `useServices.ts` pending Apple Tap to Pay approval (Case-ID 18817353). Voice transcription uses `AI_INTEGRATIONS_OPENAI_API_KEY` (Replit AI integration), not `OPENAI_API_KEY`.

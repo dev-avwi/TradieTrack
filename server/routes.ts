@@ -30665,17 +30665,23 @@ Respond with JSON in this format:
   app.post("/api/voice-notes/transcribe", requireAuth, async (req: any, res) => {
     try {
       let { audioUrl } = req.body;
+      const safeUrlLog = audioUrl?.startsWith('/objects/') ? audioUrl.substring(0, 60) : `https://...${audioUrl?.split('/').pop()?.split('?')[0] || ''}`;
+      console.log('[VoiceTranscribe] Request received:', { audioUrl: safeUrlLog, hasApiKey: !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY) });
       if (!audioUrl || typeof audioUrl !== 'string') {
         return res.status(400).json({ error: 'audioUrl is required' });
       }
 
       const { default: OpenAI } = await import('openai');
-      const apiKey = process.env.OPENAI_API_KEY;
+      const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ error: 'Voice transcription requires an OpenAI API key.' });
       }
 
-      const openai = new OpenAI({ apiKey });
+      const openaiConfig: any = { apiKey };
+      if (process.env.AI_INTEGRATIONS_OPENAI_API_KEY && process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
+        openaiConfig.baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+      }
+      const openai = new OpenAI(openaiConfig);
       const MAX_SIZE = 25 * 1024 * 1024;
       let audioBuffer: Buffer;
       let fileName = 'voice.m4a';
