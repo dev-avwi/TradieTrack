@@ -767,6 +767,7 @@ export interface IStorage {
 
   // Job Chat
   getJobChatMessages(jobId: string): Promise<JobChat[]>;
+  getLatestJobChatMessages(businessOwnerId: string): Promise<{ jobId: string; message: string; userId: string; createdAt: Date | null; isSystemMessage: boolean | null }[]>;
   createJobChatMessage(message: InsertJobChat): Promise<JobChat>;
   markJobChatAsRead(jobId: string, userId: string): Promise<void>;
   getUnreadJobChatCount(jobId: string, userId: string): Promise<number>;
@@ -4203,6 +4204,21 @@ export class PostgresStorage implements IStorage {
     return await db.select().from(jobChat)
       .where(eq(jobChat.jobId, jobId))
       .orderBy(asc(jobChat.createdAt));
+  }
+
+  async getLatestJobChatMessages(businessOwnerId: string): Promise<{ jobId: string; message: string; userId: string; createdAt: Date | null; isSystemMessage: boolean | null }[]> {
+    const ownerJobs = await db.select({ id: jobs.id }).from(jobs)
+      .where(eq(jobs.businessOwnerId, businessOwnerId));
+    const jobIds = ownerJobs.map(j => j.id);
+    if (jobIds.length === 0) return [];
+    
+    const result = await db.execute(sql`
+      SELECT DISTINCT ON (job_id) job_id as "jobId", message, user_id as "userId", created_at as "createdAt", is_system_message as "isSystemMessage"
+      FROM job_chat
+      WHERE job_id = ANY(${jobIds})
+      ORDER BY job_id, created_at DESC
+    `);
+    return (result.rows || []) as any[];
   }
 
   async createJobChatMessage(message: InsertJobChat): Promise<JobChat> {

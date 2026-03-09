@@ -610,6 +610,7 @@ export default function ChatHubScreen() {
   const [unreadCounts, setUnreadCounts] = useState<UnreadCounts | null>(null);
   const [dmConversations, setDmConversations] = useState<DirectMessageConversation[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [latestJobChats, setLatestJobChats] = useState<Map<string, { message: string; userId: string; createdAt: string | null; isSystemMessage: boolean | null }>>(new Map());
 
   useFocusEffect(
     useCallback(() => {
@@ -620,7 +621,7 @@ export default function ChatHubScreen() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [jobsRes, clientsRes, smsRes, twilioRes, unreadRes, dmRes, teamRes] = await Promise.all([
+      const [jobsRes, clientsRes, smsRes, twilioRes, unreadRes, dmRes, teamRes, latestChatsRes] = await Promise.all([
         api.get<Job[]>('/api/jobs').catch(() => ({ data: [] as Job[] })),
         api.get<Client[]>('/api/clients').catch(() => ({ data: [] as Client[] })),
         api.get<SmsConversation[]>('/api/sms/conversations').catch(() => ({ data: [] as SmsConversation[] })),
@@ -628,6 +629,7 @@ export default function ChatHubScreen() {
         api.get<UnreadCounts>('/api/chat/unread-counts').catch(() => ({ data: null })),
         api.get<DirectMessageConversation[]>('/api/direct-messages/conversations').catch(() => ({ data: [] as DirectMessageConversation[] })),
         api.get<TeamMember[]>('/api/team/members').catch(() => ({ data: [] as TeamMember[] })),
+        api.get<any[]>('/api/jobs/chat/latest').catch(() => ({ data: [] as any[] })),
       ]);
       setJobs(jobsRes.data || []);
       setClients(clientsRes.data || []);
@@ -636,6 +638,9 @@ export default function ChatHubScreen() {
       setUnreadCounts(unreadRes.data || null);
       setDmConversations(dmRes.data || []);
       setTeamMembers(teamRes.data || []);
+      const chatMap = new Map<string, { message: string; userId: string; createdAt: string | null; isSystemMessage: boolean | null }>();
+      (latestChatsRes.data || []).forEach((c: any) => chatMap.set(c.jobId, c));
+      setLatestJobChats(chatMap);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -756,9 +761,23 @@ export default function ChatHubScreen() {
         const smsUnread = linkedSms?.unreadCount || 0;
 
         let lastMessage = 'No messages yet';
-        if (linkedSms?.messages && linkedSms.messages.length > 0) {
+        let lastMessageTime: string | undefined = linkedSms?.lastMessageAt || undefined;
+        
+        const smsTime = linkedSms?.lastMessageAt ? new Date(linkedSms.lastMessageAt).getTime() : 0;
+        const latestChat = latestJobChats.get(job.id);
+        const chatTime = latestChat?.createdAt ? new Date(latestChat.createdAt).getTime() : 0;
+        
+        if (chatTime > smsTime && latestChat) {
+          const prefix = latestChat.isSystemMessage ? '' : 'Note: ';
+          lastMessage = prefix + latestChat.message;
+          lastMessageTime = latestChat.createdAt || undefined;
+        } else if (linkedSms?.messages && linkedSms.messages.length > 0) {
           const lastMsg = linkedSms.messages[linkedSms.messages.length - 1];
           lastMessage = (lastMsg.direction === 'outbound' ? 'You: ' : '') + lastMsg.body;
+        } else if (latestChat) {
+          const prefix = latestChat.isSystemMessage ? '' : 'Note: ';
+          lastMessage = prefix + latestChat.message;
+          lastMessageTime = latestChat.createdAt || undefined;
         } else if (clientName) {
           lastMessage = `${clientName} - ${(job.status || 'pending').replace('_', ' ')}`;
         }
@@ -770,7 +789,7 @@ export default function ChatHubScreen() {
           subtitle: clientName || job.address || 'No client assigned',
           avatarFallback: job.title.substring(0, 2).toUpperCase(),
           lastMessage,
-          lastMessageTime: linkedSms?.lastMessageAt || undefined,
+          lastMessageTime,
           unreadCount: smsUnread,
           status: job.status,
           data: { ...job, linkedSms },
@@ -876,7 +895,7 @@ export default function ChatHubScreen() {
     }
     
     return items;
-  }, [jobs, clients, smsConversations, dmConversations, teamMembers, activeFilter, searchQuery, unreadCounts, jobStatusFilter]);
+  }, [jobs, clients, smsConversations, dmConversations, teamMembers, activeFilter, searchQuery, unreadCounts, jobStatusFilter, latestJobChats]);
 
   const handleQuickActionSend = async (item: ConversationItem, actionId: string) => {
     const template = SMS_QUICK_ACTIONS.find(a => a.id === actionId);

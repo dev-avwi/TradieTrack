@@ -15612,11 +15612,27 @@ Be specific about materials, colors, and features that would be included.`
       baseMessage = baseMessage.replace(/\n*Track arrival:.*$/gims, '').replace(/\n*Track your job:.*$/gims, '').replace(/\n*\[link will be added\].*$/gims, '').replace(/\n*Track arrival:\s*$/gim, '').trim();
       const message = `${baseMessage}\n\nTrack your job: ${trackingUrl}`;
       
-      // Send SMS via shared Twilio client (supports connector and env vars)
-      const smsResult = await sendSMS({
-        to: client.phone,
-        message: message,
-      });
+      // Send SMS via smsService to properly track in conversations/Chat Hub
+      const { sendSmsToClient } = await import('./services/smsService');
+      let smsResult: any = { success: false };
+      try {
+        const smsMessage = await sendSmsToClient({
+          businessOwnerId: userContext.effectiveUserId,
+          clientId: client.id,
+          clientPhone: client.phone,
+          clientName: client.firstName || client.email || undefined,
+          jobId: job.id,
+          message: message,
+          senderUserId: req.userId,
+          isQuickAction: true,
+          quickActionType: 'on_my_way',
+        });
+        const isSent = smsMessage.status === 'sent' || smsMessage.status === 'pending';
+        smsResult = { success: isSent, error: isSent ? undefined : (smsMessage.errorMessage || 'SMS delivery failed') };
+      } catch (smsErr: any) {
+        console.error('[OnMyWay] SMS send error:', smsErr);
+        smsResult = { success: false, error: smsErr.message };
+      }
 
       // Log activity
       await logActivity(
@@ -18197,12 +18213,37 @@ Be specific about materials, colors, and features that would be included.`
       }
       
       const { getWorkerTravelLocation } = await import('./websocket');
-      const location = getWorkerTravelLocation(portalToken.jobId);
+      let location = getWorkerTravelLocation(portalToken.jobId);
       
       const jobLocation = (job.latitude && job.longitude) ? {
         latitude: parseFloat(String(job.latitude)),
         longitude: parseFloat(String(job.longitude)),
       } : null;
+      
+      // Fall back to database location ping if WebSocket location is unavailable
+      if (!location) {
+        try {
+          const allAssignments = await storage.getJobAssignments(portalToken.jobId);
+          // Prefer the assignment linked to this portal token, then any en_route assignment
+          const targetAssignment = portalToken.assignmentId
+            ? allAssignments.find((a: any) => a.id === portalToken.assignmentId && a.isActive)
+            : null;
+          const enRouteAssignment = targetAssignment 
+            || allAssignments.find((a: any) => a.isActive && a.assignmentStatus === 'en_route');
+          if (enRouteAssignment) {
+            const ping = await storage.getLatestLocationPing(enRouteAssignment.id);
+            if (ping) {
+              location = {
+                latitude: parseFloat(String(ping.latitude)),
+                longitude: parseFloat(String(ping.longitude)),
+                updatedAt: new Date(ping.recordedAt).getTime(),
+              };
+            }
+          }
+        } catch (pingErr) {
+          console.log('[PortalLocation] Could not fetch fallback location ping:', pingErr);
+        }
+      }
       
       if (!location) {
         return res.json({
@@ -32051,6 +32092,18 @@ Respond with JSON in this format:
     return null;
   }
   
+  // Get latest chat message per job (for Chat Hub preview)
+  app.get("/api/jobs/chat/latest", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await resolveUserContext(req);
+      const latestMessages = await storage.getLatestJobChatMessages(userContext.effectiveUserId);
+      res.json(latestMessages);
+    } catch (error: any) {
+      console.error('Error fetching latest job chat messages:', error);
+      res.status(500).json({ error: 'Failed to fetch latest chat messages' });
+    }
+  });
+
   // Get chat messages for a job
   app.get("/api/jobs/:jobId/chat", requireAuth, async (req: any, res) => {
     try {
