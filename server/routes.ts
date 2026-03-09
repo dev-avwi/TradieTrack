@@ -15309,31 +15309,62 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
 
-      // Generate tracking token
-      const trackingToken = randomBytes(16).toString('hex');
-
-      // Extract suburb from address for privacy
-      const addressParts = (job.address || '').split(',');
-      const suburb = addressParts.length > 1 ? addressParts[addressParts.length - 2]?.trim() : addressParts[0]?.trim() || 'your area';
-
-      trackingTokens.set(trackingToken, {
-        businessName,
-        businessLogo: business?.logoUrl || null,
-        businessPhone: business?.phone || null,
-        businessEmail: business?.email || null,
-        tradieName,
-        jobAddress: job.address || '',
-        suburb,
-        sentAt: new Date(),
-        estimatedMinutes,
-        status: 'on_the_way'
-      });
-
-      // Auto-expire after 2 hours
-      setTimeout(() => trackingTokens.delete(trackingToken), 2 * 60 * 60 * 1000);
-
       const baseUrl = getProductionBaseUrl(req);
-      const trackingUrl = `${baseUrl}/track/${trackingToken}`;
+
+      // Get or create a Job Portal token so the client sees the full job view
+      let portalUrl: string | null = null;
+      try {
+        let activePortalToken = await storage.getActiveJobPortalToken(job.id);
+        if (!activePortalToken) {
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 30);
+          activePortalToken = await storage.createJobPortalToken({
+            jobId: job.id,
+            userId: userContext.effectiveUserId,
+            token: randomBytes(32).toString('hex'),
+            expiresAt,
+            createdBy: req.userId,
+          });
+          await storage.updateJob(job.id, userContext.effectiveUserId, { portalEnabled: true });
+        }
+        portalUrl = `${baseUrl}/p/${activePortalToken.token}`;
+      } catch (portalErr) {
+        console.log('[OnMyWay] Could not create portal token, falling back to tracking link:', portalErr);
+      }
+
+      // Fallback: in-memory tracking token if portal creation fails
+      if (!portalUrl) {
+        const trackingToken = randomBytes(16).toString('hex');
+        const addressParts = (job.address || '').split(',');
+        const suburb = addressParts.length > 1 ? addressParts[addressParts.length - 2]?.trim() : addressParts[0]?.trim() || 'your area';
+        trackingTokens.set(trackingToken, {
+          businessName,
+          businessLogo: business?.logoUrl || null,
+          businessPhone: business?.phone || null,
+          businessEmail: business?.email || null,
+          tradieName,
+          jobAddress: job.address || '',
+          suburb,
+          sentAt: new Date(),
+          estimatedMinutes,
+          status: 'on_the_way'
+        });
+        setTimeout(() => trackingTokens.delete(trackingToken), 2 * 60 * 60 * 1000);
+        portalUrl = `${baseUrl}/track/${trackingToken}`;
+      }
+
+      // Update job worker status to on_my_way with ETA
+      try {
+        await storage.updateJob(job.id, userContext.effectiveUserId, {
+          workerStatus: 'on_my_way',
+          workerEtaMinutes: estimatedMinutes,
+          workerStatusUpdatedAt: new Date(),
+        });
+      } catch (statusErr) {
+        console.log('[OnMyWay] Could not update worker status:', statusErr);
+      }
+
+      const trackingUrl = portalUrl;
 
       // Build smart ETA message based on calculated driving time
       const etaText = estimatedMinutes <= 5
@@ -15342,8 +15373,8 @@ Be specific about materials, colors, and features that would be included.`
       const distanceText = distanceKm !== null ? ` (${distanceKm} km away)` : '';
 
       let baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} is on the way to your job at ${job.address || 'your location'}. ${etaText}${distanceText}.`;
-      baseMessage = baseMessage.replace(/\n*Track arrival:.*$/gims, '').replace(/\n*\[link will be added\].*$/gims, '').replace(/\n*Track arrival:\s*$/gim, '').trim();
-      const message = `${baseMessage}\n\nTrack arrival: ${trackingUrl}`;
+      baseMessage = baseMessage.replace(/\n*Track arrival:.*$/gims, '').replace(/\n*Track your job:.*$/gims, '').replace(/\n*\[link will be added\].*$/gims, '').replace(/\n*Track arrival:\s*$/gim, '').trim();
+      const message = `${baseMessage}\n\nTrack your job: ${trackingUrl}`;
       
       // Send SMS via shared Twilio client (supports connector and env vars)
       const smsResult = await sendSMS({
