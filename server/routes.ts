@@ -16733,11 +16733,11 @@ Be specific about materials, colors, and features that would be included.`
   app.post("/api/jobs/:id/quick-collect", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const { quoteId, paymentMethod, amount, notes } = req.body;
+      const { quoteId, paymentMethod, amount, notes, lineItems } = req.body;
       
       // Validate inputs
-      if (!quoteId || !paymentMethod || !amount) {
-        return res.status(400).json({ error: "Missing required fields: quoteId, paymentMethod, amount" });
+      if (!paymentMethod || !amount) {
+        return res.status(400).json({ error: "Missing required fields: paymentMethod, amount" });
       }
       
       const validMethods = ['cash', 'card', 'bank_transfer', 'stripe_link'];
@@ -16751,19 +16751,21 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(404).json({ error: "Job not found" });
       }
 
-      // Get the quote
-      const quote = await storage.getQuote(quoteId, userContext.effectiveUserId);
-      if (!quote) {
-        return res.status(404).json({ error: "Quote not found" });
+      // Get quote if provided
+      let quote: any = null;
+      if (quoteId) {
+        quote = await storage.getQuote(quoteId, userContext.effectiveUserId);
+        if (quote && quote.status !== 'accepted') {
+          quote = null;
+        }
       }
 
-      // Verify quote is accepted
-      if (quote.status !== 'accepted') {
-        return res.status(400).json({ error: "Only accepted quotes can be used for quick payment" });
+      // Get client from quote or job
+      const clientId = quote?.clientId || job.clientId;
+      if (!clientId) {
+        return res.status(400).json({ error: "No client associated with this job" });
       }
-
-      // Get client
-      const client = await storage.getClient(quote.clientId, userContext.effectiveUserId);
+      const client = await storage.getClient(clientId, userContext.effectiveUserId);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
       }
@@ -16803,7 +16805,7 @@ Be specific about materials, colors, and features that would be included.`
               cancel_url: `${protocol}://${host}/jobs/${job.id}`,
               metadata: {
                 jobId: job.id,
-                quoteId: quote.id,
+                ...(quote ? { quoteId: quote.id } : {}),
                 clientId: client.id,
                 paymentRequestId: paymentRequest.id,
                 quickCollect: 'true',
@@ -16844,8 +16846,8 @@ Be specific about materials, colors, and features that would be included.`
       const gstAmount = parsedAmount - (parsedAmount / (1 + gstRate));
       const subtotal = parsedAmount - gstAmount;
 
-      // Get quote line items to copy to invoice
-      const quoteLineItems = await storage.getQuoteLineItems(quoteId);
+      // Get line items: from quote if available, or from request body
+      const quoteLineItems = quoteId && quote ? await storage.getQuoteLineItems(quoteId) : [];
 
       // Generate invoice number
       const existingInvoices = await storage.getInvoices(userContext.effectiveUserId);
@@ -16855,10 +16857,9 @@ Be specific about materials, colors, and features that would be included.`
       const invoiceNumber = `INV${year}-${String(invoiceCount).padStart(3, '0')}-${randomSuffix}`;
 
       // Create invoice marked as paid and locked
-      const invoice = await storage.createInvoice({
+      const invoiceData: any = {
         clientId: client.id,
         jobId: job.id,
-        quoteId: quote.id,
         number: invoiceNumber,
         title: job.title || 'Job Payment',
         description: notes || `Quick payment collected for ${job.title}`,
@@ -16871,16 +16872,40 @@ Be specific about materials, colors, and features that would be included.`
         paidAt: new Date(),
         lockedAt: new Date(),
         lockedReason: 'payment_received',
-      }, userContext.effectiveUserId);
+      };
+      if (quote) {
+        invoiceData.quoteId = quote.id;
+      }
+      const invoice = await storage.createInvoice(invoiceData, userContext.effectiveUserId);
 
-      // Copy line items from quote to invoice
-      for (const item of quoteLineItems) {
+      // Copy line items from quote to invoice, or use provided line items
+      if (quoteLineItems.length > 0) {
+        for (const item of quoteLineItems) {
+          await storage.createInvoiceLineItem({
+            invoiceId: invoice.id,
+            description: item.description,
+            quantity: String(item.quantity),
+            unitPrice: item.unitPrice,
+            total: item.total,
+          }, userContext.effectiveUserId);
+        }
+      } else if (lineItems && Array.isArray(lineItems) && lineItems.length > 0) {
+        for (const item of lineItems) {
+          await storage.createInvoiceLineItem({
+            invoiceId: invoice.id,
+            description: item.description || 'Item',
+            quantity: String(item.quantity || 1),
+            unitPrice: String(item.unitPrice || item.total || 0),
+            total: String(item.total || 0),
+          }, userContext.effectiveUserId);
+        }
+      } else {
         await storage.createInvoiceLineItem({
           invoiceId: invoice.id,
-          description: item.description,
-          quantity: String(item.quantity),
-          unitPrice: item.unitPrice,
-          total: item.total,
+          description: job.title || 'Job Payment',
+          quantity: '1',
+          unitPrice: String(parsedAmount.toFixed(2)),
+          total: String(parsedAmount.toFixed(2)),
         }, userContext.effectiveUserId);
       }
 
@@ -16919,7 +16944,7 @@ Be specific about materials, colors, and features that would be included.`
         invoice.id,
         {
           jobId: job.id,
-          quoteId: quote.id,
+          ...(quote ? { quoteId: quote.id } : {}),
           clientName: client.firstName || client.email,
           amount: parsedAmount,
           paymentMethod,

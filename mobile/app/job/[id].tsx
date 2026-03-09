@@ -3724,18 +3724,53 @@ export default function JobDetailScreen() {
     );
   };
 
-  // Quick Collect Payment - for collecting payment directly from accepted quote without invoice
+  // Quick Collect Payment - collect at job site, auto-creates invoice + receipt
   const [isQuickCollecting, setIsQuickCollecting] = useState(false);
   
+  const getQuickCollectTotal = () => {
+    if (quote && quote.status === 'accepted') {
+      return typeof quote.total === 'number' ? quote.total : parseFloat(String(quote.total) || '0');
+    }
+    const matSell = materials.reduce((s, m) => {
+      const up = Number(m.unitPrice || 0);
+      return s + (up > 0 ? up * Number(m.quantity || 1) : Number(m.totalCost || 0));
+    }, 0);
+    return matSell;
+  };
+
+  const getQuickCollectLineItems = () => {
+    if (quote && quote.status === 'accepted') return [];
+    return materials.map(m => {
+      const up = Number(m.unitPrice || 0);
+      const qty = Number(m.quantity || 1);
+      const lineTotal = up > 0 ? up * qty : Number(m.totalCost || 0);
+      return {
+        description: m.name,
+        quantity: qty,
+        unitPrice: up > 0 ? up : Number(m.unitCost || 0),
+        total: lineTotal,
+      };
+    });
+  };
+
+  const getQuickCollectSource = () => {
+    if (quote && quote.status === 'accepted') return 'quote';
+    if (materials.length > 0) return 'materials';
+    return 'custom';
+  };
+  
   const handleQuickCollect = async (paymentMethod: 'cash' | 'card' | 'bank_transfer') => {
-    if (!quote || !job || quote.status !== 'accepted') {
-      Alert.alert('Error', 'An accepted quote is required for quick payment');
+    if (!job) return;
+    if (isQuickCollecting) return;
+
+    const source = getQuickCollectSource();
+    const total = getQuickCollectTotal();
+    
+    if (total <= 0) {
+      Alert.alert('No Amount', 'Add materials with pricing or a quote to use quick collect.');
       return;
     }
-    
-    if (isQuickCollecting) return; // Prevent duplicate submissions
 
-    const total = typeof quote.total === 'number' ? quote.total : parseFloat(String(quote.total) || '0');
     const formatAmount = (amount: number) => 
       new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
 
@@ -3745,9 +3780,11 @@ export default function JobDetailScreen() {
       bank_transfer: 'Bank Transfer',
     };
 
+    const sourceLabel = source === 'quote' ? 'accepted quote' : 'materials';
+
     Alert.alert(
       'Quick Collect Payment',
-      `Collect ${formatAmount(total)} via ${methodLabels[paymentMethod]}?\n\nThis will automatically create an invoice marked as paid and generate a receipt.`,
+      `Collect ${formatAmount(total)} via ${methodLabels[paymentMethod]}?\n\nBased on ${sourceLabel}. Invoice and receipt will be created automatically.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -3755,11 +3792,19 @@ export default function JobDetailScreen() {
           onPress: async () => {
             setIsQuickCollecting(true);
             try {
-              const response = await api.post<{ receiptId: string; invoiceId: string }>(`/api/jobs/${job.id}/quick-collect`, {
-                quoteId: quote.id,
+              const body: any = {
                 paymentMethod,
                 amount: String(total.toFixed(2)),
-              });
+              };
+              if (quote && quote.status === 'accepted') {
+                body.quoteId = quote.id;
+              }
+              const lineItems = getQuickCollectLineItems();
+              if (lineItems.length > 0) {
+                body.lineItems = lineItems;
+              }
+
+              const response = await api.post<{ receiptId: string; invoiceId: string }>(`/api/jobs/${job.id}/quick-collect`, body);
               
               if (response.error) {
                 Alert.alert('Error', response.error);
@@ -5459,8 +5504,9 @@ export default function JobDetailScreen() {
         onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
       />
 
-      {/* Quick Collect Payment - Shows when job is done/in_progress with accepted quote but no invoice yet */}
-      {(job.status === 'done' || job.status === 'in_progress') && quote && quote.status === 'accepted' && !invoice && canCollectPayments && (
+      {/* Quick Collect Payment - Shows when job has collectible amount (quote or materials) and no paid invoice */}
+      {(job.status === 'done' || job.status === 'in_progress') && !invoice && canCollectPayments && 
+       ((quote && quote.status === 'accepted') || materials.length > 0) && getQuickCollectTotal() > 0 && (
         <View style={[styles.quickCollectCard, { borderColor: colors.cardBorder }]}>
           <View style={styles.quickCollectHeader}>
             <View style={[styles.quickCollectIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.15) }]}>
@@ -5469,19 +5515,44 @@ export default function JobDetailScreen() {
             <View style={styles.quickCollectTitleContainer}>
               <Text style={[styles.quickCollectTitle, { color: colors.foreground }]}>Collect Payment Now</Text>
               <View style={[styles.quickCollectBadge, { backgroundColor: colors.muted }]}>
-                <Text style={[styles.quickCollectBadgeText, { color: colors.mutedForeground }]}>Based on quote</Text>
+                <Text style={[styles.quickCollectBadgeText, { color: colors.mutedForeground }]}>
+                  {getQuickCollectSource() === 'quote' ? 'Based on quote' : `${materials.length} material${materials.length !== 1 ? 's' : ''}`}
+                </Text>
               </View>
             </View>
           </View>
           <Text style={[styles.quickCollectDescription, { color: colors.mutedForeground }]}>
-            Collect payment using the accepted quote amount. Invoice and receipt will be created automatically.
+            {getQuickCollectSource() === 'quote' 
+              ? 'Collect payment using the accepted quote amount. Invoice and receipt will be created automatically.'
+              : 'Collect payment based on materials total. Invoice and receipt will be created automatically.'}
           </Text>
           <View style={[styles.quickCollectAmountBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.quickCollectAmountLabel, { color: colors.mutedForeground }]}>Quote total</Text>
+            <Text style={[styles.quickCollectAmountLabel, { color: colors.mutedForeground }]}>
+              {getQuickCollectSource() === 'quote' ? 'Quote total' : 'Materials total'}
+            </Text>
             <Text style={[styles.quickCollectAmountValue, { color: colors.primary }]}>
-              {formatCurrency(typeof quote.total === 'number' ? quote.total : parseFloat(String(quote.total) || '0'))}
+              {formatCurrency(getQuickCollectTotal())}
             </Text>
           </View>
+          {getQuickCollectSource() === 'materials' && materials.length > 0 && (
+            <View style={{ marginBottom: spacing.sm }}>
+              {materials.slice(0, 4).map((m, i) => (
+                <View key={m.id || i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, paddingHorizontal: spacing.xs }}>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, flex: 1 }} numberOfLines={1}>
+                    {m.name} {Number(m.quantity) > 1 ? `× ${m.quantity}` : ''}
+                  </Text>
+                  <Text style={{ ...typography.caption, color: colors.foreground, fontWeight: '600' }}>
+                    {formatCurrency(Number(m.unitPrice || 0) > 0 ? Number(m.unitPrice) * Number(m.quantity || 1) : Number(m.totalCost || 0))}
+                  </Text>
+                </View>
+              ))}
+              {materials.length > 4 && (
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', marginTop: 4 }}>
+                  +{materials.length - 4} more items
+                </Text>
+              )}
+            </View>
+          )}
           <View style={styles.quickCollectButtons}>
             <TouchableOpacity
               style={[styles.quickCollectButton, { backgroundColor: colors.primary }, isQuickCollecting && { opacity: 0.6 }]}
