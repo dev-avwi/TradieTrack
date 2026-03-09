@@ -36,7 +36,7 @@ Core architectural and design decisions include:
 *   **CRM & Client Management**: Client tags, type classification, referral tracking, and smart segment filtering.
 *   **Documents Hub**: Consolidated view of quotes, invoices, and receipts with relationship links.
 *   **Client Portal Enhancement**: Enhanced Job Portal with visual progress timelines and custom messages, maintaining consistent branding.
-*   **Voice-to-Action Detection**: AI analysis of voice notes to detect and log action items.
+*   **Voice-to-Action Detection**: AI analysis of voice notes to detect and log action items. Standalone `/api/voice-notes/transcribe` endpoint for AI Quote Generator voice input (SSRF-hardened with URL allowlist and size limits).
 *   **Photo Auto-Tagging**: AI categorization of uploaded photos.
 *   **Expenses Page**: Standalone page for tracking business expenses with a receipt scanner.
 *   **Photo Organiser**: Central photo library with categorization, filters, and bulk actions.

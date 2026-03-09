@@ -608,8 +608,8 @@ function LoadingScreen({ colors }: { colors: any }) {
           <Image 
             source={require('../assets/jobrunner-logo.png')} 
             style={{ 
-              width: 85, 
-              height: 85, 
+              width: 100, 
+              height: 100, 
               resizeMode: 'contain',
             }} 
           />

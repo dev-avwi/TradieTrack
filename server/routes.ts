@@ -30662,6 +30662,83 @@ Respond with JSON in this format:
     }
   });
 
+  app.post("/api/voice-notes/transcribe", requireAuth, async (req: any, res) => {
+    try {
+      const { audioUrl } = req.body;
+      if (!audioUrl || typeof audioUrl !== 'string') {
+        return res.status(400).json({ error: 'audioUrl is required' });
+      }
+
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(audioUrl);
+      } catch {
+        return res.status(400).json({ error: 'Invalid audioUrl' });
+      }
+      if (parsedUrl.protocol !== 'https:') {
+        return res.status(400).json({ error: 'Only HTTPS URLs are accepted' });
+      }
+      const hostname = parsedUrl.hostname.toLowerCase();
+      const allowedHosts = ['storage.googleapis.com', 'storage.cloud.google.com'];
+      const replitDomain = hostname.endsWith('.replit.dev') || hostname.endsWith('.repl.co');
+      if (!allowedHosts.includes(hostname) && !replitDomain) {
+        return res.status(400).json({ error: 'Audio URL must be from a trusted storage host' });
+      }
+
+      const { default: OpenAI } = await import('openai');
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: 'Voice transcription requires an OpenAI API key.' });
+      }
+
+      const openai = new OpenAI({ apiKey });
+
+      const MAX_SIZE = 25 * 1024 * 1024;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+
+      let audioResponse: Response;
+      try {
+        audioResponse = await fetch(audioUrl, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
+      }
+      if (!audioResponse.ok) {
+        return res.status(500).json({ error: 'Failed to download audio file' });
+      }
+
+      const contentLength = parseInt(audioResponse.headers.get('content-length') || '0', 10);
+      if (contentLength > MAX_SIZE) {
+        return res.status(400).json({ error: 'Audio file too large (max 25MB)' });
+      }
+
+      const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+      if (audioBuffer.length > MAX_SIZE) {
+        return res.status(400).json({ error: 'Audio file too large (max 25MB)' });
+      }
+
+      const fileName = parsedUrl.pathname.split('/').pop() || 'voice.m4a';
+      const file = new File([audioBuffer], fileName, { type: 'audio/m4a' });
+
+      console.log('[VoiceTranscribe] Transcribing standalone audio:', { fileName, size: audioBuffer.length });
+
+      const transcription = await openai.audio.transcriptions.create({
+        file,
+        model: 'whisper-1',
+        language: 'en',
+        response_format: 'text'
+      });
+
+      const transcriptionText = transcription.toString();
+      console.log('[VoiceTranscribe] Done:', transcriptionText.substring(0, 100));
+
+      res.json({ success: true, transcription: transcriptionText });
+    } catch (error: any) {
+      console.error('[VoiceTranscribe] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // AI Transcribe voice note (converts speech to text using Whisper)
   app.post("/api/jobs/:jobId/voice-notes/:voiceNoteId/transcribe", requireAuth, async (req: any, res) => {
     try {

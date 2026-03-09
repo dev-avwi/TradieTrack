@@ -616,14 +616,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   invoicePickerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
     padding: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     ...shadows.sm,
+    gap: spacing.md,
+  },
+  invoicePickerStatusIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   invoicePickerItemContent: {
     flex: 1,
@@ -632,20 +639,35 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    flexWrap: 'wrap',
   },
   invoicePickerItemTitle: {
     ...typography.cardTitle,
     color: colors.foreground,
   },
   invoicePickerItemClient: {
+    ...typography.body,
+    color: colors.foreground,
+    marginTop: 2,
+  },
+  invoicePickerItemMeta: {
     ...typography.caption,
     color: colors.mutedForeground,
     marginTop: 2,
+  },
+  invoicePickerItemRight: {
+    alignItems: 'flex-end',
+    gap: 2,
   },
   invoicePickerItemAmount: {
     ...typography.bodySemibold,
     fontSize: 18,
     color: colors.foreground,
+  },
+  invoicePickerItemAmountLabel: {
+    ...typography.captionSmall,
+    fontSize: 11,
+    color: colors.mutedForeground,
   },
   customAmountButton: {
     flexDirection: 'row',
@@ -1771,8 +1793,8 @@ export default function CollectScreen() {
   
   const handleSubmitCustomAmount = () => {
     const amountNum = parseFloat(customAmountValue);
-    if (isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid payment amount');
+    if (isNaN(amountNum) || amountNum < 0.50) {
+      Alert.alert('Invalid Amount', 'Please enter an amount of at least $0.50');
       return;
     }
     
@@ -2823,6 +2845,9 @@ export default function CollectScreen() {
                     const invoicePaid = typeof invoice.amountPaid === 'string' ? parseFloat(invoice.amountPaid) : (invoice.amountPaid || 0);
                     const amountDue = invoiceTotal - invoicePaid;
                     const isOverdue = invoice.status === 'overdue';
+                    const isPartiallyPaid = invoicePaid > 0 && amountDue > 0;
+                    const statusColor = isOverdue ? colors.destructive : (isPartiallyPaid ? colors.warning : colors.primary);
+                    const statusBg = isOverdue ? colors.destructiveLight : (isPartiallyPaid ? colors.warningLight : colors.primaryLight);
                     
                     return (
                       <TouchableOpacity 
@@ -2831,18 +2856,38 @@ export default function CollectScreen() {
                         onPress={() => handleSelectInvoiceFromPicker(invoice)}
                         activeOpacity={0.7}
                       >
+                        <View style={[styles.invoicePickerStatusIcon, { backgroundColor: statusBg }]}>
+                          <Feather 
+                            name={isOverdue ? 'alert-circle' : (isPartiallyPaid ? 'clock' : 'file-text')} 
+                            size={18} 
+                            color={statusColor} 
+                          />
+                        </View>
                         <View style={styles.invoicePickerItemContent}>
                           <View style={styles.invoicePickerItemHeader}>
                             <Text style={styles.invoicePickerItemTitle}>{invoice.invoiceNumber}</Text>
                             {isOverdue && (
                               <Badge variant="destructive">Overdue</Badge>
                             )}
+                            {isPartiallyPaid && !isOverdue && (
+                              <Badge variant="warning">Partial</Badge>
+                            )}
                           </View>
-                          <Text style={styles.invoicePickerItemClient}>{getClientName(invoice.clientId)}</Text>
+                          <Text style={styles.invoicePickerItemClient} numberOfLines={1}>{getClientName(invoice.clientId)}</Text>
+                          {isPartiallyPaid && (
+                            <Text style={styles.invoicePickerItemMeta}>
+                              {formatCurrency(invoicePaid)} of {formatCurrency(invoiceTotal)} paid
+                            </Text>
+                          )}
                         </View>
-                        <Text style={[styles.invoicePickerItemAmount, isOverdue && { color: colors.destructive }]}>
-                          {formatCurrency(amountDue)}
-                        </Text>
+                        <View style={styles.invoicePickerItemRight}>
+                          <Text style={[styles.invoicePickerItemAmount, isOverdue && { color: colors.destructive }]}>
+                            {formatCurrency(amountDue)}
+                          </Text>
+                          <Text style={styles.invoicePickerItemAmountLabel}>
+                            {isPartiallyPaid ? 'remaining' : 'due'}
+                          </Text>
+                        </View>
                       </TouchableOpacity>
                     );
                   })
@@ -2864,48 +2909,88 @@ export default function CollectScreen() {
     );
   };
   
-  const renderCustomAmountModal = () => (
-    <Modal
-      visible={showCustomAmountModal}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleCloseCustomAmountModal}
-    >
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
+  const renderCustomAmountModal = () => {
+    const canContinue = customAmountValue && parseFloat(customAmountValue) >= 0.50;
+    
+    return (
+      <Modal
+        visible={showCustomAmountModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCloseCustomAmountModal}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Enter Amount</Text>
-              <TouchableOpacity onPress={handleCloseCustomAmountModal} activeOpacity={0.7}>
-                <Feather name="x" size={24} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Enter Amount</Text>
+            <TouchableOpacity onPress={handleCloseCustomAmountModal} activeOpacity={0.7}>
+              <Feather name="x" size={24} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
 
-            <View style={{ flex: 1, padding: spacing.md }}>
-              <Text style={styles.sectionLabel}>Payment Amount</Text>
-              <View style={styles.amountInputContainer}>
-                <Text style={styles.currencySymbol}>$</Text>
+          <KeyboardAvoidingView 
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+          >
+            <ScrollView 
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xl }}
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+            >
+              <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+                <View style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: 36,
+                  backgroundColor: colors.primaryLight,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: spacing.md,
+                }}>
+                  <Feather name="dollar-sign" size={32} color={colors.primary} />
+                </View>
+                <Text style={{ ...typography.largeTitle, color: colors.foreground, marginBottom: spacing.xs }}>
+                  Payment Amount
+                </Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                  Enter the amount to collect
+                </Text>
+              </View>
+
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: colors.isDark ? colors.muted : colors.card,
+                borderRadius: radius['2xl'],
+                paddingHorizontal: spacing.xl,
+                height: 80,
+                borderWidth: 2,
+                borderColor: customAmountValue ? colors.primary : (colors.isDark ? colors.borderLight : colors.border),
+                marginBottom: spacing.xs,
+              }}>
+                <Text style={{ fontSize: 40, fontWeight: '700', color: colors.mutedForeground }}>$</Text>
                 <TextInput
-                  style={styles.amountInput}
+                  style={{
+                    flex: 1,
+                    marginLeft: spacing.sm,
+                    fontSize: 40,
+                    fontWeight: '700',
+                    color: colors.foreground,
+                  }}
                   value={customAmountValue}
                   onChangeText={setCustomAmountValue}
                   placeholder="0.00"
                   placeholderTextColor={colors.mutedForeground}
                   keyboardType="decimal-pad"
                   autoFocus
-                  returnKeyType="done"
-                  onSubmitEditing={Keyboard.dismiss}
                 />
               </View>
-              <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: spacing.xs }}>
+              <Text style={{ color: colors.mutedForeground, fontSize: 12, marginBottom: spacing.lg }}>
                 Minimum amount: $0.50
               </Text>
               
-              <Text style={[styles.sectionLabel, { marginTop: spacing.md }]}>Description (Optional)</Text>
+              <Text style={[styles.sectionLabel]}>Description (Optional)</Text>
               <TextInput
                 style={styles.descriptionInput}
                 value={customAmountDescription}
@@ -2915,26 +3000,26 @@ export default function CollectScreen() {
                 returnKeyType="done"
                 onSubmitEditing={Keyboard.dismiss}
               />
-            </View>
 
-            <View style={[styles.modalFooter, { paddingBottom: spacing.xl }]}>
-              <Button 
-                variant="default" 
-                onPress={handleSubmitCustomAmount} 
-                fullWidth
-                disabled={!customAmountValue || parseFloat(customAmountValue) < 0.50}
-              >
-                <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
-                <Text style={{ marginLeft: spacing.xs, color: colors.primaryForeground, fontWeight: '600' }}>
-                  Continue
-                </Text>
-              </Button>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
+              <View style={{ marginTop: spacing.lg }}>
+                <Button 
+                  variant="default" 
+                  onPress={handleSubmitCustomAmount} 
+                  fullWidth
+                  disabled={!canContinue}
+                >
+                  <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 16 }}>
+                    {canContinue ? `Continue — $${parseFloat(customAmountValue).toFixed(2)}` : 'Continue'}
+                  </Text>
+                  <Feather name="arrow-right" size={18} color={colors.primaryForeground} style={{ marginLeft: spacing.xs }} />
+                </Button>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+    );
+  };
 
   return (
     <>

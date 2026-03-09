@@ -38,6 +38,19 @@ const SMS_TEMPLATES = [
 const SMS_MAX_LENGTH = 1600;
 const SMS_SEGMENT_LENGTH = 160;
 
+const AVATAR_COLORS = [
+  '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981',
+  '#6366F1', '#14B8A6', '#F97316', '#06B6D4', '#EF4444',
+];
+
+const getAvatarColor = (name: string) => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
@@ -137,15 +150,14 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.lg,
   },
   clientAvatarText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: colors.foreground,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   clientInfo: {
     flex: 1,
@@ -154,6 +166,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.foreground,
+  },
+  clientCompany: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginTop: 1,
   },
   clientPhone: {
     fontSize: 13,
@@ -441,8 +458,23 @@ export default function NewSmsConversation() {
     setMessage('');
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
+  const getInitials = (firstName: string, lastName: string, phone: string) => {
+    const first = firstName?.charAt(0) || '';
+    const last = lastName?.charAt(0) || '';
+    if (first || last) return `${first}${last}`.toUpperCase();
+    if (phone) return '#';
+    return '?';
+  };
+
+  const getDisplayName = (client: Client) => {
+    const fullName = `${client.firstName || ''} ${client.lastName || ''}`.trim();
+    if (fullName) return fullName;
+    if (client.phone) return client.phone;
+    return 'Unknown Client';
+  };
+
+  const getClientKey = (client: Client) => {
+    return `${client.firstName || ''}${client.lastName || ''}${client.phone || client.id}`;
   };
 
   const charCount = message.length;
@@ -594,37 +626,46 @@ export default function NewSmsConversation() {
               </Text>
             </View>
           ) : (
-            filteredClients.map((client) => (
-              <TouchableOpacity
-                key={client.id}
-                style={styles.clientCard}
-                onPress={() => handleClientSelect(client)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.clientAvatar}>
-                  <Text style={styles.clientAvatarText}>
-                    {getInitials(client.firstName, client.lastName)}
-                  </Text>
-                </View>
-                <View style={styles.clientInfo}>
-                  <Text style={styles.clientName}>
-                    {client.firstName} {client.lastName}
-                  </Text>
-                  {client.phone ? (
-                    <Text style={styles.clientPhone}>{client.phone}</Text>
-                  ) : (
-                    <Text style={styles.noPhoneBadge}>No phone number</Text>
-                  )}
-                </View>
-                <View style={styles.smsIcon}>
-                  <Feather 
-                    name="message-circle" 
-                    size={18} 
-                    color={client.phone ? colors.primary : colors.mutedForeground} 
-                  />
-                </View>
-              </TouchableOpacity>
-            ))
+            filteredClients.map((client) => {
+              const displayName = getDisplayName(client);
+              const hasName = !!(client.firstName || client.lastName);
+              const avatarColor = getAvatarColor(getClientKey(client));
+              
+              return (
+                <TouchableOpacity
+                  key={client.id}
+                  style={styles.clientCard}
+                  onPress={() => handleClientSelect(client)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.clientAvatar, { backgroundColor: avatarColor }]}>
+                    <Text style={styles.clientAvatarText}>
+                      {getInitials(client.firstName, client.lastName, client.phone)}
+                    </Text>
+                  </View>
+                  <View style={styles.clientInfo}>
+                    <Text style={styles.clientName} numberOfLines={1}>
+                      {displayName}
+                    </Text>
+                    {client.company ? (
+                      <Text style={styles.clientCompany} numberOfLines={1}>{client.company}</Text>
+                    ) : null}
+                    {client.phone && hasName ? (
+                      <Text style={styles.clientPhone}>{client.phone}</Text>
+                    ) : !client.phone ? (
+                      <Text style={styles.noPhoneBadge}>No phone number</Text>
+                    ) : null}
+                  </View>
+                  <View style={[styles.smsIcon, !client.phone && { backgroundColor: colors.muted }]}>
+                    <Feather 
+                      name="message-circle" 
+                      size={18} 
+                      color={client.phone ? colors.primary : colors.mutedForeground} 
+                    />
+                  </View>
+                </TouchableOpacity>
+              );
+            })
           )}
         </ScrollView>
       </View>
