@@ -274,10 +274,9 @@ export const settingsMenuItems: NavItem[] = [
     description: "Custom branding & theming",
     color: "primary",
     bgColor: "primary",
-    hideForStaff: true,
     showInMore: true,
     category: "settings",
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
   },
   {
     title: "App Settings",
