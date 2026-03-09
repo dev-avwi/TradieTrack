@@ -11,7 +11,11 @@ import {
   StyleSheet,
   RefreshControl,
   Share,
-  Image
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
@@ -19,7 +23,7 @@ import { Feather } from '@expo/vector-icons';
 import { format, isThisWeek, parseISO } from 'date-fns';
 import { useStripeTerminal } from '../../src/hooks/useServices';
 import { isTapToPayAvailable } from '../../src/lib/stripe-terminal';
-import { useInvoicesStore, useClientsStore } from '../../src/lib/store';
+import { useInvoicesStore, useClientsStore, useJobsStore } from '../../src/lib/store';
 import api from '../../src/lib/api';
 import { Card, CardContent } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
@@ -820,6 +824,8 @@ export default function CollectScreen() {
   // Invoice Picker Modal state
   const [showInvoicePickerModal, setShowInvoicePickerModal] = useState(false);
   const [pendingPaymentMethod, setPendingPaymentMethod] = useState<'record' | 'qr' | 'link' | 'tap' | null>(null);
+  const [pickerTab, setPickerTab] = useState<'jobs' | 'invoices'>('jobs');
+  const [pickerSearch, setPickerSearch] = useState('');
   
   // Custom Amount Modal state (for entering amount when no invoice selected)
   const [showCustomAmountModal, setShowCustomAmountModal] = useState(false);
@@ -840,6 +846,7 @@ export default function CollectScreen() {
   
   const { invoices, fetchInvoices } = useInvoicesStore();
   const { clients, fetchClients } = useClientsStore();
+  const { jobs, fetchJobs } = useJobsStore();
   const terminal = useStripeTerminal();
   const tapToPaySupported = isTapToPayAvailable();
 
@@ -895,9 +902,9 @@ export default function CollectScreen() {
 
   const refreshData = useCallback(async () => {
     setIsLoading(true);
-    await Promise.all([fetchInvoices(), fetchClients(), fetchReceipts(), fetchSmsStatus()]);
+    await Promise.all([fetchInvoices(), fetchClients(), fetchJobs(), fetchReceipts(), fetchSmsStatus()]);
     setIsLoading(false);
-  }, [fetchInvoices, fetchClients, fetchReceipts, fetchSmsStatus]);
+  }, [fetchInvoices, fetchClients, fetchJobs, fetchReceipts, fetchSmsStatus]);
 
   useEffect(() => {
     refreshData();
@@ -990,6 +997,31 @@ export default function CollectScreen() {
     if (isNaN(num)) return '$0.00';
     return `$${num.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
+
+  const collectibleJobs = useMemo(() => {
+    const activeJobs = jobs.filter(j => 
+      j.status === 'in_progress' || j.status === 'scheduled' || j.status === 'done' || j.status === 'invoiced'
+    );
+    return activeJobs.map(job => {
+      const client = clients.find(c => c.id === job.clientId);
+      const jobInvoices = invoices.filter(i => i.jobId === job.id && (i.status === 'sent' || i.status === 'overdue'));
+      const totalDue = jobInvoices.reduce((sum, inv) => {
+        const total = typeof inv.total === 'string' ? parseFloat(inv.total) : (inv.total || 0);
+        const paid = typeof inv.amountPaid === 'string' ? parseFloat(inv.amountPaid) : (inv.amountPaid || 0);
+        return sum + (total - paid);
+      }, 0);
+      return {
+        ...job,
+        clientName: client?.name || job.clientName || 'No Client',
+        clientEmail: client?.email,
+        clientPhone: client?.phone,
+        clientId: job.clientId,
+        outstandingAmount: totalDue,
+        invoiceCount: jobInvoices.length,
+        hasOverdue: jobInvoices.some(i => i.status === 'overdue'),
+      };
+    });
+  }, [jobs, invoices, clients]);
 
   const pendingInvoices = invoices.filter(i => i.status === 'sent' || i.status === 'overdue');
   const overdueInvoices = invoices.filter(i => i.status === 'overdue');
@@ -1662,8 +1694,8 @@ export default function CollectScreen() {
       return;
     }
     
-    // If no pending invoices, show custom amount modal directly
-    if (pendingInvoices.length === 0) {
+    // If no pending invoices AND no active jobs, show custom amount directly
+    if (pendingInvoices.length === 0 && collectibleJobs.length === 0) {
       setPendingPaymentMethod(method);
       setCustomAmountValue('');
       setCustomAmountDescription('');
@@ -1671,8 +1703,10 @@ export default function CollectScreen() {
       return;
     }
     
-    // Show the invoice picker modal
+    // Show the picker modal (jobs + invoices)
     setPendingPaymentMethod(method);
+    setPickerTab(collectibleJobs.length > 0 ? 'jobs' : 'invoices');
+    setPickerSearch('');
     setShowInvoicePickerModal(true);
   };
 
@@ -1706,10 +1740,30 @@ export default function CollectScreen() {
     setPendingPaymentMethod(null);
   };
 
+  const handleSelectJobFromPicker = (job: typeof collectibleJobs[0]) => {
+    if (job.outstandingAmount > 0) {
+      setAmount(job.outstandingAmount.toFixed(2));
+      setDescription(`Payment for ${job.title}`);
+      setShowInvoicePickerModal(false);
+      setPickerSearch('');
+      if (pendingPaymentMethod) {
+        proceedToPaymentMethod(pendingPaymentMethod);
+      }
+      setPendingPaymentMethod(null);
+    } else {
+      setShowInvoicePickerModal(false);
+      setPickerSearch('');
+      setPendingPaymentMethod(pendingPaymentMethod);
+      setCustomAmountValue('');
+      setCustomAmountDescription(job.title || '');
+      setShowCustomAmountModal(true);
+    }
+  };
+
   const handleCustomAmountFromPicker = () => {
     setShowInvoicePickerModal(false);
+    setPickerSearch('');
     
-    // Show custom amount modal to enter amount first
     setCustomAmountValue('');
     setCustomAmountDescription('');
     setShowCustomAmountModal(true);
@@ -1837,6 +1891,8 @@ export default function CollectScreen() {
   const handleCloseInvoicePickerModal = () => {
     setShowInvoicePickerModal(false);
     setPendingPaymentMethod(null);
+    setPickerSearch('');
+    setPickerTab('jobs');
   };
 
   const renderTapToPayModal = () => (
@@ -2584,79 +2640,229 @@ export default function CollectScreen() {
     );
   };
 
-  const renderInvoicePickerModal = () => (
-    <Modal
-      visible={showInvoicePickerModal}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleCloseInvoicePickerModal}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Select Invoice</Text>
-          <TouchableOpacity onPress={handleCloseInvoicePickerModal} activeOpacity={0.7}>
-            <Feather name="x" size={24} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        </View>
+  const renderInvoicePickerModal = () => {
+    const searchLower = pickerSearch.toLowerCase();
+    const filteredJobs = collectibleJobs.filter(j => {
+      if (!pickerSearch) return true;
+      return j.title.toLowerCase().includes(searchLower) || 
+             (j.clientName || '').toLowerCase().includes(searchLower) ||
+             (j.address || '').toLowerCase().includes(searchLower);
+    });
+    const filteredInvoices = pendingInvoices.filter(inv => {
+      if (!pickerSearch) return true;
+      const clientName = getClientName(inv.clientId);
+      return (inv.invoiceNumber || '').toLowerCase().includes(searchLower) ||
+             clientName.toLowerCase().includes(searchLower);
+    });
+    const statusLabels: Record<string, string> = {
+      scheduled: 'Scheduled',
+      in_progress: 'In Progress',
+      done: 'Completed',
+      invoiced: 'Invoiced',
+    };
+    const statusColors: Record<string, { bg: string; text: string }> = {
+      scheduled: { bg: colors.primaryLight || '#EFF6FF', text: colors.primary },
+      in_progress: { bg: colors.warningLight || '#FFF7ED', text: colors.warning || '#F59E0B' },
+      done: { bg: colors.successLight || '#F0FDF4', text: colors.success || '#22C55E' },
+      invoiced: { bg: colors.primaryLight || '#EFF6FF', text: colors.primary },
+    };
 
-        <ScrollView 
-          style={styles.invoicePickerScrollView}
-          contentContainerStyle={styles.invoicePickerContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {pendingInvoices.length === 0 ? (
-            <View style={styles.invoicePickerEmpty}>
-              <Feather name="check-circle" size={48} color={colors.success} />
-              <Text style={styles.invoicePickerEmptyText}>
-                No pending invoices.{'\n'}Enter a custom amount below.
-              </Text>
+    return (
+      <Modal
+        visible={showInvoicePickerModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCloseInvoicePickerModal}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Collect Payment</Text>
+            <TouchableOpacity onPress={handleCloseInvoicePickerModal} activeOpacity={0.7}>
+              <Feather name="x" size={24} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.sm }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: colors.isDark ? colors.muted : colors.card,
+              borderRadius: radius.xl,
+              paddingHorizontal: spacing.md,
+              height: 44,
+              borderWidth: 1,
+              borderColor: colors.isDark ? colors.borderLight : colors.border,
+              marginBottom: spacing.sm,
+            }}>
+              <Feather name="search" size={18} color={colors.mutedForeground} />
+              <TextInput
+                style={{ flex: 1, marginLeft: spacing.sm, fontSize: 15, color: colors.foreground }}
+                placeholder="Search jobs or invoices..."
+                placeholderTextColor={colors.mutedForeground}
+                value={pickerSearch}
+                onChangeText={setPickerSearch}
+                autoCorrect={false}
+              />
+              {pickerSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setPickerSearch('')} activeOpacity={0.7}>
+                  <Feather name="x-circle" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              )}
             </View>
-          ) : (
-            <>
-              <Text style={[styles.sectionLabel, { marginBottom: spacing.md }]}>
-                {pendingInvoices.length} Pending Invoice{pendingInvoices.length !== 1 ? 's' : ''}
-              </Text>
-              {pendingInvoices.map(invoice => {
-                const invoiceTotal = typeof invoice.total === 'string' ? parseFloat(invoice.total) : (invoice.total || 0);
-                const invoicePaid = typeof invoice.amountPaid === 'string' ? parseFloat(invoice.amountPaid) : (invoice.amountPaid || 0);
-                const amountDue = invoiceTotal - invoicePaid;
-                const isOverdue = invoice.status === 'overdue';
-                
-                return (
-                  <TouchableOpacity 
-                    key={invoice.id}
-                    style={styles.invoicePickerItem}
-                    onPress={() => handleSelectInvoiceFromPicker(invoice)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.invoicePickerItemContent}>
-                      <View style={styles.invoicePickerItemHeader}>
-                        <Text style={styles.invoicePickerItemTitle}>{invoice.invoiceNumber}</Text>
-                        {isOverdue && (
-                          <Badge variant="destructive">Overdue</Badge>
-                        )}
-                      </View>
-                      <Text style={styles.invoicePickerItemClient}>{getClientName(invoice.clientId)}</Text>
-                    </View>
-                    <Text style={styles.invoicePickerItemAmount}>{formatCurrency(amountDue)}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </>
-          )}
 
-          <TouchableOpacity 
-            style={styles.customAmountButton}
-            onPress={handleCustomAmountFromPicker}
-            activeOpacity={0.7}
+            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+              <TouchableOpacity
+                onPress={() => setPickerTab('jobs')}
+                activeOpacity={0.7}
+                style={{
+                  flex: 1,
+                  paddingVertical: spacing.sm,
+                  borderRadius: radius.lg,
+                  backgroundColor: pickerTab === 'jobs' ? colors.primary : 'transparent',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ 
+                  fontSize: 14, fontWeight: '600',
+                  color: pickerTab === 'jobs' ? colors.primaryForeground : colors.mutedForeground 
+                }}>
+                  Jobs ({filteredJobs.length})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setPickerTab('invoices')}
+                activeOpacity={0.7}
+                style={{
+                  flex: 1,
+                  paddingVertical: spacing.sm,
+                  borderRadius: radius.lg,
+                  backgroundColor: pickerTab === 'invoices' ? colors.primary : 'transparent',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ 
+                  fontSize: 14, fontWeight: '600',
+                  color: pickerTab === 'invoices' ? colors.primaryForeground : colors.mutedForeground 
+                }}>
+                  Invoices ({filteredInvoices.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ScrollView 
+            style={styles.invoicePickerScrollView}
+            contentContainerStyle={styles.invoicePickerContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <Feather name="edit-3" size={20} color={colors.foreground} />
-            <Text style={styles.customAmountButtonText}>Custom Amount (No Invoice)</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-    </Modal>
-  );
+            {pickerTab === 'jobs' ? (
+              <>
+                {filteredJobs.length === 0 ? (
+                  <View style={styles.invoicePickerEmpty}>
+                    <Feather name="briefcase" size={40} color={colors.mutedForeground} />
+                    <Text style={styles.invoicePickerEmptyText}>
+                      {pickerSearch ? 'No matching jobs found' : 'No active jobs'}
+                    </Text>
+                  </View>
+                ) : (
+                  filteredJobs.map(job => {
+                    const sc = statusColors[job.status] || statusColors.scheduled;
+                    return (
+                      <TouchableOpacity 
+                        key={job.id}
+                        style={styles.invoicePickerItem}
+                        onPress={() => handleSelectJobFromPicker(job)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.invoicePickerItemContent}>
+                          <View style={styles.invoicePickerItemHeader}>
+                            <Text style={styles.invoicePickerItemTitle} numberOfLines={1}>{job.title}</Text>
+                            <View style={{ backgroundColor: sc.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.sm }}>
+                              <Text style={{ fontSize: 11, fontWeight: '600', color: sc.text }}>{statusLabels[job.status] || job.status}</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.invoicePickerItemClient} numberOfLines={1}>{job.clientName}</Text>
+                          {job.address && (
+                            <Text style={[styles.invoicePickerItemClient, { fontSize: 12, marginTop: 1 }]} numberOfLines={1}>{job.address}</Text>
+                          )}
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          {job.outstandingAmount > 0 ? (
+                            <>
+                              <Text style={[styles.invoicePickerItemAmount, job.hasOverdue && { color: colors.destructive }]}>
+                                {formatCurrency(job.outstandingAmount)}
+                              </Text>
+                              <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                                {job.invoiceCount} inv{job.invoiceCount !== 1 ? 's' : ''}
+                              </Text>
+                            </>
+                          ) : (
+                            <Text style={{ fontSize: 13, color: colors.mutedForeground, fontStyle: 'italic' }}>
+                              Quick collect
+                            </Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </>
+            ) : (
+              <>
+                {filteredInvoices.length === 0 ? (
+                  <View style={styles.invoicePickerEmpty}>
+                    <Feather name="file-text" size={40} color={colors.mutedForeground} />
+                    <Text style={styles.invoicePickerEmptyText}>
+                      {pickerSearch ? 'No matching invoices found' : 'No pending invoices'}
+                    </Text>
+                  </View>
+                ) : (
+                  filteredInvoices.map(invoice => {
+                    const invoiceTotal = typeof invoice.total === 'string' ? parseFloat(invoice.total) : (invoice.total || 0);
+                    const invoicePaid = typeof invoice.amountPaid === 'string' ? parseFloat(invoice.amountPaid) : (invoice.amountPaid || 0);
+                    const amountDue = invoiceTotal - invoicePaid;
+                    const isOverdue = invoice.status === 'overdue';
+                    
+                    return (
+                      <TouchableOpacity 
+                        key={invoice.id}
+                        style={styles.invoicePickerItem}
+                        onPress={() => handleSelectInvoiceFromPicker(invoice)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.invoicePickerItemContent}>
+                          <View style={styles.invoicePickerItemHeader}>
+                            <Text style={styles.invoicePickerItemTitle}>{invoice.invoiceNumber}</Text>
+                            {isOverdue && (
+                              <Badge variant="destructive">Overdue</Badge>
+                            )}
+                          </View>
+                          <Text style={styles.invoicePickerItemClient}>{getClientName(invoice.clientId)}</Text>
+                        </View>
+                        <Text style={[styles.invoicePickerItemAmount, isOverdue && { color: colors.destructive }]}>
+                          {formatCurrency(amountDue)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </>
+            )}
+
+            <TouchableOpacity 
+              style={styles.customAmountButton}
+              onPress={handleCustomAmountFromPicker}
+              activeOpacity={0.7}
+            >
+              <Feather name="dollar-sign" size={20} color={colors.primary} />
+              <Text style={[styles.customAmountButtonText, { color: colors.primary }]}>Quick Collect — Custom Amount</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </Modal>
+    );
+  };
   
   const renderCustomAmountModal = () => (
     <Modal
@@ -2665,56 +2871,68 @@ export default function CollectScreen() {
       presentationStyle="pageSheet"
       onRequestClose={handleCloseCustomAmountModal}
     >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Enter Amount</Text>
-          <TouchableOpacity onPress={handleCloseCustomAmountModal} activeOpacity={0.7}>
-            <Feather name="x" size={24} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        </View>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Enter Amount</Text>
+              <TouchableOpacity onPress={handleCloseCustomAmountModal} activeOpacity={0.7}>
+                <Feather name="x" size={24} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
 
-        <View style={{ flex: 1, padding: spacing.md }}>
-          <Text style={styles.sectionLabel}>Payment Amount</Text>
-          <View style={styles.amountInputContainer}>
-            <Text style={styles.currencySymbol}>$</Text>
-            <TextInput
-              style={styles.amountInput}
-              value={customAmountValue}
-              onChangeText={setCustomAmountValue}
-              placeholder="0.00"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="decimal-pad"
-              autoFocus
-            />
+            <View style={{ flex: 1, padding: spacing.md }}>
+              <Text style={styles.sectionLabel}>Payment Amount</Text>
+              <View style={styles.amountInputContainer}>
+                <Text style={styles.currencySymbol}>$</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  value={customAmountValue}
+                  onChangeText={setCustomAmountValue}
+                  placeholder="0.00"
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="decimal-pad"
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                />
+              </View>
+              <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: spacing.xs }}>
+                Minimum amount: $0.50
+              </Text>
+              
+              <Text style={[styles.sectionLabel, { marginTop: spacing.md }]}>Description (Optional)</Text>
+              <TextInput
+                style={styles.descriptionInput}
+                value={customAmountDescription}
+                onChangeText={setCustomAmountDescription}
+                placeholder="What's this payment for?"
+                placeholderTextColor={colors.mutedForeground}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+              />
+            </View>
+
+            <View style={[styles.modalFooter, { paddingBottom: spacing.xl }]}>
+              <Button 
+                variant="default" 
+                onPress={handleSubmitCustomAmount} 
+                fullWidth
+                disabled={!customAmountValue || parseFloat(customAmountValue) < 0.50}
+              >
+                <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
+                <Text style={{ marginLeft: spacing.xs, color: colors.primaryForeground, fontWeight: '600' }}>
+                  Continue
+                </Text>
+              </Button>
+            </View>
           </View>
-          <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: spacing.xs }}>
-            Minimum amount: $0.50
-          </Text>
-          
-          <Text style={[styles.sectionLabel, { marginTop: spacing.md }]}>Description (Optional)</Text>
-          <TextInput
-            style={styles.descriptionInput}
-            value={customAmountDescription}
-            onChangeText={setCustomAmountDescription}
-            placeholder="What's this payment for?"
-            placeholderTextColor={colors.mutedForeground}
-          />
-        </View>
-
-        <View style={styles.modalFooter}>
-          <Button 
-            variant="default" 
-            onPress={handleSubmitCustomAmount} 
-            fullWidth
-            disabled={!customAmountValue || parseFloat(customAmountValue) < 0.50}
-          >
-            <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
-            <Text style={{ marginLeft: spacing.xs, color: colors.primaryForeground, fontWeight: '600' }}>
-              Continue
-            </Text>
-          </Button>
-        </View>
-      </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 
