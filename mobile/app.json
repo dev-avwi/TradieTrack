@@ -26,9 +26,6 @@
       "config": {
         "usesNonExemptEncryption": false
       },
-      "entitlements": {
-        "com.apple.developer.proximity-reader.payment.acceptance": true
-      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "JobRunner needs camera access to take job photos",
