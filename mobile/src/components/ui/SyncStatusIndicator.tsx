@@ -18,7 +18,7 @@ export function SyncStatusIndicator({
 }: SyncStatusIndicatorProps) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const { isOnline, isSyncing, pendingSyncCount, lastSyncTime, syncError } = useOfflineStore();
+  const { isOnline, isSyncing, pendingSyncCount, lastSyncTime, syncError, backgroundSyncRegistered, backgroundSyncError } = useOfflineStore();
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const [expanded, setExpanded] = useState(false);
 
@@ -138,6 +138,13 @@ export function SyncStatusIndicator({
             <Text style={styles.detailLabel}>Last sync</Text>
             <Text style={styles.detailValueText}>{getLastSyncText()}</Text>
           </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Background sync</Text>
+            <View style={styles.detailValue}>
+              <View style={[styles.smallDot, { backgroundColor: backgroundSyncRegistered ? '#10B981' : '#F59E0B' }]} />
+              <Text style={styles.detailValueText}>{backgroundSyncRegistered ? 'Active' : 'Unavailable'}</Text>
+            </View>
+          </View>
           {pendingSyncCount > 0 && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Pending changes</Text>
@@ -148,6 +155,14 @@ export function SyncStatusIndicator({
             <View style={styles.errorRow}>
               <Feather name="alert-triangle" size={12} color="#F59E0B" />
               <Text style={styles.errorText} numberOfLines={2}>{syncError}</Text>
+            </View>
+          )}
+          {!backgroundSyncRegistered && backgroundSyncError && (
+            <View style={styles.warningRow}>
+              <Feather name="alert-circle" size={12} color="#F59E0B" />
+              <Text style={styles.warningText} numberOfLines={2}>
+                Background sync unavailable. Changes will only sync while the app is open.
+              </Text>
             </View>
           )}
           {!isOnline && (
@@ -257,6 +272,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.sm,
   },
   errorText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#F59E0B',
+  },
+  warningRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.xs,
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    padding: spacing.sm,
+    borderRadius: radius.sm,
+  },
+  warningText: {
     flex: 1,
     fontSize: 12,
     color: '#F59E0B',

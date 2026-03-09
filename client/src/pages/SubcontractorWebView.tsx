@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Phone, MapPin, Calendar, Shield, CheckCircle2, XCircle,
-  LogOut, ArrowLeft, Car, Play, Square, StickyNote, Camera, Package,
+  LogOut, ArrowLeft, Car, Play, Square, StickyNote, Camera,
   Clock, AlertCircle, Briefcase
 } from "lucide-react";
 import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
@@ -832,13 +832,6 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                       >
                         <Camera className="w-5 h-5 mx-auto mb-1 text-[#2563EB]" />
                         <span className="text-xs font-medium text-slate-700">Upload Photo</span>
-                      </div>
-                      <div
-                        className="rounded-md border border-slate-200 bg-white p-3 text-center cursor-pointer hover-elevate"
-                        onClick={() => toast({ title: "Coming Soon", description: "Materials tracking will be available soon" })}
-                      >
-                        <Package className="w-5 h-5 mx-auto mb-1 text-[#2563EB]" />
-                        <span className="text-xs font-medium text-slate-700">Materials</span>
                       </div>
                     </div>
 

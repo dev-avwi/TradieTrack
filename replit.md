@@ -26,7 +26,8 @@ Core architectural and design decisions include:
 *   **Visual Form Builder**: Custom form builder with various field types and conditional logic.
 *   **Access Control**: Role-Based Access Control (RBAC) with granular permissions. Client data sanitization enforced on detail endpoints. Site photos filtered by job assignment for workers.
 *   **Rate Limiting**: Database-backed rate limiting (PostgreSQL `rate_limits` table) with in-memory fallback for chat and portal endpoints.
-*   **Offline Mode & Media Sync**: Comprehensive offline-first support with intelligent synchronization, merge-aware sync queue (prevents lost edits on rapid updates), and idempotent record creation (prevents duplicates after crash).
+*   **Offline Mode & Media Sync**: Comprehensive offline-first support with intelligent synchronization, merge-aware sync queue (prevents lost edits on rapid updates), idempotent record creation (prevents duplicates after crash), optimistic UI rollback on permanent failure, field-level conflict merging, and background sync failure notification.
+*   **Bulk Actions**: Bulk delete clients/quotes and bulk status update jobs via dedicated API endpoints (`/api/clients/bulk-delete`, `/api/quotes/bulk-delete`, `/api/jobs/bulk-status`).
 *   **Financial Reporting**: Recurring invoices/jobs, unified dashboards with KPIs, per-job profitability, payroll system, and various financial reports.
 *   **Time Tracking**: Includes break/pause functionality, billable/non-billable toggles, job costing, timesheet approvals, and GPS Proof of Presence.
 *   **Compliance**: Compliance & Licensing Module for document management and automated expiry notifications.

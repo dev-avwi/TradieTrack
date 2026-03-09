@@ -434,9 +434,7 @@ async function sendViaOutlook(
   integration: EmailIntegration,
   options: { to: string; subject: string; html: string; text?: string; attachments?: any[] }
 ): Promise<EmailResult> {
-  // TODO: Implement Microsoft Graph API sending
-  // For now, fall back to platform email
-  console.log('Outlook OAuth not yet implemented, falling back to platform email');
+  console.log('[Email] Outlook/Microsoft Graph API sending not yet available, falling back to platform email');
   return sendViaPlatform(options);
 }
 

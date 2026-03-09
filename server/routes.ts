@@ -11473,6 +11473,36 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  app.post("/api/clients/bulk-delete", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_CLIENTS), async (req: any, res) => {
+    try {
+      const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(100) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parsed.error.errors });
+      }
+      const userContext = await getUserContext(req.userId);
+      const results = { deleted: 0, failed: 0, errors: [] as string[] };
+      for (const id of parsed.data.ids) {
+        try {
+          const success = await storage.deleteClient(id, userContext.effectiveUserId);
+          if (success) {
+            results.deleted++;
+          } else {
+            results.failed++;
+            results.errors.push(`Client ${id} not found`);
+          }
+        } catch (err) {
+          results.failed++;
+          results.errors.push(`Failed to delete client ${id}`);
+        }
+      }
+      res.json(results);
+    } catch (error) {
+      console.error("Error in bulk delete clients:", error);
+      res.status(500).json({ error: "Failed to bulk delete clients" });
+    }
+  });
+
   // Client saved signature routes
   app.get("/api/clients/:id/saved-signature", requireAuth, async (req: any, res) => {
     try {
@@ -13204,7 +13234,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Jobs assigned to the current user (for staff tradie dashboard)
-  app.get("/api/jobs/my-jobs", requireAuth, async (req: any, res) => {
+  app.get("/api/jobs/my-jobs", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const jobs = await storage.getJobs(userContext.effectiveUserId);
@@ -13241,7 +13271,7 @@ Be specific about materials, colors, and features that would be included.`
 
   // Available jobs for team members to request assignment (minimal info for privacy)
   // Only shows unassigned, active jobs with restricted data
-  app.get("/api/jobs/available", requireAuth, async (req: any, res) => {
+  app.get("/api/jobs/available", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       
@@ -13295,7 +13325,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Request assignment to a job (for team members)
-  app.post("/api/jobs/:id/request-assignment", requireAuth, async (req: any, res) => {
+  app.post("/api/jobs/:id/request-assignment", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       
@@ -13502,7 +13532,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Today's jobs endpoint - Must come BEFORE the :id route
-  app.get("/api/jobs/today", requireAuth, async (req: any, res) => {
+  app.get("/api/jobs/today", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       let jobs = await storage.getJobs(userContext.effectiveUserId);
@@ -14578,6 +14608,68 @@ Be specific about materials, colors, and features that would be included.`
       }
       console.error("Error creating job:", error);
       res.status(500).json({ error: "Failed to create job" });
+    }
+  });
+
+  app.patch("/api/jobs/bulk-status", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
+    try {
+      const schema = z.object({
+        ids: z.array(z.string().uuid()).min(1).max(100),
+        status: z.enum(['pending', 'scheduled', 'in_progress', 'done', 'invoiced']),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parsed.error.errors });
+      }
+      const { ids, status } = parsed.data;
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const results = { updated: 0, failed: 0, errors: [] as string[] };
+      for (const id of ids) {
+        try {
+          const existingJob = await storage.getJob(id, effectiveUserId);
+          if (!existingJob) {
+            results.failed++;
+            results.errors.push(`Job ${id} not found`);
+            continue;
+          }
+          const now = new Date();
+          const updateData: any = { status };
+          if (status !== existingJob.status) {
+            if (status === 'in_progress' && !existingJob.startedAt) {
+              updateData.startedAt = now;
+            } else if (status === 'done' && !existingJob.completedAt) {
+              updateData.completedAt = now;
+            } else if (status === 'invoiced' && !existingJob.invoicedAt) {
+              updateData.invoicedAt = now;
+            }
+            if (status === 'pending' || status === 'scheduled') {
+              updateData.startedAt = null;
+              updateData.completedAt = null;
+              updateData.invoicedAt = null;
+            } else if (status === 'in_progress') {
+              updateData.completedAt = null;
+              updateData.invoicedAt = null;
+            } else if (status === 'done') {
+              updateData.invoicedAt = null;
+            }
+          }
+          const updated = await storage.updateJob(id, effectiveUserId, updateData);
+          if (updated) {
+            results.updated++;
+          } else {
+            results.failed++;
+            results.errors.push(`Failed to update job ${id}`);
+          }
+        } catch (err) {
+          results.failed++;
+          results.errors.push(`Error updating job ${id}`);
+        }
+      }
+      res.json(results);
+    } catch (error) {
+      console.error("Error in bulk status update jobs:", error);
+      res.status(500).json({ error: "Failed to bulk update job statuses" });
     }
   });
 
@@ -18672,6 +18764,36 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error) {
       console.error("Error deleting quote:", error);
       res.status(500).json({ error: "Failed to delete quote" });
+    }
+  });
+
+  app.post("/api/quotes/bulk-delete", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
+    try {
+      const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(100) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parsed.error.errors });
+      }
+      const userContext = await getUserContext(req.userId);
+      const results = { deleted: 0, failed: 0, errors: [] as string[] };
+      for (const id of parsed.data.ids) {
+        try {
+          const success = await storage.deleteQuote(id, userContext.effectiveUserId);
+          if (success) {
+            results.deleted++;
+          } else {
+            results.failed++;
+            results.errors.push(`Quote ${id} not found`);
+          }
+        } catch (err) {
+          results.failed++;
+          results.errors.push(`Failed to delete quote ${id}`);
+        }
+      }
+      res.json(results);
+    } catch (error) {
+      console.error("Error in bulk delete quotes:", error);
+      res.status(500).json({ error: "Failed to bulk delete quotes" });
     }
   });
 

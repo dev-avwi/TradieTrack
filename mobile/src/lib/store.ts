@@ -836,8 +836,9 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     const { jobs, todaysJobs } = get();
     const isOnline = useOfflineStore.getState().isOnline;
     
-    // Update local state immediately (optimistic update)
-    const updatedJob = jobs.find(j => j.id === jobId);
+    const previousJobs = jobs;
+    const previousTodaysJobs = todaysJobs;
+    
     set({
       jobs: jobs.map(j => j.id === jobId ? { ...j, status } : j),
       todaysJobs: todaysJobs.map(j => j.id === jobId ? { ...j, status } : j),
@@ -848,23 +849,33 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         const response = await api.patch<Job>(`/api/jobs/${jobId}`, { status });
         
         if (response.error) {
-          // Queue for later sync
-          await offlineStorage.updateJobOffline(jobId, { status });
+          try {
+            await offlineStorage.updateJobOffline(jobId, { status });
+          } catch (queueErr) {
+            if (__DEV__) console.log('[JobsStore] Failed to queue offline update, reverting:', queueErr);
+            set({ jobs: previousJobs, todaysJobs: previousTodaysJobs, error: 'Failed to update job status' });
+            return false;
+          }
         } else if (response.data) {
-          // Update cache with successful response
           await offlineStorage.cacheJobs([response.data]);
         }
       } catch (e) {
-        // Network error - queue for offline sync
         if (__DEV__) console.log('[JobsStore] Network error, queueing status update:', e);
-        await offlineStorage.updateJobOffline(jobId, { status });
+        try {
+          await offlineStorage.updateJobOffline(jobId, { status });
+        } catch (queueErr) {
+          if (__DEV__) console.log('[JobsStore] Failed to queue offline update, reverting:', queueErr);
+          set({ jobs: previousJobs, todaysJobs: previousTodaysJobs, error: 'Failed to update job status' });
+          return false;
+        }
       }
     } else {
-      // Offline - queue the update
       try {
         await offlineStorage.updateJobOffline(jobId, { status });
       } catch (e) {
-        if (__DEV__) console.log('[JobsStore] Failed to queue offline update:', e);
+        if (__DEV__) console.log('[JobsStore] Failed to queue offline update, reverting:', e);
+        set({ jobs: previousJobs, todaysJobs: previousTodaysJobs, error: 'Failed to update job status' });
+        return false;
       }
     }
 
@@ -1070,31 +1081,42 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
     const { clients } = get();
     const isOnline = useOfflineStore.getState().isOnline;
     
-    // Optimistic update
+    const previousClients = clients;
+    
     set({ clients: clients.map(c => c.id === id ? { ...c, ...client } : c) });
     
     if (isOnline) {
       try {
         const response = await api.patch<Client>(`/api/clients/${id}`, client);
         if (response.error) {
-          // Queue for later sync
-          await offlineStorage.updateClientOffline(id, client);
+          try {
+            await offlineStorage.updateClientOffline(id, client);
+          } catch (queueErr) {
+            if (__DEV__) console.log('[ClientsStore] Failed to queue offline update, reverting:', queueErr);
+            set({ clients: previousClients, error: 'Failed to update client' });
+            return false;
+          }
         } else if (response.data) {
           set({ clients: clients.map(c => c.id === id ? response.data! : c) });
-          // Update cache
           await offlineStorage.cacheClients([response.data]);
         }
       } catch (e) {
-        // Network error - queue for offline sync
         if (__DEV__) console.log('[ClientsStore] Network error, queueing update:', e);
-        await offlineStorage.updateClientOffline(id, client);
+        try {
+          await offlineStorage.updateClientOffline(id, client);
+        } catch (queueErr) {
+          if (__DEV__) console.log('[ClientsStore] Failed to queue offline update, reverting:', queueErr);
+          set({ clients: previousClients, error: 'Failed to update client' });
+          return false;
+        }
       }
     } else {
-      // Offline - queue the update
       try {
         await offlineStorage.updateClientOffline(id, client);
       } catch (e) {
-        if (__DEV__) console.log('[ClientsStore] Failed to queue offline update:', e);
+        if (__DEV__) console.log('[ClientsStore] Failed to queue offline update, reverting:', e);
+        set({ clients: previousClients, error: 'Failed to update client' });
+        return false;
       }
     }
     return true;
@@ -1287,30 +1309,42 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
     const { quotes } = get();
     const isOnline = useOfflineStore.getState().isOnline;
     
-    // Optimistic update
+    const previousQuotes = quotes;
+    
     set({ quotes: quotes.map(q => q.id === id ? { ...q, ...quote } : q) });
     
     if (isOnline) {
       try {
         const response = await api.patch<Quote>(`/api/quotes/${id}`, quote);
         if (response.error) {
-          // Queue for later sync
-          await offlineStorage.updateQuoteOffline(id, quote);
+          try {
+            await offlineStorage.updateQuoteOffline(id, quote);
+          } catch (queueErr) {
+            if (__DEV__) console.log('[QuotesStore] Failed to queue offline update, reverting:', queueErr);
+            set({ quotes: previousQuotes, error: 'Failed to update quote' });
+            return false;
+          }
         } else if (response.data) {
           set({ quotes: quotes.map(q => q.id === id ? response.data! : q) });
           await offlineStorage.cacheQuotes([response.data]);
         }
       } catch (e) {
-        // Network error - queue for offline sync
         if (__DEV__) console.log('[QuotesStore] Network error, queueing update:', e);
-        await offlineStorage.updateQuoteOffline(id, quote);
+        try {
+          await offlineStorage.updateQuoteOffline(id, quote);
+        } catch (queueErr) {
+          if (__DEV__) console.log('[QuotesStore] Failed to queue offline update, reverting:', queueErr);
+          set({ quotes: previousQuotes, error: 'Failed to update quote' });
+          return false;
+        }
       }
     } else {
-      // Offline - queue the update
       try {
         await offlineStorage.updateQuoteOffline(id, quote);
       } catch (e) {
-        if (__DEV__) console.log('[QuotesStore] Failed to queue offline update:', e);
+        if (__DEV__) console.log('[QuotesStore] Failed to queue offline update, reverting:', e);
+        set({ quotes: previousQuotes, error: 'Failed to update quote' });
+        return false;
       }
     }
     return true;
@@ -1320,27 +1354,41 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
     const { quotes } = get();
     const isOnline = useOfflineStore.getState().isOnline;
     
-    // Optimistic update
+    const previousQuotes = quotes;
+    
     set({ quotes: quotes.map(q => q.id === id ? { ...q, status } : q) });
     
     if (isOnline) {
       try {
         const response = await api.patch<Quote>(`/api/quotes/${id}`, { status });
         if (response.error) {
-          await offlineStorage.updateQuoteOffline(id, { status });
+          try {
+            await offlineStorage.updateQuoteOffline(id, { status });
+          } catch (queueErr) {
+            if (__DEV__) console.log('[QuotesStore] Failed to queue offline status update, reverting:', queueErr);
+            set({ quotes: previousQuotes, error: 'Failed to update quote status' });
+            return false;
+          }
         } else if (response.data) {
-          // Update cache with successful response
           await offlineStorage.cacheQuotes([response.data]);
         }
       } catch (e) {
         if (__DEV__) console.log('[QuotesStore] Network error, queueing status update:', e);
-        await offlineStorage.updateQuoteOffline(id, { status });
+        try {
+          await offlineStorage.updateQuoteOffline(id, { status });
+        } catch (queueErr) {
+          if (__DEV__) console.log('[QuotesStore] Failed to queue offline status update, reverting:', queueErr);
+          set({ quotes: previousQuotes, error: 'Failed to update quote status' });
+          return false;
+        }
       }
     } else {
       try {
         await offlineStorage.updateQuoteOffline(id, { status });
       } catch (e) {
-        if (__DEV__) console.log('[QuotesStore] Failed to queue offline update:', e);
+        if (__DEV__) console.log('[QuotesStore] Failed to queue offline status update, reverting:', e);
+        set({ quotes: previousQuotes, error: 'Failed to update quote status' });
+        return false;
       }
     }
     return true;
@@ -1530,30 +1578,42 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
     const { invoices } = get();
     const isOnline = useOfflineStore.getState().isOnline;
     
-    // Optimistic update
+    const previousInvoices = invoices;
+    
     set({ invoices: invoices.map(i => i.id === id ? { ...i, ...invoice } : i) });
     
     if (isOnline) {
       try {
         const response = await api.patch<Invoice>(`/api/invoices/${id}`, invoice);
         if (response.error) {
-          // Queue for later sync
-          await offlineStorage.updateInvoiceOffline(id, invoice);
+          try {
+            await offlineStorage.updateInvoiceOffline(id, invoice);
+          } catch (queueErr) {
+            if (__DEV__) console.log('[InvoicesStore] Failed to queue offline update, reverting:', queueErr);
+            set({ invoices: previousInvoices, error: 'Failed to update invoice' });
+            return false;
+          }
         } else if (response.data) {
           set({ invoices: invoices.map(i => i.id === id ? response.data! : i) });
           await offlineStorage.cacheInvoices([response.data]);
         }
       } catch (e) {
-        // Network error - queue for offline sync
         if (__DEV__) console.log('[InvoicesStore] Network error, queueing update:', e);
-        await offlineStorage.updateInvoiceOffline(id, invoice);
+        try {
+          await offlineStorage.updateInvoiceOffline(id, invoice);
+        } catch (queueErr) {
+          if (__DEV__) console.log('[InvoicesStore] Failed to queue offline update, reverting:', queueErr);
+          set({ invoices: previousInvoices, error: 'Failed to update invoice' });
+          return false;
+        }
       }
     } else {
-      // Offline - queue the update
       try {
         await offlineStorage.updateInvoiceOffline(id, invoice);
       } catch (e) {
-        if (__DEV__) console.log('[InvoicesStore] Failed to queue offline update:', e);
+        if (__DEV__) console.log('[InvoicesStore] Failed to queue offline update, reverting:', e);
+        set({ invoices: previousInvoices, error: 'Failed to update invoice' });
+        return false;
       }
     }
     return true;
@@ -1563,27 +1623,41 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
     const { invoices } = get();
     const isOnline = useOfflineStore.getState().isOnline;
     
-    // Optimistic update
+    const previousInvoices = invoices;
+    
     set({ invoices: invoices.map(i => i.id === id ? { ...i, status } : i) });
     
     if (isOnline) {
       try {
         const response = await api.patch<Invoice>(`/api/invoices/${id}`, { status });
         if (response.error) {
-          await offlineStorage.updateInvoiceOffline(id, { status });
+          try {
+            await offlineStorage.updateInvoiceOffline(id, { status });
+          } catch (queueErr) {
+            if (__DEV__) console.log('[InvoicesStore] Failed to queue offline status update, reverting:', queueErr);
+            set({ invoices: previousInvoices, error: 'Failed to update invoice status' });
+            return false;
+          }
         } else if (response.data) {
-          // Update cache with successful response
           await offlineStorage.cacheInvoices([response.data]);
         }
       } catch (e) {
         if (__DEV__) console.log('[InvoicesStore] Network error, queueing status update:', e);
-        await offlineStorage.updateInvoiceOffline(id, { status });
+        try {
+          await offlineStorage.updateInvoiceOffline(id, { status });
+        } catch (queueErr) {
+          if (__DEV__) console.log('[InvoicesStore] Failed to queue offline status update, reverting:', queueErr);
+          set({ invoices: previousInvoices, error: 'Failed to update invoice status' });
+          return false;
+        }
       }
     } else {
       try {
         await offlineStorage.updateInvoiceOffline(id, { status });
       } catch (e) {
-        if (__DEV__) console.log('[InvoicesStore] Failed to queue offline update:', e);
+        if (__DEV__) console.log('[InvoicesStore] Failed to queue offline status update, reverting:', e);
+        set({ invoices: previousInvoices, error: 'Failed to update invoice status' });
+        return false;
       }
     }
     return true;

@@ -81,9 +81,10 @@ export function AIFeaturesCard({ onNavigate, className }: AIFeaturesCardProps) {
             key={feature.id}
             className={cn(
               "flex items-center gap-3 p-3 rounded-lg border transition-colors",
+              feature.status === 'coming_soon' ? "opacity-60 cursor-not-allowed" :
               feature.onClick ? "cursor-pointer hover-elevate" : ""
             )}
-            onClick={feature.onClick}
+            onClick={feature.status !== 'coming_soon' ? feature.onClick : undefined}
             data-testid={`ai-feature-${feature.id}`}
           >
             <div className="p-2 rounded-lg bg-muted flex-shrink-0">

@@ -46,12 +46,6 @@ export default function TabLayout() {
           title: 'More',
         }}
       />
-      <Tabs.Screen
-        name="collect"
-        options={{
-          href: null,
-        }}
-      />
     </Tabs>
   );
 }

@@ -194,6 +194,8 @@ interface OfflineState {
   syncError: string | null;
   unresolvedConflictCount: number;
   backgroundSyncEnabled: boolean;
+  backgroundSyncRegistered: boolean;
+  backgroundSyncError: string | null;
   
   setOnline: (online: boolean) => void;
   setInitialized: (initialized: boolean) => void;
@@ -203,6 +205,8 @@ interface OfflineState {
   setSyncError: (error: string | null) => void;
   setUnresolvedConflictCount: (count: number) => void;
   setBackgroundSyncEnabled: (enabled: boolean) => void;
+  setBackgroundSyncRegistered: (registered: boolean) => void;
+  setBackgroundSyncError: (error: string | null) => void;
 }
 
 export const useOfflineStore = create<OfflineState>((set) => ({
@@ -214,13 +218,14 @@ export const useOfflineStore = create<OfflineState>((set) => ({
   syncError: null,
   unresolvedConflictCount: 0,
   backgroundSyncEnabled: false,
+  backgroundSyncRegistered: false,
+  backgroundSyncError: null,
   
   setOnline: (online) => set({ isOnline: online }),
   setInitialized: (initialized) => set({ isInitialized: initialized }),
   setSyncing: (syncing) => set({ isSyncing: syncing }),
   setLastSyncTime: (time) => {
     set({ lastSyncTime: time });
-    // Persist to metadata (fire and forget)
     if (time !== null) {
       offlineStorage.setMetadata('last_sync_time', time.toString()).catch(() => {});
     }
@@ -229,6 +234,8 @@ export const useOfflineStore = create<OfflineState>((set) => ({
   setSyncError: (error) => set({ syncError: error }),
   setUnresolvedConflictCount: (count) => set({ unresolvedConflictCount: count }),
   setBackgroundSyncEnabled: (enabled) => set({ backgroundSyncEnabled: enabled }),
+  setBackgroundSyncRegistered: (registered) => set({ backgroundSyncRegistered: registered }),
+  setBackgroundSyncError: (error) => set({ backgroundSyncError: error }),
 }));
 
 // ============ OFFLINE STORAGE SERVICE ============
@@ -2794,8 +2801,67 @@ class OfflineStorageService {
       // Keep local and retry sync
       if (__DEV__) console.log(`[OfflineStorage] Keeping local version for ${entityType} ${entityId}`);
     } else if (resolution === 'merged' && mergedData) {
-      // Apply merged data
-      // This would need entity-specific logic to update the local cache
+      const tableMap: Record<string, string> = {
+        job: 'jobs', client: 'clients', quote: 'quotes',
+        invoice: 'invoices', timeEntry: 'time_entries'
+      };
+      const table = tableMap[entityType];
+
+      if (entityType === 'job') {
+        await this.db.runAsync(
+          `UPDATE ${table} SET title = ?, description = ?, address = ?, status = ?, scheduled_at = ?, client_id = ?, client_name = ?, assigned_to = ?, notes = ?, cached_at = ?, pending_sync = 1, sync_action = 'update' WHERE id = ?`,
+          [mergedData.title, mergedData.description, mergedData.address, mergedData.status,
+           mergedData.scheduledAt, mergedData.clientId, mergedData.clientName, mergedData.assignedTo,
+           mergedData.notes, Date.now(), entityId]
+        );
+      } else if (entityType === 'client') {
+        await this.db.runAsync(
+          `UPDATE ${table} SET name = ?, email = ?, phone = ?, address = ?, notes = ?, cached_at = ?, pending_sync = 1, sync_action = 'update' WHERE id = ?`,
+          [mergedData.name, mergedData.email, mergedData.phone, mergedData.address,
+           mergedData.notes, Date.now(), entityId]
+        );
+      } else if (entityType === 'quote') {
+        await this.db.runAsync(
+          `UPDATE ${table} SET quote_number = ?, client_id = ?, client_name = ?, job_id = ?, status = ?, subtotal = ?, gst_amount = ?, total = ?, valid_until = ?, notes = ?, cached_at = ?, pending_sync = 1, sync_action = 'update' WHERE id = ?`,
+          [mergedData.quoteNumber, mergedData.clientId, mergedData.clientName, mergedData.jobId,
+           mergedData.status, mergedData.subtotal, mergedData.gstAmount, mergedData.total,
+           mergedData.validUntil, mergedData.notes, Date.now(), entityId]
+        );
+      } else if (entityType === 'invoice') {
+        await this.db.runAsync(
+          `UPDATE ${table} SET invoice_number = ?, client_id = ?, client_name = ?, job_id = ?, quote_id = ?, status = ?, subtotal = ?, gst_amount = ?, total = ?, amount_paid = ?, due_date = ?, paid_at = ?, notes = ?, cached_at = ?, pending_sync = 1, sync_action = 'update' WHERE id = ?`,
+          [mergedData.invoiceNumber, mergedData.clientId, mergedData.clientName, mergedData.jobId,
+           mergedData.quoteId, mergedData.status, mergedData.subtotal, mergedData.gstAmount,
+           mergedData.total, mergedData.amountPaid, mergedData.dueDate, mergedData.paidAt,
+           mergedData.notes, Date.now(), entityId]
+        );
+      } else if (entityType === 'timeEntry') {
+        await this.db.runAsync(
+          `UPDATE ${table} SET user_id = ?, job_id = ?, description = ?, start_time = ?, end_time = ?, notes = ?, cached_at = ?, pending_sync = 1, sync_action = 'update' WHERE id = ?`,
+          [mergedData.userId, mergedData.jobId, mergedData.description, mergedData.startTime,
+           mergedData.endTime, mergedData.notes, Date.now(), entityId]
+        );
+      }
+
+      const mergedPayload = { ...mergedData, id: entityId };
+      await this.db.runAsync(
+        `UPDATE sync_queue SET data = ?, retry_count = 0, last_error = NULL WHERE type = ? AND data LIKE ?`,
+        [JSON.stringify(mergedPayload), entityType, `%"id":"${entityId}"%`]
+      );
+
+      const existingQueueItem = await this.db.getFirstAsync(
+        `SELECT id FROM sync_queue WHERE type = ? AND data LIKE ?`,
+        [entityType, `%"id":"${entityId}"%`]
+      ) as any;
+
+      if (!existingQueueItem) {
+        const queueId = `merged_${entityType}_${entityId}_${Date.now()}`;
+        await this.db.runAsync(
+          `INSERT INTO sync_queue (id, type, action, data, created_at, retry_count) VALUES (?, ?, 'update', ?, ?, 0)`,
+          [queueId, entityType, JSON.stringify({ ...mergedData, id: entityId }), Date.now()]
+        );
+      }
+
       if (__DEV__) console.log(`[OfflineStorage] Applied merged data for ${entityType} ${entityId}`);
     }
     
@@ -2836,15 +2902,20 @@ class OfflineStorageService {
       });
       
       useOfflineStore.getState().setBackgroundSyncEnabled(true);
+      useOfflineStore.getState().setBackgroundSyncRegistered(true);
+      useOfflineStore.getState().setBackgroundSyncError(null);
       if (__DEV__) console.log('[OfflineStorage] Background sync registered');
       return true;
     } catch (error: any) {
-      // Background fetch requires native configuration (UIBackgroundModes in Info.plist)
-      // This is expected to fail in Expo Go/development - only works in standalone builds
-      if (error?.message?.includes('Background Fetch has not been configured')) {
+      const errorMessage = error?.message || String(error);
+      useOfflineStore.getState().setBackgroundSyncRegistered(false);
+      
+      if (errorMessage.includes('Background Fetch has not been configured')) {
+        useOfflineStore.getState().setBackgroundSyncError('Background sync not available (requires standalone build)');
         if (__DEV__) console.log('[OfflineStorage] Background sync not available (requires standalone build)');
       } else {
-        if (__DEV__) console.log('[OfflineStorage] Background sync registration skipped:', error?.message || error);
+        useOfflineStore.getState().setBackgroundSyncError(`Background sync registration failed: ${errorMessage}`);
+        if (__DEV__) console.log('[OfflineStorage] Background sync registration skipped:', errorMessage);
       }
       return false;
     }

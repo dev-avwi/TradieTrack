@@ -306,8 +306,7 @@ async function executeAutomationActions(
         case 'send_sms':
           if (client?.phone) {
             const smsMessage = replaceVariables(action.message || '', context, client, businessName);
-            // TODO: Integrate with Twilio SMS service when needed
-            console.log(`[Automations] SMS queued for ${client.phone}: ${smsMessage}`);
+            console.log(`[Automations] SMS automation not yet enabled. Would send to ${client.phone}: ${smsMessage}`);
           }
           break;
           
