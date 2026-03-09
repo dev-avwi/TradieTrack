@@ -20,7 +20,7 @@ import api from '../lib/api';
 let StripeTerminalProviderSDK: any = null;
 let useStripeTerminalSDK: any = null;
 
-const TAP_TO_PAY_ENABLED = false;
+const TAP_TO_PAY_ENABLED = __DEV__;
 
 // Try to import the real SDK - will fail in Expo Go
 try {
@@ -29,7 +29,7 @@ try {
     StripeTerminalProviderSDK = sdk.StripeTerminalProvider;
     useStripeTerminalSDK = sdk.useStripeTerminal;
   } else {
-    if (__DEV__) console.log('[StripeTerminal] SDK disabled - pending Apple Tap to Pay approval');
+    console.log('[StripeTerminal] SDK disabled in production - pending Apple Tap to Pay approval');
   }
 } catch (e) {
   if (__DEV__) console.log('[StripeTerminal] SDK not available - using fallback mode');

@@ -61,7 +61,7 @@ export interface CollectPaymentResult {
 let StripeTerminalSDK: any = null;
 let sdkAvailable = false;
 
-const TAP_TO_PAY_ENABLED = false;
+const TAP_TO_PAY_ENABLED = __DEV__;
 
 try {
   if (TAP_TO_PAY_ENABLED) {
@@ -69,7 +69,7 @@ try {
     sdkAvailable = true;
     if (__DEV__) console.log('[StripeTerminal] SDK loaded successfully');
   } else {
-    if (__DEV__) console.log('[StripeTerminal] SDK disabled - pending Apple Tap to Pay approval (Case-ID 18817353)');
+    console.log('[StripeTerminal] SDK disabled in production - pending Apple Tap to Pay approval (Case-ID 18817353)');
   }
 } catch (e) {
   if (__DEV__) console.log('[StripeTerminal] SDK not available - using simulation mode (Expo Go or missing native module)');

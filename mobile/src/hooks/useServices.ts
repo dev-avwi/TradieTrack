@@ -28,14 +28,14 @@ import locationTracking, { TrackingStatus, LocationUpdate, GeofenceEvent } from 
 import api from '../lib/api';
 
 let useStripeTerminalSDK: any = null;
-const TAP_TO_PAY_ENABLED = false;
+const TAP_TO_PAY_ENABLED = __DEV__;
 try {
   if (TAP_TO_PAY_ENABLED) {
     const sdk = require('@stripe/stripe-terminal-react-native');
     useStripeTerminalSDK = sdk.useStripeTerminal;
     if (__DEV__) console.log('[useStripeTerminal] SDK hook loaded successfully');
   } else {
-    if (__DEV__) console.log('[useStripeTerminal] SDK disabled - pending Apple Tap to Pay approval (Case-ID 18817353)');
+    console.log('[useStripeTerminal] SDK disabled in production - pending Apple Tap to Pay approval (Case-ID 18817353)');
   }
 } catch (e) {
   if (__DEV__) console.log('[useStripeTerminal] SDK not available - using simulation mode');
