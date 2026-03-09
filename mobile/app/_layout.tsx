@@ -567,8 +567,8 @@ function LoadingScreen({ colors }: { colors: any }) {
       backgroundColor: colors.background 
     }}>
       <View style={{ 
-        width: 140, 
-        height: 140, 
+        width: 180, 
+        height: 180, 
         justifyContent: 'center', 
         alignItems: 'center',
         marginBottom: 24,
@@ -577,9 +577,9 @@ function LoadingScreen({ colors }: { colors: any }) {
         <Animated.View
           style={{
             position: 'absolute',
-            width: 140,
-            height: 140,
-            borderRadius: 70,
+            width: 180,
+            height: 180,
+            borderRadius: 90,
             borderWidth: 3,
             borderColor: 'transparent',
             borderTopColor: colors.primary,
@@ -591,9 +591,9 @@ function LoadingScreen({ colors }: { colors: any }) {
         {/* Inner pulsing logo container */}
         <Animated.View
           style={{
-            width: 110,
-            height: 110,
-            borderRadius: 55,
+            width: 150,
+            height: 150,
+            borderRadius: 75,
             backgroundColor: colors.card,
             justifyContent: 'center',
             alignItems: 'center',
@@ -608,8 +608,8 @@ function LoadingScreen({ colors }: { colors: any }) {
           <Image 
             source={require('../assets/jobrunner-logo.png')} 
             style={{ 
-              width: 100, 
-              height: 100, 
+              width: 120, 
+              height: 120, 
               resizeMode: 'contain',
             }} 
           />

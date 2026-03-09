@@ -1198,6 +1198,88 @@ export default function CollectScreen() {
     }
   };
 
+  const handleTapToPayWithAmount = async (amountDollars: number) => {
+    const amountCents = Math.round(amountDollars * 100);
+    if (amountCents < 50) {
+      Alert.alert('Invalid Amount', 'Please enter an amount of at least $0.50');
+      return;
+    }
+
+    const useNativeSDK = !terminal.isSimulation && terminal.isSDKAvailable;
+    
+    if (!useNativeSDK) {
+      setShowTapToPayModal(true);
+      setPaymentStep('connecting');
+    }
+
+    try {
+      if (!terminal.isInitialized) {
+        const initialized = await terminal.initialize();
+        if (!initialized) {
+          if (!useNativeSDK) setPaymentStep('error');
+          else Alert.alert('Terminal Error', 'Failed to initialize Tap to Pay. Please try again.');
+          return;
+        }
+      }
+
+      if (!terminal.reader) {
+        const connected = await terminal.connectReader();
+        if (!connected) {
+          if (!useNativeSDK) setPaymentStep('error');
+          else Alert.alert('Connection Error', 'Failed to connect to reader. Please try again.');
+          return;
+        }
+      }
+
+      if (!useNativeSDK) {
+        setPaymentStep('waiting');
+      }
+      
+      const result = await terminal.collectPayment(amountCents, description || undefined);
+      
+      if (result) {
+        setLastPaymentAmount(amountCents);
+        
+        if (selectedInvoice) {
+          try {
+            await api.post(`/api/invoices/${selectedInvoice.id}/record-payment`, {
+              amount: (amountCents / 100).toFixed(2),
+              paymentMethod: 'card',
+              notes: 'Tap to Pay contactless payment',
+            });
+            fetchInvoices();
+          } catch (err) {
+            console.error('Failed to record invoice payment:', err);
+          }
+        }
+        
+        if (!useNativeSDK) {
+          setPaymentStep('success');
+          setTimeout(() => {
+            setShowTapToPayModal(false);
+            setPaymentStep('ready');
+            setShowReceiptModal(true);
+          }, 1500);
+        } else {
+          setShowReceiptModal(true);
+        }
+      } else {
+        if (!useNativeSDK) {
+          setPaymentStep('error');
+        } else {
+          Alert.alert('Payment Cancelled', 'The payment was not completed.');
+        }
+      }
+    } catch (error: any) {
+      console.error('Tap to Pay error:', error);
+      if (!useNativeSDK) {
+        setPaymentStep('error');
+      } else {
+        Alert.alert('Payment Error', error?.message || 'The payment could not be processed. Please try again.');
+      }
+    }
+  };
+
   // Send receipt via email
   const sendReceiptEmail = async () => {
     setSendingReceipt(true);
@@ -1798,29 +1880,31 @@ export default function CollectScreen() {
       return;
     }
     
-    // Set the amount and description
-    setAmount(customAmountValue);
-    setDescription(customAmountDescription || 'Payment');
+    const savedMethod = pendingPaymentMethod;
+    const savedAmount = customAmountValue;
+    const savedDescription = customAmountDescription || 'Payment';
+    const savedAmountNum = amountNum;
+    
+    setAmount(savedAmount);
+    setDescription(savedDescription);
     setShowCustomAmountModal(false);
     
-    // Proceed to the selected payment method
-    if (pendingPaymentMethod) {
-      // Small delay to allow state to update
+    if (savedMethod) {
       setTimeout(() => {
-        switch (pendingPaymentMethod) {
+        switch (savedMethod) {
           case 'record':
-            setRecordAmount(customAmountValue);
-            setRecordDescription(customAmountDescription || 'Payment');
+            setRecordAmount(savedAmount);
+            setRecordDescription(savedDescription);
             setShowRecordPaymentModal(true);
             break;
           case 'qr':
-            handleQRCodeDirectWithAmount(amountNum);
+            handleQRCodeDirectWithAmount(savedAmountNum);
             break;
           case 'link':
-            handlePaymentLinkDirectWithAmount(amountNum);
+            handlePaymentLinkDirectWithAmount(savedAmountNum);
             break;
           case 'tap':
-            handleTapToPay();
+            handleTapToPayWithAmount(savedAmountNum);
             break;
         }
         setPendingPaymentMethod(null);
