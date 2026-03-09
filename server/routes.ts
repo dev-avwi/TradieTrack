@@ -12,7 +12,7 @@ import { loginSchema, insertUserSchema, type SafeUser, requestLoginCodeSchema, v
 import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmail, sendPasswordResetEmail, sendTeamInviteEmail, sendJobAssignmentEmail, sendJobCompletionNotificationEmail, sendWelcomeEmail } from "./emailService";
 import { FreemiumService } from "./freemiumService";
 import { DEMO_USER } from "./demoData";
-import { ownerOnly, ownerOrManagerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, getWorkerPermissionContext } from "./permissions";
+import { ownerOnly, ownerOrManagerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, getWorkerPermissionContext, sanitizeClientData } from "./permissions";
 import { logTeamActivity } from "./activityService";
 import {
   insertBusinessSettingsSchema,
@@ -141,6 +141,7 @@ import {
   swmsSignatures,
   customForms,
   formSubmissions,
+  rateLimits,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, asc, and, gte, lte, isNotNull, isNull, inArray, or } from "drizzle-orm";
@@ -203,59 +204,143 @@ const paymentRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// In-memory user-based rate limiter for chat endpoints (30 messages per minute per user)
-const chatRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+// Database-backed rate limiter using the rate_limits table
+// Falls back to in-memory Maps if DB is unavailable
+const fallbackChatMap = new Map<string, { count: number; resetAt: number }>();
+const fallbackPortalMap = new Map<string, { count: number; resetAt: number }>();
+const fallbackEnRouteMap = new Map<string, number>();
+
+async function dbCheckRateLimit(
+  key: string,
+  maxCount: number,
+  windowMs: number,
+  fallbackMap: Map<string, { count: number; resetAt: number }>
+): Promise<{ allowed: boolean; count: number }> {
+  try {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + windowMs);
+
+    const existing = await db
+      .select()
+      .from(rateLimits)
+      .where(and(eq(rateLimits.key, key), gte(rateLimits.expiresAt, now)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const entry = existing[0];
+      if (entry.count >= maxCount) {
+        return { allowed: false, count: entry.count };
+      }
+      await db
+        .update(rateLimits)
+        .set({ count: entry.count + 1 })
+        .where(eq(rateLimits.id, entry.id));
+      return { allowed: true, count: entry.count + 1 };
+    }
+
+    await db.insert(rateLimits).values({
+      key,
+      count: 1,
+      windowStart: now,
+      expiresAt,
+    });
+    return { allowed: true, count: 1 };
+  } catch (error) {
+    console.error('[dbCheckRateLimit] DB error, using in-memory fallback:', error);
+    const nowMs = Date.now();
+    const entry = fallbackMap.get(key);
+    if (entry && nowMs < entry.resetAt) {
+      if (entry.count >= maxCount) {
+        return { allowed: false, count: entry.count };
+      }
+      entry.count++;
+      return { allowed: true, count: entry.count };
+    }
+    fallbackMap.set(key, { count: 1, resetAt: nowMs + windowMs });
+    return { allowed: true, count: 1 };
+  }
+}
+
+async function dbCheckEnRouteNotif(key: string, cooldownMs: number): Promise<boolean> {
+  try {
+    const now = new Date();
+    const existing = await db
+      .select()
+      .from(rateLimits)
+      .where(and(eq(rateLimits.key, key), gte(rateLimits.expiresAt, now)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      return true;
+    }
+
+    await db.insert(rateLimits).values({
+      key,
+      count: 1,
+      windowStart: now,
+      expiresAt: new Date(now.getTime() + cooldownMs),
+    });
+    return false;
+  } catch (error) {
+    console.error('[dbCheckEnRouteNotif] DB error, using fallback:', error);
+    const fallbackTs = fallbackEnRouteMap.get(key);
+    if (fallbackTs && Date.now() - fallbackTs < cooldownMs) {
+      return true;
+    }
+    fallbackEnRouteMap.set(key, Date.now());
+    return false;
+  }
+}
 
 function chatRateLimiterMiddleware(req: any, res: any, next: any) {
   const userId = req.userId;
   if (!userId) return next();
-  
-  const now = Date.now();
-  const entry = chatRateLimitMap.get(userId);
-  
-  if (entry && now < entry.resetAt) {
-    if (entry.count >= 30) {
-      return res.status(429).json({ error: 'Too many messages. Please slow down.' });
-    }
-    entry.count++;
-  } else {
-    chatRateLimitMap.set(userId, { count: 1, resetAt: now + 60000 });
-  }
-  
-  next();
+
+  const key = `chat:${userId}`;
+  dbCheckRateLimit(key, 30, 60000, fallbackChatMap)
+    .then(({ allowed }) => {
+      if (!allowed) {
+        return res.status(429).json({ error: 'Too many messages. Please slow down.' });
+      }
+      next();
+    })
+    .catch(() => next());
 }
 
-// In-memory IP-based rate limiter for public portal messages (10 messages per minute per IP)
-const portalIpRateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-// In-memory dedup for "Technician on their way" notifications (prevents re-sending per job per driving session)
-const enRouteNotifSent = new Map<string, number>(); // key: `${userId}-${jobId}`, value: timestamp
+// Idempotency cache for offline record creation (prevents duplicates on retry after crash)
+// Maps clientGeneratedId -> { createdRecord, expiresAt }
+const idempotencyCache = new Map<string, { record: any; expiresAt: number }>();
+const IDEMPOTENCY_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 function portalIpRateLimiterMiddleware(req: any, res: any, next: any) {
   const ip = req.ip || req.connection?.remoteAddress || 'unknown';
-  const now = Date.now();
-  const entry = portalIpRateLimitMap.get(ip);
-  
-  if (entry && now < entry.resetAt) {
-    if (entry.count >= 10) {
-      return res.status(429).json({ error: 'Too many messages. Please try again later.' });
-    }
-    entry.count++;
-  } else {
-    portalIpRateLimitMap.set(ip, { count: 1, resetAt: now + 60000 });
-  }
-  
-  next();
+  const key = `portal:${ip}`;
+  dbCheckRateLimit(key, 10, 60000, fallbackPortalMap)
+    .then(({ allowed }) => {
+      if (!allowed) {
+        return res.status(429).json({ error: 'Too many messages. Please try again later.' });
+      }
+      next();
+    })
+    .catch(() => next());
 }
 
-// Periodic cleanup of rate limit maps (every 5 minutes)
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of chatRateLimitMap) {
-    if (now >= entry.resetAt) chatRateLimitMap.delete(key);
+// Periodic cleanup of expired rate limit entries from DB and fallback maps (every 5 minutes)
+setInterval(async () => {
+  try {
+    await db.delete(rateLimits).where(lte(rateLimits.expiresAt, new Date()));
+  } catch (error) {
+    // Silently ignore DB cleanup errors
   }
-  for (const [key, entry] of portalIpRateLimitMap) {
-    if (now >= entry.resetAt) portalIpRateLimitMap.delete(key);
+  const now = Date.now();
+  for (const [key, entry] of fallbackChatMap) {
+    if (now >= entry.resetAt) fallbackChatMap.delete(key);
+  }
+  for (const [key, entry] of fallbackPortalMap) {
+    if (now >= entry.resetAt) fallbackPortalMap.delete(key);
+  }
+  for (const [key, entry] of idempotencyCache) {
+    if (now >= entry.expiresAt) idempotencyCache.delete(key);
   }
 }, 5 * 60 * 1000);
 
@@ -11305,7 +11390,7 @@ Be specific about materials, colors, and features that would be included.`
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
       }
-      res.json(client);
+      res.json(sanitizeClientData(client, userContext));
     } catch (error) {
       console.error("Error fetching client:", error);
       res.status(500).json({ error: "Failed to fetch client" });
@@ -11314,10 +11399,18 @@ Be specific about materials, colors, and features that would be included.`
 
   app.post("/api/clients", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_CLIENTS), async (req: any, res) => {
     try {
+      const { clientGeneratedId, ...body } = req.body;
+      if (clientGeneratedId) {
+        const cached = idempotencyCache.get(clientGeneratedId);
+        if (cached) return res.status(201).json(cached.record);
+      }
       // Use effectiveUserId (business owner's ID) for multi-tenant data scoping
       const effectiveUserId = req.effectiveUserId || req.userId;
-      const data = insertClientSchema.parse(req.body);
+      const data = insertClientSchema.parse(body);
       const client = await storage.createClient({ ...data, userId: effectiveUserId });
+      if (clientGeneratedId) {
+        idempotencyCache.set(clientGeneratedId, { record: client, expiresAt: Date.now() + IDEMPOTENCY_TTL });
+      }
       res.status(201).json(client);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -13015,7 +13108,20 @@ Be specific about materials, colors, and features that would be included.`
   app.get("/api/jobs/site-photos", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const jobs = await storage.getJobs(userContext.effectiveUserId);
+      let jobs = await storage.getJobs(userContext.effectiveUserId);
+      
+      if (!userContext.isOwner) {
+        const hasViewAll = userContext.permissions.includes('view_all' as any);
+        const hasManageTeam = userContext.permissions.includes('manage_team' as any);
+        if (!hasViewAll && !hasManageTeam) {
+          jobs = jobs.filter((j: any) => {
+            return j.assignedTo === req.userId || 
+                   j.assignedTo === userContext.teamMemberId ||
+                   (j.assignedTeamMembers && Array.isArray(j.assignedTeamMembers) && 
+                    (j.assignedTeamMembers.includes(req.userId) || j.assignedTeamMembers.includes(userContext.teamMemberId)));
+          });
+        }
+      }
       
       // Limit to recent 50 jobs for performance
       const recentJobs = jobs.slice(0, 50);
@@ -14317,6 +14423,11 @@ Be specific about materials, colors, and features that would be included.`
 
   app.post("/api/jobs", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
+      const { clientGeneratedId, ...reqBody } = req.body;
+      if (clientGeneratedId) {
+        const cached = idempotencyCache.get(clientGeneratedId);
+        if (cached) return res.status(201).json(cached.record);
+      }
       // Use effectiveUserId (business owner's ID) for multi-tenant data scoping
       const effectiveUserId = req.effectiveUserId || req.userId;
       
@@ -14331,7 +14442,7 @@ Be specific about materials, colors, and features that would be included.`
       }
 
       // Preprocess date fields from ISO strings to Date objects (mobile sends strings)
-      const body = { ...req.body };
+      const body = { ...reqBody };
       if (body.scheduledAt && typeof body.scheduledAt === 'string') {
         body.scheduledAt = new Date(body.scheduledAt);
       }
@@ -14457,6 +14568,9 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
       
+      if (clientGeneratedId) {
+        idempotencyCache.set(clientGeneratedId, { record: job, expiresAt: Date.now() + IDEMPOTENCY_TTL });
+      }
       res.status(201).json(job);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -18446,8 +18560,13 @@ Be specific about materials, colors, and features that would be included.`
   // Create quote (team-aware)
   app.post("/api/quotes", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
+      const { clientGeneratedId, ...reqBody } = req.body;
+      if (clientGeneratedId) {
+        const cached = idempotencyCache.get(clientGeneratedId);
+        if (cached) return res.status(201).json(cached.record);
+      }
       const userContext = await getUserContext(req.userId);
-      const { lineItems, ...quoteData } = req.body;
+      const { lineItems, ...quoteData } = reqBody;
       const data = insertQuoteSchema.parse(quoteData);
       
       // Generate quote number if not provided
@@ -18486,6 +18605,9 @@ Be specific about materials, colors, and features that would be included.`
         { quoteNumber: quote.number, clientName: client?.name, total: quote.total }
       );
       
+      if (clientGeneratedId) {
+        idempotencyCache.set(clientGeneratedId, { record: quoteWithItems, expiresAt: Date.now() + IDEMPOTENCY_TTL });
+      }
       res.status(201).json(quoteWithItems);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -19272,8 +19394,13 @@ Be specific about materials, colors, and features that would be included.`
   // Create invoice (team-aware)
   app.post("/api/invoices", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
+      const { clientGeneratedId, ...reqBody } = req.body;
+      if (clientGeneratedId) {
+        const cached = idempotencyCache.get(clientGeneratedId);
+        if (cached) return res.status(201).json(cached.record);
+      }
       const userContext = await getUserContext(req.userId);
-      const { lineItems, ...invoiceData } = req.body;
+      const { lineItems, ...invoiceData } = reqBody;
       
       // Get business settings to check GST
       const business = await storage.getBusinessSettings(userContext.effectiveUserId);
@@ -19391,6 +19518,9 @@ Be specific about materials, colors, and features that would be included.`
         { invoiceNumber: invoice.number, clientName: client?.name, total: invoice.total }
       );
       
+      if (clientGeneratedId) {
+        idempotencyCache.set(clientGeneratedId, { record: invoiceWithItems, expiresAt: Date.now() + IDEMPOTENCY_TTL });
+      }
       res.status(201).json(invoiceWithItems);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -24816,8 +24946,13 @@ Respond with JSON in this format:
 
   app.post("/api/time-entries", requireAuth, async (req: any, res) => {
     try {
+      const { clientGeneratedId, ...timeEntryBody } = req.body;
+      if (clientGeneratedId) {
+        const cached = idempotencyCache.get(clientGeneratedId);
+        if (cached) return res.status(201).json(cached.record);
+      }
       const userId = req.userId!;
-      const data = insertTimeEntrySchema.parse(req.body);
+      const data = insertTimeEntrySchema.parse(timeEntryBody);
       
       if (!validateGpsCoordinate(data.clockInLatitude, data.clockInLongitude)) {
         return res.status(400).json({ error: 'Invalid GPS coordinates for clock-in' });
@@ -24924,6 +25059,9 @@ Respond with JSON in this format:
         });
       }
       
+      if (clientGeneratedId) {
+        idempotencyCache.set(clientGeneratedId, { record: timeEntry, expiresAt: Date.now() + IDEMPOTENCY_TTL });
+      }
       res.status(201).json(timeEntry);
     } catch (error) {
       console.error('Error creating time entry:', error);
@@ -32494,10 +32632,9 @@ Respond with JSON in this format:
         const newStatus = speed > 5 ? 'driving' : activityType === 'working' ? 'working' : 'online';
         if (newStatus === 'driving' && currentJobId) {
           try {
-            const enRouteKey = `${userId}-${currentJobId}`;
-            const lastSent = enRouteNotifSent.get(enRouteKey);
-            const now = Date.now();
-            if (!lastSent || (now - lastSent) > 60 * 60 * 1000) {
+            const enRouteKey = `enroute:${userId}-${currentJobId}`;
+            const alreadySent = await dbCheckEnRouteNotif(enRouteKey, 60 * 60 * 1000);
+            if (!alreadySent) {
               const autoSettings = await storage.getAutomationSettings(userContext.effectiveUserId);
               if (autoSettings?.technicianEnRouteEnabled) {
                 const job = await storage.getJob(currentJobId);
@@ -32518,7 +32655,6 @@ Respond with JSON in this format:
                       message: msg,
                       jobId: currentJobId,
                     }).catch(e => console.warn('[EnRoute] SMS failed:', e.message));
-                    enRouteNotifSent.set(enRouteKey, now);
                     console.log(`[EnRoute] Sent "on their way" notification for job ${currentJobId}`);
                     try {
                       await storage.logAutomationProcessed(

@@ -1,105 +1,50 @@
 ### Overview
-JobRunner is a mobile-first web application for Australian tradespeople, designed to centralize job management, quoting, invoicing, and payment collection. Its core purpose is to accurately document job progress, agreements, and changes to prevent disputes and enhance efficiency within the trades industry. The platform supports Australian GST and AUD, aiming to streamline operations, improve financial management, and foster better communication for trades businesses.
+JobRunner is a mobile-first web application for Australian tradespeople. Its primary purpose is to centralize job management, quoting, invoicing, and payment collection, focusing on accurate documentation to prevent disputes and enhance efficiency. The platform supports Australian GST and AUD, aiming to streamline operations, improve financial management, and foster better communication within trades businesses. It includes capabilities for AI-powered business suggestions, quote generation, payment chasing, and comprehensive compliance management.
 
 ### User Preferences
 Preferred communication style: Simple, everyday language.
 
 ### System Architecture
-JobRunner utilizes an event-driven architecture with TypeScript. The frontend is a mobile-first React 18 application employing shadcn/ui, TailwindCSS, Wouter, and TanStack Query. The backend is an Express.js and TypeScript REST API, using Zod for validation, PostgreSQL for data storage, and Drizzle ORM. A React Native/Expo mobile app integrates with the API, featuring Zustand for state management and SQLite-based offline capabilities.
+JobRunner employs an event-driven architecture with TypeScript. The frontend is a mobile-first React 18 application built with shadcn/ui, TailwindCSS, Wouter, and TanStack Query. The backend is an Express.js and TypeScript REST API, utilizing Zod for validation, PostgreSQL for data storage, and Drizzle ORM. A React Native/Expo mobile app integrates with the API, featuring Zustand for state management and SQLite-based offline capabilities.
 
 Core architectural and design decisions include:
-*   **UI/UX**: Mobile-first design with card-based layouts, touch-optimized components, customizable theming, dynamic layouts, "Today's Schedule," and Smart Address Auto-fill. Full mobile parity is a key principle.
-*   **Authentication**: Supports Email/password, Google OAuth, Apple Sign-In, and secure password management.
-*   **Onboarding**: A multi-step wizard for business setup, including logo upload, Stripe integration, team invites, and sample data.
-*   **AI Integration**: Leverages GPT-4o-mini and GPT-4o vision for functionalities like business suggestions, quote generation, voice note transcription, photo auto-categorization, receipt scanning, SWMS hazard detection, AI Photo Analysis, AI Schedule Optimizer, and a Role-Aware AI Assistant.
-*   **PDF Generation**: Server-side generation of customizable quotes, invoices, and Job Proof Packs via Puppeteer, incorporating GPS Worker Presence Verification and photo GPS location stamps.
+*   **UI/UX**: Mobile-first design emphasizing card-based layouts, touch-optimized components, customizable theming, dynamic layouts, and full mobile parity. Key features include "Today's Schedule" and Smart Address Auto-fill.
+*   **Authentication**: Supports Email/password, Google OAuth, and Apple Sign-In.
+*   **Onboarding**: A multi-step wizard for business setup, including Stripe integration and team invites.
+*   **AI Integration**: Utilizes GPT-4o-mini and GPT-4o vision for functionalities like business suggestions, quote generation, voice note transcription, photo auto-categorization, receipt scanning, SWMS hazard detection, AI Photo Analysis, AI Schedule Optimizer, and a Role-Aware AI Assistant.
+*   **PDF Generation**: Server-side generation of customizable quotes, invoices, and Job Proof Packs, incorporating GPS Worker Presence Verification and photo GPS location stamps.
 *   **Analytics & Error Handling**: GA4 event tracking and comprehensive server-side error logging.
-*   **Job Workflow**: A 5-stage job status workflow with visual indicators and automated email confirmations. Quote-to-Job flow automates material transfer.
-*   **Financial System**: Live quote/invoice editor with real-time preview, catalog integration, deposit settings, digital signatures, rate snapshots, invoice locking, and audit trails.
-*   **Payment Collection**: Supports Stripe Payment Links, "Tap to Pay Request Flow," QR code support, Quick Collect Payment, and manual payment recording.
-*   **Smart Payment Chaser**: An AI-powered payment collection system with prioritized chase queues, one-tap reminders, and KPI dashboards.
-*   **Subscription & Billing**: Three-tier pricing with upgrade/downgrade functionality, granular team member access, and a 7-day free trial.
+*   **Job Workflow**: A 5-stage job status workflow with visual indicators and automated email confirmations, and automated material transfer from quotes to jobs.
+*   **Financial System**: Live quote/invoice editor with real-time preview, catalog integration, deposit settings, digital signatures, invoice locking, and audit trails.
+*   **Payment Collection**: Supports Stripe Payment Links, "Tap to Pay Request Flow," QR code support, Quick Collect Payment, and manual payment recording, with automatic receipt dispatch.
+*   **Smart Payment Chaser**: An AI-powered system for prioritized payment collection.
+*   **Subscription & Billing**: Three-tier pricing with granular team member access and a 7-day free trial.
 *   **Multi-Business Subcontractors**: Functionality for subcontractors to manage jobs across multiple businesses.
 *   **Communication**: Customizable email automation via SendGrid, PWA support, real-time communication via WebSockets, and two-way Twilio SMS integration with a unified Chat Hub.
-*   **Operations & Dispatch**: Features a Team Operations Center and a Visual Dispatch Board (Schedule, Kanban, Map views) with conflict detection and assignment-based dispatch with live location tracking.
+*   **Operations & Dispatch**: Features a Team Operations Center and a Visual Dispatch Board (Schedule, Kanban, Map views) with conflict detection and live location tracking.
 *   **Inventory & Equipment**: Unified management of stock, materials, and equipment.
-*   **Visual Form Builder**: Custom form builder with 9 field types, conditional logic, and CSV export.
-*   **Access Control**: Role-Based Access Control (RBAC) with granular permissions and preset roles.
-*   **Offline Mode & Media Sync**: Comprehensive offline-first support with intelligent synchronization.
+*   **Visual Form Builder**: Custom form builder with various field types and conditional logic.
+*   **Access Control**: Role-Based Access Control (RBAC) with granular permissions. Client data sanitization enforced on detail endpoints. Site photos filtered by job assignment for workers.
+*   **Rate Limiting**: Database-backed rate limiting (PostgreSQL `rate_limits` table) with in-memory fallback for chat and portal endpoints.
+*   **Offline Mode & Media Sync**: Comprehensive offline-first support with intelligent synchronization, merge-aware sync queue (prevents lost edits on rapid updates), and idempotent record creation (prevents duplicates after crash).
 *   **Financial Reporting**: Recurring invoices/jobs, unified dashboards with KPIs, per-job profitability, payroll system, and various financial reports.
-*   **Enterprise Features**: Advanced search and filtering, dual-view scheduler, progress payments, and profit margin analysis.
 *   **Time Tracking**: Includes break/pause functionality, billable/non-billable toggles, job costing, timesheet approvals, and GPS Proof of Presence.
-*   **Compliance**: Compliance & Licensing Module for document management, status tracking, and automated expiry notifications.
-*   **SWMS (Safe Work Method Statements)**: Full Australian WHS-compliant SWMS system with templates, risk matrix, PPE categories, worker sign-off, PDF generation, and AI Safety Scan.
-*   **Production Hardening**: Includes GPS coordinate validation, geofence event API idempotency, PDF generation concurrency limits, and robust error handling.
+*   **Compliance**: Compliance & Licensing Module for document management and automated expiry notifications.
+*   **SWMS (Safe Work Method Statements)**: Australian WHS-compliant system with templates, risk matrix, PPE categories, worker sign-off, PDF generation, and AI Safety Scan.
 *   **Autopilot Enhancements**: Automated "Technician On Their Way" notifications and batch invoicing.
 *   **CRM & Client Management**: Client tags, type classification, referral tracking, and smart segment filtering.
-*   **Deep-Link Navigation**: KPI widgets and action items deep-link to specific filtered views.
 *   **Documents Hub**: Consolidated view of quotes, invoices, and receipts with relationship links.
-*   **Client Portal Enhancement**: Enhanced Job Portal with visual progress timelines and custom messages. All client-facing pages (tracking, quotes, invoices, receipts) use a consistent branded design with `bg-brand` header, business logo, contact info, and "Powered by JobRunner" footer.
+*   **Client Portal Enhancement**: Enhanced Job Portal with visual progress timelines and custom messages, maintaining consistent branding.
 *   **Voice-to-Action Detection**: AI analysis of voice notes to detect and log action items.
-*   **Photo Auto-Tagging**: AI categorization of uploaded photos (before/after/progress/materials/general).
+*   **Photo Auto-Tagging**: AI categorization of uploaded photos.
 *   **Expenses Page**: Standalone page for tracking business expenses with a receipt scanner.
 *   **Photo Organiser**: Central photo library with categorization, filters, and bulk actions.
-*   **Templates Hub**: Document Styles with live preview for quotes, invoices, and jobs, and Safety Form Templates for inspections.
+*   **Templates Hub**: Document Styles with live preview for quotes, invoices, and jobs, and Safety Form Templates.
 *   **Smart GPS Features**: Real ETA in "On My Way" SMS using OSRM, Smart Job Dashboard showing distance and drive time, Photo MMS via Twilio.
-*   **Mobile GPS & Geofencing**: Geofence registration, auto-sync on startup, background tracking, geofence notifications, smart running late detection, and running late SMS with real ETA. Full push notification system with tap routing for various event types.
-
-### Mobile Production Readiness
-*   **Production domain**: All API URLs and links use `jobrunner.com.au` (previously `jobrunner.com`). Updated in `api.ts`, `app.json`, `eas.json`, `branding.tsx`, `support.tsx`, `LogoPicker.tsx`, and `APP_STORE_SUBMISSION.md`.
-*   **Console log guards**: All `console.log`, `console.warn`, and `console.error` calls across mobile app screens (`mobile/app/`) and source files (`mobile/src/`) are wrapped in `if (__DEV__)` guards so they don't execute in production builds.
-*   **Config consolidation**: `app.config.ts` now simply passes through `app.json` values and only overrides `extra.apiUrl` from `EXPO_PUBLIC_API_URL` env var. `app.json` is the single source of truth for all static config.
-*   **iOS microphone permission**: Added `NSMicrophoneUsageDescription` to `app.json` for voice note recording functionality.
-*   **API request timeouts**: All API requests in `api.ts` use `AbortController` with 15s timeout (default) and 60s for file uploads. Timeout errors return user-friendly messages.
-*   **EAS build env vars**: All EAS profiles (development, preview, production) now include `EXPO_PUBLIC_API_URL` pointing to `https://jobrunner.com.au`.
-*   **expo-build-properties**: Installed as a dependency (was referenced in plugins but not installed).
-*   **Theme-aware ConflictResolutionPanel**: Replaced all hardcoded hex colors with theme tokens (`colors.destructive`, `colors.card`, `colors.foreground`, etc.) so the conflict resolution UI works correctly in both light and dark modes.
-
-### Mobile Bug Fixes
-*   **Photo Annotation Multi-Color**: Fixed WebView HTML template to use stable refs instead of React state for color/stroke values. Color changes now go through `injectJavaScript` without regenerating the WebView, preserving existing annotations.
-*   **SWMS PDF Download**: Fixed "Authentication required" error by using authenticated `fetch` with Bearer token instead of `Linking.openURL`. PDF is saved to cache and opened via `expo-sharing`.
-*   **Modal safe area**: Expense and inventory form modals now use `useSafeAreaInsets()` to prevent Cancel/Save buttons from overlapping the phone status bar.
-*   **Beta/team gating**: `use-user-role.ts` now treats `'beta'` tier as having team and pro access. Team Operations page no longer shows "Upgrade to Team Plan" banner for beta users.
-*   **Files page counts**: Stats now show actual document counts and jobs with photos, not raw job counts. "JOBS" label changed to "WITH PHOTOS".
-*   **Settings Brand tab removed**: Removed redundant Brand tab from Settings page; standalone branding page at `mobile/app/more/branding.tsx` remains.
-*   **Autopilot tab padding**: Increased horizontal padding and gap between tabs and badges for better visual spacing.
-*   **Job view workflow consolidation**: Merged ScheduleNotificationCard, SmsContactCard, and NextActionCard into a single consolidated workflow card. Shows one primary action with urgency info and secondary "Text On My Way" option.
-*   **Payment Hub Smart Chaser declutter**: Hidden global KPI cards when on Smart Chaser tab (avoids 8 KPI cards), simplified chase queue buttons to icon-only for View/Call, removed verbose recommendation text.
-*   **Team member display**: Team member assignment on create-job now shows name/email instead of just role. Uses fallback chain: `name || email.split('@')[0] || username || 'Team Member'`.
-*   **Time picker**: Time picker on create-job is now always enabled (was incorrectly disabled on initial load).
-*   **Invoice KPI stats**: KPI cards on invoices page now display whole dollar amounts without decimals using `formatCurrency(amount, false)`.
-*   **Quote link generation**: Quote copy-link now generates acceptance token on demand via `/api/quotes/:id/generate-token` instead of requiring quote to be sent first.
-*   **Quote/invoice PATCH line items**: PATCH endpoints for quotes and invoices now sync line items (delete+recreate) when `lineItems` array is provided in request body. Computes `total` field from quantity*unitPrice.
-*   **Quote PDF signature**: PDF generation now falls back to `acceptanceSignatureData` field on quote record when no digital signature record exists. Added `?hideSignature=true` query param support.
-*   **Voice recorder error handling**: Improved error handling to distinguish permission errors, "already recording" state, and generic failures. Uses `error.name === 'AbortError'` instead of DOMException.
-*   **SMS/tracking links domain fix**: All public-facing URLs (SMS tracking, quote links, invoice links, receipts) now use `jobrunner.com.au` instead of `tradietrack.replit.app`. Fixed `urlHelper.ts`, `stripeClient.ts`, and `googleAuth.ts` to prefer custom domains from `REPLIT_DOMAINS` and use `APP_DOMAIN` env var.
-*   **Dashboard timer fix**: Timer elapsed display now uses `useRef` for the active timer to prevent interval resets from store re-renders. Dependencies narrowed to `activeTimer?.id`, `activeTimer?.isPaused`, `activeTimer?.startTime`.
-*   **OTA update check**: App now checks for EAS OTA updates on launch and prompts user to restart if an update is available.
-*   **SWMS PDF template mismatch fix**: SWMS PDF now uses the same visual structure as quote/invoice PDFs (white header with company name in brand color, logo placement, info-section/info-block layout, note-block styling per template noteStyle, consistent section-title styling with template headerBorderWidth). Previously it used a fixed full-width colored banner that didn't reflect Templates Hub selections.
-*   **AI Quote Generator photo/voice**: AI quote generator modal now supports photo upload (camera/gallery via expo-image-picker) and voice-to-text (via VoiceRecorder + /api/voice-notes/transcribe). Photos are uploaded to /api/upload and passed as photoUrls to /api/ai/generate-quote.
-*   **Quote/Invoice PATCH error handling**: Fixed false "success" messages when PATCH fails — now checks `response.error` before `response.data` since the API returns both on error responses.
-*   **Quote PDF signature toggle**: Added "Signature" toggle chip in quote preview for accepted quotes. Passes `hideSignature=true` query param to PDF endpoint. Also added `documentType` to job signatures mapping so PDF template correctly filters completion vs assignment signatures.
-*   **Quote PDF after photos**: Server quote PDF endpoint now handles `includeAfterPhotos` query param (was only handling before photos). Fixed `useCallback` deps to include `includeAfterPhotos` and `hideSignature`.
-*   **TimePicker/DatePicker theming**: Both components now use dynamic `useTheme()` hook instead of static hardcoded colors, with visual touch feedback via `activeOpacity`.
-*   **Voice recorder cleanup**: Added `cleanupExistingSession()` for pre-recording audio session cleanup, specific error handling for permissions/already-recording/native-module/interrupted states, and auto-retry logic.
-*   **Bottom nav 5-tab layout**: Added Map tab (map-pin icon) between Work and Chat tabs in `BottomNav.tsx`. Added unread notification badge count on Chat tab using `useNotificationsStore`. Adjusted padding for 5-tab layout.
-*   **Auth screen theme tokens**: Replaced hardcoded `#1e3a5f` button colors with `colors.primary`/`colors.primaryForeground` across login, register, forgot-password, and reset-password screens. Unified logo size to 80x80 across auth flow.
-*   **DatePicker in forms**: Replaced manual TextInput date fields in quote/invoice creation forms with proper `DatePicker` component. Added timezone-safe local date formatting via `formatLocalDate()` helper to prevent date-shift issues in AU timezones. Recurrence end date now has a "Clear" action and "No end date" empty state.
-*   **Tap to Pay SDK re-enabled**: `@stripe/stripe-terminal-react-native` import restored via try/catch `require()` in `stripe-terminal.ts`, `useServices.ts`, and `StripeTerminalProvider.tsx`. iOS version requirement unified to 17.6+ across all files. Collect-payment Tap to Pay button now triggers real `handleTapToPay()` flow with proper `isInitialized` gate. Build number bumped to 24.
-*   **SMS new conversation fix**: `new-sms-conversation.tsx` now calls `/api/sms/send` (existing endpoint) instead of non-existent `/api/sms/conversations`. Payload keys aligned to backend expectations (`clientPhone`, `clientName`, `message`).
-*   **SMS character limit**: Raised from 160 to 1600 characters. Shows SMS segment count when message exceeds 160 chars. `maxLength` on TextInput updated to match.
-*   **ChatHub resilience**: All 7 API calls in `chat-hub.tsx` `loadData()` `Promise.all` now have `.catch()` fallbacks. If `/api/jobs` or `/api/clients` fails, the hub still loads with available data instead of stuck in loading state.
-*   **Location tracking status accuracy**: `foreground_only` status added to `TrackingStatus` union type. When background location fails (e.g. missing UIBackgroundModes), status now reports `foreground_only` instead of misleading `tracking`. Updated in `location-store.ts` (`getActivityStatus`), `useServices.ts` (`isTracking`), and `BackgroundLocationIndicator.tsx` (both indicator and banner).
-*   **Location permission Settings deep-link**: When foreground or background location permission is denied, user now sees Alert with "Open Settings" button that calls `Linking.openSettings()` for quick access to iOS Settings.
-*   **On My Way SMS → Job Portal link**: "On My Way" SMS now sends clients to the full Job Portal (`/p/{token}`) instead of the minimal tracking page (`/track/{token}`). This gives clients access to live worker location, job timeline, photos, documents (quotes/invoices), two-way messaging, and checklist progress. Falls back to the simple tracking page if portal token creation fails. Also sets `workerStatus: 'on_my_way'` with `workerEtaMinutes` on the job so the portal shows real-time ETA.
-
-### Auto-Receipt Sending
-*   **Automatic receipt dispatch**: After any payment is collected (Tap to Pay, Payment Link/QR code, manual recording), the system now automatically sends a receipt via email (with PDF attachment) and SMS (with public receipt link) to the client. This is handled by the `autoSendReceiptAfterPayment` helper in `server/routes.ts`. The helper creates a receipt record if one doesn't exist, sends email via SendGrid with PDF, and sends SMS via Twilio with a public receipt URL. Runs asynchronously so it doesn't block the payment response. Wired into: `/api/terminal/payment-success`, `/api/public/payment-request/:token/confirm-payment`, and the `handleRecordPayment` handler.
-*   **SWMS Signature Pad**: Sign SWMS modal now includes a WebView-based canvas for drawing signatures, in addition to the name field. Signature data captured as PNG base64.
-*   **Smart Actions Tap-to-Execute**: Replaced toggle switches + "Run X Actions" button with simple tap-to-execute action items. Each action is a tappable row that immediately executes on press.
+*   **Mobile GPS & Geofencing**: Geofence registration, auto-sync on startup, background tracking, geofence notifications, smart running late detection, and running late SMS with real ETA. Full push notification system with tap routing.
 
 ### External Dependencies
-*   **Database**: PostgreSQL (via Neon serverless)
+*   **Database**: PostgreSQL (Neon serverless)
 *   **Email Service**: User SMTP, Gmail Connector, Outlook/Microsoft 365, SendGrid Platform
 *   **Payment Processing**: Stripe (Stripe Connect Express)
 *   **PDF Generation**: Puppeteer
@@ -113,5 +58,5 @@ Core architectural and design decisions include:
 *   **Accounting Integration**: Xero, MYOB AccountRight, QuickBooks Online
 *   **Calendar Integration**: Google Calendar
 *   **Weather API**: Open-Meteo
-*   **Routing/ETA**: OSRM (Open Source Routing Machine) for real driving time calculation, Haversine fallback
-*   **Tap to Pay (Stripe Terminal)**: `@stripe/stripe-terminal-react-native` SDK for contactless NFC payments on iPhone (iOS 17.6+). Apple entitlement `com.apple.developer.proximity-reader.payment.acceptance` granted. SDK loaded via try/catch `require()` in `stripe-terminal.ts`, `useServices.ts`, and `StripeTerminalProvider.tsx` — falls back to simulation mode in Expo Go. Requires EAS native build (`eas build --platform ios`). Build number 24.
+*   **Routing/ETA**: OSRM (Open Source Routing Machine)
+*   **Tap to Pay (Stripe Terminal)**: `@stripe/stripe-terminal-react-native` SDK (for iOS 17.6+)

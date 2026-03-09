@@ -4180,3 +4180,14 @@ export type SwmsHazard = typeof swmsHazards.$inferSelect;
 export const insertSwmsSignatureSchema = createInsertSchema(swmsSignatures).omit({ id: true, createdAt: true });
 export type InsertSwmsSignature = z.infer<typeof insertSwmsSignatureSchema>;
 export type SwmsSignature = typeof swmsSignatures.$inferSelect;
+
+export const rateLimits = pgTable("rate_limits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key", { length: 512 }).notNull(),
+  count: integer("count").notNull().default(1),
+  windowStart: timestamp("window_start").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+}, (table) => [
+  index("idx_rate_limits_key").on(table.key),
+  index("idx_rate_limits_expires").on(table.expiresAt),
+]);

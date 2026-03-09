@@ -1807,6 +1807,10 @@ class OfflineStorageService {
     const id = `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = Date.now();
     
+    if (action === 'create' && !data.clientGeneratedId) {
+      data.clientGeneratedId = `cg_${now}_${Math.random().toString(36).substr(2, 9)}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
     // Check for existing sync item for the same entity
     const existing = await this.db.getFirstAsync(
       `SELECT * FROM sync_queue WHERE type = ? AND json_extract(data, '$.id') = ?`,
@@ -1814,10 +1818,29 @@ class OfflineStorageService {
     );
     
     if (existing) {
-      // Update existing sync item
+      const existingAction = (existing as any).action;
+      let mergedData = data;
+      let finalAction = action;
+
+      if (existingAction === 'create' && action === 'update') {
+        const existingData = JSON.parse((existing as any).data);
+        mergedData = { ...existingData, ...data };
+        finalAction = 'create';
+      } else if (existingAction === 'update' && action === 'update') {
+        const existingData = JSON.parse((existing as any).data);
+        mergedData = { ...existingData, ...data };
+      } else if (existingAction === 'create' && action === 'delete') {
+        await this.db.runAsync(
+          `DELETE FROM sync_queue WHERE id = ?`,
+          [(existing as any).id]
+        );
+        await this.updatePendingSyncCount();
+        return;
+      }
+
       await this.db.runAsync(
         `UPDATE sync_queue SET action = ?, data = ?, created_at = ? WHERE id = ?`,
-        [action, JSON.stringify(data), now, (existing as any).id]
+        [finalAction, JSON.stringify(mergedData), now, (existing as any).id]
       );
     } else {
       // Insert new sync item

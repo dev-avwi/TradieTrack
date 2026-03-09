@@ -223,18 +223,18 @@ function ServicesInitializer() {
 
             case 'sms_received':
               if (data?.conversationId) {
-                router.push(`/more/sms/${data.conversationId}`);
+                router.push(`/more/sms-conversation?id=${data.conversationId}`);
               } else {
-                router.push('/more/sms');
+                router.push('/more/chat-hub');
               }
               break;
 
             case 'team_invite':
-              router.push('/more/team');
+              router.push('/more/team-management');
               break;
 
             case 'timesheet_submitted':
-              router.push('/more/timesheets');
+              router.push('/more/team-management');
               break;
 
             case 'trial_expiring':

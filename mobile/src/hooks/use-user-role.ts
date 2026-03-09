@@ -204,6 +204,17 @@ export function useUserRole() {
             teamMemberInfo: data,
             timestamp: Date.now(),
           });
+
+          useAuthStore.setState({
+            roleInfo: {
+              roleId: data.roleId,
+              roleName: data.roleName,
+              permissions,
+              hasCustomPermissions: data.useCustomPermissions ?? false,
+              isOwner: role === 'owner' || role === 'solo_owner',
+            },
+            isWorker: role === 'staff',
+          });
         }
         
         fetchingUsers.delete(userId);
@@ -226,13 +237,26 @@ export function useUserRole() {
             ? (teamSize === '1' || teamSize === 'solo' ? 'solo_owner' : 'owner')
             : 'staff';
           
+          const ownerPermissions = role === 'owner' || role === 'solo_owner' 
+            ? Object.values(PERMISSION_KEYS) 
+            : [];
           roleCache.set(userId, {
             role,
-            permissions: role === 'owner' || role === 'solo_owner' 
-              ? Object.values(PERMISSION_KEYS) 
-              : [],
+            permissions: ownerPermissions,
             teamMemberInfo: null,
             timestamp: Date.now(),
+          });
+
+          const isOwnerRole = role === 'owner' || role === 'solo_owner';
+          useAuthStore.setState({
+            roleInfo: {
+              roleId: isOwnerRole ? 'owner' : 'staff',
+              roleName: isOwnerRole ? 'OWNER' : 'STAFF',
+              permissions: isOwnerRole ? ['*'] : ownerPermissions,
+              hasCustomPermissions: false,
+              isOwner: isOwnerRole,
+            },
+            isWorker: !isOwnerRole,
           });
         }
         
