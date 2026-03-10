@@ -7,6 +7,7 @@ export default function TabLayout() {
   return (
     <Tabs
       tabBar={() => null}
+      safeAreaInsets={{ bottom: 0, top: 0, left: 0, right: 0 }}
       sceneContainerStyle={{ backgroundColor: 'transparent' }}
       screenOptions={{
         headerShown: false,
