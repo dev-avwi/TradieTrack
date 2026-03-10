@@ -7,10 +7,12 @@ export default function TabLayout() {
   return (
     <Tabs
       tabBar={() => null}
+      sceneContainerStyle={{ backgroundColor: 'transparent' }}
       screenOptions={{
         headerShown: false,
         animation: 'none',
         lazy: true,
+        sceneStyle: { backgroundColor: 'transparent' },
       }}
     >
       <Tabs.Screen

@@ -221,10 +221,7 @@ const createStyles = (colors: ThemeColors, isPad: boolean = false) => StyleSheet
     left: 0,
     right: 0,
     backgroundColor: colors.background,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
     zIndex: 100,
-    ...shadows.nav as object,
   },
   navBar: {
     flexDirection: 'row',

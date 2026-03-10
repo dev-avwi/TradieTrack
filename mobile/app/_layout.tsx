@@ -689,13 +689,12 @@ function RootLayoutContent() {
             animationDuration: 200,
             gestureEnabled: true,
             gestureDirection: 'horizontal',
-            presentation: 'card',
             freezeOnBlur: true,
           }}
         >
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
           <Stack.Screen name="job/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="more" options={{ headerShown: false }} />
         </Stack>

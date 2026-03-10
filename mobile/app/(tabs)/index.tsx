@@ -3129,7 +3129,7 @@ export default function DashboardScreen() {
       </View>}
 
       {/* Bottom Spacing */}
-      <View style={{ height: spacing['4xl'] + 80 }} />
+      <View style={{ height: spacing.md }} />
     </ScrollView>
   </>
   );
