@@ -252,7 +252,7 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
     
     // Define common variables used across all email branches
     const brandColor = businessSettings.brandColor || '#2563eb';
-    const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(quoteWithItems.total || '0'));
+    const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(String(quoteWithItems.total || '0')));
 
     // 8. Send email (skip if user is sending via Gmail themselves)
     let emailSentVia = 'gmail_user'; // Default for skipEmail mode
@@ -448,7 +448,7 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
     try {
       // Get the email subject and body that was used
       const loggedSubject = customSubject || `Quote ${updatedQuote.number || updatedQuote.id} from ${businessSettings.businessName}`;
-      const loggedBody = customMessage || `G'day ${client.name},\n\nPlease find attached our quote for ${updatedQuote.title || 'the requested work'}.\n\nTotal: ${new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(updatedQuote.total || '0'))}\n\nCheers,\n${businessSettings.businessName}`;
+      const loggedBody = customMessage || `G'day ${client.name},\n\nPlease find attached our quote for ${updatedQuote.title || 'the requested work'}.\n\nTotal: ${new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(String(updatedQuote.total || '0')))}\n\nCheers,\n${businessSettings.businessName}`;
       
       await storage.createActivityLog({
         userId: req.userId,
@@ -599,7 +599,7 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
     
     // Define common variables used across all email branches
     const brandColor = businessSettings.brandColor || '#16a34a'; // Green for invoices
-    const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoiceWithItems.total || '0'));
+    const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(String(invoiceWithItems.total || '0')));
     const isGstRegistered = businessSettings.gstEnabled && businessSettings.abn;
     const documentType = isGstRegistered ? 'TAX INVOICE' : 'INVOICE';
 
@@ -946,7 +946,7 @@ export const handleInvoiceMarkPaid = async (req: any, res: any, storage: any) =>
 
     // Log activity for dashboard feed
     try {
-      const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(invoiceWithItems.total || '0'));
+      const formattedTotal = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(parseFloat(String(invoiceWithItems.total || '0')));
       await storage.createActivityLog({
         userId: req.userId,
         type: 'invoice_paid',
@@ -1206,7 +1206,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
     const formattedTotal = new Intl.NumberFormat('en-AU', { 
       style: 'currency', 
       currency: 'AUD' 
-    }).format(parseFloat(quoteWithItems.total || '0'));
+    }).format(parseFloat(String(quoteWithItems.total || '0')));
     
     let subject = customSubject || `Quote ${quoteNumber} from ${businessSettings.businessName} - ${formattedTotal}`;
     let emailHtml: string;
@@ -1555,10 +1555,10 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
     const formattedTotal = new Intl.NumberFormat('en-AU', { 
       style: 'currency', 
       currency: 'AUD' 
-    }).format(parseFloat(invoiceWithItems.total || '0'));
+    }).format(parseFloat(String(invoiceWithItems.total || '0')));
     
     // "TAX INVOICE" label for GST-registered businesses
-    const isTaxInvoice = businessSettings.gstRegistered && parseFloat(invoiceWithItems.total || '0') > 82.50;
+    const isTaxInvoice = businessSettings.gstRegistered && parseFloat(String(invoiceWithItems.total || '0')) > 82.50;
     const invoiceLabel = isTaxInvoice ? 'Tax Invoice' : 'Invoice';
     
     let subject = customSubject || `${invoiceLabel} ${invoiceNumber} from ${businessSettings.businessName} - ${formattedTotal}`;
@@ -1803,7 +1803,7 @@ export const handleSendPaymentLink = async (req: any, res: any, storage: any) =>
     const formattedTotal = new Intl.NumberFormat('en-AU', { 
       style: 'currency', 
       currency: 'AUD' 
-    }).format(parseFloat(invoice.total || '0'));
+    }).format(parseFloat(String(invoice.total || '0')));
     const isGstRegistered = businessSettings.gstEnabled && businessSettings.abn;
     const documentType = isGstRegistered ? 'Tax Invoice' : 'Invoice';
     

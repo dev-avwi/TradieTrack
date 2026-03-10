@@ -1195,6 +1195,18 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
             </View>
           )}
 
+          {activeReportTab === 'overview' && !summary && !isLoading && (
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIconContainer}>
+                <Feather name="bar-chart" size={40} color={colors.mutedForeground} />
+              </View>
+              <Text style={styles.emptyTitle}>No Report Data</Text>
+              <Text style={styles.emptyText}>
+                Create jobs, quotes, and invoices to generate business reports and insights.
+              </Text>
+            </View>
+          )}
+
           {activeReportTab === 'overview' && summary && (
             <>
               <Text style={styles.sectionTitle}>KEY METRICS</Text>

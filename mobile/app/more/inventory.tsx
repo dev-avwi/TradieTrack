@@ -329,9 +329,9 @@ export default function InventoryScreen() {
       if (itemForm.costPrice) payload.costPrice = itemForm.costPrice;
       if (itemForm.sellPrice) payload.sellPrice = itemForm.sellPrice;
       if (itemForm.categoryId) payload.categoryId = itemForm.categoryId;
-      if (itemForm.minimumStock) payload.minimumStock = parseInt(itemForm.minimumStock);
-      if (itemForm.reorderLevel) payload.reorderLevel = parseInt(itemForm.reorderLevel);
-      if (itemForm.reorderQuantity) payload.reorderQuantity = parseInt(itemForm.reorderQuantity);
+      if (itemForm.minimumStock) payload.minimumStock = parseFloat(itemForm.minimumStock);
+      if (itemForm.reorderLevel) payload.reorderLevel = parseFloat(itemForm.reorderLevel);
+      if (itemForm.reorderQuantity) payload.reorderQuantity = parseFloat(itemForm.reorderQuantity);
       if (itemForm.location) payload.location = itemForm.location;
       if (itemForm.description) payload.description = itemForm.description;
 
@@ -395,7 +395,7 @@ export default function InventoryScreen() {
   };
 
   const handleAdjustmentSubmit = async () => {
-    if (!adjustmentForm.quantity || parseInt(adjustmentForm.quantity) === 0) {
+    if (!adjustmentForm.quantity || parseFloat(adjustmentForm.quantity) === 0) {
       Alert.alert('Required', 'Quantity is required.');
       return;
     }
@@ -404,7 +404,7 @@ export default function InventoryScreen() {
     try {
       const payload: Record<string, unknown> = {
         type: adjustmentForm.type,
-        quantity: parseInt(adjustmentForm.quantity),
+        quantity: parseFloat(adjustmentForm.quantity),
       };
       if (adjustmentForm.notes) payload.notes = adjustmentForm.notes;
       if (adjustmentForm.reference) payload.reference = adjustmentForm.reference;
