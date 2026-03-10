@@ -4045,7 +4045,7 @@ export const generateJobProofPackPDF = (data: {
       align-items: flex-start;
       margin-bottom: 16px;
       padding-bottom: 12px;
-      border-bottom: 3px solid ${brandColor};
+      ${template.showHeaderDivider ? `border-bottom: ${template.headerBorderWidth} solid ${brandColor};` : 'border-bottom: none;'}
     }
     .company-info { flex: 1; }
     .company-name { font-size: 22px; font-weight: ${template.headingWeight}; color: ${brandColor}; margin-bottom: 4px; }
@@ -4068,17 +4068,16 @@ export const generateJobProofPackPDF = (data: {
       color: ${brandColor};
       margin-bottom: 8px;
       padding-bottom: 4px;
-      border-bottom: 1px solid ${brandColor}40;
+      ${template.id === 'minimal' ? 'border-bottom: 1px solid #e5e7eb;' : `border-bottom: 1px solid ${brandColor}40;`}
       display: flex;
       align-items: center;
       gap: 6px;
     }
     .section-icon { font-size: 16px; }
 
-    .proof-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+    .proof-table { width: 100%; ${template.id === 'modern' ? 'border-collapse: separate; border-spacing: 0;' : 'border-collapse: collapse;'} margin-bottom: 4px; }
     .proof-table th {
-      background: ${brandColor};
-      color: white;
+      ${template.tableStyle === 'minimal' ? `background: transparent; color: #1a1a1a; border-bottom: 2px solid ${brandColor};` : `background: ${brandColor}; color: white;`}
       padding: 6px 8px;
       text-align: left;
       font-weight: 600;
@@ -4086,16 +4085,28 @@ export const generateJobProofPackPDF = (data: {
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-    .proof-table td { padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; vertical-align: top; }
+    ${template.id === 'modern' ? `
+    .proof-table th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+    .proof-table th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+    ` : ''}
+    .proof-table td { padding: 6px 8px; font-size: 11px; vertical-align: top; }
+    ${template.tableStyle === 'striped' ? `
+    .proof-table td { border-bottom: none; }
     .proof-table tbody tr:nth-child(odd) { background: #f9fafb; }
+    .proof-table tbody tr:nth-child(even) { background: transparent; }
+    ` : template.tableStyle === 'minimal' ? `
+    .proof-table td { border-bottom: 1px solid #e5e7eb; }
+    ` : `
+    .proof-table td { border-bottom: 1px solid #eee; }
+    `}
     .proof-table tfoot td { background: transparent; }
 
-    .empty-message { color: #888; font-style: italic; padding: 12px; background: #f9fafb; border-radius: 6px; text-align: center; font-size: 11px; }
+    .empty-message { color: #888; font-style: italic; padding: 12px; background: ${template.id === 'minimal' ? 'transparent; border: 1px solid #e5e7eb;' : '#f9fafb;'} border-radius: 6px; text-align: center; font-size: 11px; }
 
     .status-pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; background: #f3f4f6; color: #374151; }
 
     .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .photo-card { border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+    .photo-card { border: 1px solid ${template.id === 'minimal' ? '#e5e7eb' : '#e5e7eb'}; border-radius: ${template.id === 'modern' ? '8px' : '6px'}; overflow: hidden; }
     .photo-img { width: 100%; height: 140px; object-fit: cover; display: block; }
     .photo-meta { padding: 4px 6px; font-size: 9px; color: #555; }
     .photo-category { display: inline-block; background: ${brandColor}15; color: ${brandColor}; padding: 1px 6px; border-radius: 8px; font-weight: 600; text-transform: capitalize; margin-right: 4px; }
@@ -4111,7 +4122,7 @@ export const generateJobProofPackPDF = (data: {
     .footer {
       margin-top: 20px;
       padding-top: 12px;
-      border-top: 2px solid ${brandColor};
+      ${template.id === 'minimal' ? 'border-top: 1px solid #e5e7eb;' : `border-top: 2px solid ${brandColor};`}
       text-align: center;
       color: #888;
       font-size: 10px;
