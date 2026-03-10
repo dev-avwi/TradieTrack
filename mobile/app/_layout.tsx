@@ -603,13 +603,14 @@ function LoadingScreen({ colors }: { colors: any }) {
             shadowRadius: 20,
             elevation: 8,
             transform: [{ scale: pulseAnim }],
+            overflow: 'hidden',
           }}
         >
           <Image 
             source={require('../assets/jobrunner-logo.png')} 
             style={{ 
-              width: 90, 
-              height: 90, 
+              width: 120, 
+              height: 120, 
               resizeMode: 'contain',
             }} 
           />
