@@ -245,23 +245,23 @@ const createStyles = (colors: any) => StyleSheet.create({
   tabContainer: {
     backgroundColor: colors.card,
     borderRadius: radius['2xl'],
-    padding: spacing.sm,
+    padding: spacing.xs,
     marginBottom: spacing.md,
     marginTop: spacing.sm,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
     borderRadius: radius.xl,
-    gap: spacing.sm,
+    gap: 4,
   },
   activeTab: {
     backgroundColor: colors.primary + '15',
@@ -276,12 +276,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
   },
   tabBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 5,
+    paddingHorizontal: 4,
   },
   tabBadgeText: {
     ...typography.badge,
@@ -1502,11 +1502,11 @@ export default function AutopilotScreen() {
             >
               <Feather
                 name="zap"
-                size={iconSizes.md}
+                size={14}
                 color={activeTab === 'automations' ? colors.primary : colors.mutedForeground}
               />
-              <Text style={[styles.tabText, activeTab === 'automations' && styles.activeTabText]}>
-                My Automations
+              <Text style={[styles.tabText, activeTab === 'automations' && styles.activeTabText]} numberOfLines={1}>
+                Automations
               </Text>
               <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
                 <Text style={styles.tabBadgeText}>{automations.length}</Text>
@@ -1520,10 +1520,10 @@ export default function AutopilotScreen() {
             >
               <Feather
                 name="copy"
-                size={iconSizes.md}
+                size={14}
                 color={activeTab === 'templates' ? colors.primary : colors.mutedForeground}
               />
-              <Text style={[styles.tabText, activeTab === 'templates' && styles.activeTabText]}>
+              <Text style={[styles.tabText, activeTab === 'templates' && styles.activeTabText]} numberOfLines={1}>
                 Templates
               </Text>
               <View style={[styles.tabBadge, { backgroundColor: '#6b7280' }]}>
@@ -1538,10 +1538,10 @@ export default function AutopilotScreen() {
             >
               <Feather
                 name="activity"
-                size={iconSizes.md}
+                size={14}
                 color={activeTab === 'activity' ? colors.primary : colors.mutedForeground}
               />
-              <Text style={[styles.tabText, activeTab === 'activity' && styles.activeTabText]}>
+              <Text style={[styles.tabText, activeTab === 'activity' && styles.activeTabText]} numberOfLines={1}>
                 Activity
               </Text>
               {activityLogs.length > 0 && (
