@@ -7,7 +7,6 @@ import * as Haptics from 'expo-haptics';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useScrollToTop } from '../contexts/ScrollContext';
 import { isIPad } from '../lib/device';
-import { shadows } from '../lib/design-tokens';
 import { useNotificationsStore } from '../lib/notifications-store';
 
 interface NavItem {
