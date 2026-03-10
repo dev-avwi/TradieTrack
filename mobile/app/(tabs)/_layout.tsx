@@ -24,7 +24,7 @@ export default function TabLayout() {
         tabBarIconStyle: { display: 'none' },
         tabBarButton: () => null,
         animation: 'none',
-        lazy: false,
+        lazy: true,
       }}
     >
       <Tabs.Screen

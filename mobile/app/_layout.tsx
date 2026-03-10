@@ -640,7 +640,6 @@ function RootLayoutContent() {
   const { colors, isDark } = useTheme();
   const [appReady, setAppReady] = useState(false);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
-  const dataPreloaded = useRef(false);
 
   useEffect(() => {
     checkAuth();
@@ -661,30 +660,10 @@ function RootLayoutContent() {
   }, []);
 
   useEffect(() => {
-    if (isInitialized && !isLoading && isAuthenticated && !dataPreloaded.current) {
-      dataPreloaded.current = true;
-      setAppReady(true);
-      
-      const preloadData = async () => {
-        try {
-          const { useJobsStore, useDashboardStore, useClientsStore } = require('../src/lib/store');
-          Promise.all([
-            useJobsStore.getState().fetchTodaysJobs(),
-            useDashboardStore.getState().fetchStats(),
-            useClientsStore.getState().fetchClients(),
-          ]).catch(() => {});
-        } catch (error) {
-          if (__DEV__) console.log('[App] Data preload error (non-fatal):', error);
-        }
-      };
-      
-      preloadData();
-    }
-    
-    if (isInitialized && !isLoading && !isAuthenticated) {
+    if (isInitialized && !isLoading) {
       setAppReady(true);
     }
-  }, [isInitialized, isLoading, isAuthenticated]);
+  }, [isInitialized, isLoading]);
 
   const showLoading = !isInitialized || isLoading || !appReady || !minTimeElapsed;
   
