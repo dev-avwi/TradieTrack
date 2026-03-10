@@ -8820,28 +8820,48 @@ export default function JobDetailScreen() {
           title: '',
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
-          headerRight: () => canDeleteJobs ? (
-            <TouchableOpacity
-              onPress={handleDeleteJob}
-              disabled={isDeletingJob}
-              style={{ 
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: colorWithOpacity(colors.destructive, 0.1),
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: spacing.sm,
-              }}
-              data-testid="button-delete-job"
-            >
-              {isDeletingJob ? (
-                <ActivityIndicator size="small" color={colors.destructive} />
-              ) : (
-                <Feather name="trash-2" size={18} color={colors.destructive} />
+          headerRight: () => (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              {(job.status === 'done' || job.status === 'invoiced') && (isOwnerOrManager || isSoloOwner) && (
+                <TouchableOpacity
+                  onPress={() => setShowProofPackModal(true)}
+                  style={{ 
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: colorWithOpacity(colors.primary, 0.1),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  data-testid="button-proof-pack-header"
+                >
+                  <Feather name="file-text" size={18} color={colors.primary} />
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-          ) : undefined,
+              {canDeleteJobs && (
+                <TouchableOpacity
+                  onPress={handleDeleteJob}
+                  disabled={isDeletingJob}
+                  style={{ 
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: colorWithOpacity(colors.destructive, 0.1),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: spacing.sm,
+                  }}
+                  data-testid="button-delete-job"
+                >
+                  {isDeletingJob ? (
+                    <ActivityIndicator size="small" color={colors.destructive} />
+                  ) : (
+                    <Feather name="trash-2" size={18} color={colors.destructive} />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          ),
           headerStyle: {
             backgroundColor: colors.background,
           },

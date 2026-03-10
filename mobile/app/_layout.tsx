@@ -484,7 +484,6 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
           <ConflictResolutionPanel />
           <OfflineIndicator />
         </View>
-        <WhatYouMissedPopup />
         
         {/* FAB positioned in content area - right of sidebar */}
         {showFab && (
@@ -513,7 +512,6 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         <ConflictResolutionPanel />
         <OfflineIndicator />
       </View>
-      <WhatYouMissedPopup />
       
       {/* FAB positioned above bottom nav */}
       {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} bottomOffset={bottomNavHeight} />}
@@ -651,11 +649,11 @@ function RootLayoutContent() {
     
     const minTimer = setTimeout(() => {
       setMinTimeElapsed(true);
-    }, 800);
+    }, 400);
     
     const maxTimer = setTimeout(() => {
       setAppReady(true);
-    }, 4000);
+    }, 2000);
     
     return () => {
       clearTimeout(minTimer);

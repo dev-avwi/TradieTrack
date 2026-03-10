@@ -186,7 +186,9 @@ export function BottomNav() {
     }
   };
 
-  const containerStyle = [styles.container, { paddingBottom: Math.max(insets.bottom, 8) }];
+  const bottomPadding = Math.max(insets.bottom, 8);
+  const totalHeight = (isPadDevice ? BOTTOM_NAV_HEIGHT_IPAD : BOTTOM_NAV_HEIGHT) + bottomPadding;
+  const containerStyle = [styles.container, { paddingBottom: bottomPadding, height: totalHeight }];
 
   return (
     <View style={containerStyle}>

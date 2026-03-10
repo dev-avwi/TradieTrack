@@ -2497,16 +2497,6 @@ export default function DashboardScreen() {
     paddingBottom: responsiveShell.paddingBottom,
   }), [responsiveShell]);
 
-  // Show full-screen loading state until initial data is loaded
-  if (!initialLoadComplete) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ marginTop: 16, color: colors.mutedForeground, fontSize: 14 }}>Loading dashboard...</Text>
-      </View>
-    );
-  }
-
   return (
   <>
     <ScrollView 
