@@ -478,10 +478,12 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
           </View>
         </View>
         
-        {/* Overlays */}
-        <OfflineBanner />
-        <ConflictResolutionPanel />
-        <OfflineIndicator />
+        {/* Overlays - absolutely positioned so they don't affect layout */}
+        <View style={styles.overlayContainer} pointerEvents="box-none">
+          <OfflineBanner />
+          <ConflictResolutionPanel />
+          <OfflineIndicator />
+        </View>
         <WhatYouMissedPopup />
         
         {/* FAB positioned in content area - right of sidebar */}
@@ -505,10 +507,12 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         {children}
       </View>
       
-      {/* Overlays */}
-      <OfflineBanner />
-      <ConflictResolutionPanel />
-      <OfflineIndicator />
+      {/* Overlays - absolutely positioned so they don't affect layout */}
+      <View style={styles.overlayContainer} pointerEvents="box-none">
+        <OfflineBanner />
+        <ConflictResolutionPanel />
+        <OfflineIndicator />
+      </View>
       <WhatYouMissedPopup />
       
       {/* FAB positioned above bottom nav */}
@@ -744,5 +748,14 @@ const styles = StyleSheet.create({
     pointerEvents: 'box-none',
     zIndex: 9999,
     elevation: 9999,
+  },
+  overlayContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 100,
+    zIndex: 50,
+    elevation: 50,
+    alignItems: 'center',
   },
 });
