@@ -12,7 +12,7 @@ Core architectural and design decisions include:
 *   **Authentication**: Supports Email/password, Google OAuth, and Apple Sign-In.
 *   **Onboarding**: A multi-step wizard for business setup, including Stripe integration and team invites.
 *   **AI Integration**: Utilizes GPT-4o-mini and GPT-4o vision for functionalities like business suggestions, quote generation, voice note transcription, photo auto-categorization, receipt scanning, SWMS hazard detection, AI Photo Analysis, AI Schedule Optimizer, and a Role-Aware AI Assistant.
-*   **PDF Generation**: Server-side generation of customizable quotes, invoices, and Job Proof Packs, incorporating GPS Worker Presence Verification and photo GPS location stamps.
+*   **PDF Generation**: Server-side generation of customizable quotes, invoices, and Job Proof Packs (with section toggle support on both web and mobile), incorporating GPS Worker Presence Verification and photo GPS location stamps. Proof Packs respect business document template styles (Professional/Modern/Minimal).
 *   **Analytics & Error Handling**: GA4 event tracking and comprehensive server-side error logging.
 *   **Job Workflow**: A 5-stage job status workflow with visual indicators and automated email confirmations, and automated material transfer from quotes to jobs.
 *   **Financial System**: Live quote/invoice editor with real-time preview, catalog integration, deposit settings, digital signatures, invoice locking, and audit trails.

@@ -1991,6 +1991,18 @@ export default function JobDetailScreen() {
   const [sendModalDefaultTab, setSendModalDefaultTab] = useState<'email' | 'sms'>('email');
 
   const [isGeneratingProofPack, setIsGeneratingProofPack] = useState(false);
+  const [showProofPackModal, setShowProofPackModal] = useState(false);
+  const [proofPackSections, setProofPackSections] = useState({
+    timeline: true,
+    attendance: true,
+    gpsProof: true,
+    materials: true,
+    photos: true,
+    invoice: true,
+    compliance: true,
+    subcontractors: true,
+    swms: true,
+  });
   const [portalEnabled, setPortalEnabled] = useState(false);
   const [portalLinks, setPortalLinks] = useState<{ id: string; url: string; token: string; expiresAt?: string; createdAt?: string }[]>([]);
   const [isTogglingPortal, setIsTogglingPortal] = useState(false);
@@ -3504,7 +3516,12 @@ export default function JobDetailScreen() {
     setIsGeneratingProofPack(true);
     try {
       const token = await api.getToken();
-      const pdfUrl = `${API_URL}/api/jobs/${job.id}/proof-pack`;
+      const params = new URLSearchParams();
+      Object.entries(proofPackSections).forEach(([key, val]) => {
+        if (!val) params.set(`hide_${key}`, '1');
+      });
+      const queryStr = params.toString();
+      const pdfUrl = `${API_URL}/api/jobs/${job.id}/proof-pack${queryStr ? `?${queryStr}` : ''}`;
       const filename = `proof-pack-${job.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
       const localUri = `${FileSystem.cacheDirectory}${filename}`;
 
@@ -3513,6 +3530,7 @@ export default function JobDetailScreen() {
       });
 
       if (downloadResult.status === 200) {
+        setShowProofPackModal(false);
         const isSharingAvailable = await Sharing.isAvailableAsync();
         if (isSharingAvailable) {
           await Sharing.shareAsync(downloadResult.uri, {
@@ -5993,23 +6011,15 @@ export default function JobDetailScreen() {
               backgroundColor: colors.primary,
               paddingVertical: spacing.md,
               borderRadius: radius.lg,
-              opacity: isGeneratingProofPack ? 0.6 : 1,
               minHeight: 44,
             }}
-            onPress={handleGenerateProofPack}
+            onPress={() => setShowProofPackModal(true)}
             activeOpacity={0.8}
-            disabled={isGeneratingProofPack}
           >
-            {isGeneratingProofPack ? (
-              <ActivityIndicator size="small" color={colors.primaryForeground} />
-            ) : (
-              <>
-                <Feather name="share" size={18} color={colors.primaryForeground} />
-                <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
-                  Generate & Share Proof Pack
-                </Text>
-              </>
-            )}
+            <Feather name="sliders" size={18} color={colors.primaryForeground} />
+            <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
+              Customise & Generate Proof Pack
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -9879,6 +9889,133 @@ export default function JobDetailScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Proof Pack Section Toggle Modal */}
+      <Modal visible={showProofPackModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Proof Pack</Text>
+              <TouchableOpacity onPress={() => setShowProofPackModal(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.md, lineHeight: 19 }}>
+                Choose which sections to include in your Proof Pack PDF. Toggle off any sections you don't need.
+              </Text>
+              {([
+                { key: 'timeline' as const, label: 'Job Timeline', icon: 'clock' as const, desc: 'Created, scheduled, started & completed dates' },
+                { key: 'attendance' as const, label: 'Worker Hours', icon: 'users' as const, desc: 'Time entries and duration per worker' },
+                { key: 'gpsProof' as const, label: 'GPS Verification', icon: 'map-pin' as const, desc: 'Clock-in/out locations and geofence alerts' },
+                { key: 'materials' as const, label: 'Materials & Costs', icon: 'package' as const, desc: 'Materials used with quantities and costs' },
+                { key: 'photos' as const, label: 'Photos', icon: 'camera' as const, desc: 'Before/after photos with GPS badges' },
+                { key: 'invoice' as const, label: 'Invoice Summary', icon: 'file-text' as const, desc: 'Invoice details and payment status' },
+                { key: 'compliance' as const, label: 'Compliance & Licensing', icon: 'shield' as const, desc: 'Trade licences, insurance & certifications' },
+                { key: 'subcontractors' as const, label: 'Subcontractors', icon: 'hard-hat' as const, desc: 'Subcontractor invites and activity' },
+                { key: 'swms' as const, label: 'Safety & SWMS', icon: 'alert-triangle' as const, desc: 'Safe Work Method Statements & forms' },
+              ]).map(({ key, label, icon, desc }) => (
+                <TouchableOpacity
+                  key={key}
+                  activeOpacity={0.7}
+                  onPress={() => setProofPackSections(prev => ({ ...prev, [key]: !prev[key] }))}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: spacing.sm + 2,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
+                  }}
+                >
+                  <View style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    backgroundColor: proofPackSections[key] ? `${colors.primary}15` : `${colors.mutedForeground}10`,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: spacing.sm + 2,
+                  }}>
+                    <Feather
+                      name={icon === 'hard-hat' ? 'tool' : icon}
+                      size={18}
+                      color={proofPackSections[key] ? colors.primary : colors.mutedForeground}
+                    />
+                  </View>
+                  <View style={{ flex: 1, marginRight: spacing.sm }}>
+                    <Text style={{
+                      fontSize: 14,
+                      fontWeight: '600',
+                      color: proofPackSections[key] ? colors.foreground : colors.mutedForeground,
+                    }}>
+                      {label}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 1 }}>
+                      {desc}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={proofPackSections[key]}
+                    onValueChange={(val) => setProofPackSections(prev => ({ ...prev, [key]: val }))}
+                    trackColor={{ false: colors.border, true: `${colors.primary}80` }}
+                    thumbColor={proofPackSections[key] ? colors.primary : colors.mutedForeground}
+                  />
+                </TouchableOpacity>
+              ))}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.md, gap: spacing.sm }}>
+                <TouchableOpacity
+                  onPress={() => setProofPackSections({ timeline: true, attendance: true, gpsProof: true, materials: true, photos: true, invoice: true, compliance: true, subcontractors: true, swms: true })}
+                  style={{ paddingVertical: spacing.xs, paddingHorizontal: spacing.sm }}
+                >
+                  <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '600' }}>Select All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setProofPackSections({ timeline: false, attendance: false, gpsProof: false, materials: false, photos: false, invoice: false, compliance: false, subcontractors: false, swms: false })}
+                  style={{ paddingVertical: spacing.xs, paddingHorizontal: spacing.sm }}
+                >
+                  <Text style={{ fontSize: 13, color: colors.mutedForeground, fontWeight: '600' }}>Deselect All</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+            <View style={[styles.modalFooter, { gap: spacing.sm }]}>
+              <TouchableOpacity
+                onPress={() => setShowProofPackModal(false)}
+                style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md }}
+              >
+                <Text style={{ color: colors.mutedForeground, fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.sm,
+                  backgroundColor: colors.primary,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.md,
+                  opacity: isGeneratingProofPack || !Object.values(proofPackSections).some(Boolean) ? 0.5 : 1,
+                  minHeight: 44,
+                }}
+                onPress={handleGenerateProofPack}
+                activeOpacity={0.8}
+                disabled={isGeneratingProofPack || !Object.values(proofPackSections).some(Boolean)}
+              >
+                {isGeneratingProofPack ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <>
+                    <Feather name="download" size={16} color={colors.primaryForeground} />
+                    <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
+                      Generate & Share
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </>
   );
