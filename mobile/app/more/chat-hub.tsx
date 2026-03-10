@@ -631,15 +631,16 @@ export default function ChatHubScreen() {
         api.get<TeamMember[]>('/api/team/members').catch(() => ({ data: [] as TeamMember[] })),
         api.get<any[]>('/api/jobs/chat/latest').catch(() => ({ data: [] as any[] })),
       ]);
-      setJobs(jobsRes.data || []);
-      setClients(clientsRes.data || []);
-      setSmsConversations(smsRes.data || []);
-      setTwilioStatus(twilioRes.data || null);
-      setUnreadCounts(unreadRes.data || null);
-      setDmConversations(dmRes.data || []);
-      setTeamMembers(teamRes.data || []);
+      setJobs(Array.isArray(jobsRes.data) ? jobsRes.data : []);
+      setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
+      setSmsConversations(Array.isArray(smsRes.data) ? smsRes.data : []);
+      setTwilioStatus(twilioRes.data && !('error' in twilioRes) ? twilioRes.data : null);
+      setUnreadCounts(unreadRes.data && !('error' in unreadRes) ? unreadRes.data : null);
+      setDmConversations(Array.isArray(dmRes.data) ? dmRes.data : []);
+      setTeamMembers(Array.isArray(teamRes.data) ? teamRes.data : []);
       const chatMap = new Map<string, { message: string; userId: string; createdAt: string | null; isSystemMessage: boolean | null }>();
-      (latestChatsRes.data || []).forEach((c: any) => chatMap.set(c.jobId, c));
+      const latestChatsData = Array.isArray(latestChatsRes.data) ? latestChatsRes.data : [];
+      latestChatsData.forEach((c: any) => chatMap.set(c.jobId, c));
       setLatestJobChats(chatMap);
     } catch (error) {
       console.error('Error loading data:', error);

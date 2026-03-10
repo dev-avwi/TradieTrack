@@ -2239,7 +2239,7 @@ export default function JobDetailScreen() {
     setIsLoadingMaterials(true);
     try {
       const res = await api.get<JobMaterial[]>(`/api/jobs/${id}/materials`);
-      setMaterials(res.data || []);
+      setMaterials(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error('Error loading materials:', e);
     } finally {
@@ -2250,7 +2250,7 @@ export default function JobDetailScreen() {
   const loadTeamMembers = useCallback(async () => {
     try {
       const res = await api.get<TeamMember[]>('/api/team/members');
-      setTeamMembers(res.data || []);
+      setTeamMembers(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error('Error loading team members:', e);
     }
@@ -3813,11 +3813,11 @@ export default function JobDetailScreen() {
     setIsGeneratingProofPack(true);
     try {
       const token = await api.getToken();
-      const params = new URLSearchParams();
+      const hiddenParts: string[] = [];
       Object.entries(proofPackSections).forEach(([key, val]) => {
-        if (!val) params.set(`hide_${key}`, '1');
+        if (!val) hiddenParts.push(`hide_${key}=1`);
       });
-      const queryStr = params.toString();
+      const queryStr = hiddenParts.join('&');
       const pdfUrl = `${API_URL}/api/jobs/${job.id}/proof-pack${queryStr ? `?${queryStr}` : ''}`;
       const filename = `proof-pack-${job.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
       const localUri = `${FileSystem.cacheDirectory}${filename}`;
