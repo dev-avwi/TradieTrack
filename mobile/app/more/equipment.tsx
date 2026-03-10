@@ -316,7 +316,7 @@ export default function EquipmentScreen() {
     try {
       const res = await api.get<MaintenanceRecord[]>(`/api/equipment/${item.id}/maintenance`);
       if (!res.error) {
-        setMaintenanceRecords(res.data || []);
+        setMaintenanceRecords(Array.isArray(res.data) ? res.data : []);
       }
     } catch (err) {
       setMaintenanceRecords([]);

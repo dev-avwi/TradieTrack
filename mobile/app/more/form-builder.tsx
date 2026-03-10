@@ -669,7 +669,7 @@ export default function FormBuilderScreen() {
       if (res.error) {
         setError(res.error);
       } else {
-        setForms(res.data || []);
+        setForms(Array.isArray(res.data) ? res.data : []);
       }
     } catch (err) {
       setError('Failed to load forms');

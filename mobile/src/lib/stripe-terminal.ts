@@ -69,7 +69,7 @@ try {
     sdkAvailable = true;
     if (__DEV__) console.log('[StripeTerminal] SDK loaded successfully');
   } else {
-    console.log('[StripeTerminal] SDK disabled in production - pending Apple Tap to Pay approval (Case-ID 18817353)');
+    if (__DEV__) console.log('[StripeTerminal] SDK disabled in production - pending Apple Tap to Pay approval (Case-ID 18817353)');
   }
 } catch (e) {
   if (__DEV__) console.log('[StripeTerminal] SDK not available - using simulation mode (Expo Go or missing native module)');

@@ -48,6 +48,7 @@ Core architectural and design decisions include:
 *   **Database**: PostgreSQL (Neon serverless)
 *   **Email Service**: User SMTP, Gmail Connector, Outlook/Microsoft 365, SendGrid Platform
 *   **Payment Processing**: Stripe (Stripe Connect Express)
+*   **Mobile Build**: iOS buildNumber `29` (bumped from 24; last submitted was #28). EAS slug: `tradietrack`. Bluetooth permission added for Stripe Terminal.
 *   **PDF Generation**: Puppeteer
 *   **UI Components**: Radix UI (via shadcn/ui)
 *   **Styling**: TailwindCSS

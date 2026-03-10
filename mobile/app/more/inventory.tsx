@@ -386,7 +386,7 @@ export default function InventoryScreen() {
     setIsLoadingTransactions(true);
     try {
       const res = await api.get<InventoryTransaction[]>(`/api/inventory/items/${item.id}/transactions`);
-      if (!res.error) setTransactions(res.data || []);
+      if (!res.error) setTransactions(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setTransactions([]);
     } finally {

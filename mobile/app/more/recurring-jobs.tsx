@@ -760,7 +760,7 @@ export default function RecurringJobsScreen() {
       if (res.error) {
         setError(res.error);
       } else {
-        setRecurringJobs(res.data || []);
+        setRecurringJobs(Array.isArray(res.data) ? res.data : []);
       }
     } catch (err) {
       setError('Failed to load recurring jobs');
@@ -843,7 +843,7 @@ export default function RecurringJobsScreen() {
     try {
       const res = await api.get<JobListItem[]>('/api/jobs');
       if (res.data) {
-        const nonRecurring = (res.data || []).filter((j) => !j.isRecurring);
+        const nonRecurring = (Array.isArray(res.data) ? res.data : []).filter((j) => !j.isRecurring);
         setAllJobs(nonRecurring);
       }
     } catch (err) {

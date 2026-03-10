@@ -21,7 +21,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jobrunner.app",
-      "buildNumber": "24",
+      "buildNumber": "29",
       "usesAppleSignIn": true,
       "config": {
         "usesNonExemptEncryption": false
@@ -34,6 +34,7 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "JobRunner needs location access for team tracking",
         "NSMicrophoneUsageDescription": "JobRunner needs microphone access to record voice notes for jobs",
         "NFCReaderUsageDescription": "JobRunner uses NFC for Tap to Pay contactless payments",
+        "NSBluetoothAlwaysUsageDescription": "JobRunner uses Bluetooth to connect to card readers for payment processing",
         "UIBackgroundModes": [
           "fetch",
           "remote-notification"
@@ -92,13 +93,13 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow JobRunner to take job photos"
+          "cameraPermission": "JobRunner needs camera access to take job photos"
         }
       ],
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow JobRunner to track your location for team features"
+          "locationAlwaysAndWhenInUsePermission": "JobRunner needs location access for team tracking"
         }
       ],
       [

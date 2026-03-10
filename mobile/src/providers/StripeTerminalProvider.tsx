@@ -29,7 +29,7 @@ try {
     StripeTerminalProviderSDK = sdk.StripeTerminalProvider;
     useStripeTerminalSDK = sdk.useStripeTerminal;
   } else {
-    console.log('[StripeTerminal] SDK disabled in production - pending Apple Tap to Pay approval');
+    if (__DEV__) console.log('[StripeTerminal] SDK disabled in production - pending Apple Tap to Pay approval');
   }
 } catch (e) {
   if (__DEV__) console.log('[StripeTerminal] SDK not available - using fallback mode');

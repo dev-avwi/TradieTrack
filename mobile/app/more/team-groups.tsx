@@ -503,7 +503,7 @@ export default function TeamGroupsScreen() {
     try {
       const res = await api.get<TeamGroup[]>('/api/team-groups');
       if (!res.error) {
-        setGroups(res.data || []);
+        setGroups(Array.isArray(res.data) ? res.data : []);
       }
     } catch (err) {
       console.error('Failed to fetch groups:', err);
@@ -517,7 +517,7 @@ export default function TeamGroupsScreen() {
     try {
       const res = await api.get<TeamMember[]>('/api/team/members');
       if (!res.error) {
-        setTeamMembers(res.data || []);
+        setTeamMembers(Array.isArray(res.data) ? res.data : []);
       }
     } catch (err) {
       console.error('Failed to fetch team members:', err);

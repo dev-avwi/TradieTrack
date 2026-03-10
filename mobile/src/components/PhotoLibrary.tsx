@@ -756,7 +756,7 @@ export default function PhotoLibrary() {
       params.set('limit', '200');
       const qs = params.toString();
       const res = await api.get<PhotoItem[]>(`/api/photos${qs ? `?${qs}` : ''}`);
-      setPhotos(res.data || []);
+      setPhotos(Array.isArray(res.data) ? res.data : []);
     } catch {
       setPhotos([]);
     }
@@ -954,7 +954,7 @@ export default function PhotoLibrary() {
   const openBulkJobPicker = async () => {
     try {
       const res = await api.get<Job[]>('/api/jobs');
-      setJobsList((res.data || []).filter(j => j.status !== 'cancelled'));
+      setJobsList((Array.isArray(res.data) ? res.data : []).filter(j => j.status !== 'cancelled'));
     } catch {
       setJobsList([]);
     }
