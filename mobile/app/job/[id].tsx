@@ -220,6 +220,19 @@ interface JobExpense {
   isBillable: boolean;
 }
 
+interface JobDocument {
+  id: string;
+  jobId: string;
+  title: string;
+  documentType?: string;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+  fileUrl?: string | null;
+  createdAt?: string;
+  objectStorageKey: string;
+}
+
 interface SubcontractorToken {
   id: string;
   jobId: string;
@@ -1905,6 +1918,46 @@ export default function JobDetailScreen() {
     return name.includes('swms') || name.includes('jsa') || name.includes('safety') || name.includes('compliance');
   };
 
+  const [linkedJobs, setLinkedJobs] = useState<Job[]>([]);
+
+  const [showSiteUpdateModal, setShowSiteUpdateModal] = useState(false);
+  const [siteUpdateNote, setSiteUpdateNote] = useState('');
+  const [siteUpdatePhotoUri, setSiteUpdatePhotoUri] = useState<string | null>(null);
+  const [isSendingSiteUpdate, setIsSendingSiteUpdate] = useState(false);
+
+  const [uploadedDocuments, setUploadedDocuments] = useState<JobDocument[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
+
+  interface JobVariation {
+    id: string;
+    jobId: string;
+    number: string;
+    title: string;
+    description: string | null;
+    reason: string | null;
+    additionalAmount: string;
+    gstAmount: string;
+    totalAmount: string;
+    status: 'draft' | 'sent' | 'approved' | 'rejected';
+    approvedByName: string | null;
+    approvedBySignature: string | null;
+    rejectionReason: string | null;
+    createdAt: string;
+  }
+  const [variations, setVariations] = useState<JobVariation[]>([]);
+  const [isLoadingVariations, setIsLoadingVariations] = useState(false);
+  const [showAddVariationModal, setShowAddVariationModal] = useState(false);
+  const [isSavingVariation, setIsSavingVariation] = useState(false);
+  const [variationForm, setVariationForm] = useState({ title: '', description: '', reason: '', amount: '' });
+  const [showApproveVariationModal, setShowApproveVariationModal] = useState<string | null>(null);
+  const [approveVariationName, setApproveVariationName] = useState('');
+  const [approveVariationSignature, setApproveVariationSignature] = useState<string | null>(null);
+  const [isApprovingVariation, setIsApprovingVariation] = useState(false);
+  const [showRejectVariationModal, setShowRejectVariationModal] = useState<string | null>(null);
+  const [rejectVariationReason, setRejectVariationReason] = useState('');
+  const [isRejectingVariation, setIsRejectingVariation] = useState(false);
+
   const [swmsDocuments, setSwmsDocuments] = useState<SwmsDocument[]>([]);
 
   const pendingSafetyForms = useMemo(() => {
@@ -2130,6 +2183,8 @@ export default function JobDetailScreen() {
     loadProfitability();
     loadPortalLinks();
     loadSwmsDocuments();
+    loadUploadedDocuments();
+    loadVariations();
     // Forms data is loaded by JobForms component via callbacks
     
     // Auto-refresh when app comes to foreground
@@ -2328,6 +2383,224 @@ export default function JobDetailScreen() {
       setIsLoadingSwms(false);
     }
   }, [id]);
+
+  const loadUploadedDocuments = useCallback(async () => {
+    if (!id) return;
+    setIsLoadingDocuments(true);
+    try {
+      const res = await api.get<JobDocument[]>(`/api/jobs/${id}/documents`);
+      setUploadedDocuments(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error('Error loading uploaded documents:', e);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  }, [id]);
+
+  const handleUploadDocument = useCallback(async () => {
+    if (!id) return;
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+        allowsEditing: false,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      setIsUploadingDocument(true);
+
+      const token = await api.getToken();
+      const uri = asset.uri;
+      const fileName = asset.fileName || uri.split('/').pop() || 'document.jpg';
+      const mimeType = asset.mimeType || 'image/jpeg';
+      const title = fileName.replace(/\.[^/.]+$/, '');
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri,
+        name: fileName,
+        type: mimeType,
+      } as any);
+      formData.append('title', title);
+      formData.append('documentType', 'general');
+
+      const response = await fetch(`${API_URL}/api/jobs/${id}/documents`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'x-mobile-app': 'true',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Upload failed');
+      }
+
+      Alert.alert('Success', 'Document uploaded');
+      loadUploadedDocuments();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to upload document');
+    } finally {
+      setIsUploadingDocument(false);
+    }
+  }, [id, loadUploadedDocuments]);
+
+  const handleDeleteDocument = useCallback((doc: JobDocument) => {
+    Alert.alert(
+      'Delete Document',
+      `Are you sure you want to delete "${doc.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await api.delete(`/api/jobs/${id}/documents/${doc.id}`);
+              if (res.error) {
+                Alert.alert('Error', res.error);
+              } else {
+                setUploadedDocuments(prev => prev.filter(d => d.id !== doc.id));
+              }
+            } catch (e) {
+              Alert.alert('Error', 'Failed to delete document');
+            }
+          },
+        },
+      ]
+    );
+  }, [id]);
+
+  const handleOpenDocument = useCallback((doc: JobDocument) => {
+    if (doc.fileUrl) {
+      Linking.openURL(doc.fileUrl);
+    } else {
+      Alert.alert('Error', 'Document URL not available');
+    }
+  }, []);
+
+  const formatFileSize = useCallback((bytes?: number) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }, []);
+
+  const getDocTypeIcon = useCallback((mimeType?: string): string => {
+    if (!mimeType) return 'file';
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType === 'application/pdf') return 'file-text';
+    return 'file';
+  }, []);
+
+  const getDocTypeBadge = useCallback((mimeType?: string): string => {
+    if (!mimeType) return 'FILE';
+    if (mimeType.startsWith('image/')) return 'IMAGE';
+    if (mimeType === 'application/pdf') return 'PDF';
+    return 'FILE';
+  }, []);
+
+  const loadVariations = useCallback(async () => {
+    if (!id) return;
+    setIsLoadingVariations(true);
+    try {
+      const res = await api.get<JobVariation[]>(`/api/jobs/${id}/variations`);
+      setVariations(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error('Error loading variations:', e);
+    } finally {
+      setIsLoadingVariations(false);
+    }
+  }, [id]);
+
+  const handleCreateVariation = useCallback(async () => {
+    if (!id || !variationForm.title.trim() || !variationForm.amount.trim()) return;
+    setIsSavingVariation(true);
+    try {
+      const amount = parseFloat(variationForm.amount) || 0;
+      const res = await api.post(`/api/jobs/${id}/variations`, {
+        title: variationForm.title.trim(),
+        description: variationForm.description.trim() || null,
+        reason: variationForm.reason.trim() || null,
+        additionalAmount: amount.toFixed(2),
+      });
+      if (res.error) {
+        Alert.alert('Error', res.error);
+      } else {
+        setShowAddVariationModal(false);
+        setVariationForm({ title: '', description: '', reason: '', amount: '' });
+        loadVariations();
+        Alert.alert('Success', 'Variation created');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to create variation');
+    } finally {
+      setIsSavingVariation(false);
+    }
+  }, [id, variationForm, loadVariations]);
+
+  const handleSendVariation = useCallback(async (variationId: string) => {
+    try {
+      const res = await api.post(`/api/variations/${variationId}/send`, {});
+      if (res.error) {
+        Alert.alert('Error', res.error);
+      } else {
+        loadVariations();
+        Alert.alert('Success', 'Variation sent to client');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to send variation');
+    }
+  }, [loadVariations]);
+
+  const handleApproveVariation = useCallback(async () => {
+    if (!showApproveVariationModal || !approveVariationName.trim()) return;
+    setIsApprovingVariation(true);
+    try {
+      const res = await api.post(`/api/variations/${showApproveVariationModal}/approve`, {
+        approvedByName: approveVariationName.trim(),
+        approvedBySignature: approveVariationSignature || undefined,
+      });
+      if (res.error) {
+        Alert.alert('Error', res.error);
+      } else {
+        setShowApproveVariationModal(null);
+        setApproveVariationName('');
+        setApproveVariationSignature(null);
+        loadVariations();
+        Alert.alert('Success', 'Variation approved');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to approve variation');
+    } finally {
+      setIsApprovingVariation(false);
+    }
+  }, [showApproveVariationModal, approveVariationName, approveVariationSignature, loadVariations]);
+
+  const handleRejectVariation = useCallback(async () => {
+    if (!showRejectVariationModal) return;
+    setIsRejectingVariation(true);
+    try {
+      const res = await api.post(`/api/variations/${showRejectVariationModal}/reject`, {
+        rejectionReason: rejectVariationReason.trim() || undefined,
+      });
+      if (res.error) {
+        Alert.alert('Error', res.error);
+      } else {
+        setShowRejectVariationModal(null);
+        setRejectVariationReason('');
+        loadVariations();
+        Alert.alert('Success', 'Variation rejected');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to reject variation');
+    } finally {
+      setIsRejectingVariation(false);
+    }
+  }, [showRejectVariationModal, rejectVariationReason, loadVariations]);
 
   const loadSwmsTemplates = useCallback(async () => {
     setIsLoadingTemplates(true);
@@ -2604,6 +2877,7 @@ export default function JobDetailScreen() {
     }
     if (activeTab === 'documents' && id) {
       loadSwmsDocuments();
+      loadUploadedDocuments();
     }
   }, [activeTab, id]);
 
@@ -3023,6 +3297,7 @@ export default function JobDetailScreen() {
           if (clientResponse.data) {
             setClient(clientResponse.data);
           }
+          loadLinkedJobs(response.data.clientId);
         }
       }
     } catch (error) {
@@ -3031,6 +3306,28 @@ export default function JobDetailScreen() {
     setIsLoading(false);
   };
   
+  const loadLinkedJobs = async (clientId?: string) => {
+    const cId = clientId || job?.clientId;
+    if (!cId) return;
+    try {
+      const response = await api.get<Job[]>('/api/jobs');
+      if (response.data && Array.isArray(response.data)) {
+        const otherJobs = response.data
+          .filter((j: any) => j.clientId === cId && j.id !== id)
+          .sort((a: any, b: any) => {
+            const dateA = a.scheduledAt || a.completedAt || '';
+            const dateB = b.scheduledAt || b.completedAt || '';
+            return new Date(dateB).getTime() - new Date(dateA).getTime();
+          })
+          .slice(0, 3);
+        setLinkedJobs(otherJobs);
+      }
+    } catch (error) {
+      if (__DEV__) console.log('Could not load linked jobs:', error);
+      setLinkedJobs([]);
+    }
+  };
+
   // Load automation settings for photo gate enforcement
   const loadAutomationSettings = async () => {
     try {
@@ -4541,6 +4838,97 @@ export default function JobDetailScreen() {
     setIsSavingNotes(false);
   };
 
+  const handleSiteUpdateTakePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Camera access is needed to take photos.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: [4, 3],
+    });
+    if (!result.canceled && result.assets[0]) {
+      setSiteUpdatePhotoUri(result.assets[0].uri);
+    }
+  };
+
+  const handleSiteUpdatePickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Media library access is needed to select photos.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: [4, 3],
+    });
+    if (!result.canceled && result.assets[0]) {
+      setSiteUpdatePhotoUri(result.assets[0].uri);
+    }
+  };
+
+  const handleSubmitSiteUpdate = async () => {
+    if (!job || (!siteUpdateNote.trim() && !siteUpdatePhotoUri)) {
+      Alert.alert('Required', 'Please add a progress note or photo.');
+      return;
+    }
+
+    setIsSendingSiteUpdate(true);
+    try {
+      if (siteUpdateNote.trim()) {
+        const noteRes = await api.post(`/api/jobs/${job.id}/notes`, {
+          content: `[Site Update] ${siteUpdateNote.trim()}`,
+        });
+        if (noteRes.error) {
+          Alert.alert('Error', noteRes.error);
+          setIsSendingSiteUpdate(false);
+          return;
+        }
+      }
+
+      if (siteUpdatePhotoUri) {
+        const filename = siteUpdatePhotoUri.split('/').pop() || 'photo.jpg';
+        const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
+        const mimeType = ext === 'png' ? 'image/png' : `image/${ext}`;
+        const token = await api.getToken();
+        const uploadUrl = `${API_URL}/api/jobs/${job.id}/photos/upload`;
+        const uploadType = FileSystem.FileSystemUploadType?.MULTIPART ?? 1;
+        const uploadResult = await FileSystem.uploadAsync(uploadUrl, siteUpdatePhotoUri, {
+          httpMethod: 'POST',
+          uploadType: uploadType,
+          fieldName: 'file',
+          mimeType: mimeType,
+          parameters: {
+            category: 'progress',
+            caption: siteUpdateNote.trim() ? `[Site Update] ${siteUpdateNote.trim()}` : '[Site Update]',
+          },
+          headers: {
+            Authorization: token ? `Bearer ${token}` : '',
+          },
+        });
+        if (uploadResult.status < 200 || uploadResult.status >= 300) {
+          Alert.alert('Error', 'Failed to upload photo');
+          setIsSendingSiteUpdate(false);
+          return;
+        }
+        await loadPhotos();
+      }
+
+      setShowSiteUpdateModal(false);
+      setSiteUpdateNote('');
+      setSiteUpdatePhotoUri(null);
+      loadJob();
+      Alert.alert('Sent', 'Site update posted successfully.');
+    } catch (error: any) {
+      console.error('Site update error:', error);
+      Alert.alert('Error', error.message || 'Failed to post site update. Please try again.');
+    }
+    setIsSendingSiteUpdate(false);
+  };
+
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
@@ -5209,6 +5597,98 @@ export default function JobDetailScreen() {
         </View>
       )}
 
+      {/* Previous Jobs Card */}
+      {linkedJobs.length > 0 && (
+        <View style={{
+          backgroundColor: colors.card,
+          borderRadius: radius.xl,
+          padding: spacing.lg,
+          marginBottom: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          ...shadows.sm,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
+            <View style={{
+              width: 32,
+              height: 32,
+              borderRadius: radius.md,
+              backgroundColor: `${colors.primary}15`,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: spacing.sm,
+            }}>
+              <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
+            </View>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: colors.foreground,
+              flex: 1,
+            }}>Previous Jobs</Text>
+            <Text style={{
+              fontSize: 12,
+              color: colors.mutedForeground,
+            }}>{linkedJobs.length} job{linkedJobs.length !== 1 ? 's' : ''}</Text>
+          </View>
+          {linkedJobs.map((lj) => {
+            const ljDate = lj.scheduledAt || lj.completedAt;
+            const statusColors: Record<string, string> = {
+              pending: colors.pending || colors.warning,
+              scheduled: colors.scheduled || colors.primary,
+              in_progress: colors.inProgress || colors.primary,
+              done: colors.success,
+              invoiced: colors.invoiced || colors.primary,
+            };
+            const ljStatusColor = statusColors[lj.status] || colors.mutedForeground;
+            return (
+              <TouchableOpacity
+                key={lj.id}
+                activeOpacity={0.7}
+                onPress={() => router.push(`/job/${lj.id}`)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: spacing.sm,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.muted,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '500',
+                    color: colors.foreground,
+                  }} numberOfLines={1}>{lj.title}</Text>
+                  {ljDate && (
+                    <Text style={{
+                      fontSize: 12,
+                      color: colors.mutedForeground,
+                      marginTop: 2,
+                    }}>{new Date(ljDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+                  )}
+                </View>
+                <View style={{
+                  paddingHorizontal: spacing.sm,
+                  paddingVertical: 2,
+                  borderRadius: radius.sm,
+                  backgroundColor: `${ljStatusColor}20`,
+                  marginRight: spacing.sm,
+                }}>
+                  <Text style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    color: ljStatusColor,
+                    textTransform: 'capitalize',
+                  }}>{lj.status.replace('_', ' ')}</Text>
+                </View>
+                <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
       {/* Assign Worker Card */}
       {(roleInfo?.isOwner || roleInfo?.roleName === 'admin') && (
         <TouchableOpacity
@@ -5498,6 +5978,28 @@ export default function JobDetailScreen() {
           </Animated.View>
         );
       })()}
+
+      {/* Site Update Quick Action - visible during in_progress */}
+      {job.status === 'in_progress' && (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={[styles.card, { borderColor: colors.primary + '40' }]}
+          onPress={() => {
+            setSiteUpdateNote('');
+            setSiteUpdatePhotoUri(null);
+            setShowSiteUpdateModal(true);
+          }}
+        >
+          <View style={[styles.cardIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.15) }]}>
+            <Feather name="send" size={iconSizes.xl} color={colors.primary} />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardLabel}>Quick Action</Text>
+            <Text style={[styles.cardValue, { color: colors.primary, fontWeight: '600' }]}>Post Site Update</Text>
+          </View>
+          <Feather name="chevron-right" size={iconSizes.lg} color={colors.primary} style={styles.cardActionIcon} />
+        </TouchableOpacity>
+      )}
 
       {/* Linked Documents Card */}
       <LinkedDocumentsCard
@@ -5983,6 +6485,210 @@ export default function JobDetailScreen() {
                 <Feather name="user-plus" size={16} color={colors.primaryForeground} />
                 <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
                   Invite Subcontractor
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
+
+      {/* Job Variations Section */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={styles.costingCard}>
+          <View style={styles.costingHeader}>
+            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.warning}15` }]}>
+              <Feather name="git-branch" size={iconSizes.lg} color={colors.warning} />
+            </View>
+            <Text style={styles.costingTitle}>Variations</Text>
+            {variations.length > 0 && (
+              <View style={{ backgroundColor: `${colors.warning}15`, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.md, marginLeft: 'auto' }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.warning }}>
+                  {variations.length}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {isLoadingVariations ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.md }} />
+          ) : (
+            <>
+              {variations.length > 0 && (() => {
+                const approved = variations.filter(v => v.status === 'approved');
+                const pending = variations.filter(v => v.status === 'draft' || v.status === 'sent');
+                const approvedTotal = approved.reduce((s, v) => s + (parseFloat(v.totalAmount) || 0), 0);
+                const pendingTotal = pending.reduce((s, v) => s + (parseFloat(v.totalAmount) || 0), 0);
+                return (
+                  <View style={{ flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md }}>
+                    <View style={{ flex: 1, backgroundColor: `${colors.success}10`, borderRadius: radius.lg, padding: spacing.sm + 2 }}>
+                      <Text style={{ fontSize: 11, color: colors.success, fontWeight: '600', textTransform: 'uppercase', marginBottom: 2 }}>Approved</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.success }}>${approvedTotal.toFixed(2)}</Text>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground }}>{approved.length}/{variations.length}</Text>
+                    </View>
+                    <View style={{ flex: 1, backgroundColor: `${colors.warning}10`, borderRadius: radius.lg, padding: spacing.sm + 2 }}>
+                      <Text style={{ fontSize: 11, color: colors.warning, fontWeight: '600', textTransform: 'uppercase', marginBottom: 2 }}>Pending</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.warning }}>${pendingTotal.toFixed(2)}</Text>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground }}>{pending.length} pending</Text>
+                    </View>
+                  </View>
+                );
+              })()}
+
+              {variations.length > 0 ? (
+                <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
+                  {variations.map((v) => {
+                    const statusColors: Record<string, { bg: string; text: string }> = {
+                      draft: { bg: `${colors.mutedForeground}15`, text: colors.mutedForeground },
+                      sent: { bg: `${colors.info}15`, text: colors.info },
+                      approved: { bg: `${colors.success}15`, text: colors.success },
+                      rejected: { bg: `${colors.destructive}15`, text: colors.destructive },
+                    };
+                    const sc = statusColors[v.status] || statusColors.draft;
+                    return (
+                      <View
+                        key={v.id}
+                        style={{
+                          backgroundColor: colors.muted,
+                          borderRadius: radius.lg,
+                          padding: spacing.md,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.mutedForeground }}>{v.number}</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, flex: 1 }} numberOfLines={1}>{v.title}</Text>
+                          </View>
+                          <View style={{ backgroundColor: sc.bg, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm }}>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: sc.text, textTransform: 'uppercase' }}>{v.status}</Text>
+                          </View>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.foreground }}>
+                            ${parseFloat(v.totalAmount || '0').toFixed(2)}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                            GST ${parseFloat(v.gstAmount || '0').toFixed(2)}
+                          </Text>
+                        </View>
+                        {v.description && (
+                          <Text style={{ fontSize: 13, color: colors.mutedForeground, marginTop: spacing.xs }} numberOfLines={2}>{v.description}</Text>
+                        )}
+                        {v.status === 'draft' && (
+                          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm }}>
+                            <TouchableOpacity
+                              onPress={() => handleSendVariation(v.id)}
+                              style={{
+                                flex: 1,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: spacing.xs,
+                                backgroundColor: colors.primary,
+                                paddingVertical: spacing.sm,
+                                borderRadius: radius.md,
+                                minHeight: 36,
+                              }}
+                              activeOpacity={0.8}
+                            >
+                              <Feather name="send" size={14} color={colors.primaryForeground} />
+                              <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 13 }}>Send to Client</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                        {v.status === 'sent' && (
+                          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm }}>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setApproveVariationName('');
+                                setApproveVariationSignature(null);
+                                setShowApproveVariationModal(v.id);
+                              }}
+                              style={{
+                                flex: 1,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: spacing.xs,
+                                backgroundColor: colors.success,
+                                paddingVertical: spacing.sm,
+                                borderRadius: radius.md,
+                                minHeight: 36,
+                              }}
+                              activeOpacity={0.8}
+                            >
+                              <Feather name="check" size={14} color={colors.primaryForeground} />
+                              <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 13 }}>Approve</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setRejectVariationReason('');
+                                setShowRejectVariationModal(v.id);
+                              }}
+                              style={{
+                                flex: 1,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: spacing.xs,
+                                backgroundColor: colors.destructive,
+                                paddingVertical: spacing.sm,
+                                borderRadius: radius.md,
+                                minHeight: 36,
+                              }}
+                              activeOpacity={0.8}
+                            >
+                              <Feather name="x" size={14} color={colors.primaryForeground} />
+                              <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 13 }}>Reject</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                        {v.status === 'rejected' && v.rejectionReason && (
+                          <Text style={{ fontSize: 12, color: colors.destructive, marginTop: spacing.xs }}>
+                            Reason: {v.rejectionReason}
+                          </Text>
+                        )}
+                        {v.status === 'approved' && v.approvedByName && (
+                          <Text style={{ fontSize: 12, color: colors.success, marginTop: spacing.xs }}>
+                            Approved by {v.approvedByName}
+                          </Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+                  <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.warning}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
+                    <Feather name="git-branch" size={24} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center' }}>
+                    No variations yet
+                  </Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center', paddingHorizontal: spacing.md }}>
+                    Add scope changes and track approvals
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.xs,
+                  backgroundColor: colors.warning,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.lg,
+                }}
+                onPress={() => {
+                  setVariationForm({ title: '', description: '', reason: '', amount: '' });
+                  setShowAddVariationModal(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <Feather name="plus" size={16} color={colors.primaryForeground} />
+                <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
+                  Add Variation
                 </Text>
               </TouchableOpacity>
             </>
@@ -6911,6 +7617,125 @@ export default function JobDetailScreen() {
       <View style={styles.photosCard}>
         {renderSafetyTab()}
       </View>
+
+      {/* Uploaded Documents Section - owners/managers only */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={styles.photosCard}>
+          <View style={styles.photosHeader}>
+            <View style={[styles.photosIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+              <Feather name="folder" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <Text style={styles.photosHeaderLabel}>Uploaded Documents</Text>
+            {uploadedDocuments.length > 0 && (
+              <View style={styles.photosCountBadge}>
+                <Text style={styles.photosCountText}>{uploadedDocuments.length}</Text>
+              </View>
+            )}
+          </View>
+
+          {isLoadingDocuments ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.lg }} />
+          ) : uploadedDocuments.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+              <Feather name="file-plus" size={32} color={colors.mutedForeground} />
+              <Text style={{ color: colors.mutedForeground, fontSize: 14, marginTop: spacing.sm }}>
+                No documents uploaded yet
+              </Text>
+            </View>
+          ) : (
+            <View style={{ gap: spacing.sm }}>
+              {uploadedDocuments.map((doc) => (
+                <TouchableOpacity
+                  key={doc.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: spacing.md,
+                    backgroundColor: colors.muted,
+                    borderRadius: radius.lg,
+                    gap: spacing.md,
+                  }}
+                  onPress={() => handleOpenDocument(doc)}
+                  activeOpacity={0.7}
+                >
+                  <View style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: radius.md,
+                    backgroundColor: `${colors.primary}15`,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Feather name={getDocTypeIcon(doc.mimeType) as any} size={18} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }} numberOfLines={1}>
+                      {doc.title}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2 }}>
+                      <View style={{
+                        backgroundColor: `${colors.primary}20`,
+                        paddingHorizontal: 6,
+                        paddingVertical: 1,
+                        borderRadius: radius.sm,
+                      }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primary }}>
+                          {getDocTypeBadge(doc.mimeType)}
+                        </Text>
+                      </View>
+                      {doc.fileSize ? (
+                        <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                          {formatFileSize(doc.fileSize)}
+                        </Text>
+                      ) : null}
+                      {doc.createdAt ? (
+                        <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                          {new Date(doc.createdAt).toLocaleDateString()}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteDocument(doc)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={{ padding: spacing.xs }}
+                  >
+                    <Feather name="trash-2" size={16} color={colors.destructive} />
+                  </TouchableOpacity>
+                  <Feather name="external-link" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: spacing.sm,
+              marginTop: spacing.md,
+              paddingVertical: spacing.md,
+              backgroundColor: colors.primary,
+              borderRadius: radius.lg,
+              minHeight: 44,
+              opacity: isUploadingDocument ? 0.6 : 1,
+            }}
+            onPress={handleUploadDocument}
+            disabled={isUploadingDocument}
+            activeOpacity={0.7}
+          >
+            {isUploadingDocument ? (
+              <ActivityIndicator size="small" color={colors.primaryForeground} />
+            ) : (
+              <Feather name="upload" size={16} color={colors.primaryForeground} />
+            )}
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
+              {isUploadingDocument ? 'Uploading...' : 'Upload Document'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Client Signature Section */}
       {(job.status === 'in_progress' || job.status === 'done' || job.status === 'invoiced') && (
@@ -8551,6 +9376,114 @@ export default function JobDetailScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Site Update Modal */}
+      <Modal visible={showSiteUpdateModal} animationType="slide" transparent>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Post Site Update</Text>
+                <TouchableOpacity onPress={() => setShowSiteUpdateModal(false)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+                <TextInput
+                  style={styles.notesInput}
+                  value={siteUpdateNote}
+                  onChangeText={setSiteUpdateNote}
+                  placeholder="Describe the progress on site..."
+                  placeholderTextColor={colors.mutedForeground}
+                  multiline
+                  autoFocus
+                />
+                <View style={{ marginTop: spacing.md }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.mutedForeground, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                    Attach Photo (Optional)
+                  </Text>
+                  {siteUpdatePhotoUri ? (
+                    <View style={{ position: 'relative' }}>
+                      <Image
+                        source={{ uri: siteUpdatePhotoUri }}
+                        style={{ width: '100%', height: 200, borderRadius: radius.lg }}
+                        resizeMode="cover"
+                      />
+                      <TouchableOpacity
+                        onPress={() => setSiteUpdatePhotoUri(null)}
+                        style={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          backgroundColor: 'rgba(0,0,0,0.6)',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Feather name="x" size={18} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                      <TouchableOpacity
+                        style={{
+                          flex: 1,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: colors.primary,
+                          paddingVertical: spacing.md,
+                          borderRadius: radius.lg,
+                          gap: spacing.xs,
+                          minHeight: 44,
+                        }}
+                        onPress={handleSiteUpdateTakePhoto}
+                      >
+                        <Feather name="camera" size={iconSizes.md} color={colors.primaryForeground} />
+                        <Text style={{ color: colors.primaryForeground, fontSize: 14, fontWeight: '600' }}>Take Photo</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{
+                          flex: 1,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: colors.muted,
+                          paddingVertical: spacing.md,
+                          borderRadius: radius.lg,
+                          gap: spacing.xs,
+                          minHeight: 44,
+                        }}
+                        onPress={handleSiteUpdatePickPhoto}
+                      >
+                        <Feather name="image" size={iconSizes.md} color={colors.foreground} />
+                        <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: '600' }}>Gallery</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+                <TouchableOpacity
+                  style={[styles.saveButton, isSendingSiteUpdate && { opacity: 0.7 }]}
+                  onPress={handleSubmitSiteUpdate}
+                  disabled={isSendingSiteUpdate}
+                >
+                  {isSendingSiteUpdate ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Post Update</Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* Photos Modal */}
       <Modal visible={showPhotosModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -10015,6 +10948,215 @@ export default function JobDetailScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Add Variation Modal */}
+      <Modal visible={showAddVariationModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ justifyContent: 'flex-end' }}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add Variation</Text>
+                <TouchableOpacity onPress={() => setShowAddVariationModal(false)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, marginBottom: spacing.xs }}>Title *</Text>
+                <TextInput
+                  style={styles.singleLineInput}
+                  value={variationForm.title}
+                  onChangeText={(t) => setVariationForm(prev => ({ ...prev, title: t }))}
+                  placeholder="e.g. Additional plumbing work"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md }}>Description</Text>
+                <TextInput
+                  style={[styles.notesInput, { minHeight: 80 }]}
+                  value={variationForm.description}
+                  onChangeText={(t) => setVariationForm(prev => ({ ...prev, description: t }))}
+                  placeholder="Describe the scope change..."
+                  placeholderTextColor={colors.mutedForeground}
+                  multiline
+                />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md }}>Reason</Text>
+                <TextInput
+                  style={styles.singleLineInput}
+                  value={variationForm.reason}
+                  onChangeText={(t) => setVariationForm(prev => ({ ...prev, reason: t }))}
+                  placeholder="Why is this change needed?"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md }}>Amount (ex GST) *</Text>
+                <TextInput
+                  style={styles.singleLineInput}
+                  value={variationForm.amount}
+                  onChangeText={(t) => setVariationForm(prev => ({ ...prev, amount: t }))}
+                  placeholder="0.00"
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="decimal-pad"
+                />
+                {variationForm.amount ? (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm, paddingHorizontal: spacing.xs }}>
+                    <Text style={{ fontSize: 13, color: colors.mutedForeground }}>
+                      GST (10%): ${((parseFloat(variationForm.amount) || 0) * 0.1).toFixed(2)}
+                    </Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.foreground }}>
+                      Total: ${((parseFloat(variationForm.amount) || 0) * 1.1).toFixed(2)}
+                    </Text>
+                  </View>
+                ) : null}
+              </ScrollView>
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  onPress={() => setShowAddVariationModal(false)}
+                  style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md }}
+                >
+                  <Text style={{ color: colors.mutedForeground, fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: colors.primary,
+                    paddingVertical: spacing.md,
+                    borderRadius: radius.md,
+                    opacity: (!variationForm.title.trim() || !variationForm.amount.trim() || isSavingVariation) ? 0.5 : 1,
+                    minHeight: 44,
+                  }}
+                  onPress={handleCreateVariation}
+                  activeOpacity={0.8}
+                  disabled={!variationForm.title.trim() || !variationForm.amount.trim() || isSavingVariation}
+                >
+                  {isSavingVariation ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>Create Variation</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* Approve Variation Modal */}
+      <Modal visible={!!showApproveVariationModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ justifyContent: 'flex-end' }}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Approve Variation</Text>
+                <TouchableOpacity onPress={() => setShowApproveVariationModal(null)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, marginBottom: spacing.xs }}>Approver Name *</Text>
+                <TextInput
+                  style={styles.singleLineInput}
+                  value={approveVariationName}
+                  onChangeText={setApproveVariationName}
+                  placeholder="Enter name of person approving"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md }}>Signature</Text>
+                <View style={{ borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
+                  <SignaturePad
+                    onSave={(data) => setApproveVariationSignature(data)}
+                    height={200}
+                  />
+                </View>
+              </ScrollView>
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  onPress={() => setShowApproveVariationModal(null)}
+                  style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md }}
+                >
+                  <Text style={{ color: colors.mutedForeground, fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: colors.success,
+                    paddingVertical: spacing.md,
+                    borderRadius: radius.md,
+                    opacity: (!approveVariationName.trim() || isApprovingVariation) ? 0.5 : 1,
+                    minHeight: 44,
+                  }}
+                  onPress={handleApproveVariation}
+                  activeOpacity={0.8}
+                  disabled={!approveVariationName.trim() || isApprovingVariation}
+                >
+                  {isApprovingVariation ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>Approve</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* Reject Variation Modal */}
+      <Modal visible={!!showRejectVariationModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ justifyContent: 'flex-end' }}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Reject Variation</Text>
+                <TouchableOpacity onPress={() => setShowRejectVariationModal(null)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, marginBottom: spacing.xs }}>Reason for Rejection</Text>
+                <TextInput
+                  style={[styles.notesInput, { minHeight: 100 }]}
+                  value={rejectVariationReason}
+                  onChangeText={setRejectVariationReason}
+                  placeholder="Explain why this variation is rejected..."
+                  placeholderTextColor={colors.mutedForeground}
+                  multiline
+                />
+              </ScrollView>
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  onPress={() => setShowRejectVariationModal(null)}
+                  style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md }}
+                >
+                  <Text style={{ color: colors.mutedForeground, fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: colors.destructive,
+                    paddingVertical: spacing.md,
+                    borderRadius: radius.md,
+                    opacity: isRejectingVariation ? 0.5 : 1,
+                    minHeight: 44,
+                  }}
+                  onPress={handleRejectVariation}
+                  activeOpacity={0.8}
+                  disabled={isRejectingVariation}
+                >
+                  {isRejectingVariation ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>Reject</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </>
