@@ -245,10 +245,12 @@ export default function CalendarView({
     }).map(job => {
       const client = (clients as any[]).find(c => c.id === job.clientId);
       let timeDisplay = '';
+      let sortMinutes = 1440;
       if (job.scheduledTime) {
         const parts = job.scheduledTime.split(':').map(Number);
         const h = parts[0] || 0;
         const m = parts[1] || 0;
+        sortMinutes = h * 60 + m;
         const ampm = h >= 12 ? 'pm' : 'am';
         const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
         timeDisplay = `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
@@ -257,6 +259,7 @@ export default function CalendarView({
         const h = scheduledDate.getHours();
         const m = scheduledDate.getMinutes();
         if (h !== 0 || m !== 0) {
+          sortMinutes = h * 60 + m;
           const ampm = h >= 12 ? 'pm' : 'am';
           const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
           timeDisplay = `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
@@ -270,9 +273,10 @@ export default function CalendarView({
         time: timeDisplay,
         duration: job.estimatedHours ? `${job.estimatedHours} hours` : 'TBD',
         status: job.status,
-        date: dateStr
+        date: dateStr,
+        _sortMinutes: sortMinutes
       };
-    });
+    }).sort((a, b) => a._sortMinutes - b._sortMinutes);
   };
 
   const isToday = (date: Date) => {

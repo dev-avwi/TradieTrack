@@ -1122,6 +1122,10 @@ export default function DispatchBoard() {
       if (!job.scheduledAt) return false;
       const jobDate = format(parseISO(job.scheduledAt), 'yyyy-MM-dd');
       return jobDate === dateStr;
+    }).sort((a, b) => {
+      const aTime = parseJobTime(a.scheduledTime, a.scheduledAt);
+      const bTime = parseJobTime(b.scheduledTime, b.scheduledAt);
+      return (aTime.hour * 60 + aTime.minute) - (bTime.hour * 60 + bTime.minute);
     });
   }, [jobsWithClients, currentDate]);
 
@@ -1361,6 +1365,10 @@ export default function DispatchBoard() {
       map[dateStr] = jobsWithClients.filter(job => {
         if (!job.scheduledAt) return false;
         return format(parseISO(job.scheduledAt), 'yyyy-MM-dd') === dateStr;
+      }).sort((a, b) => {
+        const aTime = parseJobTime(a.scheduledTime, a.scheduledAt);
+        const bTime = parseJobTime(b.scheduledTime, b.scheduledAt);
+        return (aTime.hour * 60 + aTime.minute) - (bTime.hour * 60 + bTime.minute);
       });
     });
     return map;
@@ -1377,6 +1385,10 @@ export default function DispatchBoard() {
       map[dateStr] = jobsWithClients.filter(job => {
         if (!job.scheduledAt) return false;
         return format(parseISO(job.scheduledAt), 'yyyy-MM-dd') === dateStr;
+      }).sort((a, b) => {
+        const aTime = parseJobTime(a.scheduledTime, a.scheduledAt);
+        const bTime = parseJobTime(b.scheduledTime, b.scheduledAt);
+        return (aTime.hour * 60 + aTime.minute) - (bTime.hour * 60 + bTime.minute);
       });
     });
     return map;
