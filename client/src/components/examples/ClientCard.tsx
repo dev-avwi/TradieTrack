@@ -11,10 +11,10 @@ export default function ClientCardExample() {
         address="15 Oak Street, Cairns"
         jobsCount={3}
         lastJobDate="2 days ago"
-        onViewClick={(id) => console.log('View client:', id)}
-        onCreateJobClick={(id) => console.log('Create job for client:', id)}
-        onCallClick={(phone) => console.log('Call client:', phone)}
-        onEmailClick={(email) => console.log('Email client:', email)}
+        onViewClick={() => {}}
+        onCreateJobClick={() => {}}
+        onCallClick={() => {}}
+        onEmailClick={() => {}}
       />
       
       <ClientCard 
@@ -25,10 +25,10 @@ export default function ClientCardExample() {
         address="8 Pine Avenue, Trinity Beach"
         jobsCount={1}
         lastJobDate="1 week ago"
-        onViewClick={(id) => console.log('View client:', id)}
-        onCreateJobClick={(id) => console.log('Create job for client:', id)}
-        onCallClick={(phone) => console.log('Call client:', phone)}
-        onEmailClick={(email) => console.log('Email client:', email)}
+        onViewClick={() => {}}
+        onCreateJobClick={() => {}}
+        onCallClick={() => {}}
+        onEmailClick={() => {}}
       />
       
       <ClientCard 
@@ -38,10 +38,10 @@ export default function ClientCardExample() {
         address="22 Beach Road, Palm Cove"
         jobsCount={2}
         lastJobDate="3 weeks ago"
-        onViewClick={(id) => console.log('View client:', id)}
-        onCreateJobClick={(id) => console.log('Create job for client:', id)}
-        onCallClick={(phone) => console.log('Call client:', phone)}
-        onEmailClick={(email) => console.log('Email client:', email)}
+        onViewClick={() => {}}
+        onCreateJobClick={() => {}}
+        onCallClick={() => {}}
+        onEmailClick={() => {}}
       />
     </div>
   );

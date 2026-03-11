@@ -71,27 +71,19 @@ export function VoiceRecorder({ onSave, onCancel, isUploading, className }: Voic
       audioChunksRef.current = [];
       
       mediaRecorder.ondataavailable = (event) => {
-        console.log('[VoiceRecorder] Data available, size:', event.data.size);
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
       
       mediaRecorder.onstop = () => {
-        console.log('[VoiceRecorder] Recording stopped, chunks:', audioChunksRef.current.length);
-        const totalSize = audioChunksRef.current.reduce((acc, chunk) => acc + chunk.size, 0);
-        console.log('[VoiceRecorder] Total data size:', totalSize);
-        
         const blob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType });
-        console.log('[VoiceRecorder] Blob created, size:', blob.size, 'type:', blob.type);
         setRecordedBlob(blob);
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
         
         stream.getTracks().forEach(track => track.stop());
       };
-      
-      console.log('[VoiceRecorder] Starting recording with mimeType:', mimeType);
       
       mediaRecorder.start(100);
       setIsRecording(true);
@@ -353,9 +345,7 @@ export function VoiceNotePlayer({
       console.error('[VoiceNotePlayer] Error loading audio from:', currentUrl);
       setIsLoading(false);
       
-      // If primary URL failed, try fallback
       if (currentUrl === signedUrl && fallbackUrl) {
-        console.log('[VoiceNotePlayer] Trying fallback URL:', fallbackUrl);
         setCurrentUrl(fallbackUrl);
       } else {
         setHasError(true);

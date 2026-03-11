@@ -9,20 +9,20 @@ export default function KPIBoxExample() {
         value={8} 
         icon={Briefcase}
         trend={{ value: 2, label: "from yesterday" }}
-        onClick={() => console.log('Jobs Today clicked')}
+        onClick={() => {}}
       />
       <KPIBox 
         title="Unpaid Invoices" 
         value="$3,200" 
         icon={DollarSign}
         trend={{ value: -1, label: "from last week" }}
-        onClick={() => console.log('Unpaid Invoices clicked')}
+        onClick={() => {}}
       />
       <KPIBox 
         title="Quotes Awaiting" 
         value={5} 
         icon={FileText}
-        onClick={() => console.log('Quotes Awaiting clicked')}
+        onClick={() => {}}
       />
       <KPIBox 
         title="Month Earnings" 

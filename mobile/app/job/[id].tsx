@@ -343,6 +343,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   errorButton: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    borderRadius: radius.md,
   },
   errorButtonText: {
     color: colors.primary,
@@ -1844,6 +1847,7 @@ export default function JobDetailScreen() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [linkedReceipt, setLinkedReceipt] = useState<LinkedReceipt | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   
@@ -3280,13 +3284,20 @@ export default function JobDetailScreen() {
   const loadJob = async () => {
     if (!id) {
       console.error('No job ID provided');
+      setLoadError('No job ID provided');
       setIsLoading(false);
       return;
     }
     
     setIsLoading(true);
+    setLoadError(null);
     try {
       const response = await api.get<Job>(`/api/jobs/${id}`);
+      if (response.error) {
+        setLoadError(response.error);
+        setIsLoading(false);
+        return;
+      }
       if (response.data) {
         setJob(response.data);
         setEditedNotes(response.data.notes || '');
@@ -3302,6 +3313,7 @@ export default function JobDetailScreen() {
       }
     } catch (error) {
       console.error('Failed to load job:', error);
+      setLoadError(error instanceof Error ? error.message : 'Failed to load job. Please try again.');
     }
     setIsLoading(false);
   };
@@ -5309,10 +5321,10 @@ export default function JobDetailScreen() {
   if (!job) {
     return (
       <View style={styles.errorContainer}>
-        <Feather name="alert-circle" size={48} color={colors.mutedForeground} />
-        <Text style={styles.errorText}>Job not found</Text>
+        <Feather name="alert-circle" size={48} color={loadError ? colors.destructive : colors.mutedForeground} />
+        <Text style={styles.errorText}>{loadError ? 'Failed to load job' : 'Job not found'}</Text>
         <Text style={[styles.errorText, { fontSize: 14, marginTop: 4 }]}>
-          The job may have been deleted or you don't have access.
+          {loadError || 'The job may have been deleted or you don\'t have access.'}
         </Text>
         <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
           <TouchableOpacity onPress={loadJob} style={[styles.errorButton, { backgroundColor: colors.primary }]}>
@@ -10811,7 +10823,9 @@ export default function JobDetailScreen() {
                         } else if (msg.type === 'cleared') {
                           setSwmsSignatureData(null);
                         }
-                      } catch {}
+                      } catch (e) {
+                        if (__DEV__) console.warn('Failed to parse SWMS signature WebView message:', e);
+                      }
                     }}
                   />
                 </View>

@@ -995,6 +995,12 @@ export default function MapScreen() {
       if (initialDataLoadedRef.current.jobsLoaded && initialDataLoadedRef.current.teamLoaded) {
         setInitialDataLoaded(true);
       }
+    }).catch(err => {
+      if (__DEV__) console.warn('[Map] Failed to fetch map jobs:', err);
+      initialDataLoadedRef.current.jobsLoaded = true;
+      if (initialDataLoadedRef.current.teamLoaded) {
+        setInitialDataLoaded(true);
+      }
     });
     requestLocation();
   }, [fetchMapJobs]);
@@ -1230,7 +1236,7 @@ export default function MapScreen() {
   // Handle worker selection for assignment - with smooth camera animation
   const handleWorkerTap = useCallback((member: TeamMember) => {
     // Provide haptic feedback for tap
-    Haptics.selectionAsync();
+    Haptics.selectionAsync().catch(() => {});
     
     const memberLat = member.lastLocation?.latitude;
     const memberLng = member.lastLocation?.longitude;
@@ -1452,13 +1458,17 @@ export default function MapScreen() {
     
     // Platform-specific multi-stop navigation
     if (Platform.OS === 'ios') {
-      // iOS Maps doesn't support waypoints well, use Google Maps URL
       const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&waypoints=${encodeURIComponent(waypointsParam)}&travelmode=driving`;
-      Linking.openURL(url);
+      Linking.openURL(url).catch(err => {
+        if (__DEV__) console.warn('[Map] Failed to open navigation URL:', err);
+        Alert.alert('Navigation Error', 'Unable to open maps for navigation.');
+      });
     } else {
-      // Android Google Maps navigation with waypoints
       const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&waypoints=${encodeURIComponent(waypointsParam)}&travelmode=driving`;
-      Linking.openURL(url);
+      Linking.openURL(url).catch(err => {
+        if (__DEV__) console.warn('[Map] Failed to open navigation URL:', err);
+        Alert.alert('Navigation Error', 'Unable to open maps for navigation.');
+      });
     }
   };
 

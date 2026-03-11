@@ -895,6 +895,7 @@ export default function CollectScreen() {
       }
     } catch (error) {
       console.error('Failed to fetch payments data:', error);
+      Alert.alert('Loading Error', 'Could not load recent payments. Please try again.');
     } finally {
       setReceiptsLoading(false);
     }
@@ -1156,20 +1157,22 @@ export default function CollectScreen() {
         // If paying an invoice, update the invoice payment status
         if (selectedInvoice) {
           try {
-            await api.post(`/api/invoices/${selectedInvoice.id}/record-payment`, {
+            const recordRes = await api.post(`/api/invoices/${selectedInvoice.id}/record-payment`, {
               amount: (amountCents / 100).toFixed(2), // Server expects dollars, not cents
               paymentMethod: 'card', // Server accepts: cash, bank_transfer, cheque, card, other
               notes: 'Tap to Pay contactless payment',
             });
-            // Refresh invoices
+            if (recordRes.error) {
+              Alert.alert('Recording Error', recordRes.error);
+            }
             fetchInvoices();
-          } catch (err) {
-            console.error('Failed to record invoice payment:', err);
+          } catch (err: any) {
+            const msg = err?.message || 'Payment was successful but we could not update the invoice record. Please update it manually.';
+            Alert.alert('Recording Error', msg);
           }
         }
         
         if (!useNativeSDK) {
-          // Simulation mode: show success in modal then switch to receipt
           setPaymentStep('success');
           setTimeout(() => {
             setShowTapToPayModal(false);
@@ -1177,14 +1180,12 @@ export default function CollectScreen() {
             setShowReceiptModal(true);
           }, 1500);
         } else {
-          // Native SDK: Payment succeeded, go directly to receipt
           setShowReceiptModal(true);
         }
       } else {
         if (!useNativeSDK) {
           setPaymentStep('error');
         } else {
-          // Native SDK: Payment was cancelled or failed
           Alert.alert('Payment Cancelled', 'The payment was not completed.');
         }
       }
@@ -1242,14 +1243,18 @@ export default function CollectScreen() {
         
         if (selectedInvoice) {
           try {
-            await api.post(`/api/invoices/${selectedInvoice.id}/record-payment`, {
+            const recordRes = await api.post(`/api/invoices/${selectedInvoice.id}/record-payment`, {
               amount: (amountCents / 100).toFixed(2),
               paymentMethod: 'card',
               notes: 'Tap to Pay contactless payment',
             });
+            if (recordRes.error) {
+              Alert.alert('Recording Error', recordRes.error);
+            }
             fetchInvoices();
-          } catch (err) {
-            console.error('Failed to record invoice payment:', err);
+          } catch (err: any) {
+            const msg = err?.message || 'Payment was successful but we could not update the invoice record. Please update it manually.';
+            Alert.alert('Recording Error', msg);
           }
         }
         
@@ -1342,7 +1347,7 @@ export default function CollectScreen() {
       handleCloseReceiptModal();
     } catch (error: any) {
       console.error('Failed to send SMS receipt:', error);
-      if (error?.message?.includes('disabled') || error?.response?.data?.error?.includes('not configured')) {
+      if (error?.message?.includes('disabled') || error?.message?.includes('not configured')) {
         setShowSmsSetupModal(true);
       } else if (error?.message?.includes('disabled')) {
         Alert.alert('SMS Unavailable', 'SMS is not configured. Use email instead.');
@@ -1400,13 +1405,19 @@ export default function CollectScreen() {
         reference: selectedInvoice?.invoiceNumber,
       });
 
+      if (response.error) {
+        Alert.alert('Error', response.error);
+        setShowQRModal(false);
+        return;
+      }
       if (response.data) {
         setQrPaymentUrl(response.data.paymentUrl);
         setQrPaymentRequest(response.data);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to generate QR code:', error);
-      Alert.alert('Error', 'Failed to generate QR code');
+      const msg = error?.message || 'Failed to generate QR code';
+      Alert.alert('Error', msg);
       setShowQRModal(false);
     } finally {
       setQrLoading(false);
@@ -1480,13 +1491,18 @@ export default function CollectScreen() {
         reference: selectedInvoice?.invoiceNumber,
       });
 
+      if (response.error) {
+        Alert.alert('Error', response.error);
+        return;
+      }
       if (response.data) {
         setPaymentLinkRequest(response.data);
         setShowPaymentLinkModal(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create payment request:', error);
-      Alert.alert('Error', 'Failed to create payment link');
+      const msg = error?.message || 'Failed to create payment link';
+      Alert.alert('Error', msg);
     } finally {
       setSendingLink(false);
     }
@@ -1542,12 +1558,12 @@ export default function CollectScreen() {
       handleClosePaymentLinkModal();
     } catch (error: any) {
       console.error('Failed to send SMS:', error);
-      if (error?.response?.data?.error?.includes('not configured')) {
+      if (error?.message?.includes('not configured')) {
         setShowSmsSetupModal(true);
-      } else if (error?.response?.data?.error?.includes('disabled')) {
+      } else if (error?.message?.includes('disabled')) {
         Alert.alert('SMS Unavailable', 'SMS is not configured. Use email instead, or copy the link to share manually.');
       } else {
-        Alert.alert('Error', 'Failed to send payment link via SMS');
+        Alert.alert('Error', error?.message || 'Failed to send payment link via SMS');
       }
     } finally {
       setSendingLink(false);
@@ -1651,10 +1667,10 @@ export default function CollectScreen() {
       fetchReceipts();
     } catch (error: any) {
       console.error('Failed to send SMS:', error);
-      if (error?.response?.data?.error?.includes('not configured')) {
+      if (error?.message?.includes('not configured')) {
         setShowSmsSetupModal(true);
       } else {
-        const errorMsg = error?.response?.data?.error || 'Failed to send payment link via SMS';
+        const errorMsg = error?.message || 'Failed to send payment link via SMS';
         Alert.alert('Error', errorMsg);
       }
     } finally {
@@ -1728,20 +1744,24 @@ export default function CollectScreen() {
         invoiceId: recordInvoiceId || undefined,
       });
 
+      if (response.error) {
+        Alert.alert('Error', response.error);
+        return;
+      }
       if (response.data) {
         setRecordPaymentSuccess({
           receiptNumber: response.data.receiptNumber,
           receiptId: response.data.id,
         });
         
-        // Refresh invoices if we linked to one
         if (recordInvoiceId) {
           fetchInvoices();
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to record payment:', error);
-      Alert.alert('Error', 'Failed to record payment. Please try again.');
+      const msg = error?.message || 'Failed to record payment. Please try again.';
+      Alert.alert('Error', msg);
     } finally {
       setRecordingPayment(false);
     }
@@ -1930,13 +1950,19 @@ export default function CollectScreen() {
         description: customAmountDescription || 'Payment',
       });
 
+      if (response.error) {
+        Alert.alert('Error', response.error);
+        setShowQRModal(false);
+        return;
+      }
       if (response.data) {
         setQrPaymentUrl(response.data.paymentUrl);
         setQrPaymentRequest(response.data);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to generate QR code:', error);
-      Alert.alert('Error', 'Failed to generate QR code');
+      const msg = error?.message || 'Failed to generate QR code';
+      Alert.alert('Error', msg);
       setShowQRModal(false);
     } finally {
       setQrLoading(false);
@@ -1958,13 +1984,18 @@ export default function CollectScreen() {
         description: customAmountDescription || 'Payment',
       });
 
+      if (response.error) {
+        Alert.alert('Error', response.error);
+        return;
+      }
       if (response.data) {
         setPaymentLinkRequest(response.data);
         setShowPaymentLinkModal(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create payment request:', error);
-      Alert.alert('Error', 'Failed to create payment link');
+      const msg = error?.message || 'Failed to create payment link';
+      Alert.alert('Error', msg);
     } finally {
       setSendingLink(false);
     }

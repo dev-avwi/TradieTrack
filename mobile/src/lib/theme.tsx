@@ -523,7 +523,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       if (stored === 'light' || stored === 'dark' || stored === 'system') {
         setThemeModeState(stored);
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      console.warn('Failed to load theme preference from SecureStore:', err);
+    });
   }, []);
 
   // Sync server-side brandColor to local advanced theme store
@@ -544,7 +546,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setThemeModeState(mode);
     try {
       await SecureStore.setItemAsync('theme_mode', mode);
-    } catch {}
+    } catch (err) {
+      console.warn('Failed to save theme preference to SecureStore:', err);
+    }
   };
 
   // Prefer advanced theme mode if set, otherwise use local state

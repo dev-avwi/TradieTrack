@@ -207,7 +207,7 @@ export default function PaymentHubScreen() {
       setToneSelector(null);
       fetchChaserData();
     } catch (error: any) {
-      const message = error?.response?.data?.error || 'Could not send reminder';
+      const message = error?.message || 'Could not send reminder';
       Alert.alert('Failed to Send', message);
     } finally {
       setSendingReminder(null);
@@ -238,6 +238,7 @@ export default function PaymentHubScreen() {
       setClients(clientsRes.data || []);
     } catch (error) {
       console.error('Failed to fetch money hub data:', error);
+      Alert.alert('Loading Error', 'Could not load payment data. Pull down to retry.');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -315,16 +316,18 @@ export default function PaymentHubScreen() {
               try {
                 const { Share: RNShare } = await import('react-native');
                 await RNShare.share({ message: paymentUrl, title: 'Payment Link' });
-              } catch {}
+              } catch (shareError) {
+                console.warn('Failed to share payment link:', shareError);
+              }
             }},
             { text: 'Close', style: 'cancel' },
           ]
         );
       } else {
-        Alert.alert('Error', response.data?.error || 'Failed to create payment link.');
+        Alert.alert('Error', response.error || 'Failed to create payment link.');
       }
     } catch (error: any) {
-      const message = error?.response?.data?.error || 'Failed to create payment link.';
+      const message = error?.message || 'Failed to create payment link.';
       Alert.alert('Error', message);
     } finally {
       setCreatingPaymentLink(null);

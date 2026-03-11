@@ -643,7 +643,7 @@ export default function NewInvoiceScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ jobId?: string; clientId?: string; editInvoiceId?: string }>();
   const { user, businessSettings } = useAuthStore();
-  const { clients, fetchClients } = useClientsStore();
+  const { clients, fetchClients, isLoading: isLoadingClients } = useClientsStore();
   const { fetchInvoices, getInvoice } = useInvoicesStore();
   const isEditing = !!params.editInvoiceId;
   const { colors, isDark } = useTheme();
@@ -1228,6 +1228,14 @@ export default function NewInvoiceScreen() {
             style={styles.editContainer}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
+            {(isLoadingClients && clients.length === 0) || isLoadingJob ? (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 48 }}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={{ fontSize: 14, color: colors.mutedForeground, marginTop: 12 }}>
+                  {isLoadingJob ? 'Loading job data...' : 'Loading clients...'}
+                </Text>
+              </View>
+            ) : (
             <ScrollView 
               style={styles.scrollView}
               contentContainerStyle={[styles.content, { paddingBottom: bottomNavHeight + 20 }]}
@@ -1536,6 +1544,7 @@ export default function NewInvoiceScreen() {
                 )}
               </TouchableOpacity>
             </ScrollView>
+            )}
           </KeyboardAvoidingView>
         )}
       </View>

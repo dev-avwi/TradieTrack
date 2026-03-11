@@ -249,6 +249,8 @@ export default function ReportBugScreen() {
   useEffect(() => {
     NetInfo.fetch().then(state => {
       setNetworkStatus(state.isConnected ? (state.type || 'connected') : 'offline');
+    }).catch(() => {
+      setNetworkStatus('unknown');
     });
   }, []);
 

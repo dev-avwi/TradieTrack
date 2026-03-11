@@ -567,7 +567,9 @@ function ShareResultsButton({ title, results, styles }: { title: string; results
     const text = `${title}\n${'—'.repeat(20)}\n${results.map(r => `${r.label}: ${r.value}`).join('\n')}\n\nCalculated with JobRunner`;
     try {
       await Share.share({ message: text, title });
-    } catch {}
+    } catch (err) {
+      console.warn('Failed to share calculator results:', err);
+    }
   }, [title, results]);
 
   return (
