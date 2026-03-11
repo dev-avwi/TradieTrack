@@ -2227,6 +2227,8 @@ function SchedulingTab() {
     return day >= 1 && day <= 5;
   };
 
+  const isWeekend = (date: Date) => !isWeekday(date);
+
   const getMemberTimeOffForDay = (memberId: string, date: Date) => {
     return timeOff.filter(t => {
       if (t.teamMemberId !== memberId) return false;
@@ -2258,7 +2260,6 @@ function SchedulingTab() {
   };
 
   const isMemberAvailableDay = (memberId: string, date: Date) => {
-    if (!isWeekday(date)) return false;
     const dayTimeOff = getMemberTimeOffForDay(memberId, date);
     const hasApprovedTimeOff = dayTimeOff.some(t => t.status === 'approved');
     return !hasApprovedTimeOff;
@@ -2690,15 +2691,15 @@ function SchedulingTab() {
                       </div>
                       {weekDays.map((day, i) => {
                         const isCurrentDay = isSameDay(day, today);
-                        const isWeekend = !isWeekday(day);
+                        const isWeekendDay = isWeekend(day);
                         return (
                           <div
                             key={i}
                             className={`p-1.5 text-center text-xs font-medium ${
                               isCurrentDay
                                 ? 'bg-primary/10'
-                                : isWeekend
-                                  ? 'bg-muted/70'
+                                : isWeekendDay
+                                  ? 'bg-muted/60'
                                   : 'bg-muted/50'
                             } text-muted-foreground`}
                           >
@@ -2734,17 +2735,17 @@ function SchedulingTab() {
                             const hasApprovedTimeOff = dayTimeOff.some(t => t.status === 'approved');
                             const hasPendingTimeOff = dayTimeOff.some(t => t.status === 'pending');
                             const memberJobs = getMemberJobsForDay(member.userId, day);
-                            const isAvail = isWeekday(day) && !hasApprovedTimeOff;
+                            const isAvail = !hasApprovedTimeOff;
                             const isCurrentDay = isSameDay(day, today);
-                            const isWeekend = !isWeekday(day);
+                            const isWeekendDay = isWeekend(day);
                             const cellId = `team-${member.userId}-${dayKey}`;
                             const isDropZone = dragOverTarget === cellId;
 
                             let cellBg = 'bg-card';
                             if (hasApprovedTimeOff) {
                               cellBg = 'bg-red-50 dark:bg-red-900/10';
-                            } else if (isWeekend) {
-                              cellBg = 'bg-muted/40';
+                            } else if (isWeekendDay && memberJobs.length === 0) {
+                              cellBg = 'bg-muted/20';
                             } else if (memberJobs.length > 0) {
                               cellBg = 'bg-blue-50/30 dark:bg-blue-900/5';
                             } else if (isAvail) {
@@ -2757,10 +2758,10 @@ function SchedulingTab() {
                                 className={`${cellBg} p-1 border-t border-border flex flex-col items-start justify-start gap-0.5 min-h-[60px] group relative ${
                                   isCurrentDay ? 'ring-1 ring-inset ring-primary/20' : ''
                                 } ${isDropZone ? 'ring-2 ring-dashed ring-primary/50 bg-primary/5' : ''} ${
-                                  isAvail && !hasApprovedTimeOff && !hasPendingTimeOff ? 'hover:bg-primary/5 transition-colors cursor-pointer' : ''
+                                  isAvail && !hasPendingTimeOff ? 'hover:bg-primary/5 transition-colors cursor-pointer' : ''
                                 }`}
                                 onClick={() => {
-                                  if (!isAvail || hasApprovedTimeOff || isWeekend) return;
+                                  if (!isAvail || hasApprovedTimeOff) return;
                                   setQuickAssignCell({
                                     memberId: member.id,
                                     memberUserId: member.userId,
@@ -2785,10 +2786,7 @@ function SchedulingTab() {
                                     Pending
                                   </Badge>
                                 )}
-                                {isWeekend && !hasApprovedTimeOff && !hasPendingTimeOff && (
-                                  <span className="text-[10px] text-muted-foreground/50">-</span>
-                                )}
-                                {!hasApprovedTimeOff && !hasPendingTimeOff && !isWeekend && memberJobs.length === 0 && (
+                                {!hasApprovedTimeOff && !hasPendingTimeOff && memberJobs.length === 0 && (
                                   <div className="group/cell w-full h-full flex items-center justify-center">
                                     <Plus className="h-3 w-3 text-muted-foreground/0 group-hover/cell:text-muted-foreground/40 transition-colors" />
                                   </div>
@@ -2834,7 +2832,7 @@ function SchedulingTab() {
                                     )}
                                   </div>
                                 )}
-                                {!isWeekend && memberJobs.length > 0 && (
+                                {memberJobs.length > 0 && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); navigate(`/dispatch-board?date=${dayKey}`); }}
                                     className="absolute bottom-0.5 right-0.5 text-[8px] text-primary/0 group-hover:text-primary/60 transition-colors hover:underline cursor-pointer"
