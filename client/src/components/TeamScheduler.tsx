@@ -157,7 +157,10 @@ function getMemberDisplayName(member: TeamMember): string {
 function parseTimeToHour(timeStr?: string): number {
   if (!timeStr) return 9;
   const parts = timeStr.split(':');
-  return parseInt(parts[0], 10) || 9;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h)) return 9;
+  return h + (isNaN(m) ? 0 : m / 60);
 }
 
 function hourToTimeStr(hour: number): string {
@@ -446,7 +449,8 @@ export default function TeamScheduler({ onViewJob, onCreateJob }: TeamSchedulerP
     dayJobs.forEach(job => {
       const startHour = parseTimeToHour(job.scheduledTime);
       const durationHours = Math.ceil((job.estimatedDuration || 60) / 60);
-      for (let h = startHour; h < startHour + durationHours; h++) {
+      const firstHour = Math.floor(startHour);
+      for (let h = firstHour; h < firstHour + durationHours; h++) {
         hourCounts.set(h, (hourCounts.get(h) || 0) + 1);
       }
     });
@@ -1176,7 +1180,7 @@ function TimelineView({
                         const client = clientsMap.get(job.clientId);
                         const statusStyle = getStatusStyle(job.status);
 
-                        if (startHour < 6 || startHour > 17) return null;
+                        if (startHour < 6 || startHour >= 18) return null;
 
                         return (
                           <Tooltip key={job.id}>

@@ -230,24 +230,44 @@ export default function CalendarView({
   };
 
   const getJobsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
     return (jobs as any[]).filter(job => {
       if (!job.scheduledAt) return false;
-      const jobDate = new Date(job.scheduledAt).toISOString().split('T')[0];
-      return jobDate === dateStr;
+      const jd = new Date(job.scheduledAt);
+      const jYear = jd.getFullYear();
+      const jMonth = String(jd.getMonth() + 1).padStart(2, '0');
+      const jDay = String(jd.getDate()).padStart(2, '0');
+      return `${jYear}-${jMonth}-${jDay}` === dateStr;
     }).map(job => {
       const client = (clients as any[]).find(c => c.id === job.clientId);
-      const scheduledDate = new Date(job.scheduledAt);
+      let timeDisplay = '';
+      if (job.scheduledTime) {
+        const parts = job.scheduledTime.split(':').map(Number);
+        const h = parts[0] || 0;
+        const m = parts[1] || 0;
+        const ampm = h >= 12 ? 'pm' : 'am';
+        const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+        timeDisplay = `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+      } else {
+        const scheduledDate = new Date(job.scheduledAt);
+        const h = scheduledDate.getHours();
+        const m = scheduledDate.getMinutes();
+        if (h !== 0 || m !== 0) {
+          const ampm = h >= 12 ? 'pm' : 'am';
+          const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+          timeDisplay = `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+        }
+      }
       return {
         id: job.id,
         title: job.title,
         client: client?.name || 'Unknown Client',
         address: job.address || 'No address',
-        time: scheduledDate.toLocaleTimeString('en-AU', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: true 
-        }),
+        time: timeDisplay,
         duration: job.estimatedHours ? `${job.estimatedHours} hours` : 'TBD',
         status: job.status,
         date: dateStr
