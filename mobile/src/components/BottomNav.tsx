@@ -230,10 +230,10 @@ const createStyles = (colors: ThemeColors, isPad: boolean = false) => StyleSheet
   },
   gapCover: {
     position: 'absolute',
-    top: -4,
+    top: -16,
     left: 0,
     right: 0,
-    height: 4,
+    height: 16,
     backgroundColor: colors.background,
     zIndex: 100,
   },

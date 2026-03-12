@@ -500,7 +500,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     <View style={[styles.container, { backgroundColor: colors.background, position: 'relative', overflow: 'visible' }]}>
       <Header />
       
-      <View style={[styles.content, { paddingBottom: bottomNavHeight }]}>
+      <View style={[styles.content, { paddingBottom: bottomNavHeight, backgroundColor: colors.background }]}>
         {children}
       </View>
       
@@ -694,7 +694,7 @@ function RootLayoutContent() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <MapPreferenceModal />
       <WhatYouMissedPopup />
-      <Animated.View style={{ flex: 1, opacity: navigationSettled ? contentOpacity : 0 }}>
+      <Animated.View style={{ flex: 1, opacity: navigationSettled ? contentOpacity : 0, backgroundColor: colors.background }}>
         <AuthenticatedLayout>
           <Stack
             screenOptions={{
