@@ -1219,11 +1219,6 @@ export default function DispatchBoard() {
       assignedTo: memberId === 'owner' ? null : memberId,
     };
 
-    // Debug logging for drag-drop assignment
-    console.log('[DispatchBoard] handleDrop - memberId received:', memberId);
-    console.log('[DispatchBoard] handleDrop - jobId:', draggedJob.job.id);
-    console.log('[DispatchBoard] handleDrop - full mutation payload:', mutationPayload);
-
     const existingJobsForMember = scheduledJobsForDate.filter(j => 
       ((memberId === 'owner' ? !j.assignedTo : (j.assignedTo === memberId)) || (!j.assignedTo && memberId === 'owner')) &&
       j.id !== draggedJob.job.id
@@ -1283,8 +1278,6 @@ export default function DispatchBoard() {
       assignedTo: selectedMemberId === 'owner' ? null : selectedMemberId,
     };
 
-    console.log('[DispatchBoard] handleAssignJob - payload:', mutationPayload);
-
     rescheduleJobMutation.mutate(mutationPayload, {
       onSuccess: () => {
         setAssignDialogOpen(false);
@@ -1306,8 +1299,6 @@ export default function DispatchBoard() {
       scheduledTime: timeStr,
       assignedTo: memberId === 'owner' ? null : memberId,
     };
-
-    console.log('[DispatchBoard] handleSlotClick - assigning to slot:', mutationPayload);
 
     rescheduleJobMutation.mutate(mutationPayload, {
       onSuccess: () => {

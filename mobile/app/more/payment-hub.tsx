@@ -170,6 +170,10 @@ export default function PaymentHubScreen() {
   const fetchStripeData = useCallback(async () => {
     try {
       const statusRes = await api.get<StripeConnectStatus>('/api/stripe-connect/status');
+      if (statusRes.error) {
+        console.warn('Failed to fetch Stripe status:', statusRes.error);
+        return;
+      }
       setStripeStatus(statusRes.data ?? null);
       
       if (statusRes.data?.connected && statusRes.data?.chargesEnabled) {
@@ -177,11 +181,11 @@ export default function PaymentHubScreen() {
           api.get<StripeBalance>('/api/stripe-connect/balance').catch(() => ({ data: null })),
           api.get<{ payouts: StripePayout[] }>('/api/stripe-connect/payouts').catch(() => ({ data: { payouts: [] } })),
         ]);
-        setStripeBalance(balanceRes.data ?? null);
-        setStripePayouts(payoutsRes.data?.payouts || []);
+        setStripeBalance(balanceRes.error ? null : (balanceRes.data ?? null));
+        setStripePayouts(payoutsRes.error ? [] : (payoutsRes.data?.payouts || []));
       }
     } catch (error) {
-      console.error('Failed to fetch Stripe data:', error);
+      console.warn('Failed to fetch Stripe data:', error);
     } finally {
       setStripeLoading(false);
     }
@@ -191,9 +195,13 @@ export default function PaymentHubScreen() {
     setChaserLoading(true);
     try {
       const res = await api.get<ChaserResponse>('/api/payment-chaser/summary');
-      setChaserData(res.data ?? null);
+      if (res.error) {
+        console.warn('Failed to fetch chaser data:', res.error);
+      } else {
+        setChaserData(res.data ?? null);
+      }
     } catch (error) {
-      console.error('Failed to fetch chaser data:', error);
+      console.warn('Failed to fetch chaser data:', error);
     } finally {
       setChaserLoading(false);
     }
@@ -202,13 +210,16 @@ export default function PaymentHubScreen() {
   const handleSendReminder = useCallback(async (invoiceId: string, tone: string) => {
     setSendingReminder(invoiceId);
     try {
-      await api.post(`/api/invoices/${invoiceId}/reminder`, { tone });
-      Alert.alert('Reminder Sent', `${tone.charAt(0).toUpperCase() + tone.slice(1)} reminder sent successfully`);
-      setToneSelector(null);
-      fetchChaserData();
+      const response = await api.post(`/api/invoices/${invoiceId}/reminder`, { tone });
+      if (response.error) {
+        Alert.alert('Failed to Send', response.error);
+      } else {
+        Alert.alert('Reminder Sent', `${tone.charAt(0).toUpperCase() + tone.slice(1)} reminder sent successfully`);
+        setToneSelector(null);
+        fetchChaserData();
+      }
     } catch (error: any) {
-      const message = error?.message || 'Could not send reminder';
-      Alert.alert('Failed to Send', message);
+      Alert.alert('Failed to Send', error?.message || 'Could not send reminder');
     } finally {
       setSendingReminder(null);
     }
@@ -218,7 +229,11 @@ export default function PaymentHubScreen() {
     setAiLoading(true);
     try {
       const res = await api.post<{ insights: string }>('/api/payment-chaser/ai-insights', {});
-      setAiInsights(res.data?.insights || null);
+      if (res.error) {
+        Alert.alert('AI Insights Error', res.error);
+      } else {
+        setAiInsights(res.data?.insights || null);
+      }
     } catch (error) {
       Alert.alert('AI Insights Error', 'Could not generate insights. Check your AI settings.');
     } finally {
@@ -233,11 +248,14 @@ export default function PaymentHubScreen() {
         api.get<Quote[]>('/api/quotes'),
         api.get<Client[]>('/api/clients'),
       ]);
-      setInvoices(invoicesRes.data || []);
-      setQuotes(quotesRes.data || []);
-      setClients(clientsRes.data || []);
+      setInvoices(invoicesRes.error ? [] : (Array.isArray(invoicesRes.data) ? invoicesRes.data : []));
+      setQuotes(quotesRes.error ? [] : (Array.isArray(quotesRes.data) ? quotesRes.data : []));
+      setClients(clientsRes.error ? [] : (Array.isArray(clientsRes.data) ? clientsRes.data : []));
+      if (invoicesRes.error || quotesRes.error || clientsRes.error) {
+        Alert.alert('Loading Error', 'Some payment data could not be loaded. Pull down to retry.');
+      }
     } catch (error) {
-      console.error('Failed to fetch money hub data:', error);
+      console.warn('Failed to fetch money hub data:', error);
       Alert.alert('Loading Error', 'Could not load payment data. Pull down to retry.');
     } finally {
       setIsLoading(false);
@@ -262,7 +280,9 @@ export default function PaymentHubScreen() {
     setIsConnecting(true);
     try {
       const response = await api.post<{ url?: string }>('/api/stripe-connect/onboard');
-      if (response.data?.url) {
+      if (response.error) {
+        Alert.alert('Error', response.error);
+      } else if (response.data?.url) {
         const url = response.data.url;
         const canOpen = await Linking.canOpenURL(url);
         if (!canOpen) {
@@ -337,7 +357,9 @@ export default function PaymentHubScreen() {
   const handleOpenStripeDashboard = useCallback(async () => {
     try {
       const response = await api.get<{ url?: string }>('/api/stripe-connect/dashboard');
-      if (response.data?.url) {
+      if (response.error) {
+        Alert.alert('Error', response.error);
+      } else if (response.data?.url) {
         const url = response.data.url;
         const canOpen = await Linking.canOpenURL(url);
         if (!canOpen) {
@@ -347,14 +369,14 @@ export default function PaymentHubScreen() {
         try {
           await Linking.openURL(url);
         } catch (linkError) {
-          console.error('Failed to open Stripe dashboard URL:', linkError);
+          console.warn('Failed to open Stripe dashboard URL:', linkError);
           Alert.alert('Error', 'Failed to open Stripe dashboard page. Please try again.');
         }
       } else {
         Alert.alert('Error', 'Could not open Stripe dashboard');
       }
     } catch (error) {
-      console.error('Failed to open Stripe dashboard:', error);
+      console.warn('Failed to open Stripe dashboard:', error);
       Alert.alert('Error', 'Failed to open Stripe dashboard. Please try again.');
     }
   }, []);

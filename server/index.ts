@@ -32,6 +32,43 @@ process.on('unhandledRejection', (reason: unknown) => {
   }));
 });
 
+let httpServer: ReturnType<typeof import('http').createServer> | null = null;
+
+function gracefulShutdown(signal: string) {
+  console.log(`\n${signal} received — shutting down gracefully...`);
+  const forceTimeout = setTimeout(() => {
+    console.error('Graceful shutdown timed out after 10s, forcing exit');
+    process.exit(1);
+  }, 10_000);
+  forceTimeout.unref();
+
+  const closeServer = new Promise<void>((resolve) => {
+    if (httpServer) {
+      httpServer.close(() => resolve());
+    } else {
+      resolve();
+    }
+  });
+
+  closeServer
+    .then(() => {
+      if ((storage as any).pool) {
+        return (storage as any).pool.end();
+      }
+    })
+    .then(() => {
+      console.log('Graceful shutdown complete');
+      process.exit(0);
+    })
+    .catch((err: unknown) => {
+      console.error('Error during shutdown:', err);
+      process.exit(1);
+    });
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
 const app = express();
 
 // Session configuration - require SESSION_SECRET and DATABASE_URL in production
@@ -190,6 +227,7 @@ if (process.env.DATABASE_URL) {
   }
   
   const server = await registerRoutes(app);
+  httpServer = server;
 
   // Set up WebSocket for real-time location tracking with session auth
   setupWebSocket(server, sessionStore);

@@ -62,3 +62,10 @@ Core architectural and design decisions include:
 *   **Weather API**: Open-Meteo
 *   **Routing/ETA**: OSRM (Open Source Routing Machine)
 *   **Tap to Pay (Stripe Terminal)**: `@stripe/stripe-terminal-react-native` SDK (for iOS 17.6+). SDK loading disabled via `TAP_TO_PAY_ENABLED = false` in `useServices.ts` pending Apple Tap to Pay approval (Case-ID 18817353). Voice transcription uses `AI_INTEGRATIONS_OPENAI_API_KEY` (Replit AI integration), not `OPENAI_API_KEY`.
+
+### Production Reliability
+*   **Graceful Shutdown**: Server handles SIGTERM/SIGINT by stopping new connections, closing the HTTP server, then cleanly closing the database pool. Force-exits after 10s timeout.
+*   **API Error Contract (Mobile)**: The custom API client (`mobile/src/lib/api.ts`) returns `{ data?, error? }` — it does NOT throw for HTTP errors. All mobile screens check `response.error` before using `response.data`. The `catch` block only handles network failures/timeouts.
+*   **Data Isolation**: All API routes scope queries to the authenticated user's business via `userId`/`effectiveUserId`. Admin routes are separately gated by `isPlatformAdmin`.
+*   **Rate Limiting**: Applied to auth, password reset, payments, chat, and portal endpoints.
+*   **Error Handling**: All mobile screens show user-visible error alerts on failure. No silent `catch {}` blocks remain.

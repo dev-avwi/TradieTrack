@@ -328,12 +328,8 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
     try {
       const defaults = template.defaults || {};
       
-      console.log('[JobForm] Applying template:', template.name, 'defaults:', defaults);
-      
-      // Always set title - use defaults.title if available, otherwise use template name
       const titleToSet = defaults.title || template.name || "";
       if (titleToSet) {
-        console.log('[JobForm] Setting title to:', titleToSet);
         form.setValue("title", titleToSet, { 
           shouldValidate: true, 
           shouldDirty: true, 
@@ -343,7 +339,6 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
       
       // Apply description if available
       if (defaults.description) {
-        console.log('[JobForm] Setting description to:', defaults.description);
         form.setValue("description", defaults.description, { 
           shouldValidate: true, 
           shouldDirty: true, 
