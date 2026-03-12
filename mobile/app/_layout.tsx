@@ -11,7 +11,7 @@ import "../global.css";
 import { useNotifications, useOfflineStorage, useLocationTracking, useStripeTerminal } from '../src/hooks/useServices';
 import { isTapToPayAvailable } from '../src/lib/stripe-terminal';
 import notificationService from '../src/lib/notifications';
-import { router, usePathname } from 'expo-router';
+import { router, usePathname, useSegments } from 'expo-router';
 import { ThemeProvider, useTheme } from '../src/lib/theme';
 import { BottomNav, getBottomNavHeight } from '../src/components/BottomNav';
 import { SidebarNav, getSidebarWidth } from '../src/components/SidebarNav';
@@ -639,7 +639,7 @@ function RootLayoutContent() {
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
   const [navigationSettled, setNavigationSettled] = useState(false);
   const contentOpacity = useRef(new Animated.Value(0)).current;
-  const pathname = usePathname();
+  const segments = useSegments();
 
   useEffect(() => {
     checkAuth();
@@ -666,19 +666,35 @@ function RootLayoutContent() {
   }, [isInitialized, isLoading]);
 
   const authReady = isInitialized && !isLoading && appReady && minTimeElapsed;
-  const hasNavigatedAway = pathname !== '/' && pathname !== '/index';
+  const firstSegment = segments[0] || '';
+  const hasNavigatedAway = firstSegment === '(tabs)' || firstSegment === '(auth)' || firstSegment === 'more' || firstSegment === 'job';
 
   useEffect(() => {
-    if (authReady && hasNavigatedAway && !navigationSettled) {
-      setNavigationSettled(true);
-      InteractionManager.runAfterInteractions(() => {
-        Animated.timing(contentOpacity, {
-          toValue: 1,
-          duration: 200,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }).start();
-      });
+    if (authReady && !navigationSettled) {
+      if (hasNavigatedAway) {
+        setNavigationSettled(true);
+        InteractionManager.runAfterInteractions(() => {
+          Animated.timing(contentOpacity, {
+            toValue: 1,
+            duration: 200,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }).start();
+        });
+      } else {
+        const fallback = setTimeout(() => {
+          if (!navigationSettled) {
+            setNavigationSettled(true);
+            Animated.timing(contentOpacity, {
+              toValue: 1,
+              duration: 200,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: true,
+            }).start();
+          }
+        }, 2000);
+        return () => clearTimeout(fallback);
+      }
     }
   }, [authReady, hasNavigatedAway, navigationSettled]);
 
