@@ -639,6 +639,7 @@ function RootLayoutContent() {
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
   const [navigationSettled, setNavigationSettled] = useState(false);
   const contentOpacity = useRef(new Animated.Value(0)).current;
+  const pathname = usePathname();
 
   useEffect(() => {
     checkAuth();
@@ -665,23 +666,21 @@ function RootLayoutContent() {
   }, [isInitialized, isLoading]);
 
   const authReady = isInitialized && !isLoading && appReady && minTimeElapsed;
+  const hasNavigatedAway = pathname !== '/' && pathname !== '/index';
 
   useEffect(() => {
-    if (authReady && !navigationSettled) {
-      const settleTimer = setTimeout(() => {
-        setNavigationSettled(true);
-        InteractionManager.runAfterInteractions(() => {
-          Animated.timing(contentOpacity, {
-            toValue: 1,
-            duration: 250,
-            easing: Easing.out(Easing.ease),
-            useNativeDriver: true,
-          }).start();
-        });
-      }, 350);
-      return () => clearTimeout(settleTimer);
+    if (authReady && hasNavigatedAway && !navigationSettled) {
+      setNavigationSettled(true);
+      InteractionManager.runAfterInteractions(() => {
+        Animated.timing(contentOpacity, {
+          toValue: 1,
+          duration: 200,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }).start();
+      });
     }
-  }, [authReady, navigationSettled]);
+  }, [authReady, hasNavigatedAway, navigationSettled]);
 
   if (!authReady) {
     return <LoadingScreen colors={colors} />;
