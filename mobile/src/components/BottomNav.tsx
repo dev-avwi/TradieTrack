@@ -175,14 +175,13 @@ export function BottomNav() {
 
   const handlePress = (item: NavItem) => {
     if (isActive(item)) {
-      // If on a subpage, navigate to main page; if already on main page, scroll to top
       if (isOnMainPage(item)) {
         triggerScrollToTop();
       } else {
-        router.push(item.path as any);
+        router.replace(item.path as any);
       }
     } else {
-      router.push(item.path as any);
+      router.replace(item.path as any);
     }
   };
 
@@ -222,6 +221,9 @@ const createStyles = (colors: ThemeColors, isPad: boolean = false) => StyleSheet
     left: 0,
     right: 0,
     backgroundColor: colors.background,
+    borderTopWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
     zIndex: 100,
   },
   navBar: {
