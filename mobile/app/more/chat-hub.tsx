@@ -1348,7 +1348,7 @@ export default function ChatHubScreen() {
         <View style={styles.headerCard}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
           >
             <Feather name="chevron-left" size={24} color={colors.foreground} />
           </TouchableOpacity>

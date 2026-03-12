@@ -679,7 +679,7 @@ function RootLayoutContent() {
           <Stack.Screen name="index" options={{ headerShown: false, animation: 'none' }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false, animation: 'none' }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: colors.background } }} />
-          <Stack.Screen name="job/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="job" options={{ headerShown: false }} />
           <Stack.Screen name="more" options={{ headerShown: false }} />
         </Stack>
       </AuthenticatedLayout>
