@@ -498,25 +498,20 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   // iPhone / iPad Portrait: Bottom nav layout
   return (
     <View style={[styles.container, { backgroundColor: colors.background, position: 'relative', overflow: 'visible' }]}>
-      {/* Header at top in normal flow */}
       <Header />
       
-      {/* Main content area - fills remaining space */}
       <View style={[styles.content, { paddingBottom: bottomNavHeight }]}>
         {children}
       </View>
       
-      {/* Overlays - absolutely positioned so they don't affect layout */}
       <View style={styles.overlayContainer} pointerEvents="box-none">
         <OfflineBanner />
         <ConflictResolutionPanel />
         <OfflineIndicator />
       </View>
       
-      {/* FAB positioned above bottom nav */}
       {showFab && <FloatingActionButton isTeamOwner={isTeamOwner} bottomOffset={bottomNavHeight} />}
       
-      {/* Bottom navigation */}
       <BottomNav />
     </View>
   );

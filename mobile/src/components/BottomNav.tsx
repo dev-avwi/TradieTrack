@@ -191,6 +191,7 @@ export function BottomNav() {
 
   return (
     <View style={containerStyle}>
+      <View style={styles.gapCover} />
       <View style={styles.navBar}>
         {navItems.map((item) => (
           <NavButton
@@ -222,8 +223,18 @@ const createStyles = (colors: ThemeColors, isPad: boolean = false) => StyleSheet
     right: 0,
     backgroundColor: colors.background,
     borderTopWidth: 0,
+    borderTopColor: 'transparent',
     elevation: 0,
     shadowOpacity: 0,
+    zIndex: 100,
+  },
+  gapCover: {
+    position: 'absolute',
+    top: -4,
+    left: 0,
+    right: 0,
+    height: 4,
+    backgroundColor: colors.background,
     zIndex: 100,
   },
   navBar: {
