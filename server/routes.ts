@@ -32095,8 +32095,8 @@ Respond with JSON in this format:
   // Get latest chat message per job (for Chat Hub preview)
   app.get("/api/jobs/chat/latest", requireAuth, async (req: any, res) => {
     try {
-      const userContext = await resolveUserContext(req);
-      const latestMessages = await storage.getLatestJobChatMessages(userContext.effectiveUserId);
+      const userId = req.userId!;
+      const latestMessages = await storage.getLatestJobChatMessages(userId);
       res.json(latestMessages);
     } catch (error: any) {
       console.error('Error fetching latest job chat messages:', error);
