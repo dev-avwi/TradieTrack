@@ -1,21 +1,26 @@
-import { Redirect } from 'expo-router';
+import { useEffect } from 'react';
+import { View } from 'react-native';
+import { router } from 'expo-router';
 import { useAuthStore } from '../src/lib/store';
-import { LoadingScreen } from '../src/components/ui/LoadingScreen';
+import { useTheme } from '../src/lib/theme';
 
 export default function Index() {
   const { isAuthenticated, isLoading, isInitialized, user } = useAuthStore();
+  const { colors } = useTheme();
 
-  if (!isInitialized || isLoading) {
-    return <LoadingScreen message="Loading JobRunner..." />;
-  }
+  useEffect(() => {
+    if (!isInitialized || isLoading) return;
 
-  if (isAuthenticated) {
-    // Platform admins go directly to admin dashboard
-    if (user?.isPlatformAdmin === true) {
-      return <Redirect href="/more/admin" />;
+    if (isAuthenticated) {
+      if (user?.isPlatformAdmin === true) {
+        router.replace('/more/admin');
+      } else {
+        router.replace('/(tabs)');
+      }
+    } else {
+      router.replace('/(auth)/login');
     }
-    return <Redirect href="/(tabs)" />;
-  }
+  }, [isAuthenticated, isLoading, isInitialized, user]);
 
-  return <Redirect href="/(auth)/login" />;
+  return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 }

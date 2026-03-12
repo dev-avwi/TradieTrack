@@ -642,6 +642,8 @@ function RootLayoutContent() {
   const { colors, isDark } = useTheme();
   const [appReady, setAppReady] = useState(false);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const [navigationSettled, setNavigationSettled] = useState(false);
+  const contentOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     checkAuth();
@@ -667,9 +669,26 @@ function RootLayoutContent() {
     }
   }, [isInitialized, isLoading]);
 
-  const showLoading = !isInitialized || isLoading || !appReady || !minTimeElapsed;
-  
-  if (showLoading) {
+  const authReady = isInitialized && !isLoading && appReady && minTimeElapsed;
+
+  useEffect(() => {
+    if (authReady && !navigationSettled) {
+      const settleTimer = setTimeout(() => {
+        setNavigationSettled(true);
+        InteractionManager.runAfterInteractions(() => {
+          Animated.timing(contentOpacity, {
+            toValue: 1,
+            duration: 250,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }).start();
+        });
+      }, 350);
+      return () => clearTimeout(settleTimer);
+    }
+  }, [authReady, navigationSettled]);
+
+  if (!authReady) {
     return <LoadingScreen colors={colors} />;
   }
 
@@ -680,27 +699,34 @@ function RootLayoutContent() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <MapPreferenceModal />
       <WhatYouMissedPopup />
-      <AuthenticatedLayout>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: {
-              backgroundColor: colors.background,
-            },
-            animation: 'ios_from_right',
-            animationDuration: 200,
-            gestureEnabled: true,
-            gestureDirection: 'horizontal',
-            freezeOnBlur: true,
-          }}
-        >
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
-          <Stack.Screen name="job/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="more" options={{ headerShown: false }} />
-        </Stack>
-      </AuthenticatedLayout>
+      <Animated.View style={{ flex: 1, opacity: navigationSettled ? contentOpacity : 0 }}>
+        <AuthenticatedLayout>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: {
+                backgroundColor: colors.background,
+              },
+              animation: 'ios_from_right',
+              animationDuration: 200,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+              freezeOnBlur: true,
+            }}
+          >
+            <Stack.Screen name="index" options={{ headerShown: false, animation: 'none' }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false, animation: 'none' }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: colors.background } }} />
+            <Stack.Screen name="job/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="more" options={{ headerShown: false }} />
+          </Stack>
+        </AuthenticatedLayout>
+      </Animated.View>
+      {!navigationSettled && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
+          <LoadingScreen colors={colors} />
+        </View>
+      )}
     </View>
   );
 }
