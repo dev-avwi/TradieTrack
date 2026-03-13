@@ -190,6 +190,9 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   // Service Reminders - owner/manager
   { path: '/service-reminders', label: 'Service Reminders', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
 
+  // WHS Safety Hub - all roles (safety is everyone's responsibility)
+  { path: '/whs', label: 'WHS Safety Hub', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'], showInNav: false },
+
   // Rebates - owner/manager
   { path: '/rebates', label: 'Rebates', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
 
