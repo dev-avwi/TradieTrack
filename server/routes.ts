@@ -41538,6 +41538,58 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     ]);
   });
 
+
+  // ============================================
+  // WHS - Hazard Reports
+  // ============================================
+
+  app.get("/api/whs/hazard-reports", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const jobId = req.query.jobId as string | undefined;
+      const reports = await storage.getHazardReports(userId, jobId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Get hazard reports error:", error);
+      res.status(500).json({ error: "Failed to fetch hazard reports" });
+    }
+  });
+
+  app.post("/api/whs/hazard-reports", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const report = await storage.createHazardReport({ ...req.body, userId });
+      res.status(201).json(report);
+    } catch (error) {
+      console.error("Create hazard report error:", error);
+      res.status(500).json({ error: "Failed to create hazard report" });
+    }
+  });
+
+  app.patch("/api/whs/hazard-reports/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const updated = await storage.updateHazardReport(req.params.id, userId, req.body);
+      if (!updated) return res.status(404).json({ error: "Hazard report not found" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Update hazard report error:", error);
+      res.status(500).json({ error: "Failed to update hazard report" });
+    }
+  });
+
+  app.delete("/api/whs/hazard-reports/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const deleted = await storage.deleteHazardReport(req.params.id, userId);
+      if (!deleted) return res.status(404).json({ error: "Hazard report not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete hazard report error:", error);
+      res.status(500).json({ error: "Failed to delete hazard report" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

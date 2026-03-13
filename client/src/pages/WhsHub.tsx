@@ -1120,6 +1120,244 @@ function WhsRolesTab() {
   );
 }
 
+const RISK_LEVEL_COLORS: Record<string, string> = {
+  low: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  critical: "bg-red-200 text-red-900 dark:bg-red-950 dark:text-red-100",
+};
+
+const HAZARD_STATUS_COLORS: Record<string, string> = {
+  open: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  resolved: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  closed: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+};
+
+function HazardReportsTab() {
+  const { toast } = useToast();
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    description: "", location: "", dateIdentified: new Date().toISOString().split('T')[0],
+    timeIdentified: "", recommendedAction: "", dateReportedToSupervisor: "",
+    timeReportedToSupervisor: "", reportedBy: "", supervisorName: "",
+    riskLevel: "medium", status: "open", notes: "",
+  });
+
+  const { data: hazards = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/whs/hazard-reports"] });
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/whs/hazard-reports", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/hazard-reports"] });
+      toast({ title: "Hazard report created" });
+      resetForm();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/whs/hazard-reports/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/hazard-reports"] });
+      toast({ title: "Hazard report updated" });
+      resetForm();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/whs/hazard-reports/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/hazard-reports"] });
+      toast({ title: "Hazard report deleted" });
+    },
+  });
+
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setForm({
+      description: "", location: "", dateIdentified: new Date().toISOString().split('T')[0],
+      timeIdentified: "", recommendedAction: "", dateReportedToSupervisor: "",
+      timeReportedToSupervisor: "", reportedBy: "", supervisorName: "",
+      riskLevel: "medium", status: "open", notes: "",
+    });
+  };
+
+  const startEdit = (h: any) => {
+    setEditingId(h.id);
+    setForm({
+      description: h.description || "", location: h.location || "",
+      dateIdentified: h.dateIdentified || "", timeIdentified: h.timeIdentified || "",
+      recommendedAction: h.recommendedAction || "",
+      dateReportedToSupervisor: h.dateReportedToSupervisor || "",
+      timeReportedToSupervisor: h.timeReportedToSupervisor || "",
+      reportedBy: h.reportedBy || "", supervisorName: h.supervisorName || "",
+      riskLevel: h.riskLevel || "medium", status: h.status || "open",
+      notes: h.notes || "",
+    });
+    setShowForm(true);
+  };
+
+  const handleSubmit = () => {
+    if (!form.description || !form.location || !form.reportedBy || !form.recommendedAction) {
+      toast({ title: "Please fill in all required fields", variant: "destructive" });
+      return;
+    }
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, data: form });
+    } else {
+      createMutation.mutate(form);
+    }
+  };
+
+  if (isLoading) return <div className="flex justify-center p-8"><Clock className="w-5 h-5 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h3 className="text-lg font-semibold">Hazard Reports</h3>
+          <p className="text-sm text-muted-foreground">Report hazards spotted on site before they cause an incident. Based on White Card hazard reporting requirements.</p>
+        </div>
+        <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-1">
+          <Plus className="w-4 h-4" /> Report Hazard
+        </Button>
+      </div>
+
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Edit Hazard Report" : "Report a Hazard"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Hazard Description *</Label>
+              <Textarea placeholder="Briefly describe the hazard..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            </div>
+            <div>
+              <Label>Location *</Label>
+              <Input placeholder="Where is the hazard located?" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Date Identified *</Label>
+                <Input type="date" value={form.dateIdentified} onChange={(e) => setForm({ ...form, dateIdentified: e.target.value })} />
+              </div>
+              <div>
+                <Label>Time Identified</Label>
+                <Input type="time" value={form.timeIdentified} onChange={(e) => setForm({ ...form, timeIdentified: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <Label>Recommended Action to Control Hazard *</Label>
+              <Textarea placeholder="How would you eliminate or minimise the risk?" value={form.recommendedAction} onChange={(e) => setForm({ ...form, recommendedAction: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Date Reported to Supervisor</Label>
+                <Input type="date" value={form.dateReportedToSupervisor} onChange={(e) => setForm({ ...form, dateReportedToSupervisor: e.target.value })} />
+              </div>
+              <div>
+                <Label>Time Reported</Label>
+                <Input type="time" value={form.timeReportedToSupervisor} onChange={(e) => setForm({ ...form, timeReportedToSupervisor: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Reported By *</Label>
+                <Input placeholder="Your name" value={form.reportedBy} onChange={(e) => setForm({ ...form, reportedBy: e.target.value })} />
+              </div>
+              <div>
+                <Label>Supervisor Name</Label>
+                <Input placeholder="Supervisor name" value={form.supervisorName} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Risk Level</Label>
+                <Select value={form.riskLevel} onValueChange={(v) => setForm({ ...form, riskLevel: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>Additional Notes</Label>
+              <Textarea placeholder="Any other details..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="outline" onClick={resetForm}>Cancel</Button>
+              <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+                {editingId ? "Update Report" : "Submit Hazard Report"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {hazards.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <FileText className="w-10 h-10 text-muted-foreground mb-3" />
+            <p className="text-muted-foreground">No hazard reports yet. Spot a hazard? Report it before someone gets hurt.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {hazards.map((h: any) => (
+            <Card key={h.id}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <Badge className={RISK_LEVEL_COLORS[h.riskLevel] || ""}>{h.riskLevel}</Badge>
+                      <Badge className={HAZARD_STATUS_COLORS[h.status] || ""}>{h.status === 'in_progress' ? 'In Progress' : h.status}</Badge>
+                    </div>
+                    <p className="font-medium">{h.description}</p>
+                    <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
+                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {h.location}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {h.dateIdentified} {h.timeIdentified && `at ${h.timeIdentified}`}</span>
+                      <span>Reported by: {h.reportedBy}</span>
+                    </div>
+                    {h.recommendedAction && (
+                      <p className="text-sm mt-2"><span className="font-medium">Action:</span> {h.recommendedAction}</p>
+                    )}
+                    {h.supervisorName && (
+                      <p className="text-sm text-muted-foreground mt-1">Supervisor: {h.supervisorName}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => startEdit(h)}><Edit className="w-4 h-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(h.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function WhsHub() {
   const [, setLocation] = useLocation();
 
@@ -1182,6 +1420,7 @@ export default function WhsHub() {
             <TabsTrigger value="jsa" className="gap-1"><ClipboardList className="w-3 h-3" /> JSA</TabsTrigger>
             <TabsTrigger value="environments" className="gap-1"><Zap className="w-3 h-3" /> Environments</TabsTrigger>
             <TabsTrigger value="signage" className="gap-1"><Eye className="w-3 h-3" /> Signage</TabsTrigger>
+            <TabsTrigger value="hazards" className="gap-1"><FileText className="w-3 h-3" /> Hazard Reports</TabsTrigger>
             <TabsTrigger value="roles" className="gap-1"><Users className="w-3 h-3" /> WHS Roles</TabsTrigger>
           </TabsList>
 
@@ -1190,6 +1429,7 @@ export default function WhsHub() {
           <TabsContent value="jsa"><JsaTab /></TabsContent>
           <TabsContent value="environments"><HazardousEnvironmentsTab /></TabsContent>
           <TabsContent value="signage"><SafetySignageTab /></TabsContent>
+          <TabsContent value="hazards"><HazardReportsTab /></TabsContent>
           <TabsContent value="roles"><WhsRolesTab /></TabsContent>
         </Tabs>
       </div>

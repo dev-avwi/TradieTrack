@@ -4317,6 +4317,31 @@ export const insertSiteSafetySignageSchema = createInsertSchema(siteSafetySignag
 export type InsertSiteSafetySignage = z.infer<typeof insertSiteSafetySignageSchema>;
 export type SiteSafetySignage = typeof siteSafetySignage.$inferSelect;
 
+export const hazardReports = pgTable("hazard_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: integer("job_id"),
+  description: text("description").notNull(),
+  location: text("location").notNull(),
+  dateIdentified: text("date_identified").notNull(),
+  timeIdentified: text("time_identified").notNull(),
+  recommendedAction: text("recommended_action").notNull(),
+  dateReportedToSupervisor: text("date_reported_to_supervisor"),
+  timeReportedToSupervisor: text("time_reported_to_supervisor"),
+  reportedBy: text("reported_by").notNull(),
+  supervisorName: text("supervisor_name"),
+  riskLevel: text("risk_level").notNull().default('medium'),
+  status: text("status").notNull().default('open'),
+  photos: text("photos").array(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertHazardReportSchema = createInsertSchema(hazardReports).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertHazardReport = z.infer<typeof insertHazardReportSchema>;
+export type HazardReport = typeof hazardReports.$inferSelect;
+
 export const rateLimits = pgTable("rate_limits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   key: varchar("key", { length: 512 }).notNull(),

@@ -6,7 +6,7 @@ import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, componentStyles } from '../../src/lib/design-tokens';
 
-type TabKey = 'incidents' | 'emergency' | 'jsa' | 'environments' | 'signage';
+type TabKey = 'incidents' | 'emergency' | 'jsa' | 'environments' | 'signage' | 'hazard_reports';
 
 const TABS: { key: TabKey; label: string; icon: keyof typeof Feather.glyphMap }[] = [
   { key: 'incidents', label: 'Incidents', icon: 'alert-triangle' },
@@ -14,6 +14,7 @@ const TABS: { key: TabKey; label: string; icon: keyof typeof Feather.glyphMap }[
   { key: 'jsa', label: 'JSA', icon: 'clipboard' },
   { key: 'environments', label: 'Hazards', icon: 'zap' },
   { key: 'signage', label: 'Signs', icon: 'eye' },
+  { key: 'hazard_reports', label: 'Hazard Reports', icon: 'file-text' },
 ];
 
 const INCIDENT_TYPES = [
@@ -52,6 +53,7 @@ export default function WhsHubScreen() {
   const [jsaDocs, setJsaDocs] = useState<any[]>([]);
   const [environments, setEnvironments] = useState<any[]>([]);
   const [signs, setSigns] = useState<any[]>([]);
+  const [hazardReports, setHazardReports] = useState<any[]>([]);
   const [envTypes, setEnvTypes] = useState<any[]>([]);
   const [signTypes, setSignTypes] = useState<any[]>([]);
 
@@ -60,6 +62,7 @@ export default function WhsHubScreen() {
   const [showJsaForm, setShowJsaForm] = useState(false);
   const [showEnvForm, setShowEnvForm] = useState(false);
   const [showSignForm, setShowSignForm] = useState(false);
+  const [showHazardForm, setShowHazardForm] = useState(false);
 
   const [incidentForm, setIncidentForm] = useState({
     title: '', description: '', incidentType: 'near_miss', severity: 'minor',
@@ -80,15 +83,21 @@ export default function WhsHubScreen() {
 
   const [selectedEnvType, setSelectedEnvType] = useState('');
   const [signForm, setSignForm] = useState({ signType: '', signCategory: '', location: '' });
+  const [hazardForm, setHazardForm] = useState({
+    description: '', location: '', dateIdentified: new Date().toISOString().split('T')[0],
+    timeIdentified: '', recommendedAction: '', reportedBy: '', supervisorName: '',
+    riskLevel: 'medium', status: 'open',
+  });
 
   const fetchData = useCallback(async () => {
     try {
-      const [incRes, emRes, jsaRes, envRes, signRes, envTypesRes, signTypesRes] = await Promise.all([
+      const [incRes, emRes, jsaRes, envRes, signRes, hazRes, envTypesRes, signTypesRes] = await Promise.all([
         api.get('/api/whs/incidents'),
         api.get('/api/whs/emergency-info'),
         api.get('/api/whs/jsa'),
         api.get('/api/whs/hazardous-environments'),
         api.get('/api/whs/safety-signage'),
+        api.get('/api/whs/hazard-reports'),
         api.get('/api/whs/reference/environment-types'),
         api.get('/api/whs/reference/sign-types'),
       ]);
@@ -97,6 +106,7 @@ export default function WhsHubScreen() {
       setJsaDocs(Array.isArray(jsaRes.data) ? jsaRes.data : []);
       setEnvironments(Array.isArray(envRes.data) ? envRes.data : []);
       setSigns(Array.isArray(signRes.data) ? signRes.data : []);
+      setHazardReports(Array.isArray(hazRes.data) ? hazRes.data : []);
       setEnvTypes(Array.isArray(envTypesRes.data) ? envTypesRes.data : []);
       setSignTypes(Array.isArray(signTypesRes.data) ? signTypesRes.data : []);
     } catch (e) {
@@ -268,6 +278,11 @@ export default function WhsHubScreen() {
     ppeBadgeText: { fontSize: 10, color: '#3b82f6', fontWeight: '600' },
     checkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.border },
     sectionTitle: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: spacing.sm, marginTop: spacing.sm },
+    chipButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md, borderWidth: 1 },
+    emptyTitle: { fontSize: 16, fontWeight: '600', marginTop: spacing.md },
+    emptyDesc: { fontSize: 13, marginTop: spacing.xs, textAlign: 'center' as const },
+    cardMeta: { fontSize: 12 },
+    saveButton: { fontSize: 16, fontWeight: '600' },
   });
 
   function renderIncidents() {
@@ -755,7 +770,133 @@ export default function WhsHubScreen() {
     );
   }
 
-  const showFab = !showIncidentForm && !showEmergencyForm && !showJsaForm && !showEnvForm && !showSignForm;
+  async function submitHazardReport() {
+    if (!hazardForm.description || !hazardForm.location || !hazardForm.reportedBy || !hazardForm.recommendedAction) {
+      Alert.alert('Required', 'Description, location, reported by, and recommended action are required');
+      return;
+    }
+    try {
+      await api.post('/api/whs/hazard-reports', hazardForm);
+      setShowHazardForm(false);
+      setHazardForm({ description: '', location: '', dateIdentified: new Date().toISOString().split('T')[0], timeIdentified: '', recommendedAction: '', reportedBy: '', supervisorName: '', riskLevel: 'medium', status: 'open' });
+      fetchData();
+    } catch (e) { Alert.alert('Error', 'Failed to submit hazard report'); }
+  }
+
+  async function deleteHazardReport(id: string) {
+    Alert.alert('Delete', 'Delete this hazard report?', [
+      { text: 'Cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try { await api.delete(`/api/whs/hazard-reports/${id}`); fetchData(); } catch (e) { Alert.alert('Error', 'Failed to delete'); }
+      }},
+    ]);
+  }
+
+  function renderHazardReports() {
+    const riskColors: Record<string, string> = { low: '#22c55e', medium: '#f59e0b', high: '#f97316', critical: '#ef4444' };
+    const statusLabels: Record<string, string> = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
+    if (hazardReports.length === 0) {
+      return (
+        <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Feather name="file-text" size={40} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Hazard Reports</Text>
+          <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>Spot a hazard? Report it before someone gets hurt.</Text>
+        </View>
+      );
+    }
+    return hazardReports.map((h: any) => (
+      <View key={h.id} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+              <View style={[styles.badge, { backgroundColor: riskColors[h.riskLevel] || '#f59e0b' }]}>
+                <Text style={styles.badgeText}>{h.riskLevel?.toUpperCase()}</Text>
+              </View>
+              <View style={[styles.badge, { backgroundColor: h.status === 'open' ? '#ef4444' : h.status === 'resolved' ? '#22c55e' : '#3b82f6' }]}>
+                <Text style={styles.badgeText}>{statusLabels[h.status] || h.status}</Text>
+              </View>
+            </View>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{h.description}</Text>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
+              <Text style={[styles.cardMeta, { color: colors.textSecondary }]}><Feather name="map-pin" size={12} /> {h.location}</Text>
+              <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>{h.dateIdentified}{h.timeIdentified ? ` at ${h.timeIdentified}` : ''}</Text>
+            </View>
+            {h.recommendedAction ? <Text style={[styles.cardMeta, { color: colors.text, marginTop: 4 }]}>Action: {h.recommendedAction}</Text> : null}
+            <Text style={[styles.cardMeta, { color: colors.textSecondary, marginTop: 2 }]}>By: {h.reportedBy}</Text>
+          </View>
+          <TouchableOpacity onPress={() => deleteHazardReport(h.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Feather name="trash-2" size={18} color={colors.error || '#ef4444'} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    ));
+  }
+
+  function renderHazardModal() {
+    const RISK_LEVELS = [
+      { value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' },
+      { value: 'high', label: 'High' }, { value: 'critical', label: 'Critical' },
+    ];
+    return (
+      <Modal visible={showHazardForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowHazardForm(false)}>
+        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.cardBorder }]}>
+            <TouchableOpacity onPress={() => setShowHazardForm(false)}>
+              <Feather name="x" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Report Hazard</Text>
+            <TouchableOpacity onPress={submitHazardReport}>
+              <Text style={[styles.saveButton, { color: colors.primary }]}>Submit</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{ flex: 1, padding: spacing.md }}>
+            <Text style={styles.inputLabel}>Hazard Description *</Text>
+            <TextInput style={[styles.input, styles.textArea, { color: colors.text, borderColor: colors.cardBorder, backgroundColor: colors.card }]} value={hazardForm.description} onChangeText={v => setHazardForm(p => ({ ...p, description: v }))} placeholder="Briefly describe the hazard..." placeholderTextColor={colors.textSecondary} multiline numberOfLines={3} />
+
+            <Text style={styles.inputLabel}>Location *</Text>
+            <TextInput style={[styles.input, { color: colors.text, borderColor: colors.cardBorder, backgroundColor: colors.card }]} value={hazardForm.location} onChangeText={v => setHazardForm(p => ({ ...p, location: v }))} placeholder="Where is the hazard located?" placeholderTextColor={colors.textSecondary} />
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>Date Identified</Text>
+                <TextInput style={[styles.input, { color: colors.text, borderColor: colors.cardBorder, backgroundColor: colors.card }]} value={hazardForm.dateIdentified} onChangeText={v => setHazardForm(p => ({ ...p, dateIdentified: v }))} placeholder="YYYY-MM-DD" placeholderTextColor={colors.textSecondary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>Time</Text>
+                <TextInput style={[styles.input, { color: colors.text, borderColor: colors.cardBorder, backgroundColor: colors.card }]} value={hazardForm.timeIdentified} onChangeText={v => setHazardForm(p => ({ ...p, timeIdentified: v }))} placeholder="e.g. 10am" placeholderTextColor={colors.textSecondary} />
+              </View>
+            </View>
+
+            <Text style={styles.inputLabel}>Recommended Action *</Text>
+            <TextInput style={[styles.input, styles.textArea, { color: colors.text, borderColor: colors.cardBorder, backgroundColor: colors.card }]} value={hazardForm.recommendedAction} onChangeText={v => setHazardForm(p => ({ ...p, recommendedAction: v }))} placeholder="How would you eliminate or minimise the risk?" placeholderTextColor={colors.textSecondary} multiline numberOfLines={3} />
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>Reported By *</Text>
+                <TextInput style={[styles.input, { color: colors.text, borderColor: colors.cardBorder, backgroundColor: colors.card }]} value={hazardForm.reportedBy} onChangeText={v => setHazardForm(p => ({ ...p, reportedBy: v }))} placeholder="Your name" placeholderTextColor={colors.textSecondary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>Supervisor</Text>
+                <TextInput style={[styles.input, { color: colors.text, borderColor: colors.cardBorder, backgroundColor: colors.card }]} value={hazardForm.supervisorName} onChangeText={v => setHazardForm(p => ({ ...p, supervisorName: v }))} placeholder="Supervisor name" placeholderTextColor={colors.textSecondary} />
+              </View>
+            </View>
+
+            <Text style={styles.inputLabel}>Risk Level</Text>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: spacing.md }}>
+              {RISK_LEVELS.map(r => (
+                <TouchableOpacity key={r.value} onPress={() => setHazardForm(p => ({ ...p, riskLevel: r.value }))}
+                  style={[styles.chipButton, { borderColor: hazardForm.riskLevel === r.value ? colors.primary : colors.cardBorder, backgroundColor: hazardForm.riskLevel === r.value ? colors.primaryLight : colors.card }]}>
+                  <Text style={{ color: hazardForm.riskLevel === r.value ? colors.primary : colors.text, fontSize: 13 }}>{r.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+    );
+  }
+
+  const showFab = !showIncidentForm && !showEmergencyForm && !showJsaForm && !showEnvForm && !showSignForm && !showHazardForm;
   const fabAction = () => {
     switch (activeTab) {
       case 'incidents': setShowIncidentForm(true); break;
@@ -763,6 +904,7 @@ export default function WhsHubScreen() {
       case 'jsa': setShowJsaForm(true); break;
       case 'environments': setShowEnvForm(true); break;
       case 'signage': setShowSignForm(true); break;
+      case 'hazard_reports': setShowHazardForm(true); break;
     }
   };
 
@@ -817,6 +959,7 @@ export default function WhsHubScreen() {
               {activeTab === 'jsa' && renderJsa()}
               {activeTab === 'environments' && renderEnvironments()}
               {activeTab === 'signage' && renderSignage()}
+              {activeTab === 'hazard_reports' && renderHazardReports()}
             </View>
           </ScrollView>
 
@@ -833,6 +976,7 @@ export default function WhsHubScreen() {
       {renderJsaModal()}
       {renderEnvModal()}
       {renderSignModal()}
+      {renderHazardModal()}
     </View>
   );
 }

@@ -361,6 +361,9 @@ import {
   siteSafetySignage,
   type SiteSafetySignage,
   type InsertSiteSafetySignage,
+  hazardReports,
+  type HazardReport,
+  type InsertHazardReport,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -1124,6 +1127,11 @@ export interface IStorage {
   createSiteSafetySignage(sign: InsertSiteSafetySignage): Promise<SiteSafetySignage>;
   updateSiteSafetySignage(id: string, userId: string, updates: Partial<InsertSiteSafetySignage>): Promise<SiteSafetySignage | undefined>;
   deleteSiteSafetySignage(id: string, userId: string): Promise<boolean>;
+
+  getHazardReports(userId: string, jobId?: string): Promise<HazardReport[]>;
+  createHazardReport(report: InsertHazardReport): Promise<HazardReport>;
+  updateHazardReport(id: string, userId: string, updates: Partial<InsertHazardReport>): Promise<HazardReport | undefined>;
+  deleteHazardReport(id: string, userId: string): Promise<boolean>;
 }
 
 // Initialize database connection using standard pg driver
@@ -8086,6 +8094,27 @@ Thank you for your prompt attention to this matter.`,
 
   async deleteSiteSafetySignage(id: string, userId: string): Promise<boolean> {
     const result = await db.delete(siteSafetySignage).where(and(eq(siteSafetySignage.id, id), eq(siteSafetySignage.userId, userId))).returning();
+    return result.length > 0;
+  }
+
+  async getHazardReports(userId: string, jobId?: string): Promise<HazardReport[]> {
+    const conditions = [eq(hazardReports.userId, userId)];
+    if (jobId) conditions.push(eq(hazardReports.jobId, parseInt(jobId)));
+    return await db.select().from(hazardReports).where(and(...conditions)).orderBy(desc(hazardReports.createdAt));
+  }
+
+  async createHazardReport(report: InsertHazardReport): Promise<HazardReport> {
+    const [result] = await db.insert(hazardReports).values(report).returning();
+    return result;
+  }
+
+  async updateHazardReport(id: string, userId: string, updates: Partial<InsertHazardReport>): Promise<HazardReport | undefined> {
+    const [result] = await db.update(hazardReports).set({ ...updates, updatedAt: new Date() }).where(and(eq(hazardReports.id, id), eq(hazardReports.userId, userId))).returning();
+    return result;
+  }
+
+  async deleteHazardReport(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(hazardReports).where(and(eq(hazardReports.id, id), eq(hazardReports.userId, userId))).returning();
     return result.length > 0;
   }
 }
