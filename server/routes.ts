@@ -4189,7 +4189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (sendViaSms && contactPhone) {
         try {
-          const smsMessage = `Hi ${recipientName}, ${businessName} has invited you to work on a job: "${job.title}". View details and respond here: ${webLink}`;
+          const smsMessage = `Hi ${recipientName}, ${escapeHtml(businessName)} has invited you to work on a job: "${job.title}". View details and respond here: ${webLink}`;
           const { sendSMS: twilioSend } = await import('./twilioClient');
           const smsResult = await twilioSend({
             to: contactPhone,
@@ -4207,12 +4207,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const { sendEmail: emailSend } = await import('./emailService');
           await emailSend({
             to: contactEmail,
-            subject: `Job Invitation from ${businessName}`,
+            subject: `Job Invitation from ${escapeHtml(businessName)}`,
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #1a1a2e;">You're Invited to a Job</h2>
                 <p>Hi ${recipientName},</p>
-                <p><strong>${businessName}</strong> has invited you to work on the following job:</p>
+                <p><strong>${escapeHtml(businessName)}</strong> has invited you to work on the following job:</p>
                 <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0;">
                   <p style="margin: 0 0 8px;"><strong>Job:</strong> ${job.title}</p>
                   ${job.address ? `<p style="margin: 0;"><strong>Location:</strong> ${job.address}</p>` : ''}
@@ -4221,7 +4221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 <div style="text-align: center; margin: 24px 0;">
                   <a href="${webLink}" style="background: #3b82f6; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">View Job Details</a>
                 </div>
-                <p style="color: #6b7280; font-size: 14px;">If you have any questions, please contact ${businessName} directly.</p>
+                <p style="color: #6b7280; font-size: 14px;">If you have any questions, please contact ${escapeHtml(businessName)} directly.</p>
               </div>
             `,
           });
@@ -7548,7 +7548,7 @@ Be specific about materials, colors, and features that would be included.`
             <h1 style="color: white; margin: 0;">Email Test Successful!</h1>
           </div>
           <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e;">
-            <p>Hi ${businessName},</p>
+            <p>Hi ${escapeHtml(businessName)},</p>
             <p>Your JobRunner email integration is working. Quotes and invoices will be delivered to your clients.</p>
           </div>
         </div>`,
@@ -7588,7 +7588,7 @@ Be specific about materials, colors, and features that would be included.`
       
       const result = await sendEmail({
         to: toEmail,
-        subject: subject || `Demo Email from ${businessName}`,
+        subject: subject || `Demo Email from ${escapeHtml(businessName)}`,
         html: `
           <!DOCTYPE html>
           <html>
@@ -7597,16 +7597,16 @@ Be specific about materials, colors, and features that would be included.`
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, ${brandColor} 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
-              <h1 style="color: white; margin: 0;">${businessName}</h1>
+            <div style="background: linear-gradient(135deg, ${sanitizeBrandColor(brandColor)} 0%, #1d4ed8 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+              <h1 style="color: white; margin: 0;">${escapeHtml(businessName)}</h1>
               <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">JobRunner Demo</p>
             </div>
             
             <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-              <h2 style="color: ${brandColor}; margin-top: 0;">Demo Email</h2>
+              <h2 style="color: ${sanitizeBrandColor(brandColor)}; margin-top: 0;">Demo Email</h2>
               <p>${message || 'This is a demo email sent from the JobRunner platform, showing how professional business emails look when sent to your clients.'}</p>
               
-              <div style="background: white; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid ${brandColor};">
+              <div style="background: white; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid ${sanitizeBrandColor(brandColor)};">
                 <h3 style="margin-top: 0;">What JobRunner Can Do:</h3>
                 <ul style="margin-bottom: 0;">
                   <li>Send professional quotes to clients</li>
@@ -7804,22 +7804,22 @@ Be specific about materials, colors, and features that would be included.`
         {
           type: 'appointment_reminder',
           title: 'Appointment Reminder',
-          message: `Hi [Client Name], reminder: Your appointment with ${businessName} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm.`,
+          message: `Hi [Client Name], reminder: Your appointment with ${escapeHtml(businessName)} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm.`,
         },
         {
           type: 'job_on_the_way',
           title: 'On The Way',
-          message: `Hi [Client Name], ${businessName} is on the way! Expected arrival: 15 minutes.`,
+          message: `Hi [Client Name], ${escapeHtml(businessName)} is on the way! Expected arrival: 15 minutes.`,
         },
         {
           type: 'job_complete',
           title: 'Job Complete',
-          message: `Hi [Client Name], your job is complete! Thank you for choosing ${businessName}. Invoice will be sent shortly.`,
+          message: `Hi [Client Name], your job is complete! Thank you for choosing ${escapeHtml(businessName)}. Invoice will be sent shortly.`,
         },
         {
           type: 'payment_received',
           title: 'Payment Received',
-          message: `Hi [Client Name], thank you! We received your payment of $[Amount]. Receipt sent to your email. - ${businessName}`,
+          message: `Hi [Client Name], thank you! We received your payment of $[Amount]. Receipt sent to your email. - ${escapeHtml(businessName)}`,
         },
       ];
       
@@ -15349,11 +15349,11 @@ Be specific about materials, colors, and features that would be included.`
             email: fromEmail,
             name: businessName
           },
-          subject: subject || `Your Job from ${businessName}`,
-          text: body || `Hi ${client.firstName || 'there'},\n\nHere are the details for your job: ${job.title}\n\nScheduled: ${job.scheduledDate || 'To be confirmed'}\nAddress: ${job.address || 'To be confirmed'}\n\nIf you have any questions, please don't hesitate to reach out.\n\nCheers,\n${businessName}`,
+          subject: subject || `Your Job from ${escapeHtml(businessName)}`,
+          text: body || `Hi ${client.firstName || 'there'},\n\nHere are the details for your job: ${job.title}\n\nScheduled: ${job.scheduledDate || 'To be confirmed'}\nAddress: ${job.address || 'To be confirmed'}\n\nIf you have any questions, please don't hesitate to reach out.\n\nCheers,\n${escapeHtml(businessName)}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: ${business.brandColor || '#2563eb'};">${businessName}</h2>
+              <h2 style="color: ${business.brandColor || '#2563eb'};">${escapeHtml(businessName)}</h2>
               <p>Hi ${client.firstName || 'there'},</p>
               <p>${body?.replace(/\n/g, '<br>') || `Here are the details for your job: <strong>${job.title}</strong>`}</p>
               <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
@@ -15362,7 +15362,7 @@ Be specific about materials, colors, and features that would be included.`
                 <p style="margin: 8px 0 0;"><strong>Address:</strong> ${job.address || 'To be confirmed'}</p>
               </div>
               <p>If you have any questions, please don't hesitate to reach out.</p>
-              <p>Cheers,<br>${businessName}</p>
+              <p>Cheers,<br>${escapeHtml(businessName)}</p>
             </div>
           `,
         });
@@ -15608,7 +15608,7 @@ Be specific about materials, colors, and features that would be included.`
         : `ETA approximately ${estimatedMinutes} minutes`;
       const distanceText = distanceKm !== null ? ` (${distanceKm} km away)` : '';
 
-      let baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} is on the way to your job at ${job.address || 'your location'}. ${etaText}${distanceText}.`;
+      let baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${escapeHtml(businessName)} is on the way to your job at ${job.address || 'your location'}. ${etaText}${distanceText}.`;
       baseMessage = baseMessage.replace(/\n*Track arrival:.*$/gims, '').replace(/\n*Track your job:.*$/gims, '').replace(/\n*\[link will be added\].*$/gims, '').replace(/\n*Track arrival:\s*$/gim, '').trim();
       const message = `${baseMessage}\n\nTrack your job: ${trackingUrl}`;
       
@@ -16792,7 +16792,7 @@ Be specific about materials, colors, and features that would be included.`
         } catch (e) { console.log('[RunningLate] ETA calc failed:', e); }
       }
 
-      let baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} here. Running a bit late for your job at ${job.address || 'your location'}. Apologies for the delay - ${etaText}.`;
+      let baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${escapeHtml(businessName)} here. Running a bit late for your job at ${job.address || 'your location'}. Apologies for the delay - ${etaText}.`;
       baseMessage = baseMessage.replace(/\n*Track arrival:.*$/gims, '').replace(/\n*\[link will be added\].*$/gims, '').replace(/\n*Track arrival:\s*$/gim, '').trim();
       const message = baseMessage;
       
@@ -17438,11 +17438,11 @@ Be specific about materials, colors, and features that would be included.`
             if (workerStatus === 'on_my_way') {
               const etaText = workerEta || 'soon';
               const contactInfo = ownerPhone ? `${ownerName} on ${ownerPhone}` : ownerName;
-              smsBody = `JobRunner: ${businessName} update — ${workerName} is on the way to your job "${job.title}". ETA: ${etaText}. Track progress + photos here: ${portalUrl}. Need help? Call ${contactInfo}.`;
+              smsBody = `JobRunner: ${escapeHtml(businessName)} update — ${workerName} is on the way to your job "${job.title}". ETA: ${etaText}. Track progress + photos here: ${portalUrl}. Need help? Call ${contactInfo}.`;
             } else if (workerStatus === 'arrived') {
-              smsBody = `JobRunner: ${businessName} update — ${workerName} has arrived at your job "${job.title}". Track progress: ${portalUrl}`;
+              smsBody = `JobRunner: ${escapeHtml(businessName)} update — ${workerName} has arrived at your job "${job.title}". Track progress: ${portalUrl}`;
             } else if (workerStatus === 'completed') {
-              smsBody = `JobRunner: ${businessName} update — "${job.title}" has been completed by ${workerName}. View details + documents: ${portalUrl}`;
+              smsBody = `JobRunner: ${escapeHtml(businessName)} update — "${job.title}" has been completed by ${workerName}. View details + documents: ${portalUrl}`;
             }
             
             if (smsBody) {
@@ -17692,7 +17692,7 @@ Be specific about materials, colors, and features that would be included.`
       const { sendSMS } = await import('./twilioClient');
       const smsResult = await sendSMS({
         to: client.phone,
-        message: `Hi ${client.name}, track your job "${job.title}" live here: ${portalUrl}\n- ${businessName}`,
+        message: `Hi ${client.name}, track your job "${job.title}" live here: ${portalUrl}\n- ${escapeHtml(businessName)}`,
       });
 
       if (!smsResult.success) {
@@ -17739,7 +17739,7 @@ Be specific about materials, colors, and features that would be included.`
       const { sendEmail } = await import('./emailService');
       const emailResult = await sendEmail({
         to: client.email,
-        subject: `Track your job: ${job.title} - ${businessName}`,
+        subject: `Track your job: ${job.title} - ${escapeHtml(businessName)}`,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #333;">Hi ${client.name},</h2>
@@ -17749,7 +17749,7 @@ Be specific about materials, colors, and features that would be included.`
             </div>
             <p style="color: #888; font-size: 14px;">This link gives you live updates on your job status, photos, and documents.</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-            <p style="color: #999; font-size: 12px;">Sent by ${businessName} via JobRunner</p>
+            <p style="color: #999; font-size: 12px;">Sent by ${escapeHtml(businessName)} via JobRunner</p>
           </div>
         `,
         fromName: businessName,
@@ -22467,7 +22467,7 @@ Be specific about materials, colors, and features that would be included.`
       const amount = `$${parseFloat(request.amount).toFixed(2)}`;
       
       // Build SMS message using consistent pattern
-      const message = `Hi${request.clientName ? ` ${request.clientName.split(' ')[0]}` : ''}, ${businessName} has sent you a payment request for ${amount}${request.description ? ` (${request.description})` : ''}. Pay securely here: ${paymentUrl}`;
+      const message = `Hi${request.clientName ? ` ${request.clientName.split(' ')[0]}` : ''}, ${escapeHtml(businessName)} has sent you a payment request for ${amount}${request.description ? ` (${request.description})` : ''}. Pay securely here: ${paymentUrl}`;
       
       // Import and use SMS service (pass raw phone, service handles formatting)
       const { sendSmsToClient } = await import('./services/smsService');
@@ -23368,8 +23368,8 @@ Be specific about materials, colors, and features that would be included.`
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
-              <h1 style="color: white; margin: 0; font-size: 24px;">${businessName}</h1>
+            <div style="background: linear-gradient(135deg, ${sanitizeBrandColor(brandColor)} 0%, ${sanitizeBrandColor(brandColor)}cc 100%); padding: 25px; border-radius: 8px 8px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">${escapeHtml(businessName)}</h1>
               ${business?.abn ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 12px;">ABN: ${business.abn}</p>` : ''}
               <div style="margin-top: 12px; background: rgba(255,255,255,0.2); display: inline-block; padding: 6px 16px; border-radius: 20px;">
                 <span style="color: white; font-size: 13px; font-weight: 600;">RECEIPT ${receipt.receiptNumber}</span>
@@ -23395,7 +23395,7 @@ Be specific about materials, colors, and features that would be included.`
         `;
       } else {
         // Use default template
-        emailSubject = `Payment Receipt from ${businessName} - ${receipt.receiptNumber}`;
+        emailSubject = `Payment Receipt from ${escapeHtml(businessName)} - ${receipt.receiptNumber}`;
         emailHtml = `
           <h2>Thank you for your payment!</h2>
           <p>Please find your payment receipt attached.</p>
@@ -23403,7 +23403,7 @@ Be specific about materials, colors, and features that would be included.`
           <p><strong>Amount Paid:</strong> $${parseFloat(receipt.amount).toFixed(2)} AUD</p>
           <p><strong>Payment Date:</strong> ${new Date(receipt.paidAt).toLocaleDateString('en-AU')}</p>
           <br/>
-          <p>Best regards,<br/>${businessName}</p>
+          <p>Best regards,<br/>${escapeHtml(businessName)}</p>
         `;
       }
       
@@ -25927,7 +25927,7 @@ Respond with JSON in this format:
       <p>${weekLabel}</p>
     </div>
     <div class="header-right">
-      <div class="biz-name">${businessName}</div>
+      <div class="biz-name">${escapeHtml(businessName)}</div>
       <p>${business?.abn ? 'ABN: ' + business.abn : ''}</p>
     </div>
   </div>
@@ -29629,7 +29629,7 @@ Respond with JSON in this format:
             <div class="container">
               <div class="header">
                 <h1>Payment Receipt</h1>
-                <p>from ${businessName}</p>
+                <p>from ${escapeHtml(businessName)}</p>
               </div>
               <div class="content">
                 <div class="amount">${formattedAmount}</div>
@@ -29674,7 +29674,7 @@ Respond with JSON in this format:
               </div>
               <div class="footer">
                 <p>Thank you for your payment!</p>
-                <p>${businessName}${businessEmail ? ` • ${businessEmail}` : ''}</p>
+                <p>${escapeHtml(businessName)}${businessEmail ? ` • ${businessEmail}` : ''}</p>
                 ${settings.phone ? `<p>Phone: ${settings.phone}</p>` : ''}
               </div>
             </div>
@@ -29690,7 +29690,7 @@ Respond with JSON in this format:
           const emailPayload: any = {
             to: email,
             from: businessEmail || 'noreply@jobrunner.com.au',
-            subject: `Payment Receipt - ${formattedAmount} from ${businessName}`,
+            subject: `Payment Receipt - ${formattedAmount} from ${escapeHtml(businessName)}`,
             html: emailHtml,
           };
           
@@ -29714,7 +29714,7 @@ Respond with JSON in this format:
 
       if (method === 'sms' && phone) {
         // Format SMS message with receipt details
-        const smsMessage = `Payment Receipt from ${businessName}: ${formattedAmount} received. ${invoiceNumber ? `Invoice: ${invoiceNumber}. ` : ''}Thank you for your payment!`;
+        const smsMessage = `Payment Receipt from ${escapeHtml(businessName)}: ${formattedAmount} received. ${invoiceNumber ? `Invoice: ${invoiceNumber}. ` : ''}Thank you for your payment!`;
         
         // Send via shared Twilio client (supports connector and env vars)
         const smsResult = await sendSMS({
@@ -39694,7 +39694,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   <div class="header">
     <div>
       <h1>Compliance Pack</h1>
-      <p style="margin:4px 0 0;font-size:14px;color:#4b5563;">${businessName}</p>
+      <p style="margin:4px 0 0;font-size:14px;color:#4b5563;">${escapeHtml(businessName)}</p>
     </div>
     <div class="meta">
       <p style="margin:0;">Generated: ${now.toLocaleDateString('en-AU')}</p>
@@ -39729,7 +39729,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   </table>
   
   <div class="footer">
-    Compliance Pack generated by JobRunner &mdash; ${businessName} &mdash; ${now.toLocaleDateString('en-AU')}
+    Compliance Pack generated by JobRunner &mdash; ${escapeHtml(businessName)} &mdash; ${now.toLocaleDateString('en-AU')}
   </div>
 </body></html>`;
 
@@ -40720,8 +40720,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 <div class="document">
   <div class="header">
     <div class="company-info">
-      ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="${businessName}" />` : ''}
-      <div class="company-name">${businessName}</div>
+      ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="${escapeHtml(businessName)}" />` : ''}
+      <div class="company-name">${escapeHtml(businessName)}</div>
       <div class="company-details">
         ${abn ? `<p>ABN: ${abn}</p>` : ''}
       </div>
@@ -41671,6 +41671,210 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     } catch (error) {
       console.error("Delete training record error:", error);
       res.status(500).json({ error: "Failed to delete training record" });
+    }
+  });
+
+
+  // ── WHS PDF Generation Routes ──
+
+    function escapeHtml(str: string | null | undefined): string {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function sanitizeBrandColor(color: string): string {
+      return /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : '#2563EB';
+    }
+
+    app.get("/api/whs/incidents/:id/pdf", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const incidents = await storage.getIncidentReports(userId);
+      const incident = incidents.find((i: any) => i.id === req.params.id);
+      if (!incident) return res.status(404).json({ error: "Incident not found" });
+
+      const settings = await storage.getBusinessSettings(userId);
+      const brandColor = settings?.brandColor || '#2563EB';
+      const businessName = settings?.businessName || 'JobRunner';
+
+      const html = `<!DOCTYPE html><html><head><style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 30px; color: #1a1a1a; font-size: 13px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid ${sanitizeBrandColor(brandColor)}; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h1 { color: ${sanitizeBrandColor(brandColor)}; font-size: 22px; margin: 0; }
+        .header .sub { color: #666; font-size: 12px; margin-top: 4px; }
+        .section { margin-bottom: 16px; }
+        .section-title { font-size: 14px; font-weight: 600; color: ${sanitizeBrandColor(brandColor)}; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin-bottom: 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
+        .field label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+        .field .value { font-size: 13px; margin-top: 2px; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .badge-open { background: #fef3c7; color: #92400e; }
+        .badge-resolved { background: #d1fae5; color: #065f46; }
+        .full-width { grid-column: 1 / -1; }
+        .footer { margin-top: 30px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+      </style></head><body>
+        <div class="header"><div><h1>INCIDENT REPORT</h1><div class="sub">${escapeHtml(businessName)}</div></div><div style="text-align:right"><div style="font-size:11px;color:#666">Report ID</div><div style="font-weight:600">${incident.id?.substring(0, 8)}</div></div></div>
+        <div class="section"><div class="section-title">Incident Details</div>
+          <div class="grid">
+            <div class="field"><label>Title</label><div class="value"><strong>${escapeHtml(incident.title) || ''}</strong></div></div>
+            <div class="field"><label>Type</label><div class="value">${(incident.incidentType || '').replace('_', ' ')}</div></div>
+            <div class="field"><label>Severity</label><div class="value"><span class="badge ${incident.severity === 'critical' || incident.severity === 'serious' ? 'badge-open' : ''}">${incident.severity || ''}</span></div></div>
+            <div class="field"><label>Status</label><div class="value"><span class="badge badge-${incident.status === 'open' ? 'open' : 'resolved'}">${incident.status || ''}</span></div></div>
+            <div class="field"><label>Location</label><div class="value">${escapeHtml(incident.location) || 'Not specified'}</div></div>
+            <div class="field"><label>Worker Name</label><div class="value">${escapeHtml(incident.workerName) || 'Not specified'}</div></div>
+            <div class="field full-width"><label>Description</label><div class="value">${escapeHtml(incident.description) || ''}</div></div>
+            <div class="field full-width"><label>Immediate Actions Taken</label><div class="value">${escapeHtml(incident.immediateActions) || 'None recorded'}</div></div>
+          </div>
+        </div>
+        <div class="section"><div class="section-title">Reporting</div>
+          <div class="grid">
+            <div class="field"><label>Reported To</label><div class="value">${escapeHtml(incident.reportedTo) || 'Not specified'}</div></div>
+            <div class="field"><label>Role</label><div class="value">${escapeHtml(incident.reportedToRole) || ''}</div></div>
+            <div class="field"><label>Notifiable Incident</label><div class="value">${incident.isNotifiable ? 'Yes' : 'No'}</div></div>
+          </div>
+        </div>
+        <div class="footer">Generated by ${escapeHtml(businessName)} — WHS Safety · ${new Date().toLocaleDateString('en-AU')}</div>
+      </body></html>`;
+
+      const puppeteer = require('puppeteer');
+      const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' } });
+      await browser.close();
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="incident-report-${incident.id?.substring(0, 8)}.pdf"`);
+      res.send(pdf);
+    } catch (error) {
+      console.error("Generate incident PDF error:", error);
+      res.status(500).json({ error: "Failed to generate PDF" });
+    }
+  });
+
+  app.get("/api/whs/hazard-reports/:id/pdf", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const reports = await storage.getHazardReports(userId);
+      const report = reports.find((r: any) => r.id === req.params.id);
+      if (!report) return res.status(404).json({ error: "Hazard report not found" });
+
+      const settings = await storage.getBusinessSettings(userId);
+      const brandColor = settings?.brandColor || '#2563EB';
+      const businessName = settings?.businessName || 'JobRunner';
+      const riskColors: Record<string, string> = { low: '#22c55e', medium: '#f59e0b', high: '#f97316', critical: '#ef4444' };
+
+      const html = `<!DOCTYPE html><html><head><style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 30px; color: #1a1a1a; font-size: 13px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid ${sanitizeBrandColor(brandColor)}; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h1 { color: ${sanitizeBrandColor(brandColor)}; font-size: 22px; margin: 0; }
+        .header .sub { color: #666; font-size: 12px; margin-top: 4px; }
+        .section { margin-bottom: 16px; }
+        .section-title { font-size: 14px; font-weight: 600; color: ${sanitizeBrandColor(brandColor)}; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin-bottom: 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
+        .field label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+        .field .value { font-size: 13px; margin-top: 2px; }
+        .risk-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; color: white; }
+        .full-width { grid-column: 1 / -1; }
+        .footer { margin-top: 30px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+      </style></head><body>
+        <div class="header"><div><h1>HAZARD REPORT</h1><div class="sub">${escapeHtml(businessName)}</div></div><div style="text-align:right"><span class="risk-badge" style="background:${riskColors[report.riskLevel] || '#666'}">${(report.riskLevel || '').toUpperCase()} RISK</span></div></div>
+        <div class="section"><div class="section-title">Hazard Details</div>
+          <div class="grid">
+            <div class="field full-width"><label>Description</label><div class="value"><strong>${escapeHtml(report.description) || ''}</strong></div></div>
+            <div class="field"><label>Location</label><div class="value">${escapeHtml(report.location) || ''}</div></div>
+            <div class="field"><label>Status</label><div class="value">${report.status || ''}</div></div>
+            <div class="field"><label>Date Identified</label><div class="value">${report.dateIdentified || ''}</div></div>
+            <div class="field"><label>Time Identified</label><div class="value">${report.timeIdentified || 'Not specified'}</div></div>
+            <div class="field full-width"><label>Recommended Action</label><div class="value">${escapeHtml(report.recommendedAction) || ''}</div></div>
+          </div>
+        </div>
+        <div class="section"><div class="section-title">Reporting</div>
+          <div class="grid">
+            <div class="field"><label>Reported By</label><div class="value">${escapeHtml(report.reportedBy) || ''}</div></div>
+            <div class="field"><label>Supervisor</label><div class="value">${escapeHtml(report.supervisorName) || 'Not specified'}</div></div>
+            <div class="field"><label>Date Reported</label><div class="value">${escapeHtml(report.dateReportedToSupervisor) || 'Not specified'}</div></div>
+          </div>
+        </div>
+        <div class="footer">Generated by ${escapeHtml(businessName)} — WHS Safety · ${new Date().toLocaleDateString('en-AU')}</div>
+      </body></html>`;
+
+      const puppeteer = require('puppeteer');
+      const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' } });
+      await browser.close();
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="hazard-report-${report.id?.substring(0, 8)}.pdf"`);
+      res.send(pdf);
+    } catch (error) {
+      console.error("Generate hazard PDF error:", error);
+      res.status(500).json({ error: "Failed to generate PDF" });
+    }
+  });
+
+  app.get("/api/whs/ppe-checklists/:id/pdf", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const checklists = await storage.getPpeChecklists(userId);
+      const checklist = checklists.find((c: any) => c.id === req.params.id);
+      if (!checklist) return res.status(404).json({ error: "PPE checklist not found" });
+
+      const settings = await storage.getBusinessSettings(userId);
+      const brandColor = settings?.brandColor || '#2563EB';
+      const businessName = settings?.businessName || 'JobRunner';
+      const items = [
+        { key: 'hardHat', label: 'Hard Hat' }, { key: 'hiVis', label: 'Hi-Vis Vest/Shirt' },
+        { key: 'safetyBoots', label: 'Safety Boots' }, { key: 'safetyGlasses', label: 'Safety Glasses' },
+        { key: 'hearingProtection', label: 'Hearing Protection' }, { key: 'gloves', label: 'Gloves' },
+        { key: 'sunscreen', label: 'Sunscreen' }, { key: 'respirator', label: 'Respirator/Mask' },
+        { key: 'safetyHarness', label: 'Safety Harness' },
+      ];
+
+      const itemRows = items.map(i => `<tr><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${i.label}</td><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:center"><span style="color:${checklist[i.key] ? '#22c55e' : '#ef4444'};font-weight:600">${checklist[i.key] ? '\u2713 Yes' : '\u2717 No'}</span></td></tr>`).join('');
+
+      const html = `<!DOCTYPE html><html><head><style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 30px; color: #1a1a1a; font-size: 13px; }
+        .header { border-bottom: 3px solid ${sanitizeBrandColor(brandColor)}; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .header h1 { color: ${sanitizeBrandColor(brandColor)}; font-size: 22px; margin: 0; }
+        .header .sub { color: #666; font-size: 12px; margin-top: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; padding: 8px 10px; background: #f9fafb; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #666; border-bottom: 2px solid #e5e7eb; }
+        .result { display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: 600; font-size: 13px; }
+        .pass { background: #d1fae5; color: #065f46; }
+        .fail { background: #fef3c7; color: #92400e; }
+        .footer { margin-top: 30px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+        .info { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+        .info .field label { font-size: 11px; color: #666; text-transform: uppercase; }
+        .info .field .value { font-size: 14px; margin-top: 2px; font-weight: 500; }
+      </style></head><body>
+        <div class="header"><div><h1>PPE CHECKLIST</h1><div class="sub">${escapeHtml(businessName)}</div></div><div><span class="result ${checklist.allCorrect ? 'pass' : 'fail'}">${checklist.allCorrect ? 'ALL CORRECT' : 'ITEMS MISSING'}</span></div></div>
+        <div class="info">
+          <div class="field"><label>Worker</label><div class="value">${escapeHtml(checklist.workerName)}</div></div>
+          <div class="field"><label>Date</label><div class="value">${checklist.date}</div></div>
+          <div class="field"><label>Supervisor</label><div class="value">${escapeHtml(checklist.supervisorName) || 'Not specified'}</div></div>
+        </div>
+        <table><thead><tr><th>PPE Item</th><th style="text-align:center">Worn Correctly</th></tr></thead><tbody>${itemRows}</tbody></table>
+        ${checklist.otherPpe ? `<p style="margin-top:12px"><strong>Other PPE:</strong> ${escapeHtml(checklist.otherPpe)}</p>` : ''}
+        ${checklist.notes ? `<p style="margin-top:8px"><strong>Notes:</strong> ${escapeHtml(checklist.notes)}</p>` : ''}
+        <div class="footer">Generated by ${escapeHtml(businessName)} — WHS Safety · ${new Date().toLocaleDateString('en-AU')}</div>
+      </body></html>`;
+
+      const puppeteer = require('puppeteer');
+      const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' } });
+      await browser.close();
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="ppe-checklist-${checklist.id?.substring(0, 8)}.pdf"`);
+      res.send(pdf);
+    } catch (error) {
+      console.error("Generate PPE PDF error:", error);
+      res.status(500).json({ error: "Failed to generate PDF" });
     }
   });
 

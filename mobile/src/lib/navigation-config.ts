@@ -230,7 +230,7 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
   },
   {
-    title: "WHS Safety Hub",
+    title: "WHS Safety",
     url: "/more/whs-hub",
     icon: "shield",
     description: "Incidents, JSAs, emergency plans & compliance",
@@ -700,7 +700,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
   },
   { 
     id: 'whs-hub',
-    title: 'WHS Safety Hub', 
+    title: 'WHS Safety', 
     icon: 'shield', 
     path: '/more/whs-hub',
     matchPaths: ['/more/whs-hub'],

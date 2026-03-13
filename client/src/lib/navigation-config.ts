@@ -342,7 +342,7 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
   },
   {
-    title: "WHS Safety Hub",
+    title: "WHS Safety",
     url: "/whs",
     icon: Shield,
     description: "Incidents, JSAs, emergency plans & compliance",

@@ -8,15 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertTriangle, Shield, ClipboardList, MapPin, Phone,
   Plus, Trash2, Edit, CheckCircle2, XCircle, Clock,
   Flame, AlertCircle, FileText, HardHat, Activity,
   Users, Siren, Eye, ChevronDown, ChevronUp,
-  Building2, Zap, ArrowLeft
+  Building2, Zap, ArrowLeft, Download
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -163,129 +161,215 @@ function IncidentReportsTab() {
       </div>
 
       {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{editingId ? "Edit" : "New"} Incident Report</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Incident Title *</Label>
-                <Input value={formData.title} onChange={e => setFormData(p => ({ ...p, title: e.target.value }))} placeholder="Brief description of the incident" />
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle className="text-lg">{editingId ? "Edit" : "New"} Incident Report</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Incident Title *</Label>
+                  <Input value={formData.title} onChange={e => setFormData(p => ({ ...p, title: e.target.value }))} placeholder="Brief description of the incident" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Incident Type</Label>
+                  <Select value={formData.incidentType} onValueChange={v => setFormData(p => ({ ...p, incidentType: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(INCIDENT_TYPE_LABELS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Severity</Label>
+                  <Select value={formData.severity} onValueChange={v => setFormData(p => ({ ...p, severity: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="minor">Minor</SelectItem>
+                      <SelectItem value="moderate">Moderate</SelectItem>
+                      <SelectItem value="serious">Serious</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Location</Label>
+                  <Input value={formData.location} onChange={e => setFormData(p => ({ ...p, location: e.target.value }))} placeholder="Where did it happen?" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Reported To</Label>
+                  <Input value={formData.reportedTo} onChange={e => setFormData(p => ({ ...p, reportedTo: e.target.value }))} placeholder="Name of supervisor/HSR" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Their Role</Label>
+                  <Select value={formData.reportedToRole || "supervisor"} onValueChange={v => setFormData(p => ({ ...p, reportedToRole: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="supervisor">Supervisor</SelectItem>
+                      <SelectItem value="leading_hand">Leading Hand</SelectItem>
+                      <SelectItem value="foreman">Foreman</SelectItem>
+                      <SelectItem value="hse_advisor">HSE Advisor</SelectItem>
+                      <SelectItem value="hsr">HSR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Worker Involved</Label>
+                  <Input value={formData.workerName} onChange={e => setFormData(p => ({ ...p, workerName: e.target.value }))} placeholder="Name of injured/involved worker" />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Incident Type</Label>
-                <Select value={formData.incidentType} onValueChange={v => setFormData(p => ({ ...p, incidentType: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(INCIDENT_TYPE_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Description *</Label>
+                <Textarea value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="Detailed description of what happened..." rows={3} />
               </div>
               <div className="space-y-2">
-                <Label>Severity</Label>
-                <Select value={formData.severity} onValueChange={v => setFormData(p => ({ ...p, severity: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="minor">Minor</SelectItem>
-                    <SelectItem value="moderate">Moderate</SelectItem>
-                    <SelectItem value="serious">Serious</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Immediate Actions Taken</Label>
+                <Textarea value={formData.immediateActions} onChange={e => setFormData(p => ({ ...p, immediateActions: e.target.value }))} placeholder="What was done immediately after the incident?" rows={2} />
               </div>
-              <div className="space-y-2">
-                <Label>Location</Label>
-                <Input value={formData.location} onChange={e => setFormData(p => ({ ...p, location: e.target.value }))} placeholder="Where did it happen?" />
-              </div>
-              <div className="space-y-2">
-                <Label>Reported To</Label>
-                <Input value={formData.reportedTo} onChange={e => setFormData(p => ({ ...p, reportedTo: e.target.value }))} placeholder="Name of supervisor/HSR" />
-              </div>
-              <div className="space-y-2">
-                <Label>Their Role</Label>
-                <Select value={formData.reportedToRole || "supervisor"} onValueChange={v => setFormData(p => ({ ...p, reportedToRole: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="supervisor">Supervisor</SelectItem>
-                    <SelectItem value="leading_hand">Leading Hand</SelectItem>
-                    <SelectItem value="foreman">Foreman</SelectItem>
-                    <SelectItem value="hse_advisor">HSE Advisor</SelectItem>
-                    <SelectItem value="hsr">HSR</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Worker Involved</Label>
-                <Input value={formData.workerName} onChange={e => setFormData(p => ({ ...p, workerName: e.target.value }))} placeholder="Name of injured/involved worker" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Description *</Label>
-              <Textarea value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="Detailed description of what happened..." rows={3} />
-            </div>
-            <div className="space-y-2">
-              <Label>Immediate Actions Taken</Label>
-              <Textarea value={formData.immediateActions} onChange={e => setFormData(p => ({ ...p, immediateActions: e.target.value }))} placeholder="What was done immediately after the incident?" rows={2} />
-            </div>
 
-            {(formData.incidentType === "injury" || formData.incidentType === "notifiable_incident") && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Injury Details</Label>
-                  <Input value={formData.injuryDetails} onChange={e => setFormData(p => ({ ...p, injuryDetails: e.target.value }))} placeholder="Type of injury" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Body Part Affected</Label>
-                  <Input value={formData.bodyPartAffected} onChange={e => setFormData(p => ({ ...p, bodyPartAffected: e.target.value }))} placeholder="e.g. Left hand, Head" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Treatment Provided</Label>
-                  <Input value={formData.treatmentProvided} onChange={e => setFormData(p => ({ ...p, treatmentProvided: e.target.value }))} placeholder="First aid given" />
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>Witnesses</Label>
-              <div className="flex gap-2">
-                <Input value={witnessInput} onChange={e => setWitnessInput(e.target.value)} placeholder="Witness name" onKeyDown={e => e.key === "Enter" && addWitness()} />
-                <Button type="button" variant="outline" onClick={addWitness}>Add</Button>
-              </div>
-              {formData.witnesses.length > 0 && (
-                <div className="flex gap-1 flex-wrap mt-1">
-                  {formData.witnesses.map((w, i) => (
-                    <Badge key={i} variant="secondary" className="gap-1">
-                      {w}
-                      <button onClick={() => setFormData(p => ({ ...p, witnesses: p.witnesses.filter((_, idx) => idx !== i) }))}>
-                        <XCircle className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ))}
+              {(formData.incidentType === "injury" || formData.incidentType === "notifiable_incident") && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Injury Details</Label>
+                    <Input value={formData.injuryDetails} onChange={e => setFormData(p => ({ ...p, injuryDetails: e.target.value }))} placeholder="Type of injury" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Body Part Affected</Label>
+                    <Input value={formData.bodyPartAffected} onChange={e => setFormData(p => ({ ...p, bodyPartAffected: e.target.value }))} placeholder="e.g. Left hand, Head" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Treatment Provided</Label>
+                    <Input value={formData.treatmentProvided} onChange={e => setFormData(p => ({ ...p, treatmentProvided: e.target.value }))} placeholder="First aid given" />
+                  </div>
                 </div>
               )}
-            </div>
 
-            <div className="space-y-2">
-              <Label>Follow-up Actions Required</Label>
-              <Textarea value={formData.followUpActions} onChange={e => setFormData(p => ({ ...p, followUpActions: e.target.value }))} placeholder="What needs to happen next to prevent recurrence?" rows={2} />
-            </div>
+              <div className="space-y-2">
+                <Label>Witnesses</Label>
+                <div className="flex gap-2">
+                  <Input value={witnessInput} onChange={e => setWitnessInput(e.target.value)} placeholder="Witness name" onKeyDown={e => e.key === "Enter" && addWitness()} />
+                  <Button type="button" variant="outline" onClick={addWitness}>Add</Button>
+                </div>
+                {formData.witnesses.length > 0 && (
+                  <div className="flex gap-1 flex-wrap mt-1">
+                    {formData.witnesses.map((w, i) => (
+                      <Badge key={i} variant="secondary" className="gap-1">
+                        {w}
+                        <button onClick={() => setFormData(p => ({ ...p, witnesses: p.witnesses.filter((_, idx) => idx !== i) }))}>
+                          <XCircle className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="notifiable" checked={formData.isNotifiable} onChange={e => setFormData(p => ({ ...p, isNotifiable: e.target.checked }))} />
-              <Label htmlFor="notifiable" className="cursor-pointer">This is a notifiable incident (must be reported to WHS regulator)</Label>
-            </div>
+              <div className="space-y-2">
+                <Label>Follow-up Actions Required</Label>
+                <Textarea value={formData.followUpActions} onChange={e => setFormData(p => ({ ...p, followUpActions: e.target.value }))} placeholder="What needs to happen next to prevent recurrence?" rows={2} />
+              </div>
 
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); }}>Cancel</Button>
-              <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
-                {editingId ? "Update" : "Submit"} Report
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="notifiable" checked={formData.isNotifiable} onChange={e => setFormData(p => ({ ...p, isNotifiable: e.target.checked }))} />
+                <Label htmlFor="notifiable" className="cursor-pointer">This is a notifiable incident (must be reported to WHS regulator)</Label>
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); }}>Cancel</Button>
+                <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+                  {editingId ? "Update" : "Submit"} Report
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2 lg:sticky lg:top-4 self-start">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Eye className="w-4 h-4" /> Live Preview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-md p-4 bg-card space-y-3 text-sm">
+                <div className="border-b pb-2 mb-2">
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">Incident Report</div>
+                  <p className="font-semibold text-base mt-1">{formData.title || "Untitled Incident"}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Type</div>
+                    <div>{INCIDENT_TYPE_LABELS[formData.incidentType] || formData.incidentType}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Severity</div>
+                    <Badge variant={formData.severity === 'critical' || formData.severity === 'serious' ? 'destructive' : 'secondary'} className="text-xs mt-0.5">
+                      {formData.severity}
+                    </Badge>
+                  </div>
+                  {formData.location && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Location</div>
+                      <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {formData.location}</div>
+                    </div>
+                  )}
+                  {formData.workerName && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Worker</div>
+                      <div>{formData.workerName}</div>
+                    </div>
+                  )}
+                  {formData.reportedTo && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Reported To</div>
+                      <div>{formData.reportedTo}</div>
+                    </div>
+                  )}
+                </div>
+                {formData.description && (
+                  <div className="pt-2 border-t">
+                    <div className="text-xs text-muted-foreground">Description</div>
+                    <p className="mt-1 whitespace-pre-wrap">{formData.description}</p>
+                  </div>
+                )}
+                {formData.immediateActions && (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Immediate Actions</div>
+                    <p className="mt-1">{formData.immediateActions}</p>
+                  </div>
+                )}
+                {formData.injuryDetails && (
+                  <div className="pt-2 border-t">
+                    <div className="text-xs text-muted-foreground">Injury</div>
+                    <p>{formData.injuryDetails}{formData.bodyPartAffected ? ` — ${formData.bodyPartAffected}` : ''}</p>
+                    {formData.treatmentProvided && <p className="text-xs text-muted-foreground">Treatment: {formData.treatmentProvided}</p>}
+                  </div>
+                )}
+                {formData.witnesses.length > 0 && (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Witnesses</div>
+                    <div className="flex gap-1 flex-wrap mt-1">
+                      {formData.witnesses.map((w, i) => <Badge key={i} variant="outline" className="text-xs">{w}</Badge>)}
+                    </div>
+                  </div>
+                )}
+                {formData.followUpActions && (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Follow-up Actions</div>
+                    <p className="mt-1">{formData.followUpActions}</p>
+                  </div>
+                )}
+                {formData.isNotifiable && (
+                  <div className="flex items-center gap-1 text-destructive text-xs font-medium pt-2 border-t">
+                    <Siren className="w-3 h-3" /> Notifiable Incident — Must be reported to WHS Regulator
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {isLoading ? (
@@ -320,6 +404,9 @@ function IncidentReportsTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
+                    <a href={`/api/whs/incidents/${report.id}/pdf`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                      <Button size="icon" variant="ghost"><Download className="w-4 h-4" /></Button>
+                    </a>
                     <Button size="icon" variant="ghost" onClick={() => handleEdit(report)}><Edit className="w-4 h-4" /></Button>
                     {report.status === "open" && (
                       <Button size="icon" variant="ghost" onClick={() => updateMutation.mutate({ id: report.id, data: { status: "closed" } })}>
@@ -1211,61 +1298,118 @@ function PpeChecklistTab() {
         </Button>
       </div>
 
-      <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>PPE Check-in</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+      {showForm && (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle className="text-lg">PPE Check-in</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Worker Name *</Label>
+                  <Input value={form.workerName} onChange={(e) => setForm({ ...form, workerName: e.target.value })} placeholder="Worker name" />
+                </div>
+                <div>
+                  <Label>Date</Label>
+                  <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                </div>
+              </div>
+
               <div>
-                <Label>Worker Name *</Label>
-                <Input value={form.workerName} onChange={(e) => setForm({ ...form, workerName: e.target.value })} placeholder="Worker name" />
+                <Label className="mb-2 block">PPE Items — tick what the worker is wearing correctly</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {ppeItems.map((item) => (
+                    <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form[item.key as keyof typeof form] as boolean}
+                        onChange={(e) => setForm({ ...form, [item.key]: e.target.checked })}
+                        className="w-4 h-4 rounded border-border"
+                      />
+                      <span className="text-sm">{item.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
+
               <div>
-                <Label>Date</Label>
-                <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                <Label>Other PPE</Label>
+                <Input value={form.otherPpe} onChange={(e) => setForm({ ...form, otherPpe: e.target.value })} placeholder="Any additional PPE worn..." />
               </div>
-            </div>
 
-            <div>
-              <Label className="mb-2 block">PPE Items — tick what the worker is wearing correctly</Label>
-              <div className="space-y-2">
-                {ppeItems.map((item) => (
-                  <label key={item.key} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form[item.key as keyof typeof form] as boolean}
-                      onChange={(e) => setForm({ ...form, [item.key]: e.target.checked })}
-                      className="w-4 h-4 rounded border-border"
-                    />
-                    <span className="text-sm">{item.label}</span>
-                  </label>
-                ))}
+              <div>
+                <Label>Supervisor Name</Label>
+                <Input value={form.supervisorName} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} placeholder="Supervisor who verified" />
               </div>
-            </div>
 
-            <div>
-              <Label>Other PPE</Label>
-              <Input value={form.otherPpe} onChange={(e) => setForm({ ...form, otherPpe: e.target.value })} placeholder="Any additional PPE worn..." />
-            </div>
+              <div>
+                <Label>Notes</Label>
+                <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Any issues or observations..." />
+              </div>
 
-            <div>
-              <Label>Supervisor Name</Label>
-              <Input value={form.supervisorName} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} placeholder="Supervisor who verified" />
-            </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={resetForm}>Cancel</Button>
+                <Button onClick={handleSubmit} disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "Saving..." : "Save PPE Check-in"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-            <div>
-              <Label>Notes</Label>
-              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Any issues or observations..." />
-            </div>
-
-            <Button onClick={handleSubmit} className="w-full" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Saving..." : "Save PPE Check-in"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          <Card className="lg:col-span-2 lg:sticky lg:top-4 self-start">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Eye className="w-4 h-4" /> Live Preview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-md p-4 bg-card space-y-3 text-sm">
+                <div className="border-b pb-2 mb-2 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide">PPE Checklist</div>
+                    <p className="font-semibold mt-1">{form.workerName || "Worker Name"}</p>
+                    <p className="text-xs text-muted-foreground">{form.date}</p>
+                  </div>
+                  <Badge variant={ppeItems.every(p => form[p.key as keyof typeof form]) ? "default" : "secondary"}>
+                    {checkedCount(form)}/{ppeItems.length}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  {ppeItems.map((item) => (
+                    <div key={item.key} className="flex items-center justify-between text-xs">
+                      <span>{item.label}</span>
+                      {form[item.key as keyof typeof form] ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                      ) : (
+                        <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {form.otherPpe && (
+                  <div className="pt-2 border-t">
+                    <div className="text-xs text-muted-foreground">Other PPE</div>
+                    <p>{form.otherPpe}</p>
+                  </div>
+                )}
+                {form.supervisorName && (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Verified by</div>
+                    <p>{form.supervisorName}</p>
+                  </div>
+                )}
+                {form.notes && (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Notes</div>
+                    <p>{form.notes}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {checklists.length === 0 ? (
         <Card>
@@ -1289,6 +1433,9 @@ function PpeChecklistTab() {
                     <Badge variant={c.allCorrect ? "default" : "secondary"}>
                       {checkedCount(c)}/{ppeItems.length} items
                     </Badge>
+                    <a href={`/api/whs/ppe-checklists/${c.id}/pdf`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                      <Button size="icon" variant="ghost"><Download className="w-4 h-4" /></Button>
+                    </a>
                     <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(c.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -1448,86 +1595,152 @@ function TrainingRecordsTab() {
         </Button>
       </div>
 
-      <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Training Record" : "Add Training Record"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Worker Name *</Label>
-              <Input value={form.workerName} onChange={(e) => setForm({ ...form, workerName: e.target.value })} placeholder="Worker name" />
-            </div>
+      {showForm && (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle className="text-lg">{editingId ? "Edit Training Record" : "Add Training Record"}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label>Worker Name *</Label>
+                <Input value={form.workerName} onChange={(e) => setForm({ ...form, workerName: e.target.value })} placeholder="Worker name" />
+              </div>
 
-            <div>
-              <Label>Course</Label>
-              <Select value={commonCourses.find(c => c.code === form.courseCode)?.code || "CUSTOM"} onValueChange={handleCourseSelect}>
-                <SelectTrigger><SelectValue placeholder="Select a course" /></SelectTrigger>
-                <SelectContent>
-                  {commonCourses.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>{c.code === "CUSTOM" ? "Other (specify below)" : `${c.code} — ${c.name}`}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div>
+                <Label>Course</Label>
+                <Select value={commonCourses.find(c => c.code === form.courseCode)?.code || "CUSTOM"} onValueChange={handleCourseSelect}>
+                  <SelectTrigger><SelectValue placeholder="Select a course" /></SelectTrigger>
+                  <SelectContent>
+                    {commonCourses.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>{c.code === "CUSTOM" ? "Other (specify below)" : `${c.code} — ${c.name}`}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {(!commonCourses.find(c => c.code === form.courseCode) || form.courseCode === "") && (
+              {(!commonCourses.find(c => c.code === form.courseCode) || form.courseCode === "") && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Course Code *</Label>
+                    <Input value={form.courseCode} onChange={(e) => setForm({ ...form, courseCode: e.target.value })} placeholder="e.g. CPCCWHS1001" />
+                  </div>
+                  <div>
+                    <Label>Course Name *</Label>
+                    <Input value={form.courseName} onChange={(e) => setForm({ ...form, courseName: e.target.value })} placeholder="Course name" />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <Label>RTO / Training Provider</Label>
+                <Input value={form.rtoName} onChange={(e) => setForm({ ...form, rtoName: e.target.value })} placeholder="e.g. Blue Dog Training" />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Course Code *</Label>
-                  <Input value={form.courseCode} onChange={(e) => setForm({ ...form, courseCode: e.target.value })} placeholder="e.g. CPCCWHS1001" />
+                  <Label>Completion Date *</Label>
+                  <Input type="date" value={form.completionDate} onChange={(e) => setForm({ ...form, completionDate: e.target.value })} />
                 </div>
                 <div>
-                  <Label>Course Name *</Label>
-                  <Input value={form.courseName} onChange={(e) => setForm({ ...form, courseName: e.target.value })} placeholder="Course name" />
+                  <Label>Expiry Date</Label>
+                  <Input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} />
                 </div>
               </div>
-            )}
 
-            <div>
-              <Label>RTO / Training Provider</Label>
-              <Input value={form.rtoName} onChange={(e) => setForm({ ...form, rtoName: e.target.value })} placeholder="e.g. Blue Dog Training" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Completion Date *</Label>
-                <Input type="date" value={form.completionDate} onChange={(e) => setForm({ ...form, completionDate: e.target.value })} />
+                <Label>Certificate Number</Label>
+                <Input value={form.certificateNumber} onChange={(e) => setForm({ ...form, certificateNumber: e.target.value })} placeholder="Certificate or licence number" />
               </div>
+
               <div>
-                <Label>Expiry Date</Label>
-                <Input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} />
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="current">Current</SelectItem>
+                    <SelectItem value="expiring_soon">Expiring Soon</SelectItem>
+                    <SelectItem value="expired">Expired</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
 
-            <div>
-              <Label>Certificate Number</Label>
-              <Input value={form.certificateNumber} onChange={(e) => setForm({ ...form, certificateNumber: e.target.value })} placeholder="Certificate or licence number" />
-            </div>
+              <div>
+                <Label>Notes</Label>
+                <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Additional notes..." />
+              </div>
 
-            <div>
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="current">Current</SelectItem>
-                  <SelectItem value="expiring_soon">Expiring Soon</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={resetForm}>Cancel</Button>
+                <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+                  {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : editingId ? "Update Record" : "Add Record"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-            <div>
-              <Label>Notes</Label>
-              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Additional notes..." />
-            </div>
-
-            <Button onClick={handleSubmit} className="w-full" disabled={createMutation.isPending || updateMutation.isPending}>
-              {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : editingId ? "Update Record" : "Add Record"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          <Card className="lg:col-span-2 lg:sticky lg:top-4 self-start">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Eye className="w-4 h-4" /> Live Preview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-md p-4 bg-card space-y-3 text-sm">
+                <div className="border-b pb-2 mb-2 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Training Record</div>
+                    <p className="font-semibold mt-1">{form.workerName || "Worker Name"}</p>
+                  </div>
+                  <Badge variant={getStatusColor(form.status) as any} className="text-xs">
+                    {getStatusLabel(form.status)}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  <div className="col-span-2">
+                    <div className="text-xs text-muted-foreground">Course</div>
+                    <div className="font-medium">{form.courseCode || "—"}</div>
+                    <div className="text-xs text-muted-foreground">{form.courseName || "—"}</div>
+                  </div>
+                  {form.rtoName && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Training Provider</div>
+                      <div>{form.rtoName}</div>
+                    </div>
+                  )}
+                  {form.certificateNumber && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Certificate No.</div>
+                      <div>{form.certificateNumber}</div>
+                    </div>
+                  )}
+                  {form.completionDate && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Completed</div>
+                      <div>{form.completionDate}</div>
+                    </div>
+                  )}
+                  {form.expiryDate && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Expires</div>
+                      <div className={isExpiringSoon(form.expiryDate) ? "text-yellow-600 font-medium" : ""}>
+                        {form.expiryDate}
+                        {isExpiringSoon(form.expiryDate) && " (soon)"}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {form.notes && (
+                  <div className="pt-2 border-t">
+                    <div className="text-xs text-muted-foreground">Notes</div>
+                    <p className="mt-1">{form.notes}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {records.length === 0 ? (
         <Card>
@@ -1663,93 +1876,158 @@ function HazardReportsTab() {
         </Button>
       </div>
 
-      <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Hazard Report" : "Report a Hazard"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Hazard Description *</Label>
-              <Textarea placeholder="Briefly describe the hazard..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-            </div>
-            <div>
-              <Label>Location *</Label>
-              <Input placeholder="Where is the hazard located?" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+      {showForm && (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle className="text-lg">{editingId ? "Edit Hazard Report" : "Report a Hazard"}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
               <div>
-                <Label>Date Identified *</Label>
-                <Input type="date" value={form.dateIdentified} onChange={(e) => setForm({ ...form, dateIdentified: e.target.value })} />
+                <Label>Hazard Description *</Label>
+                <Textarea placeholder="Briefly describe the hazard..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
               <div>
-                <Label>Time Identified</Label>
-                <Input type="time" value={form.timeIdentified} onChange={(e) => setForm({ ...form, timeIdentified: e.target.value })} />
+                <Label>Location *</Label>
+                <Input placeholder="Where is the hazard located?" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
               </div>
-            </div>
-            <div>
-              <Label>Recommended Action to Control Hazard *</Label>
-              <Textarea placeholder="How would you eliminate or minimise the risk?" value={form.recommendedAction} onChange={(e) => setForm({ ...form, recommendedAction: e.target.value })} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Date Reported to Supervisor</Label>
-                <Input type="date" value={form.dateReportedToSupervisor} onChange={(e) => setForm({ ...form, dateReportedToSupervisor: e.target.value })} />
-              </div>
-              <div>
-                <Label>Time Reported</Label>
-                <Input type="time" value={form.timeReportedToSupervisor} onChange={(e) => setForm({ ...form, timeReportedToSupervisor: e.target.value })} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Reported By *</Label>
-                <Input placeholder="Your name" value={form.reportedBy} onChange={(e) => setForm({ ...form, reportedBy: e.target.value })} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Date Identified *</Label>
+                  <Input type="date" value={form.dateIdentified} onChange={(e) => setForm({ ...form, dateIdentified: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Time Identified</Label>
+                  <Input type="time" value={form.timeIdentified} onChange={(e) => setForm({ ...form, timeIdentified: e.target.value })} />
+                </div>
               </div>
               <div>
-                <Label>Supervisor Name</Label>
-                <Input placeholder="Supervisor name" value={form.supervisorName} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} />
+                <Label>Recommended Action to Control Hazard *</Label>
+                <Textarea placeholder="How would you eliminate or minimise the risk?" value={form.recommendedAction} onChange={(e) => setForm({ ...form, recommendedAction: e.target.value })} />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Date Reported to Supervisor</Label>
+                  <Input type="date" value={form.dateReportedToSupervisor} onChange={(e) => setForm({ ...form, dateReportedToSupervisor: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Time Reported</Label>
+                  <Input type="time" value={form.timeReportedToSupervisor} onChange={(e) => setForm({ ...form, timeReportedToSupervisor: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Reported By *</Label>
+                  <Input placeholder="Your name" value={form.reportedBy} onChange={(e) => setForm({ ...form, reportedBy: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Supervisor Name</Label>
+                  <Input placeholder="Supervisor name" value={form.supervisorName} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Risk Level</Label>
+                  <Select value={form.riskLevel} onValueChange={(v) => setForm({ ...form, riskLevel: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="open">Open</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="resolved">Resolved</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div>
-                <Label>Risk Level</Label>
-                <Select value={form.riskLevel} onValueChange={(v) => setForm({ ...form, riskLevel: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Additional Notes</Label>
+                <Textarea placeholder="Any other details..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </div>
-              <div>
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="resolved">Resolved</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" onClick={resetForm}>Cancel</Button>
+                <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+                  {editingId ? "Update Report" : "Submit Hazard Report"}
+                </Button>
               </div>
-            </div>
-            <div>
-              <Label>Additional Notes</Label>
-              <Textarea placeholder="Any other details..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-            </div>
-            <div className="flex gap-2 justify-end pt-2">
-              <Button variant="outline" onClick={resetForm}>Cancel</Button>
-              <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
-                {editingId ? "Update Report" : "Submit Hazard Report"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2 lg:sticky lg:top-4 self-start">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Eye className="w-4 h-4" /> Live Preview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-md p-4 bg-card space-y-3 text-sm">
+                <div className="border-b pb-2 mb-2 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Hazard Report</div>
+                    <p className="font-semibold mt-1">{form.description || "No description yet"}</p>
+                  </div>
+                  <Badge variant={form.riskLevel === 'critical' || form.riskLevel === 'high' ? 'destructive' : form.riskLevel === 'medium' ? 'secondary' : 'outline'}>
+                    {form.riskLevel.toUpperCase()} RISK
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  {form.location && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Location</div>
+                      <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {form.location}</div>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-xs text-muted-foreground">Status</div>
+                    <Badge variant="outline" className="text-xs mt-0.5">{form.status === 'in_progress' ? 'In Progress' : form.status}</Badge>
+                  </div>
+                  {form.dateIdentified && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Date Identified</div>
+                      <div>{form.dateIdentified}{form.timeIdentified ? ` at ${form.timeIdentified}` : ''}</div>
+                    </div>
+                  )}
+                  {form.reportedBy && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Reported By</div>
+                      <div>{form.reportedBy}</div>
+                    </div>
+                  )}
+                  {form.supervisorName && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Supervisor</div>
+                      <div>{form.supervisorName}</div>
+                    </div>
+                  )}
+                </div>
+                {form.recommendedAction && (
+                  <div className="pt-2 border-t">
+                    <div className="text-xs text-muted-foreground">Recommended Action</div>
+                    <p className="mt-1 whitespace-pre-wrap">{form.recommendedAction}</p>
+                  </div>
+                )}
+                {form.notes && (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Notes</div>
+                    <p className="mt-1">{form.notes}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {hazards.length === 0 ? (
         <Card>
@@ -1783,6 +2061,9 @@ function HazardReportsTab() {
                     )}
                   </div>
                   <div className="flex gap-1">
+                    <a href={`/api/whs/hazard-reports/${h.id}/pdf`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                      <Button size="icon" variant="ghost"><Download className="w-4 h-4" /></Button>
+                    </a>
                     <Button size="icon" variant="ghost" onClick={() => startEdit(h)}><Edit className="w-4 h-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(h.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
@@ -1796,84 +2077,384 @@ function HazardReportsTab() {
   );
 }
 
+function SwmsDocumentsTab() {
+  const { data: swmsDocs = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/swms"] });
+  const [, setLocation] = useLocation();
+
+  if (isLoading) return <div className="flex justify-center p-8"><Clock className="w-5 h-5 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h3 className="text-lg font-semibold">Safe Work Method Statements</h3>
+          <p className="text-sm text-muted-foreground">All SWMS documents across your jobs. Create new SWMS from a job's safety section.</p>
+        </div>
+      </div>
+
+      {swmsDocs.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <ClipboardList className="w-12 h-12 text-muted-foreground mb-3" />
+            <p className="text-muted-foreground font-medium">No SWMS documents yet</p>
+            <p className="text-sm text-muted-foreground">Create a SWMS from a job's safety section to see it here.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {swmsDocs.map((doc: any) => (
+            <Card key={doc.id} className="hover-elevate cursor-pointer" onClick={() => doc.jobId && setLocation(`/jobs/${doc.jobId}`)}>
+              <CardContent className="pt-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ClipboardList className="w-4 h-4 text-primary flex-shrink-0" />
+                      <p className="font-semibold truncate">{doc.title}</p>
+                    </div>
+                    {doc.siteAddress && <p className="text-sm text-muted-foreground truncate">{doc.siteAddress}</p>}
+                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                      {doc.hazardCount !== undefined && <span>{doc.hazardCount} hazards</span>}
+                      {doc.signatureCount !== undefined && <span>{doc.signatureCount} signatures</span>}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant={doc.status === 'approved' || doc.status === 'signed' ? 'default' : 'secondary'}>
+                      {doc.status || 'Draft'}
+                    </Badge>
+                    {doc.jobId && (
+                      <a href={`/api/swms/${doc.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs text-primary hover:underline flex items-center gap-1">
+                        <FileText className="w-3 h-3" /> PDF
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function WhsHub() {
   const [, setLocation] = useLocation();
+  const [activeSection, setActiveSection] = useState<string>("overview");
 
   const { data: incidents = [] } = useQuery<any[]>({ queryKey: ["/api/whs/incidents"] });
   const { data: emergencyInfo = [] } = useQuery<any[]>({ queryKey: ["/api/whs/emergency-info"] });
   const { data: jsaDocs = [] } = useQuery<any[]>({ queryKey: ["/api/whs/jsa"] });
+  const { data: hazardReports = [] } = useQuery<any[]>({ queryKey: ["/api/whs/hazard-reports"] });
+  const { data: ppeChecklists = [] } = useQuery<any[]>({ queryKey: ["/api/whs/ppe-checklists"] });
+  const { data: trainingRecords = [] } = useQuery<any[]>({ queryKey: ["/api/whs/training-records"] });
+  const { data: swmsDocs = [] } = useQuery<any[]>({ queryKey: ["/api/swms"] });
 
   const openIncidents = incidents.filter((r: any) => r.status === "open").length;
+  const openHazards = hazardReports.filter((r: any) => r.status === "open").length;
+  const expiringTraining = trainingRecords.filter((r: any) => {
+    if (!r.expiryDate) return false;
+    const diff = new Date(r.expiryDate).getTime() - Date.now();
+    return diff > 0 && diff < 90 * 24 * 60 * 60 * 1000;
+  }).length;
+  const expiredTraining = trainingRecords.filter((r: any) => r.status === 'expired').length;
+  const totalDocs = incidents.length + hazardReports.length + jsaDocs.length + swmsDocs.length;
+
+  const sections = [
+    { key: "overview", label: "Overview", icon: Activity },
+    { key: "incidents", label: "Incidents", icon: AlertTriangle, count: openIncidents },
+    { key: "hazards", label: "Hazard Reports", icon: FileText, count: openHazards },
+    { key: "swms", label: "SWMS", icon: ClipboardList, count: swmsDocs.length },
+    { key: "jsa", label: "JSA", icon: ClipboardList },
+    { key: "ppe", label: "PPE Checklists", icon: HardHat, count: ppeChecklists.length },
+    { key: "training", label: "Training", icon: Shield, count: expiringTraining + expiredTraining },
+    { key: "emergency", label: "Emergency Plans", icon: Siren },
+    { key: "environments", label: "Environments", icon: Zap },
+    { key: "signage", label: "Signage", icon: Eye },
+    { key: "roles", label: "WHS Roles", icon: Users },
+  ];
+
+  const renderOverview = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("incidents")}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-md bg-yellow-500/10 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{openIncidents}</div>
+                <div className="text-xs text-muted-foreground">Open Incidents</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("hazards")}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-md bg-red-500/10 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{openHazards}</div>
+                <div className="text-xs text-muted-foreground">Open Hazards</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("swms")}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-md bg-blue-500/10 flex items-center justify-center">
+                <ClipboardList className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{swmsDocs.length}</div>
+                <div className="text-xs text-muted-foreground">SWMS Docs</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("ppe")}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-md bg-green-500/10 flex items-center justify-center">
+                <HardHat className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{ppeChecklists.length}</div>
+                <div className="text-xs text-muted-foreground">PPE Check-ins</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("training")}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-md bg-purple-500/10 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{trainingRecords.length}</div>
+                <div className="text-xs text-muted-foreground">Training Records</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("emergency")}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-md bg-emerald-500/10 flex items-center justify-center">
+                <Siren className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{emergencyInfo.length}</div>
+                <div className="text-xs text-muted-foreground">Emergency Plans</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {(openIncidents > 0 || openHazards > 0 || expiredTraining > 0 || expiringTraining > 0) && (
+        <Card className="border-yellow-500/30 bg-yellow-500/5">
+          <CardContent className="pt-4">
+            <h3 className="font-semibold flex items-center gap-2 mb-3">
+              <AlertCircle className="w-4 h-4 text-yellow-600" /> Action Required
+            </h3>
+            <div className="grid gap-2 md:grid-cols-2">
+              {openIncidents > 0 && (
+                <div className="flex items-center gap-2 cursor-pointer hover-elevate rounded-md p-2" onClick={() => setActiveSection("incidents")}>
+                  <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                  <span className="text-sm"><strong>{openIncidents}</strong> open incident{openIncidents !== 1 ? 's' : ''} need review</span>
+                </div>
+              )}
+              {openHazards > 0 && (
+                <div className="flex items-center gap-2 cursor-pointer hover-elevate rounded-md p-2" onClick={() => setActiveSection("hazards")}>
+                  <FileText className="w-4 h-4 text-red-600" />
+                  <span className="text-sm"><strong>{openHazards}</strong> open hazard{openHazards !== 1 ? 's' : ''} need action</span>
+                </div>
+              )}
+              {expiredTraining > 0 && (
+                <div className="flex items-center gap-2 cursor-pointer hover-elevate rounded-md p-2" onClick={() => setActiveSection("training")}>
+                  <XCircle className="w-4 h-4 text-red-600" />
+                  <span className="text-sm"><strong>{expiredTraining}</strong> expired training record{expiredTraining !== 1 ? 's' : ''}</span>
+                </div>
+              )}
+              {expiringTraining > 0 && (
+                <div className="flex items-center gap-2 cursor-pointer hover-elevate rounded-md p-2" onClick={() => setActiveSection("training")}>
+                  <Clock className="w-4 h-4 text-yellow-600" />
+                  <span className="text-sm"><strong>{expiringTraining}</strong> training record{expiringTraining !== 1 ? 's' : ''} expiring within 90 days</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("incidents")}>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Recent Incidents</CardTitle>
+            <AlertTriangle className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {incidents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No incidents reported</p>
+            ) : (
+              <div className="space-y-2">
+                {incidents.slice(0, 3).map((inc: any) => (
+                  <div key={inc.id} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{inc.title}</p>
+                      <p className="text-xs text-muted-foreground">{inc.incidentType?.replace('_', ' ')}</p>
+                    </div>
+                    <Badge variant={inc.status === 'open' ? 'destructive' : inc.status === 'resolved' ? 'default' : 'secondary'} className="text-xs">
+                      {inc.status}
+                    </Badge>
+                  </div>
+                ))}
+                {incidents.length > 3 && <p className="text-xs text-primary cursor-pointer">+ {incidents.length - 3} more</p>}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("swms")}>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Recent SWMS</CardTitle>
+            <ClipboardList className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {swmsDocs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No SWMS documents</p>
+            ) : (
+              <div className="space-y-2">
+                {swmsDocs.slice(0, 3).map((doc: any) => (
+                  <div key={doc.id} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{doc.title}</p>
+                      <p className="text-xs text-muted-foreground">{doc.hazardCount ?? 0} hazards</p>
+                    </div>
+                    <Badge variant={doc.status === 'approved' || doc.status === 'signed' ? 'default' : 'secondary'} className="text-xs">
+                      {doc.status || 'draft'}
+                    </Badge>
+                  </div>
+                ))}
+                {swmsDocs.length > 3 && <p className="text-xs text-primary cursor-pointer">+ {swmsDocs.length - 3} more</p>}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("training")}>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Training & Licences</CardTitle>
+            <Shield className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {trainingRecords.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No training records</p>
+            ) : (
+              <div className="space-y-2">
+                {trainingRecords.slice(0, 3).map((rec: any) => (
+                  <div key={rec.id} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{rec.workerName}</p>
+                      <p className="text-xs text-muted-foreground">{rec.courseCode}</p>
+                    </div>
+                    <Badge variant={rec.status === 'current' ? 'default' : rec.status === 'expired' ? 'destructive' : 'secondary'} className="text-xs">
+                      {rec.status}
+                    </Badge>
+                  </div>
+                ))}
+                {trainingRecords.length > 3 && <p className="text-xs text-primary cursor-pointer">+ {trainingRecords.length - 3} more</p>}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Safety Summary</CardTitle>
+          <Activity className="w-4 h-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div>
+              <div className="text-3xl font-bold">{totalDocs}</div>
+              <div className="text-xs text-muted-foreground">Total Documents</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold">{ppeChecklists.length}</div>
+              <div className="text-xs text-muted-foreground">PPE Check-ins</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold">{emergencyInfo.length}</div>
+              <div className="text-xs text-muted-foreground">Emergency Plans</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold">{jsaDocs.length}</div>
+              <div className="text-xs text-muted-foreground">Job Safety Analyses</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+      <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => setLocation("/")}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Shield className="w-6 h-6 text-primary" /> WHS Hub
+              <Shield className="w-6 h-6 text-primary" /> WHS Safety
             </h1>
-            <p className="text-sm text-muted-foreground">Work Health & Safety Management</p>
+            <p className="text-sm text-muted-foreground">Work Health & Safety — Compliance, Reporting & Documentation</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Card>
-            <CardContent className="p-3 text-center">
-              <AlertTriangle className="w-5 h-5 mx-auto mb-1 text-yellow-600" />
-              <div className="text-2xl font-bold">{openIncidents}</div>
-              <div className="text-xs text-muted-foreground">Open Incidents</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 text-center">
-              <Siren className="w-5 h-5 mx-auto mb-1 text-green-600" />
-              <div className="text-2xl font-bold">{emergencyInfo.length}</div>
-              <div className="text-xs text-muted-foreground">Emergency Plans</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 text-center">
-              <ClipboardList className="w-5 h-5 mx-auto mb-1 text-blue-600" />
-              <div className="text-2xl font-bold">{jsaDocs.length}</div>
-              <div className="text-xs text-muted-foreground">JSAs</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 text-center">
-              <Activity className="w-5 h-5 mx-auto mb-1 text-purple-600" />
-              <div className="text-2xl font-bold">{incidents.length}</div>
-              <div className="text-xs text-muted-foreground">Total Reports</div>
-            </CardContent>
-          </Card>
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+          {sections.map((s) => {
+            const Icon = s.icon;
+            const isActive = activeSection === s.key;
+            return (
+              <button key={s.key} onClick={() => setActiveSection(s.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors flex-shrink-0 ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted/50 text-muted-foreground hover-elevate'
+                }`}>
+                <Icon className="w-3.5 h-3.5" />
+                {s.label}
+                {s.count !== undefined && s.count > 0 && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? 'bg-primary-foreground/20' : 'bg-muted'}`}>
+                    {s.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        <Tabs defaultValue="incidents" className="space-y-4">
-          <TabsList className="flex flex-wrap h-auto gap-1">
-            <TabsTrigger value="incidents" className="gap-1"><AlertTriangle className="w-3 h-3" /> Incidents</TabsTrigger>
-            <TabsTrigger value="emergency" className="gap-1"><Siren className="w-3 h-3" /> Emergency</TabsTrigger>
-            <TabsTrigger value="jsa" className="gap-1"><ClipboardList className="w-3 h-3" /> JSA</TabsTrigger>
-            <TabsTrigger value="environments" className="gap-1"><Zap className="w-3 h-3" /> Environments</TabsTrigger>
-            <TabsTrigger value="signage" className="gap-1"><Eye className="w-3 h-3" /> Signage</TabsTrigger>
-            <TabsTrigger value="hazards" className="gap-1"><FileText className="w-3 h-3" /> Hazard Reports</TabsTrigger>
-            <TabsTrigger value="ppe" className="gap-1"><HardHat className="w-3 h-3" /> PPE</TabsTrigger>
-            <TabsTrigger value="training" className="gap-1"><Shield className="w-3 h-3" /> Training</TabsTrigger>
-            <TabsTrigger value="roles" className="gap-1"><Users className="w-3 h-3" /> WHS Roles</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="incidents"><IncidentReportsTab /></TabsContent>
-          <TabsContent value="emergency"><EmergencyInfoTab /></TabsContent>
-          <TabsContent value="jsa"><JsaTab /></TabsContent>
-          <TabsContent value="environments"><HazardousEnvironmentsTab /></TabsContent>
-          <TabsContent value="signage"><SafetySignageTab /></TabsContent>
-          <TabsContent value="hazards"><HazardReportsTab /></TabsContent>
-          <TabsContent value="ppe"><PpeChecklistTab /></TabsContent>
-          <TabsContent value="training"><TrainingRecordsTab /></TabsContent>
-          <TabsContent value="roles"><WhsRolesTab /></TabsContent>
-        </Tabs>
+        {activeSection === "overview" && renderOverview()}
+        {activeSection === "incidents" && <IncidentReportsTab />}
+        {activeSection === "hazards" && <HazardReportsTab />}
+        {activeSection === "swms" && <SwmsDocumentsTab />}
+        {activeSection === "jsa" && <JsaTab />}
+        {activeSection === "ppe" && <PpeChecklistTab />}
+        {activeSection === "training" && <TrainingRecordsTab />}
+        {activeSection === "emergency" && <EmergencyInfoTab />}
+        {activeSection === "environments" && <HazardousEnvironmentsTab />}
+        {activeSection === "signage" && <SafetySignageTab />}
+        {activeSection === "roles" && <WhsRolesTab />}
       </div>
     </div>
   );
