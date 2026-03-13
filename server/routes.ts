@@ -41128,6 +41128,416 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+  // ============================================
+  // WHS - Incident Reports
+  // ============================================
+
+  app.get("/api/whs/incidents", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const jobId = req.query.jobId as string | undefined;
+      const reports = await storage.getIncidentReports(userId, jobId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Get incident reports error:", error);
+      res.status(500).json({ error: "Failed to fetch incident reports" });
+    }
+  });
+
+  app.get("/api/whs/incidents/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const report = await storage.getIncidentReport(req.params.id, userId);
+      if (!report) return res.status(404).json({ error: "Incident report not found" });
+      res.json(report);
+    } catch (error) {
+      console.error("Get incident report error:", error);
+      res.status(500).json({ error: "Failed to fetch incident report" });
+    }
+  });
+
+  app.post("/api/whs/incidents", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const report = await storage.createIncidentReport({ ...req.body, userId });
+      res.status(201).json(report);
+    } catch (error) {
+      console.error("Create incident report error:", error);
+      res.status(500).json({ error: "Failed to create incident report" });
+    }
+  });
+
+  app.patch("/api/whs/incidents/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const report = await storage.updateIncidentReport(req.params.id, userId, req.body);
+      if (!report) return res.status(404).json({ error: "Incident report not found" });
+      res.json(report);
+    } catch (error) {
+      console.error("Update incident report error:", error);
+      res.status(500).json({ error: "Failed to update incident report" });
+    }
+  });
+
+  app.delete("/api/whs/incidents/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const deleted = await storage.deleteIncidentReport(req.params.id, userId);
+      if (!deleted) return res.status(404).json({ error: "Incident report not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete incident report error:", error);
+      res.status(500).json({ error: "Failed to delete incident report" });
+    }
+  });
+
+  // ============================================
+  // WHS - Site Emergency Info
+  // ============================================
+
+  app.get("/api/whs/emergency-info", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const jobId = req.query.jobId as string | undefined;
+      const info = await storage.getSiteEmergencyInfo(userId, jobId);
+      res.json(info);
+    } catch (error) {
+      console.error("Get emergency info error:", error);
+      res.status(500).json({ error: "Failed to fetch emergency info" });
+    }
+  });
+
+  app.get("/api/whs/emergency-info/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const info = await storage.getSiteEmergencyInfoById(req.params.id, userId);
+      if (!info) return res.status(404).json({ error: "Emergency info not found" });
+      res.json(info);
+    } catch (error) {
+      console.error("Get emergency info error:", error);
+      res.status(500).json({ error: "Failed to fetch emergency info" });
+    }
+  });
+
+  app.post("/api/whs/emergency-info", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const info = await storage.createSiteEmergencyInfo({ ...req.body, userId });
+      res.status(201).json(info);
+    } catch (error) {
+      console.error("Create emergency info error:", error);
+      res.status(500).json({ error: "Failed to create emergency info" });
+    }
+  });
+
+  app.patch("/api/whs/emergency-info/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const info = await storage.updateSiteEmergencyInfo(req.params.id, userId, req.body);
+      if (!info) return res.status(404).json({ error: "Emergency info not found" });
+      res.json(info);
+    } catch (error) {
+      console.error("Update emergency info error:", error);
+      res.status(500).json({ error: "Failed to update emergency info" });
+    }
+  });
+
+  app.delete("/api/whs/emergency-info/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const deleted = await storage.deleteSiteEmergencyInfo(req.params.id, userId);
+      if (!deleted) return res.status(404).json({ error: "Emergency info not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete emergency info error:", error);
+      res.status(500).json({ error: "Failed to delete emergency info" });
+    }
+  });
+
+  // ============================================
+  // WHS - JSA Documents & Steps
+  // ============================================
+
+  app.get("/api/whs/jsa", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const jobId = req.query.jobId as string | undefined;
+      const docs = await storage.getJsaDocuments(userId, jobId);
+      res.json(docs);
+    } catch (error) {
+      console.error("Get JSA documents error:", error);
+      res.status(500).json({ error: "Failed to fetch JSA documents" });
+    }
+  });
+
+  app.get("/api/whs/jsa/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const doc = await storage.getJsaDocument(req.params.id, userId);
+      if (!doc) return res.status(404).json({ error: "JSA document not found" });
+      const steps = await storage.getJsaSteps(doc.id);
+      res.json({ ...doc, steps });
+    } catch (error) {
+      console.error("Get JSA document error:", error);
+      res.status(500).json({ error: "Failed to fetch JSA document" });
+    }
+  });
+
+  app.post("/api/whs/jsa", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { steps, ...docData } = req.body;
+      const doc = await storage.createJsaDocument({ ...docData, userId });
+      if (steps && Array.isArray(steps)) {
+        for (let i = 0; i < steps.length; i++) {
+          await storage.createJsaStep({ ...steps[i], jsaId: doc.id, sortOrder: i });
+        }
+      }
+      const allSteps = await storage.getJsaSteps(doc.id);
+      res.status(201).json({ ...doc, steps: allSteps });
+    } catch (error) {
+      console.error("Create JSA document error:", error);
+      res.status(500).json({ error: "Failed to create JSA document" });
+    }
+  });
+
+  app.patch("/api/whs/jsa/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { steps, ...docData } = req.body;
+      const doc = await storage.updateJsaDocument(req.params.id, userId, docData);
+      if (!doc) return res.status(404).json({ error: "JSA document not found" });
+      res.json(doc);
+    } catch (error) {
+      console.error("Update JSA document error:", error);
+      res.status(500).json({ error: "Failed to update JSA document" });
+    }
+  });
+
+  app.delete("/api/whs/jsa/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const deleted = await storage.deleteJsaDocument(req.params.id, userId);
+      if (!deleted) return res.status(404).json({ error: "JSA document not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete JSA document error:", error);
+      res.status(500).json({ error: "Failed to delete JSA document" });
+    }
+  });
+
+  app.post("/api/whs/jsa/:id/steps", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const doc = await storage.getJsaDocument(req.params.id, userId);
+      if (!doc) return res.status(404).json({ error: "JSA document not found" });
+      const step = await storage.createJsaStep({ ...req.body, jsaId: doc.id });
+      res.status(201).json(step);
+    } catch (error) {
+      console.error("Create JSA step error:", error);
+      res.status(500).json({ error: "Failed to create JSA step" });
+    }
+  });
+
+  app.patch("/api/whs/jsa/steps/:stepId", requireAuth, async (req: any, res) => {
+    try {
+      const step = await storage.updateJsaStep(req.params.stepId, req.body);
+      if (!step) return res.status(404).json({ error: "JSA step not found" });
+      res.json(step);
+    } catch (error) {
+      console.error("Update JSA step error:", error);
+      res.status(500).json({ error: "Failed to update JSA step" });
+    }
+  });
+
+  app.delete("/api/whs/jsa/steps/:stepId", requireAuth, async (req: any, res) => {
+    try {
+      const deleted = await storage.deleteJsaStep(req.params.stepId);
+      if (!deleted) return res.status(404).json({ error: "JSA step not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete JSA step error:", error);
+      res.status(500).json({ error: "Failed to delete JSA step" });
+    }
+  });
+
+  // ============================================
+  // WHS - Hazardous Environments
+  // ============================================
+
+  app.get("/api/whs/hazardous-environments", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const jobId = req.query.jobId as string | undefined;
+      const envs = await storage.getSiteHazardousEnvironments(userId, jobId);
+      res.json(envs);
+    } catch (error) {
+      console.error("Get hazardous environments error:", error);
+      res.status(500).json({ error: "Failed to fetch hazardous environments" });
+    }
+  });
+
+  app.post("/api/whs/hazardous-environments", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const env = await storage.createSiteHazardousEnvironment({ ...req.body, userId });
+      res.status(201).json(env);
+    } catch (error) {
+      console.error("Create hazardous environment error:", error);
+      res.status(500).json({ error: "Failed to create hazardous environment" });
+    }
+  });
+
+  app.patch("/api/whs/hazardous-environments/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const env = await storage.updateSiteHazardousEnvironment(req.params.id, userId, req.body);
+      if (!env) return res.status(404).json({ error: "Hazardous environment not found" });
+      res.json(env);
+    } catch (error) {
+      console.error("Update hazardous environment error:", error);
+      res.status(500).json({ error: "Failed to update hazardous environment" });
+    }
+  });
+
+  app.delete("/api/whs/hazardous-environments/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const deleted = await storage.deleteSiteHazardousEnvironment(req.params.id, userId);
+      if (!deleted) return res.status(404).json({ error: "Hazardous environment not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete hazardous environment error:", error);
+      res.status(500).json({ error: "Failed to delete hazardous environment" });
+    }
+  });
+
+  // ============================================
+  // WHS - Safety Signage
+  // ============================================
+
+  app.get("/api/whs/safety-signage", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const jobId = req.query.jobId as string | undefined;
+      const signs = await storage.getSiteSafetySignage(userId, jobId);
+      res.json(signs);
+    } catch (error) {
+      console.error("Get safety signage error:", error);
+      res.status(500).json({ error: "Failed to fetch safety signage" });
+    }
+  });
+
+  app.post("/api/whs/safety-signage", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const sign = await storage.createSiteSafetySignage({ ...req.body, userId });
+      res.status(201).json(sign);
+    } catch (error) {
+      console.error("Create safety signage error:", error);
+      res.status(500).json({ error: "Failed to create safety signage" });
+    }
+  });
+
+  app.patch("/api/whs/safety-signage/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const sign = await storage.updateSiteSafetySignage(req.params.id, userId, req.body);
+      if (!sign) return res.status(404).json({ error: "Safety signage not found" });
+      res.json(sign);
+    } catch (error) {
+      console.error("Update safety signage error:", error);
+      res.status(500).json({ error: "Failed to update safety signage" });
+    }
+  });
+
+  app.delete("/api/whs/safety-signage/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const deleted = await storage.deleteSiteSafetySignage(req.params.id, userId);
+      if (!deleted) return res.status(404).json({ error: "Safety signage not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete safety signage error:", error);
+      res.status(500).json({ error: "Failed to delete safety signage" });
+    }
+  });
+
+  // ============================================
+  // WHS - Team Member WHS Roles
+  // ============================================
+
+  app.patch("/api/whs/team-members/:id/whs-role", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { whsRole } = req.body;
+      const validRoles = ['none', 'first_aid_officer', 'hsr', 'whs_committee', 'fire_warden'];
+      if (!validRoles.includes(whsRole)) {
+        return res.status(400).json({ error: "Invalid WHS role" });
+      }
+      const [updated] = await db.update(teamMembers)
+        .set({ whsRole, updatedAt: new Date() })
+        .where(and(eq(teamMembers.id, req.params.id), eq(teamMembers.businessOwnerId, userId)))
+        .returning();
+      if (!updated) return res.status(404).json({ error: "Team member not found" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Update WHS role error:", error);
+      res.status(500).json({ error: "Failed to update WHS role" });
+    }
+  });
+
+  app.get("/api/whs/team-roles", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const members = await db.select().from(teamMembers)
+        .where(and(eq(teamMembers.businessOwnerId, userId), eq(teamMembers.isActive, true)));
+      const rolesMap = members.reduce((acc: any, m: any) => {
+        if (m.whsRole && m.whsRole !== 'none') {
+          if (!acc[m.whsRole]) acc[m.whsRole] = [];
+          acc[m.whsRole].push({ id: m.id, firstName: m.firstName, lastName: m.lastName, email: m.email, phone: m.phone });
+        }
+        return acc;
+      }, {});
+      res.json(rolesMap);
+    } catch (error) {
+      console.error("Get WHS team roles error:", error);
+      res.status(500).json({ error: "Failed to fetch WHS team roles" });
+    }
+  });
+
+  // ============================================
+  // WHS - Reference Data (Hazardous Environment Types)
+  // ============================================
+
+  app.get("/api/whs/reference/environment-types", requireAuth, async (_req: any, res) => {
+    res.json([
+      { type: "asbestos", label: "Asbestos", defaultHazards: ["Airborne fibres", "Disturbance of asbestos containing materials", "Friable asbestos", "Contact with asbestos material"], defaultPpe: ["P2 Respirator", "Disposable Coveralls", "Safety Glasses", "Gloves"], requiredLicenses: ["Asbestos Removal License"] },
+      { type: "confined_space", label: "Confined Spaces", defaultHazards: ["Explosive atmospheres", "Engulfment", "Toxic gases", "Oxygen deficiency"], defaultPpe: ["SCBA/Airline Respirator", "Gas Detector", "Safety Harness", "Hard Hat"], requiredLicenses: ["Confined Space Entry Permit"] },
+      { type: "dust", label: "Dust", defaultHazards: ["Respirable silica", "Dust inhalation", "Explosive atmosphere", "Airborne dust"], defaultPpe: ["P2 Respirator", "Safety Glasses", "Hi-Vis Vest"], requiredLicenses: [] },
+      { type: "falling_objects", label: "Falling Objects", defaultHazards: ["Falling tools", "Collapsing materials", "Exposed edges", "Falling loads"], defaultPpe: ["Hard Hat", "Safety Boots", "Hi-Vis Vest", "Safety Glasses"], requiredLicenses: [] },
+      { type: "hazardous_substances", label: "Hazardous Substances", defaultHazards: ["Corrosive chemicals", "Toxic vapour", "Acids", "Flammable liquids"], defaultPpe: ["Chemical Resistant Gloves", "Safety Glasses/Goggles", "Respirator", "Chemical Apron"], requiredLicenses: ["Dangerous Goods Handling"] },
+      { type: "noise", label: "Noise", defaultHazards: ["Noise above safe decibel levels", "Continuous loud tools", "Continuous loud machinery", "Multiple activities at once"], defaultPpe: ["Ear Muffs", "Ear Plugs", "Communication Headset"], requiredLicenses: [] },
+      { type: "plant_equipment", label: "Plant & Equipment Operation", defaultHazards: ["Mechanical failure", "Plant collisions", "Missing guarding", "Soft ground"], defaultPpe: ["Hard Hat", "Safety Boots", "Hi-Vis Vest", "Safety Glasses"], requiredLicenses: ["Plant Operator License", "Forklift License"] },
+      { type: "traffic_mobile_plant", label: "Traffic & Mobile Plant", defaultHazards: ["Collisions", "Plant blind spots", "Uncontrolled movements", "Unlicensed operators"], defaultPpe: ["Hi-Vis Vest", "Hard Hat", "Safety Boots"], requiredLicenses: ["Traffic Management Ticket"] },
+      { type: "uv_radiation", label: "UV Radiation", defaultHazards: ["Lack of shade", "Reflective surfaces", "Prolonged outdoor work", "Direct exposure"], defaultPpe: ["Wide Brim Hat", "UV Protective Clothing", "Sunscreen SPF50+", "Safety Sunglasses"], requiredLicenses: [] },
+      { type: "chemical_spill", label: "Chemical Spill", defaultHazards: ["Release of fumes", "Fire", "Explosion", "Skin contact"], defaultPpe: ["Chemical Resistant Gloves", "Respirator", "Safety Goggles", "Chemical Suit"], requiredLicenses: ["Spill Response Training"] },
+      { type: "electrical", label: "Electrical", defaultHazards: ["Electrocution", "Arc flash", "Cable damage", "Overhead powerlines"], defaultPpe: ["Insulated Gloves", "Safety Boots", "Safety Glasses", "FR Clothing"], requiredLicenses: ["Electrical License"] },
+      { type: "working_at_heights", label: "Working at Heights", defaultHazards: ["Falls from height", "Falling objects", "Unstable platforms", "Weather exposure"], defaultPpe: ["Safety Harness", "Hard Hat", "Safety Boots", "Hi-Vis Vest"], requiredLicenses: ["Working at Heights Ticket"] },
+      { type: "excavation", label: "Excavation", defaultHazards: ["Trench collapse", "Underground services", "Falling into excavation", "Water ingress"], defaultPpe: ["Hard Hat", "Safety Boots", "Hi-Vis Vest", "Safety Glasses"], requiredLicenses: ["Excavation Permit"] },
+    ]);
+  });
+
+  app.get("/api/whs/reference/sign-types", requireAuth, async (_req: any, res) => {
+    res.json([
+      { category: "mandatory", label: "Mandatory (Blue)", signs: ["Hard Hat Area", "Safety Glasses Required", "Hearing Protection Required", "Safety Boots Required", "Hi-Vis Required", "Gloves Required", "Full PPE Required"] },
+      { category: "prohibition", label: "Prohibition (Red)", signs: ["No Entry", "No Smoking", "No Mobile Phones", "No Photography", "Do Not Operate", "No Unauthorised Access"] },
+      { category: "warning", label: "Warning (Yellow)", signs: ["Caution: Overhead Work", "Danger: High Voltage", "Warning: Excavation", "Caution: Wet Floor", "Danger: Asbestos", "Warning: Confined Space", "Caution: Moving Plant"] },
+      { category: "emergency", label: "Emergency (Green)", signs: ["First Aid Station", "Emergency Exit", "Assembly Point", "Eye Wash Station", "Emergency Shower", "Fire Extinguisher", "Fire Blanket", "Fire Hose Reel"] },
+      { category: "fire", label: "Fire Equipment (Red)", signs: ["Fire Extinguisher Location", "Fire Blanket Location", "Fire Hose Reel Location", "Fire Alarm Point", "Fire Hydrant"] },
+    ]);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

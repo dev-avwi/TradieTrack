@@ -28,6 +28,7 @@ import {
   LineChart,
   Bot,
   DollarSign,
+  Shield,
   type LucideIcon
 } from "lucide-react";
 
@@ -339,6 +340,17 @@ export const mainMenuItems: NavItem[] = [
     showInSidebar: true,
     showInMore: true,
     allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
+  },
+  {
+    title: "WHS Safety Hub",
+    url: "/whs",
+    icon: Shield,
+    description: "Incidents, JSAs, emergency plans & compliance",
+    color: "text-warning",
+    bgColor: "bg-warning/10",
+    showInSidebar: true,
+    showInMore: true,
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie'],
   },
 ];
 

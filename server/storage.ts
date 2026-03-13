@@ -343,6 +343,24 @@ import {
   type InsertPurchaseOrder,
   type PurchaseOrderItem,
   type InsertPurchaseOrderItem,
+  incidentReports,
+  type IncidentReport,
+  type InsertIncidentReport,
+  siteEmergencyInfo,
+  type SiteEmergencyInfo,
+  type InsertSiteEmergencyInfo,
+  jsaDocuments,
+  type JsaDocument,
+  type InsertJsaDocument,
+  jsaSteps,
+  type JsaStep,
+  type InsertJsaStep,
+  siteHazardousEnvironments,
+  type SiteHazardousEnvironment,
+  type InsertSiteHazardousEnvironment,
+  siteSafetySignage,
+  type SiteSafetySignage,
+  type InsertSiteSafetySignage,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -1069,6 +1087,43 @@ export interface IStorage {
   getSavedFilters(userId: string, entityType?: string): Promise<SavedFilter[]>;
   createSavedFilter(filter: InsertSavedFilter): Promise<SavedFilter>;
   deleteSavedFilter(id: string, userId: string): Promise<boolean>;
+
+  // WHS - Incident Reports
+  getIncidentReports(userId: string, jobId?: string): Promise<IncidentReport[]>;
+  getIncidentReport(id: string, userId: string): Promise<IncidentReport | undefined>;
+  createIncidentReport(report: InsertIncidentReport): Promise<IncidentReport>;
+  updateIncidentReport(id: string, userId: string, updates: Partial<InsertIncidentReport>): Promise<IncidentReport | undefined>;
+  deleteIncidentReport(id: string, userId: string): Promise<boolean>;
+
+  // WHS - Site Emergency Info
+  getSiteEmergencyInfo(userId: string, jobId?: string): Promise<SiteEmergencyInfo[]>;
+  getSiteEmergencyInfoById(id: string, userId: string): Promise<SiteEmergencyInfo | undefined>;
+  createSiteEmergencyInfo(info: InsertSiteEmergencyInfo): Promise<SiteEmergencyInfo>;
+  updateSiteEmergencyInfo(id: string, userId: string, updates: Partial<InsertSiteEmergencyInfo>): Promise<SiteEmergencyInfo | undefined>;
+  deleteSiteEmergencyInfo(id: string, userId: string): Promise<boolean>;
+
+  // WHS - JSA Documents
+  getJsaDocuments(userId: string, jobId?: string): Promise<JsaDocument[]>;
+  getJsaDocument(id: string, userId: string): Promise<JsaDocument | undefined>;
+  createJsaDocument(doc: InsertJsaDocument): Promise<JsaDocument>;
+  updateJsaDocument(id: string, userId: string, updates: Partial<InsertJsaDocument>): Promise<JsaDocument | undefined>;
+  deleteJsaDocument(id: string, userId: string): Promise<boolean>;
+  getJsaSteps(jsaId: string): Promise<JsaStep[]>;
+  createJsaStep(step: InsertJsaStep): Promise<JsaStep>;
+  updateJsaStep(id: string, updates: Partial<InsertJsaStep>): Promise<JsaStep | undefined>;
+  deleteJsaStep(id: string): Promise<boolean>;
+
+  // WHS - Site Hazardous Environments
+  getSiteHazardousEnvironments(userId: string, jobId?: string): Promise<SiteHazardousEnvironment[]>;
+  createSiteHazardousEnvironment(env: InsertSiteHazardousEnvironment): Promise<SiteHazardousEnvironment>;
+  updateSiteHazardousEnvironment(id: string, userId: string, updates: Partial<InsertSiteHazardousEnvironment>): Promise<SiteHazardousEnvironment | undefined>;
+  deleteSiteHazardousEnvironment(id: string, userId: string): Promise<boolean>;
+
+  // WHS - Site Safety Signage
+  getSiteSafetySignage(userId: string, jobId?: string): Promise<SiteSafetySignage[]>;
+  createSiteSafetySignage(sign: InsertSiteSafetySignage): Promise<SiteSafetySignage>;
+  updateSiteSafetySignage(id: string, userId: string, updates: Partial<InsertSiteSafetySignage>): Promise<SiteSafetySignage | undefined>;
+  deleteSiteSafetySignage(id: string, userId: string): Promise<boolean>;
 }
 
 // Initialize database connection using standard pg driver
@@ -7877,6 +7932,160 @@ Thank you for your prompt attention to this matter.`,
 
   async deleteSavedFilter(id: string, userId: string): Promise<boolean> {
     const result = await db.delete(savedFilters).where(and(eq(savedFilters.id, id), eq(savedFilters.userId, userId))).returning();
+    return result.length > 0;
+  }
+
+  // ============================================
+  // WHS - Incident Reports
+  // ============================================
+  async getIncidentReports(userId: string, jobId?: string): Promise<IncidentReport[]> {
+    const conditions = [eq(incidentReports.userId, userId)];
+    if (jobId) conditions.push(eq(incidentReports.jobId, jobId));
+    return await db.select().from(incidentReports).where(and(...conditions)).orderBy(desc(incidentReports.createdAt));
+  }
+
+  async getIncidentReport(id: string, userId: string): Promise<IncidentReport | undefined> {
+    const [result] = await db.select().from(incidentReports).where(and(eq(incidentReports.id, id), eq(incidentReports.userId, userId)));
+    return result;
+  }
+
+  async createIncidentReport(report: InsertIncidentReport): Promise<IncidentReport> {
+    const [result] = await db.insert(incidentReports).values(report).returning();
+    return result;
+  }
+
+  async updateIncidentReport(id: string, userId: string, updates: Partial<InsertIncidentReport>): Promise<IncidentReport | undefined> {
+    const [result] = await db.update(incidentReports).set({ ...updates, updatedAt: new Date() }).where(and(eq(incidentReports.id, id), eq(incidentReports.userId, userId))).returning();
+    return result;
+  }
+
+  async deleteIncidentReport(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(incidentReports).where(and(eq(incidentReports.id, id), eq(incidentReports.userId, userId))).returning();
+    return result.length > 0;
+  }
+
+  // ============================================
+  // WHS - Site Emergency Info
+  // ============================================
+  async getSiteEmergencyInfo(userId: string, jobId?: string): Promise<SiteEmergencyInfo[]> {
+    const conditions = [eq(siteEmergencyInfo.userId, userId)];
+    if (jobId) conditions.push(eq(siteEmergencyInfo.jobId, jobId));
+    return await db.select().from(siteEmergencyInfo).where(and(...conditions)).orderBy(desc(siteEmergencyInfo.createdAt));
+  }
+
+  async getSiteEmergencyInfoById(id: string, userId: string): Promise<SiteEmergencyInfo | undefined> {
+    const [result] = await db.select().from(siteEmergencyInfo).where(and(eq(siteEmergencyInfo.id, id), eq(siteEmergencyInfo.userId, userId)));
+    return result;
+  }
+
+  async createSiteEmergencyInfo(info: InsertSiteEmergencyInfo): Promise<SiteEmergencyInfo> {
+    const [result] = await db.insert(siteEmergencyInfo).values(info).returning();
+    return result;
+  }
+
+  async updateSiteEmergencyInfo(id: string, userId: string, updates: Partial<InsertSiteEmergencyInfo>): Promise<SiteEmergencyInfo | undefined> {
+    const [result] = await db.update(siteEmergencyInfo).set({ ...updates, updatedAt: new Date() }).where(and(eq(siteEmergencyInfo.id, id), eq(siteEmergencyInfo.userId, userId))).returning();
+    return result;
+  }
+
+  async deleteSiteEmergencyInfo(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(siteEmergencyInfo).where(and(eq(siteEmergencyInfo.id, id), eq(siteEmergencyInfo.userId, userId))).returning();
+    return result.length > 0;
+  }
+
+  // ============================================
+  // WHS - JSA Documents
+  // ============================================
+  async getJsaDocuments(userId: string, jobId?: string): Promise<JsaDocument[]> {
+    const conditions = [eq(jsaDocuments.userId, userId)];
+    if (jobId) conditions.push(eq(jsaDocuments.jobId, jobId));
+    return await db.select().from(jsaDocuments).where(and(...conditions)).orderBy(desc(jsaDocuments.createdAt));
+  }
+
+  async getJsaDocument(id: string, userId: string): Promise<JsaDocument | undefined> {
+    const [result] = await db.select().from(jsaDocuments).where(and(eq(jsaDocuments.id, id), eq(jsaDocuments.userId, userId)));
+    return result;
+  }
+
+  async createJsaDocument(doc: InsertJsaDocument): Promise<JsaDocument> {
+    const [result] = await db.insert(jsaDocuments).values(doc).returning();
+    return result;
+  }
+
+  async updateJsaDocument(id: string, userId: string, updates: Partial<InsertJsaDocument>): Promise<JsaDocument | undefined> {
+    const [result] = await db.update(jsaDocuments).set({ ...updates, updatedAt: new Date() }).where(and(eq(jsaDocuments.id, id), eq(jsaDocuments.userId, userId))).returning();
+    return result;
+  }
+
+  async deleteJsaDocument(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(jsaDocuments).where(and(eq(jsaDocuments.id, id), eq(jsaDocuments.userId, userId))).returning();
+    return result.length > 0;
+  }
+
+  async getJsaSteps(jsaId: string): Promise<JsaStep[]> {
+    return await db.select().from(jsaSteps).where(eq(jsaSteps.jsaId, jsaId)).orderBy(asc(jsaSteps.sortOrder));
+  }
+
+  async createJsaStep(step: InsertJsaStep): Promise<JsaStep> {
+    const [result] = await db.insert(jsaSteps).values(step).returning();
+    return result;
+  }
+
+  async updateJsaStep(id: string, updates: Partial<InsertJsaStep>): Promise<JsaStep | undefined> {
+    const [result] = await db.update(jsaSteps).set(updates).where(eq(jsaSteps.id, id)).returning();
+    return result;
+  }
+
+  async deleteJsaStep(id: string): Promise<boolean> {
+    const result = await db.delete(jsaSteps).where(eq(jsaSteps.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // ============================================
+  // WHS - Site Hazardous Environments
+  // ============================================
+  async getSiteHazardousEnvironments(userId: string, jobId?: string): Promise<SiteHazardousEnvironment[]> {
+    const conditions = [eq(siteHazardousEnvironments.userId, userId)];
+    if (jobId) conditions.push(eq(siteHazardousEnvironments.jobId, jobId));
+    return await db.select().from(siteHazardousEnvironments).where(and(...conditions)).orderBy(desc(siteHazardousEnvironments.createdAt));
+  }
+
+  async createSiteHazardousEnvironment(env: InsertSiteHazardousEnvironment): Promise<SiteHazardousEnvironment> {
+    const [result] = await db.insert(siteHazardousEnvironments).values(env).returning();
+    return result;
+  }
+
+  async updateSiteHazardousEnvironment(id: string, userId: string, updates: Partial<InsertSiteHazardousEnvironment>): Promise<SiteHazardousEnvironment | undefined> {
+    const [result] = await db.update(siteHazardousEnvironments).set({ ...updates, updatedAt: new Date() }).where(and(eq(siteHazardousEnvironments.id, id), eq(siteHazardousEnvironments.userId, userId))).returning();
+    return result;
+  }
+
+  async deleteSiteHazardousEnvironment(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(siteHazardousEnvironments).where(and(eq(siteHazardousEnvironments.id, id), eq(siteHazardousEnvironments.userId, userId))).returning();
+    return result.length > 0;
+  }
+
+  // ============================================
+  // WHS - Site Safety Signage
+  // ============================================
+  async getSiteSafetySignage(userId: string, jobId?: string): Promise<SiteSafetySignage[]> {
+    const conditions = [eq(siteSafetySignage.userId, userId)];
+    if (jobId) conditions.push(eq(siteSafetySignage.jobId, jobId));
+    return await db.select().from(siteSafetySignage).where(and(...conditions)).orderBy(desc(siteSafetySignage.createdAt));
+  }
+
+  async createSiteSafetySignage(sign: InsertSiteSafetySignage): Promise<SiteSafetySignage> {
+    const [result] = await db.insert(siteSafetySignage).values(sign).returning();
+    return result;
+  }
+
+  async updateSiteSafetySignage(id: string, userId: string, updates: Partial<InsertSiteSafetySignage>): Promise<SiteSafetySignage | undefined> {
+    const [result] = await db.update(siteSafetySignage).set({ ...updates, updatedAt: new Date() }).where(and(eq(siteSafetySignage.id, id), eq(siteSafetySignage.userId, userId))).returning();
+    return result;
+  }
+
+  async deleteSiteSafetySignage(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(siteSafetySignage).where(and(eq(siteSafetySignage.id, id), eq(siteSafetySignage.userId, userId))).returning();
     return result.length > 0;
   }
 }

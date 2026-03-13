@@ -229,6 +229,17 @@ export const mainMenuItems: NavItem[] = [
     category: "communication",
     allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
   },
+  {
+    title: "WHS Safety Hub",
+    url: "/more/whs-hub",
+    icon: "shield",
+    description: "Incidents, JSAs, emergency plans & compliance",
+    color: "warning",
+    bgColor: "warning",
+    showInMore: true,
+    category: "work",
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff'],
+  },
 ];
 
 export const settingsMenuItems: NavItem[] = [
@@ -686,6 +697,15 @@ export const sidebarMainItems: SidebarNavItem[] = [
     section: 'main',
     hideForStaff: true,
     allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
+  },
+  { 
+    id: 'whs-hub',
+    title: 'WHS Safety Hub', 
+    icon: 'shield', 
+    path: '/more/whs-hub',
+    matchPaths: ['/more/whs-hub'],
+    section: 'main',
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff'],
   },
 ];
 

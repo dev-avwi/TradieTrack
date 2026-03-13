@@ -1558,6 +1558,7 @@ export const teamMembers = pgTable("team_members", {
   // Location tracking control
   allowLocationSharing: boolean("allow_location_sharing").default(true), // Whether this member shares their location with owner
   locationEnabledByOwner: boolean("location_enabled_by_owner").default(true), // Owner can disable location access for this member
+  whsRole: text("whs_role").default('none'),
   // Employment details
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
   startDate: timestamp("start_date"),
@@ -4180,6 +4181,141 @@ export type SwmsHazard = typeof swmsHazards.$inferSelect;
 export const insertSwmsSignatureSchema = createInsertSchema(swmsSignatures).omit({ id: true, createdAt: true });
 export type InsertSwmsSignature = z.infer<typeof insertSwmsSignatureSchema>;
 export type SwmsSignature = typeof swmsSignatures.$inferSelect;
+
+// ============================================
+// WHS (Work Health & Safety) Tables
+// ============================================
+
+export const incidentReports = pgTable("incident_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  incidentType: text("incident_type").notNull().default('near_miss'),
+  severity: text("severity").notNull().default('minor'),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  location: text("location"),
+  incidentDate: timestamp("incident_date").notNull().defaultNow(),
+  reportedTo: text("reported_to"),
+  reportedToRole: text("reported_to_role"),
+  witnesses: json("witnesses").$type<string[]>(),
+  immediateActions: text("immediate_actions"),
+  photos: json("photos").$type<string[]>(),
+  injuryDetails: text("injury_details"),
+  bodyPartAffected: text("body_part_affected"),
+  treatmentProvided: text("treatment_provided"),
+  workerName: text("worker_name"),
+  isNotifiable: boolean("is_notifiable").default(false),
+  status: text("status").notNull().default('open'),
+  followUpActions: text("follow_up_actions"),
+  closedAt: timestamp("closed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const siteEmergencyInfo = pgTable("site_emergency_info", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  siteName: text("site_name"),
+  siteAddress: text("site_address"),
+  assemblyPoint: text("assembly_point"),
+  firstAidLocation: text("first_aid_location"),
+  firstAidOfficer: text("first_aid_officer"),
+  firstAidOfficerPhone: text("first_aid_officer_phone"),
+  emergencyNumber: text("emergency_number").default('000'),
+  nearestHospital: text("nearest_hospital"),
+  nearestHospitalAddress: text("nearest_hospital_address"),
+  fireEquipmentLocations: json("fire_equipment_locations").$type<string[]>(),
+  evacuationRoutes: text("evacuation_routes"),
+  siteSpecificHazards: json("site_specific_hazards").$type<string[]>(),
+  additionalContacts: json("additional_contacts").$type<{name: string, role: string, phone: string}[]>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const jsaDocuments = pgTable("jsa_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  title: text("title").notNull(),
+  description: text("description"),
+  siteAddress: text("site_address"),
+  assessedBy: text("assessed_by"),
+  assessedDate: timestamp("assessed_date").defaultNow(),
+  ppeRequirements: json("ppe_requirements").$type<string[]>(),
+  status: text("status").notNull().default('draft'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const jsaSteps = pgTable("jsa_steps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jsaId: varchar("jsa_id").notNull().references(() => jsaDocuments.id, { onDelete: 'cascade' }),
+  stepNumber: integer("step_number").notNull().default(1),
+  taskDescription: text("task_description").notNull(),
+  hazards: text("hazards").notNull(),
+  riskLevel: text("risk_level").notNull().default('medium'),
+  controlMeasures: text("control_measures").notNull(),
+  responsiblePerson: text("responsible_person"),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const siteHazardousEnvironments = pgTable("site_hazardous_environments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  environmentType: text("environment_type").notNull(),
+  hazards: json("hazards").$type<string[]>(),
+  controlMeasures: json("control_measures").$type<string[]>(),
+  requiredPpe: json("required_ppe").$type<string[]>(),
+  requiredLicenses: json("required_licenses").$type<string[]>(),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const siteSafetySignage = pgTable("site_safety_signage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
+  signType: text("sign_type").notNull(),
+  signCategory: text("sign_category").notNull(),
+  location: text("location"),
+  description: text("description"),
+  isRequired: boolean("is_required").default(true),
+  isInstalled: boolean("is_installed").default(false),
+  installedDate: timestamp("installed_date"),
+  photoUrl: text("photo_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertIncidentReportSchema = createInsertSchema(incidentReports).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertIncidentReport = z.infer<typeof insertIncidentReportSchema>;
+export type IncidentReport = typeof incidentReports.$inferSelect;
+
+export const insertSiteEmergencyInfoSchema = createInsertSchema(siteEmergencyInfo).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSiteEmergencyInfo = z.infer<typeof insertSiteEmergencyInfoSchema>;
+export type SiteEmergencyInfo = typeof siteEmergencyInfo.$inferSelect;
+
+export const insertJsaDocumentSchema = createInsertSchema(jsaDocuments).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertJsaDocument = z.infer<typeof insertJsaDocumentSchema>;
+export type JsaDocument = typeof jsaDocuments.$inferSelect;
+
+export const insertJsaStepSchema = createInsertSchema(jsaSteps).omit({ id: true, createdAt: true });
+export type InsertJsaStep = z.infer<typeof insertJsaStepSchema>;
+export type JsaStep = typeof jsaSteps.$inferSelect;
+
+export const insertSiteHazardousEnvironmentSchema = createInsertSchema(siteHazardousEnvironments).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSiteHazardousEnvironment = z.infer<typeof insertSiteHazardousEnvironmentSchema>;
+export type SiteHazardousEnvironment = typeof siteHazardousEnvironments.$inferSelect;
+
+export const insertSiteSafetySignageSchema = createInsertSchema(siteSafetySignage).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSiteSafetySignage = z.infer<typeof insertSiteSafetySignageSchema>;
+export type SiteSafetySignage = typeof siteSafetySignage.$inferSelect;
 
 export const rateLimits = pgTable("rate_limits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

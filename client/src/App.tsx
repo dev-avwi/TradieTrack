@@ -95,6 +95,7 @@ import LandingPage from "@/pages/LandingPage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
 import TemplatesHub from "@/pages/TemplatesHub";
 import DocumentsHub from "@/pages/DocumentsHub";
+import WhsHubPage from "@/pages/WhsHub";
 import CommunicationsHub from "@/pages/CommunicationsHub";
 import { KeyboardShortcutsDialog, useKeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import FirstTimeWalkthrough from "@/components/FirstTimeWalkthrough";
@@ -714,6 +715,10 @@ function Router({
       
       <Route path="/equipment" component={() => (
         <InventoryPage initialSection="equipment" />
+      )} />
+      
+      <Route path="/whs" component={() => (
+        <WhsHubPage />
       )} />
       
       <Route path="/files" component={() => (
