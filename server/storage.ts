@@ -364,6 +364,12 @@ import {
   hazardReports,
   type HazardReport,
   type InsertHazardReport,
+  ppeChecklists,
+  type PpeChecklist,
+  type InsertPpeChecklist,
+  trainingRecords,
+  type TrainingRecord,
+  type InsertTrainingRecord,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -1132,6 +1138,15 @@ export interface IStorage {
   createHazardReport(report: InsertHazardReport): Promise<HazardReport>;
   updateHazardReport(id: string, userId: string, updates: Partial<InsertHazardReport>): Promise<HazardReport | undefined>;
   deleteHazardReport(id: string, userId: string): Promise<boolean>;
+
+  getPpeChecklists(userId: string, jobId?: string): Promise<PpeChecklist[]>;
+  createPpeChecklist(checklist: InsertPpeChecklist): Promise<PpeChecklist>;
+  deletePpeChecklist(id: string, userId: string): Promise<boolean>;
+
+  getTrainingRecords(userId: string): Promise<TrainingRecord[]>;
+  createTrainingRecord(record: InsertTrainingRecord): Promise<TrainingRecord>;
+  updateTrainingRecord(id: string, userId: string, updates: Partial<InsertTrainingRecord>): Promise<TrainingRecord | undefined>;
+  deleteTrainingRecord(id: string, userId: string): Promise<boolean>;
 }
 
 // Initialize database connection using standard pg driver
@@ -8115,6 +8130,41 @@ Thank you for your prompt attention to this matter.`,
 
   async deleteHazardReport(id: string, userId: string): Promise<boolean> {
     const result = await db.delete(hazardReports).where(and(eq(hazardReports.id, id), eq(hazardReports.userId, userId))).returning();
+    return result.length > 0;
+  }
+
+  async getPpeChecklists(userId: string, jobId?: string): Promise<PpeChecklist[]> {
+    const conditions = [eq(ppeChecklists.userId, userId)];
+    if (jobId) conditions.push(eq(ppeChecklists.jobId, parseInt(jobId)));
+    return await db.select().from(ppeChecklists).where(and(...conditions)).orderBy(desc(ppeChecklists.createdAt));
+  }
+
+  async createPpeChecklist(checklist: InsertPpeChecklist): Promise<PpeChecklist> {
+    const [result] = await db.insert(ppeChecklists).values(checklist).returning();
+    return result;
+  }
+
+  async deletePpeChecklist(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(ppeChecklists).where(and(eq(ppeChecklists.id, id), eq(ppeChecklists.userId, userId))).returning();
+    return result.length > 0;
+  }
+
+  async getTrainingRecords(userId: string): Promise<TrainingRecord[]> {
+    return await db.select().from(trainingRecords).where(eq(trainingRecords.userId, userId)).orderBy(desc(trainingRecords.createdAt));
+  }
+
+  async createTrainingRecord(record: InsertTrainingRecord): Promise<TrainingRecord> {
+    const [result] = await db.insert(trainingRecords).values(record).returning();
+    return result;
+  }
+
+  async updateTrainingRecord(id: string, userId: string, updates: Partial<InsertTrainingRecord>): Promise<TrainingRecord | undefined> {
+    const [result] = await db.update(trainingRecords).set({ ...updates, updatedAt: new Date() }).where(and(eq(trainingRecords.id, id), eq(trainingRecords.userId, userId))).returning();
+    return result;
+  }
+
+  async deleteTrainingRecord(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(trainingRecords).where(and(eq(trainingRecords.id, id), eq(trainingRecords.userId, userId))).returning();
     return result.length > 0;
   }
 }

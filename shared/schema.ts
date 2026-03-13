@@ -4342,6 +4342,53 @@ export const insertHazardReportSchema = createInsertSchema(hazardReports).omit({
 export type InsertHazardReport = z.infer<typeof insertHazardReportSchema>;
 export type HazardReport = typeof hazardReports.$inferSelect;
 
+export const ppeChecklists = pgTable("ppe_checklists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  jobId: integer("job_id"),
+  workerName: text("worker_name").notNull(),
+  date: text("date").notNull(),
+  hardHat: boolean("hard_hat").notNull().default(false),
+  hiVis: boolean("hi_vis").notNull().default(false),
+  safetyBoots: boolean("safety_boots").notNull().default(false),
+  safetyGlasses: boolean("safety_glasses").notNull().default(false),
+  hearingProtection: boolean("hearing_protection").notNull().default(false),
+  gloves: boolean("gloves").notNull().default(false),
+  sunscreen: boolean("sunscreen").notNull().default(false),
+  respirator: boolean("respirator").notNull().default(false),
+  safetyHarness: boolean("safety_harness").notNull().default(false),
+  otherPpe: text("other_ppe"),
+  allCorrect: boolean("all_correct").notNull().default(false),
+  supervisorName: text("supervisor_name"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPpeChecklistSchema = createInsertSchema(ppeChecklists).omit({ id: true, createdAt: true });
+export type InsertPpeChecklist = z.infer<typeof insertPpeChecklistSchema>;
+export type PpeChecklist = typeof ppeChecklists.$inferSelect;
+
+export const trainingRecords = pgTable("training_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  teamMemberId: varchar("team_member_id"),
+  workerName: text("worker_name").notNull(),
+  courseCode: text("course_code").notNull(),
+  courseName: text("course_name").notNull(),
+  rtoName: text("rto_name"),
+  completionDate: text("completion_date").notNull(),
+  expiryDate: text("expiry_date"),
+  certificateNumber: text("certificate_number"),
+  status: text("status").notNull().default('current'),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTrainingRecordSchema = createInsertSchema(trainingRecords).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertTrainingRecord = z.infer<typeof insertTrainingRecordSchema>;
+export type TrainingRecord = typeof trainingRecords.$inferSelect;
+
 export const rateLimits = pgTable("rate_limits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   key: varchar("key", { length: 512 }).notNull(),

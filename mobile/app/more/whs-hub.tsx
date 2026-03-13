@@ -6,7 +6,7 @@ import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, componentStyles } from '../../src/lib/design-tokens';
 
-type TabKey = 'incidents' | 'emergency' | 'jsa' | 'environments' | 'signage' | 'hazard_reports';
+type TabKey = 'incidents' | 'emergency' | 'jsa' | 'environments' | 'signage' | 'hazard_reports' | 'ppe' | 'training';
 
 const TABS: { key: TabKey; label: string; icon: keyof typeof Feather.glyphMap }[] = [
   { key: 'incidents', label: 'Incidents', icon: 'alert-triangle' },
@@ -14,7 +14,31 @@ const TABS: { key: TabKey; label: string; icon: keyof typeof Feather.glyphMap }[
   { key: 'jsa', label: 'JSA', icon: 'clipboard' },
   { key: 'environments', label: 'Hazards', icon: 'zap' },
   { key: 'signage', label: 'Signs', icon: 'eye' },
-  { key: 'hazard_reports', label: 'Hazard Reports', icon: 'file-text' },
+  { key: 'hazard_reports', label: 'Reports', icon: 'file-text' },
+  { key: 'ppe', label: 'PPE', icon: 'check-square' },
+  { key: 'training', label: 'Training', icon: 'award' },
+];
+
+const PPE_ITEMS = [
+  { key: 'hardHat', label: 'Hard Hat' },
+  { key: 'hiVis', label: 'Hi-Vis Vest/Shirt' },
+  { key: 'safetyBoots', label: 'Safety Boots' },
+  { key: 'safetyGlasses', label: 'Safety Glasses' },
+  { key: 'hearingProtection', label: 'Hearing Protection' },
+  { key: 'gloves', label: 'Gloves' },
+  { key: 'sunscreen', label: 'Sunscreen' },
+  { key: 'respirator', label: 'Respirator/Mask' },
+  { key: 'safetyHarness', label: 'Safety Harness' },
+];
+
+const COMMON_COURSES = [
+  { code: 'CPCCWHS1001', name: 'White Card' },
+  { code: 'HLTAID011', name: 'Provide First Aid' },
+  { code: 'HLTAID009', name: 'CPR' },
+  { code: 'TLILIC0003', name: 'Forklift Licence' },
+  { code: 'RIIWHS204E', name: 'Work Safely at Heights' },
+  { code: 'CPCCLSF2001A', name: 'Scaffolding — Basic' },
+  { code: 'CPCCLDG3001A', name: 'Dogging Licence' },
 ];
 
 const INCIDENT_TYPES = [
@@ -54,6 +78,8 @@ export default function WhsHubScreen() {
   const [environments, setEnvironments] = useState<any[]>([]);
   const [signs, setSigns] = useState<any[]>([]);
   const [hazardReports, setHazardReports] = useState<any[]>([]);
+  const [ppeChecklists, setPpeChecklists] = useState<any[]>([]);
+  const [trainingRecords, setTrainingRecords] = useState<any[]>([]);
   const [envTypes, setEnvTypes] = useState<any[]>([]);
   const [signTypes, setSignTypes] = useState<any[]>([]);
 
@@ -63,6 +89,8 @@ export default function WhsHubScreen() {
   const [showEnvForm, setShowEnvForm] = useState(false);
   const [showSignForm, setShowSignForm] = useState(false);
   const [showHazardForm, setShowHazardForm] = useState(false);
+  const [showPpeForm, setShowPpeForm] = useState(false);
+  const [showTrainingForm, setShowTrainingForm] = useState(false);
 
   const [incidentForm, setIncidentForm] = useState({
     title: '', description: '', incidentType: 'near_miss', severity: 'minor',
@@ -88,16 +116,29 @@ export default function WhsHubScreen() {
     timeIdentified: '', recommendedAction: '', reportedBy: '', supervisorName: '',
     riskLevel: 'medium', status: 'open',
   });
+  const [ppeForm, setPpeForm] = useState<Record<string, any>>({
+    workerName: '', date: new Date().toISOString().split('T')[0],
+    hardHat: false, hiVis: false, safetyBoots: false, safetyGlasses: false,
+    hearingProtection: false, gloves: false, sunscreen: false, respirator: false,
+    safetyHarness: false, otherPpe: '', supervisorName: '', notes: '',
+  });
+  const [trainingForm, setTrainingForm] = useState({
+    workerName: '', courseCode: 'CPCCWHS1001', courseName: 'White Card',
+    rtoName: '', completionDate: '', expiryDate: '', certificateNumber: '',
+    status: 'current', notes: '',
+  });
 
   const fetchData = useCallback(async () => {
     try {
-      const [incRes, emRes, jsaRes, envRes, signRes, hazRes, envTypesRes, signTypesRes] = await Promise.all([
+      const [incRes, emRes, jsaRes, envRes, signRes, hazRes, ppeRes, trainRes, envTypesRes, signTypesRes] = await Promise.all([
         api.get('/api/whs/incidents'),
         api.get('/api/whs/emergency-info'),
         api.get('/api/whs/jsa'),
         api.get('/api/whs/hazardous-environments'),
         api.get('/api/whs/safety-signage'),
         api.get('/api/whs/hazard-reports'),
+        api.get('/api/whs/ppe-checklists'),
+        api.get('/api/whs/training-records'),
         api.get('/api/whs/reference/environment-types'),
         api.get('/api/whs/reference/sign-types'),
       ]);
@@ -107,6 +148,8 @@ export default function WhsHubScreen() {
       setEnvironments(Array.isArray(envRes.data) ? envRes.data : []);
       setSigns(Array.isArray(signRes.data) ? signRes.data : []);
       setHazardReports(Array.isArray(hazRes.data) ? hazRes.data : []);
+      setPpeChecklists(Array.isArray(ppeRes.data) ? ppeRes.data : []);
+      setTrainingRecords(Array.isArray(trainRes.data) ? trainRes.data : []);
       setEnvTypes(Array.isArray(envTypesRes.data) ? envTypesRes.data : []);
       setSignTypes(Array.isArray(signTypesRes.data) ? signTypesRes.data : []);
     } catch (e) {
@@ -896,7 +939,224 @@ export default function WhsHubScreen() {
     );
   }
 
-  const showFab = !showIncidentForm && !showEmergencyForm && !showJsaForm && !showEnvForm && !showSignForm && !showHazardForm;
+  async function submitPpeChecklist() {
+    if (!ppeForm.workerName) { Alert.alert('Required', 'Worker name is required'); return; }
+    try {
+      const allCorrect = PPE_ITEMS.every(p => ppeForm[p.key]);
+      await api.post('/api/whs/ppe-checklists', { ...ppeForm, allCorrect });
+      setShowPpeForm(false);
+      setPpeForm({ workerName: '', date: new Date().toISOString().split('T')[0], hardHat: false, hiVis: false, safetyBoots: false, safetyGlasses: false, hearingProtection: false, gloves: false, sunscreen: false, respirator: false, safetyHarness: false, otherPpe: '', supervisorName: '', notes: '' });
+      fetchData();
+    } catch (e: any) { Alert.alert('Error', e.message || 'Failed to save PPE checklist'); }
+  }
+
+  async function deletePpeChecklist(id: string) {
+    try { await api.delete(`/api/whs/ppe-checklists/${id}`); fetchData(); } catch (e) { Alert.alert('Error', 'Failed to delete'); }
+  }
+
+  async function submitTrainingRecord() {
+    if (!trainingForm.workerName || !trainingForm.courseCode || !trainingForm.completionDate) {
+      Alert.alert('Required', 'Worker name, course, and completion date are required'); return;
+    }
+    try {
+      await api.post('/api/whs/training-records', trainingForm);
+      setShowTrainingForm(false);
+      setTrainingForm({ workerName: '', courseCode: 'CPCCWHS1001', courseName: 'White Card', rtoName: '', completionDate: '', expiryDate: '', certificateNumber: '', status: 'current', notes: '' });
+      fetchData();
+    } catch (e: any) { Alert.alert('Error', e.message || 'Failed to save training record'); }
+  }
+
+  async function deleteTrainingRecord(id: string) {
+    try { await api.delete(`/api/whs/training-records/${id}`); fetchData(); } catch (e) { Alert.alert('Error', 'Failed to delete'); }
+  }
+
+  function renderPpeChecklists() {
+    if (ppeChecklists.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Feather name="check-square" size={40} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No PPE Check-ins</Text>
+          <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>Start a daily PPE check-in to verify workers have proper safety gear.</Text>
+        </View>
+      );
+    }
+    return ppeChecklists.map((c: any) => {
+      const count = PPE_ITEMS.filter(p => c[p.key]).length;
+      return (
+        <View key={c.id} style={styles.card}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>{c.workerName}</Text>
+              <Text style={styles.cardSubtext}>{c.date}{c.supervisorName ? ` — ${c.supervisorName}` : ''}</Text>
+            </View>
+            <View style={[styles.badge, { backgroundColor: c.allCorrect ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)' }]}>
+              <Text style={[styles.badgeText, { color: c.allCorrect ? '#22c55e' : '#ef4444' }]}>{count}/{PPE_ITEMS.length}</Text>
+            </View>
+            <TouchableOpacity onPress={() => deletePpeChecklist(c.id)} style={{ marginLeft: spacing.sm }}>
+              <Feather name="trash-2" size={16} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.xs }}>
+            {PPE_ITEMS.map(p => (
+              <View key={p.key} style={[styles.ppeBadge, { backgroundColor: c[p.key] ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.08)' }]}>
+                <Text style={[styles.ppeBadgeText, { color: c[p.key] ? '#22c55e' : '#ef4444' }]}>
+                  {c[p.key] ? '\u2713' : '\u2717'} {p.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+          {c.notes ? <Text style={[styles.cardSubtext, { marginTop: 4 }]}>{c.notes}</Text> : null}
+        </View>
+      );
+    });
+  }
+
+  function renderPpeModal() {
+    return (
+      <Modal visible={showPpeForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowPpeForm(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowPpeForm(false)}><Feather name="x" size={24} color={colors.text} /></TouchableOpacity>
+            <Text style={styles.modalTitle}>PPE Check-in</Text>
+            <TouchableOpacity onPress={submitPpeChecklist}><Text style={[styles.saveButton, { color: colors.primary }]}>Save</Text></TouchableOpacity>
+          </View>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+            <ScrollView style={styles.modalBody}>
+              <Text style={styles.inputLabel}>Worker Name *</Text>
+              <TextInput style={styles.input} value={ppeForm.workerName} onChangeText={(t) => setPpeForm({ ...ppeForm, workerName: t })} placeholder="Worker name" placeholderTextColor={colors.textSecondary} />
+
+              <Text style={styles.inputLabel}>Date</Text>
+              <TextInput style={styles.input} value={ppeForm.date} onChangeText={(t) => setPpeForm({ ...ppeForm, date: t })} placeholder="YYYY-MM-DD" placeholderTextColor={colors.textSecondary} />
+
+              <Text style={styles.inputLabel}>PPE Items — tick what is worn correctly</Text>
+              {PPE_ITEMS.map(item => (
+                <TouchableOpacity key={item.key} style={styles.checkRow} onPress={() => setPpeForm({ ...ppeForm, [item.key]: !ppeForm[item.key] })}>
+                  <Text style={{ color: colors.text, fontSize: 14 }}>{item.label}</Text>
+                  <Feather name={ppeForm[item.key] ? 'check-square' : 'square'} size={20} color={ppeForm[item.key] ? colors.primary : colors.textSecondary} />
+                </TouchableOpacity>
+              ))}
+
+              <Text style={[styles.inputLabel, { marginTop: spacing.md }]}>Other PPE</Text>
+              <TextInput style={styles.input} value={ppeForm.otherPpe} onChangeText={(t) => setPpeForm({ ...ppeForm, otherPpe: t })} placeholder="Any additional PPE..." placeholderTextColor={colors.textSecondary} />
+
+              <Text style={styles.inputLabel}>Supervisor Name</Text>
+              <TextInput style={styles.input} value={ppeForm.supervisorName} onChangeText={(t) => setPpeForm({ ...ppeForm, supervisorName: t })} placeholder="Supervisor who verified" placeholderTextColor={colors.textSecondary} />
+
+              <Text style={styles.inputLabel}>Notes</Text>
+              <TextInput style={[styles.input, styles.textArea]} value={ppeForm.notes} onChangeText={(t) => setPpeForm({ ...ppeForm, notes: t })} placeholder="Issues or observations..." placeholderTextColor={colors.textSecondary} multiline />
+
+              <View style={{ height: 60 }} />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+    );
+  }
+
+  function renderTrainingRecords() {
+    if (trainingRecords.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Feather name="award" size={40} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Training Records</Text>
+          <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>Track White Cards, licences, first aid certs, and other qualifications.</Text>
+        </View>
+      );
+    }
+    return trainingRecords.map((r: any) => {
+      const statusColor = r.status === 'current' ? '#22c55e' : r.status === 'expired' ? '#ef4444' : '#f59e0b';
+      const statusLabel = r.status === 'current' ? 'Current' : r.status === 'expired' ? 'Expired' : 'Expiring Soon';
+      return (
+        <View key={r.id} style={styles.card}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>{r.workerName}</Text>
+              <Text style={[styles.cardMeta, { color: colors.primary, fontWeight: '600' }]}>{r.courseCode} — {r.courseName}</Text>
+              <Text style={[styles.cardSubtext]}>
+                {r.rtoName ? `${r.rtoName} | ` : ''}Completed: {r.completionDate}
+                {r.expiryDate ? ` | Expires: ${r.expiryDate}` : ''}
+              </Text>
+              {r.certificateNumber ? <Text style={[styles.cardSubtext]}>Cert #: {r.certificateNumber}</Text> : null}
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              <View style={[styles.badge, { backgroundColor: `${statusColor}20` }]}>
+                <Text style={[styles.badgeText, { color: statusColor }]}>{statusLabel}</Text>
+              </View>
+              <TouchableOpacity onPress={() => deleteTrainingRecord(r.id)}>
+                <Feather name="trash-2" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+          {r.notes ? <Text style={[styles.cardSubtext, { marginTop: 4 }]}>{r.notes}</Text> : null}
+        </View>
+      );
+    });
+  }
+
+  function renderTrainingModal() {
+    return (
+      <Modal visible={showTrainingForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowTrainingForm(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowTrainingForm(false)}><Feather name="x" size={24} color={colors.text} /></TouchableOpacity>
+            <Text style={styles.modalTitle}>Add Training Record</Text>
+            <TouchableOpacity onPress={submitTrainingRecord}><Text style={[styles.saveButton, { color: colors.primary }]}>Save</Text></TouchableOpacity>
+          </View>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+            <ScrollView style={styles.modalBody}>
+              <Text style={styles.inputLabel}>Worker Name *</Text>
+              <TextInput style={styles.input} value={trainingForm.workerName} onChangeText={(t) => setTrainingForm({ ...trainingForm, workerName: t })} placeholder="Worker name" placeholderTextColor={colors.textSecondary} />
+
+              <Text style={styles.inputLabel}>Course</Text>
+              <View style={styles.optionRow}>
+                {COMMON_COURSES.map(c => (
+                  <TouchableOpacity key={c.code} style={[styles.optionChip, trainingForm.courseCode === c.code && styles.optionChipActive]}
+                    onPress={() => setTrainingForm({ ...trainingForm, courseCode: c.code, courseName: c.name })}>
+                    <Text style={[styles.optionChipText, trainingForm.courseCode === c.code && styles.optionChipTextActive]}>{c.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.inputLabel}>Course Code *</Text>
+              <TextInput style={styles.input} value={trainingForm.courseCode} onChangeText={(t) => setTrainingForm({ ...trainingForm, courseCode: t })} placeholder="e.g. CPCCWHS1001" placeholderTextColor={colors.textSecondary} />
+
+              <Text style={styles.inputLabel}>Course Name *</Text>
+              <TextInput style={styles.input} value={trainingForm.courseName} onChangeText={(t) => setTrainingForm({ ...trainingForm, courseName: t })} placeholder="Course name" placeholderTextColor={colors.textSecondary} />
+
+              <Text style={styles.inputLabel}>RTO / Training Provider</Text>
+              <TextInput style={styles.input} value={trainingForm.rtoName} onChangeText={(t) => setTrainingForm({ ...trainingForm, rtoName: t })} placeholder="e.g. Blue Dog Training" placeholderTextColor={colors.textSecondary} />
+
+              <Text style={styles.inputLabel}>Completion Date *</Text>
+              <TextInput style={styles.input} value={trainingForm.completionDate} onChangeText={(t) => setTrainingForm({ ...trainingForm, completionDate: t })} placeholder="YYYY-MM-DD" placeholderTextColor={colors.textSecondary} />
+
+              <Text style={styles.inputLabel}>Expiry Date</Text>
+              <TextInput style={styles.input} value={trainingForm.expiryDate} onChangeText={(t) => setTrainingForm({ ...trainingForm, expiryDate: t })} placeholder="YYYY-MM-DD (if applicable)" placeholderTextColor={colors.textSecondary} />
+
+              <Text style={styles.inputLabel}>Certificate Number</Text>
+              <TextInput style={styles.input} value={trainingForm.certificateNumber} onChangeText={(t) => setTrainingForm({ ...trainingForm, certificateNumber: t })} placeholder="Certificate or licence number" placeholderTextColor={colors.textSecondary} />
+
+              <Text style={styles.inputLabel}>Status</Text>
+              <View style={styles.optionRow}>
+                {[{ value: 'current', label: 'Current' }, { value: 'expiring_soon', label: 'Expiring Soon' }, { value: 'expired', label: 'Expired' }].map(s => (
+                  <TouchableOpacity key={s.value} style={[styles.optionChip, trainingForm.status === s.value && styles.optionChipActive]}
+                    onPress={() => setTrainingForm({ ...trainingForm, status: s.value })}>
+                    <Text style={[styles.optionChipText, trainingForm.status === s.value && styles.optionChipTextActive]}>{s.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.inputLabel}>Notes</Text>
+              <TextInput style={[styles.input, styles.textArea]} value={trainingForm.notes} onChangeText={(t) => setTrainingForm({ ...trainingForm, notes: t })} placeholder="Additional notes..." placeholderTextColor={colors.textSecondary} multiline />
+
+              <View style={{ height: 60 }} />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+    );
+  }
+
+  const showFab = !showIncidentForm && !showEmergencyForm && !showJsaForm && !showEnvForm && !showSignForm && !showHazardForm && !showPpeForm && !showTrainingForm;
   const fabAction = () => {
     switch (activeTab) {
       case 'incidents': setShowIncidentForm(true); break;
@@ -905,6 +1165,8 @@ export default function WhsHubScreen() {
       case 'environments': setShowEnvForm(true); break;
       case 'signage': setShowSignForm(true); break;
       case 'hazard_reports': setShowHazardForm(true); break;
+      case 'ppe': setShowPpeForm(true); break;
+      case 'training': setShowTrainingForm(true); break;
     }
   };
 
@@ -960,6 +1222,8 @@ export default function WhsHubScreen() {
               {activeTab === 'environments' && renderEnvironments()}
               {activeTab === 'signage' && renderSignage()}
               {activeTab === 'hazard_reports' && renderHazardReports()}
+              {activeTab === 'ppe' && renderPpeChecklists()}
+              {activeTab === 'training' && renderTrainingRecords()}
             </View>
           </ScrollView>
 
@@ -977,6 +1241,8 @@ export default function WhsHubScreen() {
       {renderEnvModal()}
       {renderSignModal()}
       {renderHazardModal()}
+      {renderPpeModal()}
+      {renderTrainingModal()}
     </View>
   );
 }

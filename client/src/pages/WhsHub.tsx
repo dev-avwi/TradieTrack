@@ -1134,6 +1134,444 @@ const HAZARD_STATUS_COLORS: Record<string, string> = {
   closed: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
 };
 
+function PpeChecklistTab() {
+  const { toast } = useToast();
+  const [showForm, setShowForm] = useState(false);
+  const today = new Date().toISOString().split('T')[0];
+  const [form, setForm] = useState({
+    workerName: "", date: today, hardHat: false, hiVis: false,
+    safetyBoots: false, safetyGlasses: false, hearingProtection: false,
+    gloves: false, sunscreen: false, respirator: false, safetyHarness: false,
+    otherPpe: "", allCorrect: false, supervisorName: "", notes: "",
+  });
+
+  const { data: checklists = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/whs/ppe-checklists"] });
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/whs/ppe-checklists", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/ppe-checklists"] });
+      toast({ title: "PPE checklist saved" });
+      resetForm();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/whs/ppe-checklists/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/ppe-checklists"] });
+      toast({ title: "Checklist deleted" });
+    },
+  });
+
+  const resetForm = () => {
+    setShowForm(false);
+    setForm({
+      workerName: "", date: today, hardHat: false, hiVis: false,
+      safetyBoots: false, safetyGlasses: false, hearingProtection: false,
+      gloves: false, sunscreen: false, respirator: false, safetyHarness: false,
+      otherPpe: "", allCorrect: false, supervisorName: "", notes: "",
+    });
+  };
+
+  const ppeItems = [
+    { key: "hardHat", label: "Hard Hat" },
+    { key: "hiVis", label: "Hi-Vis Vest/Shirt" },
+    { key: "safetyBoots", label: "Safety Boots" },
+    { key: "safetyGlasses", label: "Safety Glasses" },
+    { key: "hearingProtection", label: "Hearing Protection" },
+    { key: "gloves", label: "Gloves" },
+    { key: "sunscreen", label: "Sunscreen" },
+    { key: "respirator", label: "Respirator/Mask" },
+    { key: "safetyHarness", label: "Safety Harness" },
+  ];
+
+  const checkedCount = (c: any) => ppeItems.filter(p => c[p.key]).length;
+
+  const handleSubmit = () => {
+    if (!form.workerName) {
+      toast({ title: "Worker name is required", variant: "destructive" });
+      return;
+    }
+    const allCorrect = ppeItems.every(p => form[p.key as keyof typeof form]);
+    createMutation.mutate({ ...form, allCorrect });
+  };
+
+  if (isLoading) return <div className="flex justify-center p-8"><Clock className="w-5 h-5 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h3 className="text-lg font-semibold">PPE Checklists</h3>
+          <p className="text-sm text-muted-foreground">Daily PPE check-in for workers. Based on White Card PPE fitting requirements (CPCCWHS1001).</p>
+        </div>
+        <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-1">
+          <Plus className="w-4 h-4" /> New Check-in
+        </Button>
+      </div>
+
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>PPE Check-in</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Worker Name *</Label>
+                <Input value={form.workerName} onChange={(e) => setForm({ ...form, workerName: e.target.value })} placeholder="Worker name" />
+              </div>
+              <div>
+                <Label>Date</Label>
+                <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+              </div>
+            </div>
+
+            <div>
+              <Label className="mb-2 block">PPE Items — tick what the worker is wearing correctly</Label>
+              <div className="space-y-2">
+                {ppeItems.map((item) => (
+                  <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form[item.key as keyof typeof form] as boolean}
+                      onChange={(e) => setForm({ ...form, [item.key]: e.target.checked })}
+                      className="w-4 h-4 rounded border-border"
+                    />
+                    <span className="text-sm">{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label>Other PPE</Label>
+              <Input value={form.otherPpe} onChange={(e) => setForm({ ...form, otherPpe: e.target.value })} placeholder="Any additional PPE worn..." />
+            </div>
+
+            <div>
+              <Label>Supervisor Name</Label>
+              <Input value={form.supervisorName} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} placeholder="Supervisor who verified" />
+            </div>
+
+            <div>
+              <Label>Notes</Label>
+              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Any issues or observations..." />
+            </div>
+
+            <Button onClick={handleSubmit} className="w-full" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Saving..." : "Save PPE Check-in"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {checklists.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <HardHat className="w-12 h-12 text-muted-foreground mb-3" />
+            <p className="text-muted-foreground font-medium">No PPE check-ins yet</p>
+            <p className="text-sm text-muted-foreground">Start a daily PPE check-in to track what your workers are wearing on site.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {checklists.map((c: any) => (
+            <Card key={c.id}>
+              <CardContent className="pt-4">
+                <div className="flex items-start justify-between flex-wrap gap-2">
+                  <div>
+                    <p className="font-semibold">{c.workerName}</p>
+                    <p className="text-sm text-muted-foreground">{c.date}{c.supervisorName ? ` — Verified by ${c.supervisorName}` : ""}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={c.allCorrect ? "default" : "secondary"}>
+                      {checkedCount(c)}/{ppeItems.length} items
+                    </Badge>
+                    <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(c.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {ppeItems.map((item) => (
+                    <Badge key={item.key} variant={c[item.key] ? "default" : "outline"} className="text-xs">
+                      {c[item.key] ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+                      {item.label}
+                    </Badge>
+                  ))}
+                </div>
+                {c.otherPpe && <p className="text-xs text-muted-foreground mt-1">Other: {c.otherPpe}</p>}
+                {c.notes && <p className="text-xs text-muted-foreground mt-1">{c.notes}</p>}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TrainingRecordsTab() {
+  const { toast } = useToast();
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    workerName: "", courseCode: "CPCCWHS1001", courseName: "Prepare to Work Safely in the Construction Industry (White Card)",
+    rtoName: "", completionDate: "", expiryDate: "",
+    certificateNumber: "", status: "current", notes: "",
+  });
+
+  const commonCourses = [
+    { code: "CPCCWHS1001", name: "Prepare to Work Safely in the Construction Industry (White Card)" },
+    { code: "HLTAID011", name: "Provide First Aid" },
+    { code: "HLTAID009", name: "Provide Cardiopulmonary Resuscitation (CPR)" },
+    { code: "TLILIC0003", name: "Licence to Operate a Forklift Truck" },
+    { code: "RIIWHS204E", name: "Work Safely at Heights" },
+    { code: "CPCCLSF2001A", name: "Licence to Erect, Alter and Dismantle Scaffolding — Basic Level" },
+    { code: "CPCCLDG3001A", name: "Licence to Perform Dogging" },
+    { code: "TLILIC0005", name: "Licence to Operate a Boom-Type Elevating Work Platform" },
+    { code: "UETTDRRF06B", name: "Perform Rescue from a Live LV Panel" },
+    { code: "CUSTOM", name: "Other (specify below)" },
+  ];
+
+  const { data: records = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/whs/training-records"] });
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/whs/training-records", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/training-records"] });
+      toast({ title: "Training record added" });
+      resetForm();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/whs/training-records/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/training-records"] });
+      toast({ title: "Training record updated" });
+      resetForm();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/whs/training-records/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/training-records"] });
+      toast({ title: "Training record deleted" });
+    },
+  });
+
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setForm({
+      workerName: "", courseCode: "CPCCWHS1001",
+      courseName: "Prepare to Work Safely in the Construction Industry (White Card)",
+      rtoName: "", completionDate: "", expiryDate: "",
+      certificateNumber: "", status: "current", notes: "",
+    });
+  };
+
+  const startEdit = (r: any) => {
+    setEditingId(r.id);
+    setForm({
+      workerName: r.workerName || "", courseCode: r.courseCode || "",
+      courseName: r.courseName || "", rtoName: r.rtoName || "",
+      completionDate: r.completionDate || "", expiryDate: r.expiryDate || "",
+      certificateNumber: r.certificateNumber || "", status: r.status || "current",
+      notes: r.notes || "",
+    });
+    setShowForm(true);
+  };
+
+  const handleCourseSelect = (code: string) => {
+    const course = commonCourses.find(c => c.code === code);
+    if (course && code !== "CUSTOM") {
+      setForm({ ...form, courseCode: course.code, courseName: course.name });
+    } else {
+      setForm({ ...form, courseCode: "", courseName: "" });
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!form.workerName || !form.courseCode || !form.courseName || !form.completionDate) {
+      toast({ title: "Please fill in worker name, course, and completion date", variant: "destructive" });
+      return;
+    }
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, data: form });
+    } else {
+      createMutation.mutate(form);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "current": return "default";
+      case "expiring_soon": return "secondary";
+      case "expired": return "destructive";
+      default: return "outline";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "current": return "Current";
+      case "expiring_soon": return "Expiring Soon";
+      case "expired": return "Expired";
+      default: return status;
+    }
+  };
+
+  const isExpiringSoon = (expiryDate: string) => {
+    if (!expiryDate) return false;
+    const expiry = new Date(expiryDate);
+    const now = new Date();
+    const diff = expiry.getTime() - now.getTime();
+    return diff > 0 && diff < 90 * 24 * 60 * 60 * 1000;
+  };
+
+  if (isLoading) return <div className="flex justify-center p-8"><Clock className="w-5 h-5 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h3 className="text-lg font-semibold">Training Records</h3>
+          <p className="text-sm text-muted-foreground">Track team qualifications, licences, and certifications. Get notified before they expire.</p>
+        </div>
+        <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-1">
+          <Plus className="w-4 h-4" /> Add Record
+        </Button>
+      </div>
+
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Edit Training Record" : "Add Training Record"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Worker Name *</Label>
+              <Input value={form.workerName} onChange={(e) => setForm({ ...form, workerName: e.target.value })} placeholder="Worker name" />
+            </div>
+
+            <div>
+              <Label>Course</Label>
+              <Select value={commonCourses.find(c => c.code === form.courseCode)?.code || "CUSTOM"} onValueChange={handleCourseSelect}>
+                <SelectTrigger><SelectValue placeholder="Select a course" /></SelectTrigger>
+                <SelectContent>
+                  {commonCourses.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>{c.code === "CUSTOM" ? "Other (specify below)" : `${c.code} — ${c.name}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(!commonCourses.find(c => c.code === form.courseCode) || form.courseCode === "") && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Course Code *</Label>
+                  <Input value={form.courseCode} onChange={(e) => setForm({ ...form, courseCode: e.target.value })} placeholder="e.g. CPCCWHS1001" />
+                </div>
+                <div>
+                  <Label>Course Name *</Label>
+                  <Input value={form.courseName} onChange={(e) => setForm({ ...form, courseName: e.target.value })} placeholder="Course name" />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Label>RTO / Training Provider</Label>
+              <Input value={form.rtoName} onChange={(e) => setForm({ ...form, rtoName: e.target.value })} placeholder="e.g. Blue Dog Training" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Completion Date *</Label>
+                <Input type="date" value={form.completionDate} onChange={(e) => setForm({ ...form, completionDate: e.target.value })} />
+              </div>
+              <div>
+                <Label>Expiry Date</Label>
+                <Input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} />
+              </div>
+            </div>
+
+            <div>
+              <Label>Certificate Number</Label>
+              <Input value={form.certificateNumber} onChange={(e) => setForm({ ...form, certificateNumber: e.target.value })} placeholder="Certificate or licence number" />
+            </div>
+
+            <div>
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current">Current</SelectItem>
+                  <SelectItem value="expiring_soon">Expiring Soon</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Notes</Label>
+              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Additional notes..." />
+            </div>
+
+            <Button onClick={handleSubmit} className="w-full" disabled={createMutation.isPending || updateMutation.isPending}>
+              {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : editingId ? "Update Record" : "Add Record"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {records.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Shield className="w-12 h-12 text-muted-foreground mb-3" />
+            <p className="text-muted-foreground font-medium">No training records yet</p>
+            <p className="text-sm text-muted-foreground">Track your team's White Cards, licences, first aid certs, and other qualifications.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {records.map((r: any) => {
+            const expiringSoon = r.expiryDate && isExpiringSoon(r.expiryDate);
+            const effectiveStatus = expiringSoon && r.status === "current" ? "expiring_soon" : r.status;
+            return (
+              <Card key={r.id}>
+                <CardContent className="pt-4">
+                  <div className="flex items-start justify-between flex-wrap gap-2">
+                    <div>
+                      <p className="font-semibold">{r.workerName}</p>
+                      <p className="text-sm font-medium">{r.courseCode} — {r.courseName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {r.rtoName ? `${r.rtoName} | ` : ""}Completed: {r.completionDate}
+                        {r.expiryDate ? ` | Expires: ${r.expiryDate}` : ""}
+                      </p>
+                      {r.certificateNumber && <p className="text-xs text-muted-foreground">Cert #: {r.certificateNumber}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getStatusColor(effectiveStatus) as any}>{getStatusLabel(effectiveStatus)}</Badge>
+                      <Button size="icon" variant="ghost" onClick={() => startEdit(r)}><Edit className="w-4 h-4" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(r.id)}><Trash2 className="w-4 h-4" /></Button>
+                    </div>
+                  </div>
+                  {r.notes && <p className="text-xs text-muted-foreground mt-1">{r.notes}</p>}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HazardReportsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
@@ -1421,6 +1859,8 @@ export default function WhsHub() {
             <TabsTrigger value="environments" className="gap-1"><Zap className="w-3 h-3" /> Environments</TabsTrigger>
             <TabsTrigger value="signage" className="gap-1"><Eye className="w-3 h-3" /> Signage</TabsTrigger>
             <TabsTrigger value="hazards" className="gap-1"><FileText className="w-3 h-3" /> Hazard Reports</TabsTrigger>
+            <TabsTrigger value="ppe" className="gap-1"><HardHat className="w-3 h-3" /> PPE</TabsTrigger>
+            <TabsTrigger value="training" className="gap-1"><Shield className="w-3 h-3" /> Training</TabsTrigger>
             <TabsTrigger value="roles" className="gap-1"><Users className="w-3 h-3" /> WHS Roles</TabsTrigger>
           </TabsList>
 
@@ -1430,6 +1870,8 @@ export default function WhsHub() {
           <TabsContent value="environments"><HazardousEnvironmentsTab /></TabsContent>
           <TabsContent value="signage"><SafetySignageTab /></TabsContent>
           <TabsContent value="hazards"><HazardReportsTab /></TabsContent>
+          <TabsContent value="ppe"><PpeChecklistTab /></TabsContent>
+          <TabsContent value="training"><TrainingRecordsTab /></TabsContent>
           <TabsContent value="roles"><WhsRolesTab /></TabsContent>
         </Tabs>
       </div>

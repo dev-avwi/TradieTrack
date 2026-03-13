@@ -41590,6 +41590,90 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+
+  // ── PPE Checklists ──
+  app.get("/api/whs/ppe-checklists", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const jobId = req.query.jobId as string | undefined;
+      const checklists = await storage.getPpeChecklists(userId, jobId);
+      res.json(checklists);
+    } catch (error) {
+      console.error("Get PPE checklists error:", error);
+      res.status(500).json({ error: "Failed to fetch PPE checklists" });
+    }
+  });
+
+  app.post("/api/whs/ppe-checklists", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const checklist = await storage.createPpeChecklist({ ...req.body, userId });
+      res.status(201).json(checklist);
+    } catch (error) {
+      console.error("Create PPE checklist error:", error);
+      res.status(500).json({ error: "Failed to create PPE checklist" });
+    }
+  });
+
+  app.delete("/api/whs/ppe-checklists/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const deleted = await storage.deletePpeChecklist(req.params.id, userId);
+      if (!deleted) return res.status(404).json({ error: "PPE checklist not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete PPE checklist error:", error);
+      res.status(500).json({ error: "Failed to delete PPE checklist" });
+    }
+  });
+
+  // ── Training Records ──
+  app.get("/api/whs/training-records", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const records = await storage.getTrainingRecords(userId);
+      res.json(records);
+    } catch (error) {
+      console.error("Get training records error:", error);
+      res.status(500).json({ error: "Failed to fetch training records" });
+    }
+  });
+
+  app.post("/api/whs/training-records", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const record = await storage.createTrainingRecord({ ...req.body, userId });
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Create training record error:", error);
+      res.status(500).json({ error: "Failed to create training record" });
+    }
+  });
+
+  app.patch("/api/whs/training-records/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const updated = await storage.updateTrainingRecord(req.params.id, userId, req.body);
+      if (!updated) return res.status(404).json({ error: "Training record not found" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Update training record error:", error);
+      res.status(500).json({ error: "Failed to update training record" });
+    }
+  });
+
+  app.delete("/api/whs/training-records/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const deleted = await storage.deleteTrainingRecord(req.params.id, userId);
+      if (!deleted) return res.status(404).json({ error: "Training record not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete training record error:", error);
+      res.status(500).json({ error: "Failed to delete training record" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
