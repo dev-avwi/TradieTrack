@@ -1580,7 +1580,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...shadows.sm,
   },
   tab: {
-    flex: 1,
+    minWidth: 56,
+    paddingHorizontal: spacing.sm,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1988,7 +1989,7 @@ export default function JobDetailScreen() {
   // Forms data is loaded by JobForms component and passed via onFormsChange/onSubmissionsChange callbacks
   // This eliminates duplicate API calls
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes' | 'materials' | 'chat'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes' | 'materials' | 'chat' | 'manage'>('overview');
 
   const [materials, setMaterials] = useState<JobMaterial[]>([]);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
@@ -5350,6 +5351,7 @@ export default function JobDetailScreen() {
     { id: 'photos' as const, label: 'Photos', icon: 'camera' as const },
     { id: 'notes' as const, label: 'Notes', icon: 'file' as const },
     { id: 'chat' as const, label: 'Chat', icon: 'message-circle' as const },
+    { id: 'manage' as const, label: 'More', icon: 'settings' as const },
   ];
 
   const renderOverviewTab = () => (
@@ -5757,24 +5759,13 @@ export default function JobDetailScreen() {
         );
       })()}
 
-      {/* Job Profitability Card - Detailed Breakdown */}
+
+      {/* Compact Profitability Summary - Full details in More tab */}
       {(() => {
         const pd = profitabilityData;
         const hasFinancialData = pd && (pd.revenue.invoiced > 0 || pd.revenue.pending > 0 || pd.costs.total > 0);
         
-        if (isLoadingProfitability) {
-          return (
-            <View style={styles.costingCard}>
-              <View style={styles.costingHeader}>
-                <View style={[styles.costingIconContainer, { backgroundColor: `${colors.success}15` }]}>
-                  <Feather name="dollar-sign" size={iconSizes.lg} color={colors.success} />
-                </View>
-                <Text style={styles.costingTitle}>Profitability</Text>
-              </View>
-              <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.md }} />
-            </View>
-          );
-        }
+        if (isLoadingProfitability) return null;
 
         if (!hasFinancialData) {
           if (job.estimatedCost !== undefined || materials.length > 0) {
@@ -5789,15 +5780,6 @@ export default function JobDetailScreen() {
                     {job.estimatedCost !== undefined && (
                       <Text style={styles.cardValue}>Est. ${Number(job.estimatedCost).toFixed(2)}</Text>
                     )}
-                    {materials.length > 0 && (() => {
-                      const profHasCost = materials.some(m => Number(m.unitCost || 0) > 0);
-                      const profMatCost = materials.reduce((s, m) => s + (Number(m.totalCost) || 0), 0);
-                      return (
-                        <Text style={[styles.cardValue, { color: colors.mutedForeground }]}>
-                          · Materials {profHasCost ? `$${profMatCost.toFixed(2)}` : 'Not set'}
-                        </Text>
-                      );
-                    })()}
                     {invoice && (
                       <Text style={[styles.cardValue, { color: colors.success }]}>
                         · Invoice ${Number(invoice.total).toFixed(2)}
@@ -5812,93 +5794,27 @@ export default function JobDetailScreen() {
         }
 
         const profitColor = pd.status === 'profitable' ? colors.success : pd.status === 'tight' ? colors.warning : colors.destructive;
-        const marginCapped = Math.min(Math.max(pd.profit.margin, 0), 100);
 
         return (
-          <View style={styles.costingCard}>
-            <View style={styles.costingHeader}>
-              <View style={[styles.costingIconContainer, { backgroundColor: `${profitColor}15` }]}>
-                <Feather name="dollar-sign" size={iconSizes.lg} color={profitColor} />
-              </View>
-              <Text style={styles.costingTitle}>Profitability</Text>
-              <View style={{ marginLeft: 'auto', backgroundColor: `${profitColor}15`, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.md }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: profitColor, textTransform: 'capitalize' }}>
-                  {pd.status}
-                </Text>
-              </View>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => setActiveTab('manage')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.cardIconContainer, { backgroundColor: `${profitColor}15` }]}>
+              <Feather name="trending-up" size={iconSizes.xl} color={profitColor} />
             </View>
-
-            {pd.quoted?.amount ? (
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Quoted</Text>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{formatCurrency(pd.quoted.amount)}</Text>
-              </View>
-            ) : null}
-
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Revenue</Text>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{formatCurrency(pd.revenue.invoiced)}</Text>
-            </View>
-
-            <View style={{ paddingTop: spacing.sm }}>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: spacing.sm }}>Costs</Text>
-              <View style={{ gap: spacing.xs }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 14, color: colors.mutedForeground }}>
-                    Labour{pd.hours.total > 0 ? ` (${pd.hours.total}hrs)` : ''}
-                  </Text>
-                  <Text style={{ fontSize: 14, color: colors.foreground }}>{formatCurrency(pd.costs.labour)}</Text>
-                </View>
-                {pd.costs.subcontractor > 0 && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Subcontractors</Text>
-                    <Text style={{ fontSize: 14, color: colors.foreground }}>{formatCurrency(pd.costs.subcontractor)}</Text>
-                  </View>
-                )}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Materials</Text>
-                  <Text style={{ fontSize: 14, color: colors.foreground }}>{formatCurrency(pd.costs.materials)}</Text>
-                </View>
-                {pd.costs.otherExpenses > 0 && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Other</Text>
-                    <Text style={{ fontSize: 14, color: colors.foreground }}>{formatCurrency(pd.costs.otherExpenses)}</Text>
-                  </View>
-                )}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.mutedForeground }}>Total costs</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{formatCurrency(pd.costs.total)}</Text>
+            <View style={[styles.cardContent, { flex: 1 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                <Text style={styles.cardLabel}>Profit</Text>
+                <View style={{ backgroundColor: `${profitColor}15`, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: profitColor, textTransform: 'capitalize' }}>{pd.status}</Text>
                 </View>
               </View>
+              <Text style={[styles.cardValue, { color: profitColor }]}>{formatCurrency(pd.profit.amount)} · {pd.profit.margin.toFixed(1)}%</Text>
             </View>
-
-            <View style={{ paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.sm }}>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: spacing.sm }}>Result</Text>
-              <View style={{ gap: spacing.xs }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Profit</Text>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: profitColor }}>{formatCurrency(pd.profit.amount)}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Margin</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: profitColor }}>{pd.profit.margin.toFixed(1)}%</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={{ marginTop: spacing.md }}>
-              <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.muted, overflow: 'hidden' }}>
-                <View style={{ height: '100%', borderRadius: 3, backgroundColor: profitColor, width: `${marginCapped}%` }} />
-              </View>
-              <Text style={{ fontSize: 11, color: profitColor, marginTop: 4 }}>{pd.profit.margin.toFixed(1)}% margin</Text>
-            </View>
-
-            {pd.profit.vsQuote != null && pd.profit.vsQuote !== 0 && (
-              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: spacing.xs }}>
-                {formatCurrency(Math.abs(pd.profit.vsQuote))} {pd.profit.vsQuote < 0 ? 'under' : 'over'} quoted
-              </Text>
-            )}
-          </View>
+            <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
+          </TouchableOpacity>
         );
       })()}
 
@@ -6180,6 +6096,395 @@ export default function JobDetailScreen() {
         </TouchableOpacity>
       )}
 
+      {/* Quick Access to More Tab */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={styles.costingCard}>
+          <View style={styles.costingHeader}>
+            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+              <Feather name="settings" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <Text style={styles.costingTitle}>Manage Job</Text>
+          </View>
+          <View style={{ gap: 1, marginTop: spacing.xs }}>
+            {[
+              { icon: 'file-text' as const, label: 'Proof Pack', subtitle: 'Generate client report', color: colors.primary, show: true },
+              { icon: 'globe' as const, label: 'Client Portal', subtitle: portalEnabled ? 'Enabled' : 'Share live tracking', color: colors.invoiced, show: !!client },
+              { icon: 'dollar-sign' as const, label: 'Profitability & Costing', subtitle: profitabilityData ? `${profitabilityData.profit.margin.toFixed(0)}% margin` : 'View financials', color: colors.success, show: true },
+              { icon: 'credit-card' as const, label: 'Expenses', subtitle: jobExpenses.length > 0 ? `${jobExpenses.length} expense${jobExpenses.length !== 1 ? 's' : ''}` : 'Track costs', color: colors.destructive, show: true },
+              { icon: 'git-branch' as const, label: 'Variations', subtitle: 'Change orders', color: colors.warning, show: true },
+              { icon: 'user-plus' as const, label: 'Subcontractors', subtitle: subcontractorTokens.filter(t => t.status !== 'revoked').length > 0 ? `${subcontractorTokens.filter(t => t.status !== 'revoked').length} active` : 'Invite contractors', color: colors.invoiced, show: true },
+            ].filter(item => item.show).map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.xs,
+                  gap: spacing.md,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.border,
+                }}
+                onPress={() => setActiveTab('manage')}
+                activeOpacity={0.7}
+              >
+                <View style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: `${item.color}15`,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Feather name={item.icon} size={14} color={item.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{item.label}</Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground }}>{item.subtitle}</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+
+      {/* Main Action Button */}
+      <View style={styles.actionButtonContainer}>
+        {action ? (
+          job.status === 'scheduled' && job.clientId ? (
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {/* On My Way Button */}
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.xs,
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: radius.lg,
+                  borderWidth: 2,
+                  borderColor: colors.info,
+                  backgroundColor: colors.card,
+                  opacity: isSendingOnMyWay ? 0.6 : 1,
+                  minHeight: 52,
+                }}
+                onPress={handleOnMyWay}
+                activeOpacity={0.8}
+                disabled={isSendingOnMyWay}
+                data-testid="button-on-my-way"
+              >
+                <Feather name="navigation" size={18} color={colors.info} />
+                <Text style={{ 
+                  color: colors.info, 
+                  fontWeight: '600', 
+                  fontSize: 14 
+                }}>
+                  On My Way
+                </Text>
+                {isSendingOnMyWay && (
+                  <ActivityIndicator size="small" color={colors.info} style={{ marginLeft: 4 }} />
+                )}
+              </TouchableOpacity>
+              
+              {/* Main Action Button */}
+              <TouchableOpacity
+                style={[styles.mainActionButton, { backgroundColor: statusColor, flex: 1 }]}
+                onPress={handleStatusChange}
+                activeOpacity={0.8}
+                data-testid="button-main-action"
+              >
+                <View style={styles.mainActionButtonIcon}>
+                  <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
+                </View>
+                <Text style={styles.mainActionText}>{action.label}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.mainActionButton, { backgroundColor: statusColor }]}
+              onPress={handleStatusChange}
+              activeOpacity={0.8}
+              data-testid="button-main-action"
+            >
+              <View style={styles.mainActionButtonIcon}>
+                <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
+              </View>
+              <Text style={styles.mainActionText}>{action.label}</Text>
+            </TouchableOpacity>
+          )
+        ) : job.status === 'invoiced' && !invoice && (
+          <Text style={styles.invoicedMessage}>This job has been invoiced</Text>
+        )}
+      </View>
+    </>
+  );
+
+  const renderManageTab = () => (
+    <>
+      {/* Proof Pack Section - Available for all job statuses */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={styles.costingCard}>
+          <View style={styles.costingHeader}>
+            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+              <Feather name="file-text" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <Text style={styles.costingTitle}>Proof Pack</Text>
+          </View>
+          <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.md, lineHeight: 19 }}>
+            Generate a comprehensive PDF with job timeline, photos, signatures, and compliance records to share with your client.
+          </Text>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: spacing.sm,
+              backgroundColor: colors.primary,
+              paddingVertical: spacing.md,
+              borderRadius: radius.lg,
+              minHeight: 44,
+            }}
+            onPress={() => setShowProofPackModal(true)}
+            activeOpacity={0.8}
+          >
+            <Feather name="sliders" size={18} color={colors.primaryForeground} />
+            <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
+              Customise & Generate Proof Pack
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Client Portal Section */}
+      {(isOwnerOrManager || isSoloOwner) && client && (
+        <View style={styles.costingCard}>
+          <View style={styles.costingHeader}>
+            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.invoiced}15` }]}>
+              <Feather name="globe" size={iconSizes.lg} color={colors.invoiced} />
+            </View>
+            <Text style={styles.costingTitle}>Client Portal</Text>
+          </View>
+          
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, color: colors.foreground, fontWeight: '500' }}>Enable Portal</Text>
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                Let your client view job progress online
+              </Text>
+            </View>
+            {isTogglingPortal ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Switch
+                value={portalEnabled}
+                onValueChange={handleTogglePortal}
+                trackColor={{ false: colors.muted, true: colors.primary }}
+                thumbColor={portalEnabled ? colors.primaryForeground : colors.foreground}
+              />
+            )}
+          </View>
+
+          {portalEnabled && (
+            <View style={{ marginTop: spacing.md }}>
+              {portalLinks.length > 0 ? (
+                <View style={{ gap: spacing.sm }}>
+                  {portalLinks.map((link) => (
+                    <View
+                      key={link.id}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: colors.muted,
+                        borderRadius: radius.lg,
+                        padding: spacing.md,
+                        gap: spacing.sm,
+                      }}
+                    >
+                      <Feather name="link" size={16} color={colors.primary} />
+                      <Text
+                        style={{ flex: 1, fontSize: 13, color: colors.foreground }}
+                        numberOfLines={1}
+                        ellipsizeMode="middle"
+                      >
+                        {link.url || `Portal link #${link.id.slice(0, 8)}`}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleSharePortalLink(link.url)}
+                        style={{ padding: spacing.xs }}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="share-2" size={16} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.xs,
+                  backgroundColor: colors.invoiced,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.lg,
+                  marginTop: spacing.md,
+                  opacity: isGeneratingPortalLink ? 0.6 : 1,
+                }}
+                onPress={handleGeneratePortalLink}
+                activeOpacity={0.8}
+                disabled={isGeneratingPortalLink}
+              >
+                {isGeneratingPortalLink ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <>
+                    <Feather name="link" size={16} color={colors.primaryForeground} />
+                    <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
+                      Generate Portal Link
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Job Profitability Card */}
+      {(() => {
+        const pd = profitabilityData;
+        const hasFinancialData = pd && (pd.revenue.invoiced > 0 || pd.revenue.pending > 0 || pd.costs.total > 0);
+        
+        if (isLoadingProfitability) {
+          return (
+            <View style={styles.costingCard}>
+              <View style={styles.costingHeader}>
+                <View style={[styles.costingIconContainer, { backgroundColor: `${colors.success}15` }]}>
+                  <Feather name="dollar-sign" size={iconSizes.lg} color={colors.success} />
+                </View>
+                <Text style={styles.costingTitle}>Profitability</Text>
+              </View>
+              <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.md }} />
+            </View>
+          );
+        }
+
+        if (!hasFinancialData) {
+          return (
+            <View style={styles.costingCard}>
+              <View style={styles.costingHeader}>
+                <View style={[styles.costingIconContainer, { backgroundColor: `${colors.success}15` }]}>
+                  <Feather name="trending-up" size={iconSizes.lg} color={colors.success} />
+                </View>
+                <Text style={styles.costingTitle}>Profitability</Text>
+              </View>
+              <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+                <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center' }}>
+                  No financial data yet
+                </Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center' }}>
+                  Create invoices and track expenses to see profitability
+                </Text>
+              </View>
+            </View>
+          );
+        }
+
+        const profitColor = pd.status === 'profitable' ? colors.success : pd.status === 'tight' ? colors.warning : colors.destructive;
+        const marginCapped = Math.min(Math.max(pd.profit.margin, 0), 100);
+
+        return (
+          <View style={styles.costingCard}>
+            <View style={styles.costingHeader}>
+              <View style={[styles.costingIconContainer, { backgroundColor: `${profitColor}15` }]}>
+                <Feather name="dollar-sign" size={iconSizes.lg} color={profitColor} />
+              </View>
+              <Text style={styles.costingTitle}>Profitability</Text>
+              <View style={{ marginLeft: 'auto', backgroundColor: `${profitColor}15`, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.md }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: profitColor, textTransform: 'capitalize' }}>
+                  {pd.status}
+                </Text>
+              </View>
+            </View>
+
+            {pd.quoted?.amount ? (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Quoted</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{formatCurrency(pd.quoted.amount)}</Text>
+              </View>
+            ) : null}
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Revenue</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{formatCurrency(pd.revenue.invoiced)}</Text>
+            </View>
+
+            <View style={{ paddingTop: spacing.sm }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: spacing.sm }}>Costs</Text>
+              <View style={{ gap: spacing.xs }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 14, color: colors.mutedForeground }}>
+                    Labour{pd.hours.total > 0 ? ` (${pd.hours.total}hrs)` : ''}
+                  </Text>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>{formatCurrency(pd.costs.labour)}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Materials</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>{formatCurrency(pd.costs.materials)}</Text>
+                </View>
+                {pd.costs.expenses > 0 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Expenses</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>{formatCurrency(pd.costs.expenses)}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <View style={{ 
+              flexDirection: 'row', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              paddingTop: spacing.md,
+              marginTop: spacing.md,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+            }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.foreground }}>Profit</Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: profitColor }}>
+                  {formatCurrency(pd.profit.amount)}
+                </Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: profitColor }}>
+                  {pd.profit.margin.toFixed(1)}% margin
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ 
+              marginTop: spacing.md, 
+              height: 6, 
+              backgroundColor: colors.muted, 
+              borderRadius: 3, 
+              overflow: 'hidden' 
+            }}>
+              <View style={{ 
+                width: `${marginCapped}%`, 
+                height: '100%', 
+                backgroundColor: profitColor, 
+                borderRadius: 3 
+              }} />
+            </View>
+          </View>
+        );
+      })()}
+
       {/* Job Costing Section */}
       {(estimatedHours > 0 || estimatedCost > 0 || actualHours > 0) && (
         <View style={styles.costingCard}>
@@ -6393,6 +6698,128 @@ export default function JobDetailScreen() {
         </View>
       )}
 
+      {/* Job Variations Section */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={styles.costingCard}>
+          <View style={styles.costingHeader}>
+            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.warning}15` }]}>
+              <Feather name="git-branch" size={iconSizes.lg} color={colors.warning} />
+            </View>
+            <Text style={styles.costingTitle}>Variations</Text>
+          </View>
+
+          {isLoadingVariations ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.md }} />
+          ) : (
+            <>
+              {variations.length > 0 ? (
+                <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
+                  {variations.map((v) => (
+                    <View
+                      key={v.id}
+                      style={{
+                        backgroundColor: colors.muted,
+                        borderRadius: radius.lg,
+                        padding: spacing.md,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{v.title}</Text>
+                          {v.description && (
+                            <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>{v.description}</Text>
+                          )}
+                        </View>
+                        <View style={{
+                          backgroundColor: v.status === 'approved' ? `${colors.success}15` : v.status === 'rejected' ? `${colors.destructive}15` : `${colors.warning}15`,
+                          paddingHorizontal: spacing.sm,
+                          paddingVertical: 2,
+                          borderRadius: radius.md,
+                          marginLeft: spacing.sm,
+                        }}>
+                          <Text style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            color: v.status === 'approved' ? colors.success : v.status === 'rejected' ? colors.destructive : colors.warning,
+                            textTransform: 'capitalize',
+                          }}>
+                            {v.status}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
+                          {formatCurrency(parseFloat(v.amount) || 0)}
+                        </Text>
+                        {v.status === 'pending' && (
+                          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setApproveVariationName('');
+                                setApproveVariationSignature(null);
+                                setShowApproveVariationModal(v.id);
+                              }}
+                              style={{ paddingVertical: 4, paddingHorizontal: spacing.md, backgroundColor: `${colors.success}15`, borderRadius: radius.md }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.success }}>Approve</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setRejectVariationReason('');
+                                setShowRejectVariationModal(v.id);
+                              }}
+                              style={{ paddingVertical: 4, paddingHorizontal: spacing.md, backgroundColor: `${colors.destructive}15`, borderRadius: radius.md }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.destructive }}>Reject</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+                  <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.warning}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
+                    <Feather name="git-branch" size={24} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center' }}>
+                    No variations yet
+                  </Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center' }}>
+                    Track scope changes and price adjustments
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.xs,
+                  backgroundColor: colors.warning,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.lg,
+                }}
+                onPress={() => {
+                  setVariationForm({ title: '', description: '', reason: '', amount: '' });
+                  setShowAddVariationModal(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <Feather name="plus" size={16} color={colors.primaryForeground} />
+                <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
+                  Add Variation
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
+
       {/* Subcontractor Invites Section */}
       {(isOwnerOrManager || isSoloOwner) && (
         <View style={styles.costingCard}>
@@ -6504,371 +6931,6 @@ export default function JobDetailScreen() {
         </View>
       )}
 
-      {/* Job Variations Section */}
-      {(isOwnerOrManager || isSoloOwner) && (
-        <View style={styles.costingCard}>
-          <View style={styles.costingHeader}>
-            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.warning}15` }]}>
-              <Feather name="git-branch" size={iconSizes.lg} color={colors.warning} />
-            </View>
-            <Text style={styles.costingTitle}>Variations</Text>
-            {variations.length > 0 && (
-              <View style={{ backgroundColor: `${colors.warning}15`, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.md, marginLeft: 'auto' }}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.warning }}>
-                  {variations.length}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {isLoadingVariations ? (
-            <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: spacing.md }} />
-          ) : (
-            <>
-              {variations.length > 0 && (() => {
-                const approved = variations.filter(v => v.status === 'approved');
-                const pending = variations.filter(v => v.status === 'draft' || v.status === 'sent');
-                const approvedTotal = approved.reduce((s, v) => s + (parseFloat(v.totalAmount) || 0), 0);
-                const pendingTotal = pending.reduce((s, v) => s + (parseFloat(v.totalAmount) || 0), 0);
-                return (
-                  <View style={{ flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md }}>
-                    <View style={{ flex: 1, backgroundColor: `${colors.success}10`, borderRadius: radius.lg, padding: spacing.sm + 2 }}>
-                      <Text style={{ fontSize: 11, color: colors.success, fontWeight: '600', textTransform: 'uppercase', marginBottom: 2 }}>Approved</Text>
-                      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.success }}>${approvedTotal.toFixed(2)}</Text>
-                      <Text style={{ fontSize: 11, color: colors.mutedForeground }}>{approved.length}/{variations.length}</Text>
-                    </View>
-                    <View style={{ flex: 1, backgroundColor: `${colors.warning}10`, borderRadius: radius.lg, padding: spacing.sm + 2 }}>
-                      <Text style={{ fontSize: 11, color: colors.warning, fontWeight: '600', textTransform: 'uppercase', marginBottom: 2 }}>Pending</Text>
-                      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.warning }}>${pendingTotal.toFixed(2)}</Text>
-                      <Text style={{ fontSize: 11, color: colors.mutedForeground }}>{pending.length} pending</Text>
-                    </View>
-                  </View>
-                );
-              })()}
-
-              {variations.length > 0 ? (
-                <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
-                  {variations.map((v) => {
-                    const statusColors: Record<string, { bg: string; text: string }> = {
-                      draft: { bg: `${colors.mutedForeground}15`, text: colors.mutedForeground },
-                      sent: { bg: `${colors.info}15`, text: colors.info },
-                      approved: { bg: `${colors.success}15`, text: colors.success },
-                      rejected: { bg: `${colors.destructive}15`, text: colors.destructive },
-                    };
-                    const sc = statusColors[v.status] || statusColors.draft;
-                    return (
-                      <View
-                        key={v.id}
-                        style={{
-                          backgroundColor: colors.muted,
-                          borderRadius: radius.lg,
-                          padding: spacing.md,
-                        }}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
-                            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.mutedForeground }}>{v.number}</Text>
-                            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, flex: 1 }} numberOfLines={1}>{v.title}</Text>
-                          </View>
-                          <View style={{ backgroundColor: sc.bg, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm }}>
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: sc.text, textTransform: 'uppercase' }}>{v.status}</Text>
-                          </View>
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.foreground }}>
-                            ${parseFloat(v.totalAmount || '0').toFixed(2)}
-                          </Text>
-                          <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
-                            GST ${parseFloat(v.gstAmount || '0').toFixed(2)}
-                          </Text>
-                        </View>
-                        {v.description && (
-                          <Text style={{ fontSize: 13, color: colors.mutedForeground, marginTop: spacing.xs }} numberOfLines={2}>{v.description}</Text>
-                        )}
-                        {v.status === 'draft' && (
-                          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm }}>
-                            <TouchableOpacity
-                              onPress={() => handleSendVariation(v.id)}
-                              style={{
-                                flex: 1,
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: spacing.xs,
-                                backgroundColor: colors.primary,
-                                paddingVertical: spacing.sm,
-                                borderRadius: radius.md,
-                                minHeight: 36,
-                              }}
-                              activeOpacity={0.8}
-                            >
-                              <Feather name="send" size={14} color={colors.primaryForeground} />
-                              <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 13 }}>Send to Client</Text>
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                        {v.status === 'sent' && (
-                          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm }}>
-                            <TouchableOpacity
-                              onPress={() => {
-                                setApproveVariationName('');
-                                setApproveVariationSignature(null);
-                                setShowApproveVariationModal(v.id);
-                              }}
-                              style={{
-                                flex: 1,
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: spacing.xs,
-                                backgroundColor: colors.success,
-                                paddingVertical: spacing.sm,
-                                borderRadius: radius.md,
-                                minHeight: 36,
-                              }}
-                              activeOpacity={0.8}
-                            >
-                              <Feather name="check" size={14} color={colors.primaryForeground} />
-                              <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 13 }}>Approve</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              onPress={() => {
-                                setRejectVariationReason('');
-                                setShowRejectVariationModal(v.id);
-                              }}
-                              style={{
-                                flex: 1,
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: spacing.xs,
-                                backgroundColor: colors.destructive,
-                                paddingVertical: spacing.sm,
-                                borderRadius: radius.md,
-                                minHeight: 36,
-                              }}
-                              activeOpacity={0.8}
-                            >
-                              <Feather name="x" size={14} color={colors.primaryForeground} />
-                              <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 13 }}>Reject</Text>
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                        {v.status === 'rejected' && v.rejectionReason && (
-                          <Text style={{ fontSize: 12, color: colors.destructive, marginTop: spacing.xs }}>
-                            Reason: {v.rejectionReason}
-                          </Text>
-                        )}
-                        {v.status === 'approved' && v.approvedByName && (
-                          <Text style={{ fontSize: 12, color: colors.success, marginTop: spacing.xs }}>
-                            Approved by {v.approvedByName}
-                          </Text>
-                        )}
-                      </View>
-                    );
-                  })}
-                </View>
-              ) : (
-                <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
-                  <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.warning}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
-                    <Feather name="git-branch" size={24} color={colors.mutedForeground} />
-                  </View>
-                  <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center' }}>
-                    No variations yet
-                  </Text>
-                  <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center', paddingHorizontal: spacing.md }}>
-                    Add scope changes and track approvals
-                  </Text>
-                </View>
-              )}
-
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: spacing.xs,
-                  backgroundColor: colors.warning,
-                  paddingVertical: spacing.md,
-                  borderRadius: radius.lg,
-                }}
-                onPress={() => {
-                  setVariationForm({ title: '', description: '', reason: '', amount: '' });
-                  setShowAddVariationModal(true);
-                }}
-                activeOpacity={0.8}
-              >
-                <Feather name="plus" size={16} color={colors.primaryForeground} />
-                <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
-                  Add Variation
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-      )}
-
-      {/* Proof Pack Button */}
-      {(job.status === 'done' || job.status === 'invoiced') && (isOwnerOrManager || isSoloOwner) && (
-        <View style={styles.costingCard}>
-          <View style={styles.costingHeader}>
-            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.primary}15` }]}>
-              <Feather name="file-text" size={iconSizes.lg} color={colors.primary} />
-            </View>
-            <Text style={styles.costingTitle}>Proof Pack</Text>
-          </View>
-          <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.md, lineHeight: 19 }}>
-            Generate a comprehensive PDF with job timeline, photos, signatures, and compliance records to share with your client.
-          </Text>
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: spacing.sm,
-              backgroundColor: colors.primary,
-              paddingVertical: spacing.md,
-              borderRadius: radius.lg,
-              minHeight: 44,
-            }}
-            onPress={() => setShowProofPackModal(true)}
-            activeOpacity={0.8}
-          >
-            <Feather name="sliders" size={18} color={colors.primaryForeground} />
-            <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
-              Customise & Generate Proof Pack
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Client Portal Section */}
-      {(isOwnerOrManager || isSoloOwner) && client && (
-        <View style={styles.costingCard}>
-          <View style={styles.costingHeader}>
-            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.invoiced}15` }]}>
-              <Feather name="globe" size={iconSizes.lg} color={colors.invoiced} />
-            </View>
-            <Text style={styles.costingTitle}>Client Portal</Text>
-          </View>
-          
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, color: colors.foreground, fontWeight: '500' }}>Enable Portal</Text>
-              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
-                Let your client view job progress online
-              </Text>
-            </View>
-            {isTogglingPortal ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Switch
-                value={portalEnabled}
-                onValueChange={handleTogglePortal}
-                trackColor={{ false: colors.muted, true: colors.primary }}
-                thumbColor={portalEnabled ? colors.primaryForeground : colors.foreground}
-              />
-            )}
-          </View>
-
-          {portalEnabled && (
-            <View style={{ marginTop: spacing.md }}>
-              {portalLinks.length > 0 ? (
-                <View style={{ gap: spacing.sm }}>
-                  {portalLinks.map((link) => (
-                    <View
-                      key={link.id}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: colors.muted,
-                        borderRadius: radius.lg,
-                        padding: spacing.md,
-                        gap: spacing.sm,
-                      }}
-                    >
-                      <Feather name="link" size={16} color={colors.primary} />
-                      <Text
-                        style={{ flex: 1, fontSize: 13, color: colors.foreground }}
-                        numberOfLines={1}
-                        ellipsizeMode="middle"
-                      >
-                        {link.url || `Portal link #${link.id.slice(0, 8)}`}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => handleSharePortalLink(link.url)}
-                        style={{ padding: spacing.xs }}
-                        activeOpacity={0.7}
-                      >
-                        <Feather name="share-2" size={16} color={colors.primary} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.sm }}>
-                  No portal links yet. Generate one to share with your client.
-                </Text>
-              )}
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: spacing.sm,
-                  backgroundColor: colors.card,
-                  paddingVertical: spacing.md,
-                  borderRadius: radius.lg,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  marginTop: spacing.sm,
-                  opacity: isGeneratingPortalLink ? 0.6 : 1,
-                  minHeight: 44,
-                }}
-                onPress={handleGeneratePortalLink}
-                activeOpacity={0.8}
-                disabled={isGeneratingPortalLink}
-              >
-                {isGeneratingPortalLink ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <>
-                    <Feather name="plus" size={16} color={colors.foreground} />
-                    <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>
-                      Generate Portal Link
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Duplicate Job Button */}
-      <View style={styles.costingCard}>
-        <TouchableOpacity
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: spacing.sm,
-            backgroundColor: colors.card,
-            paddingVertical: spacing.md,
-            borderRadius: radius.lg,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-          onPress={handleDuplicateJob}
-          activeOpacity={0.8}
-        >
-          <Feather name="copy" size={18} color={colors.foreground} />
-          <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>
-            Duplicate Job
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Status Rollback Button */}
       {(isOwnerOrManager || isSoloOwner) && job.status !== 'pending' && (
         <View style={styles.costingCard}>
@@ -6894,77 +6956,6 @@ export default function JobDetailScreen() {
           </TouchableOpacity>
         </View>
       )}
-
-      {/* Main Action Button */}
-      <View style={styles.actionButtonContainer}>
-        {action ? (
-          job.status === 'scheduled' && job.clientId ? (
-            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              {/* On My Way Button */}
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: spacing.xs,
-                  paddingVertical: spacing.md,
-                  paddingHorizontal: spacing.md,
-                  borderRadius: radius.lg,
-                  borderWidth: 2,
-                  borderColor: colors.info,
-                  backgroundColor: colors.card,
-                  opacity: isSendingOnMyWay ? 0.6 : 1,
-                  minHeight: 52,
-                }}
-                onPress={handleOnMyWay}
-                activeOpacity={0.8}
-                disabled={isSendingOnMyWay}
-                data-testid="button-on-my-way"
-              >
-                <Feather name="navigation" size={18} color={colors.info} />
-                <Text style={{ 
-                  color: colors.info, 
-                  fontWeight: '600', 
-                  fontSize: 14 
-                }}>
-                  On My Way
-                </Text>
-                {isSendingOnMyWay && (
-                  <ActivityIndicator size="small" color={colors.info} style={{ marginLeft: 4 }} />
-                )}
-              </TouchableOpacity>
-              
-              {/* Main Action Button */}
-              <TouchableOpacity
-                style={[styles.mainActionButton, { backgroundColor: statusColor, flex: 1 }]}
-                onPress={handleStatusChange}
-                activeOpacity={0.8}
-                data-testid="button-main-action"
-              >
-                <View style={styles.mainActionButtonIcon}>
-                  <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
-                </View>
-                <Text style={styles.mainActionText}>{action.label}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={[styles.mainActionButton, { backgroundColor: statusColor }]}
-              onPress={handleStatusChange}
-              activeOpacity={0.8}
-              data-testid="button-main-action"
-            >
-              <View style={styles.mainActionButtonIcon}>
-                <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
-              </View>
-              <Text style={styles.mainActionText}>{action.label}</Text>
-            </TouchableOpacity>
-          )
-        ) : job.status === 'invoiced' && !invoice && (
-          <Text style={styles.invoicedMessage}>This job has been invoiced</Text>
-        )}
-      </View>
     </>
   );
 
@@ -8834,7 +8825,7 @@ export default function JobDetailScreen() {
           headerLeft: () => <IOSBackButton />,
           headerRight: () => (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-              {(job.status === 'done' || job.status === 'invoiced') && (isOwnerOrManager || isSoloOwner) && (
+              {(isOwnerOrManager || isSoloOwner) && (
                 <TouchableOpacity
                   onPress={() => setShowProofPackModal(true)}
                   style={{ 
@@ -8920,7 +8911,12 @@ export default function JobDetailScreen() {
       </View>
 
       {/* Tab Bar */}
-      <View style={styles.tabBar}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        contentContainerStyle={styles.tabBar}
+        style={{ flexGrow: 0 }}
+      >
         {TAB_CONFIG.map((tab) => (
           <TouchableOpacity
             key={tab.id}
@@ -8938,7 +8934,7 @@ export default function JobDetailScreen() {
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {/* Tab Content - Scrollable */}
       <ScrollView 
@@ -8958,6 +8954,7 @@ export default function JobDetailScreen() {
         {activeTab === 'photos' && renderPhotosTab()}
         {activeTab === 'notes' && renderNotesTab()}
         {activeTab === 'chat' && renderChatTab()}
+        {activeTab === 'manage' && renderManageTab()}
       </ScrollView>
 
       {/* Floating Voice Dictation FAB */}
