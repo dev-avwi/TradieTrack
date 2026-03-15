@@ -2190,93 +2190,115 @@ export default function WhsHub() {
   const compliancePercent = Math.round((complianceMet / complianceItems.length) * 100);
 
   const renderOverview = () => {
-    const complianceStrokeClass = compliancePercent >= 80 ? "stroke-green-500" : compliancePercent >= 50 ? "stroke-yellow-500" : "stroke-red-500";
     const complianceColor = compliancePercent >= 80 ? 'hsl(142.1 76.2% 36.3%)' : compliancePercent >= 50 ? 'hsl(38 92% 50%)' : 'hsl(0 84.2% 60.2%)';
+    const complianceStrokeClass = compliancePercent >= 80 ? "stroke-green-500" : compliancePercent >= 50 ? "stroke-yellow-500" : "stroke-red-500";
+    const todoCount = complianceItems.filter(i => !i.done).length;
+
+    const goToNextIncomplete = () => {
+      const next = complianceItems.find(i => !i.done);
+      if (next) {
+        if (next.label.includes('PPE')) setActiveSection('ppe');
+        else if (next.label.includes('SWMS')) setActiveSection('swms');
+        else if (next.label.includes('Training')) setActiveSection('training');
+        else if (next.label.includes('Emergency')) setActiveSection('emergency');
+      }
+    };
+
+    const kbHandler = (fn: () => void) => (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); }
+    };
 
     return (
-    <div className="space-y-3">
-      <Card className="cursor-pointer hover-elevate" onClick={() => {
-        const next = complianceItems.find(i => !i.done);
-        if (next) {
-          if (next.label.includes('PPE')) setActiveSection('ppe');
-          else if (next.label.includes('SWMS')) setActiveSection('swms');
-          else if (next.label.includes('Training')) setActiveSection('training');
-          else if (next.label.includes('Emergency')) setActiveSection('emergency');
-        }
-      }}>
-        <CardContent className="p-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="relative w-10 h-10 flex-shrink-0">
-                <svg viewBox="0 0 36 36" className="w-10 h-10 -rotate-90">
+    <div className="space-y-4">
+
+      {/* Compliance Status Banner */}
+      <Card className="overflow-visible">
+        <CardContent className="p-0">
+          <div className="flex items-stretch">
+            {/* Left: Ring + Score */}
+            <div className="flex items-center gap-3 p-4 flex-1 min-w-0 cursor-pointer hover-elevate rounded-l-md"
+              role="button" tabIndex={0} onClick={goToNextIncomplete} onKeyDown={kbHandler(goToNextIncomplete)}>
+              <div className="relative w-12 h-12 flex-shrink-0">
+                <svg viewBox="0 0 36 36" className="w-12 h-12 -rotate-90">
                   <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none" stroke="currentColor" strokeWidth="3" className="text-muted-foreground/15" />
+                    fill="none" stroke="currentColor" strokeWidth="2.5" className="text-muted-foreground/10" />
                   <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none" strokeWidth="3" strokeDasharray={`${compliancePercent}, 100`} strokeLinecap="round"
+                    fill="none" strokeWidth="2.5" strokeDasharray={`${compliancePercent}, 100`} strokeLinecap="round"
                     className={complianceStrokeClass} />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-[10px] font-bold" style={{ color: complianceColor }}>{compliancePercent}%</span>
+                  <span className="text-xs font-bold" style={{ color: complianceColor }}>{compliancePercent}%</span>
                 </div>
               </div>
-              <div>
-                <p className="text-xl font-bold" style={{ color: complianceColor }}>
+              <div className="min-w-0">
+                <p className="text-lg font-bold leading-tight" style={{ color: complianceColor }}>
                   {complianceMet}/{complianceItems.length} Compliant
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {compliancePercent === 100 ? "All safety checks passed" :
-                   `${complianceItems.length - complianceMet} item${complianceItems.length - complianceMet !== 1 ? 's' : ''} need attention`}
+                   `${todoCount} item${todoCount !== 1 ? 's' : ''} need attention`}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 flex-shrink-0">
-              {compliancePercent < 100 && (
-                <Badge className="text-xs" style={{
-                  backgroundColor: `${complianceColor}15`,
-                  color: complianceColor,
-                  borderColor: `${complianceColor}30`
-                }}>
-                  {complianceItems.filter(i => !i.done).length} to do
-                </Badge>
-              )}
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </div>
+            {/* Right: To-do count as a clear action area */}
+            {todoCount > 0 && (
+              <div className="flex items-center border-l border-border px-4 cursor-pointer hover-elevate rounded-r-md"
+                role="button" tabIndex={0} onClick={goToNextIncomplete} onKeyDown={kbHandler(goToNextIncomplete)}>
+                <div className="text-center">
+                  <p className="text-2xl font-bold" style={{ color: complianceColor }}>{todoCount}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">To Do</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground ml-2" />
+              </div>
+            )}
+            {compliancePercent === 100 && (
+              <div className="flex items-center px-4">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(142.1 76.2% 36.3% / 0.1)' }}>
+                  <CheckCircle2 className="h-5 w-5" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+      {/* KPI Stats Grid */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {[
-          { label: "Incidents", value: openIncidents, section: "incidents", icon: AlertTriangle, color: openIncidents > 0 ? 'hsl(38 92% 50%)' : undefined },
-          { label: "Hazards", value: openHazards, section: "hazards", icon: ShieldAlert, color: openHazards > 0 ? 'hsl(0 84.2% 60.2%)' : undefined },
-          { label: "SWMS", value: swmsDocs.length, section: "swms", icon: ClipboardList, color: 'hsl(var(--trade))' },
-          { label: "PPE Checks", value: ppeChecklists.length, section: "ppe", icon: HardHat, color: 'hsl(var(--trade))' },
-          { label: "Training", value: trainingRecords.length, section: "training", icon: BadgeCheck, color: expiredTraining > 0 ? 'hsl(0 84.2% 60.2%)' : 'hsl(142.1 76.2% 36.3%)' },
-          { label: "JSA", value: jsaDocs.length, section: "jsa", icon: FileText, color: 'hsl(var(--trade))' },
+          { label: "Incidents", value: openIncidents, section: "incidents", icon: AlertTriangle, color: openIncidents > 0 ? 'hsl(38 92% 50%)' : 'hsl(var(--muted-foreground))', bg: openIncidents > 0 ? 'hsl(38 92% 50% / 0.1)' : 'hsl(var(--muted-foreground) / 0.08)' },
+          { label: "Hazards", value: openHazards, section: "hazards", icon: ShieldAlert, color: openHazards > 0 ? 'hsl(0 84.2% 60.2%)' : 'hsl(var(--muted-foreground))', bg: openHazards > 0 ? 'hsl(0 84.2% 60.2% / 0.1)' : 'hsl(var(--muted-foreground) / 0.08)' },
+          { label: "SWMS", value: swmsDocs.length, section: "swms", icon: ClipboardList, color: 'hsl(var(--trade))', bg: 'hsl(var(--trade) / 0.1)' },
+          { label: "PPE Checks", value: ppeChecklists.length, section: "ppe", icon: HardHat, color: 'hsl(var(--trade))', bg: 'hsl(var(--trade) / 0.1)' },
+          { label: "Training", value: trainingRecords.length, section: "training", icon: BadgeCheck, color: expiredTraining > 0 ? 'hsl(0 84.2% 60.2%)' : 'hsl(142.1 76.2% 36.3%)', bg: expiredTraining > 0 ? 'hsl(0 84.2% 60.2% / 0.1)' : 'hsl(142.1 76.2% 36.3% / 0.1)' },
+          { label: "JSA", value: jsaDocs.length, section: "jsa", icon: FileText, color: 'hsl(var(--trade))', bg: 'hsl(var(--trade) / 0.1)' },
         ].map((s) => (
-          <Card key={s.section} className="cursor-pointer hover-elevate" onClick={() => setActiveSection(s.section)}>
-            <CardContent className="py-1.5 px-2">
-              <div className="flex items-center gap-1">
+          <Card key={s.section} className="cursor-pointer hover-elevate overflow-visible" role="button" tabIndex={0}
+            onClick={() => setActiveSection(s.section)} onKeyDown={kbHandler(() => setActiveSection(s.section))}>
+            <CardContent className="py-2.5 px-3 flex flex-col items-center text-center">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center mb-1" style={{ backgroundColor: s.bg }}>
                 <s.icon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: s.color }} />
-                <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
               </div>
-              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">{s.label}</p>
+              <p className="text-xl font-bold leading-none" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-[10px] text-muted-foreground font-medium mt-1 truncate w-full">{s.label}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
+      {/* Action Required Alert */}
       {(openIncidents > 0 || openHazards > 0 || expiredTraining > 0 || expiringTraining > 0) && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
             <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" style={{ color: 'hsl(var(--destructive))' }} />
+              <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(0 84.2% 60.2% / 0.1)' }}>
+                <AlertCircle className="h-3.5 w-3.5" style={{ color: 'hsl(0 84.2% 60.2%)' }} />
+              </div>
               Action Required
             </CardTitle>
-            <Badge variant="destructive">{actionItems}</Badge>
+            <Badge variant="destructive" className="text-xs">{actionItems}</Badge>
           </CardHeader>
-          <CardContent className="pt-0 px-4 pb-4">
-            <div className="space-y-2">
+          <CardContent className="pt-0 px-4 pb-3">
+            <div className="space-y-1">
               {openIncidents > 0 && (
                 <div className="flex items-center gap-3 p-2.5 rounded-md cursor-pointer hover-elevate" onClick={() => setActiveSection("incidents")}>
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
@@ -2287,7 +2309,7 @@ export default function WhsHub() {
                     <p className="text-sm font-medium">{openIncidents} open incident{openIncidents !== 1 ? 's' : ''}</p>
                     <p className="text-xs text-muted-foreground">Needs review and follow-up</p>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 </div>
               )}
               {openHazards > 0 && (
@@ -2300,7 +2322,7 @@ export default function WhsHub() {
                     <p className="text-sm font-medium">{openHazards} open hazard{openHazards !== 1 ? 's' : ''}</p>
                     <p className="text-xs text-muted-foreground">Needs immediate action</p>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 </div>
               )}
               {expiredTraining > 0 && (
@@ -2313,7 +2335,7 @@ export default function WhsHub() {
                     <p className="text-sm font-medium">{expiredTraining} expired training</p>
                     <p className="text-xs text-muted-foreground">Licence or cert has lapsed</p>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 </div>
               )}
               {expiringTraining > 0 && (
@@ -2326,7 +2348,7 @@ export default function WhsHub() {
                     <p className="text-sm font-medium">{expiringTraining} expiring soon</p>
                     <p className="text-xs text-muted-foreground">Within the next 90 days</p>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 </div>
               )}
             </div>
@@ -2334,28 +2356,36 @@ export default function WhsHub() {
         </Card>
       )}
 
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+      {/* Quick Actions */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {[
-          { label: "Report Incident", icon: AlertTriangle, section: "incidents" },
-          { label: "Log Hazard", icon: ShieldAlert, section: "hazards" },
-          { label: "PPE Check-in", icon: HardHat, section: "ppe" },
-          { label: "Add Training", icon: BookOpen, section: "training" },
-          { label: "Emergency", icon: HeartPulse, section: "emergency" },
-          { label: "View SWMS", icon: ClipboardList, section: "swms" },
+          { label: "Report Incident", icon: AlertTriangle, section: "incidents", color: 'hsl(38 92% 50%)', bg: 'hsl(38 92% 50% / 0.1)' },
+          { label: "Log Hazard", icon: ShieldAlert, section: "hazards", color: 'hsl(0 84.2% 60.2%)', bg: 'hsl(0 84.2% 60.2% / 0.1)' },
+          { label: "PPE Check-in", icon: HardHat, section: "ppe", color: 'hsl(var(--trade))', bg: 'hsl(var(--trade) / 0.1)' },
+          { label: "Add Training", icon: BookOpen, section: "training", color: 'hsl(142.1 76.2% 36.3%)', bg: 'hsl(142.1 76.2% 36.3% / 0.1)' },
+          { label: "Emergency", icon: HeartPulse, section: "emergency", color: 'hsl(0 84.2% 60.2%)', bg: 'hsl(0 84.2% 60.2% / 0.1)' },
+          { label: "View SWMS", icon: ClipboardList, section: "swms", color: 'hsl(var(--trade))', bg: 'hsl(var(--trade) / 0.1)' },
         ].map((action) => (
-          <Button key={action.section} variant="outline" size="sm" onClick={() => setActiveSection(action.section)}
-            className="flex flex-col items-center gap-1 h-auto py-2 px-1 press-scale">
-            <action.icon className="h-3.5 w-3.5" style={{ color: 'hsl(var(--trade))' }} />
-            <span className="text-[10px] font-medium text-center leading-tight whitespace-normal">{action.label}</span>
-          </Button>
+          <Card key={action.section} className="cursor-pointer hover-elevate overflow-visible" role="button" tabIndex={0}
+            onClick={() => setActiveSection(action.section)} onKeyDown={kbHandler(() => setActiveSection(action.section))}>
+            <CardContent className="py-3 px-2 flex flex-col items-center text-center gap-1.5">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: action.bg }}>
+                <action.icon className="h-4 w-4" style={{ color: action.color }} />
+              </div>
+              <span className="text-[10px] font-medium text-muted-foreground leading-tight">{action.label}</span>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
+      {/* SWMS + Compliance side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
             <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <ClipboardList className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+              <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                <ClipboardList className="h-3.5 w-3.5" style={{ color: 'hsl(var(--trade))' }} />
+              </div>
               SWMS Documents
             </CardTitle>
             <Button variant="ghost" size="sm" onClick={() => setActiveSection("swms")}>
@@ -2365,12 +2395,14 @@ export default function WhsHub() {
           <CardContent className="pt-0 px-4 pb-4">
             {swmsDocs.length === 0 ? (
               <div className="text-center py-6">
-                <ClipboardList className="h-8 w-8 text-muted-foreground/25 mx-auto mb-2" />
+                <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2" style={{ backgroundColor: 'hsl(var(--trade) / 0.05)' }}>
+                  <ClipboardList className="h-5 w-5 text-muted-foreground/30" />
+                </div>
                 <p className="text-sm text-muted-foreground">No SWMS documents yet</p>
-                <p className="text-xs text-muted-foreground mt-1">Create one from a job's safety section</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Create one from a job's safety section</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {swmsDocs.slice(0, 4).map((doc: any) => (
                   <div key={doc.id} className="flex items-center gap-3 p-2.5 rounded-md cursor-pointer hover-elevate"
                     onClick={() => setActiveSection("swms")}>
@@ -2383,7 +2415,7 @@ export default function WhsHub() {
                       <p className="text-xs text-muted-foreground">{doc.hazardCount ?? 0} hazards identified</p>
                     </div>
                     <Badge variant={doc.status === 'approved' || doc.status === 'signed' ? 'default' : 'outline'} className="text-xs flex-shrink-0">
-                      {doc.status || 'Draft'}
+                      {doc.status || 'draft'}
                     </Badge>
                   </div>
                 ))}
@@ -2395,12 +2427,15 @@ export default function WhsHub() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
             <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+              <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                <ShieldCheck className="h-3.5 w-3.5" style={{ color: 'hsl(var(--trade))' }} />
+              </div>
               Compliance Checklist
             </CardTitle>
+            <span className="text-xs text-muted-foreground font-medium">{complianceMet}/{complianceItems.length}</span>
           </CardHeader>
           <CardContent className="pt-0 px-4 pb-4">
-            <div className="space-y-2">
+            <div className="space-y-1">
               {complianceItems.map((item, i) => (
                 <div key={i} className="flex items-center gap-3 p-2.5 rounded-md hover-elevate cursor-pointer"
                   onClick={() => {
@@ -2412,22 +2447,23 @@ export default function WhsHub() {
                     else if (item.label.includes('Hazard')) setActiveSection('hazards');
                   }}>
                   {item.done ? (
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
                          style={{ backgroundColor: 'hsl(142.1 76.2% 36.3% / 0.1)' }}>
-                      <CheckCircle2 className="h-4 w-4" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+                      <CheckCircle2 className="h-3.5 w-3.5" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
                     </div>
                   ) : (
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-muted-foreground/20">
-                      <CircleAlert className="h-4 w-4 text-muted-foreground/40" />
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                         style={{ backgroundColor: 'hsl(var(--muted) / 0.5)' }}>
+                      <div className="w-3 h-3 rounded-full border-2 border-muted-foreground/25" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${item.done ? '' : 'text-muted-foreground'}`}>{item.label}</p>
                   </div>
                   {item.done ? (
-                    <Badge className="text-xs bg-green-500/10 text-green-600 border-green-500/20">Done</Badge>
+                    <span className="text-xs font-medium" style={{ color: 'hsl(142.1 76.2% 36.3%)' }}>Done</span>
                   ) : (
-                    <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/40 flex-shrink-0" />
                   )}
                 </div>
               ))}
@@ -2436,13 +2472,16 @@ export default function WhsHub() {
         </Card>
       </div>
 
+      {/* Recent Incidents + Training */}
       {(incidents.length > 0 || trainingRecords.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {incidents.length > 0 && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
                 <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" style={{ color: 'hsl(38 92% 50%)' }} />
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(38 92% 50% / 0.1)' }}>
+                    <AlertTriangle className="h-3.5 w-3.5" style={{ color: 'hsl(38 92% 50%)' }} />
+                  </div>
                   Recent Incidents
                 </CardTitle>
                 <Button variant="ghost" size="sm" onClick={() => setActiveSection("incidents")}>
@@ -2450,7 +2489,7 @@ export default function WhsHub() {
                 </Button>
               </CardHeader>
               <CardContent className="pt-0 px-4 pb-4">
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {incidents.slice(0, 3).map((inc: any) => (
                     <div key={inc.id} className="flex items-center gap-3 p-2.5 rounded-md cursor-pointer hover-elevate"
                       onClick={() => setActiveSection("incidents")}>
@@ -2476,7 +2515,9 @@ export default function WhsHub() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
                 <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                    <BookOpen className="h-3.5 w-3.5" style={{ color: 'hsl(var(--trade))' }} />
+                  </div>
                   Training & Licences
                 </CardTitle>
                 <Button variant="ghost" size="sm" onClick={() => setActiveSection("training")}>
@@ -2484,7 +2525,7 @@ export default function WhsHub() {
                 </Button>
               </CardHeader>
               <CardContent className="pt-0 px-4 pb-4">
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {trainingRecords.slice(0, 3).map((rec: any) => (
                     <div key={rec.id} className="flex items-center gap-3 p-2.5 rounded-md cursor-pointer hover-elevate"
                       onClick={() => setActiveSection("training")}>
