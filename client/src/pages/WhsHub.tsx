@@ -2189,179 +2189,126 @@ export default function WhsHub() {
   const complianceMet = complianceItems.filter(i => i.done).length;
   const compliancePercent = Math.round((complianceMet / complianceItems.length) * 100);
 
-  const renderOverview = () => (
-    <div className="space-y-6">
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Card className="overflow-visible hover-elevate cursor-pointer" onClick={() => setActiveSection("incidents")}>
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-md bg-yellow-500/15 dark:bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-3xl font-bold leading-none">{openIncidents}</div>
-                  <div className="text-sm text-muted-foreground mt-0.5">Open Incidents</div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              </CardContent>
-            </Card>
-            <Card className="overflow-visible hover-elevate cursor-pointer" onClick={() => setActiveSection("hazards")}>
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-md bg-red-500/15 dark:bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                  <ShieldAlert className="w-6 h-6 text-red-600 dark:text-red-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-3xl font-bold leading-none">{openHazards}</div>
-                  <div className="text-sm text-muted-foreground mt-0.5">Open Hazards</div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              </CardContent>
-            </Card>
-            <Card className="overflow-visible hover-elevate cursor-pointer" onClick={() => setActiveSection("swms")}>
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-md bg-blue-500/15 dark:bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                  <ClipboardList className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-3xl font-bold leading-none">{swmsDocs.length}</div>
-                  <div className="text-sm text-muted-foreground mt-0.5">SWMS Documents</div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              </CardContent>
-            </Card>
-            <Card className="overflow-visible hover-elevate cursor-pointer" onClick={() => setActiveSection("training")}>
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-md bg-green-500/15 dark:bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                  <BadgeCheck className="w-6 h-6 text-green-600 dark:text-green-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-3xl font-bold leading-none">{trainingRecords.length}</div>
-                  <div className="text-sm text-muted-foreground mt-0.5">Training & Licences</div>
-                </div>
-                {(expiredTraining > 0 || expiringTraining > 0) && (
-                  <Badge variant="destructive" className="flex-shrink-0">{expiredTraining + expiringTraining}</Badge>
-                )}
-                <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+  const renderOverview = () => {
+    const complianceColor = compliancePercent >= 80 ? "green" : compliancePercent >= 50 ? "yellow" : "red";
+    const complianceStrokeClass = complianceColor === "green" ? "stroke-green-500" : complianceColor === "yellow" ? "stroke-yellow-500" : "stroke-red-500";
+    const complianceTextClass = complianceColor === "green" ? "text-green-600 dark:text-green-400" : complianceColor === "yellow" ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400";
 
-        <Card className="overflow-visible">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <ShieldCheck className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold">Site Compliance</h3>
-            </div>
-            <div className="flex items-center gap-5 mb-5">
-              <div className="relative w-20 h-20 flex-shrink-0">
-                <svg viewBox="0 0 36 36" className="w-20 h-20 -rotate-90">
+    return (
+    <div className="space-y-5">
+      <Card className="overflow-visible">
+        <CardContent className="p-5 md:p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+            <div className="flex items-center gap-5 flex-shrink-0">
+              <div className="relative w-24 h-24 flex-shrink-0">
+                <svg viewBox="0 0 36 36" className="w-24 h-24 -rotate-90">
                   <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none" stroke="currentColor" strokeWidth="3" className="text-muted-foreground/20" />
+                    fill="none" stroke="currentColor" strokeWidth="2.5" className="text-muted-foreground/15" />
                   <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none" strokeWidth="3" strokeDasharray={`${compliancePercent}, 100`} strokeLinecap="round"
-                    className={compliancePercent >= 80 ? "stroke-green-500" : compliancePercent >= 50 ? "stroke-yellow-500" : "stroke-red-500"} />
+                    fill="none" strokeWidth="2.5" strokeDasharray={`${compliancePercent}, 100`} strokeLinecap="round"
+                    className={complianceStrokeClass} />
                 </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-lg font-bold ${compliancePercent >= 80 ? "text-green-600 dark:text-green-400" : compliancePercent >= 50 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400"}`}>
-                    {compliancePercent}%
-                  </span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`text-2xl font-bold leading-none ${complianceTextClass}`}>{compliancePercent}%</span>
+                  <span className="text-[10px] text-muted-foreground mt-0.5">compliant</span>
                 </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium mb-1">{complianceMet} of {complianceItems.length} checks passed</div>
-                <div className="text-xs text-muted-foreground">
-                  {compliancePercent === 100 ? "All clear — site is fully compliant" :
-                   compliancePercent >= 80 ? "Almost there — just a few items left" :
-                   "Action needed to meet compliance"}
+              <div className="hidden sm:block">
+                <h3 className="text-base font-semibold mb-1">Site Compliance</h3>
+                <p className="text-sm text-muted-foreground mb-2">{complianceMet}/{complianceItems.length} checks passed</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {complianceItems.map((item, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      {item.done ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                      ) : (
+                        <CircleAlert className="w-3.5 h-3.5 text-muted-foreground/50 flex-shrink-0" />
+                      )}
+                      <span className={`text-xs ${item.done ? '' : 'text-muted-foreground/70'}`}>{item.label}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-            <div className="space-y-2">
-              {complianceItems.map((item, i) => (
-                <div key={i} className="flex items-center gap-2.5">
-                  {item.done ? (
-                    <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-                  ) : (
-                    <CircleAlert className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+
+            <div className="hidden lg:block w-px bg-border self-stretch" />
+
+            <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3 min-w-0">
+              {[
+                { label: "Open Incidents", value: openIncidents, icon: AlertTriangle, section: "incidents", iconColor: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-500/10 dark:bg-yellow-500/15", alert: openIncidents > 0 },
+                { label: "Open Hazards", value: openHazards, icon: ShieldAlert, section: "hazards", iconColor: "text-red-600 dark:text-red-400", bgColor: "bg-red-500/10 dark:bg-red-500/15", alert: openHazards > 0 },
+                { label: "SWMS Docs", value: swmsDocs.length, icon: ClipboardList, section: "swms", iconColor: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/10 dark:bg-blue-500/15" },
+                { label: "Training", value: trainingRecords.length, icon: BadgeCheck, section: "training", iconColor: "text-green-600 dark:text-green-400", bgColor: "bg-green-500/10 dark:bg-green-500/15", alert: expiredTraining > 0 },
+              ].map((stat) => (
+                <div key={stat.section} onClick={() => setActiveSection(stat.section)}
+                  className="cursor-pointer hover-elevate rounded-md p-3 text-center relative">
+                  <div className={`w-10 h-10 rounded-md ${stat.bgColor} flex items-center justify-center mx-auto mb-2`}>
+                    <stat.icon className={`w-5 h-5 ${stat.iconColor}`} />
+                  </div>
+                  <div className="text-2xl font-bold leading-none">{stat.value}</div>
+                  <div className="text-[11px] text-muted-foreground mt-1">{stat.label}</div>
+                  {stat.alert && (
+                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                   )}
-                  <span className={`text-sm ${item.done ? '' : 'text-muted-foreground'}`}>{item.label}</span>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      <div>
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Actions</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { label: "Report Incident", icon: AlertTriangle, section: "incidents", color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500/10 dark:bg-yellow-500/20" },
-            { label: "Log Hazard", icon: ShieldAlert, section: "hazards", color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10 dark:bg-red-500/20" },
-            { label: "PPE Check-in", icon: HardHat, section: "ppe", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 dark:bg-emerald-500/20" },
-            { label: "Add Training", icon: BookOpen, section: "training", color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10 dark:bg-purple-500/20" },
-            { label: "Emergency Plan", icon: HeartPulse, section: "emergency", color: "text-pink-600 dark:text-pink-400", bg: "bg-pink-500/10 dark:bg-pink-500/20" },
-            { label: "View SWMS", icon: ClipboardList, section: "swms", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10 dark:bg-blue-500/20" },
-          ].map((action) => (
-            <Button key={action.section} variant="outline" onClick={() => setActiveSection(action.section)}
-              className="flex flex-col items-center gap-2 h-auto py-4">
-              <div className={`w-11 h-11 rounded-md ${action.bg} flex items-center justify-center`}>
-                <action.icon className={`w-5 h-5 ${action.color}`} />
+            <div className="sm:hidden">
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-1">
+                {complianceItems.map((item, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    {item.done ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    ) : (
+                      <CircleAlert className="w-3.5 h-3.5 text-muted-foreground/50 flex-shrink-0" />
+                    )}
+                    <span className={`text-xs ${item.done ? '' : 'text-muted-foreground/70'}`}>{item.label}</span>
+                  </div>
+                ))}
               </div>
-              <span className="text-xs font-medium text-center leading-tight">{action.label}</span>
-            </Button>
-          ))}
-        </div>
-      </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {(openIncidents > 0 || openHazards > 0 || expiredTraining > 0 || expiringTraining > 0) && (
-        <Card className="border-yellow-500/40 bg-yellow-500/5 overflow-visible">
-          <CardContent className="pt-4 pb-4">
-            <h3 className="font-semibold flex items-center gap-2 mb-3 text-yellow-600 dark:text-yellow-400">
-              <AlertCircle className="w-5 h-5" /> Action Required
-              <Badge variant="destructive" className="ml-auto">{actionItems} item{actionItems !== 1 ? 's' : ''}</Badge>
-            </h3>
+        <Card className="overflow-visible border-destructive/30">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 rounded-md bg-destructive/10 dark:bg-destructive/15 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-4 h-4 text-destructive" />
+              </div>
+              <h3 className="text-sm font-semibold flex-1">Action Required</h3>
+              <Badge variant="destructive">{actionItems}</Badge>
+            </div>
             <div className="grid gap-2 sm:grid-cols-2">
               {openIncidents > 0 && (
-                <div className="flex items-center gap-3 cursor-pointer hover-elevate rounded-md p-2.5 bg-card/50" onClick={() => setActiveSection("incidents")}>
-                  <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium">{openIncidents} open incident{openIncidents !== 1 ? 's' : ''}</span>
-                    <p className="text-xs text-muted-foreground">Needs review and follow-up</p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div className="flex items-center gap-3 cursor-pointer hover-elevate rounded-md p-2.5" onClick={() => setActiveSection("incidents")}>
+                  <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                  <span className="text-sm flex-1"><strong>{openIncidents}</strong> incident{openIncidents !== 1 ? 's' : ''} need review</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                 </div>
               )}
               {openHazards > 0 && (
-                <div className="flex items-center gap-3 cursor-pointer hover-elevate rounded-md p-2.5 bg-card/50" onClick={() => setActiveSection("hazards")}>
-                  <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium">{openHazards} open hazard{openHazards !== 1 ? 's' : ''}</span>
-                    <p className="text-xs text-muted-foreground">Needs immediate action</p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div className="flex items-center gap-3 cursor-pointer hover-elevate rounded-md p-2.5" onClick={() => setActiveSection("hazards")}>
+                  <ShieldAlert className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  <span className="text-sm flex-1"><strong>{openHazards}</strong> hazard{openHazards !== 1 ? 's' : ''} need action</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                 </div>
               )}
               {expiredTraining > 0 && (
-                <div className="flex items-center gap-3 cursor-pointer hover-elevate rounded-md p-2.5 bg-card/50" onClick={() => setActiveSection("training")}>
-                  <XCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium">{expiredTraining} expired</span>
-                    <p className="text-xs text-muted-foreground">Training or licence has lapsed</p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div className="flex items-center gap-3 cursor-pointer hover-elevate rounded-md p-2.5" onClick={() => setActiveSection("training")}>
+                  <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  <span className="text-sm flex-1"><strong>{expiredTraining}</strong> expired training</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                 </div>
               )}
               {expiringTraining > 0 && (
-                <div className="flex items-center gap-3 cursor-pointer hover-elevate rounded-md p-2.5 bg-card/50" onClick={() => setActiveSection("training")}>
-                  <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium">{expiringTraining} expiring soon</span>
-                    <p className="text-xs text-muted-foreground">Within the next 90 days</p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div className="flex items-center gap-3 cursor-pointer hover-elevate rounded-md p-2.5" onClick={() => setActiveSection("training")}>
+                  <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                  <span className="text-sm flex-1"><strong>{expiringTraining}</strong> expiring soon</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                 </div>
               )}
             </div>
@@ -2369,157 +2316,139 @@ export default function WhsHub() {
         </Card>
       )}
 
+      <div className="grid gap-3 grid-cols-3 lg:grid-cols-6">
+        {[
+          { label: "Report Incident", icon: AlertTriangle, section: "incidents", iconColor: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500/10 dark:bg-yellow-500/15" },
+          { label: "Log Hazard", icon: ShieldAlert, section: "hazards", iconColor: "text-red-600 dark:text-red-400", bg: "bg-red-500/10 dark:bg-red-500/15" },
+          { label: "PPE Check-in", icon: HardHat, section: "ppe", iconColor: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 dark:bg-emerald-500/15" },
+          { label: "Add Training", icon: BookOpen, section: "training", iconColor: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10 dark:bg-purple-500/15" },
+          { label: "Emergency", icon: HeartPulse, section: "emergency", iconColor: "text-pink-600 dark:text-pink-400", bg: "bg-pink-500/10 dark:bg-pink-500/15" },
+          { label: "View SWMS", icon: ClipboardList, section: "swms", iconColor: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10 dark:bg-blue-500/15" },
+        ].map((action) => (
+          <Button key={action.section} variant="ghost" onClick={() => setActiveSection(action.section)}
+            className="flex flex-col items-center gap-1.5 h-auto py-3 px-2">
+            <div className={`w-9 h-9 rounded-md ${action.bg} flex items-center justify-center`}>
+              <action.icon className={`w-4 h-4 ${action.iconColor}`} />
+            </div>
+            <span className="text-[11px] font-medium text-center leading-tight whitespace-normal">{action.label}</span>
+          </Button>
+        ))}
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="overflow-visible hover-elevate cursor-pointer" onClick={() => setActiveSection("incidents")}>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-1">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-md bg-yellow-500/15 dark:bg-yellow-500/20 flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+        {[
+          {
+            title: "Recent Incidents", icon: AlertTriangle, section: "incidents",
+            iconColor: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-500/10 dark:bg-yellow-500/15",
+            items: incidents, count: incidents.length,
+            emptyIcon: CheckCircle2, emptyIconClass: "text-green-600/30 dark:text-green-400/30",
+            emptyText: "No incidents reported", emptySubtext: "Keep up the safe work",
+            renderItem: (item: any) => ({
+              name: item.title,
+              detail: item.incidentType?.replace(/_/g, ' '),
+              status: item.status,
+              dotColor: item.status === 'open' ? 'bg-yellow-500' : item.status === 'resolved' ? 'bg-green-500' : 'bg-muted-foreground',
+              badgeVariant: (item.status === 'open' ? 'destructive' : item.status === 'resolved' ? 'default' : 'secondary') as "destructive" | "default" | "secondary",
+            }),
+          },
+          {
+            title: "SWMS Documents", icon: ClipboardList, section: "swms",
+            iconColor: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/10 dark:bg-blue-500/15",
+            items: swmsDocs, count: swmsDocs.length,
+            emptyIcon: ClipboardList, emptyIconClass: "text-muted-foreground/25",
+            emptyText: "No SWMS yet", emptySubtext: "Create from a job's safety section",
+            renderItem: (item: any) => ({
+              name: item.title,
+              detail: `${item.hazardCount ?? 0} hazards`,
+              status: item.status || 'draft',
+              dotColor: item.status === 'approved' || item.status === 'signed' ? 'bg-green-500' : 'bg-blue-500',
+              badgeVariant: (item.status === 'approved' || item.status === 'signed' ? 'default' : 'secondary') as "default" | "secondary",
+            }),
+          },
+          {
+            title: "Training & Licences", icon: BookOpen, section: "training",
+            iconColor: "text-purple-600 dark:text-purple-400", bgColor: "bg-purple-500/10 dark:bg-purple-500/15",
+            items: trainingRecords, count: trainingRecords.length,
+            emptyIcon: BookOpen, emptyIconClass: "text-muted-foreground/25",
+            emptyText: "No training records", emptySubtext: "Add your White Card and certs",
+            renderItem: (item: any) => ({
+              name: item.workerName,
+              detail: item.courseCode || item.courseName,
+              status: item.status,
+              dotColor: item.status === 'current' ? 'bg-green-500' : item.status === 'expired' ? 'bg-red-500' : 'bg-yellow-500',
+              badgeVariant: (item.status === 'current' ? 'default' : item.status === 'expired' ? 'destructive' : 'secondary') as "destructive" | "default" | "secondary",
+            }),
+          },
+        ].map((card) => (
+          <Card key={card.section} className="overflow-visible hover-elevate cursor-pointer" onClick={() => setActiveSection(card.section)}>
+            <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-7 h-7 rounded-md ${card.bgColor} flex items-center justify-center`}>
+                  <card.icon className={`w-3.5 h-3.5 ${card.iconColor}`} />
+                </div>
+                <CardTitle className="text-sm font-semibold">{card.title}</CardTitle>
               </div>
-              <CardTitle className="text-sm font-semibold">Recent Incidents</CardTitle>
-            </div>
-            <Badge variant="secondary" className="text-xs">{incidents.length}</Badge>
-          </CardHeader>
-          <CardContent>
-            {incidents.length === 0 ? (
-              <div className="text-center py-6">
-                <CheckCircle2 className="w-8 h-8 text-green-600/40 dark:text-green-400/40 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No incidents reported</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Looking good, keep it up</p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {incidents.slice(0, 3).map((inc: any) => (
-                  <div key={inc.id} className="flex items-center gap-2.5 p-2 rounded-md bg-muted/30">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${inc.status === 'open' ? 'bg-yellow-500' : inc.status === 'resolved' ? 'bg-green-500' : 'bg-muted-foreground'}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{inc.title}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{inc.incidentType?.replace(/_/g, ' ')}</p>
+              <Badge variant="secondary">{card.count}</Badge>
+            </CardHeader>
+            <CardContent>
+              {card.items.length === 0 ? (
+                <div className="text-center py-5">
+                  <card.emptyIcon className={`w-7 h-7 ${card.emptyIconClass} mx-auto mb-1.5`} />
+                  <p className="text-sm text-muted-foreground">{card.emptyText}</p>
+                  <p className="text-xs text-muted-foreground/70 mt-0.5">{card.emptySubtext}</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {card.items.slice(0, 3).map((item: any) => {
+                    const r = card.renderItem(item);
+                    return (
+                      <div key={item.id} className="flex items-center gap-2.5 p-2 rounded-md bg-muted/20">
+                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.dotColor}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{r.name}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{r.detail}</p>
+                        </div>
+                        <Badge variant={r.badgeVariant} className="flex-shrink-0">{r.status}</Badge>
+                      </div>
+                    );
+                  })}
+                  {card.items.length > 3 && (
+                    <div className="flex items-center justify-center gap-1 text-xs text-primary font-medium pt-1">
+                      <span>View all {card.items.length}</span>
+                      <ArrowRight className="w-3 h-3" />
                     </div>
-                    <Badge variant={inc.status === 'open' ? 'destructive' : inc.status === 'resolved' ? 'default' : 'secondary'} className="text-xs flex-shrink-0">
-                      {inc.status}
-                    </Badge>
-                  </div>
-                ))}
-                {incidents.length > 3 && (
-                  <div className="flex items-center gap-1 text-xs text-primary font-medium pt-1">
-                    <span>View all {incidents.length} incidents</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-visible hover-elevate cursor-pointer" onClick={() => setActiveSection("swms")}>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-1">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-md bg-blue-500/15 dark:bg-blue-500/20 flex items-center justify-center">
-                <ClipboardList className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              </div>
-              <CardTitle className="text-sm font-semibold">SWMS Documents</CardTitle>
-            </div>
-            <Badge variant="secondary" className="text-xs">{swmsDocs.length}</Badge>
-          </CardHeader>
-          <CardContent>
-            {swmsDocs.length === 0 ? (
-              <div className="text-center py-6">
-                <ClipboardList className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No SWMS documents yet</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Create one from a job's safety section</p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {swmsDocs.slice(0, 3).map((doc: any) => (
-                  <div key={doc.id} className="flex items-center gap-2.5 p-2 rounded-md bg-muted/30">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${doc.status === 'approved' || doc.status === 'signed' ? 'bg-green-500' : 'bg-blue-500'}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{doc.title}</p>
-                      <p className="text-xs text-muted-foreground">{doc.hazardCount ?? 0} hazards identified</p>
-                    </div>
-                    <Badge variant={doc.status === 'approved' || doc.status === 'signed' ? 'default' : 'secondary'} className="text-xs flex-shrink-0">
-                      {doc.status || 'draft'}
-                    </Badge>
-                  </div>
-                ))}
-                {swmsDocs.length > 3 && (
-                  <div className="flex items-center gap-1 text-xs text-primary font-medium pt-1">
-                    <span>View all {swmsDocs.length} documents</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-visible hover-elevate cursor-pointer" onClick={() => setActiveSection("training")}>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-1">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-md bg-purple-500/15 dark:bg-purple-500/20 flex items-center justify-center">
-                <BookOpen className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-              </div>
-              <CardTitle className="text-sm font-semibold">Training & Licences</CardTitle>
-            </div>
-            <Badge variant="secondary" className="text-xs">{trainingRecords.length}</Badge>
-          </CardHeader>
-          <CardContent>
-            {trainingRecords.length === 0 ? (
-              <div className="text-center py-6">
-                <BookOpen className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No training records</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Add your White Card and other certs</p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {trainingRecords.slice(0, 3).map((rec: any) => (
-                  <div key={rec.id} className="flex items-center gap-2.5 p-2 rounded-md bg-muted/30">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${rec.status === 'current' ? 'bg-green-500' : rec.status === 'expired' ? 'bg-red-500' : 'bg-yellow-500'}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{rec.workerName}</p>
-                      <p className="text-xs text-muted-foreground">{rec.courseCode || rec.courseName}</p>
-                    </div>
-                    <Badge variant={rec.status === 'current' ? 'default' : rec.status === 'expired' ? 'destructive' : 'secondary'} className="text-xs flex-shrink-0">
-                      {rec.status}
-                    </Badge>
-                  </div>
-                ))}
-                {trainingRecords.length > 3 && (
-                  <div className="flex items-center gap-1 text-xs text-primary font-medium pt-1">
-                    <span>View all {trainingRecords.length} records</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Total Documents", value: totalDocs, icon: FileText, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10 dark:bg-blue-500/20" },
-          { label: "PPE Check-ins", value: ppeChecklists.length, icon: HardHat, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 dark:bg-emerald-500/20", section: "ppe" },
-          { label: "Emergency Plans", value: emergencyInfo.length, icon: HeartPulse, color: "text-pink-600 dark:text-pink-400", bg: "bg-pink-500/10 dark:bg-pink-500/20", section: "emergency" },
-          { label: "Job Safety Analyses", value: jsaDocs.length, icon: ClipboardList, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500/10 dark:bg-orange-500/20", section: "jsa" },
+          { label: "Total Documents", value: totalDocs, icon: FileText, iconColor: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10 dark:bg-blue-500/15" },
+          { label: "PPE Check-ins", value: ppeChecklists.length, icon: HardHat, iconColor: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 dark:bg-emerald-500/15", section: "ppe" },
+          { label: "Emergency Plans", value: emergencyInfo.length, icon: HeartPulse, iconColor: "text-pink-600 dark:text-pink-400", bg: "bg-pink-500/10 dark:bg-pink-500/15", section: "emergency" },
+          { label: "Job Safety Analyses", value: jsaDocs.length, icon: ClipboardList, iconColor: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500/10 dark:bg-orange-500/15", section: "jsa" },
         ].map((stat) => (
           <Card key={stat.label} className={`overflow-visible ${stat.section ? 'hover-elevate cursor-pointer' : ''}`}
             onClick={() => stat.section && setActiveSection(stat.section)}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-md ${stat.bg} flex items-center justify-center flex-shrink-0`}>
-                <stat.icon className={`w-5 h-5 ${stat.color}`} />
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-7 h-7 rounded-md ${stat.bg} flex items-center justify-center flex-shrink-0`}>
+                  <stat.icon className={`w-3.5 h-3.5 ${stat.iconColor}`} />
+                </div>
+                <span className="text-xs text-muted-foreground">{stat.label}</span>
               </div>
-              <div>
-                <div className="text-2xl font-bold leading-none">{stat.value}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{stat.label}</div>
-              </div>
+              <div className="text-2xl font-bold">{stat.value}</div>
             </CardContent>
           </Card>
         ))}
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
