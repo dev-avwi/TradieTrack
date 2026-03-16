@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "wfSsr0MFCGGuCHjKXPJUw"
+uri = "file://attached_assets/JobRunner_Full_System_Brief.md"
+type = "text"
+title = "JobRunner Full System Brief & Design Plan"
