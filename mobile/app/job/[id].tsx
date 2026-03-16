@@ -2089,14 +2089,10 @@ export default function JobDetailScreen() {
   const { businessSettings, roleInfo, user, hasPermission } = useAuthStore();
   const { isSmsReady } = useIntegrationHealth();
   
-  // Check if user can delete jobs (owner, admin, or manager only)
-  // - If roleInfo.isOwner is true: they're the business owner
-  // - If roleInfo exists with OWNER/ADMIN/MANAGER role: they have delete permission
-  // - If roleInfo is null and user exists with their own business: they're a solo owner
   const isOwnerOrManager = roleInfo 
     ? (roleInfo.isOwner || ['OWNER', 'ADMIN', 'MANAGER'].includes(roleInfo.roleName?.toUpperCase() || ''))
-    : false;
-  const isSoloOwner = user && businessSettings && !roleInfo;
+    : (user && businessSettings ? true : false);
+  const isSoloOwner = user && businessSettings && (!roleInfo || roleInfo.isOwner);
   const canDeleteJobs = isOwnerOrManager || isSoloOwner;
   
   // Check if user can collect payments (owners always can, workers need permission)

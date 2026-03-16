@@ -509,38 +509,58 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   fetchRoleInfo: async () => {
     const { isOnline } = useOfflineStore.getState();
     if (!isOnline) {
-      // Offline - keep existing roleInfo, don't make API call
+      const currentRoleInfo = get().roleInfo;
+      if (!currentRoleInfo) {
+        set({
+          roleInfo: {
+            roleId: 'owner',
+            roleName: 'OWNER',
+            permissions: ['*'],
+            hasCustomPermissions: false,
+            isOwner: true,
+          }
+        });
+      }
       return;
     }
     
-    // Try to fetch role info (for team members)
-    const roleResponse = await api.get<{
-      roleId: string;
-      roleName: string;
-      permissions: string[];
-      hasCustomPermissions: boolean;
-    }>('/api/team/my-role');
-    
-    if (roleResponse.data) {
-      // User is a team member with specific role
-      // Normalize permissions to array to prevent runtime errors
-      const permissions = Array.isArray(roleResponse.data.permissions) ? roleResponse.data.permissions : [];
-      set({
-        roleInfo: {
-          roleId: roleResponse.data.roleId,
-          roleName: roleResponse.data.roleName,
-          permissions,
-          hasCustomPermissions: roleResponse.data.hasCustomPermissions,
-          isOwner: false,
-        }
-      });
-    } else {
-      // User is an owner (not a team member of another business)
+    try {
+      const roleResponse = await api.get<{
+        roleId: string;
+        roleName: string;
+        permissions: string[];
+        hasCustomPermissions: boolean;
+      }>('/api/team/my-role');
+      
+      if (roleResponse.data) {
+        const permissions = Array.isArray(roleResponse.data.permissions) ? roleResponse.data.permissions : [];
+        set({
+          roleInfo: {
+            roleId: roleResponse.data.roleId,
+            roleName: roleResponse.data.roleName,
+            permissions,
+            hasCustomPermissions: roleResponse.data.hasCustomPermissions,
+            isOwner: false,
+          }
+        });
+      } else {
+        set({
+          roleInfo: {
+            roleId: 'owner',
+            roleName: 'OWNER',
+            permissions: ['*'],
+            hasCustomPermissions: false,
+            isOwner: true,
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('[Auth] Failed to fetch role info, defaulting to owner:', error);
       set({
         roleInfo: {
           roleId: 'owner',
           roleName: 'OWNER',
-          permissions: ['*'], // Owners have all permissions
+          permissions: ['*'],
           hasCustomPermissions: false,
           isOwner: true,
         }
