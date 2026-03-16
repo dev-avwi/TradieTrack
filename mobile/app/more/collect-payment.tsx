@@ -798,6 +798,7 @@ export default function CollectScreen() {
   const [description, setDescription] = useState('');
   const [showTapToPayModal, setShowTapToPayModal] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [autoReceiptWasSent, setAutoReceiptWasSent] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'ready' | 'connecting' | 'waiting' | 'processing' | 'success' | 'error'>('ready');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<SelectedInvoice | null>(null);
@@ -1158,8 +1159,8 @@ export default function CollectScreen() {
         if (selectedInvoice) {
           try {
             const recordRes = await api.post(`/api/invoices/${selectedInvoice.id}/record-payment`, {
-              amount: (amountCents / 100).toFixed(2), // Server expects dollars, not cents
-              paymentMethod: 'card', // Server accepts: cash, bank_transfer, cheque, card, other
+              amount: (amountCents / 100).toFixed(2),
+              paymentMethod: 'card',
               notes: 'Tap to Pay contactless payment',
             });
             if (recordRes.error) {
@@ -1171,6 +1172,47 @@ export default function CollectScreen() {
             Alert.alert('Recording Error', msg);
           }
         }
+        
+        // Auto-send receipt if client has email or phone
+        const clientEmail = selectedInvoice?.clientEmail;
+        const clientPhone = selectedInvoice?.clientPhone;
+        let autoReceiptSent = false;
+        
+        if (clientEmail) {
+          try {
+            await api.post('/api/payments/send-receipt', {
+              email: clientEmail,
+              amount: amountCents,
+              description: description || 'Payment received',
+              invoiceId: selectedInvoice?.id,
+              invoiceNumber: selectedInvoice?.invoiceNumber,
+              clientName: selectedInvoice?.clientName,
+              method: 'email',
+            });
+            autoReceiptSent = true;
+          } catch (e) {
+            console.log('Auto email receipt failed, will show manual option');
+          }
+        }
+        
+        if (clientPhone && !smsStatus?.setupRequired && smsStatus?.connected) {
+          try {
+            await api.post('/api/payments/send-receipt', {
+              phone: clientPhone,
+              amount: amountCents,
+              description: description || 'Payment received',
+              invoiceId: selectedInvoice?.id,
+              invoiceNumber: selectedInvoice?.invoiceNumber,
+              clientName: selectedInvoice?.clientName,
+              method: 'sms',
+            });
+            autoReceiptSent = true;
+          } catch (e) {
+            console.log('Auto SMS receipt failed, will show manual option');
+          }
+        }
+        
+        setAutoReceiptWasSent(autoReceiptSent);
         
         if (!useNativeSDK) {
           setPaymentStep('success');
@@ -1258,6 +1300,46 @@ export default function CollectScreen() {
           }
         }
         
+        const clientEmail = selectedInvoice?.clientEmail;
+        const clientPhone = selectedInvoice?.clientPhone;
+        let autoReceiptSent = false;
+        
+        if (clientEmail) {
+          try {
+            await api.post('/api/payments/send-receipt', {
+              email: clientEmail,
+              amount: amountCents,
+              description: description || 'Payment received',
+              invoiceId: selectedInvoice?.id,
+              invoiceNumber: selectedInvoice?.invoiceNumber,
+              clientName: selectedInvoice?.clientName,
+              method: 'email',
+            });
+            autoReceiptSent = true;
+          } catch (e) {
+            console.log('Auto email receipt failed, will show manual option');
+          }
+        }
+        
+        if (clientPhone && !smsStatus?.setupRequired && smsStatus?.connected) {
+          try {
+            await api.post('/api/payments/send-receipt', {
+              phone: clientPhone,
+              amount: amountCents,
+              description: description || 'Payment received',
+              invoiceId: selectedInvoice?.id,
+              invoiceNumber: selectedInvoice?.invoiceNumber,
+              clientName: selectedInvoice?.clientName,
+              method: 'sms',
+            });
+            autoReceiptSent = true;
+          } catch (e) {
+            console.log('Auto SMS receipt failed, will show manual option');
+          }
+        }
+        
+        setAutoReceiptWasSent(autoReceiptSent);
+
         if (!useNativeSDK) {
           setPaymentStep('success');
           setTimeout(() => {
@@ -1362,6 +1444,7 @@ export default function CollectScreen() {
   // Close receipt modal and reset state
   const handleCloseReceiptModal = () => {
     setShowReceiptModal(false);
+    setAutoReceiptWasSent(false);
     setAmount('');
     setDescription('');
     setSelectedInvoice(null);
@@ -3628,6 +3711,15 @@ export default function CollectScreen() {
               <Text style={[styles.modalStepSubtitle, { marginTop: spacing.sm }]}>
                 {selectedInvoice.invoiceNumber} • {selectedInvoice.clientName}
               </Text>
+            )}
+
+            {autoReceiptWasSent && (
+              <View style={{ marginTop: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.success + '15', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 8 }}>
+                <Feather name="check" size={16} color={colors.success} />
+                <Text style={{ color: colors.success, fontSize: 14, fontWeight: '600' }}>
+                  Receipt sent automatically
+                </Text>
+              </View>
             )}
 
             <View style={{ marginTop: spacing.md, width: '100%', gap: spacing.sm }}>

@@ -1085,6 +1085,53 @@ export default function JobPortal() {
         )}
 
         {(() => {
+          const paidInvoices = effectiveWorkerStatus === 'completed'
+            ? documents.invoices.filter(i => i.status === 'paid')
+            : [];
+          const allPaid = documents.invoices.length > 0 && paidInvoices.length === documents.invoices.length;
+          if (allPaid) {
+            const totalPaid = paidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
+            return (
+              <div className="mx-4 mt-3">
+                <Card className="border border-emerald-200 bg-emerald-50/50">
+                  <CardContent className="py-4 px-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-emerald-900">Payment Received</p>
+                      <p className="text-xs text-emerald-700 mt-0.5">
+                        {formatCurrency(totalPaid.toString())} paid - Thank you!
+                      </p>
+                    </div>
+                    {paidInvoices.length === 1 && paidInvoices[0]?.token ? (
+                      <a href={`/portal/invoice/${paidInvoices[0].token}`}>
+                        <Button variant="outline" size="sm" className="text-emerald-700 border-emerald-300 flex-shrink-0">
+                          <Receipt className="w-4 h-4 mr-1.5" />
+                          Receipt
+                        </Button>
+                      </a>
+                    ) : paidInvoices.length > 1 ? (
+                      <div className="flex flex-col gap-1">
+                        {paidInvoices.map((inv, idx) => (
+                          <a key={inv.id} href={`/portal/invoice/${inv.token}`}>
+                            <Button variant="outline" size="sm" className="text-emerald-700 border-emerald-300 w-full text-xs">
+                              <Receipt className="w-3 h-3 mr-1" />
+                              #{inv.invoiceNumber}
+                            </Button>
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
+        {(() => {
           const unpaidInvoices = effectiveWorkerStatus === 'completed' 
             ? documents.invoices.filter(i => i.status !== 'paid') 
             : [];
@@ -1772,7 +1819,8 @@ export default function JobPortal() {
                               </>
                             ) : (
                               <>
-                                View Invoice
+                                <Receipt className="w-4 h-4 mr-1.5" />
+                                View Receipt
                                 <ChevronRight className="w-4 h-4 ml-1" />
                               </>
                             )}

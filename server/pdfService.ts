@@ -3892,8 +3892,63 @@ export const generateJobProofPackPDF = (data: {
     : `<p class="empty-message">No invoice generated</p>`;
 
   const gpsEntries = timeEntries.filter(e => e.clockInLatitude || e.clockOutLatitude || e.origin === 'geofence');
+
+  // Build worker presence summary - group by worker and calculate total on-site time
+  const workerPresenceMap = new Map<string, { worker: string; firstIn: string | null; lastOut: string | null; totalMs: number; address: string; verified: boolean }>();
+  for (const e of gpsEntries) {
+    const key = e.workerName || 'Owner';
+    const existing = workerPresenceMap.get(key) || { worker: key, firstIn: null, lastOut: null, totalMs: 0, address: '', verified: false };
+    if (e.startTime && (!existing.firstIn || new Date(e.startTime) < new Date(existing.firstIn))) {
+      existing.firstIn = e.startTime;
+    }
+    if (e.endTime && (!existing.lastOut || new Date(e.endTime) > new Date(existing.lastOut))) {
+      existing.lastOut = e.endTime;
+    }
+    if (e.duration) existing.totalMs += e.duration * 60 * 1000;
+    if (e.clockInAddress) existing.address = e.clockInAddress;
+    else if (e.clockInLatitude) existing.address = `${e.clockInLatitude}, ${e.clockInLongitude}`;
+    if (e.clockInLatitude || e.clockOutLatitude || e.origin === 'geofence') existing.verified = true;
+    workerPresenceMap.set(key, existing);
+  }
+  // Also include geofence alerts in presence data
+  for (const a of geofenceAlerts) {
+    const key = a.workerName || 'Worker';
+    const existing = workerPresenceMap.get(key) || { worker: key, firstIn: null, lastOut: null, totalMs: 0, address: '', verified: false };
+    if (a.alertType === 'arrival' && a.createdAt && (!existing.firstIn || new Date(a.createdAt) < new Date(existing.firstIn))) {
+      existing.firstIn = a.createdAt;
+    }
+    if (a.alertType === 'departure' && a.createdAt && (!existing.lastOut || new Date(a.createdAt) > new Date(existing.lastOut))) {
+      existing.lastOut = a.createdAt;
+    }
+    if (a.address) existing.address = a.address;
+    else if (a.latitude) existing.address = `${a.latitude}, ${a.longitude}`;
+    existing.verified = true;
+    workerPresenceMap.set(key, existing);
+  }
+
+  const presenceSummaryHtml = workerPresenceMap.size > 0
+    ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:12px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:12px;color:#166534;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Worker Presence Summary</div>
+        ${Array.from(workerPresenceMap.values()).map(w => {
+          const durationStr = w.totalMs > 0 ? `${Math.floor(w.totalMs / 3600000)}h ${Math.floor((w.totalMs % 3600000) / 60000)}m` : (w.firstIn && w.lastOut ? `${Math.floor((new Date(w.lastOut).getTime() - new Date(w.firstIn).getTime()) / 3600000)}h ${Math.floor(((new Date(w.lastOut).getTime() - new Date(w.firstIn).getTime()) % 3600000) / 60000)}m` : '-');
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #dcfce7">
+            <div>
+              <span style="font-weight:600;color:#14532d">${w.worker}</span>
+              ${w.verified ? '<span class="gps-badge verified" style="margin-left:6px;font-size:9px">GPS Verified</span>' : ''}
+            </div>
+            <div style="text-align:right;font-size:11px;color:#166534">
+              ${w.firstIn ? `${formatShortTime(w.firstIn)}` : '?'} — ${w.lastOut ? `${formatShortTime(w.lastOut)}` : '?'}
+              <span style="font-weight:600;margin-left:8px">(${durationStr})</span>
+            </div>
+          </div>
+          ${w.address ? `<div style="font-size:10px;color:#15803d;padding:2px 0 4px 0">${w.address}</div>` : ''}`;
+        }).join('')}
+      </div>`
+    : '';
+
   const gpsProofHtml = gpsEntries.length > 0 || geofenceAlerts.length > 0
-    ? `<table class="proof-table">
+    ? `${presenceSummaryHtml}
+      <table class="proof-table">
         <thead>
           <tr>
             <th>Worker</th>
@@ -3944,7 +3999,7 @@ export const generateJobProofPackPDF = (data: {
           </tr>`).join('')}
         </tbody>
       </table>
-      <p style="font-size:9px;color:#888;margin-top:4px;font-style:italic">GPS coordinates recorded at clock-in/clock-out. Times shown in AEST.</p>`
+      <p style="font-size:9px;color:#888;margin-top:4px;font-style:italic">GPS coordinates recorded at clock-in/clock-out. Presence verified via device location services. Times shown in AEST.</p>`
     : `<p class="empty-message">No GPS verification data recorded</p>`;
 
   const complianceTypeLabel = (t: string) => {

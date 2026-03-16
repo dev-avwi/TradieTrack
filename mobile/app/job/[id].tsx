@@ -2035,6 +2035,8 @@ export default function JobDetailScreen() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [showNextJobModal, setShowNextJobModal] = useState(false);
+  const [nextJob, setNextJob] = useState<any>(null);
   const [isCompletingJob, setIsCompletingJob] = useState(false);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   
@@ -4715,6 +4717,37 @@ export default function JobDetailScreen() {
       if (success) {
         setJob({ ...job, status: 'done' });
         setShowCompletionModal(false);
+        
+        // Fetch next scheduled job for today
+        try {
+          const res = await api.get('/api/jobs');
+          if (res.data && Array.isArray(res.data)) {
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+            
+            const upcomingJobs = res.data
+              .filter((j: any) => 
+                j.id !== job.id && 
+                ['scheduled', 'in_progress', 'on_my_way'].includes(j.status) &&
+                j.scheduledAt
+              )
+              .filter((j: any) => {
+                const scheduledDate = new Date(j.scheduledAt);
+                return scheduledDate >= todayStart && scheduledDate < todayEnd;
+              })
+              .sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+            
+            if (upcomingJobs.length > 0) {
+              setNextJob(upcomingJobs[0]);
+            } else {
+              setNextJob(null);
+            }
+            setShowNextJobModal(true);
+          }
+        } catch (e) {
+          // If fetching next job fails, just don't show the modal
+        }
       }
     } catch (e) {
       Alert.alert('Error', 'Failed to complete job. Please try again.');
@@ -5413,6 +5446,39 @@ export default function JobDetailScreen() {
             <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
           </TouchableOpacity>
         </View>
+      )}
+
+      {/* Quick Geofence Status - visible on overview for easy access */}
+      {job.latitude && job.longitude && ['scheduled', 'in_progress', 'on_my_way'].includes(job.status) && (
+        <TouchableOpacity 
+          style={[styles.card, { borderColor: job.geofenceEnabled ? colors.success + '40' : colors.border }]}
+          onPress={() => setActiveTab('notes')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.cardIconContainer, { backgroundColor: job.geofenceEnabled ? colors.success + '15' : colors.muted + '30' }]}>
+            <Feather 
+              name="crosshair" 
+              size={iconSizes.xl} 
+              color={job.geofenceEnabled ? colors.success : colors.mutedForeground} 
+            />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardLabel}>Auto Clock-In</Text>
+            <Text style={[styles.cardValue, { color: job.geofenceEnabled ? colors.success : colors.mutedForeground }]}>
+              {job.geofenceEnabled 
+                ? `Active (${job.geofenceRadius || 100}m radius)` 
+                : 'Tap to enable'}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            {job.geofenceEnabled && job.geofenceAutoClockIn && (
+              <View style={{ backgroundColor: colors.success + '15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: colors.success, fontSize: 10, fontWeight: '700' }}>ON</Text>
+              </View>
+            )}
+            <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
+          </View>
+        </TouchableOpacity>
       )}
 
       {/* Smart Next Action Card - guides tradie through workflow */}
@@ -10043,6 +10109,101 @@ export default function JobDetailScreen() {
           </View>
         </Modal>
       )}
+
+      {/* Next Job Modal */}
+      <Modal
+        visible={showNextJobModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowNextJobModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {nextJob ? 'Next Job' : 'All Done!'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowNextJobModal(false)}>
+                <Feather name="x" size={24} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalContent}>
+              {nextJob ? (
+                <View style={{ gap: spacing.md }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' }}>
+                      <Feather name="briefcase" size={20} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: colors.foreground }}>{nextJob.title}</Text>
+                      {nextJob.scheduledAt && (
+                        <Text style={{ fontSize: 13, color: colors.mutedForeground, marginTop: 2 }}>
+                          {new Date(nextJob.scheduledAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  {nextJob.address && (
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
+                      <Feather name="map-pin" size={16} color={colors.mutedForeground} style={{ marginTop: 2 }} />
+                      <Text style={{ fontSize: 14, color: colors.foreground, flex: 1 }}>{nextJob.address}</Text>
+                    </View>
+                  )}
+                  {nextJob.clientName && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                      <Feather name="user" size={16} color={colors.mutedForeground} />
+                      <Text style={{ fontSize: 14, color: colors.foreground }}>{nextJob.clientName}</Text>
+                    </View>
+                  )}
+                  <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm }}>
+                    {nextJob.address && (
+                      <TouchableOpacity
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingVertical: spacing.sm, borderRadius: 8 }}
+                        onPress={() => {
+                          setShowNextJobModal(false);
+                          const encodedAddress = encodeURIComponent(nextJob.address);
+                          Linking.openURL(`https://maps.google.com/?daddr=${encodedAddress}`);
+                        }}
+                      >
+                        <Feather name="navigation" size={16} color={colors.white} />
+                        <Text style={{ color: colors.white, fontWeight: '600', fontSize: 14 }}>Navigate</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: colors.card, paddingVertical: spacing.sm, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}
+                      onPress={() => {
+                        setShowNextJobModal(false);
+                        router.push(`/job/${nextJob.id}`);
+                      }}
+                    >
+                      <Feather name="eye" size={16} color={colors.foreground} />
+                      <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>View Job</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md }}>
+                  <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: colors.success + '15', alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather name="check-circle" size={32} color={colors.success} />
+                  </View>
+                  <Text style={{ fontSize: 18, fontWeight: '600', color: colors.foreground }}>All done for today!</Text>
+                  <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: 'center' }}>
+                    No more scheduled jobs remaining. Great work!
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={{ padding: spacing.md }}>
+              <TouchableOpacity
+                style={{ backgroundColor: colors.muted, paddingVertical: spacing.sm, borderRadius: 8, alignItems: 'center' }}
+                onPress={() => setShowNextJobModal(false)}
+              >
+                <Text style={{ color: colors.foreground, fontWeight: '500' }}>Dismiss</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Schedule Job Modal */}
       <Modal
