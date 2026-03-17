@@ -389,3 +389,35 @@ export const smsTemplates = {
   reminder: (clientName: string, businessName: string, message: string, businessPhone?: string) =>
     `Hi ${clientName}, reminder from ${businessName}: ${message}${businessPhone ? `\nCall us: ${businessPhone}` : ''}`
 };
+
+export function validateTwilioWebhook(req: any, res: any, next: any) {
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!authToken) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[Twilio Webhook] No TWILIO_AUTH_TOKEN in production - rejecting request');
+      return res.status(503).send('Service unavailable');
+    }
+    console.warn('[Twilio Webhook] No TWILIO_AUTH_TOKEN set, skipping signature verification (dev mode)');
+    return next();
+  }
+
+  const twilioSignature = req.headers['x-twilio-signature'];
+  if (!twilioSignature) {
+    console.warn('[Twilio Webhook] Missing X-Twilio-Signature header');
+    return res.status(403).send('Forbidden');
+  }
+
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const host = req.headers['host'] || req.hostname;
+  const url = `${protocol}://${host}${req.originalUrl}`;
+
+  const { validateRequest } = twilio;
+  const isValid = validateRequest(authToken, twilioSignature, url, req.body || {});
+
+  if (!isValid) {
+    console.warn('[Twilio Webhook] Invalid signature - request rejected');
+    return res.status(403).send('Forbidden');
+  }
+
+  next();
+}

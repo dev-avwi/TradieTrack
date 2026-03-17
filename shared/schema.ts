@@ -4394,6 +4394,17 @@ export const insertTrainingRecordSchema = createInsertSchema(trainingRecords).om
 export type InsertTrainingRecord = z.infer<typeof insertTrainingRecordSchema>;
 export type TrainingRecord = typeof trainingRecords.$inferSelect;
 
+export const idempotencyKeys = pgTable("idempotency_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key", { length: 512 }).notNull().unique(),
+  response: text("response").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_idempotency_keys_key").on(table.key),
+  index("idx_idempotency_keys_expires").on(table.expiresAt),
+]);
+
 export const rateLimits = pgTable("rate_limits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   key: varchar("key", { length: 512 }).notNull(),

@@ -162,7 +162,7 @@ import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobSchedul
 import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected, notifyTeamMessage, notifyInvoiceOverdue, notifySmsReceived as notifySmsReceivedPush, notifyGeofenceEvent, notifyTimesheetSubmitted as notifyTimesheetSubmittedPush, notifyQuoteExpiring as notifyQuoteExpiringPush, notifyPaymentFailed as notifyPaymentFailedPush, notifyTrialExpiring as notifyTrialExpiringPush } from "./pushNotifications";
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
-import { checkTwilioAvailability, sendSMS } from "./twilioClient";
+import { checkTwilioAvailability, sendSMS, validateTwilioWebhook } from "./twilioClient";
 import { geocodeAddress, haversineDistance, calculateRouteETA } from "./geocoding";
 import { processStatusChangeAutomation, processPaymentReceivedAutomation, processTimeBasedAutomations } from "./automationService";
 import * as xeroService from "./xeroService";
@@ -307,10 +307,40 @@ function chatRateLimiterMiddleware(req: any, res: any, next: any) {
     .catch(() => next());
 }
 
-// Idempotency cache for offline record creation (prevents duplicates on retry after crash)
-// Maps clientGeneratedId -> { createdRecord, expiresAt }
-const idempotencyCache = new Map<string, { record: any; expiresAt: number }>();
 const IDEMPOTENCY_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const idempotencyMemCache = new Map<string, { record: any; expiresAt: number }>();
+
+async function getIdempotencyRecord(key: string): Promise<any | null> {
+  const memHit = idempotencyMemCache.get(key);
+  if (memHit && Date.now() < memHit.expiresAt) return memHit.record;
+  try {
+    const { idempotencyKeys } = await import('../shared/schema');
+    const rows = await db.select().from(idempotencyKeys).where(eq(idempotencyKeys.key, key)).limit(1);
+    if (rows.length > 0 && new Date(rows[0].expiresAt) > new Date()) {
+      const record = JSON.parse(rows[0].response);
+      idempotencyMemCache.set(key, { record, expiresAt: new Date(rows[0].expiresAt).getTime() });
+      return record;
+    }
+  } catch (e) {
+    console.warn('[Idempotency] DB lookup failed, continuing:', (e as Error).message);
+  }
+  return null;
+}
+
+async function setIdempotencyRecord(key: string, record: any): Promise<void> {
+  const expiresAt = Date.now() + IDEMPOTENCY_TTL;
+  idempotencyMemCache.set(key, { record, expiresAt });
+  try {
+    const { idempotencyKeys } = await import('../shared/schema');
+    await db.insert(idempotencyKeys).values({
+      key,
+      response: JSON.stringify(record),
+      expiresAt: new Date(expiresAt),
+    }).onConflictDoNothing();
+  } catch (e) {
+    console.warn('[Idempotency] DB write failed, memory-only:', (e as Error).message);
+  }
+}
 
 function portalIpRateLimiterMiddleware(req: any, res: any, next: any) {
   const ip = req.ip || req.connection?.remoteAddress || 'unknown';
@@ -339,9 +369,15 @@ setInterval(async () => {
   for (const [key, entry] of fallbackPortalMap) {
     if (now >= entry.resetAt) fallbackPortalMap.delete(key);
   }
-  for (const [key, entry] of idempotencyCache) {
-    if (now >= entry.expiresAt) idempotencyCache.delete(key);
+  for (const [key, entry] of idempotencyMemCache) {
+    if (now >= entry.expiresAt) idempotencyMemCache.delete(key);
   }
+  try {
+    import('../shared/schema').then(({ idempotencyKeys }) => {
+      db.delete(idempotencyKeys).where(sql`${idempotencyKeys.expiresAt} < now()`).catch(() => {});
+    });
+  } catch {}
+
 }, 5 * 60 * 1000);
 
 // Helper function to log activity events for dashboard feed
@@ -11540,16 +11576,16 @@ Be specific about materials, colors, and features that would be included.`
   app.post("/api/clients", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_CLIENTS), async (req: any, res) => {
     try {
       const { clientGeneratedId, ...body } = req.body;
-      if (clientGeneratedId) {
-        const cached = idempotencyCache.get(clientGeneratedId);
-        if (cached) return res.status(201).json(cached.record);
-      }
-      // Use effectiveUserId (business owner's ID) for multi-tenant data scoping
       const effectiveUserId = req.effectiveUserId || req.userId;
+      const idempKey = clientGeneratedId ? `client:${effectiveUserId}:${clientGeneratedId}` : null;
+      if (idempKey) {
+        const cached = await getIdempotencyRecord(idempKey);
+        if (cached) return res.status(201).json(cached);
+      }
       const data = insertClientSchema.parse(body);
       const client = await storage.createClient({ ...data, userId: effectiveUserId });
-      if (clientGeneratedId) {
-        idempotencyCache.set(clientGeneratedId, { record: client, expiresAt: Date.now() + IDEMPOTENCY_TTL });
+      if (idempKey) {
+        await setIdempotencyRecord(idempKey, client);
       }
       res.status(201).json(client);
     } catch (error) {
@@ -14594,12 +14630,12 @@ Be specific about materials, colors, and features that would be included.`
   app.post("/api/jobs", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const { clientGeneratedId, ...reqBody } = req.body;
-      if (clientGeneratedId) {
-        const cached = idempotencyCache.get(clientGeneratedId);
-        if (cached) return res.status(201).json(cached.record);
-      }
-      // Use effectiveUserId (business owner's ID) for multi-tenant data scoping
       const effectiveUserId = req.effectiveUserId || req.userId;
+      const idempKey = clientGeneratedId ? `job:${effectiveUserId}:${clientGeneratedId}` : null;
+      if (idempKey) {
+        const cached = await getIdempotencyRecord(idempKey);
+        if (cached) return res.status(201).json(cached);
+      }
       
       // Check freemium limits first
       const limitCheck = await FreemiumService.canUserCreateJob(effectiveUserId);
@@ -14738,8 +14774,8 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
       
-      if (clientGeneratedId) {
-        idempotencyCache.set(clientGeneratedId, { record: job, expiresAt: Date.now() + IDEMPOTENCY_TTL });
+      if (idempKey) {
+        await setIdempotencyRecord(idempKey, job);
       }
       res.status(201).json(job);
     } catch (error) {
@@ -18834,11 +18870,12 @@ Be specific about materials, colors, and features that would be included.`
   app.post("/api/quotes", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
       const { clientGeneratedId, ...reqBody } = req.body;
-      if (clientGeneratedId) {
-        const cached = idempotencyCache.get(clientGeneratedId);
-        if (cached) return res.status(201).json(cached.record);
-      }
       const userContext = await getUserContext(req.userId);
+      const idempKey = clientGeneratedId ? `quote:${userContext.effectiveUserId}:${clientGeneratedId}` : null;
+      if (idempKey) {
+        const cached = await getIdempotencyRecord(idempKey);
+        if (cached) return res.status(201).json(cached);
+      }
       const { lineItems, ...quoteData } = reqBody;
       const data = insertQuoteSchema.parse(quoteData);
       
@@ -18878,8 +18915,8 @@ Be specific about materials, colors, and features that would be included.`
         { quoteNumber: quote.number, clientName: client?.name, total: quote.total }
       );
       
-      if (clientGeneratedId) {
-        idempotencyCache.set(clientGeneratedId, { record: quoteWithItems, expiresAt: Date.now() + IDEMPOTENCY_TTL });
+      if (idempKey) {
+        await setIdempotencyRecord(idempKey, quoteWithItems);
       }
       res.status(201).json(quoteWithItems);
     } catch (error) {
@@ -19698,11 +19735,12 @@ Be specific about materials, colors, and features that would be included.`
   app.post("/api/invoices", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       const { clientGeneratedId, ...reqBody } = req.body;
-      if (clientGeneratedId) {
-        const cached = idempotencyCache.get(clientGeneratedId);
-        if (cached) return res.status(201).json(cached.record);
-      }
       const userContext = await getUserContext(req.userId);
+      const idempKey = clientGeneratedId ? `invoice:${userContext.effectiveUserId}:${clientGeneratedId}` : null;
+      if (idempKey) {
+        const cached = await getIdempotencyRecord(idempKey);
+        if (cached) return res.status(201).json(cached);
+      }
       const { lineItems, ...invoiceData } = reqBody;
       
       // Get business settings to check GST
@@ -19821,8 +19859,8 @@ Be specific about materials, colors, and features that would be included.`
         { invoiceNumber: invoice.number, clientName: client?.name, total: invoice.total }
       );
       
-      if (clientGeneratedId) {
-        idempotencyCache.set(clientGeneratedId, { record: invoiceWithItems, expiresAt: Date.now() + IDEMPOTENCY_TTL });
+      if (idempKey) {
+        await setIdempotencyRecord(idempKey, invoiceWithItems);
       }
       res.status(201).json(invoiceWithItems);
     } catch (error) {
@@ -20511,26 +20549,34 @@ Be specific about materials, colors, and features that would be included.`
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }
-      
-      const { milestones, retentionPercent } = req.body;
-      
+
+      const milestoneItemSchema = z.object({
+        name: z.string().min(1).max(200),
+        percentage: z.number().min(0).max(100),
+        amount: z.union([z.string(), z.number()]).optional(),
+        status: z.enum(['pending', 'invoiced', 'paid']).optional(),
+        dueDate: z.string().optional().nullable(),
+      });
+      const milestonesSchema = z.object({
+        milestones: z.array(milestoneItemSchema).optional(),
+        retentionPercent: z.number().min(0).max(100).optional(),
+      });
+      const parsed = milestonesSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid milestone data', details: parsed.error.errors });
+      }
+      const { milestones, retentionPercent } = parsed.data;
+
       const updateData: any = {};
-      
+
       if (milestones !== undefined) {
-        if (!Array.isArray(milestones)) {
-          return res.status(400).json({ error: "Milestones must be an array" });
-        }
         updateData.paymentMilestones = milestones;
       }
-      
+
       if (retentionPercent !== undefined) {
-        const pct = parseFloat(String(retentionPercent));
-        if (Number.isNaN(pct) || pct < 0 || pct > 100) {
-          return res.status(400).json({ error: "Retention percent must be between 0 and 100" });
-        }
-        updateData.retentionPercent = pct.toFixed(2);
+        updateData.retentionPercent = retentionPercent.toFixed(2);
         const total = parseFloat(String(invoice.total || '0'));
-        updateData.retentionAmount = (total * pct / 100).toFixed(2);
+        updateData.retentionAmount = (total * retentionPercent / 100).toFixed(2);
       }
       
       const updated = await storage.updateInvoice(req.params.id, userContext.effectiveUserId, updateData);
@@ -25250,11 +25296,12 @@ Respond with JSON in this format:
   app.post("/api/time-entries", requireAuth, async (req: any, res) => {
     try {
       const { clientGeneratedId, ...timeEntryBody } = req.body;
-      if (clientGeneratedId) {
-        const cached = idempotencyCache.get(clientGeneratedId);
-        if (cached) return res.status(201).json(cached.record);
-      }
       const userId = req.userId!;
+      const idempKey = clientGeneratedId ? `timeentry:${userId}:${clientGeneratedId}` : null;
+      if (idempKey) {
+        const cached = await getIdempotencyRecord(idempKey);
+        if (cached) return res.status(201).json(cached);
+      }
       const data = insertTimeEntrySchema.parse(timeEntryBody);
       
       if (!validateGpsCoordinate(data.clockInLatitude, data.clockInLongitude)) {
@@ -25362,8 +25409,8 @@ Respond with JSON in this format:
         });
       }
       
-      if (clientGeneratedId) {
-        idempotencyCache.set(clientGeneratedId, { record: timeEntry, expiresAt: Date.now() + IDEMPOTENCY_TTL });
+      if (idempKey) {
+        await setIdempotencyRecord(idempKey, timeEntry);
       }
       res.status(201).json(timeEntry);
     } catch (error) {
@@ -30297,8 +30344,19 @@ Respond with JSON in this format:
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;
       const { id } = req.params;
-      const { geofenceEnabled, geofenceRadius, geofenceAutoClockIn, geofenceAutoClockOut } = req.body;
-      
+
+      const geofenceSchema = z.object({
+        geofenceEnabled: z.boolean().optional(),
+        geofenceRadius: z.number().int().min(10).max(10000).optional(),
+        geofenceAutoClockIn: z.boolean().optional(),
+        geofenceAutoClockOut: z.boolean().optional(),
+      });
+      const parsed = geofenceSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid geofence settings', details: parsed.error.errors });
+      }
+      const { geofenceEnabled, geofenceRadius, geofenceAutoClockIn, geofenceAutoClockOut } = parsed.data;
+
       const updateData: any = {};
       if (geofenceEnabled !== undefined) updateData.geofenceEnabled = geofenceEnabled;
       if (geofenceRadius !== undefined) updateData.geofenceRadius = geofenceRadius;
@@ -30529,11 +30587,21 @@ Respond with JSON in this format:
   });
   
   // Update photo metadata (team-aware)
-  app.patch("/api/jobs/:jobId/photos/:photoId", requireAuth, async (req: any, res) => {
+  app.patch("/api/jobs/:jobId/photos/:photoId", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { photoId } = req.params;
-      const { category, caption, sortOrder } = req.body;
+
+      const photoMetaSchema = z.object({
+        category: z.string().max(100).optional(),
+        caption: z.string().max(500).optional(),
+        sortOrder: z.number().int().min(0).optional(),
+      });
+      const parsed = photoMetaSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid photo metadata', details: parsed.error.errors });
+      }
+      const { category, caption, sortOrder } = parsed.data;
       
       // Get user context to properly scope to business for team members
       const userContext = await getUserContext(userId);
@@ -30820,11 +30888,17 @@ Respond with JSON in this format:
   });
   
   // Update voice note title (team-aware)
-  app.patch("/api/jobs/:jobId/voice-notes/:voiceNoteId", requireAuth, async (req: any, res) => {
+  app.patch("/api/jobs/:jobId/voice-notes/:voiceNoteId", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { voiceNoteId } = req.params;
-      const { title } = req.body;
+
+      const titleSchema = z.object({ title: z.string().trim().min(1).max(200) });
+      const parsed = titleSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Valid title is required', details: parsed.error.errors });
+      }
+      const { title } = parsed.data;
       
       // Get user context to properly scope to business for team members
       const userContext = await getUserContext(userId);
@@ -31320,7 +31394,7 @@ Respond with JSON in this format:
     }
   });
 
-  app.patch("/api/jobs/:jobId/notes/:noteId", requireAuth, async (req: any, res) => {
+  app.patch("/api/jobs/:jobId/notes/:noteId", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { jobId, noteId } = req.params;
@@ -32739,14 +32813,19 @@ Respond with JSON in this format:
   });
 
   // Update job coordinates after geocoding
-  app.patch("/api/jobs/:id/coordinates", requireAuth, async (req: any, res) => {
+  app.patch("/api/jobs/:id/coordinates", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const { latitude, longitude } = req.body;
-      
-      if (latitude === undefined || longitude === undefined) {
-        return res.status(400).json({ error: 'Latitude and longitude are required' });
+
+      const coordsSchema = z.object({
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180),
+      });
+      const parsed = coordsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Valid latitude and longitude are required', details: parsed.error.errors });
       }
+      const { latitude, longitude } = parsed.data;
       
       const job = await storage.updateJob(
         req.params.id,
@@ -34347,7 +34426,7 @@ Respond with JSON in this format:
   });
   
   // Twilio webhook for incoming SMS/MMS
-  app.post("/api/sms/webhook/incoming", async (req, res) => {
+  app.post("/api/sms/webhook/incoming", validateTwilioWebhook, async (req, res) => {
     try {
       const { From, To, Body, MessageSid, NumMedia } = req.body;
       
