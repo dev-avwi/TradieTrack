@@ -6,6 +6,7 @@ export type SubscriptionTier = 'free' | 'pro' | 'team' | 'trial' | 'beta';
 
 export interface UsageStatus {
   tier: SubscriptionTier;
+  subscriptionStatus?: string;
   isTrialActive: boolean;
   trialDaysRemaining: number | null;
   usage: {
@@ -29,9 +30,23 @@ export interface LimitCheckResult {
   usage?: { used: number; limit: number };
 }
 
-function getEffectiveTier(user: any): SubscriptionTier {
-  const hasActiveStripeSubscription = user.subscriptionStatus === 'active' || user.subscriptionStatus === 'trialing';
+async function getEffectiveTier(user: any, subscriptionStatus?: string): Promise<SubscriptionTier> {
+  let status = subscriptionStatus;
+  if (!status) {
+    try {
+      const settings = await storage.getBusinessSettings(user.id);
+      status = settings?.subscriptionStatus || 'none';
+    } catch {
+      status = 'none';
+    }
+  }
+
+  const hasActiveStripeSubscription = status === 'active' || status === 'trialing';
   const isTrialUser = user.trialStatus === 'active' || user.trialStatus === 'expired';
+
+  if (status === 'past_due' || status === 'canceled' || status === 'unpaid') {
+    return 'free';
+  }
 
   if (isTrialUser && !hasActiveStripeSubscription) {
     if (user.trialStatus === 'active' && user.trialEndsAt && new Date(user.trialEndsAt) > new Date()) {
@@ -45,7 +60,7 @@ function getEffectiveTier(user: any): SubscriptionTier {
     if (user.subscriptionTier === 'pro') return 'pro';
   }
 
-  if (!user.subscriptionStatus || user.subscriptionStatus === 'none') {
+  if (!status || status === 'none') {
     if (user.subscriptionTier === 'team') return 'team';
     if (user.subscriptionTier === 'pro') return 'pro';
   }
@@ -109,7 +124,7 @@ export async function getUserUsageStatus(userId: string): Promise<UsageStatus> {
   
   await resetUsageIfNeeded(userId, user);
   
-  const effectiveTier = getEffectiveTier(user);
+  const effectiveTier = await getEffectiveTier(user);
   const limits = getTierLimits(effectiveTier);
   
   let trialDaysRemaining: number | null = null;
@@ -138,6 +153,7 @@ export async function getUserUsageStatus(userId: string): Promise<UsageStatus> {
   
   return {
     tier: (effectiveTier === 'pro' || effectiveTier === 'team') && isTrialActive ? 'trial' : effectiveTier,
+    subscriptionStatus: user.subscriptionStatus || undefined,
     isTrialActive,
     trialDaysRemaining,
     usage: {
@@ -184,7 +200,7 @@ export async function checkCanCreateJob(userId: string): Promise<LimitCheckResul
   
   await resetUsageIfNeeded(userId, user);
   
-  const effectiveTier = getEffectiveTier(user);
+  const effectiveTier = await getEffectiveTier(user);
   const limits = getTierLimits(effectiveTier);
   
   if (limits.jobsPerMonth === -1) {
@@ -221,7 +237,7 @@ export async function checkCanCreateInvoice(userId: string): Promise<LimitCheckR
   
   await resetUsageIfNeeded(userId, user);
   
-  const effectiveTier = getEffectiveTier(user);
+  const effectiveTier = await getEffectiveTier(user);
   const limits = getTierLimits(effectiveTier);
   
   if (limits.invoicesPerMonth === -1) {
@@ -258,7 +274,7 @@ export async function checkCanCreateQuote(userId: string): Promise<LimitCheckRes
   
   await resetUsageIfNeeded(userId, user);
   
-  const effectiveTier = getEffectiveTier(user);
+  const effectiveTier = await getEffectiveTier(user);
   const limits = getTierLimits(effectiveTier);
   
   if (limits.quotesPerMonth === -1) {

@@ -340,8 +340,10 @@ export function useUserRole() {
   
   // Subscription tier checks
   const subscriptionTier = user?.subscriptionTier || 'free';
-  const hasTeamSubscription = subscriptionTier === 'team' || subscriptionTier === 'beta';
-  const hasProSubscription = subscriptionTier === 'pro' || subscriptionTier === 'team' || subscriptionTier === 'beta';
+  const subscriptionStatus = (user as any)?.subscriptionStatus || 'none';
+  const isPaymentOverdue = subscriptionStatus === 'past_due';
+  const hasTeamSubscription = !isPaymentOverdue && (subscriptionTier === 'team' || subscriptionTier === 'beta');
+  const hasProSubscription = !isPaymentOverdue && (subscriptionTier === 'pro' || subscriptionTier === 'team' || subscriptionTier === 'beta');
   const canUseAIFeatures = hasProSubscription;
   
   // Team access requires both role permission AND team subscription
@@ -360,6 +362,8 @@ export function useUserRole() {
     hasTeamAccess,
     canAccessTeamPages,
     subscriptionTier,
+    subscriptionStatus,
+    isPaymentOverdue,
     hasTeamSubscription,
     hasProSubscription,
     canUseAIFeatures,

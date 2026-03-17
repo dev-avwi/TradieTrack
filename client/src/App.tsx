@@ -199,6 +199,28 @@ function TrialBanner({ trialEndsAt, onUpgrade }: { trialEndsAt: string; onUpgrad
   );
 }
 
+function PaymentOverdueBanner({ onResolve }: { onResolve: () => void }) {
+  const { data: usage } = useQuery<{ subscriptionStatus?: string; subscriptionTier?: string }>({
+    queryKey: ['/api/subscription/usage'],
+  });
+
+  if (!usage?.subscriptionStatus || usage.subscriptionStatus !== 'past_due') return null;
+
+  return (
+    <div className="flex items-center justify-between gap-2 px-4 py-2 text-sm border-b bg-destructive/10 border-destructive/20 text-destructive">
+      <span className="font-medium">
+        Your subscription payment has failed. Features are restricted until payment is resolved.
+      </span>
+      <button 
+        onClick={onResolve}
+        className="text-xs font-semibold underline underline-offset-2 hover:no-underline whitespace-nowrap"
+      >
+        Update Payment
+      </button>
+    </div>
+  );
+}
+
 // Types for job completion
 interface JobPhoto {
   url: string;
@@ -1382,6 +1404,8 @@ function AppLayout() {
               {userCheck?.trialStatus === 'active' && userCheck?.trialEndsAt && (
                 <TrialBanner trialEndsAt={userCheck.trialEndsAt} onUpgrade={() => setLocation('/settings?tab=subscription')} />
               )}
+              {/* Payment Overdue Banner */}
+              <PaymentOverdueBanner onResolve={() => setLocation('/settings?tab=subscription')} />
             </div>
             
             {/* Page Content - flex container for proper height context, z-index below header */}

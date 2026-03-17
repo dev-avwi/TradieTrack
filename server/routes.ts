@@ -4280,9 +4280,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const usageInfo = await FreemiumService.getFullUsageInfo(req.userId);
       const user = await storage.getUser(req.userId);
+      const businessSettings = await storage.getBusinessSettings(req.userId);
       res.json({
         ...usageInfo,
         subscriptionTier: user?.subscriptionTier || 'free',
+        subscriptionStatus: businessSettings?.subscriptionStatus || 'none',
       });
     } catch (error) {
       console.error("Error fetching usage info:", error);
@@ -4295,9 +4297,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const usageInfo = await FreemiumService.getFullUsageInfo(req.userId);
       const user = await storage.getUser(req.userId);
+      const businessSettings = await storage.getBusinessSettings(req.userId);
       res.json({
         ...usageInfo,
         subscriptionTier: user?.subscriptionTier || 'free',
+        subscriptionStatus: businessSettings?.subscriptionStatus || 'none',
       });
     } catch (error) {
       console.error("Error fetching usage info:", error);

@@ -283,8 +283,10 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
   }
 
   try {
-    // Use dedicated number if provided, otherwise fall back to platform number
-    const fromValue = options.fromNumber || twilioPhoneNumber;
+    // Use alphanumeric sender ID for one-way SMS (no MMS support), dedicated number, or platform number
+    const fromValue = (!isMMS && options.alphanumericSenderId) 
+      ? options.alphanumericSenderId 
+      : (options.fromNumber || twilioPhoneNumber);
 
     const messageOptions: any = {
       body: message,
