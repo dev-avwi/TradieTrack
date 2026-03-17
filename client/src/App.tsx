@@ -769,7 +769,7 @@ function Router({
       </Route>
       <Route path="/open-app/:action/:token" component={OpenApp} />
       
-      <Route path="/ai-visualization" component={AIVisualizationPage} />
+      <Route path="/ai-visualization" component={GatedAIVisualizationPage} />
       
       <Route path="/more" component={More} />
       
@@ -826,6 +826,17 @@ function GatedFloatingAIChat({ onNavigate }: { onNavigate: (path: string) => voi
   const { canUseAIFeatures, isLoading } = useFeatureAccess();
   if (isLoading || !canUseAIFeatures) return null;
   return <FloatingAIChat onNavigate={onNavigate} />;
+}
+
+function GatedAIVisualizationPage() {
+  const { canUseAIFeatures, isLoading } = useFeatureAccess();
+  const [, setLocation] = useLocation();
+  if (isLoading) return null;
+  if (!canUseAIFeatures) {
+    setLocation("/dashboard");
+    return null;
+  }
+  return <AIVisualizationPage />;
 }
 
 function AppLayout() {

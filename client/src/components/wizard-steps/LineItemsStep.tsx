@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/com
 import { Plus, Trash2, Edit2, Package, DollarSign, Hash, BookOpen, Sparkles, TrendingUp, History, Loader2 } from "lucide-react";
 import CatalogModal from "@/components/CatalogModal";
 import { useToast } from "@/hooks/use-toast";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 
 interface QuoteSuggestion {
   description: string;
@@ -25,6 +26,7 @@ interface LineItemsStepProps {
 export default function LineItemsStep({ tradeType }: LineItemsStepProps) {
   const form = useFormContext();
   const { toast } = useToast();
+  const { canUseAIFeatures } = useFeatureAccess();
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ description: "", quantity: "1", unitPrice: "" });
@@ -42,7 +44,7 @@ export default function LineItemsStep({ tradeType }: LineItemsStepProps) {
   const watchedLineItems = form.watch("lineItems") || [];
   
   const fetchQuoteSuggestions = useCallback(async (description: string) => {
-    if (description.length < 3) {
+    if (description.length < 3 || !canUseAIFeatures) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
@@ -77,7 +79,7 @@ export default function LineItemsStep({ tradeType }: LineItemsStepProps) {
     } finally {
       setLoadingSuggestions(false);
     }
-  }, [toast]);
+  }, [toast, canUseAIFeatures]);
   
   const handleSuggestionsBlur = useCallback(() => {
     setTimeout(() => setShowSuggestions(false), 200);

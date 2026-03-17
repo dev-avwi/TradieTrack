@@ -4114,6 +4114,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
+  const requireProSubscription = (req: any, res: any, next: any) => {
+    const tier = req.user?.subscriptionTier;
+    if (tier === 'pro' || tier === 'team' || tier === 'beta') {
+      return next();
+    }
+    return res.status(403).json({ error: "This feature requires a Pro subscription" });
+  };
+
   // Middleware to restrict endpoints to development mode only
   const requireDevelopment = (req: any, res: any, next: any) => {
     if (!isDevelopment) {
@@ -5155,7 +5163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Assistant Routes - Enhanced with rich business context
-  app.get("/api/ai/suggestions", requireAuth, async (req: any, res) => {
+  app.get("/api/ai/suggestions", requireAuth, requireProSubscription, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const context = await gatherAIContext(req.userId, storage, userContext);
@@ -5168,7 +5176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Smart Notifications - role-based reminders and alerts
-  app.get("/api/ai/notifications", requireAuth, async (req: any, res) => {
+  app.get("/api/ai/notifications", requireAuth, requireProSubscription, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const context = await gatherAIContext(req.userId, storage, userContext);
@@ -5297,7 +5305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/ai/chat", requireAuth, async (req: any, res) => {
+  app.post("/api/ai/chat", requireAuth, requireProSubscription, async (req: any, res) => {
     try {
       const { message } = req.body;
       
@@ -5317,7 +5325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI action execution endpoint - handles all AI-triggered workflows
-  app.post("/api/ai/execute-action", requireAuth, async (req: any, res) => {
+  app.post("/api/ai/execute-action", requireAuth, requireProSubscription, async (req: any, res) => {
     try {
       const { action } = req.body;
       
@@ -5926,7 +5934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Email Suggestion endpoint - generates professional Australian English email content
-  app.post("/api/ai/email-suggestion", requireAuth, async (req: any, res) => {
+  app.post("/api/ai/email-suggestion", requireAuth, requireProSubscription, async (req: any, res) => {
     try {
       const { type, clientName, clientFirstName, documentNumber, documentTitle, total, businessName } = req.body;
       
@@ -5958,7 +5966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Schedule Suggestions endpoint - generates optimal job scheduling recommendations (team-aware)
-  app.post("/api/ai/schedule-suggestions", requireAuth, async (req: any, res) => {
+  app.post("/api/ai/schedule-suggestions", requireAuth, requireProSubscription, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { targetDate } = req.body;
@@ -6068,7 +6076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Quote Learning endpoint - suggests pricing based on similar past quotes
-  app.post("/api/ai/quote-suggestions", requireAuth, async (req: any, res) => {
+  app.post("/api/ai/quote-suggestions", requireAuth, requireProSubscription, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { description, jobType } = req.body;
@@ -6161,7 +6169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================
 
   // AI Quote Generator from Photos + Voice - THE KILLER FEATURE (team-aware)
-  app.post("/api/ai/generate-quote", requireAuth, async (req: any, res) => {
+  app.post("/api/ai/generate-quote", requireAuth, requireProSubscription, async (req: any, res) => {
     console.log('[AI Quote] Starting AI quote generation for user:', req.userId);
     try {
       const userContext = await getUserContext(req.userId);
@@ -6208,7 +6216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Instant Job Parser - Create job from pasted text (SMS, email, message) (team-aware)
-  app.post("/api/ai/parse-job-text", requireAuth, async (req: any, res) => {
+  app.post("/api/ai/parse-job-text", requireAuth, requireProSubscription, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { text } = req.body;
@@ -6233,7 +6241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Visualization - Generate before/after concept images using DALL-E 3
-  app.post("/api/ai/visualization", requireAuth, async (req: any, res) => {
+  app.post("/api/ai/visualization", requireAuth, requireProSubscription, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { beforeImageUrl, prompt, style, roomType, jobId } = req.body;
@@ -6371,7 +6379,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Get recent AI visualizations for the user
-  app.get("/api/ai/visualizations", requireAuth, async (req: any, res) => {
+  app.get("/api/ai/visualizations", requireAuth, requireProSubscription, async (req: any, res) => {
     try {
       // For now, return an empty array as we haven't implemented storage for visualization history
       // In a full implementation, this would query a visualizations table

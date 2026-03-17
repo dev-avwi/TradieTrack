@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import type { MessageTemplate } from "@shared/schema";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import { 
   Mail, 
   Send, 
@@ -65,6 +66,7 @@ export default function EmailComposeModal({
   publicUrl
 }: EmailComposeModalProps) {
   const { toast } = useToast();
+  const { canUseAIFeatures } = useFeatureAccess();
   const [activeTab, setActiveTab] = useState<string>("compose");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -372,6 +374,7 @@ export default function EmailComposeModal({
 
                   {/* AI Suggestion Button and Template Selector */}
                   <div className="flex flex-wrap items-center gap-2">
+                    {canUseAIFeatures && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -387,6 +390,7 @@ export default function EmailComposeModal({
                       )}
                       AI Suggestion
                     </Button>
+                    )}
                     {/* Template Selector */}
                     {templates.length > 0 && (
                       <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>

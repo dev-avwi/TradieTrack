@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { type DocumentTemplate } from "@/hooks/use-templates";
 import { useQuery } from "@tanstack/react-query";
 import { Switch } from "@/components/ui/switch";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, Layers } from "lucide-react";
@@ -84,6 +85,7 @@ interface QuoteOption {
 
 export default function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
   const { toast } = useToast();
+  const { canUseAIFeatures } = useFeatureAccess();
   const createQuoteMutation = useCreateQuote();
   const [isMultiOptionMode, setIsMultiOptionMode] = useState(false);
   const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([]);
@@ -238,6 +240,7 @@ export default function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
             />
             
             {/* AI Multi-Option Mode Toggle */}
+            {canUseAIFeatures && (
             <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -264,6 +267,7 @@ export default function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
                 </div>
               </CardContent>
             </Card>
+            )}
           </div>
           
           {/* Line Items or Multi-Option Editor based on mode */}

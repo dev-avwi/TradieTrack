@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest, getSessionToken } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import type { MessageTemplate } from "@shared/schema";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import { 
   Mail, 
   Send, 
@@ -124,6 +125,7 @@ export default function SendDocumentModal({
   excludeNotes,
 }: SendDocumentModalProps) {
   const { toast } = useToast();
+  const { canUseAIFeatures } = useFeatureAccess();
   const [activeTab, setActiveTab] = useState<string>("compose");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("email");
   const [subject, setSubject] = useState("");
@@ -683,6 +685,7 @@ export default function SendDocumentModal({
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
+                        {canUseAIFeatures && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -698,6 +701,7 @@ export default function SendDocumentModal({
                           )}
                           AI Suggestion
                         </Button>
+                        )}
                         {templates.length > 0 && (
                           <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
                             <SelectTrigger className="w-[180px]" data-testid="select-email-template">

@@ -24,6 +24,7 @@ import { useAppMode } from "@/hooks/use-app-mode";
 import { formatHistoryDate } from "@shared/dateUtils";
 import { queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import { ConfirmationDialog } from "./ConfirmationDialog";
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
@@ -51,6 +52,7 @@ export default function JobsList({
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [pendingStatus, setPendingStatus] = useState<JobStatus | null>(null);
+  const { canUseAIFeatures } = useFeatureAccess();
   const [pasteJobOpen, setPasteJobOpen] = useState(false);
   const { data: jobs = [] } = useJobs() as { data: any[] };
   const { data: nextActions = {}, isLoading: nextActionsLoading } = useJobNextActions();
@@ -371,6 +373,7 @@ export default function JobsList({
             </div>
             {onCreateJob && canCreateJobs && (
               <>
+                {canUseAIFeatures && (
                 <Button 
                   variant="outline"
                   onClick={() => setPasteJobOpen(true)}
@@ -381,6 +384,7 @@ export default function JobsList({
                   <Clipboard className="h-4 w-4 mr-1" />
                   <span className="hidden sm:inline">Paste</span>
                 </Button>
+                )}
                 <Button 
                   onClick={onCreateJob} 
                   data-testid="button-create-job"

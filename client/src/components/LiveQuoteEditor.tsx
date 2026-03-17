@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useClients, useCreateClient } from "@/hooks/use-clients";
 import { useCreateQuote } from "@/hooks/use-quotes";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import { useDocumentTemplates, type DocumentTemplate } from "@/hooks/use-templates";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -78,6 +79,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   const { toast } = useToast();
   const { data: clients = [] } = useClients();
   const { data: businessSettings } = useBusinessSettings();
+  const { canUseAIFeatures } = useFeatureAccess();
   const createQuoteMutation = useCreateQuote();
   
   // Read jobId and clientId from URL query parameters (e.g., /quotes/new?jobId=123 or /quotes/new?clientId=456)
@@ -990,6 +992,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                     <Plus className="h-4 w-4" />
                     Add Item
                   </Button>
+                  {canUseAIFeatures && (
                   <Button
                     type="button"
                     variant="outline"
@@ -1001,6 +1004,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
                     <Sparkles className="h-4 w-4" />
                     AI
                   </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
