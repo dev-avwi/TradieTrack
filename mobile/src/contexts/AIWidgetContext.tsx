@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { FloatingAIWidget, FloatingAIButton } from '../components/FloatingAIWidget';
+import { useUserRole } from '../hooks/use-user-role';
 
 interface AIWidgetContextType {
   isOpen: boolean;
@@ -25,6 +26,7 @@ interface AIWidgetProviderProps {
 
 export function AIWidgetProvider({ children }: AIWidgetProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { canUseAIFeatures } = useUserRole();
 
   const openWidget = () => setIsOpen(true);
   const closeWidget = () => setIsOpen(false);
@@ -33,10 +35,12 @@ export function AIWidgetProvider({ children }: AIWidgetProviderProps) {
   return (
     <AIWidgetContext.Provider value={{ isOpen, openWidget, closeWidget, toggleWidget }}>
       {children}
+      {canUseAIFeatures && (
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         {!isOpen && <FloatingAIButton onPress={openWidget} />}
         <FloatingAIWidget isVisible={isOpen} onClose={closeWidget} />
       </View>
+      )}
     </AIWidgetContext.Provider>
   );
 }

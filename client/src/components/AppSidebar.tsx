@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { useSimpleMode } from "@/hooks/use-simple-mode";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import { 
   getSidebarMenuItems, 
   getSidebarSettingsItems,
@@ -44,6 +45,7 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
   const { data: businessSettings } = useBusinessSettings();
   const { isTeam, isTradie, isOwner, isManager, userRole } = useAppMode();
   const { isSimpleMode } = useSimpleMode();
+  const { canUseAIFeatures } = useFeatureAccess();
 
   // Fetch unread counts for notification badges
   const { data: unreadCounts } = useQuery<UnreadCounts>({
@@ -51,7 +53,7 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const filterOptions = { isTeam, isTradie, isOwner, isManager, userRole, isSimpleMode };
+  const filterOptions = { isTeam, isTradie, isOwner, isManager, userRole, isSimpleMode, hasProSubscription: canUseAIFeatures };
   const visibleMenuItems = getSidebarMenuItems(filterOptions);
   const visibleSettingsItems = getSidebarSettingsItems(filterOptions);
 

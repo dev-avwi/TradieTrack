@@ -10,6 +10,7 @@ import {
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { useSimpleMode } from "@/hooks/use-simple-mode";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import { getMorePageItems, type NavItem } from "@/lib/navigation-config";
 
 interface MoreItem {
@@ -26,7 +27,8 @@ export default function More() {
   const { isTeam, isTradie, isOwner, isManager, userRole } = useAppMode();
   
   const { isSimpleMode } = useSimpleMode();
-  const morePageItems = getMorePageItems({ isTeam, isTradie, isOwner, isManager, userRole, isSimpleMode });
+  const { canUseAIFeatures } = useFeatureAccess();
+  const morePageItems = getMorePageItems({ isTeam, isTradie, isOwner, isManager, userRole, isSimpleMode, hasProSubscription: canUseAIFeatures });
   
   const allItems: MoreItem[] = morePageItems.map((item: NavItem) => ({
     title: item.title,

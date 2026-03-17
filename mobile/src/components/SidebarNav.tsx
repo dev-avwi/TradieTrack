@@ -96,6 +96,9 @@ export function SidebarNav() {
   const isManager = userRole === 'manager';
   const isStaffTradie = userRole === 'staff_tradie' || userRole === 'staff' || userRole === 'team';
   
+  const subscriptionTier = user?.subscriptionTier || 'free';
+  const hasProSubscription = subscriptionTier === 'pro' || subscriptionTier === 'team' || subscriptionTier === 'beta';
+
   const filterOptions: FilterOptions = useMemo(() => ({
     isTeam: Boolean((businessSettings as any)?.hasTeam),
     isTradie: isStaffTradie,
@@ -103,7 +106,8 @@ export function SidebarNav() {
     isManager: isManager,
     isSolo: userRole === 'solo_owner',
     userRole: userRole,
-  }), [userRole, isOwner, isManager, isStaffTradie, businessSettings]);
+    hasProSubscription,
+  }), [userRole, isOwner, isManager, isStaffTradie, businessSettings, hasProSubscription]);
 
   // User is ready when initialized and has either role data or is authenticated
   const isReady = isInitialized && (user?.id || roleInfo);

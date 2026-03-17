@@ -342,6 +342,7 @@ export function useUserRole() {
   const subscriptionTier = user?.subscriptionTier || 'free';
   const hasTeamSubscription = subscriptionTier === 'team' || subscriptionTier === 'beta';
   const hasProSubscription = subscriptionTier === 'pro' || subscriptionTier === 'team' || subscriptionTier === 'beta';
+  const canUseAIFeatures = hasProSubscription;
   
   // Team access requires both role permission AND team subscription
   // Pro users can see team features but should get upgrade prompts
@@ -361,6 +362,7 @@ export function useUserRole() {
     subscriptionTier,
     hasTeamSubscription,
     hasProSubscription,
+    canUseAIFeatures,
     isLoading,
     permissions,
     hasPermission,

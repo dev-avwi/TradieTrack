@@ -18,7 +18,7 @@ Core architectural and design decisions include:
 *   **Financial System**: Live quote/invoice editor with real-time preview, catalog integration, deposit settings, digital signatures, invoice locking, and audit trails.
 *   **Payment Collection**: Supports Stripe Payment Links, "Tap to Pay Request Flow," QR code support, Quick Collect Payment, and manual payment recording, with automatic receipt dispatch.
 *   **Smart Payment Chaser**: An AI-powered system for prioritized payment collection.
-*   **Subscription & Billing**: Three-tier pricing with granular team member access and a 7-day free trial.
+*   **Subscription & Billing**: Three-tier pricing with granular team member access and a 7-day free trial. AI feature gating via `requiresProPlan` flag on nav items (web + mobile) and `canUseAIFeatures` / `useFeatureAccess` hooks. Gated features: FloatingAIChat, AIPhotoAnalysis, AIScheduleOptimizer, Autopilot, Automations, AI Visualization nav items, and mobile FloatingAIWidget.
 *   **Multi-Business Subcontractors**: Functionality for subcontractors to manage jobs across multiple businesses.
 *   **Communication**: Customizable email automation via SendGrid, PWA support, real-time communication via WebSockets, and two-way Twilio SMS integration with a unified Chat Hub.
 *   **Operations & Dispatch**: Features a Team Operations Center and a Visual Dispatch Board (Schedule, Kanban, Map views) with conflict detection and live location tracking.

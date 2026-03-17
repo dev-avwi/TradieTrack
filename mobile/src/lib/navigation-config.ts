@@ -14,6 +14,7 @@ export interface NavItem {
   requiresPlatformAdmin?: boolean;
   hideForTradie?: boolean;
   hideForStaff?: boolean;
+  requiresProPlan?: boolean;
   allowedRoles?: UserRole[];
   showInBottomNav?: boolean;
   showInMore?: boolean;
@@ -43,6 +44,7 @@ export const mainMenuItems: NavItem[] = [
     color: "primary",
     bgColor: "primary",
     requiresOwnerOrManager: true,
+    requiresProPlan: true,
     hideForStaff: true,
     showInMore: true,
     category: "featured",
@@ -260,6 +262,7 @@ export const mainMenuItems: NavItem[] = [
     color: "primary",
     bgColor: "primary",
     requiresOwnerOrManager: true,
+    requiresProPlan: true,
     hideForStaff: true,
     showInMore: true,
     category: "featured",
@@ -272,6 +275,7 @@ export const mainMenuItems: NavItem[] = [
     description: "Before & after concept images",
     color: "primary",
     bgColor: "primary",
+    requiresProPlan: true,
     hideForStaff: true,
     showInMore: true,
     category: "work",
@@ -432,6 +436,7 @@ export interface FilterOptions {
   isSolo: boolean;
   userRole?: UserRole;
   isPlatformAdmin?: boolean;
+  hasProSubscription?: boolean;
 }
 
 export function filterNavItems(items: NavItem[], options: FilterOptions): NavItem[] {
@@ -454,6 +459,11 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
     
     // Hide from staff tradies (staff who are not owners/managers)
     if (item.hideForStaff && isStaffTradie) {
+      return false;
+    }
+
+    // Hide items that require Pro plan
+    if (item.requiresProPlan && options.hasProSubscription === false) {
       return false;
     }
     
@@ -541,6 +551,7 @@ export interface SidebarNavItem {
   section: 'main' | 'settings';
   hideForStaff?: boolean;
   requiresOwnerOrManager?: boolean;
+  requiresProPlan?: boolean;
   allowedRoles?: UserRole[];
 }
 
@@ -672,6 +683,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     section: 'main',
     hideForStaff: true,
     requiresOwnerOrManager: true,
+    requiresProPlan: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   { 
@@ -763,6 +775,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     section: 'main',
     hideForStaff: true,
     requiresOwnerOrManager: true,
+    requiresProPlan: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   { 
@@ -773,6 +786,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     matchPaths: ['/more/ai-visualization'],
     section: 'main',
     hideForStaff: true,
+    requiresProPlan: true,
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
 ];
@@ -813,6 +827,10 @@ export function filterSidebarItems(items: SidebarNavItem[], options: FilterOptio
     }
     
     if (item.hideForStaff && isStaffTradie) {
+      return false;
+    }
+
+    if (item.requiresProPlan && options.hasProSubscription === false) {
       return false;
     }
     

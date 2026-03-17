@@ -106,6 +106,7 @@ import ProfitabilityReport from "@/pages/ProfitabilityReport";
 import SubcontractorWebView from "@/pages/SubcontractorWebView";
 import FilesPage from "@/pages/Files";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 
 function BusinessPicker({ userId }: { userId: string }) {
   const { data: businessData } = useQuery({
@@ -821,6 +822,12 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
   };
 }
 
+function GatedFloatingAIChat({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const { canUseAIFeatures, isLoading } = useFeatureAccess();
+  if (isLoading || !canUseAIFeatures) return null;
+  return <FloatingAIChat onNavigate={onNavigate} />;
+}
+
 function AppLayout() {
   const { theme, setTheme, setThemeWithSync } = useTheme();
   const [location, setLocation] = useLocation();
@@ -1400,8 +1407,8 @@ function AppLayout() {
       {/* What You Missed popup - shows on app open */}
       <WhatYouMissedModal />
       
-      {/* AI Assistant - floating above all pages */}
-      <FloatingAIChat onNavigate={handleNavigation} />
+      {/* AI Assistant - floating above all pages (only for Pro+ subscribers) */}
+      <GatedFloatingAIChat onNavigate={handleNavigation} />
       
       {quoteModal.quoteId && (
         <QuoteModal

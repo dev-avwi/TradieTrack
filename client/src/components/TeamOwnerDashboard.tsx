@@ -9,6 +9,7 @@ import TrustBanner from "./TrustBanner";
 import ActivityFeed from "./ActivityFeed";
 import FloatingActionButton from "./FloatingActionButton";
 import AIScheduleOptimizer from "./AIScheduleOptimizer";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import { useDashboardKPIs, useTodaysJobs } from "@/hooks/use-dashboard-data";
 import { useUpdateJob } from "@/hooks/use-jobs";
 import { useAppMode } from "@/hooks/use-app-mode";
@@ -125,6 +126,7 @@ export default function TeamOwnerDashboard({
   const { teamMembers, hasActiveTeam } = useAppMode();
   const updateJob = useUpdateJob();
   const { toast } = useToast();
+  const { canUseAIFeatures } = useFeatureAccess();
 
   interface ProfitSnapshot {
     revenueToday: number;
@@ -966,7 +968,8 @@ export default function TeamOwnerDashboard({
           </section>
         )}
 
-        {/* AI SCHEDULE OPTIMIZER - in left column */}
+        {/* AI SCHEDULE OPTIMIZER - in left column (Pro+ only) */}
+        {canUseAIFeatures && (
         <AIScheduleOptimizer 
           className="shadow-lg h-full"
           onApplySchedule={(schedule) => {
@@ -976,6 +979,7 @@ export default function TeamOwnerDashboard({
             });
           }}
         />
+        )}
         </div>
 
         {/* RIGHT COLUMN - Today's Jobs + Activity stacking */}

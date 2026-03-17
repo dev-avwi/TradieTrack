@@ -411,6 +411,7 @@ export default function MoreScreen() {
     hasTeamAccess,
     canAccessTeamPages,
     hasTeamSubscription,
+    hasProSubscription,
     isOwner,
     isManager,
     canAccessBilling,
@@ -424,7 +425,8 @@ export default function MoreScreen() {
     isSolo,
     userRole: mapRoleToFilterRole(role),
     isPlatformAdmin: user?.isPlatformAdmin || false,
-  }), [canAccessTeamPages, isSolo, isStaff, isOwner, isManager, role, user?.isPlatformAdmin]);
+    hasProSubscription,
+  }), [canAccessTeamPages, isSolo, isStaff, isOwner, isManager, role, user?.isPlatformAdmin, hasProSubscription]);
 
   const categorizedItems = useMemo(() => 
     getMorePageItemsByCategory(filterOptions), 

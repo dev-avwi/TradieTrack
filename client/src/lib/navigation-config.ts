@@ -46,6 +46,7 @@ export interface NavItem {
   hideForTradie?: boolean;
   hideForStaff?: boolean;  // Hide from staff tradies completely
   hideInSimpleMode?: boolean;  // Hide when simple mode is active
+  requiresProPlan?: boolean;  // Requires Pro or higher subscription
   allowedRoles?: UserRole[];  // Explicit role whitelist
   showInBottomNav?: boolean;
   showInSidebar?: boolean;
@@ -237,6 +238,7 @@ export const mainMenuItems: NavItem[] = [
     color: "text-primary",
     bgColor: "bg-primary/10",
     requiresOwnerOrManager: true,
+    requiresProPlan: true,
     hideForStaff: true,
     showInSidebar: true,
     showInMore: true,
@@ -396,6 +398,7 @@ export interface FilterOptions {
   isManager: boolean;
   userRole?: UserRole;
   isSimpleMode?: boolean;
+  hasProSubscription?: boolean;
 }
 
 export function filterNavItems(items: NavItem[], options: FilterOptions): NavItem[] {
@@ -412,6 +415,11 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
     
     // Hide from staff tradies
     if (item.hideForStaff && isStaffTradie) {
+      return false;
+    }
+
+    // Hide items that require Pro plan
+    if (item.requiresProPlan && options.hasProSubscription === false) {
       return false;
     }
 

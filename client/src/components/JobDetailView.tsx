@@ -12,6 +12,7 @@ import { JobDocuments } from "./JobDocuments";
 import { JobVariations } from "./JobVariations";
 import { JobSignature } from "./JobSignature";
 import { AIPhotoAnalysis } from "./AIPhotoAnalysis";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import { JobForms } from "./CustomFormRenderer";
 import { SafetyFormsSection, SafetyCheckDialog } from "./SafetyFormsSection";
 import { JobChat } from "./JobChat";
@@ -210,6 +211,7 @@ export default function JobDetailView({
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const searchString = useSearch();
+  const { canUseAIFeatures } = useFeatureAccess();
   const chatSectionRef = useRef<HTMLDivElement>(null);
   const [showSmartActions, setShowSmartActions] = useState(false);
   const [smartActions, setSmartActions] = useState<SmartAction[]>([]);
@@ -3713,8 +3715,8 @@ export default function JobDetailView({
             </Card>
           )}
 
-          {/* AI Photo Analysis - Show when photos exist */}
-          {jobPhotos.length > 0 && (
+          {/* AI Photo Analysis - Show when photos exist and user has AI access */}
+          {canUseAIFeatures && jobPhotos.length > 0 && (
             <AIPhotoAnalysis
               jobId={jobId}
               photoCount={jobPhotos.length}
