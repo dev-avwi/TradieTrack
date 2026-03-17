@@ -18876,6 +18876,17 @@ Be specific about materials, colors, and features that would be included.`
         const cached = await getIdempotencyRecord(idempKey);
         if (cached) return res.status(201).json(cached);
       }
+
+      const { checkCanCreateQuote } = await import('./subscriptionService');
+      const quoteLimitCheck = await checkCanCreateQuote(userContext.effectiveUserId);
+      if (!quoteLimitCheck.allowed) {
+        return res.status(402).json({
+          error: quoteLimitCheck.reason,
+          type: 'SUBSCRIPTION_LIMIT',
+          usageInfo: quoteLimitCheck.usage,
+        });
+      }
+
       const { lineItems, ...quoteData } = reqBody;
       const data = insertQuoteSchema.parse(quoteData);
       
@@ -18918,6 +18929,14 @@ Be specific about materials, colors, and features that would be included.`
       if (idempKey) {
         await setIdempotencyRecord(idempKey, quoteWithItems);
       }
+
+      try {
+        const { incrementQuoteUsage } = await import('./subscriptionService');
+        await incrementQuoteUsage(userContext.effectiveUserId);
+      } catch (e) {
+        console.warn('[Usage] Failed to increment quote usage:', (e as Error).message);
+      }
+
       res.status(201).json(quoteWithItems);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -19741,6 +19760,17 @@ Be specific about materials, colors, and features that would be included.`
         const cached = await getIdempotencyRecord(idempKey);
         if (cached) return res.status(201).json(cached);
       }
+
+      const { checkCanCreateInvoice } = await import('./subscriptionService');
+      const invoiceLimitCheck = await checkCanCreateInvoice(userContext.effectiveUserId);
+      if (!invoiceLimitCheck.allowed) {
+        return res.status(402).json({
+          error: invoiceLimitCheck.reason,
+          type: 'SUBSCRIPTION_LIMIT',
+          usageInfo: invoiceLimitCheck.usage,
+        });
+      }
+
       const { lineItems, ...invoiceData } = reqBody;
       
       // Get business settings to check GST
@@ -19862,6 +19892,14 @@ Be specific about materials, colors, and features that would be included.`
       if (idempKey) {
         await setIdempotencyRecord(idempKey, invoiceWithItems);
       }
+
+      try {
+        const { incrementInvoiceUsage } = await import('./subscriptionService');
+        await incrementInvoiceUsage(userContext.effectiveUserId);
+      } catch (e) {
+        console.warn('[Usage] Failed to increment invoice usage:', (e as Error).message);
+      }
+
       res.status(201).json(invoiceWithItems);
     } catch (error) {
       if (error instanceof z.ZodError) {
