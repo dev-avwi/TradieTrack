@@ -61,6 +61,9 @@ export function setupStripeWebhooks(app: Express, stripe: any, storage: any) {
               subscriptionStatus: 'active',
               stripeCustomerId: session.customer,
               stripeSubscriptionId: session.subscription,
+              subscriptionCanceledAt: null,
+              dataRetentionExpiresAt: null,
+              subscriptionPausedAt: null,
             });
 
             // Create notification
@@ -165,18 +168,28 @@ export function setupStripeWebhooks(app: Express, stripe: any, storage: any) {
           
           if (businessSettings) {
             const previousStatus = businessSettings.subscriptionStatus;
+            const isPaused = subscription.pause_collection != null;
+            const effectiveStatus = isPaused ? 'paused' : subscription.status;
             
-            // Update subscription status
-            await storage.updateBusinessSettings(businessSettings.userId, {
-              subscriptionStatus: subscription.status,
-            });
+            const updateData: any = {
+              subscriptionStatus: effectiveStatus,
+            };
+            
+            if (isPaused) {
+              if (!businessSettings.subscriptionPausedAt) {
+                updateData.subscriptionPausedAt = new Date();
+              }
+            } else if (subscription.status === 'active') {
+              updateData.subscriptionPausedAt = null;
+              updateData.subscriptionCanceledAt = null;
+              updateData.dataRetentionExpiresAt = null;
+            }
+            
+            await storage.updateBusinessSettings(businessSettings.userId, updateData);
 
-            // Handle status transitions for team member access
             if (subscription.status === 'past_due') {
-              // Grace period - log warning but don't suspend yet
               console.log(`⚠️ Subscription ${subscription.id} is past_due for user ${businessSettings.userId} - grace period active`);
-            } else if (subscription.status === 'active' && previousStatus === 'past_due') {
-              // Subscription reactivated after being past_due - reactivate team members
+            } else if (effectiveStatus === 'active' && (previousStatus === 'past_due' || previousStatus === 'paused')) {
               const reactivatedCount = await storage.reactivateTeamMembersByOwner(businessSettings.userId);
               console.log(`✅ Reactivated ${reactivatedCount} team members for user ${businessSettings.userId}`);
               
@@ -190,13 +203,12 @@ export function setupStripeWebhooks(app: Express, stripe: any, storage: any) {
               });
             }
 
-            // Create notification if subscription was canceled or paused
-            if (subscription.status === 'canceled' || subscription.status === 'paused') {
+            if (effectiveStatus === 'canceled' || effectiveStatus === 'paused') {
               await createNotification(storage, {
                 userId: businessSettings.userId,
                 type: 'subscription_changed',
                 title: 'Subscription Updated',
-                message: `Your subscription has been ${subscription.status}.`,
+                message: `Your subscription has been ${effectiveStatus}.`,
                 relatedType: 'subscription',
                 relatedId: subscription.id,
               });
@@ -217,10 +229,14 @@ export function setupStripeWebhooks(app: Express, stripe: any, storage: any) {
             const suspendedCount = await storage.suspendTeamMembersByOwner(businessSettings.userId);
             console.log(`🔒 Suspended ${suspendedCount} team members for user ${businessSettings.userId}`);
 
-            // Downgrade to free tier
+            const canceledAt = new Date();
+            const dataRetentionExpiresAt = new Date(canceledAt);
+            dataRetentionExpiresAt.setMonth(dataRetentionExpiresAt.getMonth() + 12);
             await storage.updateBusinessSettings(businessSettings.userId, {
               subscriptionTier: 'free',
               subscriptionStatus: 'canceled',
+              subscriptionCanceledAt: canceledAt,
+              dataRetentionExpiresAt: dataRetentionExpiresAt,
             });
 
             // Create notification

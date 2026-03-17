@@ -665,6 +665,75 @@ export async function resumeSubscription(userId: string): Promise<{ success: boo
   }
 }
 
+export async function pauseSubscription(userId: string): Promise<{ success: boolean; error?: string; resumeDate?: string }> {
+  const stripe = await getUncachableStripeClient();
+  if (!stripe) {
+    return { success: false, error: 'Payment system not configured' };
+  }
+
+  const businessSettings = await storage.getBusinessSettings(userId);
+  const subscriptionId = businessSettings?.stripeSubscriptionId;
+
+  if (!subscriptionId) {
+    return { success: false, error: 'No active subscription found' };
+  }
+
+  try {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+    if (subscription.status !== 'active') {
+      return { success: false, error: 'Only active subscriptions can be paused' };
+    }
+
+    await stripe.subscriptions.update(subscriptionId, {
+      pause_collection: {
+        behavior: 'void',
+      },
+    });
+
+    const pausedAt = new Date();
+    await storage.updateBusinessSettings(userId, {
+      subscriptionStatus: 'paused',
+      subscriptionPausedAt: pausedAt,
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error pausing subscription:', error);
+    return { success: false, error: error.message || 'Failed to pause subscription' };
+  }
+}
+
+export async function unpauseSubscription(userId: string): Promise<{ success: boolean; error?: string }> {
+  const stripe = await getUncachableStripeClient();
+  if (!stripe) {
+    return { success: false, error: 'Payment system not configured' };
+  }
+
+  const businessSettings = await storage.getBusinessSettings(userId);
+  const subscriptionId = businessSettings?.stripeSubscriptionId;
+
+  if (!subscriptionId) {
+    return { success: false, error: 'No subscription found' };
+  }
+
+  try {
+    await stripe.subscriptions.update(subscriptionId, {
+      pause_collection: null as any,
+    });
+
+    await storage.updateBusinessSettings(userId, {
+      subscriptionStatus: 'active',
+      subscriptionPausedAt: null,
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error unpausing subscription:', error);
+    return { success: false, error: error.message || 'Failed to unpause subscription' };
+  }
+}
+
 export async function handleSubscriptionWebhook(
   event: Stripe.Event
 ): Promise<void> {

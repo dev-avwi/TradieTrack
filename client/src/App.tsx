@@ -204,7 +204,25 @@ function PaymentOverdueBanner({ onResolve }: { onResolve: () => void }) {
     queryKey: ['/api/subscription/usage'],
   });
 
-  if (!usage?.subscriptionStatus || usage.subscriptionStatus !== 'past_due') return null;
+  if (!usage?.subscriptionStatus) return null;
+
+  if (usage.subscriptionStatus === 'paused') {
+    return (
+      <div className="flex items-center justify-between gap-2 px-4 py-2 text-sm border-b bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400">
+        <span className="font-medium">
+          Your subscription is paused. You're on the free plan until you resume.
+        </span>
+        <button 
+          onClick={onResolve}
+          className="text-xs font-semibold underline underline-offset-2 hover:no-underline whitespace-nowrap"
+        >
+          Resume Subscription
+        </button>
+      </div>
+    );
+  }
+
+  if (usage.subscriptionStatus !== 'past_due') return null;
 
   return (
     <div className="flex items-center justify-between gap-2 px-4 py-2 text-sm border-b bg-destructive/10 border-destructive/20 text-destructive">

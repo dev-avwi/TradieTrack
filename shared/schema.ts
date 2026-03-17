@@ -425,7 +425,10 @@ export const businessSettings = pgTable("business_settings", {
   // JobRunner Subscription Billing (tradie paying us $39/month)
   stripeCustomerId: text("stripe_customer_id"), // Platform customer ID for subscription billing
   stripeSubscriptionId: text("stripe_subscription_id"), // Active subscription ID
-  subscriptionStatus: text("subscription_status").default('none'), // none, active, trialing, past_due, canceled
+  subscriptionStatus: text("subscription_status").default('none'), // none, active, trialing, past_due, canceled, paused
+  subscriptionPausedAt: timestamp("subscription_paused_at"), // When subscription was paused
+  subscriptionCanceledAt: timestamp("subscription_canceled_at"), // When subscription was canceled (for 12-month data retention)
+  dataRetentionExpiresAt: timestamp("data_retention_expires_at"), // 12 months after cancellation - data eligible for deletion
   currentPeriodEnd: timestamp("current_period_end"), // When current billing period ends
   seatCount: integer("seat_count").default(0), // Number of additional team seats purchased (for Team plan)
   // Payment method info (for display and reminders)

@@ -19,13 +19,15 @@ export default function TermsOfService() {
         <Card>
           <CardContent className="p-8">
             <h1 className="text-3xl font-bold mb-2" data-testid="heading-terms-of-service">Terms of Service</h1>
-            <p className="text-muted-foreground mb-8">Last updated: February 2026</p>
+            <p className="text-muted-foreground mb-2">Last updated: March 2026</p>
+            <p className="text-sm text-muted-foreground mb-8">JobRunner is a product of LinkUp2Care Pty Ltd (ABN 34 692 409 448)</p>
 
             <div className="prose prose-sm dark:prose-invert max-w-none space-y-6">
               <section>
                 <h2 className="text-xl font-semibold mb-3">1. Agreement to Terms</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  By accessing or using JobRunner ("the Service"), you agree to be bound by these Terms of Service 
+                  By accessing or using JobRunner ("the Service"), operated by LinkUp2Care Pty Ltd 
+                  (ABN 34 692 409 448) trading as JobRunner, you agree to be bound by these Terms of Service 
                   and all applicable laws and regulations. If you do not agree with any of these terms, you are 
                   prohibited from using or accessing this Service. These Terms of Service apply to all users of 
                   the Service, including tradespeople, their employees, and their clients.
@@ -77,6 +79,15 @@ export default function TermsOfService() {
                   <li>Advanced reporting and analytics</li>
                 </ul>
 
+                <p className="text-muted-foreground leading-relaxed mt-4 mb-3"><strong>Team Plan ($79/month AUD):</strong></p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+                  <li>Everything in Pro, plus team management tools</li>
+                  <li>Team member accounts with role-based permissions</li>
+                  <li>Visual dispatch board and schedule management</li>
+                  <li>Live GPS location tracking for field workers</li>
+                  <li>Additional seats available at $15/month each</li>
+                </ul>
+
                 <p className="text-muted-foreground leading-relaxed mt-4">
                   <strong>Billing:</strong> Subscriptions are billed monthly in advance. All fees are quoted in 
                   Australian Dollars (AUD) and include GST where applicable. You authorize us to charge your 
@@ -84,9 +95,33 @@ export default function TermsOfService() {
                 </p>
 
                 <p className="text-muted-foreground leading-relaxed mt-3">
+                  <strong>Pausing Your Subscription:</strong> You may pause your subscription at any time through 
+                  your account settings. While paused, no billing occurs and your account reverts to the free plan 
+                  with its associated limits. All your data is preserved and you can resume your subscription at 
+                  any time to restore full access. There is no limit on how long a subscription can remain paused.
+                </p>
+
+                <p className="text-muted-foreground leading-relaxed mt-3">
                   <strong>Cancellation:</strong> You may cancel your subscription at any time through your account 
                   settings. Cancellation takes effect at the end of the current billing period. No refunds are 
-                  provided for partial months.
+                  provided for partial months. Upon cancellation, your account reverts to the free plan.
+                </p>
+
+                <p className="text-muted-foreground leading-relaxed mt-3">
+                  <strong>Data Retention After Cancellation:</strong> If you cancel your subscription, all your 
+                  business data (jobs, quotes, invoices, clients, team records) is retained for 12 months from the 
+                  date of cancellation. During this period, you can resubscribe at any time to regain full access 
+                  to your data. After 12 months, your data may be permanently deleted. Financial records required 
+                  under Australian tax law are retained for the legally mandated period (5-7 years) regardless of 
+                  account status. We will send you a reminder email before any data deletion occurs.
+                </p>
+
+                <p className="text-muted-foreground leading-relaxed mt-3">
+                  <strong>Failed Payments:</strong> If a payment fails, we will attempt to collect payment according 
+                  to Stripe's retry schedule. During this period, your account features may be restricted to free 
+                  plan limits. We will send you SMS and email notifications at escalating intervals to remind you to 
+                  update your payment method. If payment remains unresolved after 21 days, your subscription may be 
+                  canceled automatically.
                 </p>
               </section>
 
@@ -236,8 +271,8 @@ export default function TermsOfService() {
                 <h2 className="text-xl font-semibold mb-3">19. Governing Law</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   These Terms shall be governed by and construed in accordance with the laws of Australia, 
-                  specifically the State of New South Wales. Any disputes arising from these Terms or the 
-                  Service shall be subject to the exclusive jurisdiction of the courts of New South Wales.
+                  specifically the State of Queensland. Any disputes arising from these Terms or the 
+                  Service shall be subject to the exclusive jurisdiction of the courts of Queensland.
                 </p>
               </section>
 
@@ -297,7 +332,7 @@ export default function TermsOfService() {
                   Any dispute arising from or relating to these Terms shall first be attempted to be resolved through good-faith negotiation between the parties for a period of 30 days.
                 </p>
                 <p className="text-muted-foreground leading-relaxed mb-3">
-                  If negotiation fails, disputes shall be submitted to binding arbitration under the rules of the Australian Centre for International Commercial Arbitration (ACICA). Arbitration shall be conducted in Sydney, New South Wales, Australia.
+                  If negotiation fails, disputes shall be submitted to binding arbitration under the rules of the Australian Centre for International Commercial Arbitration (ACICA). Arbitration shall be conducted in Queensland, Australia.
                 </p>
                 <p className="text-muted-foreground leading-relaxed mb-3">
                   The arbitrator's decision shall be final and binding on both parties.
@@ -327,6 +362,38 @@ export default function TermsOfService() {
                   <li>Users are solely responsible for reviewing, verifying, and approving all AI-generated content before use</li>
                   <li>JobRunner does not guarantee the accuracy, completeness, or appropriateness of AI-generated content</li>
                   <li>AI features may use anonymised and aggregated data to improve service quality, but individual business data is not shared with third parties for AI training purposes</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">24A. AI Receptionist Service</h2>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  JobRunner offers an AI Receptionist feature that can handle incoming SMS messages on behalf 
+                  of your business. By enabling this feature, you acknowledge and agree to the following:
+                </p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+                  <li>The AI Receptionist is designed for information collection and initial customer enquiry handling only. It does not confirm jobs, provide quotes, or make commitments on behalf of your business</li>
+                  <li>All job details, quotes, and scheduling communicated by the AI Receptionist must be confirmed by you, the business owner, before any work is undertaken</li>
+                  <li>The AI Receptionist may misinterpret customer messages or provide incomplete responses. You are responsible for reviewing all AI-handled conversations and following up with customers as needed</li>
+                  <li>Customers interacting with the AI Receptionist will be informed that they are communicating with an automated system</li>
+                  <li>SMS messages sent and received through the AI Receptionist are stored in accordance with our Privacy Policy and may be retained for quality assurance and dispute resolution purposes</li>
+                  <li>JobRunner is not liable for any miscommunication, missed enquiries, lost business, or customer disputes arising from the AI Receptionist's responses</li>
+                  <li>You are responsible for ensuring that any information the AI Receptionist provides to your customers is accurate and up-to-date by maintaining current business details in your settings</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">24B. SMS Communications</h2>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  JobRunner sends SMS messages on your behalf for various purposes including quote notifications, 
+                  invoice reminders, job updates, and subscription billing notifications. By using the Service:
+                </p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+                  <li>You confirm that you have obtained appropriate consent from your customers before sending them SMS communications through the platform</li>
+                  <li>Platform billing and subscription-related SMS messages will be sent from the "JobRunner" sender name. These are service messages and not marketing communications</li>
+                  <li>Standard SMS rates from your carrier may apply to messages received from JobRunner</li>
+                  <li>You agree to comply with the Spam Act 2003 (Cth) and the Do Not Call Register Act 2006 (Cth) when using SMS features to contact your customers</li>
+                  <li>JobRunner reserves the right to suspend SMS functionality if we detect misuse, including sending unsolicited commercial messages</li>
                 </ul>
               </section>
 
@@ -396,7 +463,8 @@ export default function TermsOfService() {
                 </p>
                 <div className="mt-3 p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">
-                    <strong>JobRunner Support</strong><br />
+                    <strong>LinkUp2Care Pty Ltd trading as JobRunner</strong><br />
+                    ABN: 34 692 409 448<br />
                     Email: support@jobrunner.com.au<br />
                     Phone: 0458 300 051
                   </p>

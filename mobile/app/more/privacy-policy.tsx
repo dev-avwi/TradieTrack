@@ -266,7 +266,7 @@ export default function PrivacyPolicyScreen() {
           </Text>
           <Text style={styles.subSectionTitle}>Data Retention</Text>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
-            We retain your personal information for as long as your account is active or as needed to provide services, comply with legal obligations (including tax record-keeping requirements of 5-7 years), resolve disputes, and enforce our agreements.
+            We retain your personal information for as long as your account is active or as needed to provide services. If you cancel your subscription, all business data is retained for 12 months from the date of cancellation. During this period, you can resubscribe to regain access. After 12 months, non-financial data may be permanently deleted. Financial records are retained for 5-7 years as required by Australian tax law. If you pause your subscription, all data is retained indefinitely until you resume or cancel.
           </Text>
         </View>
 
@@ -407,9 +407,11 @@ export default function PrivacyPolicyScreen() {
             If you have any questions about this Privacy Policy, wish to exercise your privacy rights, or have a complaint, please contact us:
           </Text>
           <View style={styles.bulletList}>
-            <BulletItem text="Email: admin@avwebinnovation.com" colors={colors} styles={styles} />
-            <BulletItem text="Website: www.jobrunner.com.au/privacy" colors={colors} styles={styles} />
-            <BulletItem text="Mail: JobRunner Privacy Officer, PO Box [TBC], Sydney NSW 2000" colors={colors} styles={styles} />
+            <BulletItem text="LinkUp2Care Pty Ltd trading as JobRunner" colors={colors} styles={styles} />
+            <BulletItem text="ABN: 34 692 409 448" colors={colors} styles={styles} />
+            <BulletItem text="Email: support@jobrunner.com.au" colors={colors} styles={styles} />
+            <BulletItem text="Phone: 0458 300 051" colors={colors} styles={styles} />
+            <BulletItem text="Website: www.jobrunner.com.au" colors={colors} styles={styles} />
           </View>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
             We aim to respond to all privacy enquiries within 30 days. If you are not satisfied with our response, you may lodge a complaint with the Office of the Australian Information Commissioner (OAIC).
@@ -417,8 +419,8 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Last Updated: February 2026</Text>
-          <Text style={styles.footerText}>Version 1.0</Text>
+          <Text style={styles.footerText}>Last Updated: March 2026</Text>
+          <Text style={styles.footerText}>Version 2.0</Text>
         </View>
       </ScrollView>
     </>

@@ -431,7 +431,7 @@ export default function TermsOfServiceScreen() {
 
           <Text style={styles.subSectionTitle}>Step 4: Legal Proceedings</Text>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
-            If mediation is unsuccessful, either party may commence legal proceedings. Any legal action must be brought in the courts of New South Wales, Australia, and you consent to the exclusive jurisdiction of those courts.
+            If mediation is unsuccessful, either party may commence legal proceedings. Any legal action must be brought in the courts of Queensland, Australia, and you consent to the exclusive jurisdiction of those courts.
           </Text>
         </View>
 
@@ -440,13 +440,21 @@ export default function TermsOfServiceScreen() {
           
           <Text style={styles.subSectionTitle}>Termination by You</Text>
           <Text style={styles.paragraph}>
-            You may cancel your account at any time through the app settings or by contacting admin@avwebinnovation.com. Upon cancellation:
+            You may cancel your account at any time through the app settings or by contacting support@jobrunner.com.au. Upon cancellation:
           </Text>
           <View style={styles.bulletList}>
             <BulletItem text="Your subscription will remain active until the end of the current billing period" colors={colors} styles={styles} />
-            <BulletItem text="You will retain access to export your data for 30 days" colors={colors} styles={styles} />
-            <BulletItem text="After 30 days, your data will be scheduled for deletion" colors={colors} styles={styles} />
+            <BulletItem text="Your account reverts to the free plan with its associated limits" colors={colors} styles={styles} />
+            <BulletItem text="All your business data is retained for 12 months after cancellation" colors={colors} styles={styles} />
+            <BulletItem text="You can resubscribe at any time during this period to regain full access" colors={colors} styles={styles} />
+            <BulletItem text="After 12 months, non-financial data may be permanently deleted" colors={colors} styles={styles} />
+            <BulletItem text="Financial records are retained for 5-7 years as required by Australian tax law" colors={colors} styles={styles} />
           </View>
+
+          <Text style={styles.subSectionTitle}>Pausing Your Subscription</Text>
+          <Text style={styles.paragraph}>
+            You may pause your subscription at any time. While paused, no billing occurs and your account reverts to the free plan. All data is preserved and you can resume your subscription at any time to restore full access.
+          </Text>
 
           <Text style={styles.subSectionTitle}>Termination by Us</Text>
           <Text style={styles.paragraph}>
@@ -487,7 +495,7 @@ export default function TermsOfServiceScreen() {
           
           <Text style={styles.subSectionTitle}>Governing Law</Text>
           <Text style={styles.paragraph}>
-            These Terms are governed by the laws of New South Wales, Australia. You agree to submit to the exclusive jurisdiction of the courts of New South Wales.
+            These Terms are governed by the laws of Queensland, Australia. You agree to submit to the exclusive jurisdiction of the courts of Queensland.
           </Text>
 
           <Text style={styles.subSectionTitle}>Entire Agreement</Text>
@@ -517,10 +525,11 @@ export default function TermsOfServiceScreen() {
             If you have any questions about these Terms of Service, please contact us:
           </Text>
           <View style={styles.bulletList}>
-            <BulletItem text="General enquiries: admin@avwebinnovation.com" colors={colors} styles={styles} />
+            <BulletItem text="LinkUp2Care Pty Ltd trading as JobRunner" colors={colors} styles={styles} />
+            <BulletItem text="ABN: 34 692 409 448" colors={colors} styles={styles} />
+            <BulletItem text="Email: support@jobrunner.com.au" colors={colors} styles={styles} />
             <BulletItem text="Phone: 0458 300 051" colors={colors} styles={styles} />
             <BulletItem text="Website: www.jobrunner.com.au" colors={colors} styles={styles} />
-            <BulletItem text="Mail: JobRunner Pty Ltd, PO Box [TBC], Sydney NSW 2000" colors={colors} styles={styles} />
           </View>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
             We aim to respond to all enquiries within 5 business days.
@@ -528,8 +537,8 @@ export default function TermsOfServiceScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Last Updated: February 2026</Text>
-          <Text style={styles.footerText}>Version 2.0</Text>
+          <Text style={styles.footerText}>Last Updated: March 2026</Text>
+          <Text style={styles.footerText}>Version 3.0</Text>
         </View>
       </ScrollView>
     </>

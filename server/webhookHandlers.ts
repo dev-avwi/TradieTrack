@@ -297,16 +297,29 @@ async function handleStripeEvent(event: any, storage: any) {
         const businessSettings = await storage.getBusinessSettingsByStripeCustomer(customerId);
         
         if (businessSettings) {
-          await storage.updateBusinessSettings(businessSettings.userId, {
-            subscriptionStatus: subscription.status,
-          });
+          const isPaused = subscription.pause_collection != null;
+          const effectiveStatus = isPaused ? 'paused' : subscription.status;
+          
+          const updateData: any = {
+            subscriptionStatus: effectiveStatus,
+          };
+          
+          if (isPaused) {
+            updateData.subscriptionPausedAt = updateData.subscriptionPausedAt || new Date();
+          } else if (subscription.status === 'active') {
+            updateData.subscriptionPausedAt = null;
+            updateData.subscriptionCanceledAt = null;
+            updateData.dataRetentionExpiresAt = null;
+          }
+          
+          await storage.updateBusinessSettings(businessSettings.userId, updateData);
 
-          if (subscription.status === 'canceled' || subscription.status === 'paused') {
+          if (effectiveStatus === 'canceled' || effectiveStatus === 'paused') {
             await createNotification(storage, {
               userId: businessSettings.userId,
               type: 'subscription_changed',
               title: 'Subscription Updated',
-              message: `Your subscription has been ${subscription.status}.`,
+              message: `Your subscription has been ${effectiveStatus}.`,
               relatedType: 'subscription',
               relatedId: subscription.id,
             });
@@ -323,9 +336,14 @@ async function handleStripeEvent(event: any, storage: any) {
         const businessSettings = await storage.getBusinessSettingsByStripeCustomer(customerId);
         
         if (businessSettings) {
+          const canceledAt = new Date();
+          const dataRetentionExpiresAt = new Date(canceledAt);
+          dataRetentionExpiresAt.setMonth(dataRetentionExpiresAt.getMonth() + 12);
           await storage.updateBusinessSettings(businessSettings.userId, {
             subscriptionTier: 'free',
             subscriptionStatus: 'canceled',
+            subscriptionCanceledAt: canceledAt,
+            dataRetentionExpiresAt: dataRetentionExpiresAt,
           });
 
           await createNotification(storage, {

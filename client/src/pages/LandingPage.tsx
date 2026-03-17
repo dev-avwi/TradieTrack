@@ -1061,7 +1061,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 text-center text-sm">
-            <p>&copy; {new Date().getFullYear()} JobRunner. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} LinkUp2Care Pty Ltd trading as JobRunner. All rights reserved.</p>
             <p className="mt-2 text-gray-500">Made with love in Australia</p>
           </div>
         </div>

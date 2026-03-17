@@ -4546,6 +4546,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/subscription/pause", requireAuth, async (req: any, res) => {
+    try {
+      const { pauseSubscription } = await import('./billingService');
+      const userId = req.userId!;
+      
+      const result = await pauseSubscription(userId);
+      
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.error });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Your subscription has been paused. You can resume anytime from your account settings. Your data will be kept safe.' 
+      });
+    } catch (error: any) {
+      console.error('Error pausing subscription:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to pause subscription' });
+    }
+  });
+
+  app.post("/api/subscription/unpause", requireAuth, async (req: any, res) => {
+    try {
+      const { unpauseSubscription } = await import('./billingService');
+      const userId = req.userId!;
+      
+      const result = await unpauseSubscription(userId);
+      
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.error });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: 'Your subscription has been resumed. All your Pro features are now active again.' 
+      });
+    } catch (error: any) {
+      console.error('Error unpausing subscription:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to unpause subscription' });
+    }
+  });
+
   // POST /api/subscription/upgrade-to-team - Upgrades Pro subscription to Team with trial
   app.post("/api/subscription/upgrade-to-team", requireAuth, async (req: any, res) => {
     try {

@@ -19,16 +19,18 @@ export default function PrivacyPolicy() {
         <Card>
           <CardContent className="p-8">
             <h1 className="text-3xl font-bold mb-2" data-testid="heading-privacy-policy">Privacy Policy</h1>
-            <p className="text-muted-foreground mb-8">Last updated: February 2026</p>
+            <p className="text-muted-foreground mb-2">Last updated: March 2026</p>
+            <p className="text-sm text-muted-foreground mb-8">JobRunner is a product of LinkUp2Care Pty Ltd (ABN 34 692 409 448)</p>
 
             <div className="prose prose-sm dark:prose-invert max-w-none space-y-6">
               <section>
                 <h2 className="text-xl font-semibold mb-3">1. Introduction</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  JobRunner ("we", "our", or "us") is committed to protecting the privacy of Australian 
-                  tradespeople and their clients. This Privacy Policy explains how we collect, use, disclose, 
-                  and safeguard your information when you use our platform. We comply with the Australian 
-                  Privacy Principles (APPs) contained in the Privacy Act 1988 (Cth).
+                  LinkUp2Care Pty Ltd (ABN 34 692 409 448) trading as JobRunner ("we", "our", or "us") is 
+                  committed to protecting the privacy of Australian tradespeople and their clients. This Privacy 
+                  Policy explains how we collect, use, disclose, and safeguard your information when you use our 
+                  platform. We comply with the Australian Privacy Principles (APPs) contained in the Privacy Act 
+                  1988 (Cth).
                 </p>
               </section>
 
@@ -39,7 +41,8 @@ export default function PrivacyPolicy() {
                   <li><strong>Account Information:</strong> Name, email address, phone number, business name, ABN, and address when you register</li>
                   <li><strong>Business Data:</strong> Quotes, invoices, jobs, client information, and financial data you enter into the platform</li>
                   <li><strong>Payment Information:</strong> Credit card details (processed securely by Stripe), bank account details for receiving payments</li>
-                  <li><strong>Communications:</strong> Messages, emails, and SMS sent through our platform</li>
+                  <li><strong>Communications:</strong> Messages, emails, and SMS sent through our platform, including AI Receptionist conversations</li>
+                  <li><strong>Phone Numbers:</strong> Customer phone numbers provided for SMS communications and AI Receptionist interactions</li>
                   <li><strong>Usage Data:</strong> How you interact with our services, including log data and device information</li>
                   <li><strong>GPS & Location Data:</strong> When enabled, we collect GPS coordinates, accuracy metrics, speed, heading, altitude, and reverse-geocoded addresses during work hours for time tracking, geofencing, and job site verification purposes</li>
                   <li><strong>Time Tracking Data:</strong> Clock in/out times, break durations, pause events, hourly rates, and a full audit trail of any manual edits made to time entries including who made the change and when</li>
@@ -60,6 +63,8 @@ export default function PrivacyPolicy() {
                   <li>Provide GPS-based geofencing for automatic job site check-in and check-out</li>
                   <li>Maintain audit trails for time entry edits to support dispute resolution and fair work compliance</li>
                   <li>Generate job profitability reports combining time tracking, material costs, and invoice data</li>
+                  <li>Process and respond to incoming customer SMS enquiries through the AI Receptionist (when enabled)</li>
+                  <li>Send subscription billing notifications and overdue payment reminders via SMS</li>
                 </ul>
               </section>
 
@@ -100,11 +105,22 @@ export default function PrivacyPolicy() {
 
               <section>
                 <h2 className="text-xl font-semibold mb-3">6. Data Retention</h2>
-                <p className="text-muted-foreground leading-relaxed">
+                <p className="text-muted-foreground leading-relaxed mb-3">
                   We retain your personal information for as long as your account is active or as needed to 
-                  provide you services. We also retain information as required by Australian tax law (typically 
-                  5-7 years for financial records). You may request deletion of your account and associated data, 
-                  subject to legal retention requirements.
+                  provide you services.
+                </p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+                  <li><strong>Active Accounts:</strong> All data is retained for the duration of your account</li>
+                  <li><strong>Paused Subscriptions:</strong> All data is retained indefinitely while your subscription is paused. You can resume at any time</li>
+                  <li><strong>Canceled Subscriptions:</strong> All business data (jobs, quotes, invoices, clients, team records) is retained for 12 months after cancellation. During this period, you can resubscribe to regain access. After 12 months, non-financial data may be permanently deleted</li>
+                  <li><strong>Financial Records:</strong> Invoices, payment records, and related financial data are retained for 5-7 years as required by Australian tax law (Income Tax Assessment Act 1997), regardless of account status</li>
+                  <li><strong>SMS and Communication Logs:</strong> SMS message logs, including AI Receptionist conversations, are retained for 24 months for quality assurance and dispute resolution</li>
+                  <li><strong>Location Tracking Data:</strong> GPS data is retained for 12 months, then automatically archived</li>
+                  <li><strong>Audit Trails:</strong> Time entry edit histories are retained for the duration of your account plus 7 years to comply with Fair Work Act 2009 record-keeping requirements</li>
+                </ul>
+                <p className="text-muted-foreground leading-relaxed mt-3">
+                  You may request deletion of your account and associated data at any time, subject to the legal 
+                  retention requirements listed above. We will send you a reminder before any scheduled data deletion.
                 </p>
               </section>
 
@@ -207,8 +223,10 @@ export default function PrivacyPolicy() {
                 </p>
                 <div className="mt-3 p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">
-                    <strong>JobRunner Support</strong><br />
+                    <strong>LinkUp2Care Pty Ltd trading as JobRunner</strong><br />
+                    ABN: 34 692 409 448<br />
                     Email: support@jobrunner.com.au<br />
+                    Phone: 0458 300 051<br />
                     Website: jobrunner.com.au
                   </p>
                 </div>

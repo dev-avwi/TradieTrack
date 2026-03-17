@@ -44,7 +44,7 @@ async function getEffectiveTier(user: any, subscriptionStatus?: string): Promise
   const hasActiveStripeSubscription = status === 'active' || status === 'trialing';
   const isTrialUser = user.trialStatus === 'active' || user.trialStatus === 'expired';
 
-  if (status === 'past_due' || status === 'canceled' || status === 'unpaid') {
+  if (status === 'past_due' || status === 'canceled' || status === 'unpaid' || status === 'paused') {
     return 'free';
   }
 
@@ -124,7 +124,9 @@ export async function getUserUsageStatus(userId: string): Promise<UsageStatus> {
   
   await resetUsageIfNeeded(userId, user);
   
-  const effectiveTier = await getEffectiveTier(user);
+  const businessSettings = await storage.getBusinessSettings(userId);
+  const subscriptionStatus = businessSettings?.subscriptionStatus || 'none';
+  const effectiveTier = await getEffectiveTier(user, subscriptionStatus);
   const limits = getTierLimits(effectiveTier);
   
   let trialDaysRemaining: number | null = null;
@@ -153,7 +155,7 @@ export async function getUserUsageStatus(userId: string): Promise<UsageStatus> {
   
   return {
     tier: (effectiveTier === 'pro' || effectiveTier === 'team') && isTrialActive ? 'trial' : effectiveTier,
-    subscriptionStatus: user.subscriptionStatus || undefined,
+    subscriptionStatus: subscriptionStatus || undefined,
     isTrialActive,
     trialDaysRemaining,
     usage: {
