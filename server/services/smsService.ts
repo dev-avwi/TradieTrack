@@ -118,6 +118,7 @@ export async function getAlphanumericSenderId(businessOwnerId?: string): Promise
 
 /**
  * Send SMS via the platform Twilio account
+ * Uses the business's dedicated number (AI Receptionist) if configured, otherwise shared platform number
  */
 async function sendSmsPlatform(
   to: string,
@@ -127,7 +128,24 @@ async function sendSmsPlatform(
 ): Promise<{ success: boolean; messageId?: string; error?: string; simulated?: boolean }> {
   const formattedTo = formatPhoneNumber(to);
   const validMediaUrls = mediaUrls?.slice(0, 10) || [];
-  return sendSMS({ to: formattedTo, message, mediaUrls: validMediaUrls.length > 0 ? validMediaUrls : undefined });
+
+  let fromNumber: string | undefined;
+  if (businessOwnerId) {
+    try {
+      const settings = await storage.getBusinessSettings(businessOwnerId);
+      if (settings?.smsMode === 'ai_receptionist' && settings?.dedicatedPhoneNumber) {
+        fromNumber = settings.dedicatedPhoneNumber;
+      }
+    } catch {
+    }
+  }
+
+  return sendSMS({
+    to: formattedTo,
+    message,
+    mediaUrls: validMediaUrls.length > 0 ? validMediaUrls : undefined,
+    fromNumber,
+  });
 }
 
 /**
@@ -567,19 +585,68 @@ export async function handleIncomingSms(
   mediaUrls?: string[]
 ): Promise<SmsMessage | null> {
   const formattedFromPhone = formatPhoneNumber(fromPhone);
-
-  const conversations = await storage.getSmsConversationsByClientPhone(formattedFromPhone);
+  const formattedToPhone = formatPhoneNumber(toPhone);
 
   let isNewConversation = false;
   let isUnknownCaller = false;
   let targetConversation: SmsConversation | null = null;
+
+  // ── Step 0: Check if this message arrived on a dedicated AI Receptionist number ──
+  // If so, route directly to that business — no disambiguation needed
+  let dedicatedBusinessOwnerId: string | null = null;
+  try {
+    const allBusinessSettings = await storage.getAllBusinessSettings();
+    const dedicatedBusiness = allBusinessSettings.find(
+      bs => bs.dedicatedPhoneNumber && formatPhoneNumber(bs.dedicatedPhoneNumber) === formattedToPhone
+    );
+    if (dedicatedBusiness) {
+      dedicatedBusinessOwnerId = dedicatedBusiness.userId;
+      console.log(`[SMS] Message received on dedicated number ${formattedToPhone} → routing to business ${dedicatedBusiness.businessName || dedicatedBusiness.userId}`);
+    }
+  } catch (err) {
+    console.error('[SMS] Error checking dedicated numbers:', err);
+  }
+
+  const conversations = await storage.getSmsConversationsByClientPhone(formattedFromPhone);
+
+  // ── Step 0b: Direct routing for dedicated numbers ──
+  // When a message arrives on a dedicated number, route directly to that business
+  if (dedicatedBusinessOwnerId && !targetConversation) {
+    const businessConvs = conversations.filter(c => c.businessOwnerId === dedicatedBusinessOwnerId);
+
+    if (businessConvs.length > 0) {
+      targetConversation = businessConvs.sort((a, b) =>
+        new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
+      )[0];
+    } else {
+      const client = await storage.getClientByPhone(dedicatedBusinessOwnerId, formattedFromPhone);
+      const businessSettings = await storage.getBusinessSettings(dedicatedBusinessOwnerId);
+      targetConversation = await storage.createSmsConversation({
+        businessOwnerId: dedicatedBusinessOwnerId,
+        clientId: client?.id || null,
+        clientPhone: formattedFromPhone,
+        clientName: client?.name || `Unknown Caller (${formattedFromPhone})`,
+        jobId: null,
+        lastMessageAt: new Date(),
+        unreadCount: 0,
+        isArchived: false,
+        deletedAt: null,
+        routingState: 'resolved',
+        pendingOptions: [],
+        lastRoutingPromptAt: null,
+      });
+      isNewConversation = true;
+      if (!client) isUnknownCaller = true;
+      console.log(`[SMS] Created new conversation for dedicated number: business ${businessSettings?.businessName || dedicatedBusinessOwnerId}`);
+    }
+  }
 
   // ── Step 1: Check for pending disambiguation replies ──
   const pendingConversations = conversations.filter(c =>
     c.routingState === 'pending_business' || c.routingState === 'pending_job'
   );
 
-  if (pendingConversations.length > 0 && body) {
+  if (!targetConversation && pendingConversations.length > 0 && body) {
     const pending = pendingConversations[0];
     const selection = parseInt(body.trim());
     const options = (pending.pendingOptions as any[]) || [];
@@ -846,7 +913,7 @@ export async function handleIncomingSms(
     console.log(`[SMS] Quote acceptance processed: ${quoteAcceptanceResult.message}`);
   }
 
-  // AI Intent Detection - detect if message is a job/quote request
+  // AI Intent Detection - only run for businesses with AI Receptionist mode
   let intentData: {
     isJobRequest: boolean;
     intentConfidence?: string;
@@ -856,7 +923,10 @@ export async function handleIncomingSms(
   } = { isJobRequest: false };
 
   try {
-    if (messageBody && messageBody !== '[Media message]') {
+    const businessSettings = await storage.getBusinessSettings(targetConversation.businessOwnerId);
+    const smsMode = businessSettings?.smsMode || 'standard';
+
+    if (smsMode === 'ai_receptionist' && messageBody && messageBody !== '[Media message]') {
       const intentResult = await detectSmsJobIntent(
         messageBody,
         targetConversation.clientName || undefined,
@@ -874,6 +944,8 @@ export async function handleIncomingSms(
       if (intentResult.isJobRequest) {
         console.log(`[SMS AI] Detected job request (${intentResult.confidence} confidence): "${intentResult.suggestedJobTitle}"`);
       }
+    } else if (smsMode !== 'ai_receptionist') {
+      console.log(`[SMS] Skipping AI intent detection for business ${targetConversation.businessOwnerId} (smsMode: ${smsMode})`);
     }
   } catch (aiError) {
     console.error('[SMS AI] Intent detection failed (non-blocking):', aiError);

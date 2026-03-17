@@ -451,9 +451,11 @@ export const businessSettings = pgTable("business_settings", {
   documentTemplateSettings: json("document_template_settings"), // Custom overrides for template
   // Theme/Appearance Settings - synced across web and mobile
   themeMode: text("theme_mode").default('system'), // 'light', 'dark', 'system' - synced across all devices
-  // SMS Branding Settings
-  twilioPhoneNumber: text("twilio_phone_number"), // User's own Twilio phone number (E.164 format)
-  twilioSenderId: text("twilio_sender_id"), // Alphanumeric sender ID (11 chars max, e.g., "JobRunner")
+  // SMS Configuration
+  smsMode: text("sms_mode").default('standard'), // 'standard' (shared number) or 'ai_receptionist' (dedicated number with AI)
+  dedicatedPhoneNumber: text("dedicated_phone_number"), // Dedicated Twilio number for AI Receptionist (E.164 format)
+  twilioPhoneNumber: text("twilio_phone_number"), // User's own Twilio phone number (E.164 format) - legacy
+  twilioSenderId: text("twilio_sender_id"), // Alphanumeric sender ID (11 chars max, e.g., "JobRunner") - legacy
   twilioAccountSid: text("twilio_account_sid"), // User's own Twilio account SID
   twilioAuthToken: text("twilio_auth_token"), // User's own Twilio auth token (encrypted at rest)
   // Onboarding tracking

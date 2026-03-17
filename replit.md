@@ -55,7 +55,7 @@ Core architectural and design decisions include:
 *   **Styling**: TailwindCSS
 *   **Fonts**: Google Fonts (Inter)
 *   **AI Integration**: Replit AI Integrations (GPT-4o-mini, GPT-4o vision)
-*   **SMS Notifications**: Twilio
+*   **SMS Notifications**: Twilio (two-tier SMS system: standard businesses use shared two-way platform number with quote acceptance detection; AI Receptionist businesses get a dedicated per-business Twilio number with full AI intent detection. SMS mode and dedicated numbers are admin-configured via `/api/admin/sms-config`. Schema fields: `business_settings.smsMode` ('standard'|'ai_receptionist'), `business_settings.dedicatedPhoneNumber`. Inbound routing checks dedicated numbers first for direct business routing, then falls back to shared number's smart multi-business disambiguation.)
 *   **Object Storage**: Google Cloud Storage (GCS)
 *   **Maps**: Leaflet with react-leaflet
 *   **Accounting Integration**: Xero, MYOB AccountRight, QuickBooks Online

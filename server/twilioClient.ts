@@ -243,6 +243,7 @@ interface SendSMSOptions {
   message: string;
   mediaUrls?: string[]; // MMS media URLs (max 10, each up to 5MB)
   alphanumericSenderId?: string; // Registered alphanumeric sender ID (e.g., "JobRunner")
+  fromNumber?: string; // Override from number (e.g., dedicated AI Receptionist number)
 }
 
 interface SMSResult {
@@ -282,9 +283,8 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
   }
 
   try {
-    // Use alphanumeric sender ID for plain SMS when configured (case-sensitive per Twilio)
-    // MMS requires a phone number so always fall back to phone number for MMS
-    const fromValue = twilioPhoneNumber;
+    // Use dedicated number if provided, otherwise fall back to platform number
+    const fromValue = options.fromNumber || twilioPhoneNumber;
 
     const messageOptions: any = {
       body: message,

@@ -7435,6 +7435,8 @@ Be specific about materials, colors, and features that would be included.`
       
       const smsBranding = {
         twilioSenderId: settings?.twilioSenderId || null,
+        smsMode: settings?.smsMode || 'standard',
+        dedicatedPhoneNumber: settings?.dedicatedPhoneNumber || null,
         platformTwilioConfigured: platformTwilioStatus.verified === true,
       };
       
@@ -7481,6 +7483,90 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error) {
       console.error("Error updating SMS branding settings:", error);
       res.status(500).json({ error: "Failed to update SMS branding settings" });
+    }
+  });
+
+  // Admin: Configure SMS mode for a business (set standard or AI Receptionist with dedicated number)
+  // Platform admin only — prevents cross-tenant access
+  app.put("/api/admin/sms-config/:userId", requireAuth, async (req: any, res) => {
+    try {
+      const adminUser = await storage.getUser(req.userId);
+      if (!adminUser?.isPlatformAdmin) {
+        return res.status(403).json({ error: "Platform admin access required" });
+      }
+
+      const targetUserId = req.params.userId;
+      const { smsMode, dedicatedPhoneNumber } = req.body;
+
+      if (smsMode && !['standard', 'ai_receptionist'].includes(smsMode)) {
+        return res.status(400).json({ error: "smsMode must be 'standard' or 'ai_receptionist'" });
+      }
+
+      if (dedicatedPhoneNumber) {
+        const phoneRegex = /^\+\d{10,15}$/;
+        if (!phoneRegex.test(dedicatedPhoneNumber)) {
+          return res.status(400).json({ error: "dedicatedPhoneNumber must be in E.164 format (e.g., +61412345678)" });
+        }
+
+        const allSettings = await storage.getAllBusinessSettings();
+        const conflict = allSettings.find(
+          s => s.dedicatedPhoneNumber === dedicatedPhoneNumber && s.userId !== targetUserId
+        );
+        if (conflict) {
+          return res.status(409).json({
+            error: `Dedicated number ${dedicatedPhoneNumber} is already assigned to ${conflict.businessName || conflict.userId}`,
+          });
+        }
+      }
+
+      let settings = await storage.getBusinessSettings(targetUserId);
+      if (!settings) {
+        return res.status(404).json({ error: "Business settings not found for this user" });
+      }
+
+      const updateData: any = {};
+      if (smsMode !== undefined) updateData.smsMode = smsMode;
+      if (dedicatedPhoneNumber !== undefined) updateData.dedicatedPhoneNumber = dedicatedPhoneNumber || null;
+
+      if (smsMode === 'standard') {
+        updateData.dedicatedPhoneNumber = null;
+      }
+
+      settings = await storage.updateBusinessSettings(targetUserId, updateData);
+
+      console.log(`[Admin] SMS config updated for ${targetUserId}: mode=${smsMode}, dedicated=${dedicatedPhoneNumber || 'none'}`);
+
+      res.json({
+        smsMode: settings?.smsMode || 'standard',
+        dedicatedPhoneNumber: settings?.dedicatedPhoneNumber || null,
+        message: `SMS mode set to ${smsMode}${dedicatedPhoneNumber ? ` with dedicated number ${dedicatedPhoneNumber}` : ''}`,
+      });
+    } catch (error) {
+      console.error("Error updating SMS config:", error);
+      res.status(500).json({ error: "Failed to update SMS config" });
+    }
+  });
+
+  // Admin: List all businesses with their SMS configuration
+  // Platform admin only
+  app.get("/api/admin/sms-config", requireAuth, async (req: any, res) => {
+    try {
+      const adminUser = await storage.getUser(req.userId);
+      if (!adminUser?.isPlatformAdmin) {
+        return res.status(403).json({ error: "Platform admin access required" });
+      }
+
+      const allSettings = await storage.getAllBusinessSettings();
+      const configs = allSettings.map((s: any) => ({
+        userId: s.userId,
+        businessName: s.businessName || 'Unknown',
+        smsMode: s.smsMode || 'standard',
+        dedicatedPhoneNumber: s.dedicatedPhoneNumber || null,
+      }));
+      res.json(configs);
+    } catch (error) {
+      console.error("Error fetching SMS configs:", error);
+      res.status(500).json({ error: "Failed to fetch SMS configs" });
     }
   });
   // Integration Settings Routes
