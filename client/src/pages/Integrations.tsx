@@ -1191,8 +1191,8 @@ export default function Integrations() {
                     Connected
                   </Badge>
                 ) : outlookStatus?.configured === false ? (
-                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                    Not Configured
+                  <Badge variant="outline" className="border-amber-400 text-amber-600 dark:text-amber-400">
+                    Coming Soon
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
@@ -1225,7 +1225,7 @@ export default function Integrations() {
                 </>
               ) : outlookStatus?.configured === false ? (
                 <p className="text-sm text-muted-foreground">
-                  Outlook integration is not configured. Contact support to enable this feature.
+                  Outlook integration is being set up. This will be available soon — connect your Outlook or Microsoft 365 account to send quotes and invoices from your business email.
                 </p>
               ) : (
                 <>
@@ -1293,7 +1293,7 @@ export default function Integrations() {
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Accounting</h3>
 
           {/* Xero Card */}
-          <Card>
+          <Card data-testid="card-xero-integration">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-3">
@@ -1317,8 +1317,8 @@ export default function Integrations() {
                     Connected
                   </Badge>
                 ) : xeroStatus?.configured === false ? (
-                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                    Not Configured
+                  <Badge variant="outline" className="border-amber-400 text-amber-600 dark:text-amber-400">
+                    Coming Soon
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
@@ -1423,7 +1423,7 @@ export default function Integrations() {
                 </>
               ) : xeroStatus?.configured === false ? (
                 <p className="text-sm text-muted-foreground">
-                  Xero integration is not configured. Contact support to enable this feature.
+                  Xero integration is being set up. This will be available soon — sync your invoices, contacts and payments automatically.
                 </p>
               ) : (
                 <>
@@ -1473,8 +1473,8 @@ export default function Integrations() {
                     Connected
                   </Badge>
                 ) : quickbooksStatus?.configured === false ? (
-                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                    Not Configured
+                  <Badge variant="outline" className="border-amber-400 text-amber-600 dark:text-amber-400">
+                    Coming Soon
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
@@ -1576,7 +1576,7 @@ export default function Integrations() {
                 </>
               ) : quickbooksStatus?.configured === false ? (
                 <p className="text-sm text-muted-foreground">
-                  QuickBooks integration is not configured. Contact support to enable this feature.
+                  QuickBooks Online integration is being set up. This will be available soon — sync invoices, quotes and contacts automatically.
                 </p>
               ) : (
                 <>
@@ -1626,8 +1626,8 @@ export default function Integrations() {
                     Connected
                   </Badge>
                 ) : myobStatus?.configured === false ? (
-                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                    Not Configured
+                  <Badge variant="outline" className="border-amber-400 text-amber-600 dark:text-amber-400">
+                    Coming Soon
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
@@ -1732,7 +1732,7 @@ export default function Integrations() {
                 </>
               ) : myobStatus?.configured === false ? (
                 <p className="text-sm text-muted-foreground">
-                  MYOB integration is not configured. Contact support to enable this feature.
+                  MYOB AccountRight integration is being set up. This will be available soon — sync invoices, quotes and contacts automatically.
                 </p>
               ) : (
                 <>
@@ -1786,8 +1786,8 @@ export default function Integrations() {
                     Connected
                   </Badge>
                 ) : googleCalendarStatus?.configured === false ? (
-                  <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
-                    Not Configured
+                  <Badge variant="outline" className="border-amber-400 text-amber-600 dark:text-amber-400">
+                    Coming Soon
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
@@ -1835,7 +1835,7 @@ export default function Integrations() {
                 </>
               ) : googleCalendarStatus?.configured === false ? (
                 <p className="text-sm text-muted-foreground">
-                  Google Calendar integration is not configured. Contact support to enable this feature.
+                  Google Calendar integration is being set up. This will be available soon — sync your scheduled jobs automatically.
                 </p>
               ) : (
                 <>

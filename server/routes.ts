@@ -8716,7 +8716,7 @@ Be specific about materials, colors, and features that would be included.`
     try {
       if (!xeroService.isXeroConfigured()) {
         return res.status(400).json({ 
-          error: "Xero integration not configured. Please add XERO_CLIENT_ID and XERO_CLIENT_SECRET environment variables." 
+          error: "Xero integration is coming soon. We're finishing the setup — check back shortly." 
         });
       }
       
@@ -8741,7 +8741,7 @@ Be specific about materials, colors, and features that would be included.`
     try {
       if (!xeroService.isXeroConfigured()) {
         return res.status(400).json({ 
-          error: "Xero integration not configured. Please add XERO_CLIENT_ID and XERO_CLIENT_SECRET environment variables." 
+          error: "Xero integration is coming soon. We're finishing the setup — check back shortly." 
         });
       }
       const state = randomBytes(32).toString('hex');
@@ -8828,7 +8828,7 @@ Be specific about materials, colors, and features that would be included.`
         return res.json({ 
           configured: false,
           connected: false,
-          message: "Xero integration not configured" 
+          message: "Xero integration is coming soon" 
         });
       }
       const status = await xeroService.getConnectionStatus(req.userId);
@@ -9354,7 +9354,7 @@ Be specific about materials, colors, and features that would be included.`
     try {
       if (!myobService.isMyobConfigured()) {
         return res.status(400).json({ 
-          error: "MYOB integration not configured. Please add MYOB_CLIENT_ID and MYOB_CLIENT_SECRET environment variables." 
+          error: "MYOB integration is coming soon. We're finishing the setup — check back shortly." 
         });
       }
       const state = `mobile_${req.userId}_${Date.now()}_${randomBytes(8).toString('hex')}`;
@@ -9374,7 +9374,7 @@ Be specific about materials, colors, and features that would be included.`
     try {
       if (!myobService.isMyobConfigured()) {
         return res.status(400).json({ 
-          error: "MYOB integration not configured. Please add MYOB_CLIENT_ID and MYOB_CLIENT_SECRET environment variables." 
+          error: "MYOB integration is coming soon. We're finishing the setup — check back shortly." 
         });
       }
       const state = randomBytes(32).toString('hex');
@@ -9434,7 +9434,7 @@ Be specific about materials, colors, and features that would be included.`
         return res.json({ 
           configured: false,
           connected: false,
-          message: "MYOB integration not configured" 
+          message: "MYOB integration is coming soon" 
         });
       }
       const status = await myobService.getConnectionStatus(req.userId);
@@ -9554,7 +9554,7 @@ Be specific about materials, colors, and features that would be included.`
     try {
       if (!quickbooksService.isQuickbooksConfigured()) {
         return res.status(400).json({ 
-          error: "QuickBooks integration not configured. Please add QUICKBOOKS_CLIENT_ID and QUICKBOOKS_CLIENT_SECRET environment variables." 
+          error: "QuickBooks integration is coming soon. We're finishing the setup — check back shortly." 
         });
       }
       const state = `mobile_${req.userId}_${Date.now()}_${randomBytes(8).toString('hex')}`;
@@ -9574,7 +9574,7 @@ Be specific about materials, colors, and features that would be included.`
     try {
       if (!quickbooksService.isQuickbooksConfigured()) {
         return res.status(400).json({ 
-          error: "QuickBooks integration not configured. Please add QUICKBOOKS_CLIENT_ID and QUICKBOOKS_CLIENT_SECRET environment variables." 
+          error: "QuickBooks integration is coming soon. We're finishing the setup — check back shortly." 
         });
       }
       const state = randomBytes(32).toString('hex');
@@ -9591,7 +9591,7 @@ Be specific about materials, colors, and features that would be included.`
     try {
       if (!quickbooksService.isQuickbooksConfigured()) {
         return res.status(400).json({ 
-          error: "QuickBooks integration not configured. Please add QUICKBOOKS_CLIENT_ID and QUICKBOOKS_CLIENT_SECRET environment variables." 
+          error: "QuickBooks integration is coming soon. We're finishing the setup — check back shortly." 
         });
       }
       const state = randomBytes(32).toString('hex');
@@ -9655,7 +9655,7 @@ Be specific about materials, colors, and features that would be included.`
         return res.json({ 
           configured: false,
           connected: false,
-          message: "QuickBooks integration not configured" 
+          message: "QuickBooks integration is coming soon" 
         });
       }
       const status = await quickbooksService.getConnectionStatus(req.userId);
@@ -9802,7 +9802,7 @@ Be specific about materials, colors, and features that would be included.`
         return res.json({ 
           configured: false, 
           connected: false,
-          message: "Google Calendar integration not configured. Please set GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET."
+          message: "Google Calendar integration is coming soon"
         });
       }
       
@@ -9830,7 +9830,7 @@ Be specific about materials, colors, and features that would be included.`
       const { getAuthorizationUrl, isGoogleCalendarConfigured } = await import('./googleCalendarClient');
       
       if (!isGoogleCalendarConfigured()) {
-        return res.status(400).json({ error: "Google Calendar integration not configured" });
+        return res.status(400).json({ error: "Google Calendar integration is coming soon. We're finishing the setup — check back shortly." });
       }
       
       const userContext = await getUserContext(req.userId);
@@ -10102,7 +10102,7 @@ Be specific about materials, colors, and features that would be included.`
       const { getAuthorizationUrl, isOutlookConfigured } = await import('./outlookClient');
       
       if (!isOutlookConfigured()) {
-        return res.status(400).json({ error: "Outlook integration not configured. Set MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET." });
+        return res.status(400).json({ error: "Outlook integration is coming soon. We're finishing the setup — check back shortly." });
       }
       
       const userContext = await getUserContext(req.userId);
