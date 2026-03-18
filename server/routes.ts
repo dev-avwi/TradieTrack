@@ -20045,6 +20045,140 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Batch send invoices (email) - sends multiple draft/overdue invoices at once
+  app.post("/api/invoices/batch-send", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { invoiceIds } = req.body;
+      
+      if (!Array.isArray(invoiceIds) || invoiceIds.length === 0) {
+        return res.status(400).json({ error: 'invoiceIds array is required' });
+      }
+      if (invoiceIds.length > 50) {
+        return res.status(400).json({ error: 'Maximum 50 invoices per batch' });
+      }
+
+      const results: Array<{ invoiceId: string; success: boolean; error?: string }> = [];
+      const { handleInvoiceSend } = await import('./emailRoutes');
+
+      for (const invoiceId of invoiceIds) {
+        try {
+          const invoice = await storage.getInvoice(invoiceId, userContext.effectiveUserId);
+          if (!invoice) {
+            results.push({ invoiceId, success: false, error: 'Invoice not found' });
+            continue;
+          }
+          if (!invoice.clientId) {
+            results.push({ invoiceId, success: false, error: 'No client linked' });
+            continue;
+          }
+          const client = await storage.getClient(invoice.clientId, userContext.effectiveUserId);
+          if (!client?.email) {
+            results.push({ invoiceId, success: false, error: 'Client has no email address' });
+            continue;
+          }
+
+          const mockReq = { params: { id: invoiceId }, userId: req.userId, body: {} };
+          const mockRes = {
+            status: (code: number) => ({
+              json: (data: any) => {
+                if (code >= 400) {
+                  results.push({ invoiceId, success: false, error: data.error || 'Send failed' });
+                } else {
+                  results.push({ invoiceId, success: true });
+                }
+              }
+            }),
+            json: (data: any) => {
+              results.push({ invoiceId, success: true });
+            }
+          };
+          await handleInvoiceSend(mockReq as any, mockRes as any, storage);
+        } catch (err: any) {
+          results.push({ invoiceId, success: false, error: err.message || 'Unknown error' });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const failCount = results.filter(r => !r.success).length;
+
+      res.json({
+        results,
+        summary: { success: successCount, failed: failCount, total: invoiceIds.length }
+      });
+    } catch (error: any) {
+      console.error("Error batch sending invoices:", error);
+      res.status(500).json({ error: "Failed to batch send invoices" });
+    }
+  });
+
+  // Batch send quotes (email) - sends multiple draft quotes at once
+  app.post("/api/quotes/batch-send", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { quoteIds } = req.body;
+      
+      if (!Array.isArray(quoteIds) || quoteIds.length === 0) {
+        return res.status(400).json({ error: 'quoteIds array is required' });
+      }
+      if (quoteIds.length > 50) {
+        return res.status(400).json({ error: 'Maximum 50 quotes per batch' });
+      }
+
+      const results: Array<{ quoteId: string; success: boolean; error?: string }> = [];
+      const { handleQuoteSend } = await import('./emailRoutes');
+
+      for (const quoteId of quoteIds) {
+        try {
+          const quote = await storage.getQuote(quoteId, userContext.effectiveUserId);
+          if (!quote) {
+            results.push({ quoteId, success: false, error: 'Quote not found' });
+            continue;
+          }
+          if (!quote.clientId) {
+            results.push({ quoteId, success: false, error: 'No client linked' });
+            continue;
+          }
+          const client = await storage.getClient(quote.clientId, userContext.effectiveUserId);
+          if (!client?.email) {
+            results.push({ quoteId, success: false, error: 'Client has no email address' });
+            continue;
+          }
+
+          const mockReq = { params: { id: quoteId }, userId: req.userId, body: {} };
+          const mockRes = {
+            status: (code: number) => ({
+              json: (data: any) => {
+                if (code >= 400) {
+                  results.push({ quoteId, success: false, error: data.error || 'Send failed' });
+                } else {
+                  results.push({ quoteId, success: true });
+                }
+              }
+            }),
+            json: (data: any) => {
+              results.push({ quoteId, success: true });
+            }
+          };
+          await handleQuoteSend(mockReq as any, mockRes as any, storage);
+        } catch (err: any) {
+          results.push({ quoteId, success: false, error: err.message || 'Unknown error' });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const failCount = results.filter(r => !r.success).length;
+
+      res.json({
+        results,
+        summary: { success: successCount, failed: failCount, total: quoteIds.length }
+      });
+    } catch (error: any) {
+      console.error("Error batch sending quotes:", error);
+      res.status(500).json({ error: "Failed to batch send quotes" });
+    }
+  });
+
   // Update invoice (team-aware) with locking enforcement and audit trail
   app.patch("/api/invoices/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
