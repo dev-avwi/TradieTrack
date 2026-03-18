@@ -599,6 +599,14 @@ function Router({
         />
       </Route>
       
+      <Route path="/quotes/:id/edit" component={({ params }: { params: { id: string } }) => (
+        <LiveQuoteEditor 
+          quoteId={params.id}
+          onSave={(quoteId) => onNavigate(`/quotes/${quoteId}`)}
+          onCancel={() => onNavigate(`/quotes/${params.id}`)}
+        />
+      )} />
+
       <Route path="/quotes/:id" component={({ params }: { params: { id: string } }) => (
         <QuoteDetailView quoteId={params.id} />
       )} />

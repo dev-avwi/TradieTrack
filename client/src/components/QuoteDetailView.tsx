@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Printer, ArrowLeft, Send, FileText, Download, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt, Camera, ChevronDown, StickyNote, Image, Layers, Eye, Loader2 } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, Download, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt, Camera, ChevronDown, StickyNote, Image, Layers, Eye, Loader2, Edit2 } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -450,6 +450,17 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
 
           {/* Row 2: Primary workflow actions */}
           <div className="flex flex-wrap items-center gap-2">
+            {/* Edit - available for draft and sent quotes */}
+            {(quote.status === 'draft' || quote.status === 'sent') && (
+              <Button 
+                variant="outline" 
+                onClick={() => setLocation(`/quotes/${quote.id}/edit`)}
+                data-testid="button-edit-quote"
+              >
+                <Edit2 className="h-4 w-4 mr-2" />
+                Edit Quote
+              </Button>
+            )}
             {/* Send / Resend - Primary action */}
             {(quote.status === 'draft' || quote.status === 'sent') && client?.email && (
               emailConnected ? (

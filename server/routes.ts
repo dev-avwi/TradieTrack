@@ -18963,11 +18963,14 @@ Be specific about materials, colors, and features that would be included.`
         for (const existing of existingItems) {
           await storage.deleteQuoteLineItem(existing.id, userContext.effectiveUserId);
         }
+        
+        let subtotalCents = 0;
         for (let i = 0; i < lineItems.length; i++) {
           const item = lineItems[i];
           const qty = parseFloat(String(item.quantity || 1));
           const price = parseFloat(String(item.unitPrice || 0));
           const total = (qty * price).toFixed(2);
+          subtotalCents += Math.round(qty * price * 100);
           const lineItemData = insertQuoteLineItemSchema.parse({ 
             ...item, 
             quoteId: req.params.id, 
@@ -18976,6 +18979,19 @@ Be specific about materials, colors, and features that would be included.`
           });
           await storage.createQuoteLineItem(lineItemData, userContext.effectiveUserId);
         }
+        
+        const calculatedSubtotal = subtotalCents / 100;
+        const business = await storage.getBusinessSettings(userContext.effectiveUserId);
+        const existingQuote = await storage.getQuote(req.params.id, userContext.effectiveUserId);
+        const gstEnabled = business?.gstEnabled ?? (existingQuote?.gstAmount && parseFloat(String(existingQuote.gstAmount)) > 0);
+        const calculatedGst = gstEnabled ? Math.round(subtotalCents * 0.1) / 100 : 0;
+        const calculatedTotal = Math.round((calculatedSubtotal + calculatedGst) * 100) / 100;
+        
+        await storage.updateQuote(req.params.id, userContext.effectiveUserId, {
+          subtotal: calculatedSubtotal.toFixed(2),
+          gstAmount: calculatedGst.toFixed(2),
+          total: calculatedTotal.toFixed(2),
+        });
       }
       
       const quoteWithItems = await storage.getQuoteWithLineItems(req.params.id, userContext.effectiveUserId);
@@ -20237,11 +20253,14 @@ Be specific about materials, colors, and features that would be included.`
         for (const existing of existingItems) {
           await storage.deleteInvoiceLineItem(existing.id, userContext.effectiveUserId);
         }
+        
+        let subtotalCents = 0;
         for (let i = 0; i < lineItems.length; i++) {
           const item = lineItems[i];
           const qty = parseFloat(String(item.quantity || 1));
           const price = parseFloat(String(item.unitPrice || 0));
           const total = (qty * price).toFixed(2);
+          subtotalCents += Math.round(qty * price * 100);
           const lineItemData = insertInvoiceLineItemSchema.parse({ 
             ...item, 
             invoiceId: req.params.id, 
@@ -20250,6 +20269,18 @@ Be specific about materials, colors, and features that would be included.`
           });
           await storage.createInvoiceLineItem(lineItemData, userContext.effectiveUserId);
         }
+        
+        const calculatedSubtotal = subtotalCents / 100;
+        const business = await storage.getBusinessSettings(userContext.effectiveUserId);
+        const gstEnabled = business?.gstEnabled ?? (existingInvoice.gstAmount && parseFloat(String(existingInvoice.gstAmount)) > 0);
+        const calculatedGst = gstEnabled ? Math.round(subtotalCents * 0.1) / 100 : 0;
+        const calculatedTotal = Math.round((calculatedSubtotal + calculatedGst) * 100) / 100;
+        
+        await storage.updateInvoice(req.params.id, userContext.effectiveUserId, {
+          subtotal: calculatedSubtotal.toFixed(2),
+          gstAmount: calculatedGst.toFixed(2),
+          total: calculatedTotal.toFixed(2),
+        }, 'manual');
       }
       
       const invoiceWithItems = await storage.getInvoiceWithLineItems(req.params.id, userContext.effectiveUserId);

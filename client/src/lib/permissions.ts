@@ -70,6 +70,7 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/quotes', label: 'Quotes', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
   { path: '/quotes/new', label: 'New Quote', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
   { path: '/quotes/:id', label: 'Quote Details', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
+  { path: '/quotes/:id/edit', label: 'Edit Quote', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
   { path: '/quote-editor/:id', label: 'Quote Editor', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
   
   // Invoices - office admin can manage invoices

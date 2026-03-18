@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useForm, useWatch, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useSearch, Link } from "wouter";
+import { useSearch, Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +21,7 @@ import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useFeatureAccess } from "@/hooks/use-subscription";
 import { useDocumentTemplates, type DocumentTemplate } from "@/hooks/use-templates";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, getSessionToken } from "@/lib/queryClient";
 import LiveDocumentPreview from "./LiveDocumentPreview";
 import type { StylePreset } from "@shared/schema";
 import { TemplateCustomization, DOCUMENT_TEMPLATES, TemplateId } from "@/lib/document-templates";
@@ -71,16 +71,19 @@ const quoteFormSchema = z.object({
 type QuoteFormData = z.infer<typeof quoteFormSchema>;
 
 interface LiveQuoteEditorProps {
+  quoteId?: string;
   onSave?: (quoteId: string) => void;
   onCancel?: () => void;
 }
 
-export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorProps) {
+export default function LiveQuoteEditor({ quoteId: editQuoteId, onSave, onCancel }: LiveQuoteEditorProps) {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const { data: clients = [] } = useClients();
   const { data: businessSettings } = useBusinessSettings();
   const { canUseAIFeatures } = useFeatureAccess();
   const createQuoteMutation = useCreateQuote();
+  const isEditMode = !!editQuoteId;
   
   // Read jobId and clientId from URL query parameters (e.g., /quotes/new?jobId=123 or /quotes/new?clientId=456)
   const searchString = useSearch();
@@ -104,6 +107,14 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   
   
   const createClient = useCreateClient();
+
+  const { data: editQuoteData } = useQuery({
+    queryKey: ['/api/quotes', editQuoteId],
+    enabled: isEditMode,
+  });
+
+  const [editLoaded, setEditLoaded] = useState(false);
+  const [isEditSaving, setIsEditSaving] = useState(false);
 
   const { data: userCheck } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -198,7 +209,36 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
   useEffect(() => {
     form.setValue("lineItems", lineItems);
   }, [lineItems, form]);
-  
+
+  useEffect(() => {
+    if (!isEditMode || editLoaded || !editQuoteData) return;
+    const q = editQuoteData as any;
+    form.reset({
+      clientId: q.clientId || "",
+      title: q.title || "",
+      description: q.description || "",
+      validUntil: q.validUntil ? new Date(q.validUntil).toISOString().split('T')[0] : "",
+      notes: q.notes || "",
+      depositRequired: q.depositRequired || false,
+      depositPercent: q.depositPercent ? Number(q.depositPercent) : 50,
+      lineItems: (q.lineItems || []).map((li: any) => ({
+        description: li.description || "",
+        quantity: String(li.quantity || "1"),
+        unitPrice: String(li.unitPrice || "0"),
+        cost: li.cost ? String(li.cost) : "",
+      })),
+    });
+    setLineItems((q.lineItems || []).map((li: any) => ({
+      description: li.description || "",
+      quantity: String(li.quantity || "1"),
+      unitPrice: String(li.unitPrice || "0"),
+      cost: li.cost ? String(li.cost) : "",
+    })));
+    if (q.jobId) setSelectedJobId(q.jobId);
+    setEditLoaded(true);
+    setJobAutoLoaded(true);
+  }, [isEditMode, editQuoteData, editLoaded]);
+
   // Line item management functions
   const appendLineItem = (item: { description: string; quantity: string; unitPrice: string; cost?: string }) => {
     setLineItems(prev => [...prev, item]);
@@ -497,7 +537,7 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
 
   const handleSubmit = async (data: QuoteFormData) => {
     try {
-      const quoteData = {
+      const quoteData: any = {
         clientId: data.clientId,
         jobId: selectedJobId || urlJobId || null,
         title: data.title,
@@ -512,12 +552,49 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
         depositAmount: data.depositRequired ? (total * (data.depositPercent / 100)).toFixed(2) : null,
         lineItems: data.lineItems.map(item => ({
           description: item.description,
-          quantity: item.quantity, // Already a string
-          unitPrice: item.unitPrice, // Already a string
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
           total: (parseFloat(item.quantity || "0") * parseFloat(item.unitPrice || "0")).toFixed(2),
           cost: item.cost && parseFloat(item.cost) > 0 ? item.cost : null,
         })),
       };
+
+      if (isEditMode && editQuoteId) {
+        setIsEditSaving(true);
+        try {
+          const token = getSessionToken();
+          const res = await fetch(`/api/quotes/${editQuoteId}`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify(quoteData),
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || 'Failed to update quote');
+          }
+
+          queryClient.invalidateQueries({ queryKey: ['/api/quotes', editQuoteId] });
+          queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+          const jobIdToInvalidate = selectedJobId || urlJobId;
+          if (jobIdToInvalidate) {
+            queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobIdToInvalidate, 'linked-documents'] });
+          }
+
+          toast({
+            title: "Quote updated",
+            description: "Your changes have been saved",
+          });
+
+          onSave?.(editQuoteId);
+        } finally {
+          setIsEditSaving(false);
+        }
+        return;
+      }
 
       const result = await createQuoteMutation.mutateAsync(quoteData);
       
@@ -535,10 +612,10 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
 
       onSave?.(result.id);
     } catch (error) {
-      console.error("Error creating quote:", error);
+      console.error("Error saving quote:", error);
       toast({
         title: "Error",
-        description: "Failed to create quote. Please try again.",
+        description: isEditMode ? "Failed to update quote. Please try again." : "Failed to create quote. Please try again.",
         variant: "destructive",
       });
     }
@@ -1155,23 +1232,23 @@ export default function LiveQuoteEditor({ onSave, onCancel }: LiveQuoteEditorPro
             {/* Submit Button */}
             <Button
               type="submit"
-              disabled={createQuoteMutation.isPending}
+              disabled={isEditMode ? isEditSaving : createQuoteMutation.isPending}
               className="w-full h-14 rounded-2xl text-base font-semibold gap-2 press-scale"
               style={{ 
                 backgroundColor: 'hsl(var(--trade))',
                 color: 'white'
               }}
-              data-testid="button-create-quote"
+              data-testid={isEditMode ? "button-save-quote" : "button-create-quote"}
             >
-              {createQuoteMutation.isPending ? (
+              {(isEditMode ? isEditSaving : createQuoteMutation.isPending) ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Creating...
+                  {isEditMode ? 'Saving...' : 'Creating...'}
                 </>
               ) : (
                 <>
                   <Check className="h-5 w-5" />
-                  Create Quote
+                  {isEditMode ? 'Save Changes' : 'Create Quote'}
                 </>
               )}
             </Button>
