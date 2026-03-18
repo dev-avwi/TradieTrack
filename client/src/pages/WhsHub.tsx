@@ -1820,23 +1820,20 @@ export default function WhsHub() {
 
   const sections = [
     { key: "overview", label: "Overview", icon: Activity },
-    { key: "incidents", label: "Incidents", icon: AlertTriangle, count: openIncidents },
-    { key: "hazards", label: "Hazard Reports", icon: FileText, count: openHazards },
-    { key: "swms", label: "SWMS", icon: ClipboardList, count: swmsDocs.length },
-    { key: "jsa", label: "JSA", icon: ClipboardList },
-    { key: "ppe", label: "PPE Checklists", icon: HardHat, count: ppeChecklists.length },
+    { key: "incidents", label: "Incidents", icon: AlertTriangle, count: openIncidents + openHazards },
+    { key: "swms", label: "SWMS & JSA", icon: ClipboardList, count: swmsDocs.length },
     { key: "training", label: "Training", icon: Shield, count: expiringTraining + expiredTraining },
-    { key: "emergency", label: "Emergency Plans", icon: Siren },
+    { key: "compliance", label: "Compliance", icon: HardHat, count: ppeChecklists.length + emergencyInfo.length },
   ];
 
   const actionItems = openIncidents + openHazards + expiredTraining;
   const complianceItems = [
-    { label: "PPE Checked", done: ppeChecklists.length > 0 },
-    { label: "SWMS Current", done: swmsDocs.some((d: any) => d.status === 'approved' || d.status === 'signed') },
-    { label: "Training Up-to-date", done: trainingRecords.length > 0 && expiredTraining === 0 },
-    { label: "Emergency Plan", done: emergencyInfo.length > 0 },
-    { label: "No Open Incidents", done: openIncidents === 0 },
-    { label: "No Open Hazards", done: openHazards === 0 },
+    { label: "PPE Checked", done: ppeChecklists.length > 0, action: "Add Checklist" },
+    { label: "SWMS Current", done: swmsDocs.some((d: any) => d.status === 'approved' || d.status === 'signed'), action: "Create SWMS" },
+    { label: "Training Up-to-date", done: trainingRecords.length > 0 && expiredTraining === 0, action: expiredTraining > 0 ? "Renew" : "Add Record" },
+    { label: "Emergency Plan", done: emergencyInfo.length > 0, action: "Set Up" },
+    { label: "No Open Incidents", done: openIncidents === 0, action: "Review" },
+    { label: "No Open Hazards", done: openHazards === 0, action: "Review" },
   ];
   const complianceMet = complianceItems.filter(i => i.done).length;
   const compliancePercent = Math.round((complianceMet / complianceItems.length) * 100);
@@ -1847,12 +1844,12 @@ export default function WhsHub() {
     const todoCount = complianceItems.filter(i => !i.done).length;
 
     const navigateToSection = (label: string) => {
-      if (label.includes('PPE')) setActiveSection('ppe');
+      if (label.includes('PPE')) setActiveSection('compliance');
       else if (label.includes('SWMS')) setActiveSection('swms');
       else if (label.includes('Training')) setActiveSection('training');
-      else if (label.includes('Emergency')) setActiveSection('emergency');
+      else if (label.includes('Emergency')) setActiveSection('compliance');
       else if (label.includes('Incident')) setActiveSection('incidents');
-      else if (label.includes('Hazard')) setActiveSection('hazards');
+      else if (label.includes('Hazard')) setActiveSection('incidents');
     };
 
     return (
@@ -1902,7 +1899,7 @@ export default function WhsHub() {
                   <span className="text-xs font-medium" style={{ color: 'hsl(142.1 76.2% 36.3%)' }}>Done</span>
                 ) : (
                   <span className="flex items-center gap-1 text-xs font-medium text-primary flex-shrink-0">
-                    Action
+                    {item.action}
                     <ChevronRight className="h-3 w-3" />
                   </span>
                 )}
@@ -1936,8 +1933,8 @@ export default function WhsHub() {
               )}
               {openHazards > 0 && (
                 <div className="flex items-center gap-3 py-2 px-2 rounded-md cursor-pointer hover-elevate"
-                  role="button" tabIndex={0} onClick={() => setActiveSection("hazards")}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSection("hazards"); } }}>
+                  role="button" tabIndex={0} onClick={() => setActiveSection("incidents")}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSection("incidents"); } }}>
                   <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
                        style={{ backgroundColor: 'hsl(0 84.2% 60.2% / 0.1)' }}>
                     <ShieldAlert className="h-3.5 w-3.5" style={{ color: 'hsl(0 84.2% 60.2%)' }} />
@@ -2113,7 +2110,7 @@ export default function WhsHub() {
               <ClipboardList className="h-3.5 w-3.5 mr-1" />
               SWMS
             </Button>
-            <Button variant="outline" size="sm" className="press-scale" onClick={() => setActiveSection("ppe")}>
+            <Button variant="outline" size="sm" className="press-scale" onClick={() => setActiveSection("compliance")}>
               <HardHat className="h-3.5 w-3.5 mr-1" />
               PPE
             </Button>
@@ -2144,13 +2141,25 @@ export default function WhsHub() {
         </div>
 
         {activeSection === "overview" && renderOverview()}
-        {activeSection === "incidents" && <IncidentReportsTab />}
-        {activeSection === "hazards" && <HazardReportsTab />}
-        {activeSection === "swms" && <SwmsDocumentsTab />}
-        {activeSection === "jsa" && <JsaTab />}
-        {activeSection === "ppe" && <PpeChecklistTab />}
+        {activeSection === "incidents" && (
+          <div className="space-y-6">
+            <IncidentReportsTab />
+            <HazardReportsTab />
+          </div>
+        )}
+        {activeSection === "swms" && (
+          <div className="space-y-6">
+            <SwmsDocumentsTab />
+            <JsaTab />
+          </div>
+        )}
         {activeSection === "training" && <TrainingRecordsTab />}
-        {activeSection === "emergency" && <EmergencyInfoTab />}
+        {activeSection === "compliance" && (
+          <div className="space-y-6">
+            <PpeChecklistTab />
+            <EmergencyInfoTab />
+          </div>
+        )}
       </div>
     </div>
   );

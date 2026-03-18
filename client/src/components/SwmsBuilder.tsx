@@ -484,18 +484,6 @@ export function SwmsBuilder({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5" />
-          {swmsId ? "Edit SWMS" : "Create SWMS"}
-        </h2>
-        {onClose && (
-          <Button size="icon" variant="ghost" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
       {!swmsId && templates && templates.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
