@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -31,6 +32,7 @@ import {
   Send,
   Eye,
   AlertCircle,
+  Search,
 } from "lucide-react";
 
 interface ActionItem {
@@ -62,6 +64,26 @@ interface ActionCenterData {
 
 interface ActionCenterProps {
   onNavigate?: (path: string) => void;
+}
+
+interface WorkflowItem {
+  id: string;
+  label: string;
+  sublabel?: string;
+  amount?: string;
+  badge?: string;
+  badgeVariant?: "destructive" | "outline" | "default";
+  reviewUrl?: string;
+}
+
+interface WorkflowDialogState {
+  open: boolean;
+  actionId: string;
+  title: string;
+  description: string;
+  actionLabel: (count: number) => string;
+  items: WorkflowItem[];
+  unsendableNote?: string;
 }
 
 const categoryConfig: Record<string, { icon: typeof DollarSign; color: string; tint: string }> = {
@@ -108,6 +130,8 @@ const EXPANDABLE_ACTIONS = new Set([
   "quotes-unsent",
   "jobs-missing-quotes",
 ]);
+
+const PREVIEW_COUNT = 3;
 
 function ActionCardSkeleton() {
   return (
@@ -199,11 +223,10 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
 
   const focusUninvoiced = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('focus') === 'uninvoiced';
 
-  const [expandedCards, setExpandedCards] = useState<Set<string>>(
-    focusUninvoiced ? new Set(["revenue-leak-uninvoiced"]) : new Set()
-  );
+  const [workflowDialog, setWorkflowDialog] = useState<WorkflowDialogState | null>(null);
   const [selectedIds, setSelectedIds] = useState<Record<string, Set<string>>>({});
-  const hasAutoSelected = useRef(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const hasAutoOpened = useRef(false);
 
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
@@ -222,7 +245,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
     queryKey: ["/api/job-requests", { status: "pending" }],
   });
 
-  const needsData = expandedCards.size > 0;
+  const needsData = workflowDialog !== null || focusUninvoiced;
 
   const { data: allJobs = [], isSuccess: jobsLoaded } = useQuery<Job[]>({
     queryKey: ["/api/jobs"],
@@ -252,69 +275,12 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
     return map;
   }, [allClients]);
 
-  const uninvoicedJobs = useMemo(() => {
-    if (!expandedCards.has("revenue-leak-uninvoiced")) return [];
-    const invoicedJobIds = new Set(allInvoices.filter((inv: any) => inv.jobId).map((inv: any) => inv.jobId));
-    return allJobs.filter((j) => j.status === "done" && !invoicedJobIds.has(j.id));
-  }, [allJobs, allInvoices, expandedCards]);
-
-  const overdueInvoices = useMemo(() => {
-    if (!expandedCards.has("revenue-leak-overdue")) return [];
-    const now = new Date();
-    return allInvoices.filter(inv => {
-      if (inv.status === 'paid' || inv.status === 'draft') return false;
-      if (!inv.dueDate) return false;
-      return new Date(inv.dueDate) < now;
-    }).sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-  }, [allInvoices, expandedCards]);
-
-  const draftInvoices = useMemo(() => {
-    if (!expandedCards.has("revenue-leak-draft-invoices")) return [];
-    return allInvoices.filter((inv: any) => inv.status === 'draft');
-  }, [allInvoices, expandedCards]);
-
-  const staleQuotes = useMemo(() => {
-    if (!expandedCards.has("revenue-leak-stale-quotes")) return [];
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    return allQuotes.filter((q: any) => {
-      if (q.status !== 'sent') return false;
-      const sentDate = q.sentAt ? new Date(q.sentAt) : (q.createdAt ? new Date(q.createdAt) : null);
-      return sentDate && sentDate < sevenDaysAgo;
-    });
-  }, [allQuotes, expandedCards]);
-
-  const draftQuotes = useMemo(() => {
-    if (!expandedCards.has("quotes-unsent")) return [];
-    return allQuotes.filter((q: any) => q.status === 'draft');
-  }, [allQuotes, expandedCards]);
-
-  const jobsWithoutQuotes = useMemo(() => {
-    if (!expandedCards.has("jobs-missing-quotes")) return [];
-    const activeJobs = allJobs.filter(j => j.status === 'in_progress' || j.status === 'scheduled');
-    return activeJobs.filter(j => !allQuotes.some((q: any) => q.jobId === j.id));
-  }, [allJobs, allQuotes, expandedCards]);
-
   useEffect(() => {
-    if (focusUninvoiced && allDataLoaded && uninvoicedJobs.length > 0 && !hasAutoSelected.current) {
-      hasAutoSelected.current = true;
-      setSelectedIds(prev => ({
-        ...prev,
-        "revenue-leak-uninvoiced": new Set(uninvoicedJobs.map((j) => j.id))
-      }));
+    if (focusUninvoiced && allDataLoaded && !hasAutoOpened.current) {
+      hasAutoOpened.current = true;
+      openWorkflowDialog("revenue-leak-uninvoiced");
     }
-  }, [focusUninvoiced, allDataLoaded, uninvoicedJobs]);
-
-  const toggleExpand = (actionId: string) => {
-    setExpandedCards(prev => {
-      const next = new Set(prev);
-      if (next.has(actionId)) {
-        next.delete(actionId);
-      } else {
-        next.add(actionId);
-      }
-      return next;
-    });
-  };
+  }, [focusUninvoiced, allDataLoaded]);
 
   const getSelected = (actionId: string): Set<string> => selectedIds[actionId] || new Set();
 
@@ -340,6 +306,200 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
     });
   };
 
+  const buildWorkflowItems = (actionId: string): { items: WorkflowItem[]; unsendableNote?: string } => {
+    if (actionId === "revenue-leak-uninvoiced") {
+      const invoicedJobIds = new Set(allInvoices.filter((inv: any) => inv.jobId).map((inv: any) => inv.jobId));
+      const jobs = allJobs.filter((j) => j.status === "done" && !invoicedJobIds.has(j.id));
+      return {
+        items: jobs.map(j => ({
+          id: j.id,
+          label: j.title || 'Untitled Job',
+          sublabel: j.clientId ? clientMap.get(j.clientId)?.name : undefined,
+          badge: "Done",
+          reviewUrl: `/jobs/${j.id}`,
+        })),
+      };
+    }
+
+    if (actionId === "revenue-leak-draft-invoices") {
+      const drafts = allInvoices.filter((inv: any) => inv.status === 'draft');
+      const sendable = drafts.filter((inv: any) => {
+        const client = inv.clientId ? clientMap.get(inv.clientId) : null;
+        return client?.email;
+      });
+      const unsendableCount = drafts.length - sendable.length;
+      return {
+        items: sendable.map((inv: any) => {
+          const client = inv.clientId ? clientMap.get(inv.clientId) : null;
+          return {
+            id: inv.id,
+            label: inv.number || 'Draft Invoice',
+            sublabel: client?.name || 'No client',
+            amount: formatCurrency(inv.total),
+            reviewUrl: `/invoices/${inv.id}`,
+          };
+        }),
+        unsendableNote: unsendableCount > 0
+          ? `${unsendableCount} invoice${unsendableCount !== 1 ? 's' : ''} can't be sent — client has no email address`
+          : undefined,
+      };
+    }
+
+    if (actionId === "revenue-leak-overdue") {
+      const now = new Date();
+      const overdue = allInvoices.filter((inv: any) => {
+        if (inv.status === 'paid' || inv.status === 'draft') return false;
+        if (!inv.dueDate) return false;
+        return new Date(inv.dueDate) < now;
+      }).sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
+      const sendable = overdue.filter((inv: any) => {
+        const client = inv.clientId ? clientMap.get(inv.clientId) : null;
+        return client?.email;
+      });
+      return {
+        items: sendable.map((inv: any) => {
+          const client = inv.clientId ? clientMap.get(inv.clientId) : null;
+          const days = daysOverdue(inv.dueDate);
+          return {
+            id: inv.id,
+            label: inv.number || 'Invoice',
+            sublabel: client?.name || 'Unknown client',
+            amount: formatCurrency(inv.total),
+            badge: days > 30 ? "30d+" : `${days}d overdue`,
+            badgeVariant: (days > 30 ? "destructive" : "outline") as "destructive" | "outline",
+            reviewUrl: `/invoices/${inv.id}`,
+          };
+        }),
+      };
+    }
+
+    if (actionId === "revenue-leak-stale-quotes") {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const stale = allQuotes.filter((q: any) => {
+        if (q.status !== 'sent') return false;
+        const sentDate = q.sentAt ? new Date(q.sentAt) : (q.createdAt ? new Date(q.createdAt) : null);
+        return sentDate && sentDate < sevenDaysAgo;
+      });
+      const sendable = stale.filter((q: any) => {
+        const client = q.clientId ? clientMap.get(q.clientId) : null;
+        return client?.email;
+      });
+      return {
+        items: sendable.map((q: any) => {
+          const client = q.clientId ? clientMap.get(q.clientId) : null;
+          const sentDate = q.sentAt || q.createdAt;
+          const daysSince = sentDate ? Math.floor((Date.now() - new Date(sentDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+          return {
+            id: q.id,
+            label: q.number || 'Quote',
+            sublabel: client?.name || 'Unknown client',
+            amount: formatCurrency(q.total),
+            badge: `Sent ${daysSince}d ago`,
+            reviewUrl: `/quotes/${q.id}`,
+          };
+        }),
+      };
+    }
+
+    if (actionId === "quotes-unsent") {
+      const drafts = allQuotes.filter((q: any) => q.status === 'draft');
+      const sendable = drafts.filter((q: any) => {
+        const client = q.clientId ? clientMap.get(q.clientId) : null;
+        return client?.email;
+      });
+      const unsendableCount = drafts.length - sendable.length;
+      return {
+        items: sendable.map((q: any) => {
+          const client = q.clientId ? clientMap.get(q.clientId) : null;
+          return {
+            id: q.id,
+            label: q.number || 'Draft Quote',
+            sublabel: client?.name || 'No client',
+            amount: formatCurrency(q.total),
+            reviewUrl: `/quotes/${q.id}`,
+          };
+        }),
+        unsendableNote: unsendableCount > 0
+          ? `${unsendableCount} quote${unsendableCount !== 1 ? 's' : ''} can't be sent — client has no email address`
+          : undefined,
+      };
+    }
+
+    if (actionId === "jobs-missing-quotes") {
+      const activeJobs = allJobs.filter(j => j.status === 'in_progress' || j.status === 'scheduled');
+      const jobsNoQuote = activeJobs.filter(j => !allQuotes.some((q: any) => q.jobId === j.id));
+      return {
+        items: jobsNoQuote.map(j => ({
+          id: j.id,
+          label: j.title || 'Untitled Job',
+          sublabel: j.clientId ? clientMap.get(j.clientId)?.name : undefined,
+          reviewUrl: `/jobs/${j.id}`,
+        })),
+      };
+    }
+
+    return { items: [] };
+  };
+
+  const getWorkflowConfig = (actionId: string): { title: string; description: string; actionLabel: (count: number) => string } => {
+    switch (actionId) {
+      case "revenue-leak-uninvoiced":
+        return {
+          title: "Uninvoiced Completed Jobs",
+          description: "These jobs are done but haven't been invoiced yet. Select which ones to create invoices for.",
+          actionLabel: (c) => `Create ${c} Invoice${c !== 1 ? 's' : ''}`,
+        };
+      case "revenue-leak-draft-invoices":
+        return {
+          title: "Draft Invoices Ready to Send",
+          description: "These invoices are sitting in draft. Select which ones to send to your clients by email.",
+          actionLabel: (c) => `Send ${c} Invoice${c !== 1 ? 's' : ''}`,
+        };
+      case "revenue-leak-overdue":
+        return {
+          title: "Overdue Invoices",
+          description: "These invoices are past their due date. Select which ones to send a payment reminder for.",
+          actionLabel: (c) => `Send ${c} Reminder${c !== 1 ? 's' : ''}`,
+        };
+      case "revenue-leak-stale-quotes":
+        return {
+          title: "Stale Quotes — No Response",
+          description: "These quotes were sent over 7 days ago with no response. Select which ones to follow up on.",
+          actionLabel: (c) => `Resend ${c} Quote${c !== 1 ? 's' : ''}`,
+        };
+      case "quotes-unsent":
+        return {
+          title: "Draft Quotes Ready to Send",
+          description: "These quotes are sitting in draft. Select which ones to send to your clients by email.",
+          actionLabel: (c) => `Send ${c} Quote${c !== 1 ? 's' : ''}`,
+        };
+      case "jobs-missing-quotes":
+        return {
+          title: "Active Jobs Without Quotes",
+          description: "These active jobs don't have a quote attached yet.",
+          actionLabel: () => "Create Quote",
+        };
+      default:
+        return { title: "Items", description: "", actionLabel: (c) => `Process ${c}` };
+    }
+  };
+
+  const openWorkflowDialog = (actionId: string) => {
+    const config = getWorkflowConfig(actionId);
+    const { items, unsendableNote } = buildWorkflowItems(actionId);
+    setSearchQuery("");
+    setWorkflowDialog({
+      open: true,
+      actionId,
+      title: config.title,
+      description: config.description,
+      actionLabel: config.actionLabel,
+      items,
+      unsendableNote,
+    });
+  };
+
   const batchInvoiceMutation = useMutation({
     mutationFn: async (jobIds: string[]) => {
       const res = await apiRequest("POST", "/api/invoices/batch", { jobIds });
@@ -351,7 +511,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
         description: `Created ${data.summary.success} invoice${data.summary.success !== 1 ? 's' : ''} totaling ${formatCurrency(data.summary.totalAmount)}`,
       });
       setSelectedIds(prev => ({ ...prev, "revenue-leak-uninvoiced": new Set() }));
-      setExpandedCards(prev => { const n = new Set(prev); n.delete("revenue-leak-uninvoiced"); return n; });
+      setWorkflowDialog(null);
       queryClient.invalidateQueries({ queryKey: ["/api/bi/action-center"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"], exact: false });
@@ -366,8 +526,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
       const res = await apiRequest("POST", "/api/invoices/batch-send", { invoiceIds });
       return res.json();
     },
-    onSuccess: (data, variables) => {
-      const actionId = confirmDialog?.actionId || "";
+    onSuccess: (data) => {
       if (data.summary.failed > 0) {
         const failedItems = data.results.filter((r: any) => !r.success);
         toast({
@@ -381,7 +540,8 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
           description: "Clients will receive their invoices by email",
         });
       }
-      setSelectedIds(prev => ({ ...prev, [actionId]: new Set() }));
+      setSelectedIds({});
+      setWorkflowDialog(null);
       queryClient.invalidateQueries({ queryKey: ["/api/bi/action-center"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"], exact: false });
     },
@@ -396,7 +556,6 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
       return res.json();
     },
     onSuccess: (data) => {
-      const actionId = confirmDialog?.actionId || "";
       if (data.summary.failed > 0) {
         const failedItems = data.results.filter((r: any) => !r.success);
         toast({
@@ -410,7 +569,8 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
           description: "Clients will receive their quotes by email",
         });
       }
-      setSelectedIds(prev => ({ ...prev, [actionId]: new Set() }));
+      setSelectedIds({});
+      setWorkflowDialog(null);
       queryClient.invalidateQueries({ queryKey: ["/api/bi/action-center"] });
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
     },
@@ -446,95 +606,68 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
 
   const isBusy = batchInvoiceMutation.isPending || batchSendInvoicesMutation.isPending || batchSendQuotesMutation.isPending;
 
-  const handleBatchAction = (actionId: string) => {
-    const selected = getSelected(actionId);
-    if (selected.size === 0) return;
+  const handleBatchAction = (actionId: string, ids: string[]) => {
+    if (ids.length === 0) return;
 
-    if (actionId === "revenue-leak-uninvoiced") {
-      const items = uninvoicedJobs.filter(j => selected.has(j.id)).map(j => ({
-        id: j.id,
-        label: j.title || 'Untitled Job',
-        sublabel: j.clientId ? clientMap.get(j.clientId)?.name : undefined,
-      }));
-      setConfirmDialog({
-        open: true,
-        actionId,
-        title: `Create ${selected.size} Invoice${selected.size !== 1 ? 's' : ''}?`,
-        description: "Draft invoices will be created for these completed jobs. You'll be able to review and edit each one before sending to clients.",
-        confirmLabel: `Create ${selected.size} Invoice${selected.size !== 1 ? 's' : ''}`,
-        items,
-      });
-    } else if (actionId === "revenue-leak-draft-invoices") {
-      const items = draftInvoices.filter(inv => selected.has(inv.id)).map((inv: any) => {
-        const client = inv.clientId ? clientMap.get(inv.clientId) : null;
-        return {
-          id: inv.id,
-          label: `${inv.number || 'Draft'} — ${formatCurrency(inv.total)}`,
-          sublabel: client?.name || 'No client',
-        };
-      });
-      setConfirmDialog({
-        open: true,
-        actionId,
-        title: `Send ${selected.size} Invoice${selected.size !== 1 ? 's' : ''} to Clients?`,
-        description: "Each client will receive their invoice by email. Invoice status will change from Draft to Sent.",
-        confirmLabel: `Send ${selected.size} Invoice${selected.size !== 1 ? 's' : ''}`,
-        items,
-      });
-    } else if (actionId === "revenue-leak-overdue") {
-      const items = overdueInvoices.filter(inv => selected.has(inv.id)).map((inv: any) => {
-        const client = inv.clientId ? clientMap.get(inv.clientId) : null;
-        const days = daysOverdue(inv.dueDate);
-        return {
-          id: inv.id,
-          label: `${inv.number || 'Invoice'} — ${formatCurrency(inv.total)}`,
-          sublabel: `${client?.name || 'No client'} — ${days} day${days !== 1 ? 's' : ''} overdue`,
-        };
-      });
-      setConfirmDialog({
-        open: true,
-        actionId,
-        title: `Send ${selected.size} Payment Reminder${selected.size !== 1 ? 's' : ''}?`,
-        description: "Each client will receive a reminder email with their overdue invoice. This resends the invoice to prompt payment.",
-        confirmLabel: `Send ${selected.size} Reminder${selected.size !== 1 ? 's' : ''}`,
-        items,
-      });
-    } else if (actionId === "quotes-unsent" || actionId === "revenue-leak-stale-quotes") {
-      const sourceItems = actionId === "quotes-unsent" ? draftQuotes : staleQuotes;
-      const items = sourceItems.filter((q: any) => selected.has(q.id)).map((q: any) => {
-        const client = q.clientId ? clientMap.get(q.clientId) : null;
-        return {
-          id: q.id,
-          label: `${q.number || 'Quote'} — ${formatCurrency(q.total)}`,
-          sublabel: client?.name || 'No client',
-        };
-      });
-      const isSend = actionId === "quotes-unsent";
-      setConfirmDialog({
-        open: true,
-        actionId,
-        title: isSend
-          ? `Send ${selected.size} Quote${selected.size !== 1 ? 's' : ''} to Clients?`
-          : `Resend ${selected.size} Quote${selected.size !== 1 ? 's' : ''} as Follow Up?`,
-        description: isSend
-          ? "Each client will receive their quote by email. Quote status will change from Draft to Sent."
-          : "Each client will receive their quote again by email as a follow-up. This gives them another chance to review and accept.",
-        confirmLabel: isSend
-          ? `Send ${selected.size} Quote${selected.size !== 1 ? 's' : ''}`
-          : `Resend ${selected.size} Quote${selected.size !== 1 ? 's' : ''}`,
-        items,
-      });
-    }
+    const getConfirmDetails = (): { title: string; description: string; confirmLabel: string } => {
+      switch (actionId) {
+        case "revenue-leak-uninvoiced":
+          return {
+            title: `Create ${ids.length} Invoice${ids.length !== 1 ? 's' : ''}?`,
+            description: "Draft invoices will be created for these completed jobs. You can review and edit each one before sending.",
+            confirmLabel: `Create ${ids.length} Invoice${ids.length !== 1 ? 's' : ''}`,
+          };
+        case "revenue-leak-draft-invoices":
+          return {
+            title: `Send ${ids.length} Invoice${ids.length !== 1 ? 's' : ''} to Clients?`,
+            description: "Each client will receive their invoice by email. Status will change from Draft to Sent.",
+            confirmLabel: `Send ${ids.length} Invoice${ids.length !== 1 ? 's' : ''}`,
+          };
+        case "revenue-leak-overdue":
+          return {
+            title: `Send ${ids.length} Payment Reminder${ids.length !== 1 ? 's' : ''}?`,
+            description: "Each client will receive a reminder email with their overdue invoice.",
+            confirmLabel: `Send ${ids.length} Reminder${ids.length !== 1 ? 's' : ''}`,
+          };
+        case "quotes-unsent":
+          return {
+            title: `Send ${ids.length} Quote${ids.length !== 1 ? 's' : ''} to Clients?`,
+            description: "Each client will receive their quote by email. Status will change from Draft to Sent.",
+            confirmLabel: `Send ${ids.length} Quote${ids.length !== 1 ? 's' : ''}`,
+          };
+        case "revenue-leak-stale-quotes":
+          return {
+            title: `Resend ${ids.length} Quote${ids.length !== 1 ? 's' : ''} as Follow Up?`,
+            description: "Each client will receive their quote again by email as a follow-up.",
+            confirmLabel: `Resend ${ids.length} Quote${ids.length !== 1 ? 's' : ''}`,
+          };
+        default:
+          return { title: "Confirm Action", description: "Are you sure?", confirmLabel: "Confirm" };
+      }
+    };
+
+    const details = getConfirmDetails();
+    const dialogItems = workflowDialog?.items?.filter(i => ids.includes(i.id)) || [];
+
+    setConfirmDialog({
+      open: true,
+      actionId,
+      ...details,
+      items: dialogItems.map(i => ({
+        id: i.id,
+        label: `${i.label}${i.amount ? ' — ' + i.amount : ''}`,
+        sublabel: i.sublabel,
+      })),
+    });
   };
 
   const executeConfirmedAction = () => {
     if (!confirmDialog) return;
     const { actionId } = confirmDialog;
-    const ids = Array.from(getSelected(actionId));
+    const ids = confirmDialog.items.map(i => i.id);
 
     if (actionId === "revenue-leak-uninvoiced") {
-      const validIds = uninvoicedJobs.map(j => j.id);
-      batchInvoiceMutation.mutate(ids.filter(id => validIds.includes(id)));
+      batchInvoiceMutation.mutate(ids);
     } else if (actionId === "revenue-leak-draft-invoices" || actionId === "revenue-leak-overdue") {
       batchSendInvoicesMutation.mutate(ids);
     } else if (actionId === "quotes-unsent" || actionId === "revenue-leak-stale-quotes") {
@@ -544,289 +677,21 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
     setConfirmDialog(null);
   };
 
-  const getExpandedContent = (actionId: string) => {
-    if (!expandedCards.has(actionId)) return null;
-
-    if (!allDataLoaded) {
-      return (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
-        </div>
-      );
-    }
-
-    if (actionId === "revenue-leak-uninvoiced") {
-      return renderItemList({
-        actionId,
-        items: uninvoicedJobs,
-        emptyMessage: "All completed jobs have been invoiced",
-        getItemId: (j) => j.id,
-        renderItem: (j) => ({
-          label: j.title || 'Untitled Job',
-          sublabel: j.clientId ? clientMap.get(j.clientId)?.name : undefined,
-          badge: "Done",
-        }),
-        actionLabel: (count) => `Create ${count} Invoice${count !== 1 ? 's' : ''}`,
-        reviewUrl: (j) => `/jobs/${j.id}`,
-      });
-    }
-
-    if (actionId === "revenue-leak-draft-invoices") {
-      const sendableInvoices = draftInvoices.filter((inv: any) => {
-        const client = inv.clientId ? clientMap.get(inv.clientId) : null;
-        return client?.email;
-      });
-      const unsendable = draftInvoices.filter((inv: any) => {
-        const client = inv.clientId ? clientMap.get(inv.clientId) : null;
-        return !client?.email;
-      });
-      return (
-        <>
-          {renderItemList({
-            actionId,
-            items: sendableInvoices,
-            emptyMessage: "No draft invoices to send",
-            getItemId: (inv) => inv.id,
-            renderItem: (inv: any) => {
-              const client = inv.clientId ? clientMap.get(inv.clientId) : null;
-              return {
-                label: `${inv.number || 'Draft'} — ${formatCurrency(inv.total)}`,
-                sublabel: client?.name,
-                badge: inv.total && parseFloat(inv.total) > 0 ? undefined : "$0",
-              };
-            },
-            actionLabel: (count) => `Send ${count} Invoice${count !== 1 ? 's' : ''}`,
-            actionIcon: <Send className="h-3.5 w-3.5 mr-1" />,
-            reviewUrl: (inv) => `/invoices/${inv.id}`,
-          })}
-          {unsendable.length > 0 && (
-            <div className="mt-2 p-2 rounded-lg bg-amber-500/5 border border-amber-500/10">
-              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                <AlertCircle className="h-3 w-3 flex-shrink-0" />
-                {unsendable.length} invoice{unsendable.length !== 1 ? 's' : ''} can't be sent — client has no email address
-              </p>
-            </div>
-          )}
-        </>
-      );
-    }
-
-    if (actionId === "revenue-leak-overdue") {
-      const sendableInvoices = overdueInvoices.filter((inv: any) => {
-        const client = inv.clientId ? clientMap.get(inv.clientId) : null;
-        return client?.email;
-      });
-      return renderItemList({
-        actionId,
-        items: sendableInvoices,
-        emptyMessage: "No overdue invoices",
-        getItemId: (inv) => inv.id,
-        renderItem: (inv: any) => {
-          const client = inv.clientId ? clientMap.get(inv.clientId) : null;
-          const days = daysOverdue(inv.dueDate);
-          return {
-            label: `${inv.number || 'Invoice'} — ${formatCurrency(inv.total)}`,
-            sublabel: `${client?.name || 'Unknown'} — ${days}d overdue`,
-            badge: days > 30 ? "30d+" : `${days}d`,
-            badgeVariant: days > 30 ? "destructive" as const : undefined,
-          };
-        },
-        actionLabel: (count) => `Send ${count} Reminder${count !== 1 ? 's' : ''}`,
-        actionIcon: <Send className="h-3.5 w-3.5 mr-1" />,
-        reviewUrl: (inv) => `/invoices/${inv.id}`,
-      });
-    }
-
-    if (actionId === "revenue-leak-stale-quotes") {
-      const sendableQuotes = staleQuotes.filter((q: any) => {
-        const client = q.clientId ? clientMap.get(q.clientId) : null;
-        return client?.email;
-      });
-      return renderItemList({
-        actionId,
-        items: sendableQuotes,
-        emptyMessage: "No stale quotes",
-        getItemId: (q) => q.id,
-        renderItem: (q: any) => {
-          const client = q.clientId ? clientMap.get(q.clientId) : null;
-          const sentDate = q.sentAt || q.createdAt;
-          const daysSince = sentDate ? Math.floor((Date.now() - new Date(sentDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
-          return {
-            label: `${q.number || 'Quote'} — ${formatCurrency(q.total)}`,
-            sublabel: `${client?.name || 'Unknown'} — sent ${daysSince}d ago`,
-          };
-        },
-        actionLabel: (count) => `Resend ${count} Quote${count !== 1 ? 's' : ''}`,
-        actionIcon: <Send className="h-3.5 w-3.5 mr-1" />,
-        reviewUrl: (q) => `/quotes/${q.id}`,
-      });
-    }
-
-    if (actionId === "quotes-unsent") {
-      const sendableQuotes = draftQuotes.filter((q: any) => {
-        const client = q.clientId ? clientMap.get(q.clientId) : null;
-        return client?.email;
-      });
-      const unsendable = draftQuotes.filter((q: any) => {
-        const client = q.clientId ? clientMap.get(q.clientId) : null;
-        return !client?.email;
-      });
-      return (
-        <>
-          {renderItemList({
-            actionId,
-            items: sendableQuotes,
-            emptyMessage: "No draft quotes to send",
-            getItemId: (q) => q.id,
-            renderItem: (q: any) => {
-              const client = q.clientId ? clientMap.get(q.clientId) : null;
-              return {
-                label: `${q.number || 'Draft'} — ${formatCurrency(q.total)}`,
-                sublabel: client?.name,
-              };
-            },
-            actionLabel: (count) => `Send ${count} Quote${count !== 1 ? 's' : ''}`,
-            actionIcon: <Send className="h-3.5 w-3.5 mr-1" />,
-            reviewUrl: (q) => `/quotes/${q.id}`,
-          })}
-          {unsendable.length > 0 && (
-            <div className="mt-2 p-2 rounded-lg bg-amber-500/5 border border-amber-500/10">
-              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                <AlertCircle className="h-3 w-3 flex-shrink-0" />
-                {unsendable.length} quote{unsendable.length !== 1 ? 's' : ''} can't be sent — client has no email address
-              </p>
-            </div>
-          )}
-        </>
-      );
-    }
-
-    if (actionId === "jobs-missing-quotes") {
-      if (jobsWithoutQuotes.length === 0) {
-        return (
-          <div className="flex items-center justify-center py-4">
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            <span className="ml-2 text-sm text-muted-foreground">All active jobs have quotes</span>
-          </div>
-        );
-      }
-      return (
-        <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
-          {jobsWithoutQuotes.map((job) => (
-            <div key={job.id} className="flex items-center gap-2 p-2 rounded-lg">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{job.title || 'Untitled'}</p>
-                {job.clientId && clientMap.get(job.clientId) && (
-                  <p className="text-xs text-muted-foreground truncate">{clientMap.get(job.clientId)?.name}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <Button size="sm" variant="outline" onClick={() => navigate(`/jobs/${job.id}`)}>
-                  <Eye className="h-3 w-3 mr-1" />
-                  View
-                </Button>
-                <Button size="sm" variant="default" onClick={() => navigate(`/quotes/new?jobId=${job.id}`)}>
-                  Create Quote
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    return null;
+  const getPreviewItems = (actionId: string): string[] => {
+    if (!allDataLoaded) return [];
+    const { items } = buildWorkflowItems(actionId);
+    return items.slice(0, PREVIEW_COUNT).map(i => {
+      let text = i.label;
+      if (i.sublabel) text += ` — ${i.sublabel}`;
+      if (i.amount) text += ` (${i.amount})`;
+      return text;
+    });
   };
 
-  function renderItemList<T>({
-    actionId,
-    items,
-    emptyMessage,
-    getItemId,
-    renderItem,
-    actionLabel,
-    actionIcon,
-    reviewUrl,
-  }: {
-    actionId: string;
-    items: T[];
-    emptyMessage: string;
-    getItemId: (item: T) => string;
-    renderItem: (item: T) => { label: string; sublabel?: string; badge?: string; badgeVariant?: "destructive" | "outline" | "default" };
-    actionLabel: (count: number) => string;
-    actionIcon?: React.ReactNode;
-    reviewUrl?: (item: T) => string;
-  }) {
-    const selected = getSelected(actionId);
-    const allItemIds = items.map(getItemId);
-
-    if (items.length === 0) {
-      return (
-        <div className="flex items-center justify-center py-4">
-          <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          <span className="ml-2 text-sm text-muted-foreground">{emptyMessage}</span>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <Checkbox
-              checked={selected.size === allItemIds.length && allItemIds.length > 0}
-              onCheckedChange={() => toggleSelectAll(actionId, allItemIds)}
-            />
-            <span className="text-xs font-medium text-muted-foreground">
-              Select All ({allItemIds.length})
-            </span>
-          </label>
-          <Button
-            size="sm"
-            variant="default"
-            disabled={selected.size === 0 || isBusy}
-            onClick={(e) => { e.stopPropagation(); handleBatchAction(actionId); }}
-          >
-            {isBusy ? (
-              <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Processing...</>
-            ) : (
-              <>{actionIcon}{actionLabel(selected.size)}</>
-            )}
-          </Button>
-        </div>
-        <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
-          {items.map((item) => {
-            const id = getItemId(item);
-            const { label, sublabel, badge, badgeVariant } = renderItem(item);
-            return (
-              <div key={id} className="flex items-center gap-2 p-2 rounded-lg hover-elevate">
-                <Checkbox
-                  checked={selected.has(id)}
-                  onCheckedChange={() => toggleSelection(actionId, id)}
-                />
-                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleSelection(actionId, id)}>
-                  <p className="text-sm font-medium text-foreground truncate">{label}</p>
-                  {sublabel && <p className="text-xs text-muted-foreground truncate">{sublabel}</p>}
-                </div>
-                {badge && (
-                  <Badge variant={badgeVariant || "outline"} className="no-default-hover-elevate no-default-active-elevate text-xs flex-shrink-0">
-                    {badge}
-                  </Badge>
-                )}
-                {reviewUrl && (
-                  <Button size="sm" variant="ghost" className="flex-shrink-0 h-7 px-2" onClick={(e) => { e.stopPropagation(); navigate(reviewUrl(item)); }}>
-                    <Eye className="h-3 w-3 mr-1" />
-                    <span className="text-xs">Review</span>
-                  </Button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
+  const getItemCount = (actionId: string): number | null => {
+    if (!allDataLoaded) return null;
+    return buildWorkflowItems(actionId).items.length;
+  };
 
   const isEmpty = data && data.summary.totalCount === 0;
 
@@ -923,15 +788,14 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                         {items.map((action) => {
                           const CategoryIcon = getCategoryIcon(action.category);
                           const isExpandable = EXPANDABLE_ACTIONS.has(action.id);
-                          const isExpanded = expandedCards.has(action.id);
 
                           return (
                             <div key={action.id} className="flex rounded-2xl overflow-visible">
                               <div className="w-1 flex-shrink-0 rounded-l-2xl" style={{ backgroundColor: section.accentColor }} />
                               <div
-                                className={`feed-card flex-1 rounded-l-none ${!isExpandable ? "card-press cursor-pointer" : ""}`}
+                                className="feed-card flex-1 rounded-l-none card-press cursor-pointer"
                                 style={{ backgroundColor: getCategoryTint(action.category) }}
-                                onClick={!isExpandable ? () => navigate(action.ctaUrl) : undefined}
+                                onClick={isExpandable ? () => openWorkflowDialog(action.id) : () => navigate(action.ctaUrl)}
                               >
                                 <div className="p-3">
                                   <div className="flex flex-col gap-2">
@@ -959,35 +823,23 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                                     </div>
                                     {action.impact && <p className="ios-caption line-clamp-1">{action.impact}</p>}
 
-                                    {isExpandable ? (
-                                      <div>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={(e) => { e.stopPropagation(); toggleExpand(action.id); }}
-                                        >
-                                          {action.cta}
-                                          {isExpanded ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}
-                                        </Button>
-                                      </div>
-                                    ) : (
-                                      <div>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={(e) => { e.stopPropagation(); navigate(action.ctaUrl); }}
-                                        >
-                                          {action.cta}
-                                          <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                                        </Button>
-                                      </div>
-                                    )}
-
-                                    {isExpanded && (
-                                      <div className="border-t border-border pt-3 mt-1">
-                                        {getExpandedContent(action.id)}
-                                      </div>
-                                    )}
+                                    <div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (isExpandable) {
+                                            openWorkflowDialog(action.id);
+                                          } else {
+                                            navigate(action.ctaUrl);
+                                          }
+                                        }}
+                                      >
+                                        {action.cta}
+                                        <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                                      </Button>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -1069,6 +921,178 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
           )}
         </div>
       )}
+
+      {workflowDialog && (() => {
+        const { actionId, items, unsendableNote, title, description, actionLabel } = workflowDialog;
+        const isJobsNoQuotes = actionId === "jobs-missing-quotes";
+        const selected = getSelected(actionId);
+        const query = searchQuery.toLowerCase();
+        const filteredItems = query
+          ? items.filter(i =>
+              i.label.toLowerCase().includes(query) ||
+              (i.sublabel && i.sublabel.toLowerCase().includes(query)) ||
+              (i.amount && i.amount.toLowerCase().includes(query))
+            )
+          : items;
+        const allFilteredIds = filteredItems.map(i => i.id);
+
+        return (
+          <Dialog open={workflowDialog.open} onOpenChange={(open) => { if (!open) { setWorkflowDialog(null); setSearchQuery(""); } }}>
+            <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle>{title}</DialogTitle>
+                <DialogDescription>{description}</DialogDescription>
+              </DialogHeader>
+
+              {items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <CheckCircle className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                  <p className="text-sm text-muted-foreground">Nothing here right now</p>
+                </div>
+              ) : (
+                <>
+                  {items.length > 5 && (
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search by name, number, or client..."
+                        className="pl-9"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {!isJobsNoQuotes && (
+                    <div className="flex items-center justify-between gap-3 flex-wrap py-1">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={selected.size > 0 && allFilteredIds.every(id => selected.has(id))}
+                          onCheckedChange={() => toggleSelectAll(actionId, allFilteredIds)}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          Select {query ? "filtered" : "all"} ({allFilteredIds.length})
+                        </span>
+                      </label>
+                      {selected.size > 0 && (
+                        <span className="text-xs text-muted-foreground">{selected.size} selected</span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
+                    <div className="flex flex-col gap-1">
+                      {filteredItems.map((item) => {
+                        const isSelected = selected.has(item.id);
+                        return (
+                          <div
+                            key={item.id}
+                            className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                              isSelected ? "bg-primary/5" : "hover-elevate"
+                            }`}
+                          >
+                            {!isJobsNoQuotes && (
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleSelection(actionId, item.id)}
+                              />
+                            )}
+                            <div
+                              className="flex-1 min-w-0 cursor-pointer"
+                              onClick={() => !isJobsNoQuotes && toggleSelection(actionId, item.id)}
+                            >
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-medium text-foreground">{item.label}</p>
+                                {item.amount && (
+                                  <span className="text-sm font-semibold text-foreground">{item.amount}</span>
+                                )}
+                                {item.badge && (
+                                  <Badge
+                                    variant={item.badgeVariant || "outline"}
+                                    className="no-default-hover-elevate no-default-active-elevate text-xs"
+                                  >
+                                    {item.badge}
+                                  </Badge>
+                                )}
+                              </div>
+                              {item.sublabel && (
+                                <p className="text-xs text-muted-foreground mt-0.5">{item.sublabel}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              {item.reviewUrl && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setWorkflowDialog(null);
+                                    navigate(item.reviewUrl!);
+                                  }}
+                                >
+                                  <Eye className="h-3.5 w-3.5 mr-1" />
+                                  Review
+                                </Button>
+                              )}
+                              {isJobsNoQuotes && item.reviewUrl && (
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setWorkflowDialog(null);
+                                    navigate(`/quotes/new?jobId=${item.id}`);
+                                  }}
+                                >
+                                  Create Quote
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {filteredItems.length === 0 && query && (
+                        <div className="flex flex-col items-center py-6">
+                          <Search className="h-6 w-6 text-muted-foreground/40 mb-2" />
+                          <p className="text-sm text-muted-foreground">No matches for "{searchQuery}"</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {unsendableNote && (
+                    <div className="p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                      <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                        {unsendableNote}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <DialogFooter className="flex items-center gap-2 border-t pt-4">
+                <Button variant="outline" onClick={() => { setWorkflowDialog(null); setSearchQuery(""); }}>
+                  Close
+                </Button>
+                {!isJobsNoQuotes && items.length > 0 && (
+                  <Button
+                    disabled={selected.size === 0 || isBusy}
+                    onClick={() => handleBatchAction(actionId, Array.from(selected))}
+                  >
+                    {isBusy ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Processing...</>
+                    ) : (
+                      <><Send className="h-3.5 w-3.5 mr-1.5" />{actionLabel(selected.size)}</>
+                    )}
+                  </Button>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       <Dialog open={requestDialogOpen} onOpenChange={(open) => { setRequestDialogOpen(open); if (!open) setSelectedRequest(null); }}>
         <DialogContent className="sm:max-w-lg">
