@@ -20065,9 +20065,41 @@ Be specific about materials, colors, and features that would be included.`
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }
+
+      const fieldsToTrack = ['title', 'description', 'notes', 'dueDate', 'clientId', 'status'] as const;
+      for (const field of fieldsToTrack) {
+        const oldVal = String(existingInvoice[field] ?? '');
+        const newVal = String((data as any)[field] ?? existingInvoice[field] ?? '');
+        if ((data as any)[field] !== undefined && oldVal !== newVal) {
+          await storage.createInvoiceEdit({
+            invoiceId: req.params.id,
+            editedBy: req.userId,
+            editReason: null,
+            fieldChanged: field,
+            oldValue: oldVal,
+            newValue: newVal,
+            editSource: 'manual',
+          });
+        }
+      }
       
       if (lineItems && Array.isArray(lineItems)) {
         const existingItems = await storage.getInvoiceLineItems(req.params.id);
+
+        const oldSummary = existingItems.map((li: any) => `${li.description}: ${li.quantity} x $${li.unitPrice}`).join('; ');
+        const newSummary = lineItems.map((li: any) => `${li.description}: ${li.quantity} x $${li.unitPrice}`).join('; ');
+        if (oldSummary !== newSummary) {
+          await storage.createInvoiceEdit({
+            invoiceId: req.params.id,
+            editedBy: req.userId,
+            editReason: null,
+            fieldChanged: 'lineItems',
+            oldValue: oldSummary,
+            newValue: newSummary,
+            editSource: 'manual',
+          });
+        }
+
         for (const existing of existingItems) {
           await storage.deleteInvoiceLineItem(existing.id, userContext.effectiveUserId);
         }
@@ -20094,6 +20126,25 @@ Be specific about materials, colors, and features that would be included.`
       }
       console.error("Error updating invoice:", error);
       res.status(500).json({ error: "Failed to update invoice" });
+    }
+  });
+
+  app.get("/api/invoices/:id/edits", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const invoice = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      const edits = await storage.getInvoiceEdits(req.params.id);
+      const editsWithNames = await Promise.all(edits.map(async (edit) => {
+        const editor = await storage.getUser(edit.editedBy);
+        return { ...edit, editedByName: editor?.name || editor?.email || 'Unknown' };
+      }));
+      res.json(editsWithNames);
+    } catch (error) {
+      console.error("Error fetching invoice edits:", error);
+      res.status(500).json({ error: "Failed to fetch edit history" });
     }
   });
 

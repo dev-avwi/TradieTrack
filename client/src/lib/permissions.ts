@@ -76,6 +76,7 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
   { path: '/invoices', label: 'Invoices', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: true },
   { path: '/invoices/new', label: 'New Invoice', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
   { path: '/invoices/:id', label: 'Invoice Details', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
+  { path: '/invoices/:id/edit', label: 'Edit Invoice', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
   { path: '/invoice-editor/:id', label: 'Invoice Editor', allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'], showInNav: false },
   
   // Receipts - office admin can view receipts

@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, Sparkles, RefreshCw, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock, Briefcase, Clock, Eye } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, RefreshCw, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock, Briefcase, Clock, Eye, Pencil, History } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import StatusBadge from "./StatusBadge";
 import SendDocumentModal from "./SendDocumentModal";
 import { getTemplateStyles, TemplateId, DEFAULT_TEMPLATE } from "@/lib/document-templates";
-import DemoPaymentSimulator from "./DemoPaymentSimulator";
 import type { BusinessTemplate } from "@shared/schema";
 
 function getAuthHeaders(): HeadersInit {
@@ -46,12 +45,12 @@ export default function InvoiceDetailView({
   onMarkPaid 
 }: InvoiceDetailViewProps) {
   const [isPrinting, setIsPrinting] = useState(false);
-  const [showDemoPayment, setShowDemoPayment] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
   const [includeAfterPhotos, setIncludeAfterPhotos] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(true);
   const [showVersionsDialog, setShowVersionsDialog] = useState(false);
+  const [showEditHistoryDialog, setShowEditHistoryDialog] = useState(false);
   const [showRecordPaymentDialog, setShowRecordPaymentDialog] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other'>('cash');
   const [paymentReference, setPaymentReference] = useState('');
@@ -75,11 +74,6 @@ export default function InvoiceDetailView({
   const [, navigate] = useLocation();
   const { toast } = useToast();
   
-  const { data: user } = useQuery({
-    queryKey: ['/api/auth/me'],
-  });
-  const isDemoUser = user?.email === 'demo@jobrunner.com.au';
-
   const brandColor = businessSettings?.brandColor || '#2563eb';
   const templateId = (businessSettings?.documentTemplate as TemplateId) || DEFAULT_TEMPLATE;
   const templateStyles = getTemplateStyles(templateId, brandColor);
@@ -171,6 +165,11 @@ export default function InvoiceDetailView({
   const { data: warrantyTemplate } = useQuery<BusinessTemplate>({
     queryKey: ["/api/business-templates/active/warranty"],
     enabled: !!invoice,
+  });
+
+  const { data: editHistory = [] } = useQuery<any[]>({
+    queryKey: ['/api/invoices', invoiceId, 'edits'],
+    enabled: showEditHistoryDialog,
   });
 
   const { data: siblingInvoices } = useQuery({
@@ -770,6 +769,16 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {invoice.status !== 'paid' && !invoice.lockedAt && (
+              <Button 
+                variant="outline"
+                onClick={() => navigate(`/invoices/${invoiceId}/edit`)}
+                data-testid="button-edit-invoice"
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            )}
             {(invoice.status === 'draft' || invoice.status === 'sent') && client?.email && (
               <Button onClick={() => setShowEmailCompose(true)} data-testid="button-send-email">
                 <Mail className="h-4 w-4 mr-2" />
@@ -786,16 +795,6 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
               <Button onClick={() => setShowRecordPaymentDialog(true)} data-testid="button-record-payment">
                 <DollarSign className="h-4 w-4 mr-2" />
                 {invoice.status === 'partially_paid' ? 'Record Next Payment' : 'Record Payment'}
-              </Button>
-            )}
-            {isDemoUser && invoice.status !== 'paid' && (
-              <Button 
-                onClick={() => setShowDemoPayment(true)}
-                variant="outline"
-                data-testid="button-test-payment"
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Test Payment
               </Button>
             )}
             {invoice.status === 'paid' && client?.email && (
@@ -870,6 +869,15 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 <div className="hidden sm:block w-px h-6 bg-border" />
               </>
             )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowEditHistoryDialog(true)}
+              data-testid="button-edit-history"
+            >
+              <History className="h-4 w-4 mr-1.5" />
+              Edit History
+            </Button>
             <Button variant="outline" size="sm" onClick={handlePrint} disabled={isPrinting} data-testid="button-print">
               {isPrinting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Printer className="h-4 w-4 mr-1.5" />}
               Print
@@ -1067,17 +1075,6 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                     Connect your Stripe account in Settings to enable online payments for invoices.
                   </p>
                 </div>
-                {isDemoUser && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowDemoPayment(true)}
-                    className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-900/30"
-                    data-testid="button-simulate-payment"
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Simulate Payment
-                  </Button>
-                )}
               </div>
             </div>
           </Card>
@@ -1309,22 +1306,6 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           </DialogContent>
         </Dialog>
         
-        {isDemoUser && (
-          <DemoPaymentSimulator
-            invoiceId={invoiceId}
-            invoiceNumber={invoice?.number || 'INV-001'}
-            invoiceTotal={invoice?.total || '0'}
-            clientName={client?.name || 'Client'}
-            isOpen={showDemoPayment}
-            onClose={() => setShowDemoPayment(false)}
-            onPaymentComplete={async () => {
-              // Force refetch the specific invoice to update UI immediately
-              await refetchInvoice();
-              // Also invalidate the list for other views
-              queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
-            }}
-          />
-        )}
 
         <div className="print-content">
           <Card 
@@ -2133,6 +2114,66 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           </DialogContent>
         </Dialog>
       )}
+
+      <Dialog open={showEditHistoryDialog} onOpenChange={setShowEditHistoryDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Edit History
+            </DialogTitle>
+            <DialogDescription>
+              All changes made to this invoice are recorded here.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {editHistory.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No edits recorded yet</p>
+            ) : (
+              editHistory.map((edit: any) => {
+                const fieldLabels: Record<string, string> = {
+                  title: 'Title',
+                  description: 'Description',
+                  notes: 'Notes',
+                  dueDate: 'Due Date',
+                  clientId: 'Client',
+                  status: 'Status',
+                  lineItems: 'Line Items',
+                };
+                return (
+                  <div key={edit.id} className="p-3 rounded-lg border space-y-1">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-sm font-medium">
+                        {fieldLabels[edit.fieldChanged] || edit.fieldChanged}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {edit.editedAt ? new Date(edit.editedAt).toLocaleString('en-AU', { 
+                          day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+                        }) : ''}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      by {edit.editedByName}
+                    </p>
+                    {edit.fieldChanged !== 'lineItems' ? (
+                      <div className="text-xs space-y-0.5">
+                        {edit.oldValue && (
+                          <p><span className="text-muted-foreground">Was:</span> <span className="line-through text-muted-foreground">{edit.oldValue}</span></p>
+                        )}
+                        {edit.newValue && (
+                          <p><span className="text-muted-foreground">Now:</span> <span className="text-foreground">{edit.newValue}</span></p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Line items were updated</p>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showVersionsDialog} onOpenChange={setShowVersionsDialog}>
         <DialogContent className="max-w-lg">

@@ -650,6 +650,7 @@ export interface IStorage {
 
   // Invoice Edit Audit Trail
   createInvoiceEdit(edit: InsertInvoiceEdit): Promise<InvoiceEdit>;
+  getInvoiceEdits(invoiceId: string): Promise<InvoiceEdit[]>;
 
   // Job Assignments
   getJobAssignments(jobId: string): Promise<JobAssignment[]>;
@@ -3334,6 +3335,10 @@ export class PostgresStorage implements IStorage {
   async createInvoiceEdit(edit: InsertInvoiceEdit): Promise<InvoiceEdit> {
     const [result] = await db.insert(invoiceEdits).values(edit).returning();
     return result;
+  }
+
+  async getInvoiceEdits(invoiceId: string): Promise<InvoiceEdit[]> {
+    return await db.select().from(invoiceEdits).where(eq(invoiceEdits.invoiceId, invoiceId)).orderBy(desc(invoiceEdits.editedAt));
   }
 
   async getTimeEntryEdits(timeEntryId: string): Promise<TimeEntryEdit[]> {

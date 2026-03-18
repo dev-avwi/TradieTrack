@@ -5,13 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Check, X, Download, FileText, CreditCard, Clock, CalendarDays, Building2, Phone, Mail, MapPin, AlertCircle, CheckCircle2, FolderOpen, ArrowLeft, ShieldCheck, Lock, Sparkles } from "lucide-react";
+import { Check, X, Download, FileText, CreditCard, Clock, CalendarDays, Building2, Phone, Mail, MapPin, AlertCircle, CheckCircle2, FolderOpen, ArrowLeft, ShieldCheck, Lock } from "lucide-react";
 import { useState, useEffect, useLayoutEffect } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { trackEvent } from "@/lib/analytics";
 import { SignaturePad } from "@/components/ui/signature-pad";
-import DemoPaymentSimulator from "@/components/DemoPaymentSimulator";
 
 interface DocumentData {
   type: 'quote' | 'invoice' | 'receipt';
@@ -105,7 +104,6 @@ export default function ClientPortal() {
   const [declineAnimating, setDeclineAnimating] = useState(false);
   const [acceptedName, setAcceptedName] = useState('');
   const [signature, setSignature] = useState<string | null>(null);
-  const [showDemoPayment, setShowDemoPayment] = useState(false);
 
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -288,7 +286,6 @@ export default function ClientPortal() {
   const isQuoteDeclined = effectiveStatus === 'declined' && type === 'quote';
   const showAcceptButtons = type === 'quote' && !localDeclined && !declineAnimating && (data.status === 'sent' || data.status === 'draft');
   const showPayButton = type === 'invoice' && effectiveStatus !== 'paid' && data.allowOnlinePayment && data.stripePaymentLink;
-  const showDemoButton = type === 'invoice' && effectiveStatus !== 'paid';
   const isAccepted = effectiveStatus === 'accepted';
   const isPaid = effectiveStatus === 'paid';
 
@@ -690,18 +687,6 @@ export default function ClientPortal() {
               </Card>
             )}
 
-            {/* Demo Payment Button for invoices */}
-            {showDemoButton && (
-              <Button 
-                variant="outline"
-                onClick={() => setShowDemoPayment(true)}
-                className="w-full border-orange-300 text-orange-700"
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                Test Payment (Demo)
-              </Button>
-            )}
-
             {/* Download PDF */}
             <Button 
               variant="outline" 
@@ -729,18 +714,6 @@ export default function ClientPortal() {
         </footer>
       </div>
 
-      {/* Demo Payment Simulator */}
-      {showDemoButton && (
-        <DemoPaymentSimulator
-          invoiceId={data.id}
-          invoiceNumber={data.number}
-          invoiceTotal={data.total}
-          clientName={data.client.name}
-          isOpen={showDemoPayment}
-          onClose={() => setShowDemoPayment(false)}
-          onPaymentComplete={() => refetch()}
-        />
-      )}
     </div>
   );
 }

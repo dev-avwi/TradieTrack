@@ -616,6 +616,14 @@ function Router({
           onCancel={handleInvoiceCancel}
         />
       </Route>
+
+      <Route path="/invoices/:id/edit" component={({ params }: { params: { id: string } }) => (
+        <LiveInvoiceEditor 
+          invoiceId={params.id}
+          onSave={(invoiceId) => onNavigate(`/invoices/${invoiceId}`)}
+          onCancel={() => onNavigate(`/invoices/${params.id}`)}
+        />
+      )} />
       
       <Route path="/invoices/:id" component={({ params }: { params: { id: string } }) => (
         <InvoiceDetailView invoiceId={params.id} />

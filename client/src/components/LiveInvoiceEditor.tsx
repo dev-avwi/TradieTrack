@@ -70,16 +70,18 @@ const invoiceFormSchema = z.object({
 type InvoiceFormData = z.infer<typeof invoiceFormSchema>;
 
 interface LiveInvoiceEditorProps {
+  invoiceId?: string;
   onSave?: (invoiceId: string) => void;
   onCancel?: () => void;
 }
 
-export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEditorProps) {
+export default function LiveInvoiceEditor({ invoiceId: editInvoiceId, onSave, onCancel }: LiveInvoiceEditorProps) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { data: clients = [] } = useClients();
   const { data: businessSettings } = useBusinessSettings();
   const createInvoiceMutation = useCreateInvoice();
+  const isEditMode = !!editInvoiceId;
   
   // Read jobId or quoteId from URL query parameters
   const searchString = useSearch();
@@ -98,6 +100,11 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
   const [autoLoaded, setAutoLoaded] = useState(false);
   const [showExistingInvoiceDialog, setShowExistingInvoiceDialog] = useState(false);
   const [existingInvoiceData, setExistingInvoiceData] = useState<any>(null);
+
+  const { data: editInvoiceData } = useQuery({
+    queryKey: ['/api/invoices', editInvoiceId],
+    enabled: isEditMode,
+  });
 
   const { data: userCheck } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -164,6 +171,28 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
     control: form.control,
     name: "lineItems"
   });
+
+  const [editLoaded, setEditLoaded] = useState(false);
+  const [isEditSaving, setIsEditSaving] = useState(false);
+  useEffect(() => {
+    if (!isEditMode || editLoaded || !editInvoiceData) return;
+    const inv = editInvoiceData as any;
+    form.reset({
+      clientId: inv.clientId || "",
+      title: inv.title || "",
+      description: inv.description || "",
+      dueDate: inv.dueDate ? new Date(inv.dueDate).toISOString().split('T')[0] : "",
+      notes: inv.notes || "",
+      lineItems: (inv.lineItems || []).map((li: any) => ({
+        description: li.description || "",
+        quantity: String(li.quantity || "1"),
+        unitPrice: String(li.unitPrice || "0"),
+      })),
+    });
+    if (inv.jobId) setSelectedJobId(inv.jobId);
+    setEditLoaded(true);
+    setAutoLoaded(true);
+  }, [isEditMode, editInvoiceData, editLoaded]);
 
   // Auto-fill form when job or quote is loaded from URL parameter
   useEffect(() => {
@@ -693,19 +722,53 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
         })),
       };
 
-      // Only include quoteId if it's defined (linking invoice to source quote)
+      if (isEditMode && editInvoiceId) {
+        setIsEditSaving(true);
+        try {
+          const token = getSessionToken();
+          const res = await fetch(`/api/invoices/${editInvoiceId}`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify(invoiceData),
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || 'Failed to update invoice');
+          }
+          const updated = await res.json();
+
+          queryClient.invalidateQueries({ queryKey: ['/api/invoices', editInvoiceId] });
+          queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/invoices', editInvoiceId, 'edits'] });
+          if (selectedJobId) {
+            queryClient.invalidateQueries({ queryKey: ['/api/jobs', selectedJobId, 'linked-documents'] });
+          }
+
+          toast({
+            title: "Invoice updated",
+            description: "Your changes have been saved",
+          });
+
+          onSave?.(editInvoiceId);
+        } finally {
+          setIsEditSaving(false);
+        }
+        return;
+      }
+
       if (sourceQuoteId) {
         invoiceData.quoteId = sourceQuoteId;
       }
 
       const result = await createInvoiceMutation.mutateAsync(invoiceData);
       
-      // Invalidate linked-documents cache so job detail view updates immediately
-      // Use selectedJobId or urlJobId as fallback for URL-based navigation
       const jobIdToInvalidate = selectedJobId || urlJobId;
       if (jobIdToInvalidate) {
         queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobIdToInvalidate, 'linked-documents'] });
-        // Also invalidate job query to update status to 'invoiced'
         queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobIdToInvalidate] });
         queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
       }
@@ -738,11 +801,11 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
       }
 
       onSave?.(result.id);
-    } catch (error) {
-      console.error("Error creating invoice:", error);
+    } catch (error: any) {
+      console.error("Error saving invoice:", error);
       toast({
         title: "Error",
-        description: "Failed to create invoice. Please try again.",
+        description: error.message || "Failed to save invoice. Please try again.",
         variant: "destructive",
       });
     }
@@ -1120,23 +1183,23 @@ export default function LiveInvoiceEditor({ onSave, onCancel }: LiveInvoiceEdito
             {/* Submit Button */}
             <Button
               type="submit"
-              disabled={createInvoiceMutation.isPending}
+              disabled={createInvoiceMutation.isPending || isEditSaving}
               className="w-full h-14 rounded-2xl text-base font-semibold gap-2 press-scale"
               style={{ 
                 backgroundColor: 'hsl(var(--trade))',
                 color: 'white'
               }}
-              data-testid="button-create-invoice"
+              data-testid={isEditMode ? "button-save-invoice" : "button-create-invoice"}
             >
-              {createInvoiceMutation.isPending ? (
+              {(createInvoiceMutation.isPending || isEditSaving) ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Creating...
+                  {isEditMode ? 'Saving...' : 'Creating...'}
                 </>
               ) : (
                 <>
                   <Check className="h-5 w-5" />
-                  Create Invoice
+                  {isEditMode ? 'Save Changes' : 'Create Invoice'}
                 </>
               )}
             </Button>
