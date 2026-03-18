@@ -95,6 +95,19 @@ interface StripeConnectStatus {
   email?: string;
 }
 
+interface AccountingIntStatus {
+  connected: boolean;
+  name: string | null;
+  lastSync: string | null;
+  needsReconnect: boolean;
+}
+
+interface CalendarIntStatus {
+  connected: boolean;
+  email: string | null;
+  needsReconnect: boolean;
+}
+
 interface HealthStatus {
   allReady: boolean;
   servicesReady: boolean;
@@ -106,6 +119,16 @@ interface HealthStatus {
     twilio?: ServiceHealth;
   };
   stripeConnect?: StripeConnectStatus;
+  accounting?: {
+    xero: AccountingIntStatus | null;
+    quickbooks: AccountingIntStatus | null;
+    myob: AccountingIntStatus | null;
+  };
+  calendar?: {
+    googleCalendar: CalendarIntStatus | null;
+    outlook: CalendarIntStatus | null;
+  };
+  needsReconnect?: boolean;
   checkedAt: string;
 }
 
@@ -890,6 +913,25 @@ export default function Integrations() {
     openDashboardMutation.mutate();
   };
 
+  const connectedIntegrations = [
+    health?.stripeConnect?.connected && health?.stripeConnect?.chargesEnabled ? 'Stripe' : null,
+    health?.services?.email?.verified ? 'Email' : null,
+    (health?.services?.twilio?.verified || health?.services?.twilio?.managed) ? 'SMS' : null,
+    health?.accounting?.xero?.connected ? 'Xero' : null,
+    health?.accounting?.quickbooks?.connected ? 'QuickBooks' : null,
+    health?.accounting?.myob?.connected ? 'MYOB' : null,
+    health?.calendar?.googleCalendar?.connected ? 'Google Calendar' : null,
+    health?.calendar?.outlook?.connected ? 'Outlook' : null,
+  ].filter(Boolean);
+  
+  const reconnectNeeded = [
+    health?.accounting?.xero?.needsReconnect ? 'Xero' : null,
+    health?.accounting?.quickbooks?.needsReconnect ? 'QuickBooks' : null,
+    health?.accounting?.myob?.needsReconnect ? 'MYOB' : null,
+    health?.calendar?.googleCalendar?.needsReconnect ? 'Google Calendar' : null,
+    health?.calendar?.outlook?.needsReconnect ? 'Outlook' : null,
+  ].filter(Boolean);
+
   return (
     <PageShell>
       <PageHeader
@@ -898,6 +940,62 @@ export default function Integrations() {
       />
 
       <div className="space-y-8">
+        {/* Connection Health Summary */}
+        {health && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  reconnectNeeded.length > 0 ? 'bg-red-100 dark:bg-red-900/50' 
+                  : connectedIntegrations.length > 0 ? 'bg-green-100 dark:bg-green-900/50' 
+                  : 'bg-muted'
+                }`}>
+                  {reconnectNeeded.length > 0 ? (
+                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  ) : connectedIntegrations.length > 0 ? (
+                    <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <Settings className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">
+                    {reconnectNeeded.length > 0 
+                      ? 'Reconnection Required' 
+                      : connectedIntegrations.length > 0
+                      ? `${connectedIntegrations.length} Integration${connectedIntegrations.length !== 1 ? 's' : ''} Active`
+                      : 'Connection Status'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {reconnectNeeded.length > 0
+                      ? `${reconnectNeeded.join(', ')} ${reconnectNeeded.length === 1 ? 'needs' : 'need'} to be reconnected`
+                      : connectedIntegrations.length > 0
+                      ? connectedIntegrations.join(' · ')
+                      : 'Connect your services below to get started'}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                {[
+                  { name: 'Stripe', connected: health?.stripeConnect?.connected && health?.stripeConnect?.chargesEnabled },
+                  { name: 'Email', connected: health?.services?.email?.verified },
+                  { name: 'SMS', connected: health?.services?.twilio?.verified || health?.services?.twilio?.managed },
+                  { name: 'Xero', connected: health?.accounting?.xero?.connected },
+                  { name: 'QuickBooks', connected: health?.accounting?.quickbooks?.connected },
+                  { name: 'MYOB', connected: health?.accounting?.myob?.connected },
+                  { name: 'Google Cal', connected: health?.calendar?.googleCalendar?.connected },
+                  { name: 'Outlook', connected: health?.calendar?.outlook?.connected },
+                ].map((svc) => (
+                  <div key={svc.name} className="flex items-center gap-1.5 text-xs">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${svc.connected ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                    <span className={svc.connected ? 'text-foreground' : 'text-muted-foreground'}>{svc.name}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         {/* Payments */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Payments</h3>

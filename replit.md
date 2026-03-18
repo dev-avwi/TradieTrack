@@ -36,7 +36,7 @@ Core architectural and design decisions include:
 *   **Object Storage**: Google Cloud Storage (GCS)
 *   **Maps**: Leaflet with react-leaflet
 *   **Accounting Integration**: Xero, MYOB AccountRight, QuickBooks Online
-*   **Calendar Integration**: Google Calendar
+*   **Calendar Integration**: Google Calendar, Outlook/Microsoft 365
 *   **Weather API**: Open-Meteo
 *   **Routing/ETA**: OSRM (Open Source Routing Machine)
 *   **Tap to Pay (Stripe Terminal)**: `@stripe/stripe-terminal-react-native` SDK (pending Apple approval).

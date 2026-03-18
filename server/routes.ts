@@ -8680,6 +8680,50 @@ Be specific about materials, colors, and features that would be included.`
         }
       };
       
+      // Check accounting integration statuses
+      let accountingStatus: any = { xero: null, quickbooks: null, myob: null };
+      try {
+        const xeroConnStatus = await xeroService.getConnectionStatus(req.userId);
+        accountingStatus.xero = { connected: xeroConnStatus?.connected || false, name: xeroConnStatus?.tenantName || null, lastSync: xeroConnStatus?.lastSyncAt || null, needsReconnect: false };
+        if (xeroConnStatus?.connected && xeroConnStatus?.status === 'token_expired') {
+          accountingStatus.xero.needsReconnect = true;
+        }
+      } catch { accountingStatus.xero = { connected: false, name: null, lastSync: null, needsReconnect: false }; }
+      
+      try {
+        const qbConnStatus = await quickbooksService.getConnectionStatus(req.userId);
+        accountingStatus.quickbooks = { connected: qbConnStatus?.connected || false, name: qbConnStatus?.companyName || null, lastSync: qbConnStatus?.lastSyncAt || null, needsReconnect: false };
+      } catch { accountingStatus.quickbooks = { connected: false, name: null, lastSync: null, needsReconnect: false }; }
+      
+      try {
+        const myobConnStatus = await myobService.getConnectionStatus(req.userId);
+        accountingStatus.myob = { connected: myobConnStatus?.connected || false, name: myobConnStatus?.companyName || null, lastSync: myobConnStatus?.lastSyncAt || null, needsReconnect: false };
+      } catch { accountingStatus.myob = { connected: false, name: null, lastSync: null, needsReconnect: false }; }
+      
+      // Check calendar integration statuses
+      let calendarStatus: any = { googleCalendar: null, outlook: null };
+      try {
+        const { isGoogleCalendarConnected, getConnectionInfo } = await import('./googleCalendarClient');
+        const gcConnected = await isGoogleCalendarConnected(req.userId);
+        const gcInfo = gcConnected ? await getConnectionInfo(req.userId) : null;
+        calendarStatus.googleCalendar = { connected: gcConnected, email: gcInfo?.email || null, needsReconnect: false };
+      } catch { calendarStatus.googleCalendar = { connected: false, email: null, needsReconnect: false }; }
+      
+      try {
+        const { isOutlookConnected, getConnectionInfo: getOutlookInfo } = await import('./outlookClient');
+        const olConnected = await isOutlookConnected(req.userId);
+        const olInfo = olConnected ? await getOutlookInfo(req.userId) : null;
+        calendarStatus.outlook = { connected: olConnected, email: olInfo?.email || null, needsReconnect: false };
+      } catch { calendarStatus.outlook = { connected: false, email: null, needsReconnect: false }; }
+      
+      const needsReconnect = [
+        accountingStatus.xero?.needsReconnect,
+        accountingStatus.quickbooks?.needsReconnect,
+        accountingStatus.myob?.needsReconnect,
+        calendarStatus.googleCalendar?.needsReconnect,
+        calendarStatus.outlook?.needsReconnect,
+      ].some(Boolean);
+      
       res.json({
         allReady,
         servicesReady,
@@ -8688,6 +8732,9 @@ Be specific about materials, colors, and features that would be included.`
           : (stripeConnectStatus.connected ? 'Complete Stripe setup to start accepting payments' : 'Connect Stripe to accept payments'),
         services,
         stripeConnect: stripeConnectStatus,
+        accounting: accountingStatus,
+        calendar: calendarStatus,
+        needsReconnect,
         checkedAt: new Date().toISOString()
       });
     } catch (error) {

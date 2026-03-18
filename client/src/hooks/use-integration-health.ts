@@ -22,6 +22,19 @@ export interface StripeConnectStatus {
   email: string | null;
 }
 
+export interface AccountingIntegrationStatus {
+  connected: boolean;
+  name: string | null;
+  lastSync: string | null;
+  needsReconnect: boolean;
+}
+
+export interface CalendarIntegrationStatus {
+  connected: boolean;
+  email: string | null;
+  needsReconnect: boolean;
+}
+
 export interface IntegrationHealth {
   allReady: boolean;
   servicesReady: boolean;
@@ -33,6 +46,16 @@ export interface IntegrationHealth {
     twilio: IntegrationService;
   };
   stripeConnect: StripeConnectStatus;
+  accounting?: {
+    xero: AccountingIntegrationStatus | null;
+    quickbooks: AccountingIntegrationStatus | null;
+    myob: AccountingIntegrationStatus | null;
+  };
+  calendar?: {
+    googleCalendar: CalendarIntegrationStatus | null;
+    outlook: CalendarIntegrationStatus | null;
+  };
+  needsReconnect?: boolean;
   checkedAt: string;
 }
 
