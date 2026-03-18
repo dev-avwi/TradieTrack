@@ -229,7 +229,7 @@ function TimeTrackingAnalytics() {
   const { data: timesheets, isLoading } = useQuery<any[]>({
     queryKey: ['/api/timesheets', 'includeEntries'],
     queryFn: async () => {
-      const res = await fetch('/api/timesheets?includeEntries=true');
+      const res = await fetch('/api/timesheets?includeEntries=true', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch timesheets');
       return res.json();
     },
@@ -238,7 +238,7 @@ function TimeTrackingAnalytics() {
   const { data: timeEntries } = useQuery<any[]>({
     queryKey: ['/api/time-entries'],
     queryFn: async () => {
-      const res = await fetch('/api/time-entries');
+      const res = await fetch('/api/time-entries', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch time entries');
       return res.json();
     },
@@ -658,10 +658,10 @@ export default function TimeTrackingPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  // Query for active timers
-  const { data: activeTimers = [], refetch: refetchTimers } = useQuery<any[]>({
+  const { data: rawActiveTimers, refetch: refetchTimers } = useQuery({
     queryKey: ['/api/time-entries/active'],
   });
+  const activeTimers: any[] = Array.isArray(rawActiveTimers) ? rawActiveTimers : (rawActiveTimers ? [rawActiveTimers] : []);
 
   // Start break timer mutation
   const startBreakMutation = useMutation({

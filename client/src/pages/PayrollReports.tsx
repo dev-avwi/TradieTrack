@@ -135,7 +135,7 @@ export default function PayrollReports() {
   const { data: payrollData, isLoading: payrollLoading } = useQuery({
     queryKey: ['/api/payroll/summary', payrollDates.start.toISOString(), payrollDates.end.toISOString()],
     queryFn: async () => {
-      const res = await fetch(`/api/payroll/summary?start=${payrollDates.start.toISOString()}&end=${payrollDates.end.toISOString()}`);
+      const res = await fetch(`/api/payroll/summary?start=${payrollDates.start.toISOString()}&end=${payrollDates.end.toISOString()}`, { credentials: 'include' });
       return res.json();
     },
     staleTime: 2 * 60 * 1000,
@@ -144,7 +144,7 @@ export default function PayrollReports() {
   const { data: receivablesData, isLoading: receivablesLoading } = useQuery({
     queryKey: ['/api/reports/receivables'],
     queryFn: async () => {
-      const res = await fetch('/api/reports/receivables');
+      const res = await fetch('/api/reports/receivables', { credentials: 'include' });
       return res.json();
     },
     staleTime: 2 * 60 * 1000,
@@ -153,7 +153,7 @@ export default function PayrollReports() {
   const { data: utilisationData, isLoading: utilisationLoading } = useQuery({
     queryKey: ['/api/reports/utilisation', utilisationDates.start.toISOString(), utilisationDates.end.toISOString()],
     queryFn: async () => {
-      const res = await fetch(`/api/reports/utilisation?start=${utilisationDates.start.toISOString()}&end=${utilisationDates.end.toISOString()}`);
+      const res = await fetch(`/api/reports/utilisation?start=${utilisationDates.start.toISOString()}&end=${utilisationDates.end.toISOString()}`, { credentials: 'include' });
       return res.json();
     },
     staleTime: 2 * 60 * 1000,

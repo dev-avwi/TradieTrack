@@ -24,6 +24,8 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[ErrorBoundary] Caught error:', error.message, error.stack);
+    console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack);
     trackEvent("app_crash", {
       error: error.message?.substring(0, 200),
       componentStack: errorInfo.componentStack?.substring(0, 500),

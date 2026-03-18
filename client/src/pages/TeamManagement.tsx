@@ -467,7 +467,7 @@ export default function TeamManagement() {
   const { data: availableJobs } = useQuery<Job[]>({
     queryKey: ['/api/jobs', { status: 'unassigned' }],
     queryFn: async () => {
-      const response = await fetch('/api/jobs?limit=50');
+      const response = await fetch('/api/jobs?limit=50', { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch jobs');
       return response.json();
     },
