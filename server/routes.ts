@@ -24923,6 +24923,18 @@ Respond with JSON in this format:
         }
       }
       
+      // Deduplicate templates by name+tradeType (keep newest)
+      const seen = new Map<string, typeof templates[0]>();
+      for (const t of templates) {
+        const key = `${t.name}::${t.tradeType || ''}`;
+        if (!seen.has(key)) {
+          seen.set(key, t);
+        }
+      }
+      if (seen.size < templates.length) {
+        templates = Array.from(seen.values());
+      }
+      
       res.json(templates);
     } catch (error: any) {
       console.error('Error fetching quote templates:', error);

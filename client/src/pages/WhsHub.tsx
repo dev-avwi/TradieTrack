@@ -372,8 +372,17 @@ function IncidentReportsTab() {
       ) : reports.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-            <p className="text-muted-foreground">No incident reports yet. Report incidents to keep your site safe.</p>
+            <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: 'hsl(142.1 76.2% 36.3% / 0.1)' }}>
+              <CheckCircle2 className="w-6 h-6" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+            </div>
+            <h3 className="font-semibold mb-1">No incidents reported</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Your safety record is clean. Report any workplace incidents here to maintain compliance.
+            </p>
+            <Button size="sm" onClick={() => { resetForm(); setEditingId(null); setShowForm(true); }}>
+              <Plus className="h-4 w-4 mr-1" />
+              Report Incident
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -1892,7 +1901,10 @@ export default function WhsHub() {
                 {item.done ? (
                   <span className="text-xs font-medium" style={{ color: 'hsl(142.1 76.2% 36.3%)' }}>Done</span>
                 ) : (
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />
+                  <span className="flex items-center gap-1 text-xs font-medium text-primary flex-shrink-0">
+                    Action
+                    <ChevronRight className="h-3 w-3" />
+                  </span>
                 )}
               </div>
             ))}

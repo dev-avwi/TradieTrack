@@ -2223,24 +2223,31 @@ function FormsTab() {
                       ) : (
                       <div className="space-y-3 border-t pt-4">
                         {Array.isArray(selectedForm.fields) && selectedForm.fields.length > 0 ? (
-                          (selectedForm.fields as Array<{ label?: string; type?: string }>).slice(0, 5).map((field, index) => (
-                            <div key={index} className="flex items-center gap-2">
-                              {field.type === 'checkbox' ? (
-                                <div className="w-5 h-5 border-2 rounded" />
-                              ) : (
-                                <div className="w-5 h-5 border-2 rounded-full" />
-                              )}
-                              <span className="text-sm">{field.label || `Field ${index + 1}`}</span>
-                            </div>
-                          ))
+                          (selectedForm.fields as Array<{ label?: string; name?: string; type?: string }>).slice(0, 5).map((field, index) => {
+                            const fieldLabel = field.label || field.name || `${(field.type || 'field').charAt(0).toUpperCase() + (field.type || 'field').slice(1)} ${index + 1}`;
+                            return (
+                              <div key={index} className="flex items-center gap-2">
+                                {field.type === 'checkbox' ? (
+                                  <div className="w-4 h-4 border-2 rounded flex-shrink-0" />
+                                ) : field.type === 'textarea' ? (
+                                  <div className="w-4 h-4 border-2 rounded flex-shrink-0 flex items-center justify-center">
+                                    <div className="w-2.5 h-0.5 bg-muted-foreground/30" />
+                                  </div>
+                                ) : (
+                                  <div className="w-4 h-4 border-2 rounded-full flex-shrink-0" />
+                                )}
+                                <span className="text-sm">{fieldLabel}</span>
+                              </div>
+                            );
+                          })
                         ) : (
                           <>
                             <div className="flex items-center gap-2">
-                              <div className="w-5 h-5 border-2 rounded" />
+                              <div className="w-4 h-4 border-2 rounded flex-shrink-0" />
                               <span className="text-sm">Sample checklist item</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <div className="w-5 h-5 border-2 rounded" />
+                              <div className="w-4 h-4 border-2 rounded flex-shrink-0" />
                               <span className="text-sm">Another item to verify</span>
                             </div>
                           </>
