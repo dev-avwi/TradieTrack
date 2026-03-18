@@ -578,6 +578,7 @@ export default function LiveQuoteEditor({ quoteId: editQuoteId, onSave, onCancel
           }
 
           queryClient.invalidateQueries({ queryKey: ['/api/quotes', editQuoteId] });
+          queryClient.invalidateQueries({ queryKey: ['/api/quotes', editQuoteId, 'versions'] });
           queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
           const jobIdToInvalidate = selectedJobId || urlJobId;
           if (jobIdToInvalidate) {

@@ -95,6 +95,7 @@ import {
   jobs,
   quotes,
   quoteLineItems,
+  quoteVersions,
   invoices,
   invoiceLineItems,
   documentTemplates,
@@ -535,6 +536,10 @@ export interface IStorage {
   createQuoteLineItem(lineItem: InsertQuoteLineItem, userId?: string): Promise<QuoteLineItem>;
   updateQuoteLineItem(id: string, lineItem: Partial<InsertQuoteLineItem>, userId?: string): Promise<QuoteLineItem | undefined>;
   deleteQuoteLineItem(id: string, userId?: string): Promise<boolean>;
+
+  // Quote Versions
+  getQuoteVersions(quoteId: string): Promise<any[]>;
+  createQuoteVersion(data: { quoteId: string; versionNumber: number; editedBy?: string; changeNote?: string; snapshot: any }): Promise<any>;
 
   // Invoices
   getInvoices(userId: string, includeArchived?: boolean): Promise<Invoice[]>;
@@ -2441,6 +2446,16 @@ export class PostgresStorage implements IStorage {
     }
     const result = await db.delete(quoteLineItems).where(eq(quoteLineItems.id, id));
     return result.rowCount > 0;
+  }
+
+  // Quote Versions
+  async getQuoteVersions(quoteId: string): Promise<any[]> {
+    return await db.select().from(quoteVersions).where(eq(quoteVersions.quoteId, quoteId)).orderBy(desc(quoteVersions.versionNumber));
+  }
+
+  async createQuoteVersion(data: { quoteId: string; versionNumber: number; editedBy?: string; changeNote?: string; snapshot: any }): Promise<any> {
+    const result = await db.insert(quoteVersions).values(data).returning();
+    return result[0];
   }
 
   // Invoices

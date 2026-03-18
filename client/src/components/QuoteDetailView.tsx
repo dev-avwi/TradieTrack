@@ -4,12 +4,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Printer, ArrowLeft, Send, FileText, Download, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt, Camera, ChevronDown, StickyNote, Image, Layers, Eye, Loader2, Edit2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Printer, ArrowLeft, Send, FileText, Download, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt, Camera, ChevronDown, StickyNote, Image, Layers, Eye, Loader2, Edit2, History, Clock, X } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useConvertQuoteToInvoice } from "@/hooks/use-quotes";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +65,8 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
   const [jobContextOpen, setJobContextOpen] = useState(false);
   const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(true);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState<any>(null);
   const [, setLocation] = useLocation();
   const { data: businessSettings } = useBusinessSettings();
   const { data: integrationHealth } = useIntegrationHealth();
@@ -79,6 +89,19 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
       if (!response.ok) throw new Error('Failed to fetch quote');
       return response.json();
     }
+  });
+
+  const { data: quoteVersions = [] } = useQuery<any[]>({
+    queryKey: ['/api/quotes', quoteId, 'versions'],
+    queryFn: async () => {
+      const response = await fetch(`/api/quotes/${quoteId}/versions`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!quote,
   });
 
   const { data: client } = useQuery({
@@ -568,6 +591,13 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
               <Send className="h-4 w-4 mr-1.5" />
               Send
             </Button>
+            {quoteVersions.length > 0 && (
+              <Button variant="outline" size="sm" onClick={() => setVersionHistoryOpen(true)} data-testid="button-version-history">
+                <History className="h-4 w-4 mr-1.5" />
+                History
+                <Badge variant="secondary" className="ml-1 text-xs">{quoteVersions.length}</Badge>
+              </Button>
+            )}
 
             {/* Content toggles for PDF output */}
             {(quote.jobId || quote.notes) && (
@@ -1101,6 +1131,117 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
           excludeNotes={!includeNotes}
         />
       )}
+
+      {/* Version History Sheet */}
+      <Sheet open={versionHistoryOpen} onOpenChange={setVersionHistoryOpen}>
+        <SheetContent className="sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Version History
+            </SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-[calc(100vh-120px)] mt-4 pr-3">
+            {quoteVersions.length === 0 ? (
+              <div className="text-center py-12">
+                <History className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">No previous versions</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Current version indicator */}
+                <div className="flex items-start gap-3 p-3 rounded-lg border bg-primary/5 border-primary/20">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-xs font-bold text-primary">v{quoteVersions.length + 1}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold">Current Version</p>
+                      <Badge variant="default" className="text-xs">Latest</Badge>
+                    </div>
+                    {quote && (
+                      <p className="text-sm font-medium mt-1">${parseFloat(quote.total || '0').toFixed(2)}</p>
+                    )}
+                    {quote?.lineItems && (
+                      <div className="mt-2 space-y-0.5">
+                        {(quote.lineItems as any[]).map((li: any, i: number) => (
+                          <p key={i} className="text-xs text-muted-foreground">
+                            {li.description} — {parseFloat(li.quantity || '1').toFixed(0)} × ${parseFloat(li.unitPrice || '0').toFixed(2)}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Previous versions */}
+                {quoteVersions.map((version: any) => {
+                  const snap = version.snapshot;
+                  const isExpanded = selectedVersion?.id === version.id;
+                  return (
+                    <div
+                      key={version.id}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${isExpanded ? 'ring-1 ring-primary/30 bg-muted/50' : 'hover-elevate'}`}
+                      onClick={() => setSelectedVersion(isExpanded ? null : version)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-xs font-bold text-muted-foreground">v{version.versionNumber}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <p className="text-sm font-medium">${parseFloat(snap.total || '0').toFixed(2)}</p>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              {new Date(version.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                          {version.editedBy && (
+                            <p className="text-xs text-muted-foreground mt-0.5">Edited by {version.editedBy}</p>
+                          )}
+
+                          {/* Expanded detail */}
+                          {isExpanded && snap.lineItems && (
+                            <div className="mt-3 pt-3 border-t space-y-2">
+                              <div className="space-y-1">
+                                {snap.lineItems.map((li: any, i: number) => (
+                                  <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                                    <span className="text-muted-foreground truncate">{li.description}</span>
+                                    <span className="font-medium flex-shrink-0">
+                                      {parseFloat(li.quantity || '1').toFixed(0)} × ${parseFloat(li.unitPrice || '0').toFixed(2)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="pt-2 border-t space-y-1 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Subtotal</span>
+                                  <span>${parseFloat(snap.subtotal || '0').toFixed(2)}</span>
+                                </div>
+                                {parseFloat(snap.gstAmount || '0') > 0 && (
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">GST (10%)</span>
+                                    <span>${parseFloat(snap.gstAmount || '0').toFixed(2)}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between font-semibold">
+                                  <span>Total</span>
+                                  <span>${parseFloat(snap.total || '0').toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <ChevronRight className={`h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

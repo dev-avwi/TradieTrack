@@ -858,6 +858,20 @@ export const quoteLineItems = pgTable("quote_line_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Quote Version History
+export const quoteVersions = pgTable("quote_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quoteId: varchar("quote_id").notNull().references(() => quotes.id, { onDelete: 'cascade' }),
+  versionNumber: integer("version_number").notNull(),
+  editedBy: varchar("edited_by"),
+  changeNote: text("change_note"),
+  snapshot: jsonb("snapshot").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type QuoteVersion = typeof quoteVersions.$inferSelect;
+export type InsertQuoteVersion = typeof quoteVersions.$inferInsert;
+
 // Invoices
 export const invoices = pgTable("invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

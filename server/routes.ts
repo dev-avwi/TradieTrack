@@ -18953,6 +18953,45 @@ Be specific about materials, colors, and features that would be included.`
       const userContext = await getUserContext(req.userId);
       const { lineItems, ...quoteBody } = req.body;
       const data = updateQuoteSchema.parse(quoteBody);
+      
+      // Capture pre-edit snapshot (saved only after successful update)
+      let versionSnapshot: any = null;
+      try {
+        const currentQuote = await storage.getQuoteWithLineItems(req.params.id, userContext.effectiveUserId);
+        if (currentQuote) {
+          const existingVersions = await storage.getQuoteVersions(req.params.id);
+          const nextVersion = existingVersions.length > 0 ? Math.max(...existingVersions.map(v => v.versionNumber)) + 1 : 1;
+          const user = await storage.getUser(req.userId);
+          versionSnapshot = {
+            quoteId: req.params.id,
+            versionNumber: nextVersion,
+            editedBy: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : undefined,
+            snapshot: {
+              title: currentQuote.title,
+              description: currentQuote.description,
+              status: currentQuote.status,
+              subtotal: currentQuote.subtotal,
+              gstAmount: currentQuote.gstAmount,
+              total: currentQuote.total,
+              validUntil: currentQuote.validUntil,
+              notes: currentQuote.notes,
+              depositRequired: currentQuote.depositRequired,
+              depositPercent: currentQuote.depositPercent,
+              depositAmount: currentQuote.depositAmount,
+              lineItems: currentQuote.lineItems.map(li => ({
+                description: li.description,
+                quantity: li.quantity,
+                unitPrice: li.unitPrice,
+                total: li.total,
+                cost: li.cost,
+              })),
+            },
+          };
+        }
+      } catch (versionError) {
+        console.error('Error capturing quote version snapshot:', versionError);
+      }
+      
       const quote = await storage.updateQuote(req.params.id, userContext.effectiveUserId, data);
       if (!quote) {
         return res.status(404).json({ error: "Quote not found" });
@@ -18994,6 +19033,15 @@ Be specific about materials, colors, and features that would be included.`
         });
       }
       
+      // Save version snapshot now that update succeeded
+      if (versionSnapshot) {
+        try {
+          await storage.createQuoteVersion(versionSnapshot);
+        } catch (versionSaveError) {
+          console.error('Error saving quote version record:', versionSaveError);
+        }
+      }
+      
       const quoteWithItems = await storage.getQuoteWithLineItems(req.params.id, userContext.effectiveUserId);
       res.json(quoteWithItems);
     } catch (error) {
@@ -19002,6 +19050,22 @@ Be specific about materials, colors, and features that would be included.`
       }
       console.error("Error updating quote:", error);
       res.status(500).json({ error: "Failed to update quote" });
+    }
+  });
+
+  // Quote version history
+  app.get("/api/quotes/:id/versions", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const quote = await storage.getQuote(req.params.id, userContext.effectiveUserId);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      const versions = await storage.getQuoteVersions(req.params.id);
+      res.json(versions);
+    } catch (error) {
+      console.error("Error fetching quote versions:", error);
+      res.status(500).json({ error: "Failed to fetch version history" });
     }
   });
 
