@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -172,8 +172,10 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
   const { toast } = useToast();
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
-  const [uninvoicedExpanded, setUninvoicedExpanded] = useState(false);
+  const focusUninvoiced = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('focus') === 'uninvoiced';
+  const [uninvoicedExpanded, setUninvoicedExpanded] = useState(focusUninvoiced);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const hasAutoSelected = useRef(false);
   const [confirmInvoiceDialogOpen, setConfirmInvoiceDialogOpen] = useState(false);
 
   const { data, isLoading } = useQuery<ActionCenterData>({
@@ -184,7 +186,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
     queryKey: ["/api/job-requests", { status: "pending" }],
   });
 
-  const { data: allJobs = [] } = useQuery<Job[]>({
+  const { data: allJobs = [], isSuccess: jobsLoaded } = useQuery<Job[]>({
     queryKey: ["/api/jobs"],
     enabled: uninvoicedExpanded,
   });
@@ -194,16 +196,25 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
     enabled: uninvoicedExpanded,
   });
 
-  const { data: allInvoices = [] } = useQuery<any[]>({
+  const { data: allInvoices = [], isSuccess: invoicesLoaded } = useQuery<any[]>({
     queryKey: ["/api/invoices"],
     enabled: uninvoicedExpanded,
   });
+
+  const allDataLoaded = jobsLoaded && invoicesLoaded;
 
   const uninvoicedJobs = useMemo(() => {
     if (!uninvoicedExpanded) return [];
     const invoicedJobIds = new Set(allInvoices.filter((inv: any) => inv.jobId).map((inv: any) => inv.jobId));
     return allJobs.filter((j) => j.status === "done" && !invoicedJobIds.has(j.id));
   }, [allJobs, allInvoices, uninvoicedExpanded]);
+
+  useEffect(() => {
+    if (focusUninvoiced && allDataLoaded && uninvoicedJobs.length > 0 && !hasAutoSelected.current) {
+      hasAutoSelected.current = true;
+      setSelectedJobIds(new Set(uninvoicedJobs.map((j) => j.id)));
+    }
+  }, [focusUninvoiced, allDataLoaded, uninvoicedJobs]);
 
   const clientMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -491,10 +502,15 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
                                   )}
                                   {isUninvoiced && uninvoicedExpanded && (
                                     <div className="border-t border-border pt-3 mt-1">
-                                      {uninvoicedJobs.length === 0 ? (
+                                      {!allDataLoaded ? (
                                         <div className="flex items-center justify-center py-4">
                                           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                                           <span className="ml-2 text-sm text-muted-foreground">Loading jobs...</span>
+                                        </div>
+                                      ) : uninvoicedJobs.length === 0 ? (
+                                        <div className="flex items-center justify-center py-4">
+                                          <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                                          <span className="ml-2 text-sm text-muted-foreground">All completed jobs have been invoiced</span>
                                         </div>
                                       ) : (
                                         <div className="flex flex-col gap-2">
@@ -807,7 +823,9 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
               disabled={batchInvoiceMutation.isPending}
               onClick={() => {
                 setConfirmInvoiceDialogOpen(false);
-                batchInvoiceMutation.mutate(Array.from(selectedJobIds));
+                const validIds = uninvoicedJobs.map((j) => j.id);
+                const sanitized = Array.from(selectedJobIds).filter((id) => validIds.includes(id));
+                batchInvoiceMutation.mutate(sanitized);
               }}
             >
               {batchInvoiceMutation.isPending ? (

@@ -814,6 +814,15 @@ export default function TradieDashboard({
             <p className="text-sm text-muted-foreground">
               These jobs are done — send the invoice and get paid.
             </p>
+            {completedUninvoicedJobs.length > 1 && (
+              <Button 
+                className="w-full"
+                onClick={() => onNavigate?.('/action-center?focus=uninvoiced')}
+              >
+                <Receipt className="h-4 w-4 mr-2" />
+                Invoice All {completedUninvoicedJobs.length} Jobs
+              </Button>
+            )}
             {completedUninvoicedJobs.slice(0, 3).map((job: any) => (
               <div key={job.id} className="flex items-center justify-between gap-2 p-2 rounded-lg border hover-elevate">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -834,7 +843,7 @@ export default function TradieDashboard({
               </div>
             ))}
             {completedUninvoicedJobs.length > 3 && (
-              <Button variant="ghost" className="w-full text-xs" onClick={() => onViewJobs?.()}>
+              <Button variant="ghost" className="w-full text-xs" onClick={() => onNavigate?.('/action-center?focus=uninvoiced')}>
                 View all {completedUninvoicedJobs.length} completed jobs
               </Button>
             )}
