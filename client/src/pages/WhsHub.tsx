@@ -15,7 +15,7 @@ import {
   Flame, AlertCircle, FileText, HardHat, Activity,
   Siren, Eye, ChevronDown, ChevronUp, ExternalLink,
   ArrowLeft, Download, TrendingUp, LayoutGrid, List,
-  ArrowUpDown, Search,
+  ArrowUpDown, Search, Building2, Briefcase, LinkIcon,
   ShieldCheck, ShieldAlert, ArrowRight, CircleAlert,
   BookOpen, BadgeCheck, HeartPulse, ChevronRight
 } from "lucide-react";
@@ -49,6 +49,87 @@ const SIGN_CATEGORY_ICONS: Record<string, { icon: typeof Shield; color: string }
   fire: { icon: Flame, color: "text-red-500" },
 };
 
+function JobPicker({ value, onChange, onJobSelected }: {
+  value: string;
+  onChange: (jobId: string) => void;
+  onJobSelected?: (job: any) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const { data: jobs = [] } = useQuery<any[]>({ queryKey: ["/api/jobs"] });
+
+  const filtered = jobs.filter((j: any) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return j.title?.toLowerCase().includes(q) || j.address?.toLowerCase().includes(q) || j.clientName?.toLowerCase().includes(q);
+  });
+
+  const selectedJob = jobs.find((j: any) => j.id === value);
+
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-1.5">
+        <LinkIcon className="w-3.5 h-3.5" /> Link to Job
+      </Label>
+      {selectedJob ? (
+        <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/30">
+          <Briefcase className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{selectedJob.title}</p>
+            {selectedJob.address && <p className="text-xs text-muted-foreground truncate flex items-center gap-1"><MapPin className="w-3 h-3" />{selectedJob.address}</p>}
+          </div>
+          <Button size="icon" variant="ghost" onClick={() => { onChange(""); }}>
+            <XCircle className="w-4 h-4" />
+          </Button>
+        </div>
+      ) : (
+        <div className="relative">
+          <Input
+            value={search}
+            onChange={e => { setSearch(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            placeholder="Search jobs by title, address, or client..."
+            className="pr-8"
+          />
+          <Briefcase className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          {open && (
+            <div className="absolute z-50 top-full mt-1 w-full bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto">
+              {filtered.length === 0 ? (
+                <div className="p-3 text-sm text-muted-foreground text-center">No jobs found</div>
+              ) : (
+                filtered.slice(0, 15).map((job: any) => (
+                  <button
+                    key={job.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-sm hover-elevate flex items-start gap-2"
+                    onClick={() => {
+                      onChange(job.id);
+                      onJobSelected?.(job);
+                      setSearch("");
+                      setOpen(false);
+                    }}
+                  >
+                    <Briefcase className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{job.title}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {job.address && <span className="truncate flex items-center gap-0.5"><MapPin className="w-3 h-3" />{job.address}</span>}
+                        {job.clientName && <span className="truncate">{job.clientName}</span>}
+                        <Badge variant="secondary" className="text-[10px] py-0">{job.status}</Badge>
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
+    </div>
+  );
+}
+
 function IncidentReportsTab() {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
@@ -58,7 +139,7 @@ function IncidentReportsTab() {
     location: "", reportedTo: "", reportedToRole: "", workerName: "",
     immediateActions: "", injuryDetails: "", bodyPartAffected: "",
     treatmentProvided: "", witnesses: [] as string[], isNotifiable: false,
-    followUpActions: "",
+    followUpActions: "", jobId: "",
   });
   const [witnessInput, setWitnessInput] = useState("");
 
@@ -99,6 +180,7 @@ function IncidentReportsTab() {
       location: "", reportedTo: "", reportedToRole: "", workerName: "",
       immediateActions: "", injuryDetails: "", bodyPartAffected: "",
       treatmentProvided: "", witnesses: [], isNotifiable: false, followUpActions: "",
+      jobId: "",
     });
     setWitnessInput("");
   }
@@ -112,7 +194,7 @@ function IncidentReportsTab() {
       immediateActions: report.immediateActions || "", injuryDetails: report.injuryDetails || "",
       bodyPartAffected: report.bodyPartAffected || "", treatmentProvided: report.treatmentProvided || "",
       witnesses: report.witnesses || [], isNotifiable: report.isNotifiable || false,
-      followUpActions: report.followUpActions || "",
+      followUpActions: report.followUpActions || "", jobId: report.jobId || "",
     });
     setEditingId(report.id);
     setShowForm(true);
@@ -166,6 +248,15 @@ function IncidentReportsTab() {
               <CardTitle className="text-lg">{editingId ? "Edit" : "New"} Incident Report</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <JobPicker
+                value={formData.jobId}
+                onChange={jobId => setFormData(p => ({ ...p, jobId }))}
+                onJobSelected={(job) => {
+                  if (job.address && !formData.location) {
+                    setFormData(p => ({ ...p, jobId: job.id, location: job.address }));
+                  }
+                }}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Incident Title *</Label>
@@ -405,6 +496,7 @@ function IncidentReportsTab() {
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-2">{report.description}</p>
                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
+                      {report.jobId && <Badge variant="outline" className="gap-1 text-[10px] py-0"><Briefcase className="w-3 h-3" /> Linked</Badge>}
                       {report.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{report.location}</span>}
                       {report.reportedTo && <span>Reported to: {report.reportedTo}</span>}
                       {report.workerName && <span>Worker: {report.workerName}</span>}
@@ -443,6 +535,7 @@ function EmergencyInfoTab() {
     nearestHospital: "", nearestHospitalAddress: "", evacuationRoutes: "",
     fireEquipmentLocations: [] as string[], siteSpecificHazards: [] as string[],
     additionalContacts: [] as { name: string; role: string; phone: string }[],
+    jobId: "",
   });
   const [fireEquipInput, setFireEquipInput] = useState("");
   const [hazardInput, setHazardInput] = useState("");
@@ -486,6 +579,7 @@ function EmergencyInfoTab() {
       fireEquipmentLocations: info.fireEquipmentLocations || [],
       siteSpecificHazards: info.siteSpecificHazards || [],
       additionalContacts: info.additionalContacts || [],
+      jobId: info.jobId || "",
     });
     setEditingId(info.id);
     setShowForm(true);
@@ -507,7 +601,7 @@ function EmergencyInfoTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Site-specific emergency plans with assembly points, first aid, and evacuation routes.</p>
-        <Button onClick={() => { setEditingId(null); setFormData({ siteName: "", siteAddress: "", assemblyPoint: "", firstAidLocation: "", firstAidOfficer: "", firstAidOfficerPhone: "", emergencyNumber: "000", nearestHospital: "", nearestHospitalAddress: "", evacuationRoutes: "", fireEquipmentLocations: [], siteSpecificHazards: [], additionalContacts: [] }); setShowForm(true); }}>
+        <Button onClick={() => { setEditingId(null); setFormData({ siteName: "", siteAddress: "", assemblyPoint: "", firstAidLocation: "", firstAidOfficer: "", firstAidOfficerPhone: "", emergencyNumber: "000", nearestHospital: "", nearestHospitalAddress: "", evacuationRoutes: "", fireEquipmentLocations: [], siteSpecificHazards: [], additionalContacts: [], jobId: "" }); setShowForm(true); }}>
           <Plus className="w-4 h-4 mr-1" /> Add Site Emergency Plan
         </Button>
       </div>
@@ -516,6 +610,18 @@ function EmergencyInfoTab() {
         <Card>
           <CardHeader><CardTitle className="text-lg">{editingId ? "Edit" : "New"} Emergency Plan</CardTitle></CardHeader>
           <CardContent className="space-y-4">
+            <JobPicker
+              value={formData.jobId}
+              onChange={jobId => setFormData(p => ({ ...p, jobId }))}
+              onJobSelected={(job) => {
+                setFormData(p => ({
+                  ...p,
+                  jobId: job.id,
+                  siteName: p.siteName || job.title || "",
+                  siteAddress: p.siteAddress || job.address || "",
+                }));
+              }}
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Site Name *</Label>
@@ -602,6 +708,9 @@ function EmergencyInfoTab() {
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 {info.siteAddress && <p className="text-muted-foreground flex items-center gap-1"><MapPin className="w-3 h-3" />{info.siteAddress}</p>}
+                {info.jobId && (
+                  <Badge variant="outline" className="gap-1 text-xs"><Briefcase className="w-3 h-3" /> Linked to job</Badge>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   {info.assemblyPoint && <div><span className="font-medium text-xs uppercase text-muted-foreground">Assembly Point</span><p>{info.assemblyPoint}</p></div>}
                   {info.firstAidLocation && <div><span className="font-medium text-xs uppercase text-muted-foreground">First Aid</span><p>{info.firstAidLocation}</p></div>}
@@ -891,6 +1000,7 @@ function PpeChecklistTab() {
     safetyBoots: false, safetyGlasses: false, hearingProtection: false,
     gloves: false, sunscreen: false, respirator: false, safetyHarness: false,
     otherPpe: "", allCorrect: false, supervisorName: "", notes: "",
+    jobId: "", jobTitle: "",
   });
 
   const { data: checklists = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/whs/ppe-checklists"] });
@@ -919,6 +1029,7 @@ function PpeChecklistTab() {
       safetyBoots: false, safetyGlasses: false, hearingProtection: false,
       gloves: false, sunscreen: false, respirator: false, safetyHarness: false,
       otherPpe: "", allCorrect: false, supervisorName: "", notes: "",
+      jobId: "", jobTitle: "",
     });
   };
 
@@ -942,7 +1053,8 @@ function PpeChecklistTab() {
       return;
     }
     const allCorrect = ppeItems.every(p => form[p.key as keyof typeof form]);
-    createMutation.mutate({ ...form, allCorrect });
+    const { jobTitle: _jt, ...submitData } = form;
+    createMutation.mutate({ ...submitData, allCorrect });
   };
 
   if (isLoading) return <div className="flex justify-center p-8"><Clock className="w-5 h-5 animate-spin" /></div>;
@@ -966,6 +1078,13 @@ function PpeChecklistTab() {
               <CardTitle className="text-lg">PPE Check-in</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <JobPicker
+                value={form.jobId}
+                onChange={jobId => setForm(f => ({ ...f, jobId, jobTitle: jobId ? f.jobTitle : "" }))}
+                onJobSelected={(job) => {
+                  setForm(f => ({ ...f, jobId: job.id, jobTitle: job.title || "" }));
+                }}
+              />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Worker Name *</Label>
@@ -1031,6 +1150,7 @@ function PpeChecklistTab() {
                     <div className="text-xs text-muted-foreground uppercase tracking-wide">PPE Checklist</div>
                     <p className="font-semibold mt-1">{form.workerName || "Worker Name"}</p>
                     <p className="text-xs text-muted-foreground">{form.date}</p>
+                    {form.jobTitle && <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><Briefcase className="w-3 h-3" />{form.jobTitle}</p>}
                   </div>
                   <Badge variant={ppeItems.every(p => form[p.key as keyof typeof form]) ? "default" : "secondary"}>
                     {checkedCount(form)}/{ppeItems.length}
@@ -1088,7 +1208,10 @@ function PpeChecklistTab() {
                 <div className="flex items-start justify-between flex-wrap gap-2">
                   <div>
                     <p className="font-semibold">{c.workerName}</p>
-                    <p className="text-sm text-muted-foreground">{c.date}{c.supervisorName ? ` — Verified by ${c.supervisorName}` : ""}</p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>{c.date}{c.supervisorName ? ` — Verified by ${c.supervisorName}` : ""}</span>
+                      {c.jobId && <Badge variant="outline" className="gap-1 text-[10px] py-0"><Briefcase className="w-3 h-3" /> Linked</Badge>}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant={c.allCorrect ? "default" : "secondary"}>

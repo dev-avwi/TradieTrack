@@ -8134,7 +8134,7 @@ Thank you for your prompt attention to this matter.`,
 
   async getHazardReports(userId: string, jobId?: string): Promise<HazardReport[]> {
     const conditions = [eq(hazardReports.userId, userId)];
-    if (jobId) conditions.push(eq(hazardReports.jobId, parseInt(jobId)));
+    if (jobId) conditions.push(eq(hazardReports.jobId, jobId));
     return await db.select().from(hazardReports).where(and(...conditions)).orderBy(desc(hazardReports.createdAt));
   }
 
@@ -8155,7 +8155,7 @@ Thank you for your prompt attention to this matter.`,
 
   async getPpeChecklists(userId: string, jobId?: string): Promise<PpeChecklist[]> {
     const conditions = [eq(ppeChecklists.userId, userId)];
-    if (jobId) conditions.push(eq(ppeChecklists.jobId, parseInt(jobId)));
+    if (jobId) conditions.push(eq(ppeChecklists.jobId, jobId));
     return await db.select().from(ppeChecklists).where(and(...conditions)).orderBy(desc(ppeChecklists.createdAt));
   }
 

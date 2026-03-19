@@ -4341,7 +4341,7 @@ export type SiteSafetySignage = typeof siteSafetySignage.$inferSelect;
 export const hazardReports = pgTable("hazard_reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  jobId: integer("job_id"),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
   description: text("description").notNull(),
   location: text("location").notNull(),
   dateIdentified: text("date_identified").notNull(),
@@ -4366,7 +4366,7 @@ export type HazardReport = typeof hazardReports.$inferSelect;
 export const ppeChecklists = pgTable("ppe_checklists", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  jobId: integer("job_id"),
+  jobId: varchar("job_id").references(() => jobs.id, { onDelete: 'set null' }),
   workerName: text("worker_name").notNull(),
   date: text("date").notNull(),
   hardHat: boolean("hard_hat").notNull().default(false),
