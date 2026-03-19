@@ -20284,12 +20284,14 @@ Be specific about materials, colors, and features that would be included.`
             continue;
           }
 
-          const mockReq = { params: { id: invoiceId }, userId: req.userId, body: { customSubject, customMessage }, query: {} };
+          const mockReq = { params: { id: invoiceId }, userId: req.userId, body: { customSubject, customMessage }, query: { force: 'true' }, headers: req.headers, protocol: req.protocol, get: (h: string) => req.get(h) };
           const mockRes = {
             status: (code: number) => ({
               json: (data: any) => {
                 if (code >= 400) {
-                  results.push({ invoiceId, success: false, error: data.error || 'Send failed' });
+                  const errMsg = data.error || data.message || data.title || 'Send failed';
+                  console.error(`[BatchSendInvoices] Invoice ${invoiceId} failed (${code}):`, errMsg);
+                  results.push({ invoiceId, success: false, error: errMsg });
                 } else {
                   results.push({ invoiceId, success: true });
                 }
@@ -20351,12 +20353,14 @@ Be specific about materials, colors, and features that would be included.`
             continue;
           }
 
-          const mockReq = { params: { id: quoteId }, userId: req.userId, body: { customSubject, customMessage }, query: {} };
+          const mockReq = { params: { id: quoteId }, userId: req.userId, body: { customSubject, customMessage }, query: { force: 'true' }, headers: req.headers, protocol: req.protocol, get: (h: string) => req.get(h) };
           const mockRes = {
             status: (code: number) => ({
               json: (data: any) => {
                 if (code >= 400) {
-                  results.push({ quoteId, success: false, error: data.error || 'Send failed' });
+                  const errMsg = data.error || data.message || data.title || 'Send failed';
+                  console.error(`[BatchSendQuotes] Quote ${quoteId} failed (${code}):`, errMsg);
+                  results.push({ quoteId, success: false, error: errMsg });
                 } else {
                   results.push({ quoteId, success: true });
                 }
