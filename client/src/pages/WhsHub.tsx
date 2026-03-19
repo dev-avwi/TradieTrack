@@ -2056,17 +2056,26 @@ function SwmsDocumentsTab() {
         Showing {filteredDocs.length} of {swmsDocs.length} documents
       </p>
 
-      {previewSwmsId && (
+      {previewSwmsId && (() => {
+        const previewDoc = swmsDocs.find((d: any) => d.id === previewSwmsId);
+        return (
         <Dialog open={!!previewSwmsId} onOpenChange={() => setPreviewSwmsId(null)}>
           <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col">
             <DialogHeader className="p-4 pb-2 pr-12 flex-shrink-0">
               <DialogTitle className="flex items-center justify-between gap-2 flex-wrap">
                 <span>SWMS Preview</span>
-                <a href={`/api/swms/${previewSwmsId}/pdf`} onClick={(e) => e.stopPropagation()}>
-                  <Button size="sm" variant="outline">
-                    <Download className="w-3 h-3 mr-1" /> Download
-                  </Button>
-                </a>
+                <div className="flex items-center gap-2">
+                  {previewDoc?.jobId && (
+                    <Button size="sm" variant="outline" onClick={() => { setPreviewSwmsId(null); setLocation(`/jobs/${previewDoc.jobId}`); }}>
+                      <ExternalLink className="w-3 h-3 mr-1" /> View Job
+                    </Button>
+                  )}
+                  <a href={`/api/swms/${previewSwmsId}/pdf`} onClick={(e) => e.stopPropagation()}>
+                    <Button size="sm" variant="outline">
+                      <Download className="w-3 h-3 mr-1" /> Download
+                    </Button>
+                  </a>
+                </div>
               </DialogTitle>
             </DialogHeader>
             <div className="flex-1 overflow-hidden px-4 pb-4">
@@ -2078,7 +2087,8 @@ function SwmsDocumentsTab() {
             </div>
           </DialogContent>
         </Dialog>
-      )}
+        );
+      })()}
 
       {editingSwms && (
         <Dialog open={!!editingSwms} onOpenChange={() => setEditingSwms(null)}>
