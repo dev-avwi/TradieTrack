@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
+import { Calendar } from "@/components/ui/calendar";
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -994,6 +995,11 @@ export default function DispatchBoard() {
       const parsed = parseISO(dateParam);
       if (!isNaN(parsed.getTime())) return startOfDay(parsed);
     }
+    const saved = sessionStorage.getItem('dispatch-board-date');
+    if (saved) {
+      const parsed = parseISO(saved);
+      if (!isNaN(parsed.getTime())) return startOfDay(parsed);
+    }
     return startOfDay(new Date());
   });
   const [viewMode, setViewMode] = useState<'day' | '3day' | 'week'>('day');
@@ -1260,6 +1266,10 @@ export default function DispatchBoard() {
     const timer = setTimeout(handleScheduleScroll, 100);
     return () => clearTimeout(timer);
   }, [handleScheduleScroll, opsPanelOpen, teamMembersWithJobs.length]);
+
+  useEffect(() => {
+    sessionStorage.setItem('dispatch-board-date', format(currentDate, 'yyyy-MM-dd'));
+  }, [currentDate]);
 
   useEffect(() => {
     const el = scheduleScrollRef.current;
@@ -2848,6 +2858,25 @@ export default function DispatchBoard() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
+              <label className="text-sm font-medium">Date</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="button-assign-date">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {format(currentDate, 'EEE, MMM d, yyyy')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={currentDate}
+                    onSelect={(date) => { if (date) setCurrentDate(startOfDay(date)); }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
               <label className="text-sm font-medium">Team Member</label>
               <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
                 <SelectTrigger data-testid="select-team-member">
@@ -2958,7 +2987,22 @@ export default function DispatchBoard() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Date</label>
-              <p className="text-sm text-muted-foreground">{format(currentDate, 'EEE, MMM d, yyyy')}</p>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="button-quick-assign-date">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {format(currentDate, 'EEE, MMM d, yyyy')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={currentDate}
+                    onSelect={(date) => { if (date) setCurrentDate(startOfDay(date)); }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Time</label>
