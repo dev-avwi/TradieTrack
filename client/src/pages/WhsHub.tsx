@@ -2159,245 +2159,166 @@ export default function WhsHub() {
   const compliancePercent = Math.round((complianceMet / complianceItems.length) * 100);
 
   const renderOverview = () => {
-    const complianceColor = compliancePercent >= 80 ? 'hsl(142.1 76.2% 36.3%)' : compliancePercent >= 50 ? 'hsl(38 92% 50%)' : 'hsl(0 84.2% 60.2%)';
-    const complianceStrokeClass = compliancePercent >= 80 ? "stroke-green-500" : compliancePercent >= 50 ? "stroke-yellow-500" : "stroke-red-500";
-    const todoCount = complianceItems.filter(i => !i.done).length;
+    const activeSwms = swmsDocs.filter((d: any) => d.status === 'active' || d.status === 'approved' || d.status === 'signed').length;
+    const draftSwms = swmsDocs.filter((d: any) => !d.status || d.status === 'draft').length;
+    const closedIncidents = incidents.filter((i: any) => i.status === 'closed' || i.status === 'resolved').length;
+    const totalHazards = swmsDocs.reduce((sum: number, d: any) => sum + (d.hazardCount || 0), 0);
+    const currentTraining = trainingRecords.filter((r: any) => r.status === 'current').length;
 
-    const navigateToSection = (label: string) => {
-      if (label.includes('PPE')) setActiveSection('compliance');
-      else if (label.includes('SWMS')) setActiveSection('swms');
-      else if (label.includes('Training')) setActiveSection('training');
-      else if (label.includes('Emergency')) setActiveSection('compliance');
-      else if (label.includes('Incident')) setActiveSection('incidents');
-      else if (label.includes('Hazard')) setActiveSection('incidents');
+    const urgentItems: { label: string; detail: string; severity: 'red' | 'amber'; section: string; icon: any }[] = [];
+    if (openIncidents > 0) urgentItems.push({ label: `${openIncidents} Open Incident${openIncidents !== 1 ? 's' : ''}`, detail: 'Needs investigation and closure', severity: 'red', section: 'incidents', icon: AlertTriangle });
+    if (openHazards > 0) urgentItems.push({ label: `${openHazards} Unresolved Hazard${openHazards !== 1 ? 's' : ''}`, detail: 'Reported but not yet controlled', severity: 'red', section: 'incidents', icon: ShieldAlert });
+    if (expiredTraining > 0) urgentItems.push({ label: `${expiredTraining} Expired Training`, detail: 'Workers may not be compliant to work', severity: 'red', section: 'training', icon: XCircle });
+    if (expiringTraining > 0) urgentItems.push({ label: `${expiringTraining} Training Expiring Soon`, detail: 'Due for renewal within 90 days', severity: 'amber', section: 'training', icon: Clock });
+    if (draftSwms > 0) urgentItems.push({ label: `${draftSwms} Draft SWMS`, detail: 'Not yet active — review and approve', severity: 'amber', section: 'swms', icon: Edit });
+    if (emergencyInfo.length === 0) urgentItems.push({ label: 'No Emergency Plan', detail: 'Set up emergency contacts and procedures', severity: 'amber', section: 'compliance', icon: HeartPulse });
+
+    const recentActivity: { id: string; title: string; subtitle: string; date: string; type: string; status: string; section: string }[] = [];
+    incidents.forEach((inc: any) => recentActivity.push({ id: `inc-${inc.id}`, title: inc.title, subtitle: INCIDENT_TYPE_LABELS[inc.incidentType] || inc.incidentType?.replace(/_/g, ' ') || 'Incident', date: inc.createdAt || inc.reportedAt || '', type: 'incident', status: inc.status, section: 'incidents' }));
+    swmsDocs.forEach((doc: any) => recentActivity.push({ id: `swms-${doc.id}`, title: doc.title, subtitle: doc.siteAddress || 'SWMS Document', date: doc.createdAt || '', type: 'swms', status: doc.status || 'draft', section: 'swms' }));
+    trainingRecords.forEach((rec: any) => recentActivity.push({ id: `tr-${rec.id}`, title: rec.workerName || 'Worker', subtitle: rec.courseCode || rec.courseName || 'Training', date: rec.createdAt || rec.issueDate || '', type: 'training', status: rec.status, section: 'training' }));
+    hazardReports.forEach((hz: any) => recentActivity.push({ id: `hz-${hz.id}`, title: hz.title || hz.hazardDescription || 'Hazard Report', subtitle: hz.location || 'Hazard', date: hz.createdAt || hz.reportedAt || '', type: 'hazard', status: hz.status, section: 'incidents' }));
+    recentActivity.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+
+    const getActivityIcon = (type: string) => {
+      if (type === 'incident') return <AlertTriangle className="h-3.5 w-3.5" />;
+      if (type === 'swms') return <ClipboardList className="h-3.5 w-3.5" />;
+      if (type === 'training') return <BadgeCheck className="h-3.5 w-3.5" />;
+      return <ShieldAlert className="h-3.5 w-3.5" />;
+    };
+    const getStatusVariant = (status: string) => {
+      if (status === 'open' || status === 'expired') return 'destructive' as const;
+      if (status === 'active' || status === 'current' || status === 'closed' || status === 'resolved' || status === 'approved' || status === 'signed') return 'default' as const;
+      return 'secondary' as const;
     };
 
     return (
     <div className="space-y-4">
 
-      {/* Compliance Checklist — the single most important card */}
-      <Card>
-        <CardContent className="p-4">
-          {/* Header with ring + score */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="relative w-11 h-11 flex-shrink-0">
-              <svg viewBox="0 0 36 36" className="w-11 h-11 -rotate-90">
-                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none" stroke="currentColor" strokeWidth="2.5" className="text-muted-foreground/10" />
-                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none" strokeWidth="2.5" strokeDasharray={`${compliancePercent}, 100`} strokeLinecap="round"
-                  className={complianceStrokeClass} />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-[10px] font-bold" style={{ color: complianceColor }}>{compliancePercent}%</span>
-              </div>
+      {/* Stat cards row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("swms")}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ClipboardList className="h-4 w-4 text-primary" />
+              <span className="text-xs font-medium text-muted-foreground">SWMS</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-base font-bold" style={{ color: complianceColor }}>
-                {complianceMet}/{complianceItems.length} Compliant
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {compliancePercent === 100 ? "All safety checks passed" :
-                 `${todoCount} item${todoCount !== 1 ? 's' : ''} need attention`}
-              </p>
+            <p className="text-2xl font-bold">{swmsDocs.length}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{activeSwms} active, {totalHazards} hazards tracked</p>
+          </CardContent>
+        </Card>
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("incidents")}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4" style={{ color: openIncidents > 0 ? 'hsl(38 92% 50%)' : undefined }} />
+              <span className="text-xs font-medium text-muted-foreground">Incidents</span>
             </div>
-          </div>
-          {/* Inline checklist items */}
-          <div className="space-y-0.5">
-            {complianceItems.map((item, i) => (
-              <div key={i} className="flex items-center gap-3 py-2 px-2 rounded-md hover-elevate cursor-pointer"
-                role="button" tabIndex={0}
-                onClick={() => navigateToSection(item.label)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigateToSection(item.label); } }}>
-                {item.done ? (
-                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
-                ) : (
-                  <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/25 flex-shrink-0" />
-                )}
-                <span className={`text-sm flex-1 ${item.done ? 'font-medium' : 'text-muted-foreground'}`}>{item.label}</span>
-                {item.done ? (
-                  <span className="text-xs font-medium" style={{ color: 'hsl(142.1 76.2% 36.3%)' }}>Done</span>
-                ) : (
-                  <span className="flex items-center gap-1 text-xs font-medium text-primary flex-shrink-0">
-                    {item.action}
-                    <ChevronRight className="h-3 w-3" />
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            <p className="text-2xl font-bold">{incidents.length}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{openIncidents} open, {closedIncidents} resolved</p>
+          </CardContent>
+        </Card>
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("training")}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <BadgeCheck className="h-4 w-4" style={{ color: expiredTraining > 0 ? 'hsl(0 84.2% 60.2%)' : undefined }} />
+              <span className="text-xs font-medium text-muted-foreground">Training</span>
+            </div>
+            <p className="text-2xl font-bold">{trainingRecords.length}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{currentTraining} current, {expiredTraining} expired</p>
+          </CardContent>
+        </Card>
+        <Card className="hover-elevate cursor-pointer" onClick={() => setActiveSection("compliance")}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="h-4 w-4" />
+              <span className="text-xs font-medium text-muted-foreground">Compliance</span>
+            </div>
+            <p className="text-2xl font-bold">{complianceMet}/{complianceItems.length}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{ppeChecklists.length} PPE checks, {emergencyInfo.length} emergency plans</p>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Action Required — only shows when there are real issues */}
-      {(openIncidents > 0 || openHazards > 0 || expiredTraining > 0 || expiringTraining > 0) && (
+      {/* Action Required — urgent items */}
+      {urgentItems.length > 0 && (
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <AlertCircle className="h-4 w-4" style={{ color: 'hsl(0 84.2% 60.2%)' }} />
-              <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Action Required</p>
-              <Badge variant="destructive" className="text-xs ml-auto">{actionItems}</Badge>
+              <Siren className="h-4 w-4" style={{ color: 'hsl(0 84.2% 60.2%)' }} />
+              <p className="text-sm font-semibold">Needs Your Attention</p>
+              <Badge variant="destructive" className="text-xs ml-auto">{urgentItems.filter(i => i.severity === 'red').length || urgentItems.length}</Badge>
             </div>
             <div className="space-y-1">
-              {openIncidents > 0 && (
-                <div className="flex items-center gap-3 py-2 px-2 rounded-md cursor-pointer hover-elevate"
-                  role="button" tabIndex={0} onClick={() => setActiveSection("incidents")}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSection("incidents"); } }}>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                       style={{ backgroundColor: 'hsl(38 92% 50% / 0.1)' }}>
-                    <AlertTriangle className="h-3.5 w-3.5" style={{ color: 'hsl(38 92% 50%)' }} />
+              {urgentItems.map((item, i) => (
+                <div key={i} className="flex items-center gap-3 py-2.5 px-3 rounded-md cursor-pointer hover-elevate"
+                  onClick={() => setActiveSection(item.section)}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                       style={{ backgroundColor: item.severity === 'red' ? 'hsl(0 84.2% 60.2% / 0.1)' : 'hsl(38 92% 50% / 0.1)' }}>
+                    <item.icon className="h-4 w-4" style={{ color: item.severity === 'red' ? 'hsl(0 84.2% 60.2%)' : 'hsl(38 92% 50%)' }} />
                   </div>
-                  <p className="text-sm flex-1">{openIncidents} open incident{openIncidents !== 1 ? 's' : ''}</p>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                </div>
-              )}
-              {openHazards > 0 && (
-                <div className="flex items-center gap-3 py-2 px-2 rounded-md cursor-pointer hover-elevate"
-                  role="button" tabIndex={0} onClick={() => setActiveSection("incidents")}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSection("incidents"); } }}>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                       style={{ backgroundColor: 'hsl(0 84.2% 60.2% / 0.1)' }}>
-                    <ShieldAlert className="h-3.5 w-3.5" style={{ color: 'hsl(0 84.2% 60.2%)' }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.detail}</p>
                   </div>
-                  <p className="text-sm flex-1">{openHazards} open hazard{openHazards !== 1 ? 's' : ''}</p>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  <Button size="sm" variant="ghost" className="flex-shrink-0">
+                    Review <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
                 </div>
-              )}
-              {expiredTraining > 0 && (
-                <div className="flex items-center gap-3 py-2 px-2 rounded-md cursor-pointer hover-elevate"
-                  role="button" tabIndex={0} onClick={() => setActiveSection("training")}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSection("training"); } }}>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                       style={{ backgroundColor: 'hsl(0 84.2% 60.2% / 0.1)' }}>
-                    <XCircle className="h-3.5 w-3.5" style={{ color: 'hsl(0 84.2% 60.2%)' }} />
-                  </div>
-                  <p className="text-sm flex-1">{expiredTraining} expired training</p>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                </div>
-              )}
-              {expiringTraining > 0 && (
-                <div className="flex items-center gap-3 py-2 px-2 rounded-md cursor-pointer hover-elevate"
-                  role="button" tabIndex={0} onClick={() => setActiveSection("training")}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSection("training"); } }}>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                       style={{ backgroundColor: 'hsl(38 92% 50% / 0.1)' }}>
-                    <Clock className="h-3.5 w-3.5" style={{ color: 'hsl(38 92% 50%)' }} />
-                  </div>
-                  <p className="text-sm flex-1">{expiringTraining} expiring soon</p>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                </div>
-              )}
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* SWMS Documents */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between gap-4 mb-3">
-            <div className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
-              <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">SWMS Documents</p>
+      {/* All clear message */}
+      {urgentItems.length === 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'hsl(142.1 76.2% 36.3% / 0.1)' }}>
+                <ShieldCheck className="h-5 w-5" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'hsl(142.1 76.2% 36.3%)' }}>All Clear</p>
+                <p className="text-xs text-muted-foreground">No urgent safety issues. All compliance checks passed.</p>
+              </div>
             </div>
-            {swmsDocs.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => setActiveSection("swms")}>
-                View All <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
-              </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Activity */}
+      {recentActivity.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm font-semibold mb-3">Recent Activity</p>
+            <div className="space-y-1">
+              {recentActivity.slice(0, 8).map((item) => (
+                <div key={item.id} className="flex items-center gap-3 py-2 px-2 rounded-md cursor-pointer hover-elevate"
+                  onClick={() => setActiveSection(item.section)}>
+                  <div className="w-7 h-7 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0">
+                    {getActivityIcon(item.type)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{item.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      {item.date ? new Date(item.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : ''}
+                    </span>
+                    <Badge variant={getStatusVariant(item.status)} className="text-xs capitalize">
+                      {item.status || 'draft'}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {recentActivity.length > 8 && (
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                + {recentActivity.length - 8} more items across all categories
+              </p>
             )}
-          </div>
-          {swmsDocs.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground">No SWMS documents yet</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Create one from a job's safety section</p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {swmsDocs.slice(0, 4).map((doc: any) => (
-                <div key={doc.id} className="flex items-center gap-3 py-2 px-2 rounded-md cursor-pointer hover-elevate"
-                  role="button" tabIndex={0} onClick={() => setActiveSection("swms")}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSection("swms"); } }}>
-                  <FileText className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{doc.title}</p>
-                  </div>
-                  <Badge variant={doc.status === 'approved' || doc.status === 'signed' ? 'default' : 'outline'} className="text-xs flex-shrink-0">
-                    {doc.status || 'draft'}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent Incidents + Training — only if data exists */}
-      {incidents.length > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-4 mb-3">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" style={{ color: 'hsl(38 92% 50%)' }} />
-                <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Recent Incidents</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => setActiveSection("incidents")}>
-                View All <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
-              </Button>
-            </div>
-            <div className="space-y-1">
-              {incidents.slice(0, 3).map((inc: any) => (
-                <div key={inc.id} className="flex items-center gap-3 py-2 px-2 rounded-md cursor-pointer hover-elevate"
-                  role="button" tabIndex={0} onClick={() => setActiveSection("incidents")}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSection("incidents"); } }}>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                       style={{ backgroundColor: inc.status === 'open' ? 'hsl(38 92% 50% / 0.1)' : 'hsl(142.1 76.2% 36.3% / 0.1)' }}>
-                    <AlertTriangle className="h-3.5 w-3.5" style={{ color: inc.status === 'open' ? 'hsl(38 92% 50%)' : 'hsl(142.1 76.2% 36.3%)' }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{inc.title}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{inc.incidentType?.replace(/_/g, ' ')}</p>
-                  </div>
-                  <Badge variant={inc.status === 'open' ? 'destructive' : 'default'} className="text-xs flex-shrink-0">
-                    {inc.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {trainingRecords.length > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-4 mb-3">
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
-                <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Training & Licences</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => setActiveSection("training")}>
-                View All <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
-              </Button>
-            </div>
-            <div className="space-y-1">
-              {trainingRecords.slice(0, 3).map((rec: any) => (
-                <div key={rec.id} className="flex items-center gap-3 py-2 px-2 rounded-md cursor-pointer hover-elevate"
-                  role="button" tabIndex={0} onClick={() => setActiveSection("training")}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSection("training"); } }}>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                       style={{ backgroundColor: rec.status === 'current' ? 'hsl(142.1 76.2% 36.3% / 0.1)' : rec.status === 'expired' ? 'hsl(0 84.2% 60.2% / 0.1)' : 'hsl(38 92% 50% / 0.1)' }}>
-                    <BadgeCheck className="h-3.5 w-3.5" style={{ color: rec.status === 'current' ? 'hsl(142.1 76.2% 36.3%)' : rec.status === 'expired' ? 'hsl(0 84.2% 60.2%)' : 'hsl(38 92% 50%)' }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{rec.workerName}</p>
-                    <p className="text-xs text-muted-foreground truncate">{rec.courseCode || rec.courseName}</p>
-                  </div>
-                  <Badge variant={rec.status === 'current' ? 'default' : rec.status === 'expired' ? 'destructive' : 'outline'} className="text-xs flex-shrink-0">
-                    {rec.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
           </CardContent>
         </Card>
       )}
