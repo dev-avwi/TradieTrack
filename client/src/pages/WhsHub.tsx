@@ -778,6 +778,7 @@ function JsaTab() {
     title: "", description: "", siteAddress: "", assessedBy: "",
     ppeRequirements: [] as string[],
     steps: [{ taskDescription: "", hazards: "", riskLevel: "medium", controlMeasures: "", responsiblePerson: "" }],
+    jobId: "",
   });
 
   const PPE_OPTIONS = ["Hard Hat", "Safety Glasses", "Hi-Vis Vest", "Safety Boots", "Hearing Protection", "Gloves", "P2 Respirator", "Safety Harness", "FR Clothing", "Sunscreen SPF50+"];
@@ -844,7 +845,7 @@ function JsaTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Break jobs into steps, identify hazards per step, and assign control measures.</p>
-        <Button onClick={() => { setFormData({ title: "", description: "", siteAddress: "", assessedBy: "", ppeRequirements: [], steps: [{ taskDescription: "", hazards: "", riskLevel: "medium", controlMeasures: "", responsiblePerson: "" }] }); setShowForm(true); }}>
+        <Button onClick={() => { setFormData({ title: "", description: "", siteAddress: "", assessedBy: "", ppeRequirements: [], steps: [{ taskDescription: "", hazards: "", riskLevel: "medium", controlMeasures: "", responsiblePerson: "" }], jobId: "" }); setShowForm(true); }}>
           <Plus className="w-4 h-4 mr-1" /> Create JSA
         </Button>
       </div>
@@ -853,6 +854,18 @@ function JsaTab() {
         <Card>
           <CardHeader><CardTitle className="text-lg">New Job Safety Analysis</CardTitle></CardHeader>
           <CardContent className="space-y-4">
+            <JobPicker
+              value={formData.jobId}
+              onChange={jobId => setFormData(p => ({ ...p, jobId }))}
+              onJobSelected={(job) => {
+                setFormData(p => ({
+                  ...p,
+                  jobId: job.id,
+                  title: p.title || job.title || "",
+                  siteAddress: p.siteAddress || job.address || "",
+                }));
+              }}
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Title *</Label>
@@ -1909,6 +1922,8 @@ function SwmsDocumentsTab() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "title" | "hazards">("newest");
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
+  const [showNewSwmsJobPicker, setShowNewSwmsJobPicker] = useState(false);
+  const [newSwmsJob, setNewSwmsJob] = useState<any | null>(null);
   const { data: expandedSwmsDetail } = useQuery<any>({
     queryKey: ["/api/swms", expandedSwms],
     enabled: !!expandedSwms,
@@ -2072,9 +2087,12 @@ function SwmsDocumentsTab() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h3 className="text-lg font-semibold">Safe Work Method Statements</h3>
-          <p className="text-sm text-muted-foreground">All SWMS documents across your jobs. Create new SWMS from a job's safety section.</p>
+          <p className="text-sm text-muted-foreground">All SWMS documents across your jobs.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button onClick={() => setShowNewSwmsJobPicker(true)}>
+            <Plus className="w-4 h-4 mr-1" /> Create SWMS
+          </Button>
           <div className="hidden md:inline-flex rounded-lg border bg-muted p-1">
             <Button
               variant="ghost"
@@ -2132,7 +2150,7 @@ function SwmsDocumentsTab() {
             {swmsDocs.length === 0 ? (
               <>
                 <p className="text-muted-foreground font-medium">No SWMS documents yet</p>
-                <p className="text-sm text-muted-foreground">Create a SWMS from a job's safety section to see it here.</p>
+                <p className="text-sm text-muted-foreground">Click "Create SWMS" above to get started.</p>
               </>
             ) : (
               <>
@@ -2268,6 +2286,44 @@ function SwmsDocumentsTab() {
                 if (expandedSwms) {
                   queryClient.invalidateQueries({ queryKey: ["/api/swms", expandedSwms] });
                 }
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {showNewSwmsJobPicker && !newSwmsJob && (
+        <Dialog open={showNewSwmsJobPicker && !newSwmsJob} onOpenChange={() => setShowNewSwmsJobPicker(false)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Select a Job for SWMS</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground mb-2">Choose a job to create a Safe Work Method Statement for.</p>
+            <JobPicker
+              value=""
+              onChange={() => {}}
+              onJobSelected={(job) => {
+                setNewSwmsJob(job);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {newSwmsJob && (
+        <Dialog open={!!newSwmsJob} onOpenChange={() => { setNewSwmsJob(null); setShowNewSwmsJobPicker(false); }}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>New SWMS: {newSwmsJob.title}</DialogTitle>
+            </DialogHeader>
+            <SwmsBuilder
+              jobId={newSwmsJob.id}
+              jobTitle={newSwmsJob.title}
+              jobAddress={newSwmsJob.address}
+              onClose={() => {
+                setNewSwmsJob(null);
+                setShowNewSwmsJobPicker(false);
+                queryClient.invalidateQueries({ queryKey: ["/api/swms"] });
               }}
             />
           </DialogContent>
