@@ -59,7 +59,9 @@ import {
   CalendarDays,
   ExternalLink,
   Maximize2,
-  Minimize2
+  Minimize2,
+  PanelRightClose,
+  PanelRightOpen
 } from "lucide-react";
 import {
   format,
@@ -110,7 +112,7 @@ interface Client {
 }
 
 const WORK_HOURS = Array.from({ length: 15 }, (_, i) => i + 6);
-const HOUR_HEIGHT = 60;
+const HOUR_HEIGHT = 80;
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-300' },
@@ -941,6 +943,7 @@ function detectScheduleConflicts(jobs: Job[]): Set<string> {
 
 export default function DispatchBoard() {
   const [topView, setTopView] = useState<'schedule' | 'board' | 'map'>('schedule');
+  const [opsPanelOpen, setOpsPanelOpen] = useState(true);
   const [currentDate, setCurrentDate] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const dateParam = params.get('date');
@@ -1189,16 +1192,24 @@ export default function DispatchBoard() {
     [scheduledJobsForDate]
   );
 
-  const handleDragStart = (job: Job, memberId: string | null) => {
+  const handleDragStart = (e: React.DragEvent, job: Job, memberId: string | null) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
     setDraggedJob({ job, originMemberId: memberId });
   };
 
+  const lastDragOverSlotRef = useRef<string | null>(null);
   const handleDragOver = (e: React.DragEvent, slotId: string) => {
     e.preventDefault();
-    setDragOverSlot(slotId);
+    e.dataTransfer.dropEffect = 'move';
+    if (lastDragOverSlotRef.current !== slotId) {
+      lastDragOverSlotRef.current = slotId;
+      setDragOverSlot(slotId);
+    }
   };
 
   const handleDragLeave = () => {
+    lastDragOverSlotRef.current = null;
     setDragOverSlot(null);
   };
 
@@ -1545,7 +1556,7 @@ export default function DispatchBoard() {
 
       {topView === 'schedule' && (
       <div className="flex flex-col lg:flex-row gap-4" style={{ minHeight: 'calc(100vh - 200px)' }}>
-        <div className="flex-1 min-w-0 lg:max-w-[65%]">
+        <div className={`flex-1 min-w-0 ${opsPanelOpen ? 'lg:max-w-[75%]' : ''}`}>
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -1740,7 +1751,7 @@ export default function DispatchBoard() {
                                   <div
                                     key={job.id}
                                     draggable
-                                    onDragStart={() => handleDragStart(job, job.assignedTo || 'owner')}
+                                    onDragStart={(e) => handleDragStart(e, job, job.assignedTo || 'owner')}
                                     onDragEnd={() => setDraggedJob(null)}
                                     onClick={() => handleJobClick(job, 'reassign')}
                                     className={`p-2.5 rounded-md border cursor-pointer hover-elevate ${statusStyle.bg} ${statusStyle.border}`}
@@ -1808,26 +1819,27 @@ export default function DispatchBoard() {
                     {teamMembersWithJobs.map(member => (
                       <div 
                         key={member.id}
-                        className="flex-1 min-w-0 p-1.5 border-l"
+                        className="p-2 border-l"
+                        style={{ minWidth: 120, flex: '1 1 0%' }}
                       >
-                        <div className="flex items-center gap-1.5">
-                          <Avatar className="h-6 w-6 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-7 w-7 flex-shrink-0">
                             <AvatarImage src={member.profileImageUrl} />
-                            <AvatarFallback className="text-[9px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                            <AvatarFallback className="text-[10px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
                               {(member.firstName?.[0] || '') + (member.lastName?.[0] || member.email[0] || '')}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate">
-                              {member.firstName}
+                            <p className="text-sm font-medium truncate">
+                              {member.firstName} {member.lastName?.[0] ? member.lastName[0] + '.' : ''}
                             </p>
                             <span className="text-[10px] text-muted-foreground">
                               {member.totalHours}h/{member.capacity}h
-                              {member.totalHours > member.capacity && ' !'}
+                              {member.totalHours > member.capacity && ' ⚠'}
                             </span>
                           </div>
                         </div>
-                        <div className="mt-1 h-1 rounded-full bg-muted overflow-hidden">
+                        <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
                           <div 
                             className="h-full rounded-full transition-all"
                             style={{ 
@@ -1842,11 +1854,11 @@ export default function DispatchBoard() {
                     ))}
                   </div>
 
-                  <ScrollArea className="h-[700px]">
+                  <ScrollArea className="h-[calc(100vh-280px)]">
                     <div className="flex" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
                       <div className="w-12 flex-shrink-0">
                         {WORK_HOURS.map(hour => (
-                          <div key={hour} className="border-b border-r bg-muted/10 p-1 text-[10px] text-muted-foreground" style={{ height: HOUR_HEIGHT }}>
+                          <div key={hour} className="border-b border-r bg-muted/10 px-1.5 py-1 text-[11px] text-muted-foreground font-medium" style={{ height: HOUR_HEIGHT }}>
                             {formatTime(hour)}
                           </div>
                         ))}
@@ -1860,7 +1872,7 @@ export default function DispatchBoard() {
                         const dragSlots = Math.max(1, Math.ceil(dragDuration / 60));
 
                         return (
-                        <div key={member.id} className="flex-1 min-w-0 border-l relative">
+                        <div key={member.id} className="border-l relative" style={{ minWidth: 120, flex: '1 1 0%' }}>
                           {WORK_HOURS.map(hour => {
                             const slotId = `${member.id}-${hour}`;
                             const isInDropRange = dropSlotHour !== null && hour >= dropSlotHour && hour < dropSlotHour + dragSlots;
@@ -1907,7 +1919,7 @@ export default function DispatchBoard() {
                               <div
                                 key={job.id}
                                 draggable
-                                onDragStart={() => handleDragStart(job, member.memberId)}
+                                onDragStart={(e) => handleDragStart(e, job, member.memberId)}
                                 onDragEnd={() => setDraggedJob(null)}
                                 onClick={() => handleJobClick(job, 'reassign')}
                                 className={`absolute left-0 right-0 mx-1 rounded-lg border cursor-pointer active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : conflictJobIds.has(job.id) ? 'ring-2 ring-destructive/60 ring-offset-1' : ''}`}
@@ -1919,32 +1931,32 @@ export default function DispatchBoard() {
                                 }}
                                 data-testid={`scheduled-job-${job.id}`}
                               >
-                                <div className="p-1.5 h-full flex flex-col">
-                                  <div className="flex items-center gap-1">
-                                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                <div className="p-2 h-full flex flex-col">
+                                  <div className="flex items-center gap-1.5">
+                                    <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                     {conflictJobIds.has(job.id) && (
-                                      <AlertCircle className="h-3 w-3 text-destructive flex-shrink-0" />
+                                      <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
                                     )}
-                                    <span className={`text-[11px] font-semibold ${statusStyle.text} whitespace-nowrap`}>
+                                    <span className={`text-xs font-semibold ${statusStyle.text} whitespace-nowrap`}>
                                       {formatScheduledTime(job.scheduledTime, job.scheduledAt)}
                                     </span>
                                     {job.estimatedDuration && (
-                                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                                         {job.estimatedDuration >= 60 
                                           ? `${Math.round(job.estimatedDuration / 60)}h`
                                           : `${job.estimatedDuration}m`}
                                       </span>
                                     )}
-                                    <h4 className={`font-medium text-xs truncate flex-1 min-w-0 ${statusStyle.text}`}>
-                                      {job.title}
-                                    </h4>
                                   </div>
-                                  {height > 45 && (
-                                    <p className="text-[11px] text-muted-foreground truncate ml-5 mt-0.5">
+                                  <h4 className={`font-medium text-sm truncate min-w-0 ml-5 mt-0.5 ${statusStyle.text}`}>
+                                    {job.title}
+                                  </h4>
+                                  {height > 55 && (
+                                    <p className="text-xs text-muted-foreground truncate ml-5 mt-0.5">
                                       {job.clientName}
                                     </p>
                                   )}
-                                  {height > 70 && job.address && (
+                                  {height > 90 && job.address && (
                                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 ml-5">
                                       <MapPin className="h-3 w-3 flex-shrink-0" />
                                       <span className="truncate">{job.address}</span>
@@ -1966,20 +1978,33 @@ export default function DispatchBoard() {
           </Card>
         </div>
 
-        <div className="lg:w-[35%] lg:min-w-[340px] flex flex-col gap-3">
+        <div className={`flex flex-col gap-3 transition-all ${opsPanelOpen ? 'lg:w-[25%] lg:min-w-[320px]' : 'lg:w-10'}`}>
           <div className="flex items-center gap-2 px-1">
-            <div className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
-            </div>
-            <h2 className="text-base font-semibold">Operations Centre</h2>
-            <div className="flex items-center gap-1.5 ml-auto text-xs text-muted-foreground">
-              <span>{scheduledJobsForDate.length} jobs</span>
-              <span className="text-muted-foreground/40">|</span>
-              <span>{teamMembersWithJobs.length} crew</span>
-            </div>
+            <Button 
+              size="icon" 
+              variant="ghost"
+              onClick={() => setOpsPanelOpen(!opsPanelOpen)}
+              data-testid="toggle-ops-panel"
+            >
+              {opsPanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+            </Button>
+            {opsPanelOpen && (
+              <>
+                <div className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                </div>
+                <h2 className="text-base font-semibold">Operations Centre</h2>
+                <div className="flex items-center gap-1.5 ml-auto text-xs text-muted-foreground">
+                  <span>{scheduledJobsForDate.length} jobs</span>
+                  <span className="text-muted-foreground/40">|</span>
+                  <span>{teamMembersWithJobs.length} crew</span>
+                </div>
+              </>
+            )}
           </div>
 
+          {opsPanelOpen && (
           <ScrollArea className="lg:h-[calc(100vh-240px)]">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3 pr-1">
           <Card>
@@ -2010,7 +2035,7 @@ export default function DispatchBoard() {
                         <div
                           key={job.id}
                           draggable
-                          onDragStart={() => handleDragStart(job, null)}
+                          onDragStart={(e) => handleDragStart(e, job, null)}
                           onDragEnd={() => setDraggedJob(null)}
                           className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''} ${draggedJob?.job.id === job.id ? 'opacity-50' : ''}`}
                           data-testid={`unscheduled-job-${job.id}`}
@@ -2486,6 +2511,7 @@ export default function DispatchBoard() {
           </Card>
         </div>
           </ScrollArea>
+          )}
         </div>
       </div>
       )}

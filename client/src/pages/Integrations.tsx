@@ -975,7 +975,7 @@ export default function Integrations() {
                   </p>
                 </div>
               </div>
-              <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+              <div className="flex flex-wrap gap-2">
                 {[
                   { name: 'Stripe', connected: health?.stripeConnect?.connected && health?.stripeConnect?.chargesEnabled },
                   { name: 'Email', connected: health?.services?.email?.verified },
@@ -986,9 +986,13 @@ export default function Integrations() {
                   { name: 'Google Cal', connected: health?.calendar?.googleCalendar?.connected },
                   { name: 'Outlook', connected: health?.calendar?.outlook?.connected },
                 ].map((svc) => (
-                  <div key={svc.name} className="flex items-center gap-1.5 text-xs">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${svc.connected ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                    <span className={svc.connected ? 'text-foreground' : 'text-muted-foreground'}>{svc.name}</span>
+                  <div key={svc.name} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs ${
+                    svc.connected 
+                      ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' 
+                      : 'bg-muted/50 text-muted-foreground'
+                  }`}>
+                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${svc.connected ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                    <span className="font-medium">{svc.name}</span>
                   </div>
                 ))}
               </div>
