@@ -41504,6 +41504,10 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 </div>
 </body></html>`;
 
+      if (req.query.format === 'html') {
+        res.setHeader('Content-Type', 'text/html');
+        return res.send(html);
+      }
       const { generatePDFBuffer } = await import('./pdfService');
       const buffer = await generatePDFBuffer(html);
       res.setHeader('Content-Type', 'application/pdf');

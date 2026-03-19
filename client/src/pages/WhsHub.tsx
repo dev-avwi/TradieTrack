@@ -1868,9 +1868,9 @@ function SwmsDocumentsTab() {
             </DialogHeader>
             <div className="flex-1 overflow-hidden px-4 pb-4">
               <iframe
-                src={`/api/swms/${previewSwmsId}/pdf?inline=true`}
-                className="w-full h-full rounded border"
-                title="SWMS PDF Preview"
+                src={`/api/swms/${previewSwmsId}/pdf?format=html`}
+                className="w-full h-full rounded border bg-white"
+                title="SWMS Preview"
               />
             </div>
           </DialogContent>
