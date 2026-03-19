@@ -1859,7 +1859,7 @@ function SwmsDocumentsTab() {
             <DialogHeader className="p-4 pb-2 flex-shrink-0">
               <DialogTitle className="flex items-center justify-between gap-2 flex-wrap">
                 <span>SWMS Preview</span>
-                <a href={`/api/swms/${previewSwmsId}/pdf`} download onClick={(e) => e.stopPropagation()}>
+                <a href={`/api/swms/${previewSwmsId}/pdf`} onClick={(e) => e.stopPropagation()}>
                   <Button size="sm" variant="outline">
                     <Download className="w-3 h-3 mr-1" /> Download
                   </Button>
@@ -1868,7 +1868,7 @@ function SwmsDocumentsTab() {
             </DialogHeader>
             <div className="flex-1 overflow-hidden px-4 pb-4">
               <iframe
-                src={`/api/swms/${previewSwmsId}/pdf`}
+                src={`/api/swms/${previewSwmsId}/pdf?inline=true`}
                 className="w-full h-full rounded border"
                 title="SWMS PDF Preview"
               />

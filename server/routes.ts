@@ -41507,7 +41507,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       const { generatePDFBuffer } = await import('./pdfService');
       const buffer = await generatePDFBuffer(html);
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="SWMS-${doc.title.replace(/[^a-zA-Z0-9]/g, '-')}.pdf"`);
+      const disposition = req.query.inline === 'true' ? 'inline' : 'attachment'; res.setHeader('Content-Disposition', `${disposition}; filename="SWMS-${doc.title.replace(/[^a-zA-Z0-9]/g, '-')}.pdf"`);
       res.send(buffer);
     } catch (error: any) {
       console.error("Error generating SWMS PDF:", error);
