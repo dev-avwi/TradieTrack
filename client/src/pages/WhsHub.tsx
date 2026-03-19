@@ -1873,7 +1873,7 @@ function SwmsDocumentsTab() {
   const renderSwmsListRow = (doc: any) => (
     <div
       key={doc.id}
-      className="flex items-center gap-3 p-3 border-b last:border-b-0 hover-elevate cursor-pointer"
+      className="flex items-center gap-3 px-4 py-3 border-b last:border-b-0 hover-elevate cursor-pointer"
       onClick={() => setExpandedSwms(expandedSwms === doc.id ? null : doc.id)}
     >
       <ClipboardList className="w-4 h-4 text-primary flex-shrink-0" />
@@ -1995,7 +1995,7 @@ function SwmsDocumentsTab() {
               <div key={doc.id}>
                 {renderSwmsListRow(doc)}
                 {expandedSwms === doc.id && (
-                  <div className="px-4 pb-3 border-b last:border-b-0 space-y-3">
+                  <div className="px-4 py-4 border-b last:border-b-0 space-y-4 bg-muted/20">
                     {expandedSwmsDetail?.workActivityDescription && (
                       <div>
                         <p className="text-xs font-medium text-muted-foreground mb-1">Work Activity</p>
