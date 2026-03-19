@@ -1856,7 +1856,7 @@ function SwmsDocumentsTab() {
       {previewSwmsId && (
         <Dialog open={!!previewSwmsId} onOpenChange={() => setPreviewSwmsId(null)}>
           <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col">
-            <DialogHeader className="p-4 pb-2 flex-shrink-0">
+            <DialogHeader className="p-4 pb-2 pr-12 flex-shrink-0">
               <DialogTitle className="flex items-center justify-between gap-2 flex-wrap">
                 <span>SWMS Preview</span>
                 <a href={`/api/swms/${previewSwmsId}/pdf`} onClick={(e) => e.stopPropagation()}>
