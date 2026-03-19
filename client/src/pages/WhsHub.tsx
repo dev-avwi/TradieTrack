@@ -49,6 +49,19 @@ const SIGN_CATEGORY_ICONS: Record<string, { icon: typeof Shield; color: string }
   fire: { icon: Flame, color: "text-red-500" },
 };
 
+const JOB_STATUS_STYLES: Record<string, { bg: string; text: string; label: string; dot: string }> = {
+  pending: { bg: 'bg-amber-100 dark:bg-amber-900/40', text: 'text-amber-700 dark:text-amber-300', label: 'Pending', dot: 'bg-amber-500' },
+  scheduled: { bg: 'bg-blue-100 dark:bg-blue-900/40', text: 'text-blue-700 dark:text-blue-300', label: 'Scheduled', dot: 'bg-blue-500' },
+  in_progress: { bg: 'bg-orange-100 dark:bg-orange-900/40', text: 'text-orange-700 dark:text-orange-300', label: 'In Progress', dot: 'bg-orange-500' },
+  done: { bg: 'bg-green-100 dark:bg-green-900/40', text: 'text-green-700 dark:text-green-300', label: 'Done', dot: 'bg-green-500' },
+  invoiced: { bg: 'bg-purple-100 dark:bg-purple-900/40', text: 'text-purple-700 dark:text-purple-300', label: 'Invoiced', dot: 'bg-purple-500' },
+  cancelled: { bg: 'bg-gray-100 dark:bg-gray-800/40', text: 'text-gray-500 dark:text-gray-400', label: 'Cancelled', dot: 'bg-gray-400' },
+};
+
+function getJobStatusStyle(status: string) {
+  return JOB_STATUS_STYLES[status] || JOB_STATUS_STYLES.pending;
+}
+
 function JobPicker({ value, onChange, onJobSelected }: {
   value: string;
   onChange: (jobId: string) => void;
@@ -58,25 +71,34 @@ function JobPicker({ value, onChange, onJobSelected }: {
   const [open, setOpen] = useState(false);
   const { data: jobs = [] } = useQuery<any[]>({ queryKey: ["/api/jobs"] });
 
-  const filtered = jobs.filter((j: any) => {
+  const activeJobs = jobs.filter((j: any) => j.status !== 'cancelled');
+  const filtered = activeJobs.filter((j: any) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return j.title?.toLowerCase().includes(q) || j.address?.toLowerCase().includes(q) || j.clientName?.toLowerCase().includes(q);
   });
 
   const selectedJob = jobs.find((j: any) => j.id === value);
+  const selectedStyle = selectedJob ? getJobStatusStyle(selectedJob.status) : null;
 
   return (
-    <div className="space-y-2">
-      <Label className="flex items-center gap-1.5">
-        <LinkIcon className="w-3.5 h-3.5" /> Link to Job
+    <div className="space-y-1.5">
+      <Label className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wide">
+        <LinkIcon className="w-3 h-3" /> Link to Job
       </Label>
       {selectedJob ? (
-        <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/30">
-          <Briefcase className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+        <div className={cn("flex items-center gap-3 p-2.5 rounded-md border", selectedStyle?.bg)}>
+          <div className={cn("w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0", selectedStyle?.bg)}>
+            <Briefcase className={cn("w-4 h-4", selectedStyle?.text)} />
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{selectedJob.title}</p>
-            {selectedJob.address && <p className="text-xs text-muted-foreground truncate flex items-center gap-1"><MapPin className="w-3 h-3" />{selectedJob.address}</p>}
+            <div className="flex items-center gap-2 mt-0.5">
+              {selectedJob.address && <span className="text-xs text-muted-foreground truncate flex items-center gap-1"><MapPin className="w-3 h-3 flex-shrink-0" />{selectedJob.address}</span>}
+              <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0", selectedStyle?.bg, selectedStyle?.text)}>
+                {selectedStyle?.label}
+              </span>
+            </div>
           </div>
           <Button size="icon" variant="ghost" onClick={() => { onChange(""); }}>
             <XCircle className="w-4 h-4" />
@@ -84,42 +106,58 @@ function JobPicker({ value, onChange, onJobSelected }: {
         </div>
       ) : (
         <div className="relative">
+          <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
             value={search}
             onChange={e => { setSearch(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
             placeholder="Search jobs by title, address, or client..."
-            className="pr-8"
+            className="pl-8 pr-8"
           />
           <Briefcase className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           {open && (
-            <div className="absolute z-50 top-full mt-1 w-full bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto">
+            <div className="absolute z-50 top-full mt-1 w-full bg-popover border rounded-md shadow-lg max-h-56 overflow-y-auto">
               {filtered.length === 0 ? (
-                <div className="p-3 text-sm text-muted-foreground text-center">No jobs found</div>
+                <div className="p-4 text-sm text-muted-foreground text-center">
+                  <Briefcase className="w-5 h-5 mx-auto mb-1.5 opacity-40" />
+                  {search ? "No jobs matching your search" : "No active jobs"}
+                </div>
               ) : (
-                filtered.slice(0, 15).map((job: any) => (
-                  <button
-                    key={job.id}
-                    type="button"
-                    className="w-full text-left px-3 py-2 text-sm hover-elevate flex items-start gap-2"
-                    onClick={() => {
-                      onChange(job.id);
-                      onJobSelected?.(job);
-                      setSearch("");
-                      setOpen(false);
-                    }}
-                  >
-                    <Briefcase className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{job.title}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {job.address && <span className="truncate flex items-center gap-0.5"><MapPin className="w-3 h-3" />{job.address}</span>}
-                        {job.clientName && <span className="truncate">{job.clientName}</span>}
-                        <Badge variant="secondary" className="text-[10px] py-0">{job.status}</Badge>
-                      </div>
-                    </div>
-                  </button>
-                ))
+                <>
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-medium border-b bg-muted/30 sticky top-0">
+                    {search ? `${filtered.length} result${filtered.length !== 1 ? 's' : ''}` : `${filtered.length} active job${filtered.length !== 1 ? 's' : ''}`}
+                  </div>
+                  {filtered.slice(0, 15).map((job: any) => {
+                    const style = getJobStatusStyle(job.status);
+                    return (
+                      <button
+                        key={job.id}
+                        type="button"
+                        className="w-full text-left px-3 py-2.5 text-sm hover-elevate flex items-center gap-3 border-b last:border-b-0 border-border/40"
+                        onClick={() => {
+                          onChange(job.id);
+                          onJobSelected?.(job);
+                          setSearch("");
+                          setOpen(false);
+                        }}
+                      >
+                        <div className={cn("w-2 h-2 rounded-full flex-shrink-0", style.dot)} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium truncate flex-1">{job.title}</p>
+                            <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap", style.bg, style.text)}>
+                              {style.label}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                            {job.address && <span className="truncate flex items-center gap-1"><MapPin className="w-3 h-3 flex-shrink-0" />{job.address}</span>}
+                            {job.clientName && <span className="truncate flex-shrink-0">{job.clientName}</span>}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </>
               )}
             </div>
           )}
