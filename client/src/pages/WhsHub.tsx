@@ -2119,6 +2119,7 @@ function SwmsDocumentsTab() {
 export default function WhsHub() {
   const [, setLocation] = useLocation();
   const [activeSection, setActiveSection] = useState<string>("overview");
+  const [overviewPreviewSwmsId, setOverviewPreviewSwmsId] = useState<string | null>(null);
 
   const { data: incidents = [] } = useQuery<any[]>({ queryKey: ["/api/whs/incidents"] });
   const { data: emergencyInfo = [] } = useQuery<any[]>({ queryKey: ["/api/whs/emergency-info"] });
@@ -2173,11 +2174,11 @@ export default function WhsHub() {
     if (draftSwms > 0) urgentItems.push({ label: `${draftSwms} Draft SWMS`, detail: 'Not yet active — review and approve', severity: 'amber', section: 'swms', icon: Edit });
     if (emergencyInfo.length === 0) urgentItems.push({ label: 'No Emergency Plan', detail: 'Set up emergency contacts and procedures', severity: 'amber', section: 'compliance', icon: HeartPulse });
 
-    const recentActivity: { id: string; title: string; subtitle: string; date: string; type: string; status: string; section: string }[] = [];
-    incidents.forEach((inc: any) => recentActivity.push({ id: `inc-${inc.id}`, title: inc.title, subtitle: INCIDENT_TYPE_LABELS[inc.incidentType] || inc.incidentType?.replace(/_/g, ' ') || 'Incident', date: inc.createdAt || inc.reportedAt || '', type: 'incident', status: inc.status, section: 'incidents' }));
-    swmsDocs.forEach((doc: any) => recentActivity.push({ id: `swms-${doc.id}`, title: doc.title, subtitle: doc.siteAddress || 'SWMS Document', date: doc.createdAt || '', type: 'swms', status: doc.status || 'draft', section: 'swms' }));
-    trainingRecords.forEach((rec: any) => recentActivity.push({ id: `tr-${rec.id}`, title: rec.workerName || 'Worker', subtitle: rec.courseCode || rec.courseName || 'Training', date: rec.createdAt || rec.issueDate || '', type: 'training', status: rec.status, section: 'training' }));
-    hazardReports.forEach((hz: any) => recentActivity.push({ id: `hz-${hz.id}`, title: hz.title || hz.hazardDescription || 'Hazard Report', subtitle: hz.location || 'Hazard', date: hz.createdAt || hz.reportedAt || '', type: 'hazard', status: hz.status, section: 'incidents' }));
+    const recentActivity: { id: string; rawId: string; title: string; subtitle: string; date: string; type: string; status: string; section: string; jobId?: string }[] = [];
+    incidents.forEach((inc: any) => recentActivity.push({ id: `inc-${inc.id}`, rawId: inc.id, title: inc.title, subtitle: INCIDENT_TYPE_LABELS[inc.incidentType] || inc.incidentType?.replace(/_/g, ' ') || 'Incident', date: inc.createdAt || inc.reportedAt || '', type: 'incident', status: inc.status, section: 'incidents' }));
+    swmsDocs.forEach((doc: any) => recentActivity.push({ id: `swms-${doc.id}`, rawId: doc.id, title: doc.title, subtitle: doc.siteAddress || 'SWMS Document', date: doc.createdAt || '', type: 'swms', status: doc.status || 'draft', section: 'swms', jobId: doc.jobId }));
+    trainingRecords.forEach((rec: any) => recentActivity.push({ id: `tr-${rec.id}`, rawId: rec.id, title: rec.workerName || 'Worker', subtitle: rec.courseCode || rec.courseName || 'Training', date: rec.createdAt || rec.issueDate || '', type: 'training', status: rec.status, section: 'training' }));
+    hazardReports.forEach((hz: any) => recentActivity.push({ id: `hz-${hz.id}`, rawId: hz.id, title: hz.title || hz.hazardDescription || 'Hazard Report', subtitle: hz.location || 'Hazard', date: hz.createdAt || hz.reportedAt || '', type: 'hazard', status: hz.status, section: 'incidents' }));
     recentActivity.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
 
     const getActivityIcon = (type: string) => {
@@ -2295,7 +2296,17 @@ export default function WhsHub() {
             <div className="space-y-1">
               {recentActivity.slice(0, 8).map((item) => (
                 <div key={item.id} className="flex items-center gap-3 py-2 px-2 rounded-md cursor-pointer hover-elevate"
-                  onClick={() => setActiveSection(item.section)}>
+                  onClick={() => {
+                    if (item.type === 'swms') {
+                      setOverviewPreviewSwmsId(item.rawId);
+                    } else if (item.type === 'incident' || item.type === 'hazard') {
+                      setActiveSection('incidents');
+                    } else if (item.type === 'training') {
+                      setActiveSection('training');
+                    } else {
+                      setActiveSection(item.section);
+                    }
+                  }}>
                   <div className="w-7 h-7 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0">
                     {getActivityIcon(item.type)}
                   </div>
@@ -2402,6 +2413,40 @@ export default function WhsHub() {
           </div>
         )}
       </div>
+
+      {overviewPreviewSwmsId && (() => {
+        const previewDoc = swmsDocs.find((d: any) => d.id === overviewPreviewSwmsId);
+        return (
+        <Dialog open={!!overviewPreviewSwmsId} onOpenChange={() => setOverviewPreviewSwmsId(null)}>
+          <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col">
+            <DialogHeader className="p-4 pb-2 pr-12 flex-shrink-0">
+              <DialogTitle className="flex items-center justify-between gap-2 flex-wrap">
+                <span>{previewDoc?.title || 'SWMS Preview'}</span>
+                <div className="flex items-center gap-2">
+                  {previewDoc?.jobId && (
+                    <Button size="sm" variant="outline" onClick={() => { setOverviewPreviewSwmsId(null); setLocation(`/jobs/${previewDoc.jobId}`); }}>
+                      <ExternalLink className="w-3 h-3 mr-1" /> View Job
+                    </Button>
+                  )}
+                  <a href={`/api/swms/${overviewPreviewSwmsId}/pdf`} onClick={(e) => e.stopPropagation()}>
+                    <Button size="sm" variant="outline">
+                      <Download className="w-3 h-3 mr-1" /> Download
+                    </Button>
+                  </a>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-hidden px-4 pb-4">
+              <iframe
+                src={`/api/swms/${overviewPreviewSwmsId}/pdf?format=html`}
+                className="w-full h-full rounded border bg-white"
+                title="SWMS Preview"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+        );
+      })()}
     </div>
   );
 }
