@@ -1868,168 +1868,158 @@ export default function DispatchBoard() {
                 </div>
               ) : (
               <div className="relative">
-                <div className="overflow-x-auto" ref={scheduleScrollRef} onScroll={handleScheduleScroll}>
-                  <div style={{ minWidth: `${48 + teamMembersWithJobs.length * 150}px` }}>
-                  <div className="flex border-b border-border bg-muted/30 sticky top-0 z-20">
-                    <div className="w-12 flex-shrink-0 p-1 text-[10px] font-medium text-muted-foreground">
-                      Time
-                    </div>
-                    {teamMembersWithJobs.map(member => (
-                      <div 
-                        key={member.id}
-                        className="p-2 border-l border-border"
-                        style={{ minWidth: 140, flex: '1 1 0%' }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-7 w-7 flex-shrink-0">
-                            <AvatarImage src={member.profileImageUrl} />
-                            <AvatarFallback className="text-[10px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
-                              {(member.firstName?.[0] || '') + (member.lastName?.[0] || member.email[0] || '')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {member.firstName} {member.lastName?.[0] ? member.lastName[0] + '.' : ''}
-                            </p>
-                            <span className="text-[10px] text-muted-foreground">
-                              {member.totalHours}h/{member.capacity}h
-                              {member.totalHours > member.capacity && ' ⚠'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                          <div 
-                            className="h-full rounded-full transition-all"
-                            style={{ 
-                              width: `${Math.min((member.totalHours / member.capacity) * 100, 100)}%`,
-                              backgroundColor: member.totalHours > member.capacity 
-                                ? 'hsl(var(--destructive))' 
-                                : 'hsl(var(--trade))'
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-                    <div className="flex" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
-                      <div className="w-12 flex-shrink-0">
-                        {WORK_HOURS.map(hour => (
-                          <div key={hour} className="border-b border-r border-border bg-muted/10 px-1.5 py-1 text-[11px] text-muted-foreground font-medium" style={{ height: HOUR_HEIGHT }}>
-                            {formatTime(hour)}
-                          </div>
+                <div className="overflow-auto" ref={scheduleScrollRef} onScroll={handleScheduleScroll} style={{ maxHeight: 'calc(100vh - 240px)' }}>
+                  <table className="border-collapse" style={{ minWidth: `${48 + teamMembersWithJobs.length * 140}px` }}>
+                    <thead>
+                      <tr className="bg-muted/30 sticky top-0 z-20">
+                        <th className="sticky left-0 z-30 bg-muted/30 w-12 min-w-[48px] p-1 text-left text-[10px] font-medium text-muted-foreground border-b border-r border-border">
+                          Time
+                        </th>
+                        {teamMembersWithJobs.map(member => (
+                          <th key={member.id} className="border-b border-l border-border p-2 text-left" style={{ minWidth: 140 }}>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-7 w-7 flex-shrink-0">
+                                <AvatarImage src={member.profileImageUrl} />
+                                <AvatarFallback className="text-[10px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                                  {(member.firstName?.[0] || '') + (member.lastName?.[0] || member.email[0] || '')}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {member.firstName} {member.lastName?.[0] ? member.lastName[0] + '.' : ''}
+                                </p>
+                                <span className="text-[10px] text-muted-foreground font-normal">
+                                  {member.totalHours}h/{member.capacity}h
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div 
+                                className="h-full rounded-full transition-all"
+                                style={{ 
+                                  width: `${Math.min((member.totalHours / member.capacity) * 100, 100)}%`,
+                                  backgroundColor: member.totalHours > member.capacity 
+                                    ? 'hsl(var(--destructive))' 
+                                    : 'hsl(var(--trade))'
+                                }}
+                              />
+                            </div>
+                          </th>
                         ))}
-                      </div>
-
-                      {teamMembersWithJobs.map(member => {
-                        const dropSlotHour = dragOverSlot?.startsWith(`${member.id}-`) 
-                          ? parseInt(dragOverSlot.split('-').pop() || '0') 
-                          : null;
-                        const dragDuration = draggedJob?.job.estimatedDuration || 60;
-                        const dragSlots = Math.max(1, Math.ceil(dragDuration / 60));
-
-                        return (
-                        <div key={member.id} className="border-l border-border relative" style={{ minWidth: 140, flex: '1 1 0%' }}>
-                          {WORK_HOURS.map(hour => {
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {WORK_HOURS.map(hour => (
+                        <tr key={hour}>
+                          <td className="sticky left-0 z-10 bg-background w-12 min-w-[48px] px-1.5 py-1 text-[11px] text-muted-foreground font-medium border-b border-r border-border align-top" style={{ height: HOUR_HEIGHT }}>
+                            {formatTime(hour)}
+                          </td>
+                          {teamMembersWithJobs.map(member => {
                             const slotId = `${member.id}-${hour}`;
+                            const dropSlotHour = dragOverSlot?.startsWith(`${member.id}-`) 
+                              ? parseInt(dragOverSlot.split('-').pop() || '0') 
+                              : null;
+                            const dragDuration = draggedJob?.job.estimatedDuration || 60;
+                            const dragSlots = Math.max(1, Math.ceil(dragDuration / 60));
                             const isInDropRange = dropSlotHour !== null && hour >= dropSlotHour && hour < dropSlotHour + dragSlots;
                             const isClickable = !!selectedJob;
                             return (
-                              <div
+                              <td
                                 key={slotId}
-                                className={`border-b border-border transition-colors ${
+                                className={`border-b border-l border-border relative transition-colors ${
                                   isInDropRange ? 'bg-primary/10' : ''
-                                } ${isClickable ? 'cursor-pointer hover:bg-primary/20 bg-primary/5' : 'hover:bg-muted/30'}`}
-                                style={{ height: HOUR_HEIGHT }}
+                                } ${isClickable ? 'cursor-pointer hover:bg-primary/20 bg-primary/5' : 'hover:bg-muted/20'}`}
+                                style={{ height: HOUR_HEIGHT, minWidth: 140, padding: 0 }}
                                 onDragOver={(e) => handleDragOver(e, slotId)}
                                 onDragLeave={handleDragLeave}
                                 onDrop={(e) => handleDrop(e, member.memberId, hour)}
                                 onClick={() => selectedJob && handleSlotClick(member.memberId, hour)}
                                 data-testid={`slot-${member.id}-${hour}`}
-                              />
-                            );
-                          })}
-
-                          {dropSlotHour !== null && (
-                            <div
-                              className="absolute left-0 right-0 mx-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none"
-                              style={{
-                                top: (dropSlotHour - WORK_HOURS[0]) * HOUR_HEIGHT + 2,
-                                height: Math.min(dragSlots * HOUR_HEIGHT - 4, (WORK_HOURS.length * HOUR_HEIGHT) - ((dropSlotHour - WORK_HOURS[0]) * HOUR_HEIGHT) - 4),
-                                zIndex: 5,
-                                backgroundColor: 'hsl(var(--primary) / 0.08)',
-                              }}
-                            >
-                              <div className="flex flex-col items-center gap-0.5">
-                                <span className="text-xs text-primary font-medium">Drop here</span>
-                                <span className="text-[10px] text-primary/70">{formatTime(dropSlotHour)} — {Math.round(dragDuration / 60)}h</span>
-                              </div>
-                            </div>
-                          )}
-
-                          {member.jobs.map(job => {
-                            const { top, height } = getJobPosition(job);
-                            const statusStyle = getStatusStyle(job.status);
-                            const isSelected = selectedJob?.job.id === job.id;
-
-                            return (
-                              <div
-                                key={job.id}
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, job, member.memberId)}
-                                onDragEnd={() => setDraggedJob(null)}
-                                onClick={() => handleJobClick(job, 'reassign')}
-                                className={`absolute left-0 right-0 mx-1 rounded-lg border cursor-pointer active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : conflictJobIds.has(job.id) ? 'ring-2 ring-destructive/60 ring-offset-1' : ''}`}
-                                style={{
-                                  top: top + 1,
-                                  height: height - 2,
-                                  zIndex: draggedJob?.job.id === job.id ? 50 : 10,
-                                  opacity: draggedJob?.job.id === job.id ? 0.5 : 1,
-                                }}
-                                data-testid={`scheduled-job-${job.id}`}
                               >
-                                <div className="p-2 h-full flex flex-col">
-                                  <div className="flex items-center gap-1.5">
-                                    <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                    {conflictJobIds.has(job.id) && (
-                                      <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+                                {hour === WORK_HOURS[0] && (
+                                  <div className="absolute inset-0 pointer-events-none" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
+                                    {dropSlotHour !== null && (
+                                      <div
+                                        className="absolute left-0 right-0 mx-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center"
+                                        style={{
+                                          top: (dropSlotHour - WORK_HOURS[0]) * HOUR_HEIGHT + 2,
+                                          height: Math.min(dragSlots * HOUR_HEIGHT - 4, (WORK_HOURS.length * HOUR_HEIGHT) - ((dropSlotHour - WORK_HOURS[0]) * HOUR_HEIGHT) - 4),
+                                          zIndex: 5,
+                                          backgroundColor: 'hsl(var(--primary) / 0.08)',
+                                        }}
+                                      >
+                                        <div className="flex flex-col items-center gap-0.5">
+                                          <span className="text-xs text-primary font-medium">Drop here</span>
+                                          <span className="text-[10px] text-primary/70">{formatTime(dropSlotHour)} — {Math.round(dragDuration / 60)}h</span>
+                                        </div>
+                                      </div>
                                     )}
-                                    <span className={`text-xs font-semibold ${statusStyle.text} whitespace-nowrap`}>
-                                      {formatScheduledTime(job.scheduledTime, job.scheduledAt)}
-                                    </span>
-                                    {job.estimatedDuration && (
-                                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                                        {job.estimatedDuration >= 60 
-                                          ? `${Math.round(job.estimatedDuration / 60)}h`
-                                          : `${job.estimatedDuration}m`}
-                                      </span>
-                                    )}
+
+                                    {member.jobs.map(job => {
+                                      const { top, height } = getJobPosition(job);
+                                      const statusStyle = getStatusStyle(job.status);
+                                      const isSelected = selectedJob?.job.id === job.id;
+
+                                      return (
+                                        <div
+                                          key={job.id}
+                                          draggable
+                                          className={`pointer-events-auto absolute left-0 right-0 mx-1 rounded-lg border cursor-pointer active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : conflictJobIds.has(job.id) ? 'ring-2 ring-destructive/60 ring-offset-1' : ''}`}
+                                          style={{
+                                            top: top + 1,
+                                            height: height - 2,
+                                            zIndex: draggedJob?.job.id === job.id ? 50 : 10,
+                                            opacity: draggedJob?.job.id === job.id ? 0.5 : 1,
+                                          }}
+                                          onDragStart={(e) => handleDragStart(e, job, member.memberId)}
+                                          onDragEnd={() => setDraggedJob(null)}
+                                          onClick={(e) => { e.stopPropagation(); handleJobClick(job, 'reassign'); }}
+                                          data-testid={`scheduled-job-${job.id}`}
+                                        >
+                                          <div className="p-2 h-full flex flex-col">
+                                            <div className="flex items-center gap-1.5">
+                                              <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                              {conflictJobIds.has(job.id) && (
+                                                <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+                                              )}
+                                              <span className={`text-xs font-semibold ${statusStyle.text} whitespace-nowrap`}>
+                                                {formatScheduledTime(job.scheduledTime, job.scheduledAt)}
+                                              </span>
+                                              {job.estimatedDuration && (
+                                                <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                                                  {job.estimatedDuration >= 60 
+                                                    ? `${Math.round(job.estimatedDuration / 60)}h`
+                                                    : `${job.estimatedDuration}m`}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <h4 className={`font-medium text-sm truncate min-w-0 ml-5 mt-0.5 ${statusStyle.text}`}>
+                                              {job.title}
+                                            </h4>
+                                            {height > 55 && (
+                                              <p className="text-xs text-muted-foreground truncate ml-5 mt-0.5">
+                                                {job.clientName}
+                                              </p>
+                                            )}
+                                            {height > 90 && job.address && (
+                                              <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 ml-5">
+                                                <MapPin className="h-3 w-3 flex-shrink-0" />
+                                                <span className="truncate">{job.address}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
-                                  <h4 className={`font-medium text-sm truncate min-w-0 ml-5 mt-0.5 ${statusStyle.text}`}>
-                                    {job.title}
-                                  </h4>
-                                  {height > 55 && (
-                                    <p className="text-xs text-muted-foreground truncate ml-5 mt-0.5">
-                                      {job.clientName}
-                                    </p>
-                                  )}
-                                  {height > 90 && job.address && (
-                                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 ml-5">
-                                      <MapPin className="h-3 w-3 flex-shrink-0" />
-                                      <span className="truncate">{job.address}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
+                                )}
+                              </td>
                             );
                           })}
-                        </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  </div>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
                 {canScrollRight && (
                   <div className="absolute right-0 top-0 bottom-0 w-10 pointer-events-none z-10 bg-gradient-to-l from-card to-transparent flex items-center justify-end pr-1">
@@ -2775,6 +2765,21 @@ export default function DispatchBoard() {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              {!unscheduledDrawerOpen && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setUnscheduledDrawerOpen(true)}
+                  data-testid="button-unscheduled-drawer"
+                >
+                  <Briefcase className="h-3.5 w-3.5" />
+                  Unscheduled
+                  {unscheduledJobs.length > 0 && (
+                    <Badge variant="secondary">{unscheduledJobs.length}</Badge>
+                  )}
+                </Button>
+              )}
               <div className="flex items-center gap-1">
                 <Button variant="outline" size="icon" onClick={() => navigateDate('prev')}>
                   <ChevronLeft className="h-4 w-4" />
@@ -2792,238 +2797,217 @@ export default function DispatchBoard() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 relative">
-            <div className="overflow-x-auto h-full" ref={scheduleScrollRef} onScroll={handleScheduleScroll}>
-              <div style={{ minWidth: `${48 + teamMembersWithJobs.length * 150}px`, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <div className="flex border-b border-border bg-muted/30 flex-shrink-0">
-                  <div className="w-14 flex-shrink-0 p-1.5 text-[11px] font-medium text-muted-foreground">
-                    Time
-                  </div>
-                  {teamMembersWithJobs.map(member => (
-                    <div 
-                      key={member.id}
-                      className="p-2 border-l border-border"
-                      style={{ minWidth: 150, flex: '1 1 0%' }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-7 w-7 flex-shrink-0">
-                          <AvatarImage src={member.profileImageUrl} />
-                          <AvatarFallback className="text-[10px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
-                            {(member.firstName?.[0] || '') + (member.lastName?.[0] || member.email[0] || '')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {member.firstName} {member.lastName?.[0] ? member.lastName[0] + '.' : ''}
-                          </p>
-                          <span className="text-[10px] text-muted-foreground">
-                            {member.totalHours}h/{member.capacity}h
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div 
-                          className="h-full rounded-full transition-all"
-                          style={{ 
-                            width: `${Math.min((member.totalHours / member.capacity) * 100, 100)}%`,
-                            backgroundColor: member.totalHours > member.capacity 
-                              ? 'hsl(var(--destructive))' 
-                              : 'hsl(var(--trade))'
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex-1 overflow-y-auto">
-                  <div className="flex" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
-                    <div className="w-14 flex-shrink-0">
-                      {WORK_HOURS.map(hour => (
-                        <div key={hour} className="border-b border-r border-border bg-muted/10 px-1.5 py-1 text-[11px] text-muted-foreground font-medium" style={{ height: HOUR_HEIGHT }}>
-                          {formatTime(hour)}
-                        </div>
+          <div className="flex-1 min-h-0 flex">
+            <div className={`flex-1 min-w-0 relative transition-all ${unscheduledDrawerOpen ? 'mr-80' : ''}`}>
+              <div className="overflow-auto absolute inset-0" ref={scheduleScrollRef} onScroll={handleScheduleScroll}>
+                <table className="border-collapse" style={{ minWidth: `${56 + teamMembersWithJobs.length * 160}px` }}>
+                  <thead>
+                    <tr className="bg-muted/30">
+                      <th className="sticky left-0 z-10 bg-muted/30 w-14 min-w-[56px] p-1.5 text-left text-[11px] font-medium text-muted-foreground border-b border-r border-border">
+                        Time
+                      </th>
+                      {teamMembersWithJobs.map(member => (
+                        <th key={member.id} className="border-b border-l border-border p-2 text-left" style={{ minWidth: 160 }}>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-7 w-7 flex-shrink-0">
+                              <AvatarImage src={member.profileImageUrl} />
+                              <AvatarFallback className="text-[10px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                                {(member.firstName?.[0] || '') + (member.lastName?.[0] || member.email[0] || '')}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {member.firstName} {member.lastName?.[0] ? member.lastName[0] + '.' : ''}
+                              </p>
+                              <span className="text-[10px] text-muted-foreground font-normal">
+                                {member.totalHours}h/{member.capacity}h
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div 
+                              className="h-full rounded-full transition-all"
+                              style={{ 
+                                width: `${Math.min((member.totalHours / member.capacity) * 100, 100)}%`,
+                                backgroundColor: member.totalHours > member.capacity 
+                                  ? 'hsl(var(--destructive))' 
+                                  : 'hsl(var(--trade))'
+                              }}
+                            />
+                          </div>
+                        </th>
                       ))}
-                    </div>
-
-                    {teamMembersWithJobs.map(member => {
-                      const dropSlotHour = dragOverSlot?.startsWith(`${member.id}-`) 
-                        ? parseInt(dragOverSlot.split('-').pop() || '0') 
-                        : null;
-                      const dragDuration = draggedJob?.job.estimatedDuration || 60;
-                      const dragSlots = Math.max(1, Math.ceil(dragDuration / 60));
-
-                      return (
-                      <div key={member.id} className="border-l border-border relative" style={{ minWidth: 150, flex: '1 1 0%' }}>
-                        {WORK_HOURS.map(hour => {
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {WORK_HOURS.map(hour => (
+                      <tr key={hour}>
+                        <td className="sticky left-0 z-10 bg-background w-14 min-w-[56px] px-1.5 py-1 text-[11px] text-muted-foreground font-medium border-b border-r border-border align-top" style={{ height: HOUR_HEIGHT }}>
+                          {formatTime(hour)}
+                        </td>
+                        {teamMembersWithJobs.map((member, colIdx) => {
                           const slotId = `${member.id}-${hour}`;
+                          const dropSlotHour = dragOverSlot?.startsWith(`${member.id}-`) 
+                            ? parseInt(dragOverSlot.split('-').pop() || '0') 
+                            : null;
+                          const dragDuration = draggedJob?.job.estimatedDuration || 60;
+                          const dragSlots = Math.max(1, Math.ceil(dragDuration / 60));
                           const isInDropRange = dropSlotHour !== null && hour >= dropSlotHour && hour < dropSlotHour + dragSlots;
                           const isClickable = !!selectedJob;
                           return (
-                            <div
+                            <td
                               key={slotId}
-                              className={`border-b border-border transition-colors ${
+                              className={`border-b border-l border-border relative transition-colors ${
                                 isInDropRange ? 'bg-primary/10' : ''
-                              } ${isClickable ? 'cursor-pointer hover:bg-primary/20 bg-primary/5' : 'hover:bg-muted/30'}`}
-                              style={{ height: HOUR_HEIGHT }}
+                              } ${isClickable ? 'cursor-pointer hover:bg-primary/20 bg-primary/5' : 'hover:bg-muted/20'}`}
+                              style={{ height: HOUR_HEIGHT, minWidth: 160, padding: 0 }}
                               onDragOver={(e) => handleDragOver(e, slotId)}
                               onDragLeave={handleDragLeave}
                               onDrop={(e) => handleDrop(e, member.memberId, hour)}
                               onClick={() => selectedJob && handleSlotClick(member.memberId, hour)}
-                            />
-                          );
-                        })}
-
-                        {dropSlotHour !== null && (
-                          <div
-                            className="absolute left-0 right-0 mx-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none"
-                            style={{
-                              top: (dropSlotHour - WORK_HOURS[0]) * HOUR_HEIGHT + 2,
-                              height: Math.min(dragSlots * HOUR_HEIGHT - 4, (WORK_HOURS.length * HOUR_HEIGHT) - ((dropSlotHour - WORK_HOURS[0]) * HOUR_HEIGHT) - 4),
-                              zIndex: 5,
-                              backgroundColor: 'hsl(var(--primary) / 0.08)',
-                            }}
-                          >
-                            <div className="flex flex-col items-center gap-0.5">
-                              <span className="text-xs text-primary font-medium">Drop here</span>
-                              <span className="text-[10px] text-primary/70">{formatTime(dropSlotHour)} — {Math.round(dragDuration / 60)}h</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {member.jobs.map(job => {
-                          const { top, height } = getJobPosition(job);
-                          const statusStyle = getStatusStyle(job.status);
-                          const isSelected = selectedJob?.job.id === job.id;
-
-                          return (
-                            <div
-                              key={job.id}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, job, member.memberId)}
-                              onDragEnd={() => setDraggedJob(null)}
-                              onClick={() => handleJobClick(job, 'reassign')}
-                              className={`absolute left-0 right-0 mx-1 rounded-lg border cursor-pointer active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : conflictJobIds.has(job.id) ? 'ring-2 ring-destructive/60 ring-offset-1' : ''}`}
-                              style={{
-                                top: top + 1,
-                                height: height - 2,
-                                zIndex: draggedJob?.job.id === job.id ? 50 : 10,
-                                opacity: draggedJob?.job.id === job.id ? 0.5 : 1,
-                              }}
                             >
-                              <div className="p-2 h-full flex flex-col">
-                                <div className="flex items-center gap-1.5">
-                                  <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                  <span className={`text-xs font-semibold ${statusStyle.text} whitespace-nowrap`}>
-                                    {formatScheduledTime(job.scheduledTime, job.scheduledAt)}
-                                  </span>
-                                  {job.estimatedDuration && (
-                                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                                      {job.estimatedDuration >= 60 
-                                        ? `${Math.round(job.estimatedDuration / 60)}h`
-                                        : `${job.estimatedDuration}m`}
-                                    </span>
+                              {hour === WORK_HOURS[0] && (
+                                <div className="absolute inset-0 pointer-events-none" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
+                                  {dropSlotHour !== null && (
+                                    <div
+                                      className="absolute left-0 right-0 mx-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center"
+                                      style={{
+                                        top: (dropSlotHour - WORK_HOURS[0]) * HOUR_HEIGHT + 2,
+                                        height: Math.min(dragSlots * HOUR_HEIGHT - 4, (WORK_HOURS.length * HOUR_HEIGHT) - ((dropSlotHour - WORK_HOURS[0]) * HOUR_HEIGHT) - 4),
+                                        zIndex: 5,
+                                        backgroundColor: 'hsl(var(--primary) / 0.08)',
+                                      }}
+                                    >
+                                      <div className="flex flex-col items-center gap-0.5">
+                                        <span className="text-xs text-primary font-medium">Drop here</span>
+                                        <span className="text-[10px] text-primary/70">{formatTime(dropSlotHour)} — {Math.round(dragDuration / 60)}h</span>
+                                      </div>
+                                    </div>
                                   )}
+
+                                  {member.jobs.map(job => {
+                                    const { top, height } = getJobPosition(job);
+                                    const statusStyle = getStatusStyle(job.status);
+                                    const isSelected = selectedJob?.job.id === job.id;
+
+                                    return (
+                                      <div
+                                        key={job.id}
+                                        draggable
+                                        className={`pointer-events-auto absolute left-0 right-0 mx-1 rounded-lg border cursor-pointer active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : conflictJobIds.has(job.id) ? 'ring-2 ring-destructive/60 ring-offset-1' : ''}`}
+                                        style={{
+                                          top: top + 1,
+                                          height: height - 2,
+                                          zIndex: draggedJob?.job.id === job.id ? 50 : 10,
+                                          opacity: draggedJob?.job.id === job.id ? 0.5 : 1,
+                                        }}
+                                        onDragStart={(e) => handleDragStart(e, job, member.memberId)}
+                                        onDragEnd={() => setDraggedJob(null)}
+                                        onClick={(e) => { e.stopPropagation(); handleJobClick(job, 'reassign'); }}
+                                      >
+                                        <div className="p-2 h-full flex flex-col">
+                                          <div className="flex items-center gap-1.5">
+                                            <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                            <span className={`text-xs font-semibold ${statusStyle.text} whitespace-nowrap`}>
+                                              {formatScheduledTime(job.scheduledTime, job.scheduledAt)}
+                                            </span>
+                                            {job.estimatedDuration && (
+                                              <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                                                {job.estimatedDuration >= 60 
+                                                  ? `${Math.round(job.estimatedDuration / 60)}h`
+                                                  : `${job.estimatedDuration}m`}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <h4 className={`font-medium text-sm truncate min-w-0 ml-5 mt-0.5 ${statusStyle.text}`}>
+                                            {job.title}
+                                          </h4>
+                                          {height > 55 && (
+                                            <p className="text-xs text-muted-foreground truncate ml-5 mt-0.5">
+                                              {job.clientName}
+                                            </p>
+                                          )}
+                                          {height > 90 && job.address && (
+                                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 ml-5">
+                                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                                              <span className="truncate">{job.address}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
-                                <h4 className={`font-medium text-sm truncate min-w-0 ml-5 mt-0.5 ${statusStyle.text}`}>
-                                  {job.title}
-                                </h4>
-                                {height > 55 && (
-                                  <p className="text-xs text-muted-foreground truncate ml-5 mt-0.5">
-                                    {job.clientName}
-                                  </p>
-                                )}
-                                {height > 90 && job.address && (
-                                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 ml-5">
-                                    <MapPin className="h-3 w-3 flex-shrink-0" />
-                                    <span className="truncate">{job.address}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                              )}
+                            </td>
                           );
                         })}
-                      </div>
-                      );
-                    })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {canScrollRight && (
+                <div className="absolute right-0 top-0 bottom-0 w-10 pointer-events-none bg-gradient-to-l from-background to-transparent flex items-center justify-end pr-1" style={{ zIndex: 15 }}>
+                  <div className="pointer-events-auto animate-pulse">
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            {canScrollRight && (
-              <div className="absolute right-0 top-0 bottom-0 w-10 pointer-events-none bg-gradient-to-l from-background to-transparent flex items-center justify-end pr-1" style={{ zIndex: 15 }}>
-                <div className="pointer-events-auto animate-pulse">
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            {unscheduledDrawerOpen && (
+              <div className="fixed right-0 top-0 bottom-0 w-80 bg-card border-l border-border shadow-2xl flex flex-col" style={{ zIndex: 10001 }}>
+                <div className="flex items-center justify-between p-3 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    <h3 className="text-sm font-semibold">Unscheduled Jobs</h3>
+                    <Badge variant="secondary">{unscheduledJobs.length}</Badge>
+                  </div>
+                  <Button size="icon" variant="ghost" onClick={() => setUnscheduledDrawerOpen(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                  {unscheduledJobs.length === 0 ? (
+                    <div className="text-center py-8 text-sm text-muted-foreground">
+                      All jobs are scheduled
+                    </div>
+                  ) : (
+                    unscheduledJobs.map(job => {
+                      const statusStyle = getStatusStyle(job.status);
+                      const isSelected = selectedJob?.job.id === job.id;
+                      return (
+                        <div
+                          key={job.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, job, null)}
+                          onDragEnd={() => setDraggedJob(null)}
+                          className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''} ${draggedJob?.job.id === job.id ? 'opacity-50' : ''}`}
+                          onClick={() => handleJobClick(job, 'assign')}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <h4 className={`text-sm font-medium truncate ${statusStyle.text}`}>{job.title}</h4>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate ml-6">{job.clientName}</p>
+                          {job.estimatedDuration && (
+                            <p className="text-[10px] text-muted-foreground ml-6 mt-0.5">
+                              {job.estimatedDuration >= 60 ? `${Math.round(job.estimatedDuration / 60)}h` : `${job.estimatedDuration}m`}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="p-3 border-t border-border text-[10px] text-muted-foreground text-center">
+                  Drag jobs onto the schedule or tap to assign
                 </div>
               </div>
             )}
           </div>
-
-          <Button
-            variant="default"
-            className="fixed bottom-5 right-5 shadow-lg gap-2"
-            style={{ zIndex: 10000 }}
-            onClick={() => setUnscheduledDrawerOpen(!unscheduledDrawerOpen)}
-            data-testid="button-unscheduled-drawer"
-          >
-            <Briefcase className="h-4 w-4" />
-            Unscheduled
-            {unscheduledJobs.length > 0 && (
-              <Badge variant="secondary" className="ml-1">{unscheduledJobs.length}</Badge>
-            )}
-          </Button>
-
-          {unscheduledDrawerOpen && (
-            <div className="fixed right-0 top-0 bottom-0 w-80 bg-card border-l border-border shadow-2xl flex flex-col" style={{ zIndex: 10001 }}>
-              <div className="flex items-center justify-between p-3 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4" />
-                  <h3 className="text-sm font-semibold">Unscheduled Jobs</h3>
-                  <Badge variant="secondary">{unscheduledJobs.length}</Badge>
-                </div>
-                <Button size="icon" variant="ghost" onClick={() => setUnscheduledDrawerOpen(false)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                {unscheduledJobs.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    All jobs are scheduled
-                  </div>
-                ) : (
-                  unscheduledJobs.map(job => {
-                    const statusStyle = getStatusStyle(job.status);
-                    const isSelected = selectedJob?.job.id === job.id;
-                    return (
-                      <div
-                        key={job.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, job, null)}
-                        onDragEnd={() => setDraggedJob(null)}
-                        className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''} ${draggedJob?.job.id === job.id ? 'opacity-50' : ''}`}
-                        onClick={() => handleJobClick(job, 'assign')}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <h4 className={`text-sm font-medium truncate ${statusStyle.text}`}>{job.title}</h4>
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate ml-6">{job.clientName}</p>
-                        {job.estimatedDuration && (
-                          <p className="text-[10px] text-muted-foreground ml-6 mt-0.5">
-                            {job.estimatedDuration >= 60 ? `${Math.round(job.estimatedDuration / 60)}h` : `${job.estimatedDuration}m`}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-              <div className="p-3 border-t border-border text-[10px] text-muted-foreground text-center">
-                Drag jobs onto the schedule or tap to assign
-              </div>
-            </div>
-          )}
         </div>,
         document.body
       )}
