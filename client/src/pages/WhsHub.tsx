@@ -13,7 +13,7 @@ import {
   AlertTriangle, Shield, ClipboardList, MapPin, Phone,
   Plus, Trash2, Edit, CheckCircle2, XCircle, Clock,
   Flame, AlertCircle, FileText, HardHat, Activity,
-  Siren, Eye, ChevronDown, ChevronUp,
+  Siren, Eye, ChevronDown, ChevronUp, ExternalLink,
   ArrowLeft, Download, TrendingUp,
   ShieldCheck, ShieldAlert, ArrowRight, CircleAlert,
   BookOpen, BadgeCheck, HeartPulse, ChevronRight
@@ -1737,6 +1737,11 @@ function HazardReportsTab() {
 function SwmsDocumentsTab() {
   const { data: swmsDocs = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/swms"] });
   const [, setLocation] = useLocation();
+  const [expandedSwms, setExpandedSwms] = useState<string | null>(null);
+  const { data: expandedSwmsDetail } = useQuery<any>({
+    queryKey: ["/api/swms", expandedSwms],
+    enabled: !!expandedSwms,
+  });
 
   if (isLoading) return <div className="flex justify-center p-8"><Clock className="w-5 h-5 animate-spin" /></div>;
 
@@ -1760,13 +1765,14 @@ function SwmsDocumentsTab() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {swmsDocs.map((doc: any) => (
-            <Card key={doc.id} className="hover-elevate cursor-pointer" onClick={() => doc.jobId && setLocation(`/jobs/${doc.jobId}`)}>
+            <Card key={doc.id} className="hover-elevate cursor-pointer" onClick={() => setExpandedSwms(expandedSwms === doc.id ? null : doc.id)}>
               <CardContent className="pt-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <ClipboardList className="w-4 h-4 text-primary flex-shrink-0" />
                       <p className="font-semibold truncate">{doc.title}</p>
+                      {expandedSwms === doc.id ? <ChevronUp className="w-4 h-4 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 flex-shrink-0" />}
                     </div>
                     {doc.siteAddress && <p className="text-sm text-muted-foreground truncate">{doc.siteAddress}</p>}
                     <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
@@ -1778,15 +1784,63 @@ function SwmsDocumentsTab() {
                     <Badge variant={doc.status === 'approved' || doc.status === 'signed' || doc.status === 'active' ? 'default' : 'secondary'}>
                       {doc.status ? doc.status.charAt(0).toUpperCase() + doc.status.slice(1) : 'Draft'}
                     </Badge>
-                    {doc.jobId && (
-                      <a href={`/api/swms/${doc.id}/pdf`} target="_blank" rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs text-primary hover:underline flex items-center gap-1">
-                        <FileText className="w-3 h-3" /> PDF
-                      </a>
-                    )}
+                    <a href={`/api/swms/${doc.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs text-primary hover:underline flex items-center gap-1">
+                      <FileText className="w-3 h-3" /> PDF
+                    </a>
                   </div>
                 </div>
+
+                {expandedSwms === doc.id && (
+                  <div className="mt-4 pt-3 border-t space-y-3">
+                    {expandedSwmsDetail?.workActivityDescription && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Work Activity</p>
+                        <p className="text-sm">{expandedSwmsDetail.workActivityDescription}</p>
+                      </div>
+                    )}
+                    {expandedSwmsDetail?.ppeRequirements?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">PPE Required</p>
+                        <div className="flex flex-wrap gap-1">
+                          {expandedSwmsDetail.ppeRequirements.map((ppe: string) => (
+                            <Badge key={ppe} variant="secondary" className="text-xs">{ppe.replace(/_/g, ' ')}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {expandedSwmsDetail?.hazards?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Hazards ({expandedSwmsDetail.hazards.length})</p>
+                        <div className="space-y-2">
+                          {expandedSwmsDetail.hazards.map((h: any, i: number) => (
+                            <div key={h.id || i} className="p-2 rounded bg-muted/30 text-sm">
+                              <p className="font-medium">{h.hazard || h.activityTask}</p>
+                              {h.controlMeasures && <p className="text-xs text-muted-foreground mt-1">{h.controlMeasures}</p>}
+                              <div className="flex gap-2 mt-1">
+                                {h.riskBefore && <Badge variant="secondary" className="text-xs">Before: {h.riskBefore}</Badge>}
+                                {h.riskAfter && <Badge variant="secondary" className="text-xs">After: {h.riskAfter}</Badge>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      {doc.jobId && (
+                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setLocation(`/jobs/${doc.jobId}`); }}>
+                          <ExternalLink className="w-3 h-3 mr-1" /> View Job
+                        </Button>
+                      )}
+                      <a href={`/api/swms/${doc.id}/pdf`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                        <Button size="sm" variant="outline">
+                          <FileText className="w-3 h-3 mr-1" /> Download PDF
+                        </Button>
+                      </a>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
