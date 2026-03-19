@@ -1848,10 +1848,11 @@ export default function DispatchBoard() {
                             {weekDays.map(day => {
                               const dateStr = format(day, 'yyyy-MM-dd');
                               const dayJobs = jobsByDate[dateStr] || [];
+                              const isTodayCol = isSameDay(day, new Date());
                               return (
                                 <td
                                   key={dateStr}
-                                  className="border-b border-l border-border relative hover:bg-muted/20"
+                                  className={`border-b border-l border-border relative hover:bg-muted/20 ${isTodayCol ? 'bg-muted/10' : ''}`}
                                   style={{ height: HOUR_HEIGHT, minWidth: 130, padding: 0 }}
                                 >
                                   {hour === WORK_HOURS[0] && (
@@ -1936,10 +1937,11 @@ export default function DispatchBoard() {
                             {threeDayDates.map(day => {
                               const dateStr = format(day, 'yyyy-MM-dd');
                               const dayJobs = jobsByThreeDay[dateStr] || [];
+                              const isTodayCol = isSameDay(day, new Date());
                               return (
                                 <td
                                   key={dateStr}
-                                  className="border-b border-l border-border relative hover:bg-muted/20"
+                                  className={`border-b border-l border-border relative hover:bg-muted/20 ${isTodayCol ? 'bg-muted/10' : ''}`}
                                   style={{ height: HOUR_HEIGHT, padding: 0 }}
                                 >
                                   {hour === WORK_HOURS[0] && (
