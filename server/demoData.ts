@@ -2324,6 +2324,21 @@ export async function refreshDemoDataForScreenshots(): Promise<{ success: boolea
     await createDemoActivityLogs(demoUser.id);
     updated.activityLogs = 15;
     
+    try {
+      const { db } = await import('./storage');
+      const { swmsDocuments } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      const swmsDocs = await db.update(swmsDocuments)
+        .set({ status: 'active' })
+        .where(eq(swmsDocuments.userId, demoUser.id))
+        .returning();
+      if (swmsDocs.length > 0) {
+        console.log(`[DemoScreenshots] Updated ${swmsDocs.length} SWMS documents to 'active' status`);
+      }
+    } catch (swmsErr) {
+      console.error('[DemoScreenshots] Error updating SWMS status:', swmsErr);
+    }
+
     console.log(`[DemoScreenshots] Updated jobs: ${updated.todaysJobs} today, ${updated.thisWeekJobs} this week, ${updated.upcomingJobs} upcoming`);
     
     return { 

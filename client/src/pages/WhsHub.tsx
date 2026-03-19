@@ -808,7 +808,7 @@ function JsaTab() {
                   <div className="flex-1 cursor-pointer" onClick={() => setExpandedJsa(expandedJsa === doc.id ? null : doc.id)}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium">{doc.title}</span>
-                      <Badge variant={doc.status === "active" ? "default" : "secondary"}>{doc.status}</Badge>
+                      <Badge variant={doc.status === "active" ? "default" : "secondary"}>{doc.status ? doc.status.charAt(0).toUpperCase() + doc.status.slice(1) : 'Draft'}</Badge>
                       {expandedJsa === doc.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1 flex gap-3">
@@ -1652,7 +1652,7 @@ function HazardReportsTab() {
                   {form.dateIdentified && (
                     <div>
                       <div className="text-xs text-muted-foreground">Date Identified</div>
-                      <div>{form.dateIdentified}{form.timeIdentified ? ` at ${form.timeIdentified}` : ''}</div>
+                      <div>{new Date(form.dateIdentified).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}{form.timeIdentified ? ` at ${form.timeIdentified}` : ''}</div>
                     </div>
                   )}
                   {form.reportedBy && (
@@ -1707,7 +1707,7 @@ function HazardReportsTab() {
                     <p className="font-medium">{h.description}</p>
                     <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
                       <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {h.location}</span>
-                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {h.dateIdentified} {h.timeIdentified && `at ${h.timeIdentified}`}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {h.dateIdentified ? new Date(h.dateIdentified).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown'} {h.timeIdentified && `at ${h.timeIdentified}`}</span>
                       <span>Reported by: {h.reportedBy}</span>
                     </div>
                     {h.recommendedAction && (
@@ -1775,8 +1775,8 @@ function SwmsDocumentsTab() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <Badge variant={doc.status === 'approved' || doc.status === 'signed' ? 'default' : 'secondary'}>
-                      {doc.status || 'Draft'}
+                    <Badge variant={doc.status === 'approved' || doc.status === 'signed' || doc.status === 'active' ? 'default' : 'secondary'}>
+                      {doc.status ? doc.status.charAt(0).toUpperCase() + doc.status.slice(1) : 'Draft'}
                     </Badge>
                     {doc.jobId && (
                       <a href={`/api/swms/${doc.id}/pdf`} target="_blank" rel="noopener noreferrer"
