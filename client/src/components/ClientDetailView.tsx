@@ -37,7 +37,8 @@ import {
   ClipboardList,
   Tag,
   Building2,
-  UserCheck
+  UserCheck,
+  ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -88,6 +89,32 @@ export default function ClientDetailView({
   const [newTagInput, setNewTagInput] = useState("");
   const [tagSuggestionsOpen, setTagSuggestionsOpen] = useState(false);
   const { toast } = useToast();
+  const [portalPreviewLoading, setPortalPreviewLoading] = useState(false);
+  
+  const handleViewInPortal = async () => {
+    const newTab = window.open('about:blank', '_blank');
+    setPortalPreviewLoading(true);
+    try {
+      const res = await apiRequest('POST', '/api/portal/admin-preview', { clientId });
+      const data = await res.json();
+      if (data.sessionToken) {
+        const portalUrl = `${window.location.origin}/portal?preview_token=${data.sessionToken}`;
+        if (newTab) {
+          newTab.location.href = portalUrl;
+        } else {
+          window.open(portalUrl, '_blank');
+        }
+      } else {
+        newTab?.close();
+        toast({ title: "Unable to preview", description: data.error || "Could not generate portal preview", variant: "destructive" });
+      }
+    } catch (err: any) {
+      newTab?.close();
+      toast({ title: "Portal Preview Error", description: err.message || "Failed to open client portal", variant: "destructive" });
+    } finally {
+      setPortalPreviewLoading(false);
+    }
+  };
 
   // Update client mutation
   const updateClientMutation = useMutation({
@@ -827,10 +854,20 @@ export default function ClientDetailView({
           {clientRequests.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2 flex-wrap">
                   <ClipboardList className="h-4 w-4" />
                   Job Requests
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{clientRequests.length}</Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="ml-auto text-xs"
+                    onClick={handleViewInPortal}
+                    disabled={portalPreviewLoading}
+                  >
+                    {portalPreviewLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ExternalLink className="h-3 w-3 mr-1" />}
+                    View in Portal
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">

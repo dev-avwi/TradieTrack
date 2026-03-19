@@ -32,7 +32,8 @@ import {
   ChevronDown,
   BookmarkCheck,
   Filter,
-  Download
+  Download,
+  ExternalLink
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -338,6 +339,33 @@ export default function WorkPage({
     updateRequestMutation.mutate({ id: declineTarget.id, status: 'declined' });
     setDeclineDialogOpen(false);
     setDeclineTarget(null);
+  };
+
+  const [portalPreviewLoading, setPortalPreviewLoading] = useState(false);
+  
+  const handleViewInPortal = async (clientId: string | number) => {
+    const newTab = window.open('about:blank', '_blank');
+    setPortalPreviewLoading(true);
+    try {
+      const res = await apiRequest('POST', '/api/portal/admin-preview', { clientId });
+      const data = await res.json();
+      if (data.sessionToken) {
+        const portalUrl = `${window.location.origin}/portal?preview_token=${data.sessionToken}`;
+        if (newTab) {
+          newTab.location.href = portalUrl;
+        } else {
+          window.open(portalUrl, '_blank');
+        }
+      } else {
+        newTab?.close();
+        toast({ title: "Unable to preview", description: data.error || "Could not generate portal preview", variant: "destructive" });
+      }
+    } catch (err: any) {
+      newTab?.close();
+      toast({ title: "Portal Preview Error", description: err.message || "Failed to open client portal", variant: "destructive" });
+    } finally {
+      setPortalPreviewLoading(false);
+    }
   };
 
   const statusLabels: Record<JobStatus, string> = {
@@ -1305,6 +1333,17 @@ export default function WorkPage({
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
+                {selectedRequest?.clientId && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleViewInPortal(selectedRequest.clientId)}
+                    disabled={portalPreviewLoading}
+                  >
+                    {portalPreviewLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ExternalLink className="h-3 w-3 mr-1" />}
+                    View in Portal
+                  </Button>
+                )}
                 <div className="flex-1" />
                 <Button
                   size="sm"

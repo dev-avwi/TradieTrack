@@ -1455,6 +1455,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ADMIN PREVIEW: Generate temporary portal session for business owner to preview client view
+  app.post("/api/portal/admin-preview", async (req: any, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+      if (!req.userId) return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const userId = req.userId || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      
+      const { clientId } = req.body;
+      if (!clientId) return res.status(400).json({ error: 'Client ID is required' });
+      
+      const client = await storage.getClient(clientId);
+      if (!client || client.userId !== userId) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+      
+      if (!client.phone) {
+        return res.status(400).json({ error: 'Client has no phone number — portal requires a phone number' });
+      }
+      
+      const { formatPhoneNumber } = await import('./services/smsService');
+      const normalizedPhone = formatPhoneNumber(client.phone);
+      
+      const sessionToken = randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+      
+      await storage.createPortalSession(normalizedPhone, sessionToken, expiresAt);
+      
+      return res.json({
+        success: true,
+        sessionToken,
+        expiresAt: expiresAt.toISOString(),
+      });
+    } catch (error: any) {
+      console.error('Error creating admin portal preview:', error);
+      res.status(500).json({ error: 'Failed to create portal preview session' });
+    }
+  });
+
   // CLIENT PORTAL: Get client data using session token
   app.get("/api/portal/data", async (req, res) => {
     try {
