@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -33,6 +35,8 @@ import {
   Eye,
   AlertCircle,
   Search,
+  Mail,
+  Edit3,
 } from "lucide-react";
 
 interface ActionItem {
@@ -235,7 +239,17 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
     description: string;
     confirmLabel: string;
     items: Array<{ id: string; label: string; sublabel?: string }>;
+    isSendAction?: boolean;
   } | null>(null);
+
+  const [batchSubject, setBatchSubject] = useState("");
+  const [batchMessage, setBatchMessage] = useState("");
+  const [batchTone, setBatchTone] = useState<'friendly' | 'formal' | 'brief'>('friendly');
+  const [showMessageEditor, setShowMessageEditor] = useState(false);
+
+  const { data: businessSettings } = useQuery<any>({
+    queryKey: ['/api/business-settings'],
+  });
 
   const { data, isLoading } = useQuery<ActionCenterData>({
     queryKey: ["/api/bi/action-center"],
@@ -523,7 +537,11 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
 
   const batchSendInvoicesMutation = useMutation({
     mutationFn: async (invoiceIds: string[]) => {
-      const res = await apiRequest("POST", "/api/invoices/batch-send", { invoiceIds });
+      const res = await apiRequest("POST", "/api/invoices/batch-send", {
+        invoiceIds,
+        customSubject: batchSubject || undefined,
+        customMessage: batchMessage || undefined,
+      });
       return res.json();
     },
     onSuccess: (data) => {
@@ -552,7 +570,11 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
 
   const batchSendQuotesMutation = useMutation({
     mutationFn: async (quoteIds: string[]) => {
-      const res = await apiRequest("POST", "/api/quotes/batch-send", { quoteIds });
+      const res = await apiRequest("POST", "/api/quotes/batch-send", {
+        quoteIds,
+        customSubject: batchSubject || undefined,
+        customMessage: batchMessage || undefined,
+      });
       return res.json();
     },
     onSuccess: (data) => {
@@ -606,6 +628,38 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
 
   const isBusy = batchInvoiceMutation.isPending || batchSendInvoicesMutation.isPending || batchSendQuotesMutation.isPending;
 
+  const getBatchToneMessage = (tone: 'friendly' | 'formal' | 'brief', docType: 'invoice' | 'quote' | 'reminder') => {
+    const bizName = businessSettings?.businessName || 'our team';
+    const tones = {
+      friendly: {
+        invoice: { subject: `Your invoice from ${bizName}`, message: `Hey there!\n\nJust popping this invoice through for the work we've done. You can view the details and pay online using the link below - super easy!\n\nThanks heaps for your custom - really appreciate it!\n\nCheers,\n${bizName}` },
+        quote: { subject: `Your quote from ${bizName}`, message: `Hey there!\n\nGreat chatting with you - here's the quote we put together. Have a look through and let us know if you've got any questions or want to tweak anything!\n\nCheers,\n${bizName}` },
+        reminder: { subject: `Friendly reminder from ${bizName}`, message: `Hey there!\n\nJust a quick heads up - we've got an invoice that's past due. No stress, these things happen! You can view and pay it online using the link below.\n\nGive us a bell if you need to chat about it.\n\nCheers,\n${bizName}` },
+      },
+      formal: {
+        invoice: { subject: `Invoice from ${bizName}`, message: `Dear Client,\n\nPlease find attached your tax invoice for services rendered.\n\nPayment is due within the terms specified on the invoice. A secure payment link has been included for your convenience.\n\nShould you have any queries regarding this invoice, please do not hesitate to contact us.\n\nKind regards,\n${bizName}` },
+        quote: { subject: `Quotation from ${bizName}`, message: `Dear Client,\n\nPlease find attached the quotation as requested. This quote remains valid for 30 days from the date of issue.\n\nShould you have any queries or require clarification, please do not hesitate to contact us.\n\nKind regards,\n${bizName}` },
+        reminder: { subject: `Payment reminder from ${bizName}`, message: `Dear Client,\n\nWe wish to bring to your attention that payment for the attached invoice is now overdue.\n\nWe would appreciate your prompt attention to this matter. A payment link has been included for your convenience.\n\nKind regards,\n${bizName}` },
+      },
+      brief: {
+        invoice: { subject: `Invoice - ${bizName}`, message: `Hi,\n\nYour invoice is attached. Payment link included.\n\nCheers,\n${bizName}` },
+        quote: { subject: `Quote - ${bizName}`, message: `Hi,\n\nYour quote is attached. Let us know if you'd like to go ahead.\n\nCheers,\n${bizName}` },
+        reminder: { subject: `Payment overdue - ${bizName}`, message: `Hi,\n\nJust a reminder - your invoice is overdue. Payment link included.\n\nCheers,\n${bizName}` },
+      },
+    };
+    return tones[tone][docType];
+  };
+
+  const getDocTypeForAction = (actionId: string): 'invoice' | 'quote' | 'reminder' => {
+    if (actionId === 'revenue-leak-overdue') return 'reminder';
+    if (actionId.includes('quote')) return 'quote';
+    return 'invoice';
+  };
+
+  const isSendAction = (actionId: string) => {
+    return ['revenue-leak-draft-invoices', 'revenue-leak-overdue', 'quotes-unsent', 'revenue-leak-stale-quotes'].includes(actionId);
+  };
+
   const handleBatchAction = (actionId: string, ids: string[]) => {
     if (ids.length === 0) return;
 
@@ -620,25 +674,25 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
         case "revenue-leak-draft-invoices":
           return {
             title: `Send ${ids.length} Invoice${ids.length !== 1 ? 's' : ''} to Clients?`,
-            description: "Each client will receive their invoice by email. Status will change from Draft to Sent.",
+            description: "Review and customise the email message before sending.",
             confirmLabel: `Send ${ids.length} Invoice${ids.length !== 1 ? 's' : ''}`,
           };
         case "revenue-leak-overdue":
           return {
             title: `Send ${ids.length} Payment Reminder${ids.length !== 1 ? 's' : ''}?`,
-            description: "Each client will receive a reminder email with their overdue invoice.",
+            description: "Review and customise the reminder message before sending.",
             confirmLabel: `Send ${ids.length} Reminder${ids.length !== 1 ? 's' : ''}`,
           };
         case "quotes-unsent":
           return {
             title: `Send ${ids.length} Quote${ids.length !== 1 ? 's' : ''} to Clients?`,
-            description: "Each client will receive their quote by email. Status will change from Draft to Sent.",
+            description: "Review and customise the email message before sending.",
             confirmLabel: `Send ${ids.length} Quote${ids.length !== 1 ? 's' : ''}`,
           };
         case "revenue-leak-stale-quotes":
           return {
             title: `Resend ${ids.length} Quote${ids.length !== 1 ? 's' : ''} as Follow Up?`,
-            description: "Each client will receive their quote again by email as a follow-up.",
+            description: "Review and customise the follow-up message before sending.",
             confirmLabel: `Resend ${ids.length} Quote${ids.length !== 1 ? 's' : ''}`,
           };
         default:
@@ -649,10 +703,24 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
     const details = getConfirmDetails();
     const dialogItems = workflowDialog?.items?.filter(i => ids.includes(i.id)) || [];
 
+    const isASendAction = isSendAction(actionId);
+    if (isASendAction) {
+      const docType = getDocTypeForAction(actionId);
+      const defaultTone = 'friendly';
+      const defaultMsg = getBatchToneMessage(defaultTone, docType);
+      setBatchTone(defaultTone);
+      setBatchSubject(defaultMsg.subject);
+      setBatchMessage(defaultMsg.message);
+      setShowMessageEditor(true);
+    } else {
+      setShowMessageEditor(false);
+    }
+
     setConfirmDialog({
       open: true,
       actionId,
       ...details,
+      isSendAction: isASendAction,
       items: dialogItems.map(i => ({
         id: i.id,
         label: `${i.label}${i.amount ? ' — ' + i.amount : ''}`,
@@ -1163,12 +1231,16 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
       </Dialog>
 
       <Dialog open={!!confirmDialog?.open} onOpenChange={(open) => { if (!open) setConfirmDialog(null); }}>
-        <DialogContent>
+        <DialogContent className={confirmDialog?.isSendAction ? "sm:max-w-lg" : ""}>
           <DialogHeader>
-            <DialogTitle>{confirmDialog?.title}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {confirmDialog?.isSendAction && <Mail className="h-4 w-4" />}
+              {confirmDialog?.title}
+            </DialogTitle>
             <DialogDescription>{confirmDialog?.description}</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-1 max-h-48 overflow-y-auto py-2">
+
+          <div className="flex flex-col gap-1 max-h-32 overflow-y-auto py-1">
             {confirmDialog?.items.map(item => (
               <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
                 <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
@@ -1179,13 +1251,66 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
               </div>
             ))}
           </div>
+
+          {confirmDialog?.isSendAction && showMessageEditor && (
+            <div className="space-y-3 border-t pt-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  <Edit3 className="h-3.5 w-3.5" />
+                  Email Message
+                </Label>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground mr-1">Tone:</span>
+                  {(['friendly', 'formal', 'brief'] as const).map(tone => (
+                    <Button
+                      key={tone}
+                      size="sm"
+                      variant={batchTone === tone ? 'default' : 'outline'}
+                      className="h-7 text-xs px-2.5"
+                      onClick={() => {
+                        setBatchTone(tone);
+                        if (confirmDialog) {
+                          const docType = getDocTypeForAction(confirmDialog.actionId);
+                          const msg = getBatchToneMessage(tone, docType);
+                          setBatchSubject(msg.subject);
+                          setBatchMessage(msg.message);
+                        }
+                      }}
+                    >
+                      {tone.charAt(0).toUpperCase() + tone.slice(1)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Subject</Label>
+                <Input
+                  value={batchSubject}
+                  onChange={(e) => setBatchSubject(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Message</Label>
+                <Textarea
+                  value={batchMessage}
+                  onChange={(e) => setBatchMessage(e.target.value)}
+                  className="text-sm min-h-[120px] resize-none"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Document details, payment link, and your business info will be added automatically.
+                </p>
+              </div>
+            </div>
+          )}
+
           <DialogFooter className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setConfirmDialog(null)}>Cancel</Button>
             <Button disabled={isBusy} onClick={executeConfirmedAction}>
               {isBusy ? (
                 <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Processing...</>
               ) : (
-                confirmDialog?.confirmLabel
+                <><Send className="h-3.5 w-3.5 mr-1" />{confirmDialog?.confirmLabel}</>
               )}
             </Button>
           </DialogFooter>

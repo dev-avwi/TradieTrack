@@ -20255,7 +20255,7 @@ Be specific about materials, colors, and features that would be included.`
   app.post("/api/invoices/batch-send", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const { invoiceIds } = req.body;
+      const { invoiceIds, customSubject, customMessage } = req.body;
       
       if (!Array.isArray(invoiceIds) || invoiceIds.length === 0) {
         return res.status(400).json({ error: 'invoiceIds array is required' });
@@ -20284,7 +20284,7 @@ Be specific about materials, colors, and features that would be included.`
             continue;
           }
 
-          const mockReq = { params: { id: invoiceId }, userId: req.userId, body: {} };
+          const mockReq = { params: { id: invoiceId }, userId: req.userId, body: { customSubject, customMessage } };
           const mockRes = {
             status: (code: number) => ({
               json: (data: any) => {
@@ -20322,7 +20322,7 @@ Be specific about materials, colors, and features that would be included.`
   app.post("/api/quotes/batch-send", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const { quoteIds } = req.body;
+      const { quoteIds, customSubject, customMessage } = req.body;
       
       if (!Array.isArray(quoteIds) || quoteIds.length === 0) {
         return res.status(400).json({ error: 'quoteIds array is required' });
@@ -20351,7 +20351,7 @@ Be specific about materials, colors, and features that would be included.`
             continue;
           }
 
-          const mockReq = { params: { id: quoteId }, userId: req.userId, body: {} };
+          const mockReq = { params: { id: quoteId }, userId: req.userId, body: { customSubject, customMessage } };
           const mockRes = {
             status: (code: number) => ({
               json: (data: any) => {
