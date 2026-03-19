@@ -2980,8 +2980,8 @@ export default function DispatchBoard() {
         </DialogContent>
       </Dialog>
       {isFullscreen && topView === 'schedule' && createPortal(
-        <div className="fixed inset-0 bg-muted/30 flex flex-col p-5" style={{ zIndex: 9999 }}>
-          <div className="flex items-center justify-between gap-3 px-4 py-2 border border-border flex-shrink-0 rounded-t-lg bg-background">
+        <div className="fixed inset-0 bg-background flex flex-col p-5" style={{ zIndex: 9999 }}>
+          <div className="flex items-center justify-between gap-3 px-4 py-2 border border-border flex-shrink-0 rounded-t-lg bg-muted/40">
             <div className="flex items-center gap-2">
               {viewMode === 'day' && isToday && (
                 <span className="relative flex h-2 w-2">
