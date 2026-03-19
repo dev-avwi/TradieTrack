@@ -19,7 +19,8 @@ import {
   BookOpen, BadgeCheck, HeartPulse, ChevronRight
 } from "lucide-react";
 import { useLocation } from "wouter";
-
+import { SwmsBuilder } from "@/components/SwmsBuilder";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const INCIDENT_TYPE_LABELS: Record<string, string> = {
   near_miss: "Near Miss",
@@ -1738,6 +1739,8 @@ function SwmsDocumentsTab() {
   const { data: swmsDocs = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/swms"] });
   const [, setLocation] = useLocation();
   const [expandedSwms, setExpandedSwms] = useState<string | null>(null);
+  const [editingSwms, setEditingSwms] = useState<any | null>(null);
+  const [previewSwmsId, setPreviewSwmsId] = useState<string | null>(null);
   const { data: expandedSwmsDetail } = useQuery<any>({
     queryKey: ["/api/swms", expandedSwms],
     enabled: !!expandedSwms,
@@ -1828,16 +1831,19 @@ function SwmsDocumentsTab() {
                       </div>
                     )}
                     <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setPreviewSwmsId(doc.id); }}>
+                        <Eye className="w-3 h-3 mr-1" /> Preview PDF
+                      </Button>
                       {doc.jobId && (
-                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setLocation(`/jobs/${doc.jobId}`); }}>
+                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditingSwms(doc); }}>
+                          <Edit className="w-3 h-3 mr-1" /> Edit
+                        </Button>
+                      )}
+                      {doc.jobId && (
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setLocation(`/jobs/${doc.jobId}`); }}>
                           <ExternalLink className="w-3 h-3 mr-1" /> View Job
                         </Button>
                       )}
-                      <a href={`/api/swms/${doc.id}/pdf`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                        <Button size="sm" variant="outline">
-                          <FileText className="w-3 h-3 mr-1" /> Download PDF
-                        </Button>
-                      </a>
                     </div>
                   </div>
                 )}
@@ -1845,6 +1851,53 @@ function SwmsDocumentsTab() {
             </Card>
           ))}
         </div>
+      )}
+
+      {previewSwmsId && (
+        <Dialog open={!!previewSwmsId} onOpenChange={() => setPreviewSwmsId(null)}>
+          <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col">
+            <DialogHeader className="p-4 pb-2 flex-shrink-0">
+              <DialogTitle className="flex items-center justify-between gap-2 flex-wrap">
+                <span>SWMS Preview</span>
+                <a href={`/api/swms/${previewSwmsId}/pdf`} download onClick={(e) => e.stopPropagation()}>
+                  <Button size="sm" variant="outline">
+                    <Download className="w-3 h-3 mr-1" /> Download
+                  </Button>
+                </a>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-hidden px-4 pb-4">
+              <iframe
+                src={`/api/swms/${previewSwmsId}/pdf`}
+                className="w-full h-full rounded border"
+                title="SWMS PDF Preview"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {editingSwms && (
+        <Dialog open={!!editingSwms} onOpenChange={() => setEditingSwms(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit SWMS: {editingSwms.title}</DialogTitle>
+            </DialogHeader>
+            <SwmsBuilder
+              jobId={editingSwms.jobId}
+              jobTitle={editingSwms.title}
+              jobAddress={editingSwms.siteAddress}
+              swmsId={editingSwms.id}
+              onClose={() => {
+                setEditingSwms(null);
+                queryClient.invalidateQueries({ queryKey: ["/api/swms"] });
+                if (expandedSwms) {
+                  queryClient.invalidateQueries({ queryKey: ["/api/swms", expandedSwms] });
+                }
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
