@@ -14,13 +14,16 @@ import {
   Plus, Trash2, Edit, CheckCircle2, XCircle, Clock,
   Flame, AlertCircle, FileText, HardHat, Activity,
   Siren, Eye, ChevronDown, ChevronUp, ExternalLink,
-  ArrowLeft, Download, TrendingUp,
+  ArrowLeft, Download, TrendingUp, LayoutGrid, List,
+  ArrowUpDown, Search,
   ShieldCheck, ShieldAlert, ArrowRight, CircleAlert,
   BookOpen, BadgeCheck, HeartPulse, ChevronRight
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { SwmsBuilder } from "@/components/SwmsBuilder";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SearchBar, FilterChips } from "@/components/ui/filter-chips";
+import { cn } from "@/lib/utils";
 
 const INCIDENT_TYPE_LABELS: Record<string, string> = {
   near_miss: "Near Miss",
@@ -1741,12 +1744,167 @@ function SwmsDocumentsTab() {
   const [expandedSwms, setExpandedSwms] = useState<string | null>(null);
   const [editingSwms, setEditingSwms] = useState<any | null>(null);
   const [previewSwmsId, setPreviewSwmsId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "title" | "hazards">("newest");
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
   const { data: expandedSwmsDetail } = useQuery<any>({
     queryKey: ["/api/swms", expandedSwms],
     enabled: !!expandedSwms,
   });
 
+  const statusCounts = {
+    all: swmsDocs.length,
+    active: swmsDocs.filter((d: any) => d.status === 'active' || d.status === 'approved' || d.status === 'signed').length,
+    draft: swmsDocs.filter((d: any) => !d.status || d.status === 'draft').length,
+    expired: swmsDocs.filter((d: any) => d.status === 'expired' || d.status === 'archived').length,
+  };
+
+  const filteredDocs = swmsDocs
+    .filter((doc: any) => {
+      const search = searchTerm.toLowerCase();
+      const matchesSearch = !searchTerm ||
+        doc.title?.toLowerCase().includes(search) ||
+        doc.siteAddress?.toLowerCase().includes(search) ||
+        doc.description?.toLowerCase().includes(search);
+      const status = doc.status || 'draft';
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'active' && (status === 'active' || status === 'approved' || status === 'signed')) ||
+        (statusFilter === 'draft' && (status === 'draft' || !doc.status)) ||
+        (statusFilter === 'expired' && (status === 'expired' || status === 'archived'));
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a: any, b: any) => {
+      if (sortBy === 'newest') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      if (sortBy === 'oldest') return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+      if (sortBy === 'title') return (a.title || '').localeCompare(b.title || '');
+      if (sortBy === 'hazards') return (b.hazardCount || 0) - (a.hazardCount || 0);
+      return 0;
+    });
+
   if (isLoading) return <div className="flex justify-center p-8"><Clock className="w-5 h-5 animate-spin" /></div>;
+
+  const renderSwmsCard = (doc: any) => (
+    <Card key={doc.id} className="hover-elevate cursor-pointer" onClick={() => setExpandedSwms(expandedSwms === doc.id ? null : doc.id)}>
+      <CardContent className="pt-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <ClipboardList className="w-4 h-4 text-primary flex-shrink-0" />
+              <p className="font-semibold truncate">{doc.title}</p>
+              {expandedSwms === doc.id ? <ChevronUp className="w-4 h-4 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 flex-shrink-0" />}
+            </div>
+            {doc.siteAddress && <p className="text-sm text-muted-foreground truncate">{doc.siteAddress}</p>}
+            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+              {doc.hazardCount !== undefined && <span>{doc.hazardCount} hazards</span>}
+              {doc.signatureCount !== undefined && <span>{doc.signatureCount} signatures</span>}
+              {doc.createdAt && <span>{new Date(doc.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant={doc.status === 'approved' || doc.status === 'signed' || doc.status === 'active' ? 'default' : 'secondary'}>
+              {doc.status ? doc.status.charAt(0).toUpperCase() + doc.status.slice(1) : 'Draft'}
+            </Badge>
+            <a href={`/api/swms/${doc.id}/pdf`} target="_blank" rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs text-primary hover:underline flex items-center gap-1">
+              <FileText className="w-3 h-3" /> PDF
+            </a>
+          </div>
+        </div>
+
+        {expandedSwms === doc.id && (
+          <div className="mt-4 pt-3 border-t space-y-3">
+            {expandedSwmsDetail?.workActivityDescription && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Work Activity</p>
+                <p className="text-sm">{expandedSwmsDetail.workActivityDescription}</p>
+              </div>
+            )}
+            {expandedSwmsDetail?.ppeRequirements?.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">PPE Required</p>
+                <div className="flex flex-wrap gap-1">
+                  {expandedSwmsDetail.ppeRequirements.map((ppe: string) => (
+                    <Badge key={ppe} variant="secondary" className="text-xs">{ppe.replace(/_/g, ' ')}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {expandedSwmsDetail?.hazards?.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Hazards ({expandedSwmsDetail.hazards.length})</p>
+                <div className="space-y-2">
+                  {expandedSwmsDetail.hazards.map((h: any, i: number) => (
+                    <div key={h.id || i} className="p-2 rounded bg-muted/30 text-sm">
+                      <p className="font-medium">{h.hazard || h.activityTask}</p>
+                      {h.controlMeasures && <p className="text-xs text-muted-foreground mt-1">{h.controlMeasures}</p>}
+                      <div className="flex gap-2 mt-1">
+                        {h.riskBefore && <Badge variant="secondary" className="text-xs">Before: {h.riskBefore}</Badge>}
+                        {h.riskAfter && <Badge variant="secondary" className="text-xs">After: {h.riskAfter}</Badge>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-2 pt-1 flex-wrap">
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setPreviewSwmsId(doc.id); }}>
+                <Eye className="w-3 h-3 mr-1" /> Preview
+              </Button>
+              {doc.jobId && (
+                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditingSwms(doc); }}>
+                  <Edit className="w-3 h-3 mr-1" /> Edit
+                </Button>
+              )}
+              {doc.jobId && (
+                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setLocation(`/jobs/${doc.jobId}`); }}>
+                  <ExternalLink className="w-3 h-3 mr-1" /> View Job
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const renderSwmsListRow = (doc: any) => (
+    <div
+      key={doc.id}
+      className="flex items-center gap-3 p-3 border-b last:border-b-0 hover-elevate cursor-pointer"
+      onClick={() => setExpandedSwms(expandedSwms === doc.id ? null : doc.id)}
+    >
+      <ClipboardList className="w-4 h-4 text-primary flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm truncate">{doc.title}</p>
+        {doc.siteAddress && <p className="text-xs text-muted-foreground truncate">{doc.siteAddress}</p>}
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <span className="text-xs text-muted-foreground hidden sm:inline">
+          {doc.hazardCount || 0} hazards
+        </span>
+        <span className="text-xs text-muted-foreground hidden md:inline">
+          {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : ''}
+        </span>
+        <Badge variant={doc.status === 'approved' || doc.status === 'signed' || doc.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+          {doc.status ? doc.status.charAt(0).toUpperCase() + doc.status.slice(1) : 'Draft'}
+        </Badge>
+        <div className="flex items-center gap-1">
+          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setPreviewSwmsId(doc.id); }}>
+            <Eye className="w-3.5 h-3.5" />
+          </Button>
+          {doc.jobId && (
+            <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingSwms(doc); }}>
+              <Edit className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
+        {expandedSwms === doc.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -1755,48 +1913,89 @@ function SwmsDocumentsTab() {
           <h3 className="text-lg font-semibold">Safe Work Method Statements</h3>
           <p className="text-sm text-muted-foreground">All SWMS documents across your jobs. Create new SWMS from a job's safety section.</p>
         </div>
+        <div className="flex items-center gap-2">
+          <div className="hidden md:inline-flex rounded-lg border bg-muted p-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode("cards")}
+              className={cn("h-8 px-3 rounded-md", viewMode === "cards" && "bg-background shadow-sm")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className={cn("h-8 px-3 rounded-md", viewMode === "list" && "bg-background shadow-sm")}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+            <SelectTrigger className="w-[140px] h-9">
+              <ArrowUpDown className="w-3.5 h-3.5 mr-1" />
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+              <SelectItem value="title">Title A-Z</SelectItem>
+              <SelectItem value="hazards">Most Hazards</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {swmsDocs.length === 0 ? (
+      <SearchBar
+        value={searchTerm}
+        onChange={setSearchTerm}
+        placeholder="Search SWMS by title or address..."
+      />
+
+      <FilterChips
+        chips={[
+          { id: 'all', label: 'All', count: statusCounts.all, icon: <ClipboardList className="h-3 w-3" /> },
+          { id: 'active', label: 'Active', count: statusCounts.active, icon: <CheckCircle2 className="h-3 w-3" /> },
+          { id: 'draft', label: 'Draft', count: statusCounts.draft, icon: <Edit className="h-3 w-3" /> },
+          { id: 'expired', label: 'Expired', count: statusCounts.expired, icon: <XCircle className="h-3 w-3" /> },
+        ]}
+        activeId={statusFilter}
+        onSelect={setStatusFilter}
+      />
+
+      {filteredDocs.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ClipboardList className="w-12 h-12 text-muted-foreground mb-3" />
-            <p className="text-muted-foreground font-medium">No SWMS documents yet</p>
-            <p className="text-sm text-muted-foreground">Create a SWMS from a job's safety section to see it here.</p>
+            {swmsDocs.length === 0 ? (
+              <>
+                <p className="text-muted-foreground font-medium">No SWMS documents yet</p>
+                <p className="text-sm text-muted-foreground">Create a SWMS from a job's safety section to see it here.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground font-medium">No documents match your filters</p>
+                <p className="text-sm text-muted-foreground">Try adjusting your search or filter criteria.</p>
+                <Button size="sm" variant="outline" className="mt-3" onClick={() => { setSearchTerm(""); setStatusFilter("all"); }}>
+                  Clear Filters
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
-      ) : (
+      ) : viewMode === "cards" ? (
         <div className="grid gap-3 md:grid-cols-2">
-          {swmsDocs.map((doc: any) => (
-            <Card key={doc.id} className="hover-elevate cursor-pointer" onClick={() => setExpandedSwms(expandedSwms === doc.id ? null : doc.id)}>
-              <CardContent className="pt-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <ClipboardList className="w-4 h-4 text-primary flex-shrink-0" />
-                      <p className="font-semibold truncate">{doc.title}</p>
-                      {expandedSwms === doc.id ? <ChevronUp className="w-4 h-4 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 flex-shrink-0" />}
-                    </div>
-                    {doc.siteAddress && <p className="text-sm text-muted-foreground truncate">{doc.siteAddress}</p>}
-                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                      {doc.hazardCount !== undefined && <span>{doc.hazardCount} hazards</span>}
-                      {doc.signatureCount !== undefined && <span>{doc.signatureCount} signatures</span>}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <Badge variant={doc.status === 'approved' || doc.status === 'signed' || doc.status === 'active' ? 'default' : 'secondary'}>
-                      {doc.status ? doc.status.charAt(0).toUpperCase() + doc.status.slice(1) : 'Draft'}
-                    </Badge>
-                    <a href={`/api/swms/${doc.id}/pdf`} target="_blank" rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-xs text-primary hover:underline flex items-center gap-1">
-                      <FileText className="w-3 h-3" /> PDF
-                    </a>
-                  </div>
-                </div>
-
+          {filteredDocs.map((doc: any) => renderSwmsCard(doc))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            {filteredDocs.map((doc: any) => (
+              <div key={doc.id}>
+                {renderSwmsListRow(doc)}
                 {expandedSwms === doc.id && (
-                  <div className="mt-4 pt-3 border-t space-y-3">
+                  <div className="px-4 pb-3 border-b last:border-b-0 space-y-3">
                     {expandedSwmsDetail?.workActivityDescription && (
                       <div>
                         <p className="text-xs font-medium text-muted-foreground mb-1">Work Activity</p>
@@ -1832,7 +2031,7 @@ function SwmsDocumentsTab() {
                     )}
                     <div className="flex items-center gap-2 pt-1 flex-wrap">
                       <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setPreviewSwmsId(doc.id); }}>
-                        <Eye className="w-3 h-3 mr-1" /> Preview PDF
+                        <Eye className="w-3 h-3 mr-1" /> Preview
                       </Button>
                       {doc.jobId && (
                         <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditingSwms(doc); }}>
@@ -1847,11 +2046,15 @@ function SwmsDocumentsTab() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
+
+      <p className="text-xs text-muted-foreground text-right">
+        Showing {filteredDocs.length} of {swmsDocs.length} documents
+      </p>
 
       {previewSwmsId && (
         <Dialog open={!!previewSwmsId} onOpenChange={() => setPreviewSwmsId(null)}>
