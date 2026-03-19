@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -944,6 +945,8 @@ function detectScheduleConflicts(jobs: Job[]): Set<string> {
 export default function DispatchBoard() {
   const [topView, setTopView] = useState<'schedule' | 'board' | 'map'>('schedule');
   const [opsPanelOpen, setOpsPanelOpen] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [unscheduledDrawerOpen, setUnscheduledDrawerOpen] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const scheduleScrollRef = useRef<HTMLDivElement>(null);
   const [currentDate, setCurrentDate] = useState(() => {
@@ -1207,6 +1210,18 @@ export default function DispatchBoard() {
     obs.observe(el);
     return () => obs.disconnect();
   }, [handleScheduleScroll]);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (unscheduledDrawerOpen) setUnscheduledDrawerOpen(false);
+        else setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isFullscreen, unscheduledDrawerOpen]);
 
   const conflictJobIds = useMemo(() => 
     detectScheduleConflicts(scheduledJobsForDate),
@@ -1575,7 +1590,7 @@ export default function DispatchBoard() {
         </div>
       )}
 
-      {topView === 'schedule' && (
+      {topView === 'schedule' && !isFullscreen && (
       <div className="flex flex-col lg:flex-row gap-4" style={{ minHeight: 'calc(100vh - 200px)' }}>
         <div className={`flex-1 min-w-0 ${opsPanelOpen ? 'lg:max-w-[75%]' : ''}`}>
           <Card>
@@ -1617,30 +1632,40 @@ export default function DispatchBoard() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
+                    <Button
+                      variant={viewMode === 'day' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('day')}
+                      data-testid="button-view-day"
+                    >
+                      Day
+                    </Button>
+                    <Button
+                      variant={viewMode === '3day' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('3day')}
+                      data-testid="button-view-3day"
+                    >
+                      3 Day
+                    </Button>
+                    <Button
+                      variant={viewMode === 'week' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('week')}
+                      data-testid="button-view-week"
+                    >
+                      Week
+                    </Button>
+                  </div>
                   <Button
-                    variant={viewMode === 'day' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('day')}
-                    data-testid="button-view-day"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => { setIsFullscreen(true); setOpsPanelOpen(false); }}
+                    data-testid="button-fullscreen-toggle"
                   >
-                    Day
-                  </Button>
-                  <Button
-                    variant={viewMode === '3day' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('3day')}
-                    data-testid="button-view-3day"
-                  >
-                    3 Day
-                  </Button>
-                  <Button
-                    variant={viewMode === 'week' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('week')}
-                    data-testid="button-view-week"
-                  >
-                    Week
+                    <Maximize2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -1845,14 +1870,14 @@ export default function DispatchBoard() {
               <div className="relative">
                 <div className="overflow-x-auto" ref={scheduleScrollRef} onScroll={handleScheduleScroll}>
                   <div style={{ minWidth: `${48 + teamMembersWithJobs.length * 150}px` }}>
-                  <div className="flex border-b bg-muted/30 sticky top-0 z-20">
+                  <div className="flex border-b border-border bg-muted/30 sticky top-0 z-20">
                     <div className="w-12 flex-shrink-0 p-1 text-[10px] font-medium text-muted-foreground">
                       Time
                     </div>
                     {teamMembersWithJobs.map(member => (
                       <div 
                         key={member.id}
-                        className="p-2 border-l"
+                        className="p-2 border-l border-border"
                         style={{ minWidth: 140, flex: '1 1 0%' }}
                       >
                         <div className="flex items-center gap-2">
@@ -1891,7 +1916,7 @@ export default function DispatchBoard() {
                     <div className="flex" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
                       <div className="w-12 flex-shrink-0">
                         {WORK_HOURS.map(hour => (
-                          <div key={hour} className="border-b border-r bg-muted/10 px-1.5 py-1 text-[11px] text-muted-foreground font-medium" style={{ height: HOUR_HEIGHT }}>
+                          <div key={hour} className="border-b border-r border-border bg-muted/10 px-1.5 py-1 text-[11px] text-muted-foreground font-medium" style={{ height: HOUR_HEIGHT }}>
                             {formatTime(hour)}
                           </div>
                         ))}
@@ -1905,7 +1930,7 @@ export default function DispatchBoard() {
                         const dragSlots = Math.max(1, Math.ceil(dragDuration / 60));
 
                         return (
-                        <div key={member.id} className="border-l relative" style={{ minWidth: 140, flex: '1 1 0%' }}>
+                        <div key={member.id} className="border-l border-border relative" style={{ minWidth: 140, flex: '1 1 0%' }}>
                           {WORK_HOURS.map(hour => {
                             const slotId = `${member.id}-${hour}`;
                             const isInDropRange = dropSlotHour !== null && hour >= dropSlotHour && hour < dropSlotHour + dragSlots;
@@ -1913,7 +1938,7 @@ export default function DispatchBoard() {
                             return (
                               <div
                                 key={slotId}
-                                className={`border-b transition-colors ${
+                                className={`border-b border-border transition-colors ${
                                   isInDropRange ? 'bg-primary/10' : ''
                                 } ${isClickable ? 'cursor-pointer hover:bg-primary/20 bg-primary/5' : 'hover:bg-muted/30'}`}
                                 style={{ height: HOUR_HEIGHT }}
@@ -2017,6 +2042,7 @@ export default function DispatchBoard() {
               )}
             </CardContent>
           </Card>
+
         </div>
 
         <div className={`flex flex-col gap-3 transition-all ${opsPanelOpen ? 'lg:w-[25%] lg:min-w-[320px]' : 'lg:w-10'}`}>
@@ -2551,8 +2577,8 @@ export default function DispatchBoard() {
             </CardContent>
           </Card>
         </div>
-          </ScrollArea>
-          )}
+        </ScrollArea>
+        )}
         </div>
       </div>
       )}
@@ -2727,6 +2753,280 @@ export default function DispatchBoard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {isFullscreen && topView === 'schedule' && createPortal(
+        <div className="fixed inset-0 bg-background flex flex-col" style={{ zIndex: 9999 }}>
+          <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border flex-shrink-0">
+            <div className="flex items-center gap-2">
+              {viewMode === 'day' && isToday && (
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'hsl(var(--trade))' }} />
+                  <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: 'hsl(var(--trade))' }} />
+                </span>
+              )}
+              <h2 className="text-sm font-semibold">
+                {format(currentDate, 'EEEE, MMMM d, yyyy')}
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                {scheduledJobsForDate.length} job{scheduledJobsForDate.length !== 1 ? 's' : ''}
+              </span>
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {teamMembersWithJobs.length} crew
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="icon" onClick={() => navigateDate('prev')}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())}>
+                  Today
+                </Button>
+                <Button variant="outline" size="icon" onClick={() => navigateDate('next')}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => { setIsFullscreen(false); setUnscheduledDrawerOpen(false); }} data-testid="button-exit-fullscreen">
+                <Minimize2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 relative">
+            <div className="overflow-x-auto h-full" ref={scheduleScrollRef} onScroll={handleScheduleScroll}>
+              <div style={{ minWidth: `${48 + teamMembersWithJobs.length * 150}px`, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <div className="flex border-b border-border bg-muted/30 flex-shrink-0">
+                  <div className="w-14 flex-shrink-0 p-1.5 text-[11px] font-medium text-muted-foreground">
+                    Time
+                  </div>
+                  {teamMembersWithJobs.map(member => (
+                    <div 
+                      key={member.id}
+                      className="p-2 border-l border-border"
+                      style={{ minWidth: 150, flex: '1 1 0%' }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-7 w-7 flex-shrink-0">
+                          <AvatarImage src={member.profileImageUrl} />
+                          <AvatarFallback className="text-[10px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                            {(member.firstName?.[0] || '') + (member.lastName?.[0] || member.email[0] || '')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {member.firstName} {member.lastName?.[0] ? member.lastName[0] + '.' : ''}
+                          </p>
+                          <span className="text-[10px] text-muted-foreground">
+                            {member.totalHours}h/{member.capacity}h
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all"
+                          style={{ 
+                            width: `${Math.min((member.totalHours / member.capacity) * 100, 100)}%`,
+                            backgroundColor: member.totalHours > member.capacity 
+                              ? 'hsl(var(--destructive))' 
+                              : 'hsl(var(--trade))'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                  <div className="flex" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
+                    <div className="w-14 flex-shrink-0">
+                      {WORK_HOURS.map(hour => (
+                        <div key={hour} className="border-b border-r border-border bg-muted/10 px-1.5 py-1 text-[11px] text-muted-foreground font-medium" style={{ height: HOUR_HEIGHT }}>
+                          {formatTime(hour)}
+                        </div>
+                      ))}
+                    </div>
+
+                    {teamMembersWithJobs.map(member => {
+                      const dropSlotHour = dragOverSlot?.startsWith(`${member.id}-`) 
+                        ? parseInt(dragOverSlot.split('-').pop() || '0') 
+                        : null;
+                      const dragDuration = draggedJob?.job.estimatedDuration || 60;
+                      const dragSlots = Math.max(1, Math.ceil(dragDuration / 60));
+
+                      return (
+                      <div key={member.id} className="border-l border-border relative" style={{ minWidth: 150, flex: '1 1 0%' }}>
+                        {WORK_HOURS.map(hour => {
+                          const slotId = `${member.id}-${hour}`;
+                          const isInDropRange = dropSlotHour !== null && hour >= dropSlotHour && hour < dropSlotHour + dragSlots;
+                          const isClickable = !!selectedJob;
+                          return (
+                            <div
+                              key={slotId}
+                              className={`border-b border-border transition-colors ${
+                                isInDropRange ? 'bg-primary/10' : ''
+                              } ${isClickable ? 'cursor-pointer hover:bg-primary/20 bg-primary/5' : 'hover:bg-muted/30'}`}
+                              style={{ height: HOUR_HEIGHT }}
+                              onDragOver={(e) => handleDragOver(e, slotId)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => handleDrop(e, member.memberId, hour)}
+                              onClick={() => selectedJob && handleSlotClick(member.memberId, hour)}
+                            />
+                          );
+                        })}
+
+                        {dropSlotHour !== null && (
+                          <div
+                            className="absolute left-0 right-0 mx-1 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none"
+                            style={{
+                              top: (dropSlotHour - WORK_HOURS[0]) * HOUR_HEIGHT + 2,
+                              height: Math.min(dragSlots * HOUR_HEIGHT - 4, (WORK_HOURS.length * HOUR_HEIGHT) - ((dropSlotHour - WORK_HOURS[0]) * HOUR_HEIGHT) - 4),
+                              zIndex: 5,
+                              backgroundColor: 'hsl(var(--primary) / 0.08)',
+                            }}
+                          >
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-xs text-primary font-medium">Drop here</span>
+                              <span className="text-[10px] text-primary/70">{formatTime(dropSlotHour)} — {Math.round(dragDuration / 60)}h</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {member.jobs.map(job => {
+                          const { top, height } = getJobPosition(job);
+                          const statusStyle = getStatusStyle(job.status);
+                          const isSelected = selectedJob?.job.id === job.id;
+
+                          return (
+                            <div
+                              key={job.id}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, job, member.memberId)}
+                              onDragEnd={() => setDraggedJob(null)}
+                              onClick={() => handleJobClick(job, 'reassign')}
+                              className={`absolute left-0 right-0 mx-1 rounded-lg border cursor-pointer active:cursor-grabbing overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : conflictJobIds.has(job.id) ? 'ring-2 ring-destructive/60 ring-offset-1' : ''}`}
+                              style={{
+                                top: top + 1,
+                                height: height - 2,
+                                zIndex: draggedJob?.job.id === job.id ? 50 : 10,
+                                opacity: draggedJob?.job.id === job.id ? 0.5 : 1,
+                              }}
+                            >
+                              <div className="p-2 h-full flex flex-col">
+                                <div className="flex items-center gap-1.5">
+                                  <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  <span className={`text-xs font-semibold ${statusStyle.text} whitespace-nowrap`}>
+                                    {formatScheduledTime(job.scheduledTime, job.scheduledAt)}
+                                  </span>
+                                  {job.estimatedDuration && (
+                                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                                      {job.estimatedDuration >= 60 
+                                        ? `${Math.round(job.estimatedDuration / 60)}h`
+                                        : `${job.estimatedDuration}m`}
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className={`font-medium text-sm truncate min-w-0 ml-5 mt-0.5 ${statusStyle.text}`}>
+                                  {job.title}
+                                </h4>
+                                {height > 55 && (
+                                  <p className="text-xs text-muted-foreground truncate ml-5 mt-0.5">
+                                    {job.clientName}
+                                  </p>
+                                )}
+                                {height > 90 && job.address && (
+                                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 ml-5">
+                                    <MapPin className="h-3 w-3 flex-shrink-0" />
+                                    <span className="truncate">{job.address}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {canScrollRight && (
+              <div className="absolute right-0 top-0 bottom-0 w-10 pointer-events-none bg-gradient-to-l from-background to-transparent flex items-center justify-end pr-1" style={{ zIndex: 15 }}>
+                <div className="pointer-events-auto animate-pulse">
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Button
+            variant="default"
+            className="fixed bottom-5 right-5 shadow-lg gap-2"
+            style={{ zIndex: 10000 }}
+            onClick={() => setUnscheduledDrawerOpen(!unscheduledDrawerOpen)}
+            data-testid="button-unscheduled-drawer"
+          >
+            <Briefcase className="h-4 w-4" />
+            Unscheduled
+            {unscheduledJobs.length > 0 && (
+              <Badge variant="secondary" className="ml-1">{unscheduledJobs.length}</Badge>
+            )}
+          </Button>
+
+          {unscheduledDrawerOpen && (
+            <div className="fixed right-0 top-0 bottom-0 w-80 bg-card border-l border-border shadow-2xl flex flex-col" style={{ zIndex: 10001 }}>
+              <div className="flex items-center justify-between p-3 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4" />
+                  <h3 className="text-sm font-semibold">Unscheduled Jobs</h3>
+                  <Badge variant="secondary">{unscheduledJobs.length}</Badge>
+                </div>
+                <Button size="icon" variant="ghost" onClick={() => setUnscheduledDrawerOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                {unscheduledJobs.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">
+                    All jobs are scheduled
+                  </div>
+                ) : (
+                  unscheduledJobs.map(job => {
+                    const statusStyle = getStatusStyle(job.status);
+                    const isSelected = selectedJob?.job.id === job.id;
+                    return (
+                      <div
+                        key={job.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, job, null)}
+                        onDragEnd={() => setDraggedJob(null)}
+                        className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing hover-elevate ${statusStyle.bg} ${statusStyle.border} ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''} ${draggedJob?.job.id === job.id ? 'opacity-50' : ''}`}
+                        onClick={() => handleJobClick(job, 'assign')}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <h4 className={`text-sm font-medium truncate ${statusStyle.text}`}>{job.title}</h4>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate ml-6">{job.clientName}</p>
+                        {job.estimatedDuration && (
+                          <p className="text-[10px] text-muted-foreground ml-6 mt-0.5">
+                            {job.estimatedDuration >= 60 ? `${Math.round(job.estimatedDuration / 60)}h` : `${job.estimatedDuration}m`}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              <div className="p-3 border-t border-border text-[10px] text-muted-foreground text-center">
+                Drag jobs onto the schedule or tap to assign
+              </div>
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
     </PageShell>
   );
 }
