@@ -135,6 +135,21 @@ function buildWorkHours(startHour: number, endHour: number): number[] {
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => i);
 
+function buildTimeSlots(startHour: number, endHour: number): Array<{ value: string; label: string; hour: number; minute: number }> {
+  const slots: Array<{ value: string; label: string; hour: number; minute: number }> = [];
+  for (let h = startHour; h <= endHour; h++) {
+    for (const m of [0, 30]) {
+      if (h === endHour && m === 30) break;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const displayH = h > 12 ? h - 12 : h === 0 ? 12 : h;
+      const label = `${displayH}:${m.toString().padStart(2, '0')} ${ampm}`;
+      const value = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      slots.push({ value, label, hour: h, minute: m });
+    }
+  }
+  return slots;
+}
+
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-300' },
   scheduled: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-300' },
@@ -989,10 +1004,10 @@ export default function DispatchBoard() {
   const [selectedJob, setSelectedJob] = useState<SelectedJobForAssignment | null>(null);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('owner');
-  const [selectedHour, setSelectedHour] = useState<number>(9);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('09:00');
   const [quickAssignJob, setQuickAssignJob] = useState<Job | null>(null);
   const [quickAssignMember, setQuickAssignMember] = useState<string>('');
-  const [quickAssignHour, setQuickAssignHour] = useState<number>(9);
+  const [quickAssignTimeSlot, setQuickAssignTimeSlot] = useState<string>('09:00');
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
@@ -1003,6 +1018,7 @@ export default function DispatchBoard() {
   const scheduleStartHour = businessSettings?.scheduleStartHour ?? 6;
   const scheduleEndHour = businessSettings?.scheduleEndHour ?? 20;
   const WORK_HOURS = useMemo(() => buildWorkHours(scheduleStartHour, scheduleEndHour), [scheduleStartHour, scheduleEndHour]);
+  const timeSlots = useMemo(() => buildTimeSlots(scheduleStartHour, scheduleEndHour), [scheduleStartHour, scheduleEndHour]);
 
   const updateScheduleHoursMutation = useMutation({
     mutationFn: async (data: { scheduleStartHour?: number; scheduleEndHour?: number }) => {
@@ -1348,17 +1364,20 @@ export default function DispatchBoard() {
   const handleJobClick = (job: Job, mode: 'assign' | 'reassign') => {
     setSelectedJob({ job, mode });
     setSelectedMemberId(job.assignedTo || 'owner');
-    const currentHour = parseJobTime(job.scheduledTime, job.scheduledAt).hour;
-    setSelectedHour(currentHour);
+    const parsed = parseJobTime(job.scheduledTime, job.scheduledAt);
+    const minute = job.scheduledTime ? parseInt(job.scheduledTime.split(':')[1] || '0') : 0;
+    const roundedMin = minute >= 15 && minute < 45 ? 30 : 0;
+    setSelectedTimeSlot(`${parsed.hour.toString().padStart(2, '0')}:${roundedMin.toString().padStart(2, '0')}`);
     // Don't open dialog immediately - let user tap a slot or use "Assign with Dialog" button
   };
 
   const handleAssignJob = () => {
     if (!selectedJob || rescheduleJobMutation.isPending) return;
 
+    const [slotH, slotM] = selectedTimeSlot.split(':').map(Number);
     const scheduledDate = new Date(currentDate);
-    scheduledDate.setHours(selectedHour, 0, 0, 0);
-    const timeStr = `${selectedHour.toString().padStart(2, '0')}:00`;
+    scheduledDate.setHours(slotH, slotM, 0, 0);
+    const timeStr = selectedTimeSlot;
 
     const mutationPayload = {
       jobId: selectedJob.job.id,
@@ -1786,197 +1805,205 @@ export default function DispatchBoard() {
 
             <CardContent className="p-0">
               {viewMode === 'week' ? (
-                <div className="overflow-x-auto">
-                  <div className="grid grid-cols-7 min-w-[980px]">
-                    {weekDays.map(day => {
-                      const dateStr = format(day, 'yyyy-MM-dd');
-                      const dayJobs = jobsByDate[dateStr] || [];
-                      const isDayToday = isSameDay(day, new Date());
-                      return (
-                        <div key={dateStr} className="border-r last:border-r-0 min-h-[400px] min-w-[140px]">
-                          <div
-                            className={`p-2.5 border-b text-center cursor-pointer transition-colors ${
-                              isDayToday ? 'bg-muted/50' : 'bg-muted/20 hover:bg-muted/40'
-                            }`}
-                            onClick={() => { setCurrentDate(day); setViewMode('day'); }}
-                          >
-                            <p className={`text-xs font-medium ${isDayToday ? '' : 'text-muted-foreground'}`}>
-                              {format(day, 'EEE')}
-                            </p>
-                            <p className={`text-lg font-bold tabular-nums ${isDayToday ? '' : ''}`}
-                              style={isDayToday ? { color: 'hsl(var(--trade))' } : undefined}
-                            >
-                              {format(day, 'd')}
-                            </p>
-                            {dayJobs.length > 0 && (
-                              <div className="flex items-center justify-center gap-1 mt-0.5">
-                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--trade))' }} />
-                                <span className="text-[10px] text-muted-foreground">{dayJobs.length}</span>
-                              </div>
-                            )}
-                          </div>
-                          <ScrollArea className="h-[350px]">
-                            <div className="p-1.5 space-y-1.5">
-                              {dayJobs.map(job => {
-                                const statusStyle = getStatusStyle(job.status);
-                                const assignedMember = teamMembersWithJobs.find(m =>
-                                  m.memberId === job.assignedTo || m.id === job.assignedTo || (!job.assignedTo && m.id === 'owner')
-                                );
-                                return (
-                                  <div
-                                    key={job.id}
-                                    className={`p-2 rounded-md border cursor-pointer hover-elevate ${statusStyle.bg} ${statusStyle.border}`}
-                                    onClick={() => handleJobClick(job, 'reassign')}
-                                    data-testid={`week-job-${job.id}`}
-                                  >
-                                    {(job.scheduledTime || job.scheduledAt) && (
-                                      <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: 'hsl(var(--trade))' }}>
-                                        <Clock className="h-2.5 w-2.5" />
-                                        <span>{formatScheduledTime(job.scheduledTime, job.scheduledAt)}</span>
-                                        {job.estimatedDuration && (
-                                          <span className="text-muted-foreground font-normal">
-                                            ({job.estimatedDuration >= 60 
-                                              ? `${Math.round(job.estimatedDuration / 60)}h`
-                                              : `${job.estimatedDuration}m`})
-                                          </span>
-                                        )}
-                                      </div>
-                                    )}
-                                    <div className="flex items-start gap-1.5 mt-0.5">
-                                      {assignedMember && (
-                                        <Avatar className="h-5 w-5 flex-shrink-0 mt-0.5">
-                                          <AvatarImage src={assignedMember.profileImageUrl} />
-                                          <AvatarFallback className="text-[8px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
-                                            {(assignedMember.firstName?.[0] || '') + (assignedMember.lastName?.[0] || '')}
-                                          </AvatarFallback>
-                                        </Avatar>
-                                      )}
-                                      <div className="flex-1 min-w-0">
-                                        <h4 className={`font-medium text-xs truncate ${statusStyle.text}`}>
-                                          {job.title}
-                                        </h4>
-                                        <p className="text-[10px] text-muted-foreground truncate">
-                                          {job.clientName}
-                                        </p>
-                                      </div>
-                                    </div>
+                <div className="relative">
+                  <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 240px)' }}>
+                    <table className="border-collapse" style={{ minWidth: `${48 + 7 * 130}px` }}>
+                      <thead>
+                        <tr className="bg-muted/30 sticky top-0 z-20">
+                          <th className="sticky left-0 z-30 bg-muted/30 w-12 min-w-[48px] p-1 text-left text-[10px] font-medium text-muted-foreground border-b border-r border-border">
+                            Time
+                          </th>
+                          {weekDays.map(day => {
+                            const isDayToday = isSameDay(day, new Date());
+                            const dateStr = format(day, 'yyyy-MM-dd');
+                            const dayJobs = jobsByDate[dateStr] || [];
+                            return (
+                              <th
+                                key={dateStr}
+                                className={`border-b border-l border-border p-2 text-center cursor-pointer transition-colors ${isDayToday ? 'bg-muted/50' : ''}`}
+                                style={{ minWidth: 130 }}
+                                onClick={() => { setCurrentDate(day); setViewMode('day'); }}
+                              >
+                                <p className={`text-[10px] font-medium ${isDayToday ? '' : 'text-muted-foreground'}`}>{format(day, 'EEE')}</p>
+                                <p className="text-base font-bold tabular-nums" style={isDayToday ? { color: 'hsl(var(--trade))' } : undefined}>
+                                  {format(day, 'd')}
+                                </p>
+                                {dayJobs.length > 0 && (
+                                  <div className="flex items-center justify-center gap-1 mt-0.5">
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--trade))' }} />
+                                    <span className="text-[10px] text-muted-foreground">{dayJobs.length}</span>
                                   </div>
-                                );
-                              })}
-                              {dayJobs.length === 0 && (
-                                <div className="text-center py-6 text-xs text-muted-foreground">
-                                  No jobs
-                                </div>
-                              )}
-                            </div>
-                          </ScrollArea>
-                        </div>
-                      );
-                    })}
+                                )}
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {WORK_HOURS.map(hour => (
+                          <tr key={hour}>
+                            <td className="sticky left-0 z-10 bg-background w-12 min-w-[48px] px-1.5 py-1 text-[11px] text-muted-foreground font-medium border-b border-r border-border align-top" style={{ height: HOUR_HEIGHT }}>
+                              {formatTime(hour)}
+                            </td>
+                            {weekDays.map(day => {
+                              const dateStr = format(day, 'yyyy-MM-dd');
+                              const dayJobs = jobsByDate[dateStr] || [];
+                              return (
+                                <td
+                                  key={dateStr}
+                                  className="border-b border-l border-border relative hover:bg-muted/20"
+                                  style={{ height: HOUR_HEIGHT, minWidth: 130, padding: 0 }}
+                                >
+                                  {hour === WORK_HOURS[0] && (
+                                    <div className="absolute inset-0 pointer-events-none" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
+                                      {dayJobs.map(job => {
+                                        const { top, height } = getJobPosition(job);
+                                        const statusStyle = getStatusStyle(job.status);
+                                        return (
+                                          <div
+                                            key={job.id}
+                                            className={`pointer-events-auto absolute left-0 right-0 mx-0.5 rounded-md border cursor-pointer overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border}`}
+                                            style={{ top: top + 1, height: height - 2, zIndex: 10 }}
+                                            onClick={() => handleJobClick(job, 'reassign')}
+                                            data-testid={`week-job-${job.id}`}
+                                          >
+                                            <div className="p-1 h-full flex flex-col">
+                                              <span className={`text-[10px] font-semibold ${statusStyle.text} truncate`}>
+                                                {formatScheduledTime(job.scheduledTime, job.scheduledAt)}
+                                              </span>
+                                              <span className={`text-[10px] font-medium truncate ${statusStyle.text}`}>
+                                                {job.title}
+                                              </span>
+                                              {height > 50 && (
+                                                <span className="text-[9px] text-muted-foreground truncate">{job.clientName}</span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               ) : viewMode === '3day' ? (
-                <div className="overflow-x-auto">
-                  <div className="grid grid-cols-3">
-                    {threeDayDates.map(day => {
-                      const dateStr = format(day, 'yyyy-MM-dd');
-                      const dayJobs = jobsByThreeDay[dateStr] || [];
-                      const isDayToday = isSameDay(day, new Date());
-                      return (
-                        <div key={dateStr} className="border-r last:border-r-0 min-h-[400px]">
-                          <div
-                            className={`p-3 border-b text-center cursor-pointer transition-colors ${
-                              isDayToday ? 'bg-muted/50' : 'bg-muted/20 hover:bg-muted/40'
-                            }`}
-                            onClick={() => { setCurrentDate(day); setViewMode('day'); }}
-                          >
-                            <p className={`text-xs font-medium ${isDayToday ? '' : 'text-muted-foreground'}`}>
-                              {format(day, 'EEEE')}
-                            </p>
-                            <p className={`text-2xl font-bold tabular-nums`}
-                              style={isDayToday ? { color: 'hsl(var(--trade))' } : undefined}
-                            >
-                              {format(day, 'd')}
-                            </p>
-                            <p className="text-xs text-muted-foreground">{format(day, 'MMM')}</p>
-                            {dayJobs.length > 0 && (
-                              <div className="flex items-center justify-center gap-1 mt-1">
-                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--trade))' }} />
-                                <span className="text-xs text-muted-foreground">{dayJobs.length} job{dayJobs.length !== 1 ? 's' : ''}</span>
-                              </div>
-                            )}
-                          </div>
-                          <ScrollArea className="h-[450px]">
-                            <div className="p-2 space-y-2">
-                              {dayJobs.sort((a: any, b: any) => {
-                                const aTime = a.scheduledTime || '00:00';
-                                const bTime = b.scheduledTime || '00:00';
-                                return aTime.localeCompare(bTime);
-                              }).map(job => {
-                                const statusStyle = getStatusStyle(job.status);
-                                const assignedMember = teamMembersWithJobs.find(m =>
-                                  m.memberId === job.assignedTo || m.id === job.assignedTo || (!job.assignedTo && m.id === 'owner')
-                                );
-                                return (
-                                  <div
-                                    key={job.id}
-                                    draggable
-                                    onDragStart={(e) => handleDragStart(e, job, job.assignedTo || 'owner')}
-                                    onDragEnd={() => setDraggedJob(null)}
-                                    onClick={() => handleJobClick(job, 'reassign')}
-                                    className={`p-2.5 rounded-md border cursor-pointer hover-elevate ${statusStyle.bg} ${statusStyle.border}`}
-                                    data-testid={`3day-job-${job.id}`}
-                                  >
-                                    {(job.scheduledTime || job.scheduledAt) && (
-                                      <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: 'hsl(var(--trade))' }}>
-                                        <Clock className="h-3 w-3" />
-                                        <span>{formatScheduledTime(job.scheduledTime, job.scheduledAt)}</span>
-                                        {job.estimatedDuration && (
-                                          <span className="text-muted-foreground font-normal">
-                                            ({job.estimatedDuration >= 60 
-                                              ? `${Math.round(job.estimatedDuration / 60)}h`
-                                              : `${job.estimatedDuration}m`})
-                                          </span>
-                                        )}
-                                      </div>
-                                    )}
-                                    <div className="flex items-start gap-2 mt-0.5">
-                                      {assignedMember && (
-                                        <Avatar className="h-5 w-5 flex-shrink-0 mt-0.5">
-                                          <AvatarImage src={assignedMember.profileImageUrl} />
-                                          <AvatarFallback className="text-[8px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
-                                            {(assignedMember.firstName?.[0] || '') + (assignedMember.lastName?.[0] || '')}
-                                          </AvatarFallback>
-                                        </Avatar>
-                                      )}
-                                      <div className="flex-1 min-w-0">
-                                        <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
-                                          {job.title}
-                                        </h4>
-                                        <p className="text-xs text-muted-foreground truncate">
-                                          {job.clientName}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    {job.address && (
-                                      <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                        <MapPin className="h-3 w-3 flex-shrink-0" />
-                                        <span className="truncate">{job.address}</span>
-                                      </div>
-                                    )}
+                <div className="relative">
+                  <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 240px)' }}>
+                    <table className="border-collapse w-full">
+                      <thead>
+                        <tr className="bg-muted/30 sticky top-0 z-20">
+                          <th className="sticky left-0 z-30 bg-muted/30 w-12 min-w-[48px] p-1 text-left text-[10px] font-medium text-muted-foreground border-b border-r border-border">
+                            Time
+                          </th>
+                          {threeDayDates.map(day => {
+                            const isDayToday = isSameDay(day, new Date());
+                            const dateStr = format(day, 'yyyy-MM-dd');
+                            const dayJobs = jobsByThreeDay[dateStr] || [];
+                            return (
+                              <th
+                                key={dateStr}
+                                className={`border-b border-l border-border p-2 text-center cursor-pointer transition-colors ${isDayToday ? 'bg-muted/50' : ''}`}
+                                onClick={() => { setCurrentDate(day); setViewMode('day'); }}
+                              >
+                                <p className={`text-xs font-medium ${isDayToday ? '' : 'text-muted-foreground'}`}>{format(day, 'EEEE')}</p>
+                                <p className="text-xl font-bold tabular-nums" style={isDayToday ? { color: 'hsl(var(--trade))' } : undefined}>
+                                  {format(day, 'd')}
+                                </p>
+                                <p className="text-xs text-muted-foreground">{format(day, 'MMM')}</p>
+                                {dayJobs.length > 0 && (
+                                  <div className="flex items-center justify-center gap-1 mt-0.5">
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--trade))' }} />
+                                    <span className="text-xs text-muted-foreground">{dayJobs.length} job{dayJobs.length !== 1 ? 's' : ''}</span>
                                   </div>
-                                );
-                              })}
-                              {dayJobs.length === 0 && (
-                                <div className="text-center py-8 text-sm text-muted-foreground">
-                                  No jobs
-                                </div>
-                              )}
-                            </div>
-                          </ScrollArea>
-                        </div>
-                      );
-                    })}
+                                )}
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {WORK_HOURS.map(hour => (
+                          <tr key={hour}>
+                            <td className="sticky left-0 z-10 bg-background w-12 min-w-[48px] px-1.5 py-1 text-[11px] text-muted-foreground font-medium border-b border-r border-border align-top" style={{ height: HOUR_HEIGHT }}>
+                              {formatTime(hour)}
+                            </td>
+                            {threeDayDates.map(day => {
+                              const dateStr = format(day, 'yyyy-MM-dd');
+                              const dayJobs = jobsByThreeDay[dateStr] || [];
+                              return (
+                                <td
+                                  key={dateStr}
+                                  className="border-b border-l border-border relative hover:bg-muted/20"
+                                  style={{ height: HOUR_HEIGHT, padding: 0 }}
+                                >
+                                  {hour === WORK_HOURS[0] && (
+                                    <div className="absolute inset-0 pointer-events-none" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
+                                      {dayJobs.map(job => {
+                                        const { top, height } = getJobPosition(job);
+                                        const statusStyle = getStatusStyle(job.status);
+                                        const assignedMember = teamMembersWithJobs.find(m =>
+                                          m.memberId === job.assignedTo || m.id === job.assignedTo || (!job.assignedTo && m.id === 'owner')
+                                        );
+                                        return (
+                                          <div
+                                            key={job.id}
+                                            className={`pointer-events-auto absolute left-0 right-0 mx-1 rounded-md border cursor-pointer overflow-hidden transition-shadow hover:shadow-md ${statusStyle.bg} ${statusStyle.border}`}
+                                            style={{ top: top + 1, height: height - 2, zIndex: 10 }}
+                                            onClick={() => handleJobClick(job, 'reassign')}
+                                            data-testid={`3day-job-${job.id}`}
+                                          >
+                                            <div className="p-1.5 h-full flex flex-col">
+                                              <div className="flex items-center gap-1">
+                                                <span className={`text-[11px] font-semibold ${statusStyle.text}`}>
+                                                  {formatScheduledTime(job.scheduledTime, job.scheduledAt)}
+                                                </span>
+                                                {job.estimatedDuration && (
+                                                  <span className="text-[10px] text-muted-foreground">
+                                                    ({job.estimatedDuration >= 60 ? `${Math.round(job.estimatedDuration / 60)}h` : `${job.estimatedDuration}m`})
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="flex items-center gap-1.5 mt-0.5">
+                                                {assignedMember && (
+                                                  <Avatar className="h-4 w-4 flex-shrink-0">
+                                                    <AvatarImage src={assignedMember.profileImageUrl} />
+                                                    <AvatarFallback className="text-[7px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.2)' }}>
+                                                      {(assignedMember.firstName?.[0] || '') + (assignedMember.lastName?.[0] || '')}
+                                                    </AvatarFallback>
+                                                  </Avatar>
+                                                )}
+                                                <span className={`text-xs font-medium truncate ${statusStyle.text}`}>
+                                                  {job.title}
+                                                </span>
+                                              </div>
+                                              {height > 55 && (
+                                                <span className="text-[10px] text-muted-foreground truncate mt-0.5">{job.clientName}</span>
+                                              )}
+                                              {height > 75 && job.address && (
+                                                <div className="flex items-center gap-1 mt-0.5 text-[10px] text-muted-foreground">
+                                                  <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
+                                                  <span className="truncate">{job.address}</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               ) : (
@@ -2842,14 +2869,14 @@ export default function DispatchBoard() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Time</label>
-              <Select value={selectedHour.toString()} onValueChange={(v) => setSelectedHour(parseInt(v))}>
+              <Select value={selectedTimeSlot} onValueChange={setSelectedTimeSlot}>
                 <SelectTrigger data-testid="select-time">
                   <SelectValue placeholder="Select time" />
                 </SelectTrigger>
-                <SelectContent>
-                  {WORK_HOURS.map(hour => (
-                    <SelectItem key={hour} value={hour.toString()}>
-                      {formatTime(hour)}
+                <SelectContent className="max-h-[280px]">
+                  {timeSlots.map(slot => (
+                    <SelectItem key={slot.value} value={slot.value}>
+                      {slot.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -2933,14 +2960,14 @@ export default function DispatchBoard() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Time</label>
-              <Select value={quickAssignHour.toString()} onValueChange={(v) => setQuickAssignHour(parseInt(v))}>
+              <Select value={quickAssignTimeSlot} onValueChange={setQuickAssignTimeSlot}>
                 <SelectTrigger data-testid="select-quick-time">
                   <SelectValue placeholder="Select time" />
                 </SelectTrigger>
-                <SelectContent>
-                  {WORK_HOURS.map(hour => (
-                    <SelectItem key={hour} value={hour.toString()}>
-                      {formatTime(hour)}
+                <SelectContent className="max-h-[280px]">
+                  {timeSlots.map(slot => (
+                    <SelectItem key={slot.value} value={slot.value}>
+                      {slot.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -2953,9 +2980,10 @@ export default function DispatchBoard() {
               disabled={!quickAssignMember || rescheduleJobMutation.isPending}
               onClick={() => {
                 if (!quickAssignJob || !quickAssignMember) return;
+                const [qH, qM] = quickAssignTimeSlot.split(':').map(Number);
                 const scheduledDate = new Date(currentDate);
-                scheduledDate.setHours(quickAssignHour, 0, 0, 0);
-                const timeStr = `${quickAssignHour.toString().padStart(2, '0')}:00`;
+                scheduledDate.setHours(qH, qM, 0, 0);
+                const timeStr = quickAssignTimeSlot;
                 rescheduleJobMutation.mutate({
                   jobId: quickAssignJob.id,
                   scheduledAt: scheduledDate.toISOString(),
