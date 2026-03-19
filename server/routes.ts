@@ -16415,6 +16415,10 @@ Be specific about materials, colors, and features that would be included.`
       }
 
       const equipmentList = await storage.getEquipment(userId);
+      const categories = await storage.getEquipmentCategories(userId);
+      const teamMembers = await storage.getTeamMembers(userId);
+
+      const deployedEquipmentIds = new Set(equipmentAssignments.map((a: any) => a.equipmentId));
 
       const deployedEquipment = equipmentAssignments.map((a: any) => {
         const eq = equipmentList.find((e: any) => e.id === a.equipmentId);
@@ -16422,20 +16426,55 @@ Be specific about materials, colors, and features that would be included.`
           assignmentId: a.id,
           equipmentId: a.equipmentId,
           equipmentName: eq?.name || 'Unknown',
-          category: eq?.category || '',
+          category: eq?.categoryId ? (categories.find((c: any) => c.id === eq.categoryId)?.name || '') : '',
+          categoryId: eq?.categoryId || null,
           serialNumber: eq?.serialNumber || '',
+          model: eq?.model || '',
+          manufacturer: eq?.manufacturer || '',
           jobId: a.jobId,
           jobTitle: a.jobTitle,
           jobStatus: a.jobStatus,
           notes: a.notes,
+          assignedToName: (() => {
+            if (!eq?.assignedTo) return null;
+            const member = teamMembers.find((m: any) => m.memberId === eq.assignedTo || m.id === eq.assignedTo);
+            return member ? `${member.firstName || ''} ${member.lastName || ''}`.trim() : null;
+          })(),
+        };
+      });
+
+      const allEquipment = equipmentList.map((eq: any) => {
+        const cat = eq.categoryId ? categories.find((c: any) => c.id === eq.categoryId) : null;
+        const isDeployed = deployedEquipmentIds.has(eq.id);
+        const assignment = isDeployed ? equipmentAssignments.find((a: any) => a.equipmentId === eq.id) : null;
+        const assignedMember = eq.assignedTo ? teamMembers.find((m: any) => m.memberId === eq.assignedTo || m.id === eq.assignedTo) : null;
+        return {
+          id: eq.id,
+          name: eq.name,
+          description: eq.description || '',
+          model: eq.model || '',
+          serialNumber: eq.serialNumber || '',
+          manufacturer: eq.manufacturer || '',
+          categoryId: eq.categoryId || null,
+          categoryName: cat?.name || 'Uncategorized',
+          status: eq.status || 'active',
+          location: eq.location || '',
+          assignedTo: eq.assignedTo || null,
+          assignedToName: assignedMember ? `${assignedMember.firstName || ''} ${assignedMember.lastName || ''}`.trim() : null,
+          isDeployed,
+          deployedJobTitle: assignment?.jobTitle || null,
+          deployedJobId: assignment?.jobId || null,
+          deployedJobStatus: assignment?.jobStatus || null,
         };
       });
 
       res.json({
         deployedEquipment,
+        allEquipment,
+        categories: categories.filter((c: any) => c.isActive !== false).map((c: any) => ({ id: c.id, name: c.name })),
         materialsNeeded,
         totalEquipment: equipmentList.length,
-        availableEquipment: equipmentList.filter((e: any) => !equipmentAssignments.some((a: any) => a.equipmentId === e.id)).length,
+        availableEquipment: equipmentList.filter((e: any) => !deployedEquipmentIds.has(e.id)).length,
       });
     } catch (error: any) {
       console.error("Error fetching dispatch resources:", error);

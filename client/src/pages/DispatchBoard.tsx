@@ -62,8 +62,13 @@ import {
   Maximize2,
   Minimize2,
   PanelRightClose,
-  PanelRightOpen
+  PanelRightOpen,
+  Search,
+  Truck,
+  HardHat,
+  CircleDot
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   format,
   addDays,
@@ -947,6 +952,9 @@ export default function DispatchBoard() {
   const [opsPanelOpen, setOpsPanelOpen] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [unscheduledDrawerOpen, setUnscheduledDrawerOpen] = useState(false);
+  const [equipmentSearch, setEquipmentSearch] = useState('');
+  const [equipmentTab, setEquipmentTab] = useState('all');
+  const [showAllEquipment, setShowAllEquipment] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const scheduleScrollRef = useRef<HTMLDivElement>(null);
   const [currentDate, setCurrentDate] = useState(() => {
@@ -1013,7 +1021,9 @@ export default function DispatchBoard() {
   });
 
   const { data: dispatchResources } = useQuery<{
-    deployedEquipment: Array<{assignmentId: string; equipmentId: string; equipmentName: string; category: string; serialNumber: string; jobId: string; jobTitle: string; jobStatus: string; notes?: string}>;
+    deployedEquipment: Array<{assignmentId: string; equipmentId: string; equipmentName: string; category: string; categoryId?: string; serialNumber: string; model?: string; manufacturer?: string; jobId: string; jobTitle: string; jobStatus: string; notes?: string; assignedToName?: string | null}>;
+    allEquipment: Array<{id: string; name: string; description: string; model: string; serialNumber: string; manufacturer: string; categoryId: string | null; categoryName: string; status: string; location: string; assignedTo: string | null; assignedToName: string | null; isDeployed: boolean; deployedJobTitle: string | null; deployedJobId: string | null; deployedJobStatus: string | null}>;
+    categories: Array<{id: string; name: string}>;
     materialsNeeded: Array<{id: string; name: string; quantity: string; unit: string; status: string; supplier?: string; jobId: string; jobTitle: string}>;
     totalEquipment: number;
     availableEquipment: number;
@@ -2451,67 +2461,190 @@ export default function DispatchBoard() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                 <Wrench className="h-4 w-4" />
-                Equipment Deployed
-                {(dispatchResources?.deployedEquipment?.length ?? 0) > 0 && (
-                  <Badge variant="secondary" className="ml-auto">
-                    {dispatchResources!.deployedEquipment.length}
-                  </Badge>
-                )}
+                Equipment
+                {dispatchResources?.totalEquipment ? (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {dispatchResources.deployedEquipment.length} deployed / {dispatchResources.totalEquipment} total
+                  </span>
+                ) : null}
+                <Button
+                  variant={showAllEquipment ? 'secondary' : 'outline'}
+                  size="sm"
+                  className="ml-auto text-xs gap-1"
+                  onClick={() => setShowAllEquipment(!showAllEquipment)}
+                >
+                  {showAllEquipment ? 'Deployed' : 'Show All'}
+                </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-3">
-              {!dispatchResources?.deployedEquipment?.length ? (
-                <div className="text-center py-4">
-                  <Wrench className="h-8 w-8 text-muted-foreground/25 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No equipment deployed today</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {dispatchResources?.totalEquipment 
-                      ? `${dispatchResources.availableEquipment} of ${dispatchResources.totalEquipment} available`
-                      : 'Assign equipment from job details'}
-                  </p>
+            <CardContent className="p-3 pt-0">
+              {showAllEquipment && (
+                <div className="mb-2 space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search equipment..."
+                      value={equipmentSearch}
+                      onChange={(e) => setEquipmentSearch(e.target.value)}
+                      className="pl-8 h-8 text-xs"
+                    />
+                  </div>
+                  <div className="flex gap-1 flex-wrap">
+                    <Button
+                      variant={equipmentTab === 'all' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="text-[11px] h-7 px-2"
+                      onClick={() => setEquipmentTab('all')}
+                    >
+                      All
+                    </Button>
+                    {(dispatchResources?.categories || []).map(cat => (
+                      <Button
+                        key={cat.id}
+                        variant={equipmentTab === cat.id ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className="text-[11px] h-7 px-2"
+                        onClick={() => setEquipmentTab(cat.id)}
+                      >
+                        {cat.name}
+                      </Button>
+                    ))}
+                    <Button
+                      variant={equipmentTab === 'uncategorized' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="text-[11px] h-7 px-2"
+                      onClick={() => setEquipmentTab('uncategorized')}
+                    >
+                      Other
+                    </Button>
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {dispatchResources.totalEquipment > 0 && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${Math.min(((dispatchResources.totalEquipment - dispatchResources.availableEquipment) / dispatchResources.totalEquipment) * 100, 100)}%`,
-                            backgroundColor: 'hsl(var(--trade))',
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {dispatchResources.totalEquipment - dispatchResources.availableEquipment}/{dispatchResources.totalEquipment} in use
-                      </span>
+              )}
+
+              {showAllEquipment ? (
+                (() => {
+                  const allEq = (dispatchResources?.allEquipment || [])
+                    .filter(eq => {
+                      if (equipmentTab !== 'all' && equipmentTab !== 'uncategorized' && eq.categoryId !== equipmentTab) return false;
+                      if (equipmentTab === 'uncategorized' && eq.categoryId) return false;
+                      if (equipmentSearch) {
+                        const q = equipmentSearch.toLowerCase();
+                        return eq.name.toLowerCase().includes(q) || eq.model.toLowerCase().includes(q) || eq.serialNumber.toLowerCase().includes(q) || eq.manufacturer.toLowerCase().includes(q) || (eq.assignedToName || '').toLowerCase().includes(q);
+                      }
+                      return true;
+                    });
+                  const statusIcon = (status: string) => {
+                    if (status === 'active') return <CircleDot className="h-2.5 w-2.5 text-green-500" />;
+                    if (status === 'maintenance') return <Wrench className="h-2.5 w-2.5 text-yellow-500" />;
+                    return <CircleDot className="h-2.5 w-2.5 text-muted-foreground" />;
+                  };
+                  return allEq.length === 0 ? (
+                    <div className="text-center py-4 text-sm text-muted-foreground">
+                      {equipmentSearch ? 'No equipment matches your search' : 'No equipment in this category'}
                     </div>
-                  )}
-                  <ScrollArea className="h-[160px]">
-                    <div className="space-y-1.5">
-                      {dispatchResources.deployedEquipment.map((eq) => (
-                        <div key={eq.assignmentId} className="flex items-start gap-2 p-2 rounded-md bg-muted/30">
-                          <Wrench className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{eq.equipmentName}</p>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                              <span className="truncate">{eq.jobTitle}</span>
-                              {eq.serialNumber && (
-                                <span className="flex-shrink-0">SN: {eq.serialNumber}</span>
+                  ) : (
+                    <ScrollArea className="h-[280px]">
+                      <div className="space-y-1">
+                        {allEq.map(eq => (
+                          <div key={eq.id} className={`flex items-start gap-2 p-2 rounded-md ${eq.isDeployed ? 'bg-primary/5 border border-primary/20' : 'bg-muted/30'}`}>
+                            <div className="mt-1 flex-shrink-0">{statusIcon(eq.status)}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-medium truncate">{eq.name}</p>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5 flex-wrap">
+                                {eq.model && <span>{eq.model}</span>}
+                                {eq.serialNumber && <span className="opacity-60">SN: {eq.serialNumber}</span>}
+                              </div>
+                              {eq.assignedToName && (
+                                <div className="flex items-center gap-1 text-[11px] mt-0.5">
+                                  <User className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-muted-foreground">{eq.assignedToName}</span>
+                                </div>
+                              )}
+                              {eq.isDeployed && eq.deployedJobTitle && (
+                                <div className="flex items-center gap-1 text-[11px] mt-0.5">
+                                  <Briefcase className="h-3 w-3" style={{ color: 'hsl(var(--trade))' }} />
+                                  <span style={{ color: 'hsl(var(--trade))' }}>{eq.deployedJobTitle}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                              <Badge variant="secondary" className="text-[10px]">
+                                {eq.categoryName}
+                              </Badge>
+                              {eq.isDeployed && (
+                                <Badge variant="default" className="text-[10px]">
+                                  In Use
+                                </Badge>
                               )}
                             </div>
                           </div>
-                          <Badge variant="secondary" className="text-[10px] flex-shrink-0">
-                            {eq.jobStatus === 'in_progress' ? 'Active' : 'Assigned'}
-                          </Badge>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  );
+                })()
+              ) : (
+                !dispatchResources?.deployedEquipment?.length ? (
+                  <div className="text-center py-4">
+                    <Wrench className="h-8 w-8 text-muted-foreground/25 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No equipment deployed today</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {dispatchResources?.totalEquipment 
+                        ? `${dispatchResources.availableEquipment} of ${dispatchResources.totalEquipment} available`
+                        : 'Assign equipment from job details'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {dispatchResources.totalEquipment > 0 && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${Math.min(((dispatchResources.totalEquipment - dispatchResources.availableEquipment) / dispatchResources.totalEquipment) * 100, 100)}%`,
+                              backgroundColor: 'hsl(var(--trade))',
+                            }}
+                          />
                         </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {dispatchResources.totalEquipment - dispatchResources.availableEquipment}/{dispatchResources.totalEquipment} in use
+                        </span>
+                      </div>
+                    )}
+                    <ScrollArea className="h-[160px]">
+                      <div className="space-y-1.5">
+                        {dispatchResources.deployedEquipment.map((eq) => (
+                          <div key={eq.assignmentId} className="flex items-start gap-2 p-2 rounded-md bg-muted/30">
+                            <Wrench className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{eq.equipmentName}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                                <span className="truncate">{eq.jobTitle}</span>
+                                {eq.assignedToName && (
+                                  <span className="flex items-center gap-1 flex-shrink-0">
+                                    <User className="h-3 w-3" />
+                                    {eq.assignedToName}
+                                  </span>
+                                )}
+                              </div>
+                              {eq.serialNumber && (
+                                <span className="text-[10px] text-muted-foreground opacity-60">SN: {eq.serialNumber}</span>
+                              )}
+                            </div>
+                            <Badge variant="secondary" className="text-[10px] flex-shrink-0">
+                              {eq.jobStatus === 'in_progress' ? 'Active' : 'Assigned'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )
               )}
             </CardContent>
           </Card>

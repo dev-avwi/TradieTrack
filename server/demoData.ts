@@ -2665,19 +2665,42 @@ export async function clearUserDemoData(userId: string): Promise<{
 async function seedDemoEquipment(userId: string) {
   try {
     const existingEquipment = await storage.getEquipment(userId);
-    if (existingEquipment.length > 0) return;
+    const existingCategories = await storage.getEquipmentCategories(userId);
+    const hasCategories = existingCategories.length > 0;
+    if (existingEquipment.length > 0 && hasCategories) return;
+    if (existingEquipment.length > 0 && !hasCategories) {
+      for (const eq of existingEquipment) {
+        await storage.deleteEquipment(eq.id, userId);
+      }
+    }
+
+    const categoryDefs = [
+      { name: 'Vehicles', description: 'Utes, trucks, and trailers' },
+      { name: 'Power Tools', description: 'Electric and battery-powered tools' },
+      { name: 'Heavy Machinery', description: 'Excavators, jetters, and large equipment' },
+      { name: 'Diagnostic Equipment', description: 'Cameras, levels, and testing gear' },
+    ];
+
+    const catMap: Record<string, string> = {};
+    for (const cat of categoryDefs) {
+      const created = await storage.createEquipmentCategory({ ...cat, userId });
+      catMap[cat.name] = created.id;
+    }
+
+    const teamMembers = await storage.getTeamMembers(userId);
+    const activeMembers = teamMembers.filter((m: any) => m.status === 'active');
 
     const equipmentItems = [
-      { name: 'Hilux Ute #1', model: 'Toyota Hilux SR5 2024', serialNumber: 'UTE-001', manufacturer: 'Toyota', status: 'active', location: 'On Site' },
-      { name: 'Excavator - Mini', model: 'Kubota U17-3', serialNumber: 'EXC-003', manufacturer: 'Kubota', status: 'active', location: 'Depot' },
-      { name: 'Pipe Threader', model: 'RIDGID 300 Compact', serialNumber: 'THR-012', manufacturer: 'RIDGID', status: 'active', location: 'Ute #1' },
-      { name: 'Drain Camera', model: 'RIDGID SeeSnake CS65x', serialNumber: 'CAM-008', manufacturer: 'RIDGID', status: 'active', location: 'Ute #2' },
+      { name: 'Hilux Ute #1', model: 'Toyota Hilux SR5 2024', serialNumber: 'UTE-001', manufacturer: 'Toyota', status: 'active', location: 'On Site', categoryId: catMap['Vehicles'], assignedTo: activeMembers[0]?.memberId },
+      { name: 'Excavator - Mini', model: 'Kubota U17-3', serialNumber: 'EXC-003', manufacturer: 'Kubota', status: 'active', location: 'Depot', categoryId: catMap['Heavy Machinery'] },
+      { name: 'Pipe Threader', model: 'RIDGID 300 Compact', serialNumber: 'THR-012', manufacturer: 'RIDGID', status: 'active', location: 'Ute #1', categoryId: catMap['Power Tools'], assignedTo: activeMembers[1]?.memberId },
+      { name: 'Drain Camera', model: 'RIDGID SeeSnake CS65x', serialNumber: 'CAM-008', manufacturer: 'RIDGID', status: 'active', location: 'Ute #2', categoryId: catMap['Diagnostic Equipment'], assignedTo: activeMembers[2]?.memberId },
       { name: 'Hot Water System Dolly', model: 'Heavy Duty 500kg', serialNumber: 'DOL-002', manufacturer: 'Sydney Trolleys', status: 'active', location: 'Depot' },
-      { name: 'Jetter - High Pressure', model: 'Aussie Pumps Commander 3000', serialNumber: 'JET-006', manufacturer: 'Aussie Pumps', status: 'active', location: 'Trailer #1' },
-      { name: 'Hilux Ute #2', model: 'Toyota Hilux Workmate 2023', serialNumber: 'UTE-002', manufacturer: 'Toyota', status: 'active', location: 'On Site' },
-      { name: 'Generator 7kVA', model: 'Honda EU70is', serialNumber: 'GEN-004', manufacturer: 'Honda', status: 'active', location: 'Depot' },
-      { name: 'Copper Press Tool', model: 'Milwaukee M18 Force Logic', serialNumber: 'PRS-015', manufacturer: 'Milwaukee', status: 'maintenance', location: 'Service Centre' },
-      { name: 'Laser Level', model: 'Dewalt DW089K', serialNumber: 'LSR-009', manufacturer: 'Dewalt', status: 'active', location: 'Ute #1' },
+      { name: 'Jetter - High Pressure', model: 'Aussie Pumps Commander 3000', serialNumber: 'JET-006', manufacturer: 'Aussie Pumps', status: 'active', location: 'Trailer #1', categoryId: catMap['Heavy Machinery'] },
+      { name: 'Hilux Ute #2', model: 'Toyota Hilux Workmate 2023', serialNumber: 'UTE-002', manufacturer: 'Toyota', status: 'active', location: 'On Site', categoryId: catMap['Vehicles'], assignedTo: activeMembers[3]?.memberId },
+      { name: 'Generator 7kVA', model: 'Honda EU70is', serialNumber: 'GEN-004', manufacturer: 'Honda', status: 'active', location: 'Depot', categoryId: catMap['Heavy Machinery'] },
+      { name: 'Copper Press Tool', model: 'Milwaukee M18 Force Logic', serialNumber: 'PRS-015', manufacturer: 'Milwaukee', status: 'maintenance', location: 'Service Centre', categoryId: catMap['Power Tools'] },
+      { name: 'Laser Level', model: 'Dewalt DW089K', serialNumber: 'LSR-009', manufacturer: 'Dewalt', status: 'active', location: 'Ute #1', categoryId: catMap['Diagnostic Equipment'], assignedTo: activeMembers[0]?.memberId },
     ];
 
     const created: any[] = [];
