@@ -20284,7 +20284,7 @@ Be specific about materials, colors, and features that would be included.`
             continue;
           }
 
-          const mockReq = { params: { id: invoiceId }, userId: req.userId, body: { customSubject, customMessage } };
+          const mockReq = { params: { id: invoiceId }, userId: req.userId, body: { customSubject, customMessage }, query: {} };
           const mockRes = {
             status: (code: number) => ({
               json: (data: any) => {
@@ -20351,7 +20351,7 @@ Be specific about materials, colors, and features that would be included.`
             continue;
           }
 
-          const mockReq = { params: { id: quoteId }, userId: req.userId, body: { customSubject, customMessage } };
+          const mockReq = { params: { id: quoteId }, userId: req.userId, body: { customSubject, customMessage }, query: {} };
           const mockRes = {
             status: (code: number) => ({
               json: (data: any) => {
