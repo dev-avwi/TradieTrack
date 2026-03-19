@@ -2877,8 +2877,8 @@ export default function DispatchBoard() {
         </DialogContent>
       </Dialog>
       {isFullscreen && topView === 'schedule' && createPortal(
-        <div className="fixed inset-0 bg-background flex flex-col" style={{ zIndex: 9999 }}>
-          <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border flex-shrink-0">
+        <div className="fixed inset-0 bg-muted/30 flex flex-col p-5" style={{ zIndex: 9999 }}>
+          <div className="flex items-center justify-between gap-3 px-4 py-2 border border-border flex-shrink-0 rounded-t-lg bg-background">
             <div className="flex items-center gap-2">
               {viewMode === 'day' && isToday && (
                 <span className="relative flex h-2 w-2">
@@ -2930,7 +2930,7 @@ export default function DispatchBoard() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 flex">
+          <div className="flex-1 min-h-0 flex rounded-b-lg overflow-hidden border border-t-0 border-border bg-background">
             <div className={`flex-1 min-w-0 relative transition-all ${unscheduledDrawerOpen ? 'mr-80' : ''}`}>
               <div className="overflow-auto absolute inset-0" ref={scheduleScrollRef} onScroll={handleScheduleScroll}>
                 <table className="border-collapse" style={{ minWidth: `${56 + teamMembersWithJobs.length * 160}px` }}>
