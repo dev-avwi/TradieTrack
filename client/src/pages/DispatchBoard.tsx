@@ -66,8 +66,17 @@ import {
   Search,
   Truck,
   HardHat,
-  CircleDot
+  CircleDot,
+  Settings2,
+  Sun,
+  Moon,
 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
   format,
@@ -117,8 +126,14 @@ interface Client {
   address?: string;
 }
 
-const WORK_HOURS = Array.from({ length: 15 }, (_, i) => i + 6);
 const HOUR_HEIGHT = 80;
+
+function buildWorkHours(startHour: number, endHour: number): number[] {
+  const count = endHour - startHour + 1;
+  return Array.from({ length: Math.max(count, 4) }, (_, i) => i + startHour);
+}
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => i);
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-300' },
@@ -981,6 +996,23 @@ export default function DispatchBoard() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
+  const { data: businessSettings } = useQuery<any>({
+    queryKey: ['/api/business-settings'],
+  });
+
+  const scheduleStartHour = businessSettings?.scheduleStartHour ?? 6;
+  const scheduleEndHour = businessSettings?.scheduleEndHour ?? 20;
+  const WORK_HOURS = useMemo(() => buildWorkHours(scheduleStartHour, scheduleEndHour), [scheduleStartHour, scheduleEndHour]);
+
+  const updateScheduleHoursMutation = useMutation({
+    mutationFn: async (data: { scheduleStartHour?: number; scheduleEndHour?: number }) => {
+      return apiRequest('PATCH', '/api/business-settings', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
+    },
+  });
+
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<Job[]>({
     queryKey: ['/api/jobs'],
   });
@@ -1669,6 +1701,77 @@ export default function DispatchBoard() {
                       Week
                     </Button>
                   </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" data-testid="button-schedule-settings">
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64" align="end">
+                      <div className="space-y-3">
+                        <p className="text-sm font-medium">Schedule Hours</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs text-muted-foreground">Start</Label>
+                            <Select
+                              value={String(scheduleStartHour)}
+                              onValueChange={(val) => {
+                                const v = Number(val);
+                                if (v < scheduleEndHour) updateScheduleHoursMutation.mutate({ scheduleStartHour: v });
+                              }}
+                            >
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {HOUR_OPTIONS.filter(h => h < scheduleEndHour).map(h => (
+                                  <SelectItem key={h} value={String(h)}>{formatTime(h)}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <span className="text-muted-foreground text-xs pt-5">to</span>
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs text-muted-foreground">End</Label>
+                            <Select
+                              value={String(scheduleEndHour)}
+                              onValueChange={(val) => {
+                                const v = Number(val);
+                                if (v > scheduleStartHour) updateScheduleHoursMutation.mutate({ scheduleEndHour: v });
+                              }}
+                            >
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {HOUR_OPTIONS.filter(h => h > scheduleStartHour).map(h => (
+                                  <SelectItem key={h} value={String(h)}>{formatTime(h)}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {[
+                            { label: 'Early (5a–3p)', start: 5, end: 15 },
+                            { label: 'Standard (6a–6p)', start: 6, end: 18 },
+                            { label: 'Extended (6a–9p)', start: 6, end: 21 },
+                            { label: 'Night (6p–6a)', start: 18, end: 6 },
+                            { label: '24 Hours', start: 0, end: 23 },
+                          ].map(p => (
+                            <Button
+                              key={p.label}
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-7"
+                              onClick={() => updateScheduleHoursMutation.mutate({
+                                scheduleStartHour: p.start,
+                                scheduleEndHour: p.start < p.end ? p.end : 23,
+                              })}
+                            >
+                              {p.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -2924,6 +3027,77 @@ export default function DispatchBoard() {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64" align="end" style={{ zIndex: 10001 }}>
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">Schedule Hours</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs text-muted-foreground">Start</Label>
+                        <Select
+                          value={String(scheduleStartHour)}
+                          onValueChange={(val) => {
+                            const v = Number(val);
+                            if (v < scheduleEndHour) updateScheduleHoursMutation.mutate({ scheduleStartHour: v });
+                          }}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent style={{ zIndex: 10002 }}>
+                            {HOUR_OPTIONS.filter(h => h < scheduleEndHour).map(h => (
+                              <SelectItem key={h} value={String(h)}>{formatTime(h)}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <span className="text-muted-foreground text-xs pt-5">to</span>
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs text-muted-foreground">End</Label>
+                        <Select
+                          value={String(scheduleEndHour)}
+                          onValueChange={(val) => {
+                            const v = Number(val);
+                            if (v > scheduleStartHour) updateScheduleHoursMutation.mutate({ scheduleEndHour: v });
+                          }}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent style={{ zIndex: 10002 }}>
+                            {HOUR_OPTIONS.filter(h => h > scheduleStartHour).map(h => (
+                              <SelectItem key={h} value={String(h)}>{formatTime(h)}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[
+                        { label: 'Early (5a–3p)', start: 5, end: 15 },
+                        { label: 'Standard (6a–6p)', start: 6, end: 18 },
+                        { label: 'Extended (6a–9p)', start: 6, end: 21 },
+                        { label: 'Night (6p–6a)', start: 18, end: 6 },
+                        { label: '24 Hours', start: 0, end: 23 },
+                      ].map(p => (
+                        <Button
+                          key={p.label}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7"
+                          onClick={() => updateScheduleHoursMutation.mutate({
+                            scheduleStartHour: p.start,
+                            scheduleEndHour: p.start < p.end ? p.end : 23,
+                          })}
+                        >
+                          {p.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button variant="ghost" size="icon" onClick={() => { setIsFullscreen(false); setUnscheduledDrawerOpen(false); }} data-testid="button-exit-fullscreen">
                 <Minimize2 className="h-4 w-4" />
               </Button>

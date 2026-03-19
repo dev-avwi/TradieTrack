@@ -509,6 +509,8 @@ export const businessSettings = pgTable("business_settings", {
   // Default Payment Method for invoices
   defaultPaymentMethod: text("default_payment_method").default('card'), // 'card', 'bank_transfer', 'becs', 'payto'
   simpleMode: boolean("simple_mode").default(true),
+  scheduleStartHour: integer("schedule_start_hour").default(6),
+  scheduleEndHour: integer("schedule_end_hour").default(20),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
