@@ -364,6 +364,123 @@ export async function configureTwilioWebhook(baseUrl: string): Promise<boolean> 
   }
 }
 
+/**
+ * Search for available Australian phone numbers to purchase
+ */
+export async function searchAvailableNumbers(options: {
+  areaCode?: string;
+  contains?: string;
+  locality?: string;
+  limit?: number;
+  smsEnabled?: boolean;
+}): Promise<{ success: boolean; numbers?: any[]; error?: string }> {
+  const client = await getTwilioClient();
+  if (!client) {
+    return { success: false, error: 'Twilio not configured' };
+  }
+
+  try {
+    const searchParams: any = {
+      smsEnabled: options.smsEnabled !== false,
+      voiceEnabled: true,
+    };
+    if (options.contains) searchParams.contains = options.contains;
+    if (options.locality) searchParams.inLocality = options.locality;
+    
+    let numbers;
+    if (options.areaCode) {
+      searchParams.areaCode = options.areaCode;
+      numbers = await client.availablePhoneNumbers('AU')
+        .local.list({ ...searchParams, limit: options.limit || 10 });
+    } else {
+      numbers = await client.availablePhoneNumbers('AU')
+        .mobile.list({ ...searchParams, limit: options.limit || 10 });
+      
+      if (numbers.length === 0) {
+        numbers = await client.availablePhoneNumbers('AU')
+          .local.list({ ...searchParams, limit: options.limit || 10 });
+      }
+    }
+
+    return {
+      success: true,
+      numbers: numbers.map((n: any) => ({
+        phoneNumber: n.phoneNumber,
+        friendlyName: n.friendlyName,
+        locality: n.locality,
+        region: n.region,
+        isoCountry: n.isoCountry,
+        capabilities: {
+          voice: n.capabilities?.voice,
+          sms: n.capabilities?.sms,
+          mms: n.capabilities?.mms,
+        },
+        monthlyPrice: '3.00',
+      })),
+    };
+  } catch (error: any) {
+    console.error('Error searching available numbers:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Purchase a Twilio phone number and configure its webhook
+ */
+export async function purchasePhoneNumber(phoneNumber: string, webhookUrl: string): Promise<{ success: boolean; sid?: string; phoneNumber?: string; error?: string }> {
+  const client = await getTwilioClient();
+  if (!client) {
+    return { success: false, error: 'Twilio not configured' };
+  }
+
+  try {
+    const purchased = await client.incomingPhoneNumbers.create({
+      phoneNumber: phoneNumber,
+      smsUrl: webhookUrl,
+      smsMethod: 'POST',
+      friendlyName: `JobRunner Business Number`,
+    });
+
+    console.log(`✅ Purchased Twilio number: ${purchased.phoneNumber} (${purchased.sid})`);
+    return {
+      success: true,
+      sid: purchased.sid,
+      phoneNumber: purchased.phoneNumber,
+    };
+  } catch (error: any) {
+    console.error('Error purchasing phone number:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Release (delete) a Twilio phone number
+ */
+export async function releasePhoneNumber(phoneNumber: string): Promise<{ success: boolean; error?: string }> {
+  const client = await getTwilioClient();
+  if (!client) {
+    return { success: false, error: 'Twilio not configured' };
+  }
+
+  try {
+    const numbers = await client.incomingPhoneNumbers.list({
+      phoneNumber: phoneNumber,
+      limit: 1,
+    });
+
+    if (numbers.length === 0) {
+      return { success: false, error: 'Phone number not found in Twilio account' };
+    }
+
+    await client.incomingPhoneNumbers(numbers[0].sid).remove();
+    console.log(`✅ Released Twilio number: ${phoneNumber}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error releasing phone number:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 // SMS Templates for JobRunner notifications
 export const smsTemplates = {
   quoteReady: (clientName: string, businessName: string, quoteNumber: string, businessPhone?: string) =>

@@ -130,14 +130,19 @@ async function sendSmsPlatform(
   const validMediaUrls = mediaUrls?.slice(0, 10) || [];
 
   let fromNumber: string | undefined;
+  let alphanumericSenderId: string | undefined;
   if (businessOwnerId) {
     try {
       const settings = await storage.getBusinessSettings(businessOwnerId);
       if (settings?.smsMode === 'ai_receptionist' && settings?.dedicatedPhoneNumber) {
         fromNumber = settings.dedicatedPhoneNumber;
+      } else if (validMediaUrls.length === 0) {
+        alphanumericSenderId = settings?.twilioSenderId || 'JobRunner';
       }
     } catch {
     }
+  } else if (validMediaUrls.length === 0) {
+    alphanumericSenderId = 'JobRunner';
   }
 
   return sendSMS({
@@ -145,6 +150,7 @@ async function sendSmsPlatform(
     message,
     mediaUrls: validMediaUrls.length > 0 ? validMediaUrls : undefined,
     fromNumber,
+    alphanumericSenderId,
   });
 }
 

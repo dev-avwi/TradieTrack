@@ -34348,6 +34348,169 @@ Respond with JSON in this format:
     }
   });
   
+  // Get current user's SMS configuration status
+  app.get("/api/sms/config", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      let businessOwnerId = userId;
+      const membership = await storage.getTeamMembershipByMemberId(userId);
+      if (membership) {
+        businessOwnerId = membership.businessOwnerId;
+      }
+      const settings = await storage.getBusinessSettings(businessOwnerId);
+      const { checkTwilioAvailability } = await import('./twilioClient');
+      const availability = await checkTwilioAvailability();
+      
+      res.json({
+        smsMode: settings?.smsMode || 'standard',
+        dedicatedPhoneNumber: settings?.dedicatedPhoneNumber || null,
+        twilioSenderId: settings?.twilioSenderId || null,
+        hasDedicatedNumber: !!(settings?.dedicatedPhoneNumber),
+        twilioConfigured: availability.configured,
+        twilioConnected: availability.connected,
+        canTwoWayText: !!(settings?.dedicatedPhoneNumber),
+      });
+    } catch (error: any) {
+      console.error('Error getting SMS config:', error);
+      res.status(500).json({ error: 'Failed to get SMS configuration' });
+    }
+  });
+
+  // Search available Twilio phone numbers for purchase
+  app.get("/api/sms/available-numbers", requireAuth, async (req: any, res) => {
+    try {
+      const { searchAvailableNumbers } = await import('./twilioClient');
+      const { areaCode, contains, locality, limit } = req.query;
+      
+      const result = await searchAvailableNumbers({
+        areaCode: areaCode as string,
+        contains: contains as string,
+        locality: locality as string,
+        limit: limit ? parseInt(limit as string) : 10,
+      });
+
+      if (!result.success) {
+        return res.status(502).json({ error: result.error || 'Failed to search numbers' });
+      }
+
+      res.json({ numbers: result.numbers });
+    } catch (error: any) {
+      console.error('Error searching available numbers:', error);
+      res.status(500).json({ error: 'Failed to search available numbers' });
+    }
+  });
+
+  // Purchase a Twilio phone number and assign to user's business
+  app.post("/api/sms/purchase-number", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      let businessOwnerId = userId;
+      const membership = await storage.getTeamMembershipByMemberId(userId);
+      if (membership) {
+        const memberRole = membership.role;
+        if (memberRole !== 'owner' && memberRole !== 'manager') {
+          return res.status(403).json({ error: 'Only business owners and managers can purchase phone numbers.' });
+        }
+        businessOwnerId = membership.businessOwnerId;
+      }
+      const { phoneNumber } = req.body;
+      
+      if (!phoneNumber || !/^\+\d{10,15}$/.test(phoneNumber)) {
+        return res.status(400).json({ error: 'Invalid phone number format. Must be E.164 (e.g., +61412345678)' });
+      }
+
+      // Check if business already has a dedicated number
+      const settings = await storage.getBusinessSettings(businessOwnerId);
+      if (settings?.dedicatedPhoneNumber) {
+        return res.status(409).json({ error: 'Your business already has a dedicated number. Release it first before purchasing a new one.' });
+      }
+
+      // Check number isn't already assigned to another business
+      const allSettings = await storage.getAllBusinessSettings();
+      const conflict = allSettings.find(
+        (s: any) => s.dedicatedPhoneNumber === phoneNumber && s.userId !== userId
+      );
+      if (conflict) {
+        return res.status(409).json({ error: 'This number is already assigned to another business.' });
+      }
+
+      // Build webhook URL
+      const baseUrl = process.env.CUSTOM_DOMAIN 
+        ? `https://${process.env.CUSTOM_DOMAIN}`
+        : `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000'}`;
+      const webhookUrl = `${baseUrl}/api/sms/webhook/incoming`;
+
+      // Purchase the number via Twilio API
+      const { purchasePhoneNumber } = await import('./twilioClient');
+      const result = await purchasePhoneNumber(phoneNumber, webhookUrl);
+
+      if (!result.success) {
+        return res.status(502).json({ error: result.error || 'Failed to purchase number from Twilio' });
+      }
+
+      // Update business settings with the new dedicated number
+      await storage.updateBusinessSettings(businessOwnerId, {
+        dedicatedPhoneNumber: result.phoneNumber,
+        smsMode: 'ai_receptionist',
+      });
+
+      console.log(`[SMS] Business ${businessOwnerId} purchased dedicated number: ${result.phoneNumber} (by user ${userId})`);
+      
+      res.json({
+        success: true,
+        phoneNumber: result.phoneNumber,
+        message: 'Phone number purchased and assigned successfully. Two-way texting is now enabled.',
+      });
+    } catch (error: any) {
+      console.error('Error purchasing phone number:', error);
+      res.status(500).json({ error: 'Failed to purchase phone number' });
+    }
+  });
+
+  // Release a dedicated phone number
+  app.post("/api/sms/release-number", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      let businessOwnerId = userId;
+      const membership = await storage.getTeamMembershipByMemberId(userId);
+      if (membership) {
+        const memberRole = membership.role;
+        if (memberRole !== 'owner' && memberRole !== 'manager') {
+          return res.status(403).json({ error: 'Only business owners and managers can release phone numbers.' });
+        }
+        businessOwnerId = membership.businessOwnerId;
+      }
+      const settings = await storage.getBusinessSettings(businessOwnerId);
+      
+      if (!settings?.dedicatedPhoneNumber) {
+        return res.status(404).json({ error: 'No dedicated number to release' });
+      }
+
+      const { releasePhoneNumber } = await import('./twilioClient');
+      const result = await releasePhoneNumber(settings.dedicatedPhoneNumber);
+
+      if (!result.success) {
+        console.error(`[SMS] Failed to release number from Twilio: ${result.error}`);
+        return res.status(500).json({ error: 'Failed to release number from Twilio. Please try again or contact support.' });
+      }
+
+      await storage.updateBusinessSettings(businessOwnerId, {
+        dedicatedPhoneNumber: null,
+        smsMode: 'standard',
+      });
+
+      console.log(`[SMS] Business ${businessOwnerId} released dedicated number (by user ${userId})`);
+      
+      res.json({
+        success: true,
+        message: 'Phone number released. Two-way texting has been disabled.',
+      });
+    } catch (error: any) {
+      console.error('Error releasing phone number:', error);
+      res.status(500).json({ error: 'Failed to release phone number' });
+    }
+  });
+
   // Get SMS conversations for current user
   app.get("/api/sms/conversations", requireAuth, async (req: any, res) => {
     try {
@@ -34611,6 +34774,15 @@ Respond with JSON in this format:
         if (!isOwner && !isAssigned) {
           return res.status(403).json({ error: 'Not authorized to send SMS for this job' });
         }
+      }
+      
+      // Server-side enforcement: require dedicated number for manual outbound SMS
+      const smsSettings = await storage.getBusinessSettings(businessOwnerId);
+      if (!smsSettings?.dedicatedPhoneNumber) {
+        return res.status(403).json({ 
+          error: 'Two-way texting requires a dedicated phone number. Get one from the Chat Hub upgrade dialog.',
+          requiresUpgrade: true
+        });
       }
       
       const { sendSmsToClient } = await import('./services/smsService');

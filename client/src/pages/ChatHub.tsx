@@ -367,6 +367,12 @@ export default function ChatHub() {
   const [newSmsSelectedClient, setNewSmsSelectedClient] = useState<Client | null>(null);
   const [newSmsPhoneNumber, setNewSmsPhoneNumber] = useState('');
   const [newSmsInitialMessage, setNewSmsInitialMessage] = useState('');
+  const [showSmsUpgrade, setShowSmsUpgrade] = useState(false);
+  const [numberSearchArea, setNumberSearchArea] = useState('');
+  const [numberSearchLoading, setNumberSearchLoading] = useState(false);
+  const [availableNumbers, setAvailableNumbers] = useState<any[]>([]);
+  const [purchasingNumber, setPurchasingNumber] = useState<string | null>(null);
+  const [numberSearched, setNumberSearched] = useState(false);
   const [newSmsPhoneError, setNewSmsPhoneError] = useState('');
   
   const [smsToDelete, setSmsToDelete] = useState<SmsConversation | null>(null);
@@ -411,6 +417,16 @@ export default function ChatHub() {
 
   const { data: integrationHealth } = useIntegrationHealth();
   const twilioConnected = isTwilioReady(integrationHealth);
+  
+  const { data: smsConfig } = useQuery<{
+    smsMode: string;
+    dedicatedPhoneNumber: string | null;
+    hasDedicatedNumber: boolean;
+    twilioConfigured: boolean;
+    twilioConnected: boolean;
+    canTwoWayText: boolean;
+  }>({ queryKey: ['/api/sms/config'] });
+  const canTwoWayText = smsConfig?.canTwoWayText ?? false;
 
   const { data: unreadCounts = { teamChat: 0, directMessages: 0, jobChats: 0, sms: 0 } } = useQuery<UnreadCounts>({
     queryKey: ['/api/chat/unread-counts'],
@@ -1490,6 +1506,39 @@ export default function ChatHub() {
     resetNewSmsDialog();
   };
 
+  const handleSearchNumbers = async () => {
+    setNumberSearchLoading(true);
+    setNumberSearched(true);
+    try {
+      const params = new URLSearchParams();
+      if (numberSearchArea) params.set('areaCode', numberSearchArea);
+      params.set('limit', '8');
+      const response = await apiRequest('GET', `/api/sms/available-numbers?${params.toString()}`);
+      const data = await response.json();
+      setAvailableNumbers(data.numbers || []);
+    } catch (error: any) {
+      toast({ title: 'Failed to search numbers', description: error.message, variant: 'destructive' });
+    } finally {
+      setNumberSearchLoading(false);
+    }
+  };
+
+  const handlePurchaseNumber = async (phoneNumber: string) => {
+    setPurchasingNumber(phoneNumber);
+    try {
+      await apiRequest('POST', '/api/sms/purchase-number', { phoneNumber });
+      toast({ title: 'Number purchased', description: `${phoneNumber} is now your business texting number.` });
+      setShowSmsUpgrade(false);
+      setAvailableNumbers([]);
+      setNumberSearched(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/sms/config'] });
+    } catch (error: any) {
+      toast({ title: 'Purchase failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setPurchasingNumber(null);
+    }
+  };
+
   const enquiryConversations = useMemo(() => {
     const clientsWithJobs = new Set<string>();
     jobs.forEach(job => {
@@ -1538,7 +1587,7 @@ export default function ChatHub() {
           </div>
           {!isTradie && (
             <Button
-              onClick={() => setNewSmsDialogOpen(true)}
+              onClick={() => canTwoWayText ? setNewSmsDialogOpen(true) : setShowSmsUpgrade(true)}
               size="icon"
               variant="ghost"
               data-testid="button-new-sms"
@@ -2513,21 +2562,35 @@ export default function ChatHub() {
                   <TwilioWarning compact />
                 </div>
               )}
+              {!canTwoWayText && twilioConnected && (
+                <div className="px-4 pt-2">
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                    <Phone className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Two-way texting requires a dedicated number</p>
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400">One-way notifications are sent automatically.</p>
+                    </div>
+                    <Button size="sm" variant="outline" className="text-xs shrink-0 h-7" onClick={() => setShowSmsUpgrade(true)}>
+                      Get Number
+                    </Button>
+                  </div>
+                </div>
+              )}
               {/* Message input */}
               <div className="px-4 py-3 flex gap-2">
                 <Input
                   ref={smsInputRef}
-                  placeholder={twilioConnected ? "Type a message..." : "SMS not available — check Twilio setup"}
+                  placeholder={!twilioConnected ? "SMS not available — check Twilio setup" : !canTwoWayText ? "Get a dedicated number to send messages..." : "Type a message..."}
                   value={smsNewMessage}
                   onChange={(e) => setSmsNewMessage(e.target.value)}
                   onKeyPress={handleSmsKeyPress}
                   className="flex-1"
-                  disabled={!twilioConnected}
+                  disabled={!twilioConnected || !canTwoWayText}
                   data-testid="input-sms-message"
                 />
                 <Button 
                   onClick={handleSendSms} 
-                  disabled={!twilioConnected || !smsNewMessage.trim() || sendSmsMutation.isPending} 
+                  disabled={!twilioConnected || !canTwoWayText || !smsNewMessage.trim() || sendSmsMutation.isPending} 
                   size="icon"
                   data-testid="button-send-sms"
                 >
@@ -3002,6 +3065,148 @@ export default function ChatHub() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={showSmsUpgrade} onOpenChange={setShowSmsUpgrade}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Phone className="h-5 w-5" />
+              Get a Dedicated Business Number
+            </DialogTitle>
+            <DialogDescription>
+              Upgrade to two-way client texting with your own Australian phone number.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+                <p className="text-sm font-medium">What is a dedicated number?</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  A dedicated number is an Australian mobile or local phone number assigned just to your business. 
+                  Clients can text this number directly and you can reply from the Chat Hub — all conversations 
+                  are tracked and linked to jobs automatically.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 rounded-lg border space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <MessageCircle className="h-3.5 w-3.5 text-green-600" />
+                    <p className="text-xs font-medium">Two-Way Texting</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Send and receive SMS from clients directly</p>
+                </div>
+                <div className="p-2.5 rounded-lg border space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Link2 className="h-3.5 w-3.5 text-blue-600" />
+                    <p className="text-xs font-medium">Auto-Link to Jobs</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Messages auto-match to the right client and job</p>
+                </div>
+                <div className="p-2.5 rounded-lg border space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Bell className="h-3.5 w-3.5 text-amber-600" />
+                    <p className="text-xs font-medium">Smart Notifications</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Get alerted when clients reply to your messages</p>
+                </div>
+                <div className="p-2.5 rounded-lg border space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Briefcase className="h-3.5 w-3.5 text-purple-600" />
+                    <p className="text-xs font-medium">Professional Look</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Your own number — not a shared platform number</p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Choose Your Number</p>
+                <Badge variant="secondary" className="text-[10px]">~$3 AUD/month</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Search for available Australian numbers. You can search by area code (e.g., 02 for Sydney, 07 for QLD) or browse mobile numbers.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Area code (e.g., 07) or leave blank for mobile"
+                  value={numberSearchArea}
+                  onChange={(e) => setNumberSearchArea(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  className="flex-1"
+                />
+                <Button onClick={handleSearchNumbers} disabled={numberSearchLoading}>
+                  {numberSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 mr-1" />}
+                  {numberSearchLoading ? '' : 'Search'}
+                </Button>
+              </div>
+
+              {numberSearched && availableNumbers.length === 0 && !numberSearchLoading && (
+                <div className="p-4 text-center text-sm text-muted-foreground rounded-lg border border-dashed">
+                  <Phone className="h-6 w-6 mx-auto mb-2 opacity-40" />
+                  No numbers found for that area code. Try a different code or leave blank for mobile numbers.
+                </div>
+              )}
+
+              {availableNumbers.length > 0 && (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {availableNumbers.map((num: any) => (
+                    <div key={num.phoneNumber} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border hover-elevate">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-mono font-medium">{num.friendlyName || num.phoneNumber}</p>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          {num.locality && <span>{num.locality}</span>}
+                          {num.region && <span>{num.region}</span>}
+                          <span className="flex items-center gap-0.5">
+                            <MessageCircle className="h-2.5 w-2.5" /> SMS
+                            {num.capabilities?.voice && <><Phone className="h-2.5 w-2.5 ml-1" /> Voice</>}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handlePurchaseNumber(num.phoneNumber)}
+                        disabled={!!purchasingNumber}
+                      >
+                        {purchasingNumber === num.phoneNumber ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          'Get This Number'
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {smsConfig?.dedicatedPhoneNumber && (
+              <>
+                <Separator />
+                <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                  <div>
+                    <p className="text-sm font-medium text-green-800 dark:text-green-300">Your Number</p>
+                    <p className="text-sm font-mono text-green-700 dark:text-green-400">{smsConfig.dedicatedPhoneNumber}</p>
+                  </div>
+                  <Badge className="bg-green-600">Active</Badge>
+                </div>
+              </>
+            )}
+
+            <div className="p-2.5 rounded-lg bg-muted/30 border">
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                Numbers are provided through Twilio and billed at approximately $3 AUD/month. 
+                SMS messages are charged at standard rates (~$0.06/SMS). 
+                You can release your number anytime from Settings.
+                One-way system notifications (job updates, invoice reminders) are already included in your plan and don't require a dedicated number.
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
