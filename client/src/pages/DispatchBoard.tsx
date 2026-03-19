@@ -1648,7 +1648,20 @@ export default function DispatchBoard() {
                                     onClick={() => handleJobClick(job, 'reassign')}
                                     data-testid={`week-job-${job.id}`}
                                   >
-                                    <div className="flex items-start gap-1.5">
+                                    {(job.scheduledTime || job.scheduledAt) && (
+                                      <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: 'hsl(var(--trade))' }}>
+                                        <Clock className="h-2.5 w-2.5" />
+                                        <span>{formatScheduledTime(job.scheduledTime, job.scheduledAt)}</span>
+                                        {job.estimatedDuration && (
+                                          <span className="text-muted-foreground font-normal">
+                                            ({job.estimatedDuration >= 60 
+                                              ? `${Math.round(job.estimatedDuration / 60)}h`
+                                              : `${job.estimatedDuration}m`})
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    <div className="flex items-start gap-1.5 mt-0.5">
                                       {assignedMember && (
                                         <Avatar className="h-5 w-5 flex-shrink-0 mt-0.5">
                                           <AvatarImage src={assignedMember.profileImageUrl} />
@@ -1666,12 +1679,6 @@ export default function DispatchBoard() {
                                         </p>
                                       </div>
                                     </div>
-                                    {(job.scheduledTime || job.scheduledAt) && (
-                                      <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
-                                        <Clock className="h-2.5 w-2.5" />
-                                        <span>{formatScheduledTime(job.scheduledTime, job.scheduledAt)}</span>
-                                      </div>
-                                    )}
                                   </div>
                                 );
                               })}
@@ -1739,7 +1746,20 @@ export default function DispatchBoard() {
                                     className={`p-2.5 rounded-md border cursor-pointer hover-elevate ${statusStyle.bg} ${statusStyle.border}`}
                                     data-testid={`3day-job-${job.id}`}
                                   >
-                                    <div className="flex items-start gap-2">
+                                    {(job.scheduledTime || job.scheduledAt) && (
+                                      <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: 'hsl(var(--trade))' }}>
+                                        <Clock className="h-3 w-3" />
+                                        <span>{formatScheduledTime(job.scheduledTime, job.scheduledAt)}</span>
+                                        {job.estimatedDuration && (
+                                          <span className="text-muted-foreground font-normal">
+                                            ({job.estimatedDuration >= 60 
+                                              ? `${Math.round(job.estimatedDuration / 60)}h`
+                                              : `${job.estimatedDuration}m`})
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    <div className="flex items-start gap-2 mt-0.5">
                                       {assignedMember && (
                                         <Avatar className="h-5 w-5 flex-shrink-0 mt-0.5">
                                           <AvatarImage src={assignedMember.profileImageUrl} />
@@ -1757,15 +1777,6 @@ export default function DispatchBoard() {
                                         </p>
                                       </div>
                                     </div>
-                                    {(job.scheduledTime || job.scheduledAt) && (
-                                      <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-                                        <Clock className="h-3 w-3" />
-                                        <span>{formatScheduledTime(job.scheduledTime, job.scheduledAt)}</span>
-                                        {job.estimatedDuration && job.estimatedDuration > 60 && (
-                                          <span className="text-muted-foreground">({Math.round(job.estimatedDuration / 60)}h)</span>
-                                        )}
-                                      </div>
-                                    )}
                                     {job.address && (
                                       <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
                                         <MapPin className="h-3 w-3 flex-shrink-0" />
@@ -1908,32 +1919,33 @@ export default function DispatchBoard() {
                                 }}
                                 data-testid={`scheduled-job-${job.id}`}
                               >
-                                <div className="p-2 h-full flex flex-col">
-                                  <div className="flex items-start gap-1">
-                                    <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                <div className="p-1.5 h-full flex flex-col">
+                                  <div className="flex items-center gap-1">
+                                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                                     {conflictJobIds.has(job.id) && (
-                                      <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0 mt-0.5" />
+                                      <AlertCircle className="h-3 w-3 text-destructive flex-shrink-0" />
                                     )}
-                                    <div className="flex-1 min-w-0">
-                                      <h4 className={`font-medium text-sm truncate ${statusStyle.text}`}>
-                                        {job.title}
-                                      </h4>
-                                      <p className="text-xs text-muted-foreground truncate">
-                                        {job.clientName}
-                                      </p>
-                                    </div>
+                                    <span className={`text-[11px] font-semibold ${statusStyle.text} whitespace-nowrap`}>
+                                      {formatScheduledTime(job.scheduledTime, job.scheduledAt)}
+                                    </span>
+                                    {job.estimatedDuration && (
+                                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                        {job.estimatedDuration >= 60 
+                                          ? `${Math.round(job.estimatedDuration / 60)}h`
+                                          : `${job.estimatedDuration}m`}
+                                      </span>
+                                    )}
+                                    <h4 className={`font-medium text-xs truncate flex-1 min-w-0 ${statusStyle.text}`}>
+                                      {job.title}
+                                    </h4>
                                   </div>
-                                  {height > 60 && (
-                                    <div className="mt-auto flex items-center gap-2 text-xs text-muted-foreground">
-                                      <Clock className="h-3 w-3" />
-                                      <span>{formatScheduledTime(job.scheduledTime, job.scheduledAt)}</span>
-                                      {job.estimatedDuration && (
-                                        <span>({Math.round(job.estimatedDuration / 60)}h)</span>
-                                      )}
-                                    </div>
+                                  {height > 45 && (
+                                    <p className="text-[11px] text-muted-foreground truncate ml-5 mt-0.5">
+                                      {job.clientName}
+                                    </p>
                                   )}
-                                  {height > 80 && job.address && (
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                  {height > 70 && job.address && (
+                                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 ml-5">
                                       <MapPin className="h-3 w-3 flex-shrink-0" />
                                       <span className="truncate">{job.address}</span>
                                     </div>
@@ -2028,6 +2040,10 @@ export default function DispatchBoard() {
                               <p className="text-xs text-muted-foreground truncate">
                                 {job.clientName}
                               </p>
+                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1">
+                                <Clock className="h-3 w-3 flex-shrink-0" />
+                                <span className="italic">No time set — drag to schedule or tap Assign</span>
+                              </div>
                               {job.address && (
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                                   <MapPin className="h-3 w-3" />
