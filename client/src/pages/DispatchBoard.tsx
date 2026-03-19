@@ -944,6 +944,8 @@ function detectScheduleConflicts(jobs: Job[]): Set<string> {
 export default function DispatchBoard() {
   const [topView, setTopView] = useState<'schedule' | 'board' | 'map'>('schedule');
   const [opsPanelOpen, setOpsPanelOpen] = useState(true);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const scheduleScrollRef = useRef<HTMLDivElement>(null);
   const [currentDate, setCurrentDate] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const dateParam = params.get('date');
@@ -1186,6 +1188,25 @@ export default function DispatchBoard() {
       (curr.totalHours / curr.capacity) < (best.totalHours / best.capacity) ? curr : best
     );
   }, [teamMembersWithJobs]);
+
+  const handleScheduleScroll = useCallback(() => {
+    const el = scheduleScrollRef.current;
+    if (!el) return;
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 10);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(handleScheduleScroll, 100);
+    return () => clearTimeout(timer);
+  }, [handleScheduleScroll, opsPanelOpen, teamMembersWithJobs.length]);
+
+  useEffect(() => {
+    const el = scheduleScrollRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(handleScheduleScroll);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [handleScheduleScroll]);
 
   const conflictJobIds = useMemo(() => 
     detectScheduleConflicts(scheduledJobsForDate),
@@ -1583,6 +1604,17 @@ export default function DispatchBoard() {
                         : `${scheduledJobsForDate.length} job${scheduledJobsForDate.length !== 1 ? 's' : ''}`
                     }
                   </span>
+                  {viewMode === 'day' && teamMembersWithJobs.length > 0 && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {teamMembersWithJobs.length} crew
+                      {canScrollRight && (
+                        <span className="text-[10px] text-muted-foreground/70 ml-0.5">
+                          — scroll for more
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
@@ -1810,9 +1842,10 @@ export default function DispatchBoard() {
                   </div>
                 </div>
               ) : (
-              <div className="overflow-x-auto">
-                <div>
-                  <div className="flex border-b bg-muted/30">
+              <div className="relative">
+                <div className="overflow-x-auto" ref={scheduleScrollRef} onScroll={handleScheduleScroll}>
+                  <div style={{ minWidth: `${48 + teamMembersWithJobs.length * 150}px` }}>
+                  <div className="flex border-b bg-muted/30 sticky top-0 z-20">
                     <div className="w-12 flex-shrink-0 p-1 text-[10px] font-medium text-muted-foreground">
                       Time
                     </div>
@@ -1820,7 +1853,7 @@ export default function DispatchBoard() {
                       <div 
                         key={member.id}
                         className="p-2 border-l"
-                        style={{ minWidth: 120, flex: '1 1 0%' }}
+                        style={{ minWidth: 140, flex: '1 1 0%' }}
                       >
                         <div className="flex items-center gap-2">
                           <Avatar className="h-7 w-7 flex-shrink-0">
@@ -1854,7 +1887,7 @@ export default function DispatchBoard() {
                     ))}
                   </div>
 
-                  <ScrollArea className="h-[calc(100vh-280px)]">
+                  <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
                     <div className="flex" style={{ height: WORK_HOURS.length * HOUR_HEIGHT }}>
                       <div className="w-12 flex-shrink-0">
                         {WORK_HOURS.map(hour => (
@@ -1872,7 +1905,7 @@ export default function DispatchBoard() {
                         const dragSlots = Math.max(1, Math.ceil(dragDuration / 60));
 
                         return (
-                        <div key={member.id} className="border-l relative" style={{ minWidth: 120, flex: '1 1 0%' }}>
+                        <div key={member.id} className="border-l relative" style={{ minWidth: 140, flex: '1 1 0%' }}>
                           {WORK_HOURS.map(hour => {
                             const slotId = `${member.id}-${hour}`;
                             const isInDropRange = dropSlotHour !== null && hour >= dropSlotHour && hour < dropSlotHour + dragSlots;
@@ -1970,8 +2003,16 @@ export default function DispatchBoard() {
                         );
                       })}
                     </div>
-                  </ScrollArea>
+                  </div>
+                  </div>
                 </div>
+                {canScrollRight && (
+                  <div className="absolute right-0 top-0 bottom-0 w-10 pointer-events-none z-10 bg-gradient-to-l from-card to-transparent flex items-center justify-end pr-1">
+                    <div className="pointer-events-auto animate-pulse">
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  </div>
+                )}
               </div>
               )}
             </CardContent>
