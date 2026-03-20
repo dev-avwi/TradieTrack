@@ -23,8 +23,14 @@ import {
   Plus,
   Zap,
   ExternalLink,
-  Gift
+  Gift,
+  Phone,
+  MessageCircle,
+  Bot,
+  Link2
 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { useLocation } from "wouter";
 
 interface SubscriptionStatus {
   tier: 'free' | 'trial' | 'pro' | 'team';
@@ -60,8 +66,8 @@ const tiers = [
       { text: '50 clients', included: true },
       { text: 'Unlimited jobs', included: false },
       { text: 'AI-powered features', included: false },
+      { text: 'SMS notifications', included: false },
       { text: 'Team management', included: false },
-      { text: 'Priority support', included: false },
     ],
     cta: 'Current Plan',
     popular: false,
@@ -76,10 +82,10 @@ const tiers = [
       { text: 'Unlimited quotes & invoices', included: true },
       { text: 'AI quote generator', included: true },
       { text: 'AI photo analysis', included: true },
-      { text: 'Custom templates', included: true },
-      { text: 'Email integration', included: true },
+      { text: 'SMS & email reminders', included: true },
+      { text: 'Custom templates & branding', included: true },
+      { text: 'Automated follow-ups', included: true },
       { text: 'Team management', included: false },
-      { text: 'Team seats', included: false },
     ],
     cta: 'Free During Beta',
     popular: true,
@@ -113,6 +119,7 @@ const handleContactSales = () => {
 export default function SubscriptionPage() {
   const [teamSeats, setTeamSeats] = useState(2);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const { data: status, isLoading: statusLoading } = useQuery<SubscriptionStatus>({
     queryKey: ['/api/subscription/status'],
@@ -450,6 +457,74 @@ export default function SubscriptionPage() {
             </Card>
           ))}
         </div>
+
+        {/* Add-On: Dedicated Number & AI Receptionist */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Phone className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+              Add-On: Dedicated Business Number
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Get your own Australian phone number for two-way client texting. Available on Pro and Team plans.
+            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <MessageCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Two-Way SMS</p>
+                  <p className="text-xs text-muted-foreground">Send and receive texts from clients directly in JobRunner</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <Bot className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">AI Receptionist</p>
+                  <p className="text-xs text-muted-foreground">AI detects job requests from incoming texts and creates leads automatically</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <Link2 className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Auto-Link to Jobs</p>
+                  <p className="text-xs text-muted-foreground">Messages automatically match to the right client and job</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <Phone className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Your Own Number</p>
+                  <p className="text-xs text-muted-foreground">Professional Australian mobile or local number just for your business</p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">~$3 AUD/month + ~$0.06 per SMS</p>
+                <p className="text-xs text-muted-foreground">Billed through Twilio. Cancel anytime.</p>
+              </div>
+              <Button 
+                variant="outline"
+                onClick={() => setLocation('/chat-hub')}
+              >
+                <Phone className="h-4 w-4 mr-1.5" />
+                Set Up in Chat Hub
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              One-way system notifications (job updates, invoice reminders, quote confirmations) are already included with Pro and Team plans 
+              and don't require a dedicated number — they're sent from the "JobRunner" sender ID.
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Beta Information Section */}
         <Card className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">

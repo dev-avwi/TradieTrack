@@ -68,7 +68,10 @@ import {
   Clock,
   ArrowLeft,
   ArrowRight,
-  Download
+  Download,
+  MessageSquare,
+  Bot,
+  Link2
 } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -2811,7 +2814,7 @@ function BillingTabContent() {
                       { icon: Zap, text: 'Unlimited jobs, quotes & invoices' },
                       { icon: TrendingUp, text: 'AI-powered suggestions' },
                       { icon: Palette, text: 'Custom branding & theming' },
-                      { icon: Mail, text: 'Automated email reminders' },
+                      { icon: Mail, text: 'Automated email & SMS reminders' },
                       ...(isTeam ? [
                         { icon: Users, text: 'Team management & permissions' },
                         { icon: MapPin, text: 'Live GPS tracking' },
@@ -2984,7 +2987,111 @@ function BillingTabContent() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dedicated Number Add-On */}
+      <DedicatedNumberAddon />
     </TabsContent>
+  );
+}
+
+function DedicatedNumberAddon() {
+  const { data: smsConfig } = useQuery<{
+    smsMode: string;
+    dedicatedPhoneNumber: string | null;
+    hasDedicatedNumber: boolean;
+    twilioConfigured: boolean;
+    twilioConnected: boolean;
+    canTwoWayText: boolean;
+  }>({ queryKey: ['/api/sms/config'] });
+
+  const hasNumber = smsConfig?.hasDedicatedNumber;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Phone className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+          Dedicated Business Number
+          {hasNumber && (
+            <Badge variant="default" className="ml-auto" style={{ backgroundColor: 'hsl(var(--success))' }}>Active</Badge>
+          )}
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          {hasNumber 
+            ? 'Your dedicated number for two-way client texting and AI Receptionist.'
+            : 'Add a dedicated Australian phone number for two-way SMS and AI Receptionist.'}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {hasNumber ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--success)/0.1)' }}>
+              <div>
+                <p className="text-sm font-medium">Your Number</p>
+                <p className="text-sm font-mono">{smsConfig?.dedicatedPhoneNumber}</p>
+              </div>
+              <Badge variant="secondary" className="text-xs">
+                {smsConfig?.smsMode === 'ai_receptionist' ? 'AI Receptionist' : 'Two-Way SMS'}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="flex items-center gap-2 text-sm">
+                <MessageSquare className="h-4 w-4 text-green-600" />
+                <span>Two-Way Texting</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Bot className="h-4 w-4 text-blue-600" />
+                <span>AI Receptionist</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Link2 className="h-4 w-4 text-purple-600" />
+                <span>Auto-Link to Jobs</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Manage your number and conversations in the Chat Hub. SMS billed at ~$0.06/message through Twilio.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="flex items-center gap-2 text-sm">
+                <MessageSquare className="h-4 w-4 text-green-600" />
+                <span>Two-way client texting</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Bot className="h-4 w-4 text-blue-600" />
+                <span>AI Receptionist (auto-detect job requests)</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Link2 className="h-4 w-4 text-purple-600" />
+                <span>Messages auto-linked to jobs</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="h-4 w-4 text-amber-600" />
+                <span>Your own Australian number</span>
+              </div>
+            </div>
+            <Separator />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">~$3 AUD/month + ~$0.06 per SMS</p>
+                <p className="text-xs text-muted-foreground">Billed through Twilio. Cancel anytime.</p>
+              </div>
+              <Button variant="outline" asChild>
+                <a href="/chat-hub">
+                  <Phone className="h-4 w-4 mr-1.5" />
+                  Set Up in Chat Hub
+                </a>
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              One-way notifications (job updates, reminders) are already included and sent from "JobRunner" sender ID.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
