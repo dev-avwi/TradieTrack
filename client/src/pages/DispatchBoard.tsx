@@ -3057,6 +3057,9 @@ export default function DispatchBoard() {
         <div className="fixed inset-0 bg-background flex flex-col p-5" style={{ zIndex: 9999 }}>
           <div className="flex items-center justify-between gap-3 px-4 py-2 border border-border flex-shrink-0 rounded-t-lg bg-muted/40">
             <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold">Dispatch Board</h2>
+            </div>
+            <div className="flex items-center gap-2">
               {viewMode === 'day' && isToday && (
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'hsl(var(--trade))' }} />
@@ -3073,8 +3076,6 @@ export default function DispatchBoard() {
                 <Users className="h-3 w-3" />
                 {teamMembersWithJobs.length} crew
               </span>
-            </div>
-            <div className="flex items-center gap-2">
               {!unscheduledDrawerOpen && (
                 <Button
                   variant="outline"
