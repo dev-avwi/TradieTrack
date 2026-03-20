@@ -4059,6 +4059,11 @@ export default function TeamOperations() {
                   <span className="sm:hidden">Admin</span>
                 </TabsTrigger>
               )}
+              <TabsTrigger value="scheduling" className="flex-1 gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm" data-testid="tab-scheduling">
+                <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Scheduling</span>
+                <span className="sm:hidden">Schedule</span>
+              </TabsTrigger>
               <TabsTrigger value="performance" className="flex-1 gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm" data-testid="tab-performance">
                 <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Performance</span>
@@ -4077,6 +4082,10 @@ export default function TeamOperations() {
             <TeamAdminTab />
           </TabsContent>
         )}
+
+        <TabsContent value="scheduling" className="flex-1 m-0">
+          <SchedulingTab />
+        </TabsContent>
 
         <TabsContent value="performance" className="flex-1 m-0">
           <PerformanceTab />
