@@ -162,10 +162,10 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie'],
   },
   {
-    title: "Team Operations",
+    title: "Team Management",
     url: "/team-operations",
     icon: Users,
-    description: "Team management, scheduling, and performance",
+    description: "Team admin, availability, and performance",
     color: "text-success",
     bgColor: "bg-success/10",
     hideForStaff: true,

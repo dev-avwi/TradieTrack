@@ -1521,7 +1521,7 @@ export default function DispatchBoard() {
             className="gap-1.5"
           >
             <CalendarDays className="h-3.5 w-3.5" />
-            Team Schedule
+            Team Management
           </Button>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-md bg-muted/40 border px-3 py-2">

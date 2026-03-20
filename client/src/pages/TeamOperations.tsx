@@ -4026,8 +4026,8 @@ export default function TeamOperations() {
     <div className="flex flex-col h-full">
       <header className="flex items-center justify-between gap-4 px-4 sm:px-5 pt-5 pb-4">
         <div className="min-w-0">
-          <h1 className="ios-title">Team Operations</h1>
-          <p className="ios-caption mt-0.5">Manage your team, schedules, and performance</p>
+          <h1 className="ios-title">Team Management</h1>
+          <p className="ios-caption mt-0.5">Manage your team, availability, and performance</p>
         </div>
         <Button
           variant="ghost"
@@ -4059,11 +4059,6 @@ export default function TeamOperations() {
                   <span className="sm:hidden">Admin</span>
                 </TabsTrigger>
               )}
-              <TabsTrigger value="scheduling" className="flex-1 gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm" data-testid="tab-scheduling">
-                <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Scheduling</span>
-                <span className="sm:hidden">Schedule</span>
-              </TabsTrigger>
               <TabsTrigger value="performance" className="flex-1 gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm" data-testid="tab-performance">
                 <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Performance</span>
@@ -4082,10 +4077,6 @@ export default function TeamOperations() {
             <TeamAdminTab />
           </TabsContent>
         )}
-
-        <TabsContent value="scheduling" className="flex-1 m-0">
-          <SchedulingTab />
-        </TabsContent>
 
         <TabsContent value="performance" className="flex-1 m-0">
           <PerformanceTab />
