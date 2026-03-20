@@ -169,7 +169,8 @@ export async function notifyQuoteReady(
     try {
       const smsResult = await sendSMS({
         to: clientPhone,
-        message: smsTemplates.quoteReady(clientName, businessName, quoteNumber, options.businessPhone)
+        message: smsTemplates.quoteReady(clientName, businessName, quoteNumber, options.businessPhone),
+        alphanumericSenderId: 'JobRunner',
       });
       result.smsSent = smsResult.success;
       if (!smsResult.success) {
@@ -243,7 +244,8 @@ export async function notifyInvoiceSent(
     try {
       const smsResult = await sendSMS({
         to: clientPhone,
-        message: smsTemplates.invoiceSent(clientName, businessName, invoiceNumber, invoiceTotal, options.businessPhone)
+        message: smsTemplates.invoiceSent(clientName, businessName, invoiceNumber, invoiceTotal, options.businessPhone),
+        alphanumericSenderId: 'JobRunner',
       });
       result.smsSent = smsResult.success;
       if (!smsResult.success) result.smsError = smsResult.error;
@@ -302,7 +304,8 @@ export async function notifyPaymentReceived(
     try {
       const smsResult = await sendSMS({
         to: clientPhone,
-        message: smsTemplates.paymentReceived(clientName, amount, businessName, undefined, options.businessPhone)
+        message: smsTemplates.paymentReceived(clientName, amount, businessName, undefined, options.businessPhone),
+        alphanumericSenderId: 'JobRunner',
       });
       result.smsSent = smsResult.success;
       if (!smsResult.success) result.smsError = smsResult.error;
@@ -362,7 +365,8 @@ export async function notifyJobScheduled(
     try {
       const smsResult = await sendSMS({
         to: clientPhone,
-        message: smsTemplates.jobScheduled(clientName, businessName, jobDate, options.businessPhone)
+        message: smsTemplates.jobScheduled(clientName, businessName, jobDate, options.businessPhone),
+        alphanumericSenderId: 'JobRunner',
       });
       result.smsSent = smsResult.success;
       if (!smsResult.success) result.smsError = smsResult.error;
@@ -411,7 +415,7 @@ export async function notifyOwnerViaSms(
     }
     
     const message = (template as any)(...args);
-    const result = await sendSMS({ to: ownerPhone, message });
+    const result = await sendSMS({ to: ownerPhone, message, alphanumericSenderId: 'JobRunner' });
     return { success: result.success, error: result.error };
   } catch (error: any) {
     console.error(`[OwnerSMS] Failed to send ${templateKey}:`, error.message);

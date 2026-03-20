@@ -5589,7 +5589,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const smsResult = await sendSMS({
           to: recipientPhone,
-          message: action.data.message
+          message: action.data.message,
+          alphanumericSenderId: 'JobRunner',
         });
         
         if (smsResult.success) {
@@ -6011,7 +6012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if ((action.data.channel === 'sms' || action.data.channel === 'both') && client?.phone) {
           try {
             const smsMessage = `Reminder: Invoice ${invoice.number || ''} for $${invoiceTotal} is ${action.data.daysPastDue} days overdue. - ${business?.businessName || ''}`;
-            await sendSMS({ to: client.phone, message: smsMessage });
+            await sendSMS({ to: client.phone, message: smsMessage, alphanumericSenderId: 'JobRunner' });
             results.push('SMS sent');
           } catch {
             results.push('SMS failed');
@@ -17102,6 +17103,7 @@ Be specific about materials, colors, and features that would be included.`
       const smsResult = await sendSMS({
         to: client.phone,
         message: message,
+        alphanumericSenderId: 'JobRunner',
       });
 
       // Log activity
@@ -17346,7 +17348,7 @@ Be specific about materials, colors, and features that would be included.`
             if (client.phone) {
               const business = await storage.getBusinessSettings(userContext.effectiveUserId);
               const message = `Hi ${client.firstName || 'there'}, here's your payment link for ${job.title || 'your recent job'} from ${business?.businessName || 'your tradesperson'}: ${session.url}. Amount: $${parseFloat(amount).toFixed(2)}`;
-              await sendSMS({ to: client.phone, message });
+              await sendSMS({ to: client.phone, message, alphanumericSenderId: 'JobRunner' });
             }
 
             return res.json({
@@ -17995,6 +17997,7 @@ Be specific about materials, colors, and features that would be included.`
       const smsResult = await sendSMS({
         to: client.phone,
         message: `Hi ${client.name}, track your job "${job.title}" live here: ${portalUrl}\n- ${escapeHtml(businessName)}`,
+        alphanumericSenderId: 'JobRunner',
       });
 
       if (!smsResult.success) {
@@ -30366,7 +30369,8 @@ Respond with JSON in this format:
         // Send via shared Twilio client (supports connector and env vars)
         const smsResult = await sendSMS({
           to: phone,
-          message: smsMessage
+          message: smsMessage,
+          alphanumericSenderId: 'JobRunner',
         });
         
         if (smsResult.success) {
