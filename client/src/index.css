@@ -27,7 +27,7 @@
   --sidebar-primary-foreground: 0 0% 98%;
   --sidebar-accent: 217 12% 90%;
   --sidebar-accent-foreground: 217 20% 14%;
-  --sidebar-ring: 217 91% 53%;
+  --sidebar-ring: 217 12% 75%;
   --popover: 0 0% 92%;
   --popover-foreground: 217 20% 14%;
   --popover-border: 217 12% 84%;
@@ -133,7 +133,7 @@
   --sidebar-primary-foreground: 195 18% 8%;
   --sidebar-accent: 217 22% 14%;
   --sidebar-accent-foreground: 210 25% 95%;
-  --sidebar-ring: 217 15% 95%;
+  --sidebar-ring: 217 15% 30%;
   --popover: 217 28% 12%;
   --popover-foreground: 210 25% 95%;
   --popover-border: 217 20% 19%;
