@@ -1992,6 +1992,21 @@ function SwmsDocumentsTab() {
 
         {expandedSwms === doc.id && (
           <div className="mt-4 pt-3 border-t space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setPreviewSwmsId(doc.id); }}>
+                <Eye className="w-3 h-3 mr-1" /> Preview
+              </Button>
+              {doc.jobId && (
+                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditingSwms(doc); }}>
+                  <Edit className="w-3 h-3 mr-1" /> Edit
+                </Button>
+              )}
+              {doc.jobId && (
+                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setLocation(`/jobs/${doc.jobId}`); }}>
+                  <ExternalLink className="w-3 h-3 mr-1" /> View Job
+                </Button>
+              )}
+            </div>
             {expandedSwmsDetail?.workActivityDescription && (
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1">Work Activity</p>
@@ -2025,21 +2040,6 @@ function SwmsDocumentsTab() {
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-2 pt-1 flex-wrap">
-              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setPreviewSwmsId(doc.id); }}>
-                <Eye className="w-3 h-3 mr-1" /> Preview
-              </Button>
-              {doc.jobId && (
-                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditingSwms(doc); }}>
-                  <Edit className="w-3 h-3 mr-1" /> Edit
-                </Button>
-              )}
-              {doc.jobId && (
-                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setLocation(`/jobs/${doc.jobId}`); }}>
-                  <ExternalLink className="w-3 h-3 mr-1" /> View Job
-                </Button>
-              )}
-            </div>
           </div>
         )}
       </CardContent>
@@ -2175,6 +2175,21 @@ function SwmsDocumentsTab() {
                 {renderSwmsListRow(doc)}
                 {expandedSwms === doc.id && (
                   <div className="px-4 py-4 border-b last:border-b-0 space-y-4 bg-muted/20">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setPreviewSwmsId(doc.id); }}>
+                        <Eye className="w-3 h-3 mr-1" /> Preview
+                      </Button>
+                      {doc.jobId && (
+                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditingSwms(doc); }}>
+                          <Edit className="w-3 h-3 mr-1" /> Edit
+                        </Button>
+                      )}
+                      {doc.jobId && (
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setLocation(`/jobs/${doc.jobId}`); }}>
+                          <ExternalLink className="w-3 h-3 mr-1" /> View Job
+                        </Button>
+                      )}
+                    </div>
                     {expandedSwmsDetail?.workActivityDescription && (
                       <div>
                         <p className="text-xs font-medium text-muted-foreground mb-1">Work Activity</p>
@@ -2208,21 +2223,6 @@ function SwmsDocumentsTab() {
                         </div>
                       </div>
                     )}
-                    <div className="flex items-center gap-2 pt-1 flex-wrap">
-                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setPreviewSwmsId(doc.id); }}>
-                        <Eye className="w-3 h-3 mr-1" /> Preview
-                      </Button>
-                      {doc.jobId && (
-                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditingSwms(doc); }}>
-                          <Edit className="w-3 h-3 mr-1" /> Edit
-                        </Button>
-                      )}
-                      {doc.jobId && (
-                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setLocation(`/jobs/${doc.jobId}`); }}>
-                          <ExternalLink className="w-3 h-3 mr-1" /> View Job
-                        </Button>
-                      )}
-                    </div>
                   </div>
                 )}
               </div>
