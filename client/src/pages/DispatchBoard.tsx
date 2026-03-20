@@ -1668,6 +1668,35 @@ export default function DispatchBoard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
+                    <Button
+                      variant={viewMode === 'day' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('day')}
+                      data-testid="button-view-day"
+                    >
+                      Day
+                    </Button>
+                    <Button
+                      variant={viewMode === '3day' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('3day')}
+                      data-testid="button-view-3day"
+                    >
+                      3 Day
+                    </Button>
+                    <Button
+                      variant={viewMode === 'week' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('week')}
+                      data-testid="button-view-week"
+                    >
+                      Week
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
                   {viewMode === 'day' && isToday && (
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'hsl(var(--trade))' }} />
@@ -1701,35 +1730,6 @@ export default function DispatchBoard() {
                       )}
                     </span>
                   )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
-                    <Button
-                      variant={viewMode === 'day' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setViewMode('day')}
-                      data-testid="button-view-day"
-                    >
-                      Day
-                    </Button>
-                    <Button
-                      variant={viewMode === '3day' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setViewMode('3day')}
-                      data-testid="button-view-3day"
-                    >
-                      3 Day
-                    </Button>
-                    <Button
-                      variant={viewMode === 'week' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setViewMode('week')}
-                      data-testid="button-view-week"
-                    >
-                      Week
-                    </Button>
-                  </div>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="ghost" size="icon" data-testid="button-schedule-settings">
