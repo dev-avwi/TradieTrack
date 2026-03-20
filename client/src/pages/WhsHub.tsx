@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { SwmsBuilder } from "@/components/SwmsBuilder";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SearchBar, FilterChips } from "@/components/ui/filter-chips";
 import { cn } from "@/lib/utils";
 
@@ -116,7 +116,7 @@ function JobPicker({ value, onChange, onJobSelected }: {
           />
           <Briefcase className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           {open && (
-            <div className="absolute z-50 top-full mt-1 w-full bg-popover border rounded-md shadow-lg max-h-56 overflow-y-auto">
+            <div className="absolute z-50 top-full mt-1 w-full bg-popover border rounded-md shadow-lg max-h-80 overflow-y-auto">
               {filtered.length === 0 ? (
                 <div className="p-4 text-sm text-muted-foreground text-center">
                   <Briefcase className="w-5 h-5 mx-auto mb-1.5 opacity-40" />
@@ -2294,11 +2294,11 @@ function SwmsDocumentsTab() {
 
       {showNewSwmsJobPicker && !newSwmsJob && (
         <Dialog open={showNewSwmsJobPicker && !newSwmsJob} onOpenChange={() => setShowNewSwmsJobPicker(false)}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg min-h-[420px]">
             <DialogHeader>
               <DialogTitle>Select a Job for SWMS</DialogTitle>
+              <DialogDescription>Choose a job to create a Safe Work Method Statement for.</DialogDescription>
             </DialogHeader>
-            <p className="text-sm text-muted-foreground mb-2">Choose a job to create a Safe Work Method Statement for.</p>
             <JobPicker
               value=""
               onChange={() => {}}
