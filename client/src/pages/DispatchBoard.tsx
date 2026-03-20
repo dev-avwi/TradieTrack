@@ -2602,7 +2602,7 @@ export default function DispatchBoard() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                 <Wrench className="h-4 w-4" />
                 Equipment
@@ -2621,9 +2621,9 @@ export default function DispatchBoard() {
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-3 pt-0">
+            <CardContent className="px-4 pb-4 pt-0">
               {showAllEquipment && (
-                <div className="mb-2 space-y-2">
+                <div className="mb-3 space-y-2">
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
@@ -2688,9 +2688,9 @@ export default function DispatchBoard() {
                     </div>
                   ) : (
                     <ScrollArea className="h-[280px]">
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         {allEq.map(eq => (
-                          <div key={eq.id} className={`flex items-start gap-2 p-2 rounded-md ${eq.isDeployed ? 'bg-primary/5 border border-primary/20' : 'bg-muted/30'}`}>
+                          <div key={eq.id} className={`flex items-start gap-3 p-3 rounded-md ${eq.isDeployed ? 'bg-primary/5 border border-primary/20' : 'bg-muted/30'}`}>
                             <div className="mt-1 flex-shrink-0">{statusIcon(eq.status)}</div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
@@ -2741,10 +2741,10 @@ export default function DispatchBoard() {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {dispatchResources.totalEquipment > 0 && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <div className="flex items-center gap-3 mb-1">
+                        <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-500"
                             style={{
@@ -2758,14 +2758,14 @@ export default function DispatchBoard() {
                         </span>
                       </div>
                     )}
-                    <ScrollArea className="h-[160px]">
-                      <div className="space-y-1.5">
+                    <ScrollArea className="h-[180px]">
+                      <div className="space-y-2">
                         {dispatchResources.deployedEquipment.map((eq) => (
-                          <div key={eq.assignmentId} className="flex items-start gap-2 p-2 rounded-md bg-muted/30">
-                            <Wrench className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <div key={eq.assignmentId} className="flex items-start gap-3 p-3 rounded-md bg-muted/30">
+                            <Wrench className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{eq.equipmentName}</p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 flex-wrap">
                                 <span className="truncate">{eq.jobTitle}</span>
                                 {eq.assignedToName && (
                                   <span className="flex items-center gap-1 flex-shrink-0">
@@ -2775,7 +2775,7 @@ export default function DispatchBoard() {
                                 )}
                               </div>
                               {eq.serialNumber && (
-                                <span className="text-[10px] text-muted-foreground opacity-60">SN: {eq.serialNumber}</span>
+                                <span className="text-[11px] text-muted-foreground opacity-60 mt-0.5 inline-block">SN: {eq.serialNumber}</span>
                               )}
                             </div>
                             <Badge variant="secondary" className="text-[10px] flex-shrink-0">
