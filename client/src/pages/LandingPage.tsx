@@ -1124,8 +1124,8 @@ export default function LandingPage() {
               <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-5">Company</h3>
               <ul className="space-y-3 text-sm">
                 <li><a href="#how-it-works" onClick={(e) => scrollToSection(e, "how-it-works")} className="hover:text-white transition-colors" data-testid="link-about">About</a></li>
-                <li><a href="mailto:support@jobrunner.com.au" className="hover:text-white transition-colors" data-testid="link-contact">Contact</a></li>
-                <li><a href="mailto:support@jobrunner.com.au" className="hover:text-white transition-colors" data-testid="link-support">Support</a></li>
+                <li><a href="mailto:admin@avwebinnovation.com" className="hover:text-white transition-colors" data-testid="link-contact">Contact</a></li>
+                <li><a href="mailto:admin@avwebinnovation.com" className="hover:text-white transition-colors" data-testid="link-support">Support</a></li>
               </ul>
             </div>
             <div>
@@ -1433,7 +1433,7 @@ function PricingCard({
   isContactSales?: boolean;
 }) {
   const handleContactSales = () => {
-    window.location.href = "mailto:support@jobrunner.com.au?subject=JobRunner%20Team%20Plan%20Enquiry&body=Hi%20JobRunner%20Team%20(AV%20Web%20Innovation)%2C%0A%0AI'm%20interested%20in%20the%20JobRunner%20Team%20plan%20for%20my%20business.%0A%0ABusiness%20Name%3A%20%0ANumber%20of%20Team%20Members%3A%20%0APhone%3A%20%0A%0AThanks!";
+    window.location.href = "mailto:admin@avwebinnovation.com?subject=JobRunner%20Team%20Plan%20Enquiry&body=Hi%20JobRunner%20Team%20(AV%20Web%20Innovation)%2C%0A%0AI'm%20interested%20in%20the%20JobRunner%20Team%20plan%20for%20my%20business.%0A%0ABusiness%20Name%3A%20%0ANumber%20of%20Team%20Members%3A%20%0APhone%3A%20%0A%0AThanks!";
   };
 
   return (

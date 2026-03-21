@@ -311,7 +311,7 @@ export default function TermsOfService() {
                 </p>
                 <p className="text-muted-foreground leading-relaxed mt-3">
                   <strong>Dispute Resolution:</strong> If you have a complaint about our services, please 
-                  contact us first at support@jobrunner.com.au. We aim to resolve disputes within 14 days. 
+                  contact us first at admin@avwebinnovation.com. We aim to resolve disputes within 14 days. 
                   If we cannot resolve the matter, you may lodge a complaint with the Australian Competition 
                   and Consumer Commission (ACCC) or your state/territory consumer protection agency.
                 </p>
@@ -468,7 +468,7 @@ export default function TermsOfService() {
                   <p className="text-sm text-muted-foreground">
                     <strong>LinkUp2Care Pty Ltd trading as JobRunner</strong><br />
                     ABN: 34 692 409 448<br />
-                    Email: support@jobrunner.com.au<br />
+                    Email: admin@avwebinnovation.com<br />
                     Phone: 0458 300 051
                   </p>
                 </div>

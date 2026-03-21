@@ -141,7 +141,7 @@ export default function PrivacyPolicy() {
                 </ul>
                 <p className="text-muted-foreground leading-relaxed mt-3">
                   If you believe your data may have been compromised, please contact us immediately at 
-                  support@jobrunner.com.au.
+                  admin@avwebinnovation.com.
                 </p>
               </section>
 
@@ -171,7 +171,7 @@ export default function PrivacyPolicy() {
                   <strong>Exercising Your Rights:</strong> You can access and update most of your personal 
                   information directly through the Settings section of your JobRunner account. For any 
                   information you cannot access yourself, or to request deletion of your data, please contact 
-                  our Privacy Officer at support@jobrunner.com.au.
+                  our Privacy Officer at admin@avwebinnovation.com.
                 </p>
               </section>
 
@@ -245,7 +245,7 @@ export default function PrivacyPolicy() {
                   <p className="text-sm text-muted-foreground">
                     <strong>LinkUp2Care Pty Ltd trading as JobRunner</strong><br />
                     ABN: 34 692 409 448<br />
-                    Email: support@jobrunner.com.au<br />
+                    Email: admin@avwebinnovation.com<br />
                     Phone: 0458 300 051<br />
                     Website: jobrunner.com.au
                   </p>

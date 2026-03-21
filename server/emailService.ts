@@ -132,7 +132,7 @@ const mockEmailService = {
 
 // Platform email settings
 const PLATFORM_FROM_EMAIL = 'noreply@jobrunner.com.au';
-const PLATFORM_REPLY_TO_EMAIL = 'support@jobrunner.com.au';
+const PLATFORM_REPLY_TO_EMAIL = 'admin@avwebinnovation.com';
 const PLATFORM_FROM_NAME = 'JobRunner';
 
 // Get the correct base URL for emails - prioritizes custom domain for trust
@@ -1616,7 +1616,7 @@ export async function sendWelcomeEmail(
         
         <div style="text-align: center; padding: 24px; color: #9ca3af; font-size: 12px;">
           <p style="margin: 0;"><strong style="color: #6b7280;">JobRunner</strong> &bull; Built for Australian tradies</p>
-          <p style="margin: 8px 0 0 0;">Questions? Contact us at support@jobrunner.com.au</p>
+          <p style="margin: 8px 0 0 0;">Questions? Contact us at admin@avwebinnovation.com</p>
         </div>
       </body>
       </html>

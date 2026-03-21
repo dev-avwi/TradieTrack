@@ -125,7 +125,7 @@ const tiers = [
 ];
 
 const handleContactSales = () => {
-  window.location.href = "mailto:support@jobrunner.com.au?subject=JobRunner%20Team%20Plan%20Enquiry&body=Hi%20JobRunner%20Team%20(AV%20Web%20Innovation)%2C%0A%0AI'm%20interested%20in%20the%20JobRunner%20Team%20plan%20for%20my%20business.%0A%0ABusiness%20Name%3A%20%0ANumber%20of%20Team%20Members%3A%20%0APhone%3A%20%0A%0AThanks!";
+  window.location.href = "mailto:admin@avwebinnovation.com?subject=JobRunner%20Team%20Plan%20Enquiry&body=Hi%20JobRunner%20Team%20(AV%20Web%20Innovation)%2C%0A%0AI'm%20interested%20in%20the%20JobRunner%20Team%20plan%20for%20my%20business.%0A%0ABusiness%20Name%3A%20%0ANumber%20of%20Team%20Members%3A%20%0APhone%3A%20%0A%0AThanks!";
 };
 
 export default function SubscriptionPage() {
@@ -720,7 +720,7 @@ export default function SubscriptionPage() {
                 <Button 
                   variant="outline"
                   onClick={() => {
-                    window.location.href = "mailto:support@jobrunner.com.au?subject=Custom%20Website%20Enquiry&body=Hi%20JobRunner%20Team%20(AV%20Web%20Innovation)%2C%0A%0AI'm%20interested%20in%20a%20custom%20website%20for%20my%20trade%20business.%0A%0ABusiness%20Name%3A%20%0ATrade%20Type%3A%20%0ALocation%2FSuburb%3A%20%0APhone%3A%20%0A%0AAnything%20specific%20you'd%20like%3A%20%0A%0AThanks!";
+                    window.location.href = "mailto:admin@avwebinnovation.com?subject=Custom%20Website%20Enquiry&body=Hi%20JobRunner%20Team%20(AV%20Web%20Innovation)%2C%0A%0AI'm%20interested%20in%20a%20custom%20website%20for%20my%20trade%20business.%0A%0ABusiness%20Name%3A%20%0ATrade%20Type%3A%20%0ALocation%2FSuburb%3A%20%0APhone%3A%20%0A%0AAnything%20specific%20you'd%20like%3A%20%0A%0AThanks!";
                   }}
                 >
                   <Mail className="h-4 w-4 mr-1.5" />
@@ -802,7 +802,7 @@ export default function SubscriptionPage() {
           <p className="text-muted-foreground">
             Have questions?{' '}
             <a 
-              href="mailto:support@jobrunner.com.au" 
+              href="mailto:admin@avwebinnovation.com" 
               className="text-primary hover:underline"
               data-testid="link-contact-support"
             >

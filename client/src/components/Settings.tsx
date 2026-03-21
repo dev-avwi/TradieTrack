@@ -3375,11 +3375,11 @@ function SupportTab() {
                     For detailed questions or feature requests.
                   </p>
                   <a 
-                    href="mailto:support@jobrunner.com.au" 
+                    href="mailto:admin@avwebinnovation.com" 
                     className="text-lg font-medium text-primary hover:underline block mt-2"
                     data-testid="link-support-email"
                   >
-                    support@jobrunner.com.au
+                    admin@avwebinnovation.com
                   </a>
                   <p className="text-xs text-muted-foreground">
                     We usually reply within 24 hours
@@ -3634,7 +3634,7 @@ function SupportTab() {
                   <div className="p-3 rounded-lg bg-muted/50" data-testid="faq-feature-request">
                     <p className="font-medium text-sm">Feature request or bug report?</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      We love feedback! Email us at support@jobrunner.com.au with your ideas or any 
+                      We love feedback! Email us at admin@avwebinnovation.com with your ideas or any 
                       bugs you find. We're always working to make JobRunner better for Aussie trade professionals.
                     </p>
                   </div>

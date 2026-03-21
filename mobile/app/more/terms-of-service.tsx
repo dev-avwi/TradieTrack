@@ -440,7 +440,7 @@ export default function TermsOfServiceScreen() {
           
           <Text style={styles.subSectionTitle}>Termination by You</Text>
           <Text style={styles.paragraph}>
-            You may cancel your account at any time through the app settings or by contacting support@jobrunner.com.au. Upon cancellation:
+            You may cancel your account at any time through the app settings or by contacting admin@avwebinnovation.com. Upon cancellation:
           </Text>
           <View style={styles.bulletList}>
             <BulletItem text="Your subscription will remain active until the end of the current billing period" colors={colors} styles={styles} />
@@ -527,7 +527,7 @@ export default function TermsOfServiceScreen() {
           <View style={styles.bulletList}>
             <BulletItem text="LinkUp2Care Pty Ltd trading as JobRunner" colors={colors} styles={styles} />
             <BulletItem text="ABN: 34 692 409 448" colors={colors} styles={styles} />
-            <BulletItem text="Email: support@jobrunner.com.au" colors={colors} styles={styles} />
+            <BulletItem text="Email: admin@avwebinnovation.com" colors={colors} styles={styles} />
             <BulletItem text="Phone: 0458 300 051" colors={colors} styles={styles} />
             <BulletItem text="Website: www.jobrunner.com.au" colors={colors} styles={styles} />
           </View>

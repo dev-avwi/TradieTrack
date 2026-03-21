@@ -983,7 +983,7 @@ export default function SubscriptionScreen() {
                 </View>
                 <TouchableOpacity 
                   style={[styles.ctaButton, styles.ctaButtonOutline, { marginTop: spacing.md }]}
-                  onPress={() => Linking.openURL('mailto:support@jobrunner.com.au?subject=AI%20Receptionist%20Add-On%20Enquiry')}
+                  onPress={() => Linking.openURL('mailto:admin@avwebinnovation.com?subject=AI%20Receptionist%20Add-On%20Enquiry')}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.ctaButtonTextOutline}>
@@ -1018,7 +1018,7 @@ export default function SubscriptionScreen() {
                 </View>
                 <TouchableOpacity 
                   style={[styles.ctaButton, styles.ctaButtonOutline, { marginTop: spacing.md }]}
-                  onPress={() => Linking.openURL('mailto:support@jobrunner.com.au?subject=Custom%20Website%20Enquiry&body=Hi%20JobRunner%20Team%2C%0A%0AI%27m%20interested%20in%20a%20custom%20website.%0A%0ABusiness%20Name%3A%20%0ATrade%3A%20%0ALocation%3A%20%0A%0AThanks!')}
+                  onPress={() => Linking.openURL('mailto:admin@avwebinnovation.com?subject=Custom%20Website%20Enquiry&body=Hi%20JobRunner%20Team%2C%0A%0AI%27m%20interested%20in%20a%20custom%20website.%0A%0ABusiness%20Name%3A%20%0ATrade%3A%20%0ALocation%3A%20%0A%0AThanks!')}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.ctaButtonTextOutline}>

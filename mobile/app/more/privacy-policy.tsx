@@ -409,7 +409,7 @@ export default function PrivacyPolicyScreen() {
           <View style={styles.bulletList}>
             <BulletItem text="LinkUp2Care Pty Ltd trading as JobRunner" colors={colors} styles={styles} />
             <BulletItem text="ABN: 34 692 409 448" colors={colors} styles={styles} />
-            <BulletItem text="Email: support@jobrunner.com.au" colors={colors} styles={styles} />
+            <BulletItem text="Email: admin@avwebinnovation.com" colors={colors} styles={styles} />
             <BulletItem text="Phone: 0458 300 051" colors={colors} styles={styles} />
             <BulletItem text="Website: www.jobrunner.com.au" colors={colors} styles={styles} />
           </View>
