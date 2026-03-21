@@ -143,6 +143,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [appleAuthEnabled, setAppleAuthEnabled] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  const [xeroLoading, setXeroLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -198,6 +199,14 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
     trackEvent('signup_clicked', { source: 'google_oauth' });
     sessionStorage.setItem('oauth-in-progress', 'true');
     window.location.href = '/api/auth/google';
+  };
+
+  const handleXeroSignIn = () => {
+    setXeroLoading(true);
+    setError('');
+    trackEvent('signup_clicked', { source: 'xero_oauth' });
+    sessionStorage.setItem('oauth-in-progress', 'true');
+    window.location.href = '/api/auth/xero';
   };
 
   const handleAppleSignIn = async () => {
@@ -537,6 +546,30 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                       )}
                     </Button>
                   )}
+
+                  <Button 
+                    onClick={handleXeroSignIn}
+                    disabled={isLoading || xeroLoading}
+                    variant="outline"
+                    className="w-full h-12 text-base font-medium border-2"
+                    style={{ borderColor: '#13B5EA', color: '#13B5EA' }}
+                    data-testid="button-xero-signin"
+                  >
+                    {xeroLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+                        Connecting to Xero...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="11" fill="#13B5EA"/>
+                          <path d="M7.5 8.5L12 12.5L16.5 8.5M12 12.5L7.5 16.5M12 12.5L16.5 16.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Continue with Xero
+                      </>
+                    )}
+                  </Button>
                 </div>
 
                 <p className="text-[11px] text-gray-500 dark:text-gray-500 text-center mt-2 leading-relaxed">

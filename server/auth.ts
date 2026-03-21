@@ -442,6 +442,76 @@ export class AuthService {
       throw error;
     }
   }
+  static async findUserByXeroId(xeroId: string): Promise<SafeUser | null> {
+    try {
+      const user = await storage.getUserByXeroId(xeroId);
+      if (!user) return null;
+      const { password, ...safeUser } = user;
+      return safeUser;
+    } catch (error) {
+      console.error('Error finding user by Xero ID:', error);
+      return null;
+    }
+  }
+
+  static async linkXeroAccount(userId: string, xeroId: string): Promise<void> {
+    try {
+      await storage.linkXeroAccount(userId, xeroId);
+    } catch (error) {
+      console.error('Error linking Xero account:', error);
+      throw error;
+    }
+  }
+
+  static async createXeroUser(userData: {
+    xeroId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    emailVerified: boolean;
+  }): Promise<SafeUser> {
+    try {
+      const normalizedEmail = userData.email.toLowerCase().trim();
+      const username = normalizedEmail.split('@')[0] + '_' + Math.random().toString(36).substring(2, 8);
+
+      const user = await storage.createUser({
+        email: normalizedEmail,
+        username: username,
+        password: null,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+      });
+
+      await storage.updateUser(user.id, {
+        emailVerified: userData.emailVerified,
+        xeroId: userData.xeroId,
+      } as any);
+
+      const updatedUser = await storage.getUserById(user.id);
+      if (!updatedUser) throw new Error('Failed to fetch updated user');
+
+      storage.seedDefaultBusinessTemplates(updatedUser.id).catch(err => {
+        console.error('Failed to seed business templates for Xero user:', err);
+      });
+      storage.ensureDefaultTemplates(updatedUser.id).catch(err => {
+        console.error('Failed to seed message templates for Xero user:', err);
+      });
+
+      sendWelcomeEmail({
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName
+      }).catch(err => {
+        console.error('Failed to send welcome email for Xero user:', err);
+      });
+
+      const { password, ...safeUser } = updatedUser;
+      return safeUser;
+    } catch (error) {
+      console.error('Error creating Xero user:', error);
+      throw error;
+    }
+  }
 }
 
 // Session middleware type

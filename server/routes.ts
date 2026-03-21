@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { AuthService } from "./auth";
 import { setupGoogleAuth } from "./googleAuth";
+import { setupXeroAuth } from "./xeroAuth";
 import { loginSchema, insertUserSchema, type SafeUser, requestLoginCodeSchema, verifyLoginCodeSchema } from "@shared/schema";
 import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmail, sendPasswordResetEmail, sendTeamInviteEmail, sendJobAssignmentEmail, sendJobCompletionNotificationEmail, sendWelcomeEmail } from "./emailService";
 import { FreemiumService } from "./freemiumService";
@@ -811,6 +812,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup Google OAuth
   setupGoogleAuth(app);
+
+  // Setup Xero OAuth (Sign Up with Xero)
+  setupXeroAuth(app);
 
   // ============================================
   // PUBLIC ROUTES (no authentication required)
@@ -8004,9 +8008,40 @@ Be specific about materials, colors, and features that would be included.`
   
   // Test SMS Route - Disabled for beta
   app.post("/api/integrations/test-sms", requireAuth, async (req: any, res) => {
-    res.status(501).json({ 
-      error: "SMS notifications are disabled in beta. This feature is coming soon!"
-    });
+    try {
+      const { checkTwilioAvailability } = await import('./twilioClient');
+      const available = checkTwilioAvailability();
+      if (!available) {
+        return res.status(503).json({ error: "SMS service is not configured. Please set up Twilio credentials." });
+      }
+
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const settings = await storage.getBusinessSettings(effectiveUserId);
+      const phone = req.body.phone || settings?.phone;
+
+      if (!phone) {
+        return res.status(400).json({ error: "No phone number available for testing. Please provide a phone number in the request or set one in business settings." });
+      }
+
+      const phoneClean = phone.replace(/[^+\d]/g, '');
+      if (!/^\+?\d{8,15}$/.test(phoneClean)) {
+        return res.status(400).json({ error: "Invalid phone number format. Please provide a valid phone number." });
+      }
+
+      const { sendSMS } = await import('./twilioClient');
+      const businessName = settings?.businessName || 'JobRunner';
+      await sendSMS({
+        to: phoneClean,
+        message: `Test SMS from ${businessName} via JobRunner. Your SMS integration is working correctly!`,
+        alphanumericSenderId: 'JobRunner',
+      });
+
+      res.json({ success: true, message: `Test SMS sent to ${phoneClean}` });
+    } catch (error: any) {
+      console.error('[SMS Test] Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to send test SMS' });
+    }
   });
 
   // SMS Preview Route - Demo mode for mobile app

@@ -921,7 +921,7 @@ function AppLayout() {
     const hasOAuthParams = urlParams.has('code') || urlParams.has('state');
     // Also check for our custom auth param from Google OAuth callback
     const authParam = urlParams.get('auth');
-    const hasGoogleAuthSuccess = authParam === 'google_success' || authParam === 'success';
+    const hasGoogleAuthSuccess = authParam === 'google_success' || authParam === 'xero_success' || authParam === 'success';
     
     if (hasOAuthParams || hasGoogleAuthSuccess || sessionStorage.getItem('oauth-in-progress')) {
       sessionStorage.removeItem('oauth-in-progress');
