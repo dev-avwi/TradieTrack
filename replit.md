@@ -40,3 +40,4 @@ Core architectural and design decisions include:
 *   **Weather API**: Open-Meteo
 *   **Routing/ETA**: OSRM (Open Source Routing Machine)
 *   **Tap to Pay (Stripe Terminal)**: `@stripe/stripe-terminal-react-native` SDK (pending Apple approval).
+*   **AI Receptionist (Voice)**: Vapi.ai for AI-powered phone answering. Each business gets a Vapi assistant configured with Australian voices (Jess, Harry, Chris). Calls are logged to `ai_receptionist_calls` table. Vapi webhook at `/api/vapi/webhook` handles call events, tool calls (capture_lead, transfer_call), and end-of-call reports. Config stored in `business_settings` (vapiAssistantId, aiReceptionistMode, aiReceptionistVoice, etc.). Modes: off, after_hours, always_on_transfer, always_on_message, selective. RBAC: settings = owner/solo_owner only; call logs = owner/manager.

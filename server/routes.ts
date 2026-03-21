@@ -42896,6 +42896,160 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+  // ============================================================
+  // AI Receptionist (Vapi Integration) Routes
+  // ============================================================
+
+  app.post("/api/vapi/webhook", async (req: any, res) => {
+    try {
+      const { processWebhookEvent, verifyVapiWebhook } = await import('./vapiService');
+      const signature = req.headers['x-vapi-signature'] as string | undefined;
+      const rawBody = JSON.stringify(req.body);
+      if (process.env.VAPI_PRIVATE_KEY && !verifyVapiWebhook(rawBody, signature)) {
+        console.warn('[Vapi Webhook] Invalid signature - rejecting request');
+        return res.status(401).json({ error: 'Invalid webhook signature' });
+      }
+      const result = await processWebhookEvent(req.body);
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Vapi Webhook] Error:", error);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
+
+  app.get("/api/ai-receptionist/config", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId || req.session?.userId;
+      const settings = await storage.getBusinessSettings(userId);
+      if (!settings) {
+        return res.status(404).json({ error: "Business settings not found" });
+      }
+      res.json({
+        enabled: settings.aiReceptionistEnabled || false,
+        mode: settings.aiReceptionistMode || 'off',
+        voice: settings.aiReceptionistVoice || 'Jess',
+        greeting: settings.aiReceptionistGreeting || null,
+        transferNumbers: settings.aiReceptionistTransferNumbers || [],
+        businessHours: settings.aiReceptionistBusinessHours || null,
+        dedicatedPhoneNumber: settings.dedicatedPhoneNumber || null,
+        vapiAssistantId: settings.vapiAssistantId || null,
+      });
+    } catch (error: any) {
+      console.error("Get AI receptionist config error:", error);
+      res.status(500).json({ error: "Failed to get AI receptionist config" });
+    }
+  });
+
+  app.patch("/api/ai-receptionist/config", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId || req.session?.userId;
+      const { voice, greeting, mode, transferNumbers, businessHours } = req.body;
+
+      const { updateReceptionistConfig } = await import('./vapiService');
+      const result = await updateReceptionistConfig(userId, {
+        voice,
+        greeting,
+        mode,
+        transferNumbers,
+        businessHours,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const settings = await storage.getBusinessSettings(userId);
+      res.json({
+        enabled: settings?.aiReceptionistEnabled || false,
+        mode: settings?.aiReceptionistMode || 'off',
+        voice: settings?.aiReceptionistVoice || 'Jess',
+        greeting: settings?.aiReceptionistGreeting || null,
+        transferNumbers: settings?.aiReceptionistTransferNumbers || [],
+        businessHours: settings?.aiReceptionistBusinessHours || null,
+        dedicatedPhoneNumber: settings?.dedicatedPhoneNumber || null,
+        vapiAssistantId: settings?.vapiAssistantId || null,
+      });
+    } catch (error: any) {
+      console.error("Update AI receptionist config error:", error);
+      res.status(500).json({ error: "Failed to update AI receptionist config" });
+    }
+  });
+
+  app.post("/api/ai-receptionist/enable", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId || req.session?.userId;
+      const { enableAiReceptionist } = await import('./vapiService');
+      const result = await enableAiReceptionist(userId);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json({
+        success: true,
+        assistantId: result.assistantId,
+        message: "AI Receptionist enabled successfully",
+      });
+    } catch (error: any) {
+      console.error("Enable AI receptionist error:", error);
+      res.status(500).json({ error: "Failed to enable AI Receptionist" });
+    }
+  });
+
+  app.post("/api/ai-receptionist/disable", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId || req.session?.userId;
+      const { disableAiReceptionist } = await import('./vapiService');
+      const result = await disableAiReceptionist(userId);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json({
+        success: true,
+        message: "AI Receptionist disabled successfully",
+      });
+    } catch (error: any) {
+      console.error("Disable AI receptionist error:", error);
+      res.status(500).json({ error: "Failed to disable AI Receptionist" });
+    }
+  });
+
+  app.get("/api/ai-receptionist/calls", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId || req.session?.userId;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const calls = await storage.getAiReceptionistCalls(userId, Math.min(limit, 200));
+      res.json(calls);
+    } catch (error: any) {
+      console.error("Get AI receptionist calls error:", error);
+      res.status(500).json({ error: "Failed to get call logs" });
+    }
+  });
+
+  app.get("/api/ai-receptionist/calls/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId || req.session?.userId;
+      const call = await storage.getAiReceptionistCall(req.params.id, userId);
+      if (!call) {
+        return res.status(404).json({ error: "Call not found" });
+      }
+      res.json(call);
+    } catch (error: any) {
+      console.error("Get AI receptionist call error:", error);
+      res.status(500).json({ error: "Failed to get call details" });
+    }
+  });
+
+  app.get("/api/ai-receptionist/voices", requireAuth, async (req: any, res) => {
+    res.json([
+      { id: 'Jess', name: 'Jess', description: 'Relaxed Australian female voice', accent: 'Australian' },
+      { id: 'Harry', name: 'Harry', description: 'Soothing Australian male voice', accent: 'Australian' },
+      { id: 'Chris', name: 'Chris', description: 'Mature Australian male voice', accent: 'Australian' },
+    ]);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

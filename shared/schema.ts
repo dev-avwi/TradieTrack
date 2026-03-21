@@ -458,6 +458,15 @@ export const businessSettings = pgTable("business_settings", {
   // SMS Configuration
   smsMode: text("sms_mode").default('standard'), // 'standard' (shared number) or 'ai_receptionist' (dedicated number with AI)
   dedicatedPhoneNumber: text("dedicated_phone_number"), // Dedicated Twilio number for AI Receptionist (E.164 format)
+  // Vapi AI Receptionist Configuration
+  vapiAssistantId: text("vapi_assistant_id"), // Vapi assistant ID for this business
+  vapiPhoneNumberId: text("vapi_phone_number_id"), // Vapi phone number ID
+  aiReceptionistMode: text("ai_receptionist_mode").default('off'), // off, after_hours, always_on_transfer, always_on_message, selective
+  aiReceptionistVoice: text("ai_receptionist_voice").default('Jess'), // Jess, Harry, Chris (Australian voices)
+  aiReceptionistGreeting: text("ai_receptionist_greeting"), // Custom greeting message
+  aiReceptionistTransferNumbers: json("ai_receptionist_transfer_numbers").default([]), // Array of {name, phone, priority} for call transfer
+  aiReceptionistBusinessHours: json("ai_receptionist_business_hours"), // {start: "08:00", end: "17:00", timezone: "Australia/Brisbane", days: [1,2,3,4,5]}
+  aiReceptionistEnabled: boolean("ai_receptionist_enabled").default(false), // Master toggle
   twilioPhoneNumber: text("twilio_phone_number"), // User's own Twilio phone number (E.164 format) - legacy
   twilioSenderId: text("twilio_sender_id"), // Alphanumeric sender ID (11 chars max, e.g., "JobRunner") - legacy
   twilioAccountSid: text("twilio_account_sid"), // User's own Twilio account SID
@@ -4437,3 +4446,33 @@ export const rateLimits = pgTable("rate_limits", {
   index("idx_rate_limits_key").on(table.key),
   index("idx_rate_limits_expires").on(table.expiresAt),
 ]);
+
+export const aiReceptionistCalls = pgTable("ai_receptionist_calls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  vapiCallId: text("vapi_call_id").notNull(),
+  callerPhone: text("caller_phone"),
+  callerName: text("caller_name"),
+  status: text("status").notNull().default('ringing'), // ringing, in_progress, completed, failed, missed, transferred
+  duration: integer("duration"), // seconds
+  summary: text("summary"), // AI-generated call summary
+  transcript: text("transcript"), // Full call transcript
+  recordingUrl: text("recording_url"),
+  leadId: varchar("lead_id"), // If a lead was created from this call
+  transferredTo: text("transferred_to"), // Phone number or team member transferred to
+  transferStatus: text("transfer_status"), // success, failed, declined, no_answer
+  callerIntent: text("caller_intent"), // quote_request, job_request, enquiry, complaint, follow_up
+  extractedInfo: json("extracted_info"), // {name, email, phone, address, jobType, urgency, notes}
+  endedReason: text("ended_reason"), // caller_hangup, assistant_ended, transfer, error
+  cost: decimal("cost", { precision: 8, scale: 4 }), // Vapi call cost
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_ai_calls_user").on(table.userId),
+  index("idx_ai_calls_vapi").on(table.vapiCallId),
+  index("idx_ai_calls_created").on(table.createdAt),
+]);
+
+export const insertAiReceptionistCallSchema = createInsertSchema(aiReceptionistCalls).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertAiReceptionistCall = z.infer<typeof insertAiReceptionistCallSchema>;
+export type AiReceptionistCall = typeof aiReceptionistCalls.$inferSelect;

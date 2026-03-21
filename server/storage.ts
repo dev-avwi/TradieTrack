@@ -371,6 +371,9 @@ import {
   trainingRecords,
   type TrainingRecord,
   type InsertTrainingRecord,
+  aiReceptionistCalls,
+  type AiReceptionistCall,
+  type InsertAiReceptionistCall,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -975,6 +978,13 @@ export interface IStorage {
   createLead(lead: InsertLead & { userId: string }): Promise<Lead>;
   updateLead(id: string, userId: string, lead: Partial<InsertLead>): Promise<Lead | undefined>;
   deleteLead(id: string, userId: string): Promise<boolean>;
+
+  // AI Receptionist Calls
+  getAiReceptionistCalls(userId: string, limit?: number): Promise<AiReceptionistCall[]>;
+  getAiReceptionistCall(id: string, userId: string): Promise<AiReceptionistCall | undefined>;
+  getAiReceptionistCallByVapiId(vapiCallId: string): Promise<AiReceptionistCall | undefined>;
+  createAiReceptionistCall(call: InsertAiReceptionistCall): Promise<AiReceptionistCall>;
+  updateAiReceptionistCall(id: string, userId: string, updates: Partial<InsertAiReceptionistCall>): Promise<AiReceptionistCall | undefined>;
 
   // Payment Schedules (Installment Plans)
   getPaymentSchedules(userId: string): Promise<PaymentSchedule[]>;
@@ -7065,6 +7075,50 @@ Thank you for your prompt attention to this matter.`,
       .delete(leads)
       .where(and(eq(leads.id, id), eq(leads.userId, userId)));
     return true;
+  }
+
+  async getAiReceptionistCalls(userId: string, limit: number = 50): Promise<AiReceptionistCall[]> {
+    return db
+      .select()
+      .from(aiReceptionistCalls)
+      .where(eq(aiReceptionistCalls.userId, userId))
+      .orderBy(desc(aiReceptionistCalls.createdAt))
+      .limit(limit);
+  }
+
+  async getAiReceptionistCall(id: string, userId: string): Promise<AiReceptionistCall | undefined> {
+    const result = await db
+      .select()
+      .from(aiReceptionistCalls)
+      .where(and(eq(aiReceptionistCalls.id, id), eq(aiReceptionistCalls.userId, userId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getAiReceptionistCallByVapiId(vapiCallId: string): Promise<AiReceptionistCall | undefined> {
+    const result = await db
+      .select()
+      .from(aiReceptionistCalls)
+      .where(eq(aiReceptionistCalls.vapiCallId, vapiCallId))
+      .limit(1);
+    return result[0];
+  }
+
+  async createAiReceptionistCall(call: InsertAiReceptionistCall): Promise<AiReceptionistCall> {
+    const [created] = await db
+      .insert(aiReceptionistCalls)
+      .values({ id: randomUUID(), ...call })
+      .returning();
+    return created;
+  }
+
+  async updateAiReceptionistCall(id: string, userId: string, updates: Partial<InsertAiReceptionistCall>): Promise<AiReceptionistCall | undefined> {
+    const [updated] = await db
+      .update(aiReceptionistCalls)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(aiReceptionistCalls.id, id), eq(aiReceptionistCalls.userId, userId)))
+      .returning();
+    return updated;
   }
 
   // Tap to Pay Terms & Conditions (Apple Requirement)

@@ -203,6 +203,10 @@ export const PAGE_PERMISSIONS: PagePermission[] = [
 
   // AI Visualization - owner/manager
   { path: '/ai-visualization', label: 'AI Visualization', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
+
+  // AI Receptionist - owner/solo_owner for settings, owner/manager for call logs
+  { path: '/ai-receptionist', label: 'AI Receptionist', allowedRoles: ['owner', 'solo_owner'], showInNav: false },
+  { path: '/ai-receptionist/calls', label: 'AI Receptionist Calls', allowedRoles: ['owner', 'solo_owner', 'manager'], showInNav: false },
 ];
 
 // Check if a role can access a specific path
