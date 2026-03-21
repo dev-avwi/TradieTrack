@@ -209,6 +209,12 @@ export default function TermsOfService() {
                   retain ownership of all content you upload to the Service, but grant us a license to use, 
                   store, and display that content for the purpose of providing the Service.
                 </p>
+                <p className="text-muted-foreground leading-relaxed mt-3">
+                  <strong>Feedback:</strong> If you provide feedback, suggestions, or ideas about the Service, 
+                  you grant LinkUp2Care Pty Ltd a perpetual, royalty-free, worldwide licence to use and implement 
+                  that feedback without compensation. This does not affect your ownership of any intellectual 
+                  property in your own business content.
+                </p>
               </section>
 
               <section>
@@ -225,6 +231,10 @@ export default function TermsOfService() {
                 </p>
                 <p className="text-muted-foreground leading-relaxed mt-3">
                   JobRunner is not responsible for data loss resulting from user device failure, improper use, third-party service outages, or events beyond reasonable control. While we maintain regular backups and data redundancy measures, we recommend you export critical business data periodically.
+                </p>
+                <p className="text-muted-foreground leading-relaxed mt-3">
+                  This limitation does not exclude or limit your rights under the Australian Consumer Law, 
+                  including any statutory consumer guarantees that cannot be excluded by law.
                 </p>
               </section>
 
@@ -254,7 +264,8 @@ export default function TermsOfService() {
                   We may terminate or suspend your account and access to the Service immediately, without prior 
                   notice, for any reason, including breach of these Terms. Upon termination, your right to use 
                   the Service will cease immediately. All provisions of these Terms which by their nature should 
-                  survive termination shall survive.
+                  survive termination shall survive, including your liability for any outstanding fees owed at 
+                  the time of termination.
                 </p>
               </section>
 
@@ -327,28 +338,20 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">22. Dispute Resolution & Arbitration</h2>
-                <p className="text-muted-foreground leading-relaxed mb-3">
-                  Any dispute arising from or relating to these Terms shall first be attempted to be resolved through good-faith negotiation between the parties for a period of 30 days.
-                </p>
-                <p className="text-muted-foreground leading-relaxed mb-3">
-                  If negotiation fails, disputes shall be submitted to binding arbitration under the rules of the Australian Centre for International Commercial Arbitration (ACICA). Arbitration shall be conducted in Queensland, Australia.
-                </p>
-                <p className="text-muted-foreground leading-relaxed mb-3">
-                  The arbitrator's decision shall be final and binding on both parties.
-                </p>
+                <h2 className="text-xl font-semibold mb-3">22. Price and Plan Changes</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Nothing in this clause prevents either party from seeking urgent interlocutory relief from a court of competent jurisdiction.
+                  We may change our pricing or plan features by giving you 30 days notice via email. Continued 
+                  use of the Service after the notice period constitutes acceptance of the new pricing. If you do 
+                  not agree to the new pricing, you may cancel your subscription before the end of the notice period.
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">23. Class Action Waiver</h2>
-                <p className="text-muted-foreground leading-relaxed mb-3">
-                  You agree to resolve disputes with JobRunner on an individual basis only. You waive any right to participate in class actions, class arbitrations, or representative proceedings.
-                </p>
+                <h2 className="text-xl font-semibold mb-3">23. Service Modification</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  This waiver applies to the maximum extent permitted by Australian law.
+                  We may modify, suspend, or discontinue any feature or part of the Service with reasonable notice 
+                  to users. Where practicable, we will provide at least 14 days notice of material changes to 
+                  Service features. This does not affect your rights under the Australian Consumer Law.
                 </p>
               </section>
 

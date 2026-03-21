@@ -99,6 +99,10 @@ export default function PrivacyPolicy() {
               <section>
                 <h2 className="text-xl font-semibold mb-3">5A. Location & Time Tracking Data</h2>
                 <p className="text-muted-foreground leading-relaxed">
+                  GPS data is collected to enable core platform features including job scheduling, dispatch 
+                  mapping, and automated timesheet verification, which reduces administrative work for users.
+                </p>
+                <p className="text-muted-foreground leading-relaxed mt-3">
                   We collect location data only when time tracking or geofencing features are actively enabled by you or your employer. Location tracking can be disabled at any time through your device settings or within the app. Location data is stored securely and is only accessible to the business owner and authorised managers within your organisation. We retain location tracking data for 12 months, after which it is automatically archived. Time entry edit histories are retained for the duration of your account plus 7 years to comply with Australian record-keeping requirements under the Fair Work Act 2009.
                 </p>
               </section>
@@ -163,6 +167,22 @@ export default function PrivacyPolicy() {
                   <li>Withdraw consent for marketing communications</li>
                   <li>Lodge a complaint with the Office of the Australian Information Commissioner (OAIC)</li>
                 </ul>
+                <p className="text-muted-foreground leading-relaxed mt-3">
+                  <strong>Exercising Your Rights:</strong> You can access and update most of your personal 
+                  information directly through the Settings section of your JobRunner account. For any 
+                  information you cannot access yourself, or to request deletion of your data, please contact 
+                  our Privacy Officer at support@jobrunner.com.au.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">7A. Employee Records Exemption</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  The employee records exemption under the Privacy Act 1988 does not apply to the data of our 
+                  customers' employees that we handle as part of providing our Service. This Privacy Policy 
+                  applies to all personal information processed by the JobRunner platform, including the personal 
+                  information of team members and employees added to the platform by our customers.
+                </p>
               </section>
 
               <section>
