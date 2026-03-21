@@ -27,7 +27,13 @@ import {
   Phone,
   MessageCircle,
   Bot,
-  Link2
+  Link2,
+  Headphones,
+  Globe,
+  PhoneCall,
+  UserCheck,
+  Mail,
+  MapPin
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useLocation } from "wouter";
@@ -520,9 +526,141 @@ export default function SubscriptionPage() {
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              One-way system notifications (job updates, invoice reminders, quote confirmations) are already included with Pro and Team plans 
-              and don't require a dedicated number — they're sent from the "JobRunner" sender ID.
+              Without a dedicated number, outbound customer SMS (invoices, quotes, job confirmations) is sent from the "JobRunner" sender ID. 
+              A dedicated number lets customers reply directly to your business via two-way SMS.
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Add-On: AI Receptionist */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Headphones className="h-5 w-5 text-blue-600" />
+              Add-On: AI Receptionist
+              <Badge variant="outline" className="ml-auto text-xs">$60/month</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              AI-powered phone answering for your trade business. Never miss a call again — the AI answers in your business name, 
+              captures leads, and transfers calls to your team when they're available.
+            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <Phone className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Dedicated Number</p>
+                  <p className="text-xs text-muted-foreground">Your own Australian number — customers see your business, not JobRunner</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <Bot className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">24/7 AI Answering</p>
+                  <p className="text-xs text-muted-foreground">Answers calls in your business name with a natural Australian voice</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <UserCheck className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Auto Lead Capture</p>
+                  <p className="text-xs text-muted-foreground">Captures caller details, job type, and urgency as new leads</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <PhoneCall className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Live Transfer</p>
+                  <p className="text-xs text-muted-foreground">Transfers to available team members or takes a message if busy</p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">$60 AUD/month</p>
+                <p className="text-xs text-muted-foreground">Includes dedicated number, AI voice agent, call logs, and lead capture. Requires Pro or Team plan.</p>
+              </div>
+              <Button 
+                variant="outline"
+                onClick={() => setLocation('/settings')}
+              >
+                <Headphones className="h-4 w-4 mr-1.5" />
+                Set Up AI Receptionist
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Add-On: Custom Website */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-purple-600" />
+              Add-On: Custom Website
+              <Badge variant="outline" className="ml-auto text-xs">Custom Quote</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              We build a professional website for your trade business — mobile-friendly, SEO optimised for your local area, 
+              and integrated with your JobRunner quote requests.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <Globe className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Professional Design</p>
+                  <p className="text-xs text-muted-foreground">Custom-built website tailored to your trade and brand</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <MapPin className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Local SEO</p>
+                  <p className="text-xs text-muted-foreground">Optimised for your suburb, city, and trade keywords</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <Link2 className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">JobRunner Integration</p>
+                  <p className="text-xs text-muted-foreground">Quote request forms feed directly into your JobRunner pipeline</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <Sparkles className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Hosting Included</p>
+                  <p className="text-xs text-muted-foreground">We handle hosting, updates, and ongoing support</p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Custom pricing based on your needs</p>
+                <p className="text-xs text-muted-foreground">Our team will discuss your requirements and provide a tailored quote.</p>
+              </div>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  window.location.href = "mailto:support@jobrunner.com.au?subject=Custom%20Website%20Enquiry&body=Hi%20JobRunner%20Team%20(AV%20Web%20Innovation)%2C%0A%0AI'm%20interested%20in%20a%20custom%20website%20for%20my%20trade%20business.%0A%0ABusiness%20Name%3A%20%0ATrade%20Type%3A%20%0ALocation%2FSuburb%3A%20%0APhone%3A%20%0A%0AAnything%20specific%20you'd%20like%3A%20%0A%0AThanks!";
+                }}
+              >
+                <Mail className="h-4 w-4 mr-1.5" />
+                Request Custom Website
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

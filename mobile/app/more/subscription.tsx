@@ -947,6 +947,86 @@ export default function SubscriptionScreen() {
 
               {tiers.map(renderTierCard)}
 
+              {/* Power Add-Ons Section */}
+              <View style={{ marginTop: spacing.lg, marginBottom: spacing.md }}>
+                <Text style={[styles.tierName, { textAlign: 'center', fontSize: 20, marginBottom: spacing.xs }]}>
+                  Power Add-Ons
+                </Text>
+                <Text style={[styles.currentPlanSubtext, { textAlign: 'center', marginBottom: spacing.md }]}>
+                  Available on any paid plan. Add only what you need.
+                </Text>
+              </View>
+
+              {/* AI Receptionist Add-On */}
+              <View style={[styles.tierCard, { marginBottom: spacing.md }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+                  <View style={{ width: 36, height: 36, borderRadius: radius.md, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather name="headphones" size={18} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.tierName}>AI Receptionist</Text>
+                    <Text style={[styles.currentPlanSubtext, { marginTop: 0 }]}>$60/month add-on</Text>
+                  </View>
+                </View>
+                <Text style={[styles.featureText, { marginBottom: spacing.sm, color: colors.mutedForeground }]}>
+                  AI-powered phone answering with a dedicated Australian number. Captures leads and transfers calls to your team.
+                </Text>
+                <View style={styles.featureList}>
+                  {['Dedicated Australian phone number', '24/7 AI answering in your business name', 'Auto lead capture and bookings', 'Live call transfer to team'].map((feat, i) => (
+                    <View key={i} style={styles.featureItem}>
+                      <View style={styles.featureIconContainer}>
+                        <Feather name="check" size={14} color="#2563eb" />
+                      </View>
+                      <Text style={styles.featureText}>{feat}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity 
+                  style={[styles.ctaButton, styles.ctaButtonOutline, { marginTop: spacing.md }]}
+                  onPress={() => Linking.openURL('mailto:support@jobrunner.com.au?subject=AI%20Receptionist%20Add-On%20Enquiry')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.ctaButtonTextOutline}>
+                    <Feather name="headphones" size={14} />{'  '}Set Up AI Receptionist
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Custom Website Add-On */}
+              <View style={[styles.tierCard, { marginBottom: spacing.md }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+                  <View style={{ width: 36, height: 36, borderRadius: radius.md, backgroundColor: `${colors.accent}30`, alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather name="globe" size={18} color={colors.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.tierName}>Custom Website</Text>
+                    <Text style={[styles.currentPlanSubtext, { marginTop: 0 }]}>Custom quote</Text>
+                  </View>
+                </View>
+                <Text style={[styles.featureText, { marginBottom: spacing.sm, color: colors.mutedForeground }]}>
+                  Professional website built for your trade business — mobile-friendly, SEO optimised, and integrated with JobRunner.
+                </Text>
+                <View style={styles.featureList}>
+                  {['Custom design tailored to your trade', 'Local SEO for your suburb and trade', 'JobRunner quote form integration', 'Hosting and support included'].map((feat, i) => (
+                    <View key={i} style={styles.featureItem}>
+                      <View style={styles.featureIconContainer}>
+                        <Feather name="check" size={14} color="#7c3aed" />
+                      </View>
+                      <Text style={styles.featureText}>{feat}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity 
+                  style={[styles.ctaButton, styles.ctaButtonOutline, { marginTop: spacing.md }]}
+                  onPress={() => Linking.openURL('mailto:support@jobrunner.com.au?subject=Custom%20Website%20Enquiry&body=Hi%20JobRunner%20Team%2C%0A%0AI%27m%20interested%20in%20a%20custom%20website.%0A%0ABusiness%20Name%3A%20%0ATrade%3A%20%0ALocation%3A%20%0A%0AThanks!')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.ctaButtonTextOutline}>
+                    <Feather name="mail" size={14} />{'  '}Request Custom Website
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.trialInfoCard}>
                 <Text style={styles.trialInfoTitle}>
                   <Feather name="calendar" size={18} color={colors.foreground} />

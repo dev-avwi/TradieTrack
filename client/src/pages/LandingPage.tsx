@@ -77,7 +77,10 @@ import {
   Sparkles,
   Download,
   Globe,
-  Monitor
+  Monitor,
+  Phone,
+  Bot,
+  Headphones
 } from "lucide-react";
 import { SiApple, SiGoogleplay } from "react-icons/si";
 
@@ -847,7 +850,80 @@ export default function LandingPage() {
             </AnimatedSection>
           </div>
 
-          <AnimatedSection delay={400} className="text-center mt-10">
+          {/* Power Add-Ons */}
+          <AnimatedSection delay={400} className="mt-14">
+            <div className="text-center mb-8">
+              <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-3">Power Add-Ons</span>
+              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">
+                Supercharge your business
+              </h3>
+              <p className="text-gray-600 max-w-xl mx-auto">
+                Available on any paid plan. Add only what you need.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                    <Headphones className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900">AI Receptionist</h4>
+                    <p className="text-sm text-gray-500">$60/month add-on</p>
+                  </div>
+                </div>
+                <ul className="space-y-2 mb-5">
+                  {[
+                    "Dedicated Australian phone number",
+                    "AI answers calls 24/7 in your business name",
+                    "Captures leads and creates bookings automatically",
+                    "Live call transfer to your team when available",
+                    "Customers see your number, not JobRunner's"
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <div className="flex-shrink-0 w-4 h-4 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                        <Check className="w-2.5 h-2.5 text-blue-600" />
+                      </div>
+                      <span className="text-sm text-gray-700">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-gray-500">Includes dedicated number provisioning. Requires Pro or Team plan.</p>
+              </div>
+
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+                    <Globe className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900">Custom Website</h4>
+                    <p className="text-sm text-gray-500">Custom quote</p>
+                  </div>
+                </div>
+                <ul className="space-y-2 mb-5">
+                  {[
+                    "Professional website built for your trade business",
+                    "Mobile-friendly design that converts visitors to leads",
+                    "Integrated with your JobRunner quote requests",
+                    "SEO optimised for your local area and trade",
+                    "Ongoing hosting and support included"
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <div className="flex-shrink-0 w-4 h-4 bg-purple-100 rounded-full flex items-center justify-center mt-0.5">
+                        <Check className="w-2.5 h-2.5 text-purple-600" />
+                      </div>
+                      <span className="text-sm text-gray-700">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-gray-500">Our team builds it for you. Available on any paid plan.</p>
+              </div>
+            </div>
+          </AnimatedSection>
+
+          <AnimatedSection delay={500} className="text-center mt-10">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-full px-5 py-2.5 mb-4">
               <span className="text-sm font-semibold text-green-700">
                 {betaStatus && betaStatus.spotsRemaining > 0 ? `Beta Special: ${betaStatus.spotsRemaining} lifetime free spots remaining in exchange for a testimonial` : 'All features unlocked during beta. Start your free trial today.'}

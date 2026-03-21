@@ -78,6 +78,18 @@ export const PRICING = {
     seatName: 'Additional Team Member',
     description: 'Full features plus team management and live tracking',
   },
+  addons: {
+    aiReceptionist: {
+      monthly: 6000, // $60/month
+      name: 'AI Receptionist',
+      description: 'AI-powered phone answering with dedicated Australian number',
+    },
+    customWebsite: {
+      name: 'Custom Website',
+      description: 'Professional website built for your trade business',
+      type: 'manual_service' as const,
+    },
+  },
 } as const;
 
 // Worker Permission Capabilities - granular controls owners can grant to workers
