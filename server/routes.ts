@@ -42900,22 +42900,6 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   // AI Receptionist (Vapi Integration) Routes
   // ============================================================
 
-  app.post("/api/vapi/webhook", async (req: any, res) => {
-    try {
-      const { processWebhookEvent, verifyVapiWebhook } = await import('./vapiService');
-      const signature = req.headers['x-vapi-signature'] as string | undefined;
-      const rawBody = JSON.stringify(req.body);
-      if (process.env.VAPI_PRIVATE_KEY && !verifyVapiWebhook(rawBody, signature)) {
-        console.warn('[Vapi Webhook] Invalid signature - rejecting request');
-        return res.status(401).json({ error: 'Invalid webhook signature' });
-      }
-      const result = await processWebhookEvent(req.body);
-      res.json(result);
-    } catch (error: any) {
-      console.error("[Vapi Webhook] Error:", error);
-      res.status(500).json({ error: 'Webhook processing failed' });
-    }
-  });
 
   app.get("/api/ai-receptionist/config", requireAuth, async (req: any, res) => {
     try {
@@ -43039,6 +43023,80 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     } catch (error: any) {
       console.error("Get AI receptionist call error:", error);
       res.status(500).json({ error: "Failed to get call details" });
+    }
+  });
+
+  app.patch("/api/ai-receptionist/team/:memberId/availability", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId || req.session?.userId;
+      const { memberId } = req.params;
+      const { available } = req.body;
+
+      if (typeof available !== 'boolean') {
+        return res.status(400).json({ error: 'available must be a boolean' });
+      }
+
+      const teamMembers = await storage.getTeamMembers(userId);
+      const member = teamMembers.find(m => m.id === memberId);
+      if (!member) {
+        return res.status(404).json({ error: 'Team member not found' });
+      }
+
+      await storage.updateTeamMember(memberId, userId, { aiReceptionistAvailability: available } as any);
+      res.json({ success: true, memberId, available });
+    } catch (error: any) {
+      console.error('[AI Receptionist] Update availability error:', error);
+      res.status(500).json({ error: 'Failed to update availability' });
+    }
+  });
+
+  app.get("/api/ai-receptionist/team/availability", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId || req.session?.userId;
+      const teamMembers = await storage.getTeamMembers(userId);
+      const availability = teamMembers
+        .filter(m => m.isActive)
+        .map(m => ({
+          id: m.id,
+          name: `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email,
+          phone: m.phone,
+          available: m.aiReceptionistAvailability !== false,
+        }));
+      res.json(availability);
+    } catch (error: any) {
+      console.error('[AI Receptionist] Get availability error:', error);
+      res.status(500).json({ error: 'Failed to get team availability' });
+    }
+  });
+
+  app.get("/api/ai-receptionist/connectivity-test", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId || req.session?.userId;
+      const settings = await storage.getBusinessSettings(userId);
+      if (!settings) {
+        return res.json({ connected: false, error: 'Business settings not found' });
+      }
+
+      if (!settings.vapiAssistantId) {
+        return res.json({ connected: false, error: 'AI Receptionist not enabled' });
+      }
+
+      try {
+        const { getAssistant } = await import('./vapiService');
+        const assistant = await getAssistant(settings.vapiAssistantId);
+        res.json({
+          connected: true,
+          assistantId: settings.vapiAssistantId,
+          assistantName: assistant?.name,
+          phoneNumberId: settings.vapiPhoneNumberId || null,
+          webhookUrl: assistant?.serverUrl,
+        });
+      } catch (e: any) {
+        res.json({ connected: false, error: `Vapi connection failed: ${e.message}` });
+      }
+    } catch (error: any) {
+      console.error('[AI Receptionist] Connectivity test error:', error);
+      res.status(500).json({ connected: false, error: 'Connectivity test failed' });
     }
   });
 

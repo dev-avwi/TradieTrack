@@ -1595,6 +1595,7 @@ export const teamMembers = pgTable("team_members", {
   allowLocationSharing: boolean("allow_location_sharing").default(true), // Whether this member shares their location with owner
   locationEnabledByOwner: boolean("location_enabled_by_owner").default(true), // Owner can disable location access for this member
   whsRole: text("whs_role").default('none'),
+  aiReceptionistAvailability: boolean("ai_receptionist_availability").default(true),
   // Employment details
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
   startDate: timestamp("start_date"),

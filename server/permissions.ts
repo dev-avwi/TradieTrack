@@ -31,6 +31,7 @@ export const PERMISSIONS = {
   ASSIGN_JOBS: 'assign_jobs',
   WRITE_JOB_NOTES: 'write_job_notes',
   WRITE_JOB_MEDIA: 'write_job_media',
+  MANAGE_AI_RECEPTIONIST: 'manage_ai_receptionist',
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -56,6 +57,7 @@ export const ROLE_TEMPLATES = {
       PERMISSIONS.READ_EXPENSES, PERMISSIONS.WRITE_EXPENSES,
       PERMISSIONS.MANAGE_CATALOG,
       PERMISSIONS.VIEW_ALL,
+      PERMISSIONS.MANAGE_AI_RECEPTIONIST,
     ],
     description: 'Almost full access, except payment management',
   },

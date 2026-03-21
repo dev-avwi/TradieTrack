@@ -25,6 +25,7 @@ export const PERMISSIONS = {
   MANAGE_INTEGRATIONS: 'manage_integrations',
   VIEW_MAP: 'view_map',
   ACCESS_DISPATCH: 'access_dispatch',
+  MANAGE_AI_RECEPTIONIST: 'manage_ai_receptionist',
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];

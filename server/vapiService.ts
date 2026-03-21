@@ -5,15 +5,20 @@ import crypto from 'crypto';
 const VAPI_API_BASE = 'https://api.vapi.ai';
 const VAPI_API_KEY = process.env.VAPI_PRIVATE_KEY || '';
 
-export function verifyVapiWebhook(rawBody: string | Buffer, signature: string | undefined): boolean {
-  if (!VAPI_API_KEY || !signature) {
-    return !VAPI_API_KEY;
+export function verifyVapiWebhook(rawBody: Buffer, signature: string | undefined): boolean {
+  if (!VAPI_API_KEY) {
+    console.warn('[Vapi] VAPI_PRIVATE_KEY not configured — webhook verification disabled');
+    return false;
+  }
+  if (!signature) {
+    console.warn('[Vapi] Missing x-vapi-signature header');
+    return false;
   }
   try {
     const hmac = crypto.createHmac('sha256', VAPI_API_KEY);
-    hmac.update(typeof rawBody === 'string' ? rawBody : rawBody.toString('utf8'));
+    hmac.update(rawBody);
     const expected = hmac.digest('hex');
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    return crypto.timingSafeEqual(Buffer.from(signature, 'utf8'), Buffer.from(expected, 'utf8'));
   } catch {
     return false;
   }
@@ -94,8 +99,21 @@ Important guidelines:
 - If asked about business hours, refer to: ${config.businessHours ? `${config.businessHours.start} to ${config.businessHours.end}` : 'standard business hours'}
 - At the end of the call, confirm you've captured their details and let them know someone will be in touch
 
-After collecting the caller's information, use the "capture_lead" tool to save their details.
-${config.transferNumbers && config.transferNumbers.length > 0 ? 'If the caller requests to speak with someone directly, use the "transfer_call" tool.' : 'Let callers know that someone from the team will call them back shortly.'}`;
+Available tools:
+1. "capture_lead" - Save the caller's contact details and reason for calling. Use this after collecting their information.
+2. "check_availability" - Check if team members are available to take a call or handle a job. Use when the caller asks about availability.
+3. "lookup_client" - Look up an existing client by phone number or name. Use when a returning client calls to find their history.
+4. "create_booking" - Create a tentative booking/appointment. Use when the caller wants to schedule work.
+${config.transferNumbers && config.transferNumbers.length > 0 ? '5. "transfer_call" - Transfer the call to a team member when the caller wants to speak with someone directly.' : ''}
+
+Workflow:
+1. First, greet the caller and ask how you can help
+2. Use "lookup_client" if they mention being an existing client
+3. Gather their details and reason for calling
+4. Use "check_availability" if they ask about scheduling
+5. Use "capture_lead" to save their details
+6. If they want to book, use "create_booking"
+7. If they insist on speaking with someone, use "transfer_call" (if available)`;
 }
 
 function buildToolDefinitions(config: VapiAssistantConfig): any[] {
@@ -130,6 +148,57 @@ function buildToolDefinitions(config: VapiAssistantConfig): any[] {
       },
       server: { url: config.webhookUrl },
     },
+    {
+      type: 'function',
+      function: {
+        name: 'check_availability',
+        description: 'Check team member availability for calls or jobs',
+        parameters: {
+          type: 'object',
+          properties: {
+            date: { type: 'string', description: 'Date to check availability for (YYYY-MM-DD format, optional)' },
+            urgency: { type: 'string', enum: ['urgent', 'this_week', 'this_month', 'flexible'], description: 'Urgency level' },
+          },
+        },
+      },
+      server: { url: config.webhookUrl },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'lookup_client',
+        description: 'Look up an existing client by phone number or name to find their details and job history',
+        parameters: {
+          type: 'object',
+          properties: {
+            phone: { type: 'string', description: 'Client phone number to search for' },
+            name: { type: 'string', description: 'Client name to search for' },
+          },
+        },
+      },
+      server: { url: config.webhookUrl },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'create_booking',
+        description: 'Create a tentative booking/appointment for the caller',
+        parameters: {
+          type: 'object',
+          properties: {
+            caller_name: { type: 'string', description: 'Name of the person requesting the booking' },
+            caller_phone: { type: 'string', description: 'Phone number for the booking contact' },
+            job_type: { type: 'string', description: 'Type of work to be done' },
+            address: { type: 'string', description: 'Address/suburb for the work' },
+            preferred_date: { type: 'string', description: 'Preferred date for the booking (YYYY-MM-DD)' },
+            preferred_time: { type: 'string', description: 'Preferred time (morning, afternoon, or specific time)' },
+            notes: { type: 'string', description: 'Additional notes about the booking' },
+          },
+          required: ['caller_name', 'job_type'],
+        },
+      },
+      server: { url: config.webhookUrl },
+    },
   ];
 
   if (config.transferNumbers && config.transferNumbers.length > 0) {
@@ -137,7 +206,7 @@ function buildToolDefinitions(config: VapiAssistantConfig): any[] {
       type: 'function',
       function: {
         name: 'transfer_call',
-        description: 'Transfer the call to a team member when the caller wants to speak with someone directly',
+        description: 'Transfer the call to an available team member when the caller wants to speak with someone directly',
         parameters: {
           type: 'object',
           properties: {
@@ -445,16 +514,21 @@ export async function handleToolCall(
 ): Promise<any> {
   console.log(`[Vapi] Tool call: ${toolName} for user ${userId}, call ${callId}`);
 
-  if (toolName === 'capture_lead') {
-    return handleCaptureLead(toolArgs, userId, callId);
+  switch (toolName) {
+    case 'capture_lead':
+      return handleCaptureLead(toolArgs, userId, callId);
+    case 'transfer_call':
+      return handleTransferCall(toolArgs, userId);
+    case 'check_availability':
+      return handleCheckAvailability(toolArgs, userId);
+    case 'lookup_client':
+      return handleLookupClient(toolArgs, userId);
+    case 'create_booking':
+      return handleCreateBooking(toolArgs, userId, callId);
+    default:
+      console.warn(`[Vapi] Unknown tool: ${toolName}`);
+      return { result: 'Tool not recognized' };
   }
-
-  if (toolName === 'transfer_call') {
-    return handleTransferCall(toolArgs, userId);
-  }
-
-  console.warn(`[Vapi] Unknown tool: ${toolName}`);
-  return { result: 'Tool not recognized' };
 }
 
 async function handleCaptureLead(args: any, userId: string, callId: string): Promise<any> {
@@ -501,6 +575,83 @@ async function handleCaptureLead(args: any, userId: string, callId: string): Pro
   }
 }
 
+function isWithinBusinessHours(businessHours: any): boolean {
+  if (!businessHours) return true;
+  try {
+    const tz = businessHours.timezone || 'Australia/Brisbane';
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-AU', {
+      timeZone: tz,
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false,
+      weekday: 'short',
+    });
+    const parts = formatter.formatToParts(now);
+    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
+    const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
+    const dayName = parts.find(p => p.type === 'weekday')?.value || '';
+    const dayMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 };
+    const dayNumber = dayMap[dayName] ?? new Date().getDay();
+
+    const activeDays = businessHours.days || [1, 2, 3, 4, 5];
+    if (!activeDays.includes(dayNumber)) return false;
+
+    const [startH, startM] = (businessHours.start || '08:00').split(':').map(Number);
+    const [endH, endM] = (businessHours.end || '17:00').split(':').map(Number);
+    const nowMinutes = hour * 60 + minute;
+    const startMinutes = startH * 60 + (startM || 0);
+    const endMinutes = endH * 60 + (endM || 0);
+    return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
+  } catch {
+    return true;
+  }
+}
+
+async function getAvailableTransferTarget(userId: string, settings: BusinessSettings): Promise<{ name: string; phone: string } | null> {
+  const mode = settings.aiReceptionistMode || 'always_on_message';
+  const transferNumbers = (settings.aiReceptionistTransferNumbers as any[]) || [];
+  const businessHours = settings.aiReceptionistBusinessHours as any;
+
+  if (mode === 'off') return null;
+  if (mode === 'always_on_message') return null;
+
+  if (mode === 'after_hours') {
+    if (isWithinBusinessHours(businessHours)) {
+      const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+      return sorted[0] || null;
+    }
+    return null;
+  }
+
+  if (mode === 'always_on_transfer') {
+    const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+    return sorted[0] || null;
+  }
+
+  if (mode === 'selective') {
+    try {
+      const teamMembers = await storage.getTeamMembers(userId);
+      const availableMembers = teamMembers.filter(m =>
+        m.isActive && m.aiReceptionistAvailability && m.phone
+      );
+
+      if (availableMembers.length > 0) {
+        const member = availableMembers[0];
+        return { name: member.firstName || member.email, phone: member.phone! };
+      }
+
+      const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+      return sorted[0] || null;
+    } catch {
+      const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+      return sorted[0] || null;
+    }
+  }
+
+  return null;
+}
+
 async function handleTransferCall(args: any, userId: string): Promise<any> {
   try {
     const settings = await storage.getBusinessSettings(userId);
@@ -508,13 +659,10 @@ async function handleTransferCall(args: any, userId: string): Promise<any> {
       return { result: 'Unable to transfer at this time. I\'ll make sure someone calls you back.' };
     }
 
-    const transferNumbers = (settings.aiReceptionistTransferNumbers as any[]) || [];
-    if (transferNumbers.length === 0) {
+    const target = await getAvailableTransferTarget(userId, settings);
+    if (!target) {
       return { result: 'No one is available to take the call right now. I\'ll make sure someone calls you back soon.' };
     }
-
-    const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
-    const target = sorted[0];
 
     return {
       result: `Transferring to ${target.name}...`,
@@ -523,6 +671,114 @@ async function handleTransferCall(args: any, userId: string): Promise<any> {
   } catch (error: any) {
     console.error('[Vapi] Transfer failed:', error);
     return { result: 'Unable to transfer at this time. I\'ll make sure someone calls you back.' };
+  }
+}
+
+async function handleCheckAvailability(args: any, userId: string): Promise<any> {
+  try {
+    const settings = await storage.getBusinessSettings(userId);
+    if (!settings) {
+      return { result: 'I\'m not able to check availability right now. Someone from the team will get back to you.' };
+    }
+
+    const businessHours = settings.aiReceptionistBusinessHours as any;
+    const withinHours = isWithinBusinessHours(businessHours);
+
+    const teamMembers = await storage.getTeamMembers(userId);
+    const availableCount = teamMembers.filter(m => m.isActive && m.aiReceptionistAvailability).length;
+
+    const hoursStr = businessHours
+      ? `${businessHours.start || '8:00'} to ${businessHours.end || '5:00 PM'}`
+      : 'standard business hours';
+
+    if (withinHours && availableCount > 0) {
+      return { result: `The team is currently available during business hours (${hoursStr}). ${availableCount} team member${availableCount > 1 ? 's are' : ' is'} available. Would you like me to transfer you or take a message?` };
+    } else if (withinHours) {
+      return { result: `We're within business hours (${hoursStr}), but the team is currently busy. I can take your details and have someone call you back.` };
+    } else {
+      return { result: `We're currently outside business hours (${hoursStr}). I'll take your details and someone will get back to you during business hours.` };
+    }
+  } catch (error: any) {
+    console.error('[Vapi] Check availability failed:', error);
+    return { result: 'I\'m not able to check availability right now. I\'ll make sure someone gets back to you.' };
+  }
+}
+
+async function handleLookupClient(args: any, userId: string): Promise<any> {
+  try {
+    const clients = await storage.getClients(userId);
+    let match = null;
+
+    if (args.phone) {
+      const normalizedPhone = args.phone.replace(/\D/g, '');
+      match = clients.find(c => {
+        const clientPhone = (c.phone || '').replace(/\D/g, '');
+        return clientPhone && (clientPhone === normalizedPhone || clientPhone.endsWith(normalizedPhone) || normalizedPhone.endsWith(clientPhone));
+      });
+    }
+
+    if (!match && args.name) {
+      const searchName = args.name.toLowerCase();
+      match = clients.find(c => {
+        const fullName = `${c.firstName || ''} ${c.lastName || ''}`.toLowerCase().trim();
+        return fullName.includes(searchName) || searchName.includes(fullName);
+      });
+    }
+
+    if (match) {
+      return {
+        result: `I found the client: ${match.firstName || ''} ${match.lastName || ''}. They're already in our system. I'll note this as a returning client.`,
+        clientFound: true,
+        clientName: `${match.firstName || ''} ${match.lastName || ''}`.trim(),
+      };
+    }
+
+    return {
+      result: 'I wasn\'t able to find that in our records. No worries — I\'ll take your details as a new enquiry.',
+      clientFound: false,
+    };
+  } catch (error: any) {
+    console.error('[Vapi] Client lookup failed:', error);
+    return { result: 'I\'ll take your details and the team can check our records.', clientFound: false };
+  }
+}
+
+async function handleCreateBooking(args: any, userId: string, callId: string): Promise<any> {
+  try {
+    const lead = await storage.createLead({
+      userId,
+      name: args.caller_name || 'Unknown Caller',
+      phone: args.caller_phone || null,
+      email: null,
+      source: 'phone',
+      status: 'new',
+      description: `Booking request: ${args.job_type || 'Not specified'}${args.preferred_date ? ` for ${args.preferred_date}` : ''}${args.preferred_time ? ` (${args.preferred_time})` : ''}`,
+      estimatedValue: null,
+      notes: [
+        args.job_type ? `Work type: ${args.job_type}` : null,
+        args.address ? `Location: ${args.address}` : null,
+        args.preferred_date ? `Preferred date: ${args.preferred_date}` : null,
+        args.preferred_time ? `Preferred time: ${args.preferred_time}` : null,
+        args.notes || null,
+        `Source: AI Receptionist booking (${callId})`,
+      ].filter(Boolean).join('\n'),
+      followUpDate: args.preferred_date || null,
+      wonLostReason: null,
+    });
+
+    await storage.updateAiReceptionistCall(callId, userId, {
+      leadId: lead.id,
+      callerName: args.caller_name || null,
+      callerIntent: 'booking_request',
+    });
+
+    console.log(`[Vapi] Booking lead created: ${lead.id} for call ${callId}`);
+    return {
+      result: `I've created a tentative booking for ${args.job_type || 'the requested work'}${args.preferred_date ? ` on ${args.preferred_date}` : ''}. Reference: ${lead.id.slice(0, 8)}. Someone from the team will confirm the details with you.`,
+    };
+  } catch (error: any) {
+    console.error('[Vapi] Create booking failed:', error);
+    return { result: 'I\'ve noted your booking request. Someone from the team will call you to confirm.' };
   }
 }
 
@@ -604,10 +860,12 @@ async function handleEndOfCallReport(event: any): Promise<any> {
     cost: message.cost ? String(message.cost) : null,
   };
 
+  let callRecord: any;
   if (existingCall) {
     await storage.updateAiReceptionistCall(existingCall.id, business.userId, updates);
+    callRecord = existingCall;
   } else {
-    await storage.createAiReceptionistCall({
+    callRecord = await storage.createAiReceptionistCall({
       userId: business.userId,
       vapiCallId: callId,
       callerPhone: call.customer?.number || null,
@@ -615,8 +873,94 @@ async function handleEndOfCallReport(event: any): Promise<any> {
     } as any);
   }
 
+  const hasLead = callRecord?.leadId || existingCall?.leadId;
+  if (!hasLead && call.customer?.number) {
+    try {
+      const callerPhone = call.customer.number;
+      const lead = await storage.createLead({
+        userId: business.userId,
+        name: existingCall?.callerName || 'Caller',
+        phone: callerPhone,
+        email: null,
+        source: 'phone',
+        status: 'new',
+        description: message.summary || 'AI Receptionist call — no lead was explicitly captured during the call',
+        estimatedValue: null,
+        notes: `Auto-created from AI Receptionist call ${callId}\nDuration: ${updates.duration || 0}s`,
+        followUpDate: null,
+        wonLostReason: null,
+      });
+
+      const recordId = existingCall?.id || callRecord?.id;
+      if (recordId) {
+        await storage.updateAiReceptionistCall(recordId, business.userId, { leadId: lead.id });
+      }
+      console.log(`[Vapi] Auto-created lead ${lead.id} for call ${callId}`);
+    } catch (e: any) {
+      console.error(`[Vapi] Failed to auto-create lead for call ${callId}:`, e.message);
+    }
+  }
+
+  await sendCallNotifications(business, callId, call.customer?.number, message.summary, updates.duration as number | null);
+
   console.log(`[Vapi Webhook] Call ${callId} completed - duration: ${updates.duration}s`);
   return { ok: true };
+}
+
+async function sendCallNotifications(
+  business: BusinessSettings,
+  callId: string,
+  callerPhone: string | null,
+  summary: string | null,
+  duration: number | null,
+): Promise<void> {
+  try {
+    const userId = business.userId;
+    const businessName = business.businessName || 'Your business';
+    const callerDisplay = callerPhone || 'Unknown number';
+    const summaryText = summary || 'No summary available';
+    const durationText = duration ? `${Math.ceil(duration / 60)} min` : 'Unknown';
+
+    const smsBody = `AI Receptionist: New call from ${callerDisplay} (${durationText}). ${summaryText.slice(0, 120)}`;
+
+    const transferNumbers = (business.aiReceptionistTransferNumbers as any[]) || [];
+    for (const contact of transferNumbers) {
+      if (contact.phone) {
+        try {
+          await storage.createSmsMessage({
+            businessOwnerId: userId,
+            to: contact.phone,
+            from: business.dedicatedPhoneNumber || '',
+            body: smsBody,
+            direction: 'outbound',
+            status: 'queued',
+          });
+          console.log(`[Vapi] Notification queued for ${contact.name} (${contact.phone})`);
+        } catch (e: any) {
+          console.error(`[Vapi] SMS notification failed for ${contact.phone}:`, e.message);
+        }
+      }
+    }
+
+    try {
+      const user = await storage.getUser(userId);
+      if (user?.phone && !transferNumbers.some(t => t.phone === user.phone)) {
+        await storage.createSmsMessage({
+          businessOwnerId: userId,
+          to: user.phone,
+          from: business.dedicatedPhoneNumber || '',
+          body: smsBody,
+          direction: 'outbound',
+          status: 'queued',
+        });
+        console.log(`[Vapi] Owner notification queued for ${userId}`);
+      }
+    } catch (e: any) {
+      console.error(`[Vapi] Owner SMS notification failed:`, e.message);
+    }
+  } catch (e: any) {
+    console.error(`[Vapi] sendCallNotifications error:`, e.message);
+  }
 }
 
 async function handleToolCalls(event: any): Promise<any> {

@@ -145,6 +145,35 @@ if (process.env.DATABASE_URL) {
     console.log('✅ Stripe webhook route configured');
   }
 
+  app.post(
+    '/api/vapi/webhook',
+    express.raw({ type: 'application/json' }),
+    async (req, res) => {
+      try {
+        const { processWebhookEvent, verifyVapiWebhook } = await import('./vapiService');
+        const signature = req.headers['x-vapi-signature'] as string | undefined;
+
+        if (!Buffer.isBuffer(req.body)) {
+          console.error('[Vapi Webhook] req.body is not a Buffer');
+          return res.status(500).json({ error: 'Webhook processing error' });
+        }
+
+        if (process.env.VAPI_PRIVATE_KEY && !verifyVapiWebhook(req.body, signature)) {
+          console.warn('[Vapi Webhook] Invalid signature - rejecting request');
+          return res.status(401).json({ error: 'Invalid webhook signature' });
+        }
+
+        const parsed = JSON.parse(req.body.toString('utf8'));
+        const result = await processWebhookEvent(parsed);
+        res.json(result);
+      } catch (error: any) {
+        console.error('[Vapi Webhook] Error:', error);
+        res.status(500).json({ error: 'Webhook processing failed' });
+      }
+    }
+  );
+  console.log('✅ Vapi webhook route configured');
+
   // Now apply JSON middleware for all other routes
   // Increase limit to 10MB for voice note and photo uploads (base64 encoded)
   app.use(express.json({ limit: '10mb' }));
