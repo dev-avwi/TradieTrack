@@ -475,6 +475,7 @@ export async function createOrFindTwilioAddress(businessOwnerId: string, busines
   try {
     const existing = await client.addresses.list({ friendlyName: tenantKey, limit: 1 });
     if (existing.length > 0) {
+      console.log(`[Twilio] Found existing address for tenant: ${existing[0].sid}`);
       return { success: true, addressSid: existing[0].sid };
     }
 
@@ -498,19 +499,17 @@ export async function createOrFindTwilioAddress(businessOwnerId: string, busines
       const created = await client.addresses.create(addressPayload);
       console.log(`[Twilio] Created address: ${created.sid} for tenant ${tenantKey}`);
       return { success: true, addressSid: created.sid };
-    } catch (firstError: any) {
-      console.warn('[Twilio] Address creation with validation failed, retrying with emergency validation disabled:', firstError.message);
-      try {
-        const created = await client.addresses.create({
-          ...addressPayload,
-          emergencyEnabled: false,
-          validated: false,
-        } as any);
-        console.log(`[Twilio] Created address (unvalidated): ${created.sid} for tenant ${tenantKey}`);
-        return { success: true, addressSid: created.sid };
-      } catch (retryError: any) {
-        throw retryError;
+    } catch (createError: any) {
+      console.warn('[Twilio] Address creation failed:', createError.message);
+
+      const validated = await client.addresses.list({ isoCountry: 'AU', limit: 5 });
+      const reusable = validated.find(a => a.validated);
+      if (reusable) {
+        console.log(`[Twilio] Reusing existing validated AU address: ${reusable.sid} (${reusable.street}, ${reusable.city})`);
+        return { success: true, addressSid: reusable.sid };
       }
+
+      throw createError;
     }
   } catch (error: any) {
     console.error('[Twilio] Error creating address:', error.message);
@@ -538,6 +537,17 @@ export async function purchasePhoneNumber(phoneNumber: string, webhookUrl: strin
     
     if (addressSid) {
       createParams.addressSid = addressSid;
+    }
+
+    const bundles = await client.numbers.v2.regulatoryCompliance.bundles.list({
+      isoCountry: 'AU',
+      numberType: 'mobile',
+      status: 'twilio-approved',
+      limit: 1,
+    });
+    if (bundles.length > 0) {
+      createParams.bundleSid = bundles[0].sid;
+      console.log(`[SMS] Using regulatory bundle: ${bundles[0].sid} (${bundles[0].friendlyName})`);
     }
 
     const purchased = await client.incomingPhoneNumbers.create(createParams);
