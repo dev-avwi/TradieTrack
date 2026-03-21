@@ -34603,12 +34603,51 @@ Respond with JSON in this format:
         : `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000'}`;
       const webhookUrl = `${baseUrl}/api/sms/webhook/incoming`;
 
+      // Australian numbers require a registered address — validate and create/find one via Twilio
+      const { purchasePhoneNumber, createOrFindTwilioAddress, parseAustralianAddress } = await import('./twilioClient');
+      
+      if (!settings?.address) {
+        return res.status(422).json({ 
+          error: 'Australian phone numbers require a registered business address. Please add your business address in Settings before purchasing a number.',
+          requiresAddress: true 
+        });
+      }
+
+      const parsedAddress = parseAustralianAddress(settings.address);
+      if (!parsedAddress.valid) {
+        return res.status(422).json({ 
+          error: 'Your business address is incomplete. Please update it in Settings to include street, suburb, state (e.g. QLD), and postcode (e.g. 4870).',
+          requiresAddress: true 
+        });
+      }
+
+      const addressResult = await createOrFindTwilioAddress(businessOwnerId, {
+        businessName: settings.businessName || 'JobRunner Business',
+        address: settings.address,
+        customerName: settings.businessName,
+      });
+      
+      if (!addressResult.success || !addressResult.addressSid) {
+        return res.status(502).json({ 
+          error: addressResult.error || 'Failed to register your business address with Twilio. Please check your address in Settings.',
+          requiresAddress: true 
+        });
+      }
+
+      console.log(`[SMS] Using Twilio address ${addressResult.addressSid} for number purchase`);
+
       // Purchase the number via Twilio API
-      const { purchasePhoneNumber } = await import('./twilioClient');
-      const result = await purchasePhoneNumber(phoneNumber, webhookUrl);
+      const result = await purchasePhoneNumber(phoneNumber, webhookUrl, addressResult.addressSid);
 
       if (!result.success) {
-        return res.status(502).json({ error: result.error || 'Failed to purchase number from Twilio' });
+        const errorMsg = result.error || 'Failed to purchase number from Twilio';
+        if (errorMsg.includes('Address') || errorMsg.includes('address')) {
+          return res.status(502).json({ 
+            error: 'Australian phone numbers require a registered business address. Please update your business address in Settings before purchasing a number.',
+            requiresAddress: true 
+          });
+        }
+        return res.status(502).json({ error: errorMsg });
       }
 
       // Update business settings with the new dedicated number

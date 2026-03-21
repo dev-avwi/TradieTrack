@@ -427,28 +427,108 @@ export async function searchAvailableNumbers(options: {
 /**
  * Purchase a Twilio phone number and configure its webhook
  */
-export async function purchasePhoneNumber(phoneNumber: string, webhookUrl: string): Promise<{ success: boolean; sid?: string; phoneNumber?: string; error?: string }> {
+export function parseAustralianAddress(address: string): { street: string; city: string; region: string; postalCode: string; valid: boolean } {
+  if (!address || address.trim().length < 5) {
+    return { street: '', city: '', region: '', postalCode: '', valid: false };
+  }
+
+  const postcodeMatch = address.match(/\b(\d{4})\b(?:\s*$|\s*,)/);
+  const postalCode = postcodeMatch ? postcodeMatch[1] : '';
+
+  const stateAbbreviations = ['QLD', 'NSW', 'VIC', 'SA', 'WA', 'TAS', 'NT', 'ACT'];
+  let region = '';
+  for (const state of stateAbbreviations) {
+    const stateRegex = new RegExp(`\\b${state}\\b`, 'i');
+    if (stateRegex.test(address)) {
+      region = state;
+      break;
+    }
+  }
+
+  let cleaned = address;
+  if (postalCode) cleaned = cleaned.replace(new RegExp(`\\s*,?\\s*${postalCode}\\s*`), ' ');
+  if (region) cleaned = cleaned.replace(new RegExp(`\\s*,?\\s*\\b${region}\\b\\s*`, 'i'), ', ');
+  
+  const commaParts = cleaned.split(',').map(p => p.trim()).filter(Boolean);
+  const street = commaParts[0] || '';
+  const city = commaParts.length > 1 ? commaParts[commaParts.length - 1] : '';
+
+  const valid = !!(street && city && region && postalCode);
+  return { street, city, region, postalCode, valid };
+}
+
+export async function createOrFindTwilioAddress(businessOwnerId: string, businessInfo: {
+  businessName: string;
+  address: string;
+  city?: string;
+  region?: string;
+  postalCode?: string;
+  customerName?: string;
+}): Promise<{ success: boolean; addressSid?: string; error?: string }> {
+  const client = await getTwilioClient();
+  if (!client) {
+    return { success: false, error: 'Twilio not configured' };
+  }
+
+  const tenantKey = `JobRunner-${businessOwnerId}`;
+
+  try {
+    const existing = await client.addresses.list({ friendlyName: tenantKey, limit: 1 });
+    if (existing.length > 0) {
+      return { success: true, addressSid: existing[0].sid };
+    }
+
+    const parts = parseAustralianAddress(businessInfo.address);
+    if (!parts.valid) {
+      return { success: false, error: 'Business address is incomplete. Please update your business address in Settings (include street, suburb, state, and postcode).' };
+    }
+
+    const created = await client.addresses.create({
+      friendlyName: tenantKey,
+      customerName: businessInfo.customerName || businessInfo.businessName,
+      street: parts.street,
+      city: businessInfo.city || parts.city,
+      region: businessInfo.region || parts.region,
+      postalCode: businessInfo.postalCode || parts.postalCode,
+      isoCountry: 'AU',
+    });
+
+    console.log(`[Twilio] Created address: ${created.sid} for tenant ${tenantKey}`);
+    return { success: true, addressSid: created.sid };
+  } catch (error: any) {
+    console.error('[Twilio] Error creating address:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function purchasePhoneNumber(phoneNumber: string, webhookUrl: string, addressSid?: string): Promise<{ success: boolean; sid?: string; phoneNumber?: string; error?: string }> {
   const client = await getTwilioClient();
   if (!client) {
     return { success: false, error: 'Twilio not configured' };
   }
 
   try {
-    const purchased = await client.incomingPhoneNumbers.create({
+    const createParams: Record<string, string> = {
       phoneNumber: phoneNumber,
       smsUrl: webhookUrl,
       smsMethod: 'POST',
       friendlyName: `JobRunner Business Number`,
-    });
+    };
+    
+    if (addressSid) {
+      createParams.addressSid = addressSid;
+    }
 
-    console.log(`✅ Purchased Twilio number: ${purchased.phoneNumber} (${purchased.sid})`);
+    const purchased = await client.incomingPhoneNumbers.create(createParams);
+
+    console.log(`[SMS] Purchased Twilio number: ${purchased.phoneNumber} (${purchased.sid})`);
     return {
       success: true,
       sid: purchased.sid,
       phoneNumber: purchased.phoneNumber,
     };
   } catch (error: any) {
-    console.error('Error purchasing phone number:', error.message);
+    console.error('[SMS] Error purchasing phone number:', error.message);
     return { success: false, error: error.message };
   }
 }
