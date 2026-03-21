@@ -15402,6 +15402,12 @@ Be specific about materials, colors, and features that would be included.`
         processStatusChangeAutomation(effectiveUserId, 'job', job.id, existingJob.status, status)
           .catch(err => console.error('[Automations] Error processing job status change:', err));
         
+        if (status === 'done' || status === 'completed') {
+          const { processReviewRequestAutomation } = await import('./automationService');
+          processReviewRequestAutomation(effectiveUserId, job.id)
+            .catch(err => console.error('[Automations] Error processing review request:', err));
+        }
+        
         // Send push notification for job status change
         try {
           const statusDescription = status === 'in_progress' ? 'started' : 
@@ -18067,6 +18073,124 @@ Be specific about materials, colors, and features that would be included.`
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to send tracking email' });
+    }
+  });
+
+  // ============================================
+  // PUBLIC BOOKING PAGE (no auth required)
+  // ============================================
+  
+  app.get("/api/public/book/:slug", async (req: any, res) => {
+    try {
+      const slug = req.params.slug.toLowerCase().trim();
+      const allSettings = await storage.getAllBusinessSettings();
+      const business = allSettings.find((s: any) => s.bookingSlug === slug && s.bookingPageEnabled);
+      
+      if (!business) {
+        return res.status(404).json({ error: 'Booking page not found' });
+      }
+      
+      res.json({
+        businessName: business.businessName,
+        phone: business.phone,
+        email: business.email,
+        address: business.address,
+        logoUrl: business.logoUrl,
+        brandColor: business.brandColor || '#2563EB',
+        primaryColor: business.primaryColor,
+        services: business.bookingPageServices || [],
+        description: business.bookingPageDescription || '',
+        abn: business.abn,
+      });
+    } catch (error: any) {
+      console.error('[BookingPage] Error fetching booking page:', error);
+      res.status(500).json({ error: 'Failed to load booking page' });
+    }
+  });
+
+  const bookingRateLimit = new Map<string, { count: number; resetAt: number }>();
+  app.post("/api/public/book/:slug", async (req: any, res) => {
+    try {
+      const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+      const now = Date.now();
+      const entry = bookingRateLimit.get(ip);
+      if (entry && entry.resetAt > now) {
+        if (entry.count >= 5) {
+          return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+        }
+        entry.count++;
+      } else {
+        bookingRateLimit.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 });
+      }
+
+      const slug = req.params.slug.toLowerCase().trim();
+      const allSettings = await storage.getAllBusinessSettings();
+      const business = allSettings.find((s: any) => s.bookingSlug === slug && s.bookingPageEnabled);
+      
+      if (!business) {
+        return res.status(404).json({ error: 'Booking page not found' });
+      }
+      
+      const { name, email, phone, service, preferredDate, description, address } = req.body;
+      
+      if (!name || typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 200) {
+        return res.status(400).json({ error: 'Please provide a valid name' });
+      }
+      if (!phone || typeof phone !== 'string' || phone.trim().length < 6 || phone.trim().length > 30) {
+        return res.status(400).json({ error: 'Please provide a valid phone number' });
+      }
+      if (email && (typeof email !== 'string' || email.length > 254 || !email.includes('@'))) {
+        return res.status(400).json({ error: 'Please provide a valid email address' });
+      }
+      if (service && (typeof service !== 'string' || service.length > 200)) {
+        return res.status(400).json({ error: 'Invalid service selection' });
+      }
+      if (description && (typeof description !== 'string' || description.length > 2000)) {
+        return res.status(400).json({ error: 'Description is too long' });
+      }
+      if (address && (typeof address !== 'string' || address.length > 500)) {
+        return res.status(400).json({ error: 'Address is too long' });
+      }
+      
+      const leadData = {
+        userId: business.userId,
+        name,
+        email: email || null,
+        phone,
+        source: 'booking_page' as const,
+        status: 'new' as const,
+        description: [
+          service ? `Service: ${service}` : '',
+          address ? `Address: ${address}` : '',
+          preferredDate ? `Preferred Date: ${preferredDate}` : '',
+          description || '',
+        ].filter(Boolean).join('\n'),
+        notes: `Submitted via online booking page`,
+      };
+      
+      const lead = await storage.createLead(leadData);
+      
+      try {
+        await storage.createNotification({
+          userId: business.userId,
+          type: 'new_lead',
+          title: 'New Booking Request',
+          message: `${name} submitted a booking request${service ? ` for ${service}` : ''} via your online booking page`,
+          relatedId: lead.id,
+          relatedType: 'lead',
+          priority: 'important',
+          actionUrl: '/leads',
+          actionLabel: 'View Lead',
+        });
+      } catch (e) {
+        console.error('[BookingPage] Failed to create notification:', e);
+      }
+      
+      console.log(`[BookingPage] New booking request from ${name} for business ${business.businessName}`);
+      res.json({ success: true, message: 'Booking request submitted successfully' });
+    } catch (error: any) {
+      console.error('[BookingPage] Error submitting booking:', error);
+      res.status(500).json({ error: 'Failed to submit booking request' });
     }
   });
 

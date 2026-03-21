@@ -508,6 +508,11 @@ export const businessSettings = pgTable("business_settings", {
   earlyPaymentDiscountDays: integer("early_payment_discount_days").default(7), // If paid within 7 days
   // Default Payment Method for invoices
   defaultPaymentMethod: text("default_payment_method").default('card'), // 'card', 'bank_transfer', 'becs', 'payto'
+  googleReviewUrl: text("google_review_url"),
+  bookingSlug: text("booking_slug"),
+  bookingPageEnabled: boolean("booking_page_enabled").default(false),
+  bookingPageServices: json("booking_page_services").default([]),
+  bookingPageDescription: text("booking_page_description"),
   simpleMode: boolean("simple_mode").default(true),
   scheduleStartHour: integer("schedule_start_hour").default(6),
   scheduleEndHour: integer("schedule_end_hour").default(20),
@@ -3739,7 +3744,7 @@ export type TapToPayTermsAcceptance = typeof tapToPayTermsAcceptance.$inferSelec
 // CRM / Lead Pipeline
 // ========================
 
-export const LEAD_SOURCES = ['phone', 'email', 'website', 'referral', 'other'] as const;
+export const LEAD_SOURCES = ['phone', 'email', 'website', 'referral', 'booking_page', 'other'] as const;
 export type LeadSource = typeof LEAD_SOURCES[number];
 
 export const LEAD_STATUSES = ['new', 'contacted', 'quoted', 'won', 'lost'] as const;

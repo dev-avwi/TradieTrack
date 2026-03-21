@@ -61,7 +61,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Lead, Client } from "@shared/schema";
 
-type LeadSource = 'phone' | 'email' | 'website' | 'referral' | 'other';
+type LeadSource = 'phone' | 'email' | 'website' | 'referral' | 'booking_page' | 'other';
 type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
 
 const sourceLabels: Record<LeadSource, string> = {
@@ -69,6 +69,7 @@ const sourceLabels: Record<LeadSource, string> = {
   email: 'Email',
   website: 'Website',
   referral: 'Referral',
+  booking_page: 'Booking Page',
   other: 'Other',
 };
 
@@ -77,6 +78,7 @@ const sourceIcons: Record<LeadSource, typeof Phone> = {
   email: Mail,
   website: Globe,
   referral: UserPlus,
+  booking_page: CalendarIcon,
   other: MessageSquare,
 };
 

@@ -82,6 +82,7 @@ import Leads from "@/pages/Leads";
 import AIVisualizationPage from "@/pages/AIVisualization";
 import PayrollReports from "@/pages/PayrollReports";
 import ClientPortal from "@/pages/ClientPortal";
+import BookingPage from "@/pages/BookingPage";
 import ClientPortalHub from "@/pages/ClientPortalHub";
 import JobPortal from "@/pages/JobPortal";
 import TeamGroups from "@/pages/TeamGroups";
@@ -1540,6 +1541,7 @@ function App() {
               <Route path="/q/:token">{(params) => <QuoteShortRedirect token={params.token} />}</Route>
               <Route path="/i/:token">{(params) => <InvoiceShortRedirect token={params.token} />}</Route>
               <Route path="/pay/:token" component={PaymentPage} />
+              <Route path="/book/:slug" component={BookingPage} />
               <Route path="/portal/:type/:token" component={ClientPortal} />
               <Route path="/portal" component={ClientPortalHub} />
               <Route path="/job-portal/:token" component={JobPortal} />

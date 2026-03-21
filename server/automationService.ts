@@ -425,6 +425,79 @@ async function createNotification(
   });
 }
 
+export async function processReviewRequestAutomation(
+  userId: string,
+  jobId: string
+): Promise<void> {
+  try {
+    const automationSettings = await storage.getAutomationSettings(userId);
+    if (!automationSettings?.autoReviewRequest) return;
+
+    const job = await storage.getJob(jobId, userId);
+    if (!job?.clientId) return;
+
+    const client = await storage.getClient(job.clientId, userId);
+    if (!client) return;
+
+    const businessSettings = await storage.getBusinessSettings(userId);
+    const businessName = businessSettings?.businessName || 'Your Tradie';
+    const googleReviewUrl = (businessSettings as any)?.googleReviewUrl;
+
+    if (googleReviewUrl && !/^https?:\/\//i.test(googleReviewUrl)) {
+      console.warn('[Automations] Invalid googleReviewUrl, skipping review link');
+    }
+    const safeReviewUrl = googleReviewUrl && /^https?:\/\//i.test(googleReviewUrl)
+      ? googleReviewUrl.replace(/[<>"']/g, '') : '';
+
+    const defaultMessage = `Hi {client_name}, thanks for choosing {business_name}! We'd love to hear how we did. Your feedback helps us improve!`;
+    let message = automationSettings.reviewRequestMessage || defaultMessage;
+    message = message.replace(/{client_name}/g, client.name || 'there')
+      .replace(/{client}/g, client.name || 'there')
+      .replace(/{business_name}/g, businessName)
+      .replace(/{business}/g, businessName);
+
+    if (safeReviewUrl) {
+      message += `\n\nLeave a review: ${safeReviewUrl}`;
+    }
+
+    const channel = automationSettings.autoReviewRequestType || 'email';
+
+    const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    if ((channel === 'email' || channel === 'both') && client.email) {
+      const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: #f8f9fa; padding: 24px; border-radius: 8px; text-align: center;">
+            <h2 style="color: #1a1a1a; margin-bottom: 16px;">How did we do?</h2>
+            ${message.split('\n').map((line: string) => `<p style="margin: 8px 0;">${escHtml(line)}</p>`).join('')}
+            ${safeReviewUrl ? `<a href="${escHtml(safeReviewUrl)}" style="display: inline-block; margin-top: 16px; padding: 12px 24px; background: #2563EB; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">Leave a Google Review</a>` : ''}
+          </div>
+        </body>
+        </html>
+      `;
+
+      const { sendEmail } = await import('./emailService');
+      await sendEmail({
+        to: client.email,
+        subject: `How was your experience with ${businessName}?`,
+        text: message,
+        html: emailHtml,
+      });
+      console.log(`[Automations] Sent review request email to ${client.email} for job ${jobId}`);
+    }
+
+    if ((channel === 'sms' || channel === 'both') && client.phone) {
+      const { sendSMS } = await import('./twilioClient');
+      await sendSMS({ to: client.phone, message, alphanumericSenderId: 'JobRunner' });
+      console.log(`[Automations] Sent review request SMS to ${client.phone} for job ${jobId}`);
+    }
+  } catch (error) {
+    console.error('[Automations] Error processing review request:', error);
+  }
+}
+
 export async function processStatusChangeAutomation(
   userId: string,
   entityType: 'job' | 'quote' | 'invoice',

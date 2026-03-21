@@ -573,6 +573,9 @@ function InlineSettings({
     const message = settings.reviewRequestMessage ?? DEFAULT_MESSAGES.reviewRequestMessage;
     return (
       <div className="flex flex-col gap-3 pt-3 border-t border-border/50">
+        <div className="p-2.5 rounded-md bg-muted/50 text-xs text-muted-foreground">
+          Sent automatically when a job is marked as completed. Add your Google Review URL in Settings &gt; Business Details to include a direct review link.
+        </div>
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-muted-foreground">Channel</Label>
           <ChannelSelector value={channel} onChange={(v) => onUpdate({ autoReviewRequestType: v })} />
