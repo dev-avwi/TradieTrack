@@ -18,6 +18,7 @@ import {
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { getAvatarColor as getAvatarColorUtil } from '../../src/lib/avatar-colors';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
@@ -111,18 +112,12 @@ function getDocStatusColors(status: string, colors: ThemeColors): { bg: string; 
   return { bg: colors.muted, text: colors.mutedForeground };
 }
 
-const AVATAR_COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
-  '#f97316', '#eab308', '#22c55e', '#14b8a6',
-  '#06b6d4', '#3b82f6', '#a855f7', '#d946ef',
-];
+function getAvatarBg(name: string): string {
+  return getAvatarColorUtil(name).bg;
+}
 
-function getAvatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+function getAvatarFg(name: string): string {
+  return getAvatarColorUtil(name).fg;
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
@@ -1187,8 +1182,8 @@ export default function JobChatScreen() {
           {!own && (
             showAvatar ? (
               <View style={styles.avatarContainer}>
-                <View style={[styles.avatar, { backgroundColor: getAvatarColor(msg.senderName) }]}>
-                  <Text style={styles.avatarText}>{getInitials(msg.senderName)}</Text>
+                <View style={[styles.avatar, { backgroundColor: getAvatarBg(msg.senderName) }]}>
+                  <Text style={[styles.avatarText, { color: getAvatarFg(msg.senderName) }]}>{getInitials(msg.senderName)}</Text>
                 </View>
               </View>
             ) : (

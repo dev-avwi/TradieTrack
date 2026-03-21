@@ -16,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
+import { getAvatarColor as getAvatarColorShared } from '../../src/lib/avatar-colors';
 
 interface Client {
   id: string;
@@ -38,18 +39,8 @@ const SMS_TEMPLATES = [
 const SMS_MAX_LENGTH = 1600;
 const SMS_SEGMENT_LENGTH = 160;
 
-const AVATAR_COLORS = [
-  '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981',
-  '#6366F1', '#14B8A6', '#F97316', '#06B6D4', '#EF4444',
-];
-
-const getAvatarColor = (name: string) => {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-};
+const getAvatarColorBg = (name: string) => getAvatarColorShared(name).bg;
+const getAvatarColorFg = (name: string) => getAvatarColorShared(name).fg;
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
@@ -629,7 +620,8 @@ export default function NewSmsConversation() {
             filteredClients.map((client) => {
               const displayName = getDisplayName(client);
               const hasName = !!(client.firstName || client.lastName);
-              const avatarColor = getAvatarColor(getClientKey(client));
+              const avatarBg = getAvatarColorBg(getClientKey(client));
+              const avatarFg = getAvatarColorFg(getClientKey(client));
               
               return (
                 <TouchableOpacity
@@ -638,8 +630,8 @@ export default function NewSmsConversation() {
                   onPress={() => handleClientSelect(client)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.clientAvatar, { backgroundColor: avatarColor }]}>
-                    <Text style={styles.clientAvatarText}>
+                  <View style={[styles.clientAvatar, { backgroundColor: avatarBg }]}>
+                    <Text style={[styles.clientAvatarText, { color: avatarFg }]}>
                       {getInitials(client.firstName, client.lastName, client.phone)}
                     </Text>
                   </View>

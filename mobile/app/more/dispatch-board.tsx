@@ -21,6 +21,7 @@ import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { isTablet, useContentWidth } from '../../src/lib/device';
 import { format, isToday, parseISO, isBefore, startOfDay } from 'date-fns';
+import { getAvatarColor } from '../../src/lib/avatar-colors';
 
 type ViewMode = 'schedule' | 'kanban' | 'map';
 
@@ -480,8 +481,8 @@ export default function DispatchBoardScreen() {
               onPress={() => openAssignModal(job)}
               activeOpacity={0.7}
             >
-              <View style={[styles.miniAvatar, { backgroundColor: colors.primary }]}>
-                <Text style={styles.miniAvatarText}>{getInitials(assignedMember.firstName, assignedMember.lastName)}</Text>
+              <View style={[styles.miniAvatar, { backgroundColor: getAvatarColor(getMemberName(assignedMember)).bg }]}>
+                <Text style={[styles.miniAvatarText, { color: getAvatarColor(getMemberName(assignedMember)).fg }]}>{getInitials(assignedMember.firstName, assignedMember.lastName)}</Text>
               </View>
               <Text style={styles.assignedName}>{getMemberName(assignedMember)}</Text>
               <Feather name="repeat" size={12} color={colors.mutedForeground} />
@@ -532,8 +533,8 @@ export default function DispatchBoardScreen() {
       {Array.from(scheduleData.memberMap.entries()).map(([userId, { member, jobs: memberJobs }]) => (
         <View key={userId} style={styles.scheduleSection}>
           <View style={styles.scheduleSectionHeader}>
-            <View style={[styles.memberAvatar, { backgroundColor: colors.primary }]}>
-              <Text style={styles.memberAvatarText}>{getInitials(member.firstName, member.lastName)}</Text>
+            <View style={[styles.memberAvatar, { backgroundColor: getAvatarColor(getMemberName(member)).bg }]}>
+              <Text style={[styles.memberAvatarText, { color: getAvatarColor(getMemberName(member)).fg }]}>{getInitials(member.firstName, member.lastName)}</Text>
             </View>
             <View style={styles.scheduleSectionTitleWrap}>
               <Text style={styles.scheduleSectionTitle}>{getMemberName(member)}</Text>
@@ -599,8 +600,8 @@ export default function DispatchBoardScreen() {
                 onPress={() => openAssignModal(job)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.kanbanMiniAvatar, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.kanbanMiniAvatarText}>{getInitials(assignedMember.firstName, assignedMember.lastName)}</Text>
+                <View style={[styles.kanbanMiniAvatar, { backgroundColor: getAvatarColor(getMemberName(assignedMember)).bg }]}>
+                  <Text style={[styles.kanbanMiniAvatarText, { color: getAvatarColor(getMemberName(assignedMember)).fg }]}>{getInitials(assignedMember.firstName, assignedMember.lastName)}</Text>
                 </View>
                 <Text style={styles.kanbanAssignedName} numberOfLines={1}>{getMemberName(assignedMember).split(' ')[0]}</Text>
               </TouchableOpacity>
@@ -886,8 +887,8 @@ export default function DispatchBoardScreen() {
                   disabled={isAssigning || isCurrentlyAssigned}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.modalMemberAvatar, { backgroundColor: isCurrentlyAssigned ? colors.primary : colors.muted }]}>
-                    <Text style={[styles.modalMemberAvatarText, { color: isCurrentlyAssigned ? colors.primaryForeground : colors.foreground }]}>
+                  <View style={[styles.modalMemberAvatar, { backgroundColor: getAvatarColor(getMemberName(member)).bg, opacity: isCurrentlyAssigned ? 1 : 0.85 }]}>
+                    <Text style={[styles.modalMemberAvatarText, { color: getAvatarColor(getMemberName(member)).fg }]}>
                       {getInitials(member.firstName, member.lastName)}
                     </Text>
                   </View>

@@ -6169,12 +6169,12 @@ export default function JobDetailScreen() {
           </View>
           <View style={{ gap: 1, marginTop: spacing.xs }}>
             {[
-              { icon: 'file-text' as const, label: 'Proof Pack', subtitle: 'Generate client report', color: colors.primary, show: true },
-              { icon: 'globe' as const, label: 'Client Portal', subtitle: portalEnabled ? 'Enabled' : 'Share live tracking', color: colors.invoiced, show: !!client },
-              { icon: 'dollar-sign' as const, label: 'Profitability & Costing', subtitle: profitabilityData ? `${profitabilityData.profit.margin.toFixed(0)}% margin` : 'View financials', color: colors.success, show: true },
-              { icon: 'credit-card' as const, label: 'Expenses', subtitle: jobExpenses.length > 0 ? `${jobExpenses.length} expense${jobExpenses.length !== 1 ? 's' : ''}` : 'Track costs', color: colors.destructive, show: true },
-              { icon: 'git-branch' as const, label: 'Variations', subtitle: 'Change orders', color: colors.warning, show: true },
-              { icon: 'user-plus' as const, label: 'Subcontractors', subtitle: subcontractorTokens.filter(t => t.status !== 'revoked').length > 0 ? `${subcontractorTokens.filter(t => t.status !== 'revoked').length} active` : 'Invite contractors', color: colors.invoiced, show: true },
+              { icon: 'file-text' as const, label: 'Proof Pack', subtitle: 'Generate client report', color: colors.primary, show: true, action: () => setShowProofPackModal(true) },
+              { icon: 'globe' as const, label: 'Client Portal', subtitle: portalEnabled ? 'Enabled' : 'Share live tracking', color: colors.invoiced, show: !!client, action: () => setActiveTab('manage') },
+              { icon: 'dollar-sign' as const, label: 'Profitability & Costing', subtitle: profitabilityData ? `${profitabilityData.profit.margin.toFixed(0)}% margin` : 'View financials', color: colors.success, show: true, action: () => setActiveTab('manage') },
+              { icon: 'credit-card' as const, label: 'Expenses', subtitle: jobExpenses.length > 0 ? `${jobExpenses.length} expense${jobExpenses.length !== 1 ? 's' : ''}` : 'Track costs', color: colors.destructive, show: true, action: () => setActiveTab('manage') },
+              { icon: 'git-branch' as const, label: 'Variations', subtitle: 'Change orders', color: colors.warning, show: true, action: () => setActiveTab('manage') },
+              { icon: 'user-plus' as const, label: 'Subcontractors', subtitle: subcontractorTokens.filter(t => t.status !== 'revoked').length > 0 ? `${subcontractorTokens.filter(t => t.status !== 'revoked').length} active` : 'Invite contractors', color: colors.invoiced, show: true, action: () => setActiveTab('manage') },
             ].filter(item => item.show).map((item) => (
               <TouchableOpacity
                 key={item.label}
@@ -6187,7 +6187,7 @@ export default function JobDetailScreen() {
                   borderBottomWidth: 1,
                   borderBottomColor: colors.border,
                 }}
-                onPress={() => setActiveTab('manage')}
+                onPress={item.action}
                 activeOpacity={0.7}
               >
                 <View style={{
