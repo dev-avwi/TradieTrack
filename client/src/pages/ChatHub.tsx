@@ -1533,7 +1533,18 @@ export default function ChatHub() {
       setNumberSearched(false);
       queryClient.invalidateQueries({ queryKey: ['/api/sms/config'] });
     } catch (error: any) {
-      toast({ title: 'Purchase failed', description: error.message, variant: 'destructive' });
+      let errorMsg = 'Failed to purchase number. Please try again.';
+      try {
+        const raw = error.message || '';
+        const jsonStart = raw.indexOf('{');
+        if (jsonStart >= 0) {
+          const parsed = JSON.parse(raw.substring(jsonStart));
+          errorMsg = parsed.error || errorMsg;
+        } else {
+          errorMsg = raw;
+        }
+      } catch {}
+      toast({ title: 'Purchase failed', description: errorMsg, variant: 'destructive' });
     } finally {
       setPurchasingNumber(null);
     }

@@ -497,7 +497,11 @@ export async function createOrFindTwilioAddress(businessOwnerId: string, busines
     return { success: true, addressSid: created.sid };
   } catch (error: any) {
     console.error('[Twilio] Error creating address:', error.message);
-    return { success: false, error: error.message };
+    const msg = error.message || '';
+    if (msg.includes('cannot be validated') || msg.includes('invalid') || msg.includes('not valid')) {
+      return { success: false, error: 'Your business address could not be verified by Twilio. Please ensure it is a real, complete Australian address (e.g. "42 Smith Street, Cairns, QLD 4870") in your Settings.' };
+    }
+    return { success: false, error: msg };
   }
 }
 
