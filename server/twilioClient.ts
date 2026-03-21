@@ -341,20 +341,26 @@ export async function configureTwilioWebhook(baseUrl: string): Promise<boolean> 
 
     const phoneNumberSid = incomingNumbers[0].sid;
     const currentSmsUrl = incomingNumbers[0].smsUrl;
+    const currentVoiceUrl = incomingNumbers[0].voiceUrl;
+    const voiceUrl = `${baseUrl}/api/twilio/voice/shared`;
 
-    if (currentSmsUrl === webhookUrl) {
+    if (currentSmsUrl === webhookUrl && currentVoiceUrl === voiceUrl) {
       console.log(`✅ Twilio SMS webhook already configured: ${webhookUrl}`);
+      console.log(`✅ Twilio Voice webhook already configured: ${voiceUrl}`);
       return true;
     }
 
     await twilioClient.incomingPhoneNumbers(phoneNumberSid).update({
       smsUrl: webhookUrl,
       smsMethod: 'POST',
+      voiceUrl: voiceUrl,
+      voiceMethod: 'POST',
     });
 
     console.log(`✅ Twilio SMS webhook configured: ${webhookUrl}`);
+    console.log(`✅ Twilio Voice webhook configured: ${voiceUrl}`);
     if (currentSmsUrl) {
-      console.log(`   (was: ${currentSmsUrl})`);
+      console.log(`   (SMS was: ${currentSmsUrl})`);
     }
     return true;
   } catch (error: any) {
@@ -594,28 +600,36 @@ export async function releasePhoneNumber(phoneNumber: string): Promise<{ success
 
 // SMS Templates for JobRunner notifications
 export const smsTemplates = {
-  quoteReady: (clientName: string, businessName: string, quoteNumber: string, businessPhone?: string) =>
-    `Hi ${clientName}, your quote #${quoteNumber} from ${businessName} is ready. Reply YES to accept or view details:${businessPhone ? `\nCall us: ${businessPhone}` : ''}`,
-  
-  quoteWithTotal: (clientName: string, businessName: string, quoteNumber: string, total: string, businessPhone?: string) =>
-    `Hi ${clientName}, your quote #${quoteNumber} for $${total} from ${businessName} is ready. Reply YES to accept or view:${businessPhone ? `\nCall us: ${businessPhone}` : ''}`,
-  
-  invoiceSent: (clientName: string, businessName: string, invoiceNumber: string, amount: string, businessPhone?: string) =>
-    `Hi ${clientName}, invoice #${invoiceNumber} for ${amount} from ${businessName} is ready. Check your email to pay online.${businessPhone ? `\nCall us: ${businessPhone}` : ''}`,
-  
-  paymentReceived: (clientName: string, amount: string, businessName: string, receiptUrl?: string, businessPhone?: string) =>
-    receiptUrl 
-      ? `Thanks ${clientName}! We received your payment of ${amount}. Your receipt: ${receiptUrl} - ${businessName}${businessPhone ? `\nCall us: ${businessPhone}` : ''}`
-      : `Thanks ${clientName}! We received your payment of ${amount}. - ${businessName}${businessPhone ? `\nCall us: ${businessPhone}` : ''}`,
-  
-  jobScheduled: (clientName: string, businessName: string, date: string, businessPhone?: string) =>
-    `Hi ${clientName}, ${businessName} has scheduled your job for ${date}. We'll see you then!${businessPhone ? `\nCall us: ${businessPhone}` : ''}`,
-  
-  jobComplete: (clientName: string, businessName: string, businessPhone?: string) =>
-    `Hi ${clientName}, your job with ${businessName} is complete. Thanks for choosing us!${businessPhone ? `\nCall us: ${businessPhone}` : ''}`,
-  
-  reminder: (clientName: string, businessName: string, message: string, businessPhone?: string) =>
-    `Hi ${clientName}, reminder from ${businessName}: ${message}${businessPhone ? `\nCall us: ${businessPhone}` : ''}`
+  quoteReady: (clientName: string, businessName: string, quoteNumber: string, _businessPhone?: string) =>
+    `Hi ${clientName}, ${businessName} has sent you a quote. View and approve it here:`,
+
+  quoteWithTotal: (clientName: string, businessName: string, quoteNumber: string, total: string, _businessPhone?: string) =>
+    `Hi ${clientName}, ${businessName} has sent you a quote for $${total}. View and approve it here:`,
+
+  invoiceSent: (clientName: string, businessName: string, invoiceNumber: string, amount: string, _businessPhone?: string) =>
+    `Hi ${clientName}, ${businessName} has sent you an invoice for ${amount}. Pay securely here:`,
+
+  paymentReceived: (clientName: string, amount: string, businessName: string, receiptUrl?: string, _businessPhone?: string) =>
+    receiptUrl
+      ? `Hi ${clientName}, ${businessName} has received your payment of ${amount}. Your receipt: ${receiptUrl}`
+      : `Hi ${clientName}, ${businessName} has received your payment of ${amount}. Thank you!`,
+
+  jobScheduled: (clientName: string, businessName: string, date: string, _businessPhone?: string) =>
+    `Hi ${clientName}, ${businessName} has confirmed your job for ${date}. Someone will be in touch shortly with details. Reply to this message to chat with the team.`,
+
+  jobComplete: (clientName: string, businessName: string, _businessPhone?: string) =>
+    `Hi ${clientName}, your job with ${businessName} is complete. Thanks for choosing us! Reply to this message if you need anything.`,
+
+  reminder: (clientName: string, businessName: string, message: string, _businessPhone?: string) =>
+    `Hi ${clientName}, reminder from ${businessName}: ${message}`,
+
+  jobConfirmed: (clientName: string, businessName: string) =>
+    `Hi ${clientName}, ${businessName} has confirmed your job. Someone will be in touch shortly with details. Reply to this message to chat with the team.`,
+
+  aiReceptionistCaptured: (clientName: string, businessName: string, portalUrl?: string) =>
+    portalUrl
+      ? `Hi ${clientName}, thanks for calling ${businessName}. We have your details and will call you back shortly. Track your job at: ${portalUrl}`
+      : `Hi ${clientName}, thanks for calling ${businessName}. We have your details and will call you back shortly.`,
 };
 
 export function validateTwilioWebhook(req: any, res: any, next: any) {

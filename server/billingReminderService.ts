@@ -171,9 +171,16 @@ async function sendBillingReminderSms(
   const amount = calculateAmount(subscriptionTier, settings.seatCount || 0);
   const isTrialing = subscriptionStatus === 'trialing';
 
-  const message = isTrialing
-    ? `JobRunner: Your free trial ends in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''}. You'll be charged $${amount.toFixed(2)} AUD. Manage at ${getBaseUrl()}/settings`
-    : `JobRunner: Your subscription renews in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''} ($${amount.toFixed(2)} AUD). Manage at ${getBaseUrl()}/settings`;
+  let message: string;
+  if (isTrialing) {
+    if (daysUntilBilling <= 1) {
+      message = `JobRunner: Your trial ends tomorrow. Don't lose access to your data — upgrade now. jobrunner.com.au/billing`;
+    } else {
+      message = `JobRunner: Your free trial ends in ${daysUntilBilling} days. Add payment details to keep access to all your jobs, quotes and invoices. jobrunner.com.au/billing`;
+    }
+  } else {
+    message = `JobRunner: Your subscription renews in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''} ($${amount.toFixed(2)} AUD). Manage at jobrunner.com.au/billing`;
+  }
 
   try {
     const result = await sendSms({
@@ -416,15 +423,16 @@ async function sendOverdueReminderSms(
   const phone = settings.phone;
   if (!phone) return false;
 
-  const manageUrl = `${getBaseUrl()}/settings`;
   let message: string;
+  const subscriptionTier = user.subscriptionTier || 'free';
+  const planName = subscriptionTier === 'team' ? 'Team' : subscriptionTier === 'pro' ? 'Pro' : 'your';
 
   if (daysOverdue >= 14) {
-    message = `JobRunner: FINAL NOTICE - Your account is restricted due to ${daysOverdue} days unpaid. Update payment at ${manageUrl} to restore access.`;
+    message = `JobRunner: Your ${planName} plan is ${daysOverdue} days overdue. Update your card to keep access. jobrunner.com.au/billing`;
   } else if (daysOverdue >= 7) {
-    message = `JobRunner: Your subscription is ${daysOverdue} days overdue. Account features restricted. Update payment at ${manageUrl}`;
+    message = `JobRunner: We couldn't process your payment for ${planName} plan. Update your card to keep access. jobrunner.com.au/billing`;
   } else {
-    message = `JobRunner: Your payment failed ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} ago. Update your payment method at ${manageUrl} to avoid losing access.`;
+    message = `JobRunner: We couldn't process your payment for ${planName} plan. Update your card to keep access. jobrunner.com.au/billing`;
   }
 
   try {

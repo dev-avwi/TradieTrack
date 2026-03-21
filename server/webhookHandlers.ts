@@ -4,6 +4,7 @@ import { sendPaymentSuccessEmail, sendPaymentFailedEmail, sendReceiptEmailWithPd
 import { processPaymentReceivedAutomation } from './automationService';
 import { markInvoicePaidInXero } from './xeroService';
 import { broadcastPaymentReceived } from './websocket';
+import { sendSMS } from './twilioClient';
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string, uuid: string, storage: any): Promise<void> {
@@ -354,6 +355,21 @@ async function handleStripeEvent(event: any, storage: any) {
             relatedType: 'subscription',
             relatedId: subscription.id,
           });
+
+          if (businessSettings.phone) {
+            const endDate = subscription.current_period_end 
+              ? new Date(subscription.current_period_end * 1000).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+              : 'the end of your billing period';
+            try {
+              await sendSMS({
+                to: businessSettings.phone,
+                message: `JobRunner: Your subscription has been cancelled. You have access until ${endDate}. Your data is kept for 12 months. Reactivate anytime at jobrunner.com.au`,
+                alphanumericSenderId: 'JobRunner',
+              });
+            } catch (e) {
+              console.error('[Webhook] Failed to send cancellation SMS:', e);
+            }
+          }
         }
         break;
       }

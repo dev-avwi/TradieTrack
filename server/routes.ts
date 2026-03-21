@@ -19533,7 +19533,7 @@ Be specific about materials, colors, and features that would be included.`
       const publicUrl = getQuotePublicUrl(acceptanceToken, req);
       
       const businessPhone = businessSettings?.phone || undefined;
-      const message = `${smsTemplates.quoteReady(client.name, businessName, quote.number || quote.id.slice(0, 8), businessPhone)} View: ${publicUrl}`;
+      const message = `${smsTemplates.quoteReady(client.name, businessName, quote.number || quote.id.slice(0, 8), businessPhone)} ${publicUrl}`;
       
       // Send SMS
       const smsMessage = await sendSmsToClient({
@@ -20782,7 +20782,7 @@ Be specific about materials, colors, and features that would be included.`
       const amount = `$${parseFloat(String(invoice.total || '0')).toFixed(2)}`;
       
       const businessPhone = businessSettings?.phone || undefined;
-      const message = `${smsTemplates.invoiceSent(client.name, businessName, invoice.number || invoice.id.slice(0, 8), amount, businessPhone)} Pay: ${publicUrl}`;
+      const message = `${smsTemplates.invoiceSent(client.name, businessName, invoice.number || invoice.id.slice(0, 8), amount, businessPhone)} ${publicUrl}`;
       
       // Send SMS
       const smsMessage = await sendSmsToClient({
@@ -35253,6 +35253,20 @@ Respond with JSON in this format:
     }
   });
   
+  // Voice webhook for shared Twilio number — professional SMS-only message
+  app.post("/api/twilio/voice/shared", (req, res) => {
+    res.type('text/xml');
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Olivia" language="en-AU">
+    Thanks for calling JobRunner. This number is for text messages only.
+    To get in touch, send us a text on this number, or visit jobrunner.com.au for support.
+    Thanks, and have a great day.
+  </Say>
+  <Hangup/>
+</Response>`);
+  });
+
   // Twilio webhook for incoming SMS/MMS
   app.post("/api/sms/webhook/incoming", validateTwilioWebhook, async (req, res) => {
     try {
