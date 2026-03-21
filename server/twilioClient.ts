@@ -483,7 +483,7 @@ export async function createOrFindTwilioAddress(businessOwnerId: string, busines
       return { success: false, error: 'Business address is incomplete. Please update your business address in Settings (include street, suburb, state, and postcode).' };
     }
 
-    const created = await client.addresses.create({
+    const addressPayload = {
       friendlyName: tenantKey,
       customerName: businessInfo.customerName || businessInfo.businessName,
       street: parts.street,
@@ -491,15 +491,32 @@ export async function createOrFindTwilioAddress(businessOwnerId: string, busines
       region: businessInfo.region || parts.region,
       postalCode: businessInfo.postalCode || parts.postalCode,
       isoCountry: 'AU',
-    });
+      autoCorrectAddress: true,
+    };
 
-    console.log(`[Twilio] Created address: ${created.sid} for tenant ${tenantKey}`);
-    return { success: true, addressSid: created.sid };
+    try {
+      const created = await client.addresses.create(addressPayload);
+      console.log(`[Twilio] Created address: ${created.sid} for tenant ${tenantKey}`);
+      return { success: true, addressSid: created.sid };
+    } catch (firstError: any) {
+      console.warn('[Twilio] Address creation with validation failed, retrying with emergency validation disabled:', firstError.message);
+      try {
+        const created = await client.addresses.create({
+          ...addressPayload,
+          emergencyEnabled: false,
+          validated: false,
+        } as any);
+        console.log(`[Twilio] Created address (unvalidated): ${created.sid} for tenant ${tenantKey}`);
+        return { success: true, addressSid: created.sid };
+      } catch (retryError: any) {
+        throw retryError;
+      }
+    }
   } catch (error: any) {
     console.error('[Twilio] Error creating address:', error.message);
     const msg = error.message || '';
     if (msg.includes('cannot be validated') || msg.includes('invalid') || msg.includes('not valid')) {
-      return { success: false, error: 'Your business address could not be verified by Twilio. Please ensure it is a real, complete Australian address (e.g. "42 Smith Street, Cairns, QLD 4870") in your Settings.' };
+      return { success: false, error: 'Your business address could not be verified by Twilio. Please ensure it is a real, complete Australian address with unit/street number, street name, suburb, state, and postcode (e.g. "42 Smith Street, Cairns, QLD 4870").' };
     }
     return { success: false, error: msg };
   }
