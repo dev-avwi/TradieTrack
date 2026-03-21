@@ -57,6 +57,12 @@ interface SubscriptionStatus {
   betaCohortNumber?: number | null;
   canUpgrade: boolean;
   canDowngrade: boolean;
+  addons?: {
+    dedicatedNumber: string | null;
+    smsMode: string;
+    aiReceptionistEnabled: boolean;
+    aiReceptionistMode: string;
+  };
 }
 
 const tiers = [
@@ -201,6 +207,7 @@ export default function SubscriptionPage() {
   };
 
   const hasActiveSubscription = status && (status.tier === 'pro' || status.tier === 'team' || status.tier === 'trial');
+  const hasPaidPlan = hasActiveSubscription || status?.isBeta;
 
   if (statusLoading) {
     return (
@@ -246,73 +253,118 @@ export default function SubscriptionPage() {
           </div>
         </div>
 
-        {/* Current Subscription Status */}
-        {hasActiveSubscription && (
-          <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="p-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    {status?.tier === 'team' ? (
-                      <Users className="w-6 h-6 text-primary" />
-                    ) : (
-                      <Crown className="w-6 h-6 text-primary" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-lg capitalize">{status?.tier === 'trial' ? 'Pro' : status?.tier} Plan</h3>
-                      {status?.isBeta && (
-                        <Badge variant="outline" className="border-green-400 text-green-600 bg-green-50">
-                          <Gift className="w-3 h-3 mr-1" />
-                          Beta Access
-                        </Badge>
-                      )}
-                      {status?.cancelAtPeriodEnd && (
-                        <Badge variant="outline" className="border-red-400 text-red-600">
-                          Canceling
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {status?.isBeta ? (
-                        <>All features free during beta - no billing</>
-                      ) : status?.nextBillingDate ? (
-                        <>Next billing date: {formatDate(status.nextBillingDate)}</>
-                      ) : (
-                        <>Active subscription</>
-                      )}
-                    </p>
-                    {/* Team member count for billing info */}
-                    {(status?.tier === 'team' || (status?.teamMemberCount && status.teamMemberCount > 0)) && (
-                      <div className="flex items-center gap-2 mt-2 text-sm">
-                        <Users className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          {status.totalBillableUsers} billable user{status.totalBillableUsers !== 1 ? 's' : ''} 
-                          <span className="text-xs ml-1">(1 owner + {status.teamMemberCount} team member{status.teamMemberCount !== 1 ? 's' : ''})</span>
-                        </span>
-                      </div>
-                    )}
-                  </div>
+        {/* Your Billing Summary */}
+        <Card data-testid="card-billing-summary">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Your Billing Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2 mb-1">
+                  {(status?.tier === 'team') ? (
+                    <Users className="w-4 h-4 text-primary" />
+                  ) : (status?.tier === 'pro' || status?.tier === 'trial') ? (
+                    <Crown className="w-4 h-4 text-primary" />
+                  ) : (
+                    <Zap className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Plan</span>
                 </div>
-                {!status?.isBeta && (
-                  <Button 
-                    variant="outline"
-                    onClick={() => manageSubscriptionMutation.mutate()}
-                    disabled={manageSubscriptionMutation.isPending}
-                    data-testid="button-manage-subscription"
-                  >
-                    {manageSubscriptionMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : null}
-                    Manage Subscription
-                    <ExternalLink className="w-4 h-4 ml-2" />
-                  </Button>
+                <p className="font-semibold capitalize">
+                  {status?.tier === 'trial' ? 'Pro (Trial)' : status?.tier || 'Free'} Plan
+                </p>
+                {status?.isBeta && (
+                  <Badge variant="outline" className="mt-1 border-green-400 text-green-600 bg-green-50 text-xs">
+                    <Gift className="w-3 h-3 mr-1" />
+                    Free During Beta
+                  </Badge>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        )}
+
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2 mb-1">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Business Number</span>
+                </div>
+                {status?.addons?.dedicatedNumber ? (
+                  <>
+                    <p className="font-semibold">{status.addons.dedicatedNumber}</p>
+                    <p className="text-xs text-muted-foreground">~$3/mo + $0.06/SMS</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold text-muted-foreground">Shared Number</p>
+                    <p className="text-xs text-muted-foreground">Using platform number</p>
+                  </>
+                )}
+              </div>
+
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2 mb-1">
+                  <Headphones className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">AI Receptionist</span>
+                </div>
+                {status?.addons?.aiReceptionistEnabled ? (
+                  <>
+                    <p className="font-semibold text-green-600">Active</p>
+                    <p className="text-xs text-muted-foreground capitalize">{status.addons.aiReceptionistMode?.replace(/_/g, ' ') || 'Enabled'} · $60/mo</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold text-muted-foreground">Not Active</p>
+                    <p className="text-xs text-muted-foreground">$60/mo add-on</p>
+                  </>
+                )}
+              </div>
+
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2 mb-1">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Team</span>
+                </div>
+                {(status?.teamMemberCount && status.teamMemberCount > 0) ? (
+                  <>
+                    <p className="font-semibold">{status.totalBillableUsers} user{(status.totalBillableUsers || 0) !== 1 ? 's' : ''}</p>
+                    <p className="text-xs text-muted-foreground">1 owner + {status.teamMemberCount} member{status.teamMemberCount !== 1 ? 's' : ''}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold text-muted-foreground">Solo</p>
+                    <p className="text-xs text-muted-foreground">No team members</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {status?.nextBillingDate && !status?.isBeta && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
+                <Calendar className="w-4 h-4" />
+                <span>Next billing: {formatDate(status.nextBillingDate)}</span>
+              </div>
+            )}
+
+            {!status?.isBeta && hasActiveSubscription && (
+              <div className="flex justify-end pt-1">
+                <Button 
+                  variant="outline"
+                  onClick={() => manageSubscriptionMutation.mutate()}
+                  disabled={manageSubscriptionMutation.isPending}
+                  data-testid="button-manage-subscription"
+                >
+                  {manageSubscriptionMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : null}
+                  Manage Billing
+                  <ExternalLink className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -515,14 +567,21 @@ export default function SubscriptionPage() {
                 <p className="text-sm font-medium">~$3 AUD/month + ~$0.06 per SMS</p>
                 <p className="text-xs text-muted-foreground">Billed through Twilio. Cancel anytime.</p>
               </div>
-              <Button 
-                variant="outline"
-                onClick={() => setLocation('/chat-hub')}
-              >
-                <Phone className="h-4 w-4 mr-1.5" />
-                Set Up in Chat Hub
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+              {hasPaidPlan ? (
+                <Button 
+                  variant="outline"
+                  onClick={() => setLocation('/chat-hub')}
+                >
+                  <Phone className="h-4 w-4 mr-1.5" />
+                  {status?.addons?.dedicatedNumber ? 'Manage Number' : 'Set Up in Chat Hub'}
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              ) : (
+                <Button variant="outline" disabled>
+                  <Shield className="h-4 w-4 mr-1.5" />
+                  Requires Pro or Team Plan
+                </Button>
+              )}
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
@@ -585,14 +644,21 @@ export default function SubscriptionPage() {
                 <p className="text-sm font-medium">$60 AUD/month</p>
                 <p className="text-xs text-muted-foreground">Includes dedicated number, AI voice agent, call logs, and lead capture. Requires Pro or Team plan.</p>
               </div>
-              <Button 
-                variant="outline"
-                onClick={() => setLocation('/settings')}
-              >
-                <Headphones className="h-4 w-4 mr-1.5" />
-                Set Up AI Receptionist
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+              {hasPaidPlan ? (
+                <Button 
+                  variant="outline"
+                  onClick={() => setLocation('/settings')}
+                >
+                  <Headphones className="h-4 w-4 mr-1.5" />
+                  {status?.addons?.aiReceptionistEnabled ? 'Manage AI Receptionist' : 'Set Up AI Receptionist'}
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              ) : (
+                <Button variant="outline" disabled>
+                  <Shield className="h-4 w-4 mr-1.5" />
+                  Requires Pro or Team Plan
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -650,16 +716,23 @@ export default function SubscriptionPage() {
                 <p className="text-sm font-medium">Custom pricing based on your needs</p>
                 <p className="text-xs text-muted-foreground">Our team will discuss your requirements and provide a tailored quote.</p>
               </div>
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  window.location.href = "mailto:support@jobrunner.com.au?subject=Custom%20Website%20Enquiry&body=Hi%20JobRunner%20Team%20(AV%20Web%20Innovation)%2C%0A%0AI'm%20interested%20in%20a%20custom%20website%20for%20my%20trade%20business.%0A%0ABusiness%20Name%3A%20%0ATrade%20Type%3A%20%0ALocation%2FSuburb%3A%20%0APhone%3A%20%0A%0AAnything%20specific%20you'd%20like%3A%20%0A%0AThanks!";
-                }}
-              >
-                <Mail className="h-4 w-4 mr-1.5" />
-                Request Custom Website
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+              {hasPaidPlan ? (
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    window.location.href = "mailto:support@jobrunner.com.au?subject=Custom%20Website%20Enquiry&body=Hi%20JobRunner%20Team%20(AV%20Web%20Innovation)%2C%0A%0AI'm%20interested%20in%20a%20custom%20website%20for%20my%20trade%20business.%0A%0ABusiness%20Name%3A%20%0ATrade%20Type%3A%20%0ALocation%2FSuburb%3A%20%0APhone%3A%20%0A%0AAnything%20specific%20you'd%20like%3A%20%0A%0AThanks!";
+                  }}
+                >
+                  <Mail className="h-4 w-4 mr-1.5" />
+                  Request Custom Website
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              ) : (
+                <Button variant="outline" disabled>
+                  <Shield className="h-4 w-4 mr-1.5" />
+                  Requires Pro or Team Plan
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

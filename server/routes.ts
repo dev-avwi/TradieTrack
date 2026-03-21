@@ -4438,6 +4438,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         betaCohortNumber: user?.betaCohortNumber || null,
         canUpgrade,
         canDowngrade,
+        addons: {
+          dedicatedNumber: businessSettings?.dedicatedPhoneNumber || null,
+          smsMode: businessSettings?.smsMode || 'standard',
+          aiReceptionistEnabled: businessSettings?.aiReceptionistEnabled || false,
+          aiReceptionistMode: businessSettings?.aiReceptionistMode || 'off',
+        },
       });
     } catch (error: any) {
       console.error('Error getting subscription status:', error);
