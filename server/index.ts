@@ -106,9 +106,10 @@ if (process.env.DATABASE_URL) {
   const { initializeTwilio, configureTwilioWebhook } = await import('./twilioClient');
   const twilioReady = await initializeTwilio();
   if (twilioReady) {
-    const { getProductionBaseUrl } = await import('./urlHelper');
-    const baseUrl = getProductionBaseUrl();
-    await configureTwilioWebhook(baseUrl);
+    const webhookBaseUrl = process.env.APP_DOMAIN 
+      ? `https://${process.env.APP_DOMAIN}`
+      : 'https://jobrunner.com.au';
+    await configureTwilioWebhook(webhookBaseUrl);
   }
   
   // Register Stripe webhook route BEFORE express.json()
