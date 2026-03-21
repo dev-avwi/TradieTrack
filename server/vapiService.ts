@@ -521,17 +521,18 @@ export async function findBusinessByVapiAssistant(assistantId: string): Promise<
 
 export async function handleToolCall(
   toolName: string,
-  toolArgs: any,
+  toolArgs: Record<string, unknown>,
   userId: string,
   callId: string,
-): Promise<any> {
+  callerPhone?: string,
+): Promise<Record<string, unknown>> {
   console.log(`[Vapi] Tool call: ${toolName} for user ${userId}, call ${callId}`);
 
   switch (toolName) {
     case 'capture_lead':
       return handleCaptureLead(toolArgs, userId, callId);
     case 'transfer_call':
-      return handleTransferCall(toolArgs, userId);
+      return handleTransferCall(toolArgs as { reason: string; caller_phone?: string }, userId, callerPhone);
     case 'check_availability':
       return handleCheckAvailability(toolArgs, userId);
     case 'lookup_client':
@@ -630,11 +631,11 @@ async function getAvailableTransferTarget(userId: string, settings: BusinessSett
   if (mode === 'always_on_message') return null;
 
   if (mode === 'after_hours') {
-    if (isWithinBusinessHours(businessHours)) {
-      const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
-      return sorted[0] || null;
+    if (!isWithinBusinessHours(businessHours)) {
+      return null;
     }
-    return null;
+    const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+    return sorted[0] || null;
   }
 
   if (mode === 'always_on_transfer') {
@@ -681,14 +682,14 @@ async function shouldTransferSelectiveByClient(userId: string, callerPhone: stri
   }
 }
 
-async function handleTransferCall(args: any, userId: string): Promise<any> {
+async function handleTransferCall(args: { reason: string; caller_phone?: string }, userId: string, callerPhone?: string): Promise<{ result: string; forwardingPhoneNumber?: string }> {
   try {
     const settings = await storage.getBusinessSettings(userId);
     if (!settings) {
       return { result: 'Unable to transfer at this time. I\'ll make sure someone calls you back.' };
     }
 
-    const target = await getAvailableTransferTarget(userId, settings);
+    const target = await getAvailableTransferTarget(userId, settings, callerPhone || args.caller_phone);
     if (!target) {
       return { result: 'No one is available to take the call right now. I\'ll make sure someone calls you back soon.' };
     }
@@ -1035,7 +1036,8 @@ async function handleToolCalls(event: any): Promise<any> {
   }
 
   const toolCalls = message.toolCallList || message.toolCalls || [];
-  const results: any[] = [];
+  const results: Array<{ toolCallId: string; result: string }> = [];
+  const callerPhone = call.customer?.number || existingCall.callerPhone || undefined;
 
   for (const toolCall of toolCalls) {
     const toolName = toolCall.function?.name || toolCall.name;
@@ -1043,7 +1045,7 @@ async function handleToolCalls(event: any): Promise<any> {
       ? (typeof toolCall.function.arguments === 'string' ? JSON.parse(toolCall.function.arguments) : toolCall.function.arguments)
       : toolCall.arguments || {};
 
-    const result = await handleToolCall(toolName, toolArgs, business.userId, existingCall.id);
+    const result = await handleToolCall(toolName, toolArgs, business.userId, existingCall.id, callerPhone);
 
     results.push({
       toolCallId: toolCall.id,

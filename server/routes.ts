@@ -42901,9 +42901,9 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   // ============================================================
 
 
-  app.get("/api/ai-receptionist/config", requireAuth, async (req: any, res) => {
+  app.get("/api/ai-receptionist/config", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId || req.session?.userId;
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const settings = await storage.getBusinessSettings(userId);
       if (!settings) {
         return res.status(404).json({ error: "Business settings not found" });
@@ -42924,9 +42924,9 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.patch("/api/ai-receptionist/config", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.patch("/api/ai-receptionist/config", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId || req.session?.userId;
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const { voice, greeting, mode, transferNumbers, businessHours } = req.body;
 
       const { updateReceptionistConfig } = await import('./vapiService');
@@ -42961,7 +42961,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 
   app.post("/api/ai-receptionist/enable", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId || req.session?.userId;
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const { enableAiReceptionist } = await import('./vapiService');
       const result = await enableAiReceptionist(userId);
 
@@ -42982,7 +42982,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 
   app.post("/api/ai-receptionist/disable", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId || req.session?.userId;
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const { disableAiReceptionist } = await import('./vapiService');
       const result = await disableAiReceptionist(userId);
 
@@ -43002,7 +43002,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 
   app.get("/api/ai-receptionist/calls", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId || req.session?.userId;
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const limit = parseInt(req.query.limit as string) || 50;
       const calls = await storage.getAiReceptionistCalls(userId, Math.min(limit, 200));
       res.json(calls);
@@ -43014,7 +43014,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 
   app.get("/api/ai-receptionist/calls/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId || req.session?.userId;
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const call = await storage.getAiReceptionistCall(req.params.id, userId);
       if (!call) {
         return res.status(404).json({ error: "Call not found" });
@@ -43026,9 +43026,9 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.patch("/api/ai-receptionist/team/:memberId/availability", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.patch("/api/ai-receptionist/team/:memberId/availability", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId || req.session?.userId;
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const { memberId } = req.params;
       const { available } = req.body;
 
@@ -43042,7 +43042,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         return res.status(404).json({ error: 'Team member not found' });
       }
 
-      await storage.updateTeamMember(memberId, userId, { aiReceptionistAvailability: available } as any);
+      await storage.updateTeamMember(memberId, userId, { aiReceptionistAvailability: available });
       res.json({ success: true, memberId, available });
     } catch (error: any) {
       console.error('[AI Receptionist] Update availability error:', error);
@@ -43081,7 +43081,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 
   app.get("/api/ai-receptionist/team/availability", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId || req.session?.userId;
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const teamMembers = await storage.getTeamMembers(userId);
       const availability = teamMembers
         .filter(m => m.isActive)
@@ -43100,7 +43100,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 
   app.get("/api/ai-receptionist/connectivity-test", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
-      const userId = req.userId || req.session?.userId;
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const settings = await storage.getBusinessSettings(userId);
       if (!settings) {
         return res.json({ connected: false, error: 'Business settings not found' });
