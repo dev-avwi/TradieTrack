@@ -5,7 +5,7 @@
 **App Name:** JobRunner  
 **Subtitle:** Job Management for Tradies  
 **Bundle ID:** com.jobrunner.app  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Category:** Business  
 **Secondary Category:** Productivity  
 **Age Rating:** 4+  
@@ -61,7 +61,7 @@ tradies,job management,invoicing,quotes,plumber,electrician,tradie,ABN,GST,payme
 
 ## What's New in This Version
 
-Welcome to JobRunner 1.0! This is our first release, packed with everything you need to run your trade business:
+Welcome to JobRunner 1.1! Everything you need to run your trade business:
 
 - Create and manage jobs with photos and notes
 - Send professional quotes and invoices
@@ -92,7 +92,7 @@ https://jobrunner.com.au/privacy
 
 **Demo Account:**
 - Email: demo@jobrunner.com.au
-- Password: demo123456
+- Password: demo123
 
 This demo account has pre-populated data including sample jobs, clients, quotes, and invoices for testing all features.
 
@@ -109,38 +109,33 @@ Location tracking is optional and can be disabled in Settings > App Settings.
 The app uses Stripe Terminal for Tap to Pay functionality. On simulator/demo mode, payments are simulated. Real NFC payments work on physical devices with Stripe Terminal enabled.
 
 **Subscription Note:**
-Subscriptions are managed through Stripe (not Apple IAP) because all services relate to real-world trade services, not digital content. This complies with App Store guidelines for physical services.
+Subscriptions are managed through Stripe. JobRunner is a business management tool for tradespeople who provide physical services (plumbing, electrical, building, etc.). The subscription unlocks the ability to process real-world payments on-site using Stripe Terminal / Tap to Pay hardware, manage physical job sites, dispatch teams to locations, and invoice clients for physical labour and materials. No digital content, digital goods, or in-app consumables are sold. If the review team determines IAP is required, we are prepared to implement StoreKit integration and would appreciate guidance on the appropriate approach for our use case.
 
 ---
 
 ## Required Permissions Explanation
 
 **Camera (NSCameraUsageDescription):**
-"JobRunner needs camera access to take job photos"
-- Used to capture before/after photos of job sites
-- Photos attached to job records for documentation
+"JobRunner uses your camera to take before-and-after photos of job sites, attach photo evidence to quotes and invoices, and scan documents for your records."
 
 **Photo Library (NSPhotoLibraryUsageDescription):**
-"JobRunner needs photo library access to upload job photos"
-- Allows selecting existing photos to attach to jobs
-- Export invoices/quotes as images
+"JobRunner accesses your photo library so you can attach existing site photos to jobs, quotes, and invoices as visual records for your clients."
+
+**Microphone (NSMicrophoneUsageDescription):**
+"JobRunner uses your microphone to record voice notes that are transcribed and attached to jobs, allowing you to dictate site observations hands-free while working."
 
 **Location When In Use (NSLocationWhenInUseUsageDescription):**
-"JobRunner needs location access to track job sites"
-- Show job locations on map
-- Calculate distance to jobs
-- Basic navigation features
+"JobRunner uses your location to show your position on the dispatch map, display nearby job sites, calculate travel distance for timesheets, and provide navigation to your next job."
 
 **Location Always (NSLocationAlwaysAndWhenInUseUsageDescription):**
-"JobRunner needs location access for team tracking"
-- Real-time team member location for owners/managers
-- Automatic geofence clock-in/out at job sites
-- This is OPTIONAL and requires explicit user consent
+"JobRunner uses your background location so your team's live positions appear on the dispatch map and to automatically clock you in and out when you arrive at or leave a job site using geofence technology. Your location is only shared with your team owner or manager."
+- This is OPTIONAL and requires explicit user consent in the app
 
 **NFC (NFCReaderUsageDescription):**
-"JobRunner uses NFC for Tap to Pay contactless payments"
-- Accept card payments using iPhone's NFC
-- Powered by Stripe Terminal
+"JobRunner uses NFC to accept contactless card payments on-site via Tap to Pay, powered by Stripe Terminal."
+
+**Bluetooth (NSBluetoothAlwaysUsageDescription):**
+"JobRunner uses Bluetooth to connect to Stripe card readers for processing on-site payments from your clients."
 
 ---
 
@@ -174,12 +169,13 @@ Same as above (scaled)
 - Contact Info (name, email, phone)
 - Financial Info (payment cards via Stripe)
 - Location (precise location for team tracking)
-- User Content (photos, documents, notes)
+- User Content (photos, documents, notes, voice memos)
+- Audio Data (voice notes recorded and transcribed for job records)
 - Identifiers (user ID)
 
 **Data Not Linked to You:**
 - Usage Data (app analytics)
-- Diagnostics (crash logs)
+- Diagnostics (crash logs, performance data)
 
 **Data Used for Tracking:**
 None
@@ -190,10 +186,12 @@ None
 | Contact Info | App Functionality | Yes |
 | Financial Info | App Functionality | Yes |
 | Precise Location | App Functionality | Yes |
-| Photos | App Functionality | Yes |
-| User Content | App Functionality | Yes |
-| Usage Data | Analytics | No |
+| Photos or Videos | App Functionality | Yes |
+| Other User Content | App Functionality | Yes |
+| Audio Data | App Functionality | Yes |
+| User ID | App Functionality | Yes |
 | Crash Data | App Functionality | No |
+| Performance Data | Analytics | No |
 
 ---
 
@@ -213,7 +211,7 @@ All services comply with Australian Privacy Principles and GDPR.
 
 ## Contact Information
 
-**Developer:** JobRunner Pty Ltd  
+**Developer:** LinkUp2Care Pty Ltd  
 **Email:** admin@avwebinnovation.com  
 **Phone:** +61 1800 XXX XXX  
 **Address:** Sydney, NSW, Australia  
