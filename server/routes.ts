@@ -7965,7 +7965,7 @@ Be specific about materials, colors, and features that would be included.`
           
           <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
             <p style="margin: 0;">JobRunner - Making Australian tradies more professional</p>
-            <p style="margin: 5px 0 0 0;">Questions? Contact us at admin@avwebinnovation.com</p>
+            <p style="margin: 5px 0 0 0;">Questions? Visit jobrunner.com.au for support</p>
           </div>
         </body>
         </html>

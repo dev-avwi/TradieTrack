@@ -49,8 +49,8 @@ async function ensureSendGridReady(): Promise<boolean> {
 
 export async function sendViaSendGrid(emailData: any): Promise<void> {
   await ensureSendGridReady();
-  if (emailData.from?.email === PLATFORM_FROM_EMAIL && connectorFromEmail) {
-    emailData.from.email = connectorFromEmail;
+  if (!emailData.from?.email) {
+    emailData.from = { email: PLATFORM_FROM_EMAIL, name: PLATFORM_FROM_NAME };
   }
   console.log(`[SendGrid] Sending from: ${emailData.from?.email} (name: "${emailData.from?.name}") to: ${emailData.to}`);
   try {
@@ -1150,7 +1150,7 @@ export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => 
   
   const plainText = text || (html ? html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : 'Please view this email in an HTML-capable email client.');
   const senderName = fromName || PLATFORM_FROM_NAME;
-  const fromEmail = connectorFromEmail || PLATFORM_FROM_EMAIL;
+  const fromEmail = PLATFORM_FROM_EMAIL;
   
   const emailData = {
     to,
@@ -1616,7 +1616,7 @@ export async function sendWelcomeEmail(
         
         <div style="text-align: center; padding: 24px; color: #9ca3af; font-size: 12px;">
           <p style="margin: 0;"><strong style="color: #6b7280;">JobRunner</strong> &bull; Built for Australian tradies</p>
-          <p style="margin: 8px 0 0 0;">Questions? Contact us at admin@avwebinnovation.com</p>
+          <p style="margin: 8px 0 0 0;">Questions? Visit jobrunner.com.au for support</p>
         </div>
       </body>
       </html>
@@ -1985,7 +1985,7 @@ interface EmailWithAttachmentParams {
 }
 
 export async function sendEmailWithAttachment(params: EmailWithAttachmentParams): Promise<void> {
-  const fromEmail = connectorFromEmail || PLATFORM_FROM_EMAIL;
+  const fromEmail = PLATFORM_FROM_EMAIL;
   
   const emailData: any = {
     to: params.to,
