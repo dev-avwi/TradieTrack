@@ -337,6 +337,36 @@ export function ownerOrManagerOnly() {
   };
 }
 
+export function requirePermission(permission: string) {
+  return async (req: any, res: any, next: any) => {
+    try {
+      if (!req.userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const userContext = req.userContext || await getUserContext(req.userId);
+      req.userContext = userContext;
+      req.effectiveUserId = userContext.effectiveUserId;
+
+      if (userContext.isOwner) {
+        return next();
+      }
+
+      if (!userContext.permissions.includes(permission)) {
+        return res.status(403).json({
+          error: 'Access denied',
+          message: `Missing required permission: ${permission}`,
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Permission check error:', error);
+      return res.status(500).json({ error: 'Permission check failed' });
+    }
+  };
+}
+
 /**
  * Checks if a user can access a specific job's media (photos, notes, videos, voice)
  * 

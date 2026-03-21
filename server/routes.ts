@@ -13,7 +13,7 @@ import { loginSchema, insertUserSchema, type SafeUser, requestLoginCodeSchema, v
 import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmail, sendPasswordResetEmail, sendTeamInviteEmail, sendJobAssignmentEmail, sendJobCompletionNotificationEmail, sendWelcomeEmail } from "./emailService";
 import { FreemiumService } from "./freemiumService";
 import { DEMO_USER } from "./demoData";
-import { ownerOnly, ownerOrManagerOnly, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, getWorkerPermissionContext, sanitizeClientData } from "./permissions";
+import { ownerOnly, ownerOrManagerOnly, requirePermission, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, getWorkerPermissionContext, sanitizeClientData } from "./permissions";
 import { logTeamActivity } from "./activityService";
 import {
   insertBusinessSettingsSchema,
@@ -42901,7 +42901,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   // ============================================================
 
 
-  app.get("/api/ai-receptionist/config", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+  app.get("/api/ai-receptionist/config", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const config = await storage.getAiReceptionistConfig(userId);
@@ -42995,7 +42995,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.patch("/api/ai-receptionist/config", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+  app.patch("/api/ai-receptionist/config", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const parsed = aiReceptionistConfigSchema.safeParse(req.body);
@@ -43035,7 +43035,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/ai-receptionist/enable", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+  app.post("/api/ai-receptionist/enable", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const { enableAiReceptionist } = await import('./vapiService');
@@ -43056,7 +43056,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/ai-receptionist/disable", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+  app.post("/api/ai-receptionist/disable", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const { disableAiReceptionist } = await import('./vapiService');
@@ -43076,7 +43076,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.get("/api/ai-receptionist/calls", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+  app.get("/api/ai-receptionist/calls", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const limit = parseInt(req.query.limit as string) || 50;
@@ -43102,7 +43102,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.patch("/api/ai-receptionist/team/:memberId/availability", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+  app.patch("/api/ai-receptionist/team/:memberId/availability", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const { memberId } = req.params;
@@ -43181,7 +43181,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.get("/api/ai-receptionist/team/availability", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+  app.get("/api/ai-receptionist/team/availability", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const teamMembers = await storage.getTeamMembers(userId);
