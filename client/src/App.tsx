@@ -106,6 +106,8 @@ import TimeEditAuditLog from "@/pages/TimeEditAuditLog";
 import ProfitabilityReport from "@/pages/ProfitabilityReport";
 import SubcontractorWebView from "@/pages/SubcontractorWebView";
 import FilesPage from "@/pages/Files";
+import AIReceptionist from "@/pages/AIReceptionist";
+import AIReceptionistCalls from "@/pages/AIReceptionistCalls";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useFeatureAccess } from "@/hooks/use-subscription";
 
@@ -826,6 +828,14 @@ function Router({
       </Route>
       <Route path="/open-app/:action/:token" component={OpenApp} />
       
+      <Route path="/ai-receptionist/calls" component={() => (
+        <AIReceptionistCalls />
+      )} />
+      
+      <Route path="/ai-receptionist" component={() => (
+        <AIReceptionist />
+      )} />
+
       <Route path="/ai-visualization" component={GatedAIVisualizationPage} />
       
       <Route path="/more" component={More} />

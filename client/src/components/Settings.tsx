@@ -76,7 +76,8 @@ import {
   Globe,
   Copy,
   CalendarPlus,
-  Plus
+  Plus,
+  Settings2
 } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -3195,6 +3196,27 @@ function BillingTabContent() {
 
       {/* Dedicated Number Add-On */}
       <DedicatedNumberAddon />
+
+      {/* AI Receptionist Settings Link */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+          <div className="flex items-center gap-2">
+            <Bot className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+            <CardTitle className="text-base">AI Receptionist</CardTitle>
+          </div>
+          <Button variant="outline" asChild data-testid="link-ai-receptionist-settings">
+            <a href="/ai-receptionist">
+              <Settings2 className="h-4 w-4 mr-1.5" />
+              Configure
+            </a>
+          </Button>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <p className="text-sm text-muted-foreground">
+            Set up your AI-powered virtual receptionist to handle calls, create leads, and transfer to your team.
+          </p>
+        </CardContent>
+      </Card>
     </TabsContent>
   );
 }
