@@ -1,17 +1,30 @@
 import { storage } from './storage';
-import type { BusinessSettings, InsertAiReceptionistCall } from '@shared/schema';
+import type { BusinessSettings, InsertAiReceptionistCall, InsertNotification } from '@shared/schema';
 import crypto from 'crypto';
+
+interface TransferNumber {
+  name: string;
+  phone: string;
+  priority: number;
+}
+
+interface BusinessHoursConfig {
+  start: string;
+  end: string;
+  timezone: string;
+  days: number[];
+}
 
 const VAPI_API_BASE = 'https://api.vapi.ai';
 const VAPI_API_KEY = process.env.VAPI_PRIVATE_KEY || '';
 
 export function verifyVapiWebhook(rawBody: Buffer, signature: string | undefined): boolean {
   if (!VAPI_API_KEY) {
-    console.warn('[Vapi] VAPI_PRIVATE_KEY not configured — webhook verification disabled');
+    console.error('[Vapi] VAPI_PRIVATE_KEY not configured — rejecting webhook (fail-closed)');
     return false;
   }
   if (!signature) {
-    console.warn('[Vapi] Missing x-vapi-signature header');
+    console.error('[Vapi] Missing x-vapi-signature header — rejecting webhook');
     return false;
   }
   try {
@@ -371,8 +384,8 @@ export async function enableAiReceptionist(userId: string): Promise<{
 
     const webhookUrl = getWebhookUrl();
 
-    const transferNumbers = (settings.aiReceptionistTransferNumbers as any[]) || [];
-    const businessHours = settings.aiReceptionistBusinessHours as any;
+    const transferNumbers = (settings.aiReceptionistTransferNumbers || []) as TransferNumber[];
+    const businessHours = settings.aiReceptionistBusinessHours as BusinessHoursConfig | null;
 
     const assistant = await createAssistant({
       businessName: settings.businessName,
@@ -381,7 +394,7 @@ export async function enableAiReceptionist(userId: string): Promise<{
       greeting: settings.aiReceptionistGreeting || undefined,
       voice: settings.aiReceptionistVoice || 'Jess',
       transferNumbers,
-      businessHours,
+      businessHours: businessHours || undefined,
       webhookUrl,
     });
 
@@ -390,7 +403,7 @@ export async function enableAiReceptionist(userId: string): Promise<{
       aiReceptionistEnabled: true,
       aiReceptionistMode: settings.aiReceptionistMode || 'always_on_message',
       smsMode: 'ai_receptionist',
-    } as any);
+    });
 
     console.log(`[Vapi] AI Receptionist enabled for user ${userId} - assistant: ${assistant.id}`);
 
@@ -433,7 +446,7 @@ export async function disableAiReceptionist(userId: string): Promise<{ success: 
       aiReceptionistEnabled: false,
       aiReceptionistMode: 'off',
       smsMode: 'standard',
-    } as any);
+    });
 
     console.log(`[Vapi] AI Receptionist disabled for user ${userId}`);
     return { success: true };
@@ -473,8 +486,8 @@ export async function updateReceptionistConfig(userId: string, updates: {
           tradeType: settings.industry || undefined,
           voice: updates.voice || settings.aiReceptionistVoice || 'Jess',
           greeting: updates.greeting || settings.aiReceptionistGreeting || undefined,
-          transferNumbers: updates.transferNumbers || (settings.aiReceptionistTransferNumbers as any[]) || [],
-          businessHours: updates.businessHours || (settings.aiReceptionistBusinessHours as any) || undefined,
+          transferNumbers: updates.transferNumbers || (settings.aiReceptionistTransferNumbers as TransferNumber[]) || [],
+          businessHours: updates.businessHours || (settings.aiReceptionistBusinessHours as BusinessHoursConfig | null) || undefined,
           webhookUrl,
         });
       } catch (e: any) {
@@ -608,10 +621,10 @@ function isWithinBusinessHours(businessHours: any): boolean {
   }
 }
 
-async function getAvailableTransferTarget(userId: string, settings: BusinessSettings): Promise<{ name: string; phone: string } | null> {
+async function getAvailableTransferTarget(userId: string, settings: BusinessSettings, callerPhone?: string | null): Promise<{ name: string; phone: string } | null> {
   const mode = settings.aiReceptionistMode || 'always_on_message';
-  const transferNumbers = (settings.aiReceptionistTransferNumbers as any[]) || [];
-  const businessHours = settings.aiReceptionistBusinessHours as any;
+  const transferNumbers = (settings.aiReceptionistTransferNumbers || []) as TransferNumber[];
+  const businessHours = settings.aiReceptionistBusinessHours as BusinessHoursConfig | null;
 
   if (mode === 'off') return null;
   if (mode === 'always_on_message') return null;
@@ -630,26 +643,42 @@ async function getAvailableTransferTarget(userId: string, settings: BusinessSett
   }
 
   if (mode === 'selective') {
-    try {
-      const teamMembers = await storage.getTeamMembers(userId);
-      const availableMembers = teamMembers.filter(m =>
-        m.isActive && m.aiReceptionistAvailability && m.phone
-      );
+    const isKnownClient = await shouldTransferSelectiveByClient(userId, callerPhone);
 
-      if (availableMembers.length > 0) {
-        const member = availableMembers[0];
-        return { name: member.firstName || member.email, phone: member.phone! };
+    if (isKnownClient) {
+      try {
+        const teamMembers = await storage.getTeamMembers(userId);
+        const availableMembers = teamMembers.filter(m =>
+          m.isActive && m.aiReceptionistAvailability && m.phone
+        );
+
+        if (availableMembers.length > 0) {
+          const member = availableMembers[0];
+          return { name: member.firstName || member.email, phone: member.phone! };
+        }
+
+        const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+        return sorted[0] || null;
+      } catch {
+        const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+        return sorted[0] || null;
       }
-
-      const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
-      return sorted[0] || null;
-    } catch {
-      const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
-      return sorted[0] || null;
     }
+
+    return null;
   }
 
   return null;
+}
+
+async function shouldTransferSelectiveByClient(userId: string, callerPhone: string | null): Promise<boolean> {
+  if (!callerPhone) return false;
+  try {
+    const clients = await storage.getClientsByPhone(callerPhone);
+    return clients.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 async function handleTransferCall(args: any, userId: string): Promise<any> {
@@ -681,7 +710,7 @@ async function handleCheckAvailability(args: any, userId: string): Promise<any> 
       return { result: 'I\'m not able to check availability right now. Someone from the team will get back to you.' };
     }
 
-    const businessHours = settings.aiReceptionistBusinessHours as any;
+    const businessHours = settings.aiReceptionistBusinessHours as BusinessHoursConfig | null;
     const withinHours = isWithinBusinessHours(businessHours);
 
     const teamMembers = await storage.getTeamMembers(userId);
@@ -865,12 +894,19 @@ async function handleEndOfCallReport(event: any): Promise<any> {
     await storage.updateAiReceptionistCall(existingCall.id, business.userId, updates);
     callRecord = existingCall;
   } else {
-    callRecord = await storage.createAiReceptionistCall({
+    const createPayload: InsertAiReceptionistCall = {
       userId: business.userId,
       vapiCallId: callId,
       callerPhone: call.customer?.number || null,
-      ...updates,
-    } as any);
+      status: updates.status || 'completed',
+      duration: updates.duration || null,
+      summary: updates.summary || null,
+      transcript: updates.transcript || null,
+      recordingUrl: updates.recordingUrl || null,
+      endedReason: updates.endedReason || null,
+      cost: updates.cost || null,
+    };
+    callRecord = await storage.createAiReceptionistCall(createPayload);
   }
 
   const hasLead = callRecord?.leadId || existingCall?.leadId;
@@ -923,7 +959,7 @@ async function sendCallNotifications(
 
     const smsBody = `AI Receptionist: New call from ${callerDisplay} (${durationText}). ${summaryText.slice(0, 120)}`;
 
-    const transferNumbers = (business.aiReceptionistTransferNumbers as any[]) || [];
+    const transferNumbers = (business.aiReceptionistTransferNumbers || []) as TransferNumber[];
     for (const contact of transferNumbers) {
       if (contact.phone) {
         try {
@@ -957,6 +993,20 @@ async function sendCallNotifications(
       }
     } catch (e: any) {
       console.error(`[Vapi] Owner SMS notification failed:`, e.message);
+    }
+
+    try {
+      const notificationPayload: InsertNotification = {
+        userId,
+        type: 'ai_receptionist_call',
+        title: `New AI Receptionist Call`,
+        message: `Call from ${callerDisplay} (${durationText}). ${summaryText.slice(0, 200)}`,
+        data: { callId, callerPhone, duration, source: 'ai_receptionist' },
+      };
+      await storage.createNotification(notificationPayload);
+      console.log(`[Vapi] Push notification created for user ${userId}`);
+    } catch (e: any) {
+      console.error(`[Vapi] Push notification failed:`, e.message);
     }
   } catch (e: any) {
     console.error(`[Vapi] sendCallNotifications error:`, e.message);

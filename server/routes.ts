@@ -43050,6 +43050,35 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+  app.patch("/api/ai-receptionist/my-availability", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId || req.session?.userId;
+      const { available } = req.body;
+
+      if (typeof available !== 'boolean') {
+        return res.status(400).json({ error: 'available must be a boolean' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const membership = await storage.getTeamMemberByUserId(userId);
+      if (!membership) {
+        return res.status(404).json({ error: 'You are not a team member' });
+      }
+
+      await storage.updateTeamMember(membership.id, membership.businessOwnerId, {
+        aiReceptionistAvailability: available,
+      });
+      res.json({ success: true, available });
+    } catch (error: any) {
+      console.error('[AI Receptionist] Update my availability error:', error);
+      res.status(500).json({ error: 'Failed to update availability' });
+    }
+  });
+
   app.get("/api/ai-receptionist/team/availability", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId || req.session?.userId;

@@ -158,7 +158,7 @@ if (process.env.DATABASE_URL) {
           return res.status(500).json({ error: 'Webhook processing error' });
         }
 
-        if (process.env.VAPI_PRIVATE_KEY && !verifyVapiWebhook(req.body, signature)) {
+        if (!verifyVapiWebhook(req.body, signature)) {
           console.warn('[Vapi Webhook] Invalid signature - rejecting request');
           return res.status(401).json({ error: 'Invalid webhook signature' });
         }
