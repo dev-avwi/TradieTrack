@@ -5591,11 +5591,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        const smsResult = await sendSMS({
-          to: recipientPhone,
-          message: action.data.message,
-          alphanumericSenderId: 'JobRunner',
-        });
+        const { sendCustomerReply } = await import('./services/smsService');
+        const smsResult = await sendCustomerReply(recipientPhone, action.data.message, userContext.effectiveUserId);
         
         if (smsResult.success) {
           return res.json({ 
@@ -6016,7 +6013,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if ((action.data.channel === 'sms' || action.data.channel === 'both') && client?.phone) {
           try {
             const smsMessage = `Reminder: Invoice ${invoice.number || ''} for $${invoiceTotal} is ${action.data.daysPastDue} days overdue. - ${business?.businessName || ''}`;
-            await sendSMS({ to: client.phone, message: smsMessage, alphanumericSenderId: 'JobRunner' });
+            const { sendCustomerReply: sendCustReply } = await import('./services/smsService');
+            await sendCustReply(client.phone, smsMessage, userContext.effectiveUserId);
             results.push('SMS sent');
           } catch {
             results.push('SMS failed');
@@ -8034,7 +8032,6 @@ Be specific about materials, colors, and features that would be included.`
       await sendSMS({
         to: phoneClean,
         message: `Test SMS from ${businessName} via JobRunner. Your SMS integration is working correctly!`,
-        alphanumericSenderId: 'JobRunner',
       });
 
       res.json({ success: true, message: `Test SMS sent to ${phoneClean}` });
@@ -17140,12 +17137,9 @@ Be specific about materials, colors, and features that would be included.`
       baseMessage = baseMessage.replace(/\n*Track arrival:.*$/gims, '').replace(/\n*\[link will be added\].*$/gims, '').replace(/\n*Track arrival:\s*$/gim, '').trim();
       const message = baseMessage;
       
-      // Send SMS via shared Twilio client (supports connector and env vars)
-      const smsResult = await sendSMS({
-        to: client.phone,
-        message: message,
-        alphanumericSenderId: 'JobRunner',
-      });
+      // Send SMS via dedicated/shared number (customer-facing)
+      const { sendCustomerReply: sendCustReply } = await import('./services/smsService');
+      const smsResult = await sendCustReply(client.phone, message, userContext.effectiveUserId);
 
       // Log activity
       await logActivity(
@@ -17389,7 +17383,8 @@ Be specific about materials, colors, and features that would be included.`
             if (client.phone) {
               const business = await storage.getBusinessSettings(userContext.effectiveUserId);
               const message = `Hi ${client.firstName || 'there'}, here's your payment link for ${job.title || 'your recent job'} from ${business?.businessName || 'your tradesperson'}: ${session.url}. Amount: $${parseFloat(amount).toFixed(2)}`;
-              await sendSMS({ to: client.phone, message, alphanumericSenderId: 'JobRunner' });
+              const { sendCustomerReply: sendCR } = await import('./services/smsService');
+              await sendCR(client.phone, message, userContext.effectiveUserId);
             }
 
             return res.json({
@@ -18034,12 +18029,8 @@ Be specific about materials, colors, and features that would be included.`
       const baseUrl = getProductionBaseUrl(req);
       const portalUrl = `${baseUrl}/p/${activeToken.token}`;
 
-      const { sendSMS } = await import('./twilioClient');
-      const smsResult = await sendSMS({
-        to: client.phone,
-        message: `Hi ${client.name}, track your job "${job.title}" live here: ${portalUrl}\n- ${escapeHtml(businessName)}`,
-        alphanumericSenderId: 'JobRunner',
-      });
+      const { sendCustomerReply: sendCustReply2 } = await import('./services/smsService');
+      const smsResult = await sendCustReply2(client.phone, `Hi ${client.name}, track your job "${job.title}" live here: ${portalUrl}\n- ${escapeHtml(businessName)}`, effectiveUserId);
 
       if (!smsResult.success) {
         return res.status(500).json({ error: smsResult.error || 'Failed to send SMS' });
@@ -30525,12 +30516,9 @@ Respond with JSON in this format:
         // Format SMS message with receipt details
         const smsMessage = `Payment Receipt from ${escapeHtml(businessName)}: ${formattedAmount} received. ${invoiceNumber ? `Invoice: ${invoiceNumber}. ` : ''}Thank you for your payment!`;
         
-        // Send via shared Twilio client (supports connector and env vars)
-        const smsResult = await sendSMS({
-          to: phone,
-          message: smsMessage,
-          alphanumericSenderId: 'JobRunner',
-        });
+        // Send via dedicated/shared number (customer-facing)
+        const { sendCustomerReply: sendCR3 } = await import('./services/smsService');
+        const smsResult = await sendCR3(phone, smsMessage, userId);
         
         if (smsResult.success) {
           return res.json({ 
@@ -34531,7 +34519,7 @@ Respond with JSON in this format:
         hasDedicatedNumber: !!(settings?.dedicatedPhoneNumber),
         twilioConfigured: availability.configured,
         twilioConnected: availability.connected,
-        canTwoWayText: !!(settings?.dedicatedPhoneNumber),
+        canTwoWayText: availability.connected && availability.hasPhoneNumber,
       });
     } catch (error: any) {
       console.error('Error getting SMS config:', error);
@@ -34978,12 +34966,12 @@ Respond with JSON in this format:
         }
       }
       
-      // Server-side enforcement: require dedicated number for manual outbound SMS
-      const smsSettings = await storage.getBusinessSettings(businessOwnerId);
-      if (!smsSettings?.dedicatedPhoneNumber) {
-        return res.status(403).json({ 
-          error: 'Two-way texting requires a dedicated phone number. Get one from the Chat Hub upgrade dialog.',
-          requiresUpgrade: true
+      // Verify Twilio is configured (shared platform number or dedicated number required)
+      const { checkTwilioAvailability } = await import('./twilioClient');
+      const twilioStatus = await checkTwilioAvailability();
+      if (!twilioStatus.connected || !twilioStatus.hasPhoneNumber) {
+        return res.status(503).json({ 
+          error: 'SMS service is not available. Please check Twilio configuration.',
         });
       }
       

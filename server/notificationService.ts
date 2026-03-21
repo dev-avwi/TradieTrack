@@ -8,6 +8,7 @@
 
 import { sendEmail, EmailOptions } from './emailService';
 import { sendSMS as sendTwilioSMS, isTwilioInitialized, initializeTwilio } from './twilioClient';
+import { sendCustomerReply } from './services/smsService';
 
 
 // Real SMS sending via Twilio - NO silent success fallbacks in production
@@ -167,11 +168,9 @@ export async function notifyQuoteReady(
   // Send SMS if enabled and phone available
   if ((channel === 'sms' || channel === 'both') && clientPhone) {
     try {
-      const smsResult = await sendSMS({
-        to: clientPhone,
-        message: smsTemplates.quoteReady(clientName, businessName, quoteNumber, options.businessPhone),
-        alphanumericSenderId: 'JobRunner',
-      });
+      const smsResult = options.businessOwnerId
+        ? await sendCustomerReply(clientPhone, smsTemplates.quoteReady(clientName, businessName, quoteNumber, options.businessPhone), options.businessOwnerId)
+        : await sendSMS({ to: clientPhone, message: smsTemplates.quoteReady(clientName, businessName, quoteNumber, options.businessPhone) });
       result.smsSent = smsResult.success;
       if (!smsResult.success) {
         result.smsError = smsResult.error;
@@ -242,11 +241,9 @@ export async function notifyInvoiceSent(
   // Send SMS
   if ((channel === 'sms' || channel === 'both') && clientPhone) {
     try {
-      const smsResult = await sendSMS({
-        to: clientPhone,
-        message: smsTemplates.invoiceSent(clientName, businessName, invoiceNumber, invoiceTotal, options.businessPhone),
-        alphanumericSenderId: 'JobRunner',
-      });
+      const smsResult = options.businessOwnerId
+        ? await sendCustomerReply(clientPhone, smsTemplates.invoiceSent(clientName, businessName, invoiceNumber, invoiceTotal, options.businessPhone), options.businessOwnerId)
+        : await sendSMS({ to: clientPhone, message: smsTemplates.invoiceSent(clientName, businessName, invoiceNumber, invoiceTotal, options.businessPhone) });
       result.smsSent = smsResult.success;
       if (!smsResult.success) result.smsError = smsResult.error;
     } catch (error: any) {
@@ -302,11 +299,9 @@ export async function notifyPaymentReceived(
   // Send SMS
   if ((channel === 'sms' || channel === 'both') && clientPhone) {
     try {
-      const smsResult = await sendSMS({
-        to: clientPhone,
-        message: smsTemplates.paymentReceived(clientName, amount, businessName, undefined, options.businessPhone),
-        alphanumericSenderId: 'JobRunner',
-      });
+      const smsResult = options.businessOwnerId
+        ? await sendCustomerReply(clientPhone, smsTemplates.paymentReceived(clientName, amount, businessName, undefined, options.businessPhone), options.businessOwnerId)
+        : await sendSMS({ to: clientPhone, message: smsTemplates.paymentReceived(clientName, amount, businessName, undefined, options.businessPhone) });
       result.smsSent = smsResult.success;
       if (!smsResult.success) result.smsError = smsResult.error;
     } catch (error: any) {
@@ -363,11 +358,9 @@ export async function notifyJobScheduled(
   // Send SMS
   if ((channel === 'sms' || channel === 'both') && clientPhone) {
     try {
-      const smsResult = await sendSMS({
-        to: clientPhone,
-        message: smsTemplates.jobScheduled(clientName, businessName, jobDate, options.businessPhone),
-        alphanumericSenderId: 'JobRunner',
-      });
+      const smsResult = options.businessOwnerId
+        ? await sendCustomerReply(clientPhone, smsTemplates.jobScheduled(clientName, businessName, jobDate, options.businessPhone), options.businessOwnerId)
+        : await sendSMS({ to: clientPhone, message: smsTemplates.jobScheduled(clientName, businessName, jobDate, options.businessPhone) });
       result.smsSent = smsResult.success;
       if (!smsResult.success) result.smsError = smsResult.error;
     } catch (error: any) {
@@ -415,7 +408,7 @@ export async function notifyOwnerViaSms(
     }
     
     const message = (template as any)(...args);
-    const result = await sendSMS({ to: ownerPhone, message, alphanumericSenderId: 'JobRunner' });
+    const result = await sendSMS({ to: ownerPhone, message });
     return { success: result.success, error: result.error };
   } catch (error: any) {
     console.error(`[OwnerSMS] Failed to send ${templateKey}:`, error.message);

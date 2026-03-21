@@ -3,6 +3,7 @@ import { sendInvoiceEmail } from './emailService';
 import { notifyInvoiceOverdue } from './pushNotifications';
 import { notifyInvoiceOverdue as notifyInvoiceOverdueDB } from './notifications';
 import { sendSMS } from './twilioClient';
+import { sendCustomerReply } from './services/smsService';
 import { getProductionBaseUrl } from './urlHelper';
 
 interface ReminderResult {
@@ -159,7 +160,7 @@ export async function processOverdueReminders(): Promise<ReminderResult[]> {
           const formattedPhone = formatPhoneForSMS(client.phone);
           if (formattedPhone) {
             try {
-              await sendSMS({ to: formattedPhone, message: content.smsBody, alphanumericSenderId: 'JobRunner' });
+              await sendCustomerReply(formattedPhone, content.smsBody, user.id);
               smsSent = true;
             } catch (e: any) {
               if (!error) error = e.message;
@@ -271,7 +272,7 @@ export async function sendManualReminder(
       const formattedPhone = formatPhoneForSMS(client.phone);
       if (formattedPhone) {
         try {
-          await sendSMS({ to: formattedPhone, message: content.smsBody, alphanumericSenderId: 'JobRunner' });
+          await sendCustomerReply(formattedPhone, content.smsBody, userId);
           smsSent = true;
         } catch (e: any) {
           if (!error) error = e.message;

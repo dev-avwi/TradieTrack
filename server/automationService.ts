@@ -489,8 +489,8 @@ export async function processReviewRequestAutomation(
     }
 
     if ((channel === 'sms' || channel === 'both') && client.phone) {
-      const { sendSMS } = await import('./twilioClient');
-      await sendSMS({ to: client.phone, message, alphanumericSenderId: 'JobRunner' });
+      const { sendCustomerReply } = await import('./services/smsService');
+      await sendCustomerReply(client.phone, message, userId);
       console.log(`[Automations] Sent review request SMS to ${client.phone} for job ${jobId}`);
     }
   } catch (error) {

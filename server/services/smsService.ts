@@ -117,8 +117,20 @@ export async function getAlphanumericSenderId(businessOwnerId?: string): Promise
 }
 
 /**
+ * Send a customer-facing auto-reply SMS using the correct sender for the business.
+ * Uses dedicated number if available, otherwise shared platform number. Never alphanumeric.
+ */
+export async function sendCustomerReply(
+  to: string,
+  message: string,
+  businessOwnerId: string
+): Promise<{ success: boolean; messageId?: string; error?: string; simulated?: boolean }> {
+  return sendSmsPlatform(to, message, undefined, businessOwnerId);
+}
+
+/**
  * Send SMS via the platform Twilio account
- * Uses the business's dedicated number (AI Receptionist) if configured, otherwise shared platform number
+ * Uses the business's dedicated number if configured, otherwise shared platform number
  */
 async function sendSmsPlatform(
   to: string,
@@ -134,15 +146,11 @@ async function sendSmsPlatform(
   if (businessOwnerId) {
     try {
       const settings = await storage.getBusinessSettings(businessOwnerId);
-      if (settings?.smsMode === 'ai_receptionist' && settings?.dedicatedPhoneNumber) {
+      if (settings?.dedicatedPhoneNumber) {
         fromNumber = settings.dedicatedPhoneNumber;
-      } else if (validMediaUrls.length === 0) {
-        alphanumericSenderId = settings?.twilioSenderId || 'JobRunner';
       }
     } catch {
     }
-  } else if (validMediaUrls.length === 0) {
-    alphanumericSenderId = 'JobRunner';
   }
 
   return sendSMS({
@@ -367,11 +375,11 @@ async function checkAndProcessQuoteAcceptance(
         console.log(`[SMS Quote Accept] Specified quote ${specifiedQuoteNumber} not found`);
         const businessSettings = await storage.getBusinessSettings(conversation.businessOwnerId);
         const businessName = businessSettings?.businessName || 'Your tradie';
-        await sendSMS({ 
-          to: clientPhone, 
-          message: `Quote #${specifiedQuoteNumber} wasn't found. Available quotes: ${sentQuotes.map(q => q.number).join(', ')}. - ${businessName}`,
-          alphanumericSenderId: 'JobRunner',
-        });
+        await sendCustomerReply(
+          clientPhone,
+          `Quote #${specifiedQuoteNumber} wasn't found. Available quotes: ${sentQuotes.map(q => q.number).join(', ')}. - ${businessName}`,
+          conversation.businessOwnerId
+        );
         return { processed: false };
       }
     } else if (sentQuotes.length > 1) {
@@ -380,11 +388,11 @@ async function checkAndProcessQuoteAcceptance(
       const businessSettings = await storage.getBusinessSettings(conversation.businessOwnerId);
       const businessName = businessSettings?.businessName || 'Your tradie';
       const quoteList = sentQuotes.map(q => `#${q.number}`).join(', ');
-      await sendSMS({ 
-        to: clientPhone, 
-        message: `Thanks! You have multiple pending quotes (${quoteList}). Please reply with "Accept" followed by the quote number, e.g., "Accept ${sentQuotes[0].number}". - ${businessName}`,
-        alphanumericSenderId: 'JobRunner',
-      });
+      await sendCustomerReply(
+        clientPhone,
+        `Thanks! You have multiple pending quotes (${quoteList}). Please reply with "Accept" followed by the quote number, e.g., "Accept ${sentQuotes[0].number}". - ${businessName}`,
+        conversation.businessOwnerId
+      );
       return { processed: false };
     } else {
       // Only one quote - select it
@@ -399,11 +407,11 @@ async function checkAndProcessQuoteAcceptance(
       console.log('[SMS Quote Accept] Quote has expired (validUntil passed)');
       const businessSettings = await storage.getBusinessSettings(conversation.businessOwnerId);
       const businessName = businessSettings?.businessName || 'Your tradie';
-      await sendSMS({ 
-        to: clientPhone, 
-        message: `Sorry, quote #${latestQuote.number} has expired. Please contact ${businessName} for an updated quote.`,
-        alphanumericSenderId: 'JobRunner',
-      });
+      await sendCustomerReply(
+        clientPhone,
+        `Sorry, quote #${latestQuote.number} has expired. Please contact ${businessName} for an updated quote.`,
+        conversation.businessOwnerId
+      );
       return { processed: false };
     }
     
@@ -430,7 +438,7 @@ async function checkAndProcessQuoteAcceptance(
       const statusMessage = freshQuote?.status === 'accepted' 
         ? `Quote #${latestQuote.number} has already been accepted.` 
         : `Quote #${latestQuote.number} is no longer available.`;
-      await sendSMS({ to: clientPhone, message: `${statusMessage} - ${businessName}`, alphanumericSenderId: 'JobRunner' });
+      await sendCustomerReply(clientPhone, `${statusMessage} - ${businessName}`, conversation.businessOwnerId);
       return { processed: false };
     }
     
@@ -450,12 +458,8 @@ async function checkAndProcessQuoteAcceptance(
     
     const confirmationMessage = `Thanks ${clientName}! Your quote #${latestQuote.number} for $${total} is now ACCEPTED. We'll be in touch soon to schedule the work. - ${businessName}`;
     
-    // Send confirmation via platform Twilio
-    await sendSMS({ 
-      to: clientPhone, 
-      message: confirmationMessage,
-      alphanumericSenderId: 'JobRunner',
-    });
+    // Send confirmation via platform (dedicated number or shared)
+    await sendCustomerReply(clientPhone, confirmationMessage, conversation.businessOwnerId);
     
     // Create outbound confirmation message in conversation
     await storage.createSmsMessage({
@@ -527,7 +531,7 @@ async function checkAndRouteJobs(
       }));
       const menuLines = jobOptions.map((opt, i) => `${i + 1}. ${opt.label}`);
       const menuText = `Which job is this about? Reply with a number:\n${menuLines.join('\n')}`;
-      await sendSMS({ to: formattedFromPhone, message: menuText, alphanumericSenderId: 'JobRunner' });
+      await sendCustomerReply(formattedFromPhone, menuText, businessOwnerId);
       await storage.updateSmsConversationRoutingState(targetConversation.id, 'pending_job', jobOptions);
       console.log(`[SMS Routing] Sent job selection menu to ${formattedFromPhone} (${relevantJobs.length} active jobs)`);
     }
@@ -706,7 +710,7 @@ export async function handleIncomingSms(
         const selectedJob = await storage.getJob(selectedJobId, pending.businessOwnerId);
         if (!selectedJob || selectedJob.userId !== pending.businessOwnerId) {
           const menuLines = options.map((opt: any, i: number) => `${i + 1}. ${opt.label}`);
-          await sendSMS({ to: formattedFromPhone, message: `Invalid selection. Please reply with a number to select a job:\n${menuLines.join('\n')}`, alphanumericSenderId: 'JobRunner' });
+          await sendCustomerReply(formattedFromPhone, `Invalid selection. Please reply with a number to select a job:\n${menuLines.join('\n')}`, pending.businessOwnerId);
           targetConversation = pending;
           console.log(`[SMS Routing] Job selection failed validation (job doesn't belong to business) for ${formattedFromPhone}`);
         } else {
@@ -726,7 +730,7 @@ export async function handleIncomingSms(
         const helpText = pending.routingState === 'pending_business'
           ? `Please reply with a number to select a business:\n${menuLines.join('\n')}`
           : `Please reply with a number to select a job:\n${menuLines.join('\n')}`;
-        await sendSMS({ to: formattedFromPhone, message: helpText, alphanumericSenderId: 'JobRunner' });
+        await sendCustomerReply(formattedFromPhone, helpText, pending.businessOwnerId);
         await storage.updateSmsConversationRoutingState(pending.id, pending.routingState, options);
       }
 
@@ -821,7 +825,6 @@ export async function handleIncomingSms(
           await sendSMS({
             to: formattedFromPhone,
             message: "Hi! This is JobRunner. We couldn't match your number to a business. Please contact your tradie directly or text us the business name you're trying to reach.",
-            alphanumericSenderId: 'JobRunner',
           });
           console.log(`[SMS Routing] Unknown caller ${formattedFromPhone} - multi-tenant, no conversation created (${allBusinessSettings.length} businesses on platform)`);
           return null;
@@ -895,7 +898,7 @@ export async function handleIncomingSms(
 
           const menuLines = matchedBusinesses.map((b, i) => `${i + 1}. ${b.businessName}`);
           const menuText = `You're a client of multiple businesses. Reply with a number:\n${menuLines.join('\n')}`;
-          await sendSMS({ to: formattedFromPhone, message: menuText, alphanumericSenderId: 'JobRunner' });
+          await sendSMS({ to: formattedFromPhone, message: menuText });
 
           targetConversation = routingConv;
           console.log(`[SMS Routing] Multiple matches (${matchedBusinesses.length}) - sent business disambiguation menu to ${formattedFromPhone}`);

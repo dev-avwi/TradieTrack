@@ -1598,7 +1598,7 @@ export default function ChatHub() {
           </div>
           {!isTradie && (
             <Button
-              onClick={() => canTwoWayText ? setNewSmsDialogOpen(true) : setShowSmsUpgrade(true)}
+              onClick={() => canTwoWayText ? setNewSmsDialogOpen(true) : undefined}
               size="icon"
               variant="ghost"
               data-testid="button-new-sms"
@@ -2573,13 +2573,13 @@ export default function ChatHub() {
                   <TwilioWarning compact />
                 </div>
               )}
-              {!canTwoWayText && twilioConnected && (
+              {canTwoWayText && twilioConnected && !smsConfig?.hasDedicatedNumber && (
                 <div className="px-4 pt-2">
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                    <Phone className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                    <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Two-way texting requires a dedicated number</p>
-                      <p className="text-[10px] text-amber-600 dark:text-amber-400">One-way notifications are sent automatically.</p>
+                      <p className="text-xs font-medium text-blue-800 dark:text-blue-300">Messages sent via shared JobRunner number</p>
+                      <p className="text-[10px] text-blue-600 dark:text-blue-400">Get your own number so customers see your business.</p>
                     </div>
                     <Button size="sm" variant="outline" className="text-xs shrink-0 h-7" onClick={() => setShowSmsUpgrade(true)}>
                       Get Number
@@ -2591,7 +2591,7 @@ export default function ChatHub() {
               <div className="px-4 py-3 flex gap-2">
                 <Input
                   ref={smsInputRef}
-                  placeholder={!twilioConnected ? "SMS not available — check Twilio setup" : !canTwoWayText ? "Get a dedicated number to send messages..." : "Type a message..."}
+                  placeholder={!twilioConnected ? "SMS not available — check Twilio setup" : !canTwoWayText ? "SMS service unavailable..." : "Type a message..."}
                   value={smsNewMessage}
                   onChange={(e) => setSmsNewMessage(e.target.value)}
                   onKeyPress={handleSmsKeyPress}
@@ -3085,18 +3085,18 @@ export default function ChatHub() {
               Get a Dedicated Business Number
             </DialogTitle>
             <DialogDescription>
-              Upgrade to two-way client texting with your own Australian phone number.
+              Get your own Australian phone number so customers see your business, not the shared JobRunner number.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-3">
               <div className="p-3 rounded-lg bg-muted/50 space-y-2">
-                <p className="text-sm font-medium">What is a dedicated number?</p>
+                <p className="text-sm font-medium">Why get a dedicated number?</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  A dedicated number is an Australian mobile or local phone number assigned just to your business. 
-                  Clients can text this number directly and you can reply from the Chat Hub — all conversations 
-                  are tracked and linked to jobs automatically.
+                  You can already send and receive SMS through the shared JobRunner number. 
+                  A dedicated number means customers see your business number instead — put it on your website, 
+                  Google listing, business cards, and van for a professional look.
                 </p>
               </div>
 
@@ -3212,7 +3212,7 @@ export default function ChatHub() {
                 Numbers are provided through Twilio and billed at approximately $3 AUD/month. 
                 SMS messages are charged at standard rates (~$0.06/SMS). 
                 You can release your number anytime from Settings.
-                One-way system notifications (job updates, invoice reminders) are already included in your plan and don't require a dedicated number.
+                Two-way SMS is already included through the shared JobRunner number. A dedicated number is optional — it gives your business a professional look.
               </p>
             </div>
           </div>

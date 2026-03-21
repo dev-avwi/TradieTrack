@@ -526,8 +526,8 @@ export default function SubscriptionPage() {
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Without a dedicated number, outbound customer SMS (invoices, quotes, job confirmations) is sent from the "JobRunner" sender ID. 
-              A dedicated number lets customers reply directly to your business via two-way SMS.
+              All plans include two-way SMS through the shared JobRunner platform number. 
+              A dedicated number means customers see your business number instead of the shared one — great for your website, Google listing, and business cards.
             </p>
           </CardContent>
         </Card>
