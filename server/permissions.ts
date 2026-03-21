@@ -76,6 +76,7 @@ export const ROLE_TEMPLATES = {
       PERMISSIONS.VIEW_ALL,
       PERMISSIONS.WRITE_JOB_NOTES,
       PERMISSIONS.WRITE_JOB_MEDIA,
+      PERMISSIONS.MANAGE_AI_RECEPTIONIST,
     ],
     description: 'Manages jobs, quotes, invoices, team members - assigns to workers only',
   },

@@ -46,6 +46,9 @@ interface VapiAssistantConfig {
   transferNumbers?: Array<{ name: string; phone: string; priority: number }>;
   businessHours?: { start: string; end: string; timezone: string; days: number[] };
   webhookUrl: string;
+  services?: string[];
+  teamInfo?: Array<{ name: string; role: string }>;
+  knownClientCount?: number;
 }
 
 interface VapiResponse {
@@ -93,7 +96,20 @@ function buildSystemPrompt(config: VapiAssistantConfig): string {
   const businessName = config.businessName || 'the business';
   const tradeType = config.tradeType || 'trades';
 
+  const servicesSection = config.services && config.services.length > 0
+    ? `\nServices offered: ${config.services.join(', ')}`
+    : '';
+
+  const teamSection = config.teamInfo && config.teamInfo.length > 0
+    ? `\nTeam members: ${config.teamInfo.map(t => `${t.name} (${t.role})`).join(', ')}`
+    : '';
+
+  const clientContextSection = config.knownClientCount
+    ? `\nThe business has ${config.knownClientCount} existing clients in their system. Use "lookup_client" when a returning caller identifies themselves.`
+    : '';
+
   return `You are a friendly, professional AI receptionist for ${businessName}, an Australian ${tradeType} business.
+${servicesSection}${teamSection}${clientContextSection}
 
 Your role:
 - Answer incoming calls in a warm, natural Australian tone
@@ -117,7 +133,7 @@ Available tools:
 2. "check_availability" - Check if team members are available to take a call or handle a job. Use when the caller asks about availability.
 3. "lookup_client" - Look up an existing client by phone number or name. Use when a returning client calls to find their history.
 4. "create_booking" - Create a tentative booking/appointment. Use when the caller wants to schedule work.
-${config.transferNumbers && config.transferNumbers.length > 0 ? '5. "transfer_call" - Transfer the call to a team member when the caller wants to speak with someone directly.' : ''}
+${(config.transferNumbers && config.transferNumbers.length > 0) || (config.teamInfo && config.teamInfo.length > 0) ? '5. "transfer_call" - Transfer the call to an available team member when the caller wants to speak with someone directly.' : ''}
 
 Workflow:
 1. First, greet the caller and ask how you can help
@@ -214,7 +230,10 @@ function buildToolDefinitions(config: VapiAssistantConfig): any[] {
     },
   ];
 
-  if (config.transferNumbers && config.transferNumbers.length > 0) {
+  const hasTransferCapability = (config.transferNumbers && config.transferNumbers.length > 0) ||
+    (config.teamInfo && config.teamInfo.length > 0);
+
+  if (hasTransferCapability) {
     tools.push({
       type: 'function',
       function: {
@@ -286,7 +305,7 @@ export async function updateAssistant(assistantId: string, config: Partial<VapiA
     updates.firstMessage = config.greeting;
   }
 
-  if (config.businessName || config.greeting || config.transferNumbers || config.businessHours || config.tradeType) {
+  if (config.businessName || config.greeting || config.transferNumbers || config.businessHours || config.tradeType || config.services || config.teamInfo || config.knownClientCount) {
     const fullConfig: VapiAssistantConfig = {
       businessName: config.businessName || '',
       tradeType: config.tradeType,
@@ -295,6 +314,9 @@ export async function updateAssistant(assistantId: string, config: Partial<VapiA
       transferNumbers: config.transferNumbers,
       businessHours: config.businessHours,
       webhookUrl: config.webhookUrl || '',
+      services: config.services,
+      teamInfo: config.teamInfo,
+      knownClientCount: config.knownClientCount,
     };
     updates.model = {
       provider: 'openai',
@@ -392,6 +414,17 @@ export async function enableAiReceptionist(userId: string): Promise<{
     const transferNumbers = (config?.transferNumbers || []) as TransferNumber[];
     const businessHours = (config?.businessHours || null) as BusinessHoursConfig | null;
 
+    const teamMembers = await storage.getTeamMembers(userId);
+    const teamInfo = teamMembers
+      .filter(m => m.isActive)
+      .map(m => ({ name: `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email, role: m.role || 'team member' }));
+
+    const clients = await storage.getClients(userId);
+    const knownClientCount = clients.length;
+
+    const catalogItems = await storage.getCatalogItems(userId);
+    const services = catalogItems.map(item => item.name).filter(Boolean).slice(0, 20);
+
     const assistant = await createAssistant({
       businessName: settings.businessName,
       businessPhone: settings.phone || undefined,
@@ -401,6 +434,9 @@ export async function enableAiReceptionist(userId: string): Promise<{
       transferNumbers,
       businessHours: businessHours || undefined,
       webhookUrl,
+      services,
+      teamInfo,
+      knownClientCount,
     });
 
     if (config) {
@@ -501,6 +537,18 @@ export async function updateReceptionistConfig(userId: string, updates: {
       try {
         const settings = await storage.getBusinessSettings(userId);
         const webhookUrl = getWebhookUrl();
+
+        const teamMembers = await storage.getTeamMembers(userId);
+        const teamInfo = teamMembers
+          .filter(m => m.isActive)
+          .map(m => ({ name: `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email, role: m.role || 'team member' }));
+
+        const clients = await storage.getClients(userId);
+        const knownClientCount = clients.length;
+
+        const catalogItems = await storage.getCatalogItems(userId);
+        const services = catalogItems.map(item => item.name).filter(Boolean).slice(0, 20);
+
         await updateAssistant(config.vapiAssistantId, {
           businessName: settings?.businessName || '',
           tradeType: settings?.industry || undefined,
@@ -509,6 +557,9 @@ export async function updateReceptionistConfig(userId: string, updates: {
           transferNumbers: updates.transferNumbers || (config.transferNumbers as TransferNumber[]) || [],
           businessHours: updates.businessHours || (config.businessHours as BusinessHoursConfig | null) || undefined,
           webhookUrl,
+          services,
+          teamInfo,
+          knownClientCount,
         });
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'Unknown error';
@@ -666,39 +717,42 @@ async function getAvailableTransferTarget(userId: string, _settings: BusinessSet
     if (!isWithinBusinessHours(businessHours)) {
       return null;
     }
-    const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
-    return sorted[0] || null;
+    return findFirstAvailableTarget(userId, transferNumbers);
   }
 
   if (mode === 'always_on_transfer') {
-    const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
-    return sorted[0] || null;
+    return findFirstAvailableTarget(userId, transferNumbers);
   }
 
   if (mode === 'selective') {
     const isKnownClient = await shouldTransferSelectiveByClient(userId, callerPhone);
+    if (!isKnownClient) return null;
+    return findFirstAvailableTarget(userId, transferNumbers);
+  }
 
-    if (isKnownClient) {
-      try {
-        const teamMembers = await storage.getTeamMembers(userId);
-        const availableMembers = teamMembers.filter(m =>
-          m.isActive && m.aiReceptionistAvailability && m.phone
-        );
+  return null;
+}
 
-        if (availableMembers.length > 0) {
-          const member = availableMembers[0];
-          return { name: member.firstName || member.email, phone: member.phone! };
-        }
+async function findFirstAvailableTarget(userId: string, transferNumbers: TransferNumber[]): Promise<{ name: string; phone: string } | null> {
+  try {
+    const teamMembers = await storage.getTeamMembers(userId);
+    const availableMembers = teamMembers.filter(m =>
+      m.isActive && m.aiReceptionistAvailability && m.phone
+    );
 
-        const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
-        return sorted[0] || null;
-      } catch {
-        const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
-        return sorted[0] || null;
-      }
+    if (availableMembers.length > 0) {
+      const member = availableMembers[0];
+      return { name: member.firstName || member.email, phone: member.phone! };
     }
+  } catch {
+    // fall through to transfer numbers
+  }
 
-    return null;
+  const sorted = [...transferNumbers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+  for (const target of sorted) {
+    if (target.phone) {
+      return { name: target.name, phone: target.phone };
+    }
   }
 
   return null;

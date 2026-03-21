@@ -42934,6 +42934,27 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+  const transferNumberSchema = z.object({
+    name: z.string().min(1),
+    phone: z.string().min(5),
+    priority: z.number().int().min(1).max(99),
+  });
+
+  const businessHoursSchema = z.object({
+    start: z.string().regex(/^\d{2}:\d{2}$/),
+    end: z.string().regex(/^\d{2}:\d{2}$/),
+    timezone: z.string().min(1),
+    days: z.array(z.number().int().min(0).max(6)),
+  });
+
+  const aiReceptionistConfigSchema = z.object({
+    voice: z.string().optional(),
+    greeting: z.string().max(500).optional(),
+    mode: z.enum(['off', 'after_hours', 'always_on_transfer', 'always_on_message', 'selective']).optional(),
+    transferNumbers: z.array(transferNumberSchema).optional(),
+    businessHours: businessHoursSchema.nullable().optional(),
+  });
+
   app.post("/api/ai-receptionist/config", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
@@ -42942,7 +42963,11 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         return res.status(409).json({ error: "Config already exists. Use PATCH to update." });
       }
 
-      const { voice, greeting, mode, transferNumbers, businessHours } = req.body;
+      const parsed = aiReceptionistConfigSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid config", details: parsed.error.flatten().fieldErrors });
+      }
+      const { voice, greeting, mode, transferNumbers, businessHours } = parsed.data;
       const config = await storage.createAiReceptionistConfig({
         userId,
         voiceName: voice || 'Jess',
@@ -42973,7 +42998,11 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   app.patch("/api/ai-receptionist/config", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
-      const { voice, greeting, mode, transferNumbers, businessHours } = req.body;
+      const parsed = aiReceptionistConfigSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid config", details: parsed.error.flatten().fieldErrors });
+      }
+      const { voice, greeting, mode, transferNumbers, businessHours } = parsed.data;
 
       const { updateReceptionistConfig } = await import('./vapiService');
       const result = await updateReceptionistConfig(userId, {
@@ -43006,7 +43035,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/ai-receptionist/enable", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.post("/api/ai-receptionist/enable", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const { enableAiReceptionist } = await import('./vapiService');
@@ -43027,7 +43056,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/ai-receptionist/disable", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.post("/api/ai-receptionist/disable", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const { disableAiReceptionist } = await import('./vapiService');
@@ -43174,30 +43203,32 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   app.get("/api/ai-receptionist/connectivity-test", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
-      const settings = await storage.getBusinessSettings(userId);
-      if (!settings) {
-        return res.json({ connected: false, error: 'Business settings not found' });
+      const config = await storage.getAiReceptionistConfig(userId);
+      if (!config) {
+        return res.json({ connected: false, error: 'AI Receptionist config not found' });
       }
 
-      if (!settings.vapiAssistantId) {
+      if (!config.vapiAssistantId) {
         return res.json({ connected: false, error: 'AI Receptionist not enabled' });
       }
 
       try {
         const { getAssistant } = await import('./vapiService');
-        const assistant = await getAssistant(settings.vapiAssistantId);
+        const assistant = await getAssistant(config.vapiAssistantId);
         res.json({
           connected: true,
-          assistantId: settings.vapiAssistantId,
+          assistantId: config.vapiAssistantId,
           assistantName: assistant?.name,
-          phoneNumberId: settings.vapiPhoneNumberId || null,
+          phoneNumberId: config.vapiPhoneNumberId || null,
           webhookUrl: assistant?.serverUrl,
         });
-      } catch (e: any) {
-        res.json({ connected: false, error: `Vapi connection failed: ${e.message}` });
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Unknown error';
+        res.json({ connected: false, error: `Vapi connection failed: ${msg}` });
       }
-    } catch (error: any) {
-      console.error('[AI Receptionist] Connectivity test error:', error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[AI Receptionist] Connectivity test error:', message);
       res.status(500).json({ connected: false, error: 'Connectivity test failed' });
     }
   });
