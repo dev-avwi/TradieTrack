@@ -371,7 +371,10 @@ import {
   trainingRecords,
   type TrainingRecord,
   type InsertTrainingRecord,
+  aiReceptionistConfig,
   aiReceptionistCalls,
+  type AiReceptionistConfig,
+  type InsertAiReceptionistConfig,
   type AiReceptionistCall,
   type InsertAiReceptionistCall,
 } from "@shared/schema";
@@ -978,6 +981,12 @@ export interface IStorage {
   createLead(lead: InsertLead & { userId: string }): Promise<Lead>;
   updateLead(id: string, userId: string, lead: Partial<InsertLead>): Promise<Lead | undefined>;
   deleteLead(id: string, userId: string): Promise<boolean>;
+
+  // AI Receptionist Config
+  getAiReceptionistConfig(userId: string): Promise<AiReceptionistConfig | undefined>;
+  getAllAiReceptionistConfigs(): Promise<AiReceptionistConfig[]>;
+  createAiReceptionistConfig(config: InsertAiReceptionistConfig): Promise<AiReceptionistConfig>;
+  updateAiReceptionistConfig(userId: string, updates: Partial<InsertAiReceptionistConfig>): Promise<AiReceptionistConfig | undefined>;
 
   // AI Receptionist Calls
   getAiReceptionistCalls(userId: string, limit?: number): Promise<AiReceptionistCall[]>;
@@ -7075,6 +7084,36 @@ Thank you for your prompt attention to this matter.`,
       .delete(leads)
       .where(and(eq(leads.id, id), eq(leads.userId, userId)));
     return true;
+  }
+
+  async getAiReceptionistConfig(userId: string): Promise<AiReceptionistConfig | undefined> {
+    const result = await db
+      .select()
+      .from(aiReceptionistConfig)
+      .where(eq(aiReceptionistConfig.userId, userId))
+      .limit(1);
+    return result[0];
+  }
+
+  async getAllAiReceptionistConfigs(): Promise<AiReceptionistConfig[]> {
+    return db.select().from(aiReceptionistConfig);
+  }
+
+  async createAiReceptionistConfig(config: InsertAiReceptionistConfig): Promise<AiReceptionistConfig> {
+    const [created] = await db
+      .insert(aiReceptionistConfig)
+      .values({ id: randomUUID(), ...config })
+      .returning();
+    return created;
+  }
+
+  async updateAiReceptionistConfig(userId: string, updates: Partial<InsertAiReceptionistConfig>): Promise<AiReceptionistConfig | undefined> {
+    const [updated] = await db
+      .update(aiReceptionistConfig)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(aiReceptionistConfig.userId, userId))
+      .returning();
+    return updated;
   }
 
   async getAiReceptionistCalls(userId: string, limit: number = 50): Promise<AiReceptionistCall[]> {

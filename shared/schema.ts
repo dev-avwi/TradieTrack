@@ -4448,6 +4448,29 @@ export const rateLimits = pgTable("rate_limits", {
   index("idx_rate_limits_expires").on(table.expiresAt),
 ]);
 
+export const aiReceptionistConfig = pgTable("ai_receptionist_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  vapiAssistantId: text("vapi_assistant_id"),
+  vapiPhoneNumberId: text("vapi_phone_number_id"),
+  voiceId: text("voice_id"),
+  voiceName: text("voice_name").default('Jess'),
+  greeting: text("greeting"),
+  mode: text("mode").notNull().default('off'), // off, after_hours, always_on_transfer, always_on_message, selective
+  transferNumbers: json("transfer_numbers").default([]),
+  businessHours: json("business_hours"),
+  enabled: boolean("enabled").notNull().default(false),
+  dedicatedPhoneNumber: text("dedicated_phone_number"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_ai_config_user").on(table.userId),
+]);
+
+export const insertAiReceptionistConfigSchema = createInsertSchema(aiReceptionistConfig).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertAiReceptionistConfig = z.infer<typeof insertAiReceptionistConfigSchema>;
+export type AiReceptionistConfig = typeof aiReceptionistConfig.$inferSelect;
+
 export const aiReceptionistCalls = pgTable("ai_receptionist_calls", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -4460,7 +4483,8 @@ export const aiReceptionistCalls = pgTable("ai_receptionist_calls", {
   transcript: text("transcript"), // Full call transcript
   recordingUrl: text("recording_url"),
   leadId: varchar("lead_id"), // If a lead was created from this call
-  transferredTo: text("transferred_to"), // Phone number or team member transferred to
+  outcome: text("outcome"), // message_taken, transferred, booked, missed
+  transferredTo: text("transferred_to"),
   transferStatus: text("transfer_status"), // success, failed, declined, no_answer
   callerIntent: text("caller_intent"), // quote_request, job_request, enquiry, complaint, follow_up
   extractedInfo: json("extracted_info"), // {name, email, phone, address, jobType, urgency, notes}

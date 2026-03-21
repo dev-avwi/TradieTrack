@@ -1,5 +1,5 @@
 import { storage } from './storage';
-import type { BusinessSettings, InsertAiReceptionistCall, InsertNotification } from '@shared/schema';
+import type { BusinessSettings, InsertAiReceptionistCall, InsertAiReceptionistConfig, InsertNotification, AiReceptionistConfig } from '@shared/schema';
 import crypto from 'crypto';
 
 interface TransferNumber {
@@ -343,13 +343,18 @@ export async function assignPhoneToAssistant(phoneNumberId: string, assistantId:
   });
 }
 
-export async function releasePhoneNumber(phoneNumberId: string): Promise<void> {
+export async function removePhoneNumber(phoneNumberId: string): Promise<void> {
   console.log(`[Vapi] Releasing phone number ${phoneNumberId}`);
   await vapiRequest('DELETE', `/phone-number/${phoneNumberId}`);
 }
 
-export async function getCallDetails(callId: string): Promise<any> {
-  return vapiRequest('GET', `/call/${callId}`);
+export async function getCallDetails(callId: string): Promise<Record<string, unknown>> {
+  return vapiRequest('GET', `/call/${callId}`) as Promise<Record<string, unknown>>;
+}
+
+export async function getCallLogs(assistantId: string, limit: number = 50): Promise<Array<Record<string, unknown>>> {
+  const result = await vapiRequest('GET', `/call?assistantId=${assistantId}&limit=${limit}`);
+  return Array.isArray(result) ? result : [];
 }
 
 export function getWebhookUrl(): string {
@@ -370,10 +375,6 @@ export async function enableAiReceptionist(userId: string): Promise<{
       return { success: false, error: 'Business settings not found. Please complete your business profile first.' };
     }
 
-    if (settings.vapiAssistantId) {
-      return { success: false, error: 'AI Receptionist is already configured. Disable it first to reconfigure.' };
-    }
-
     if (!settings.businessName) {
       return { success: false, error: 'Business name is required to set up the AI Receptionist.' };
     }
@@ -382,28 +383,43 @@ export async function enableAiReceptionist(userId: string): Promise<{
       return { success: false, error: 'A dedicated phone number is required. Please contact support to provision one.' };
     }
 
-    const webhookUrl = getWebhookUrl();
+    let config = await storage.getAiReceptionistConfig(userId);
+    if (config?.vapiAssistantId) {
+      return { success: false, error: 'AI Receptionist is already configured. Disable it first to reconfigure.' };
+    }
 
-    const transferNumbers = (settings.aiReceptionistTransferNumbers || []) as TransferNumber[];
-    const businessHours = settings.aiReceptionistBusinessHours as BusinessHoursConfig | null;
+    const webhookUrl = getWebhookUrl();
+    const transferNumbers = (config?.transferNumbers || []) as TransferNumber[];
+    const businessHours = (config?.businessHours || null) as BusinessHoursConfig | null;
 
     const assistant = await createAssistant({
       businessName: settings.businessName,
       businessPhone: settings.phone || undefined,
       tradeType: settings.industry || undefined,
-      greeting: settings.aiReceptionistGreeting || undefined,
-      voice: settings.aiReceptionistVoice || 'Jess',
+      greeting: config?.greeting || undefined,
+      voice: config?.voiceName || 'Jess',
       transferNumbers,
       businessHours: businessHours || undefined,
       webhookUrl,
     });
 
-    await storage.updateBusinessSettings(userId, {
-      vapiAssistantId: assistant.id,
-      aiReceptionistEnabled: true,
-      aiReceptionistMode: settings.aiReceptionistMode || 'always_on_message',
-      smsMode: 'ai_receptionist',
-    });
+    if (config) {
+      await storage.updateAiReceptionistConfig(userId, {
+        vapiAssistantId: assistant.id,
+        enabled: true,
+        mode: config.mode === 'off' ? 'always_on_message' : config.mode,
+        dedicatedPhoneNumber: settings.dedicatedPhoneNumber,
+      });
+    } else {
+      config = await storage.createAiReceptionistConfig({
+        userId,
+        vapiAssistantId: assistant.id,
+        enabled: true,
+        mode: 'always_on_message',
+        voiceName: 'Jess',
+        dedicatedPhoneNumber: settings.dedicatedPhoneNumber,
+      });
+    }
 
     console.log(`[Vapi] AI Receptionist enabled for user ${userId} - assistant: ${assistant.id}`);
 
@@ -411,48 +427,51 @@ export async function enableAiReceptionist(userId: string): Promise<{
       success: true,
       assistantId: assistant.id,
     };
-  } catch (error: any) {
-    console.error(`[Vapi] Failed to enable AI Receptionist for user ${userId}:`, error);
-    return { success: false, error: error.message || 'Failed to enable AI Receptionist' };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[Vapi] Failed to enable AI Receptionist for user ${userId}:`, message);
+    return { success: false, error: message };
   }
 }
 
 export async function disableAiReceptionist(userId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const settings = await storage.getBusinessSettings(userId);
-    if (!settings) {
-      return { success: false, error: 'Business settings not found' };
+    const config = await storage.getAiReceptionistConfig(userId);
+    if (!config) {
+      return { success: false, error: 'AI Receptionist config not found' };
     }
 
-    if (settings.vapiAssistantId) {
+    if (config.vapiAssistantId) {
       try {
-        await deleteAssistant(settings.vapiAssistantId);
-      } catch (e: any) {
-        console.warn(`[Vapi] Failed to delete assistant ${settings.vapiAssistantId}:`, e.message);
+        await deleteAssistant(config.vapiAssistantId);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Unknown error';
+        console.warn(`[Vapi] Failed to delete assistant ${config.vapiAssistantId}:`, msg);
       }
     }
 
-    if (settings.vapiPhoneNumberId) {
+    if (config.vapiPhoneNumberId) {
       try {
-        await releasePhoneNumber(settings.vapiPhoneNumberId);
-      } catch (e: any) {
-        console.warn(`[Vapi] Failed to release phone number ${settings.vapiPhoneNumberId}:`, e.message);
+        await removePhoneNumber(config.vapiPhoneNumberId);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Unknown error';
+        console.warn(`[Vapi] Failed to release phone number ${config.vapiPhoneNumberId}:`, msg);
       }
     }
 
-    await storage.updateBusinessSettings(userId, {
+    await storage.updateAiReceptionistConfig(userId, {
       vapiAssistantId: null,
       vapiPhoneNumberId: null,
-      aiReceptionistEnabled: false,
-      aiReceptionistMode: 'off',
-      smsMode: 'standard',
+      enabled: false,
+      mode: 'off',
     });
 
     console.log(`[Vapi] AI Receptionist disabled for user ${userId}`);
     return { success: true };
-  } catch (error: any) {
-    console.error(`[Vapi] Failed to disable AI Receptionist for user ${userId}:`, error);
-    return { success: false, error: error.message || 'Failed to disable AI Receptionist' };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[Vapi] Failed to disable AI Receptionist for user ${userId}:`, message);
+    return { success: false, error: message };
   }
 }
 
@@ -464,41 +483,44 @@ export async function updateReceptionistConfig(userId: string, updates: {
   businessHours?: { start: string; end: string; timezone: string; days: number[] };
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const settings = await storage.getBusinessSettings(userId);
-    if (!settings) {
-      return { success: false, error: 'Business settings not found' };
+    const config = await storage.getAiReceptionistConfig(userId);
+    if (!config) {
+      return { success: false, error: 'AI Receptionist config not found. Create it first.' };
     }
 
-    const dbUpdates: any = {};
-    if (updates.voice) dbUpdates.aiReceptionistVoice = updates.voice;
-    if (updates.greeting) dbUpdates.aiReceptionistGreeting = updates.greeting;
-    if (updates.mode) dbUpdates.aiReceptionistMode = updates.mode;
-    if (updates.transferNumbers) dbUpdates.aiReceptionistTransferNumbers = updates.transferNumbers;
-    if (updates.businessHours) dbUpdates.aiReceptionistBusinessHours = updates.businessHours;
+    const configUpdates: Partial<InsertAiReceptionistConfig> = {};
+    if (updates.voice) configUpdates.voiceName = updates.voice;
+    if (updates.greeting) configUpdates.greeting = updates.greeting;
+    if (updates.mode) configUpdates.mode = updates.mode;
+    if (updates.transferNumbers) configUpdates.transferNumbers = updates.transferNumbers;
+    if (updates.businessHours) configUpdates.businessHours = updates.businessHours;
 
-    await storage.updateBusinessSettings(userId, dbUpdates);
+    await storage.updateAiReceptionistConfig(userId, configUpdates);
 
-    if (settings.vapiAssistantId && (updates.voice || updates.greeting || updates.transferNumbers || updates.businessHours)) {
+    if (config.vapiAssistantId && (updates.voice || updates.greeting || updates.transferNumbers || updates.businessHours)) {
       try {
+        const settings = await storage.getBusinessSettings(userId);
         const webhookUrl = getWebhookUrl();
-        await updateAssistant(settings.vapiAssistantId, {
-          businessName: settings.businessName || '',
-          tradeType: settings.industry || undefined,
-          voice: updates.voice || settings.aiReceptionistVoice || 'Jess',
-          greeting: updates.greeting || settings.aiReceptionistGreeting || undefined,
-          transferNumbers: updates.transferNumbers || (settings.aiReceptionistTransferNumbers as TransferNumber[]) || [],
-          businessHours: updates.businessHours || (settings.aiReceptionistBusinessHours as BusinessHoursConfig | null) || undefined,
+        await updateAssistant(config.vapiAssistantId, {
+          businessName: settings?.businessName || '',
+          tradeType: settings?.industry || undefined,
+          voice: updates.voice || config.voiceName || 'Jess',
+          greeting: updates.greeting || config.greeting || undefined,
+          transferNumbers: updates.transferNumbers || (config.transferNumbers as TransferNumber[]) || [],
+          businessHours: updates.businessHours || (config.businessHours as BusinessHoursConfig | null) || undefined,
           webhookUrl,
         });
-      } catch (e: any) {
-        console.error(`[Vapi] Failed to sync assistant update:`, e.message);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Unknown error';
+        console.error(`[Vapi] Failed to sync assistant update:`, msg);
       }
     }
 
     return { success: true };
-  } catch (error: any) {
-    console.error(`[Vapi] Failed to update config for user ${userId}:`, error);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[Vapi] Failed to update config for user ${userId}:`, message);
+    return { success: false, error: message };
   }
 }
 
@@ -515,8 +537,17 @@ export async function findBusinessByVapiAssistant(assistantId: string): Promise<
   const match = allSettings.find(s => s.vapiAssistantId === assistantId);
   if (match) {
     assistantCache.set(assistantId, { userId: match.userId, timestamp: Date.now() });
+    return match;
   }
-  return match;
+
+  const allConfigs = await storage.getAllAiReceptionistConfigs();
+  const configMatch = allConfigs.find(c => c.vapiAssistantId === assistantId);
+  if (configMatch) {
+    assistantCache.set(assistantId, { userId: configMatch.userId, timestamp: Date.now() });
+    return storage.getBusinessSettings(configMatch.userId);
+  }
+
+  return undefined;
 }
 
 export async function handleToolCall(
@@ -622,10 +653,11 @@ function isWithinBusinessHours(businessHours: any): boolean {
   }
 }
 
-async function getAvailableTransferTarget(userId: string, settings: BusinessSettings, callerPhone?: string | null): Promise<{ name: string; phone: string } | null> {
-  const mode = settings.aiReceptionistMode || 'always_on_message';
-  const transferNumbers = (settings.aiReceptionistTransferNumbers || []) as TransferNumber[];
-  const businessHours = settings.aiReceptionistBusinessHours as BusinessHoursConfig | null;
+async function getAvailableTransferTarget(userId: string, _settings: BusinessSettings, callerPhone?: string | null): Promise<{ name: string; phone: string } | null> {
+  const config = await storage.getAiReceptionistConfig(userId);
+  const mode = config?.mode || 'always_on_message';
+  const transferNumbers = (config?.transferNumbers || []) as TransferNumber[];
+  const businessHours = (config?.businessHours || null) as BusinessHoursConfig | null;
 
   if (mode === 'off') return null;
   if (mode === 'always_on_message') return null;
@@ -711,7 +743,8 @@ async function handleCheckAvailability(args: any, userId: string): Promise<any> 
       return { result: 'I\'m not able to check availability right now. Someone from the team will get back to you.' };
     }
 
-    const businessHours = settings.aiReceptionistBusinessHours as BusinessHoursConfig | null;
+    const config = await storage.getAiReceptionistConfig(userId);
+    const businessHours = (config?.businessHours || null) as BusinessHoursConfig | null;
     const withinHours = isWithinBusinessHours(businessHours);
 
     const teamMembers = await storage.getTeamMembers(userId);
@@ -880,14 +913,21 @@ async function handleEndOfCallReport(event: any): Promise<any> {
   const callId = call.id;
   const existingCall = await storage.getAiReceptionistCallByVapiId(callId);
 
+  const endedReason = message.endedReason || call.endedReason || null;
+  const callOutcome = existingCall?.transferredTo ? 'transferred'
+    : existingCall?.leadId ? 'booked'
+    : endedReason === 'missed' || endedReason === 'no-answer' ? 'missed'
+    : 'message_taken';
+
   const updates: Partial<InsertAiReceptionistCall> = {
     status: 'completed',
     duration: message.durationSeconds || call.duration || null,
     summary: message.summary || null,
     transcript: message.transcript || null,
     recordingUrl: message.recordingUrl || call.recordingUrl || null,
-    endedReason: message.endedReason || call.endedReason || null,
+    endedReason,
     cost: message.cost ? String(message.cost) : null,
+    outcome: callOutcome,
   };
 
   let callRecord: any;
@@ -960,7 +1000,8 @@ async function sendCallNotifications(
 
     const smsBody = `AI Receptionist: New call from ${callerDisplay} (${durationText}). ${summaryText.slice(0, 120)}`;
 
-    const transferNumbers = (business.aiReceptionistTransferNumbers || []) as TransferNumber[];
+    const configForNotify = await storage.getAiReceptionistConfig(userId);
+    const transferNumbers = (configForNotify?.transferNumbers || []) as TransferNumber[];
     for (const contact of transferNumbers) {
       if (contact.phone) {
         try {

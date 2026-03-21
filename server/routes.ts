@@ -42904,23 +42904,69 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   app.get("/api/ai-receptionist/config", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
-      const settings = await storage.getBusinessSettings(userId);
-      if (!settings) {
-        return res.status(404).json({ error: "Business settings not found" });
+      const config = await storage.getAiReceptionistConfig(userId);
+      if (!config) {
+        return res.json({
+          enabled: false,
+          mode: 'off',
+          voice: 'Jess',
+          greeting: null,
+          transferNumbers: [],
+          businessHours: null,
+          dedicatedPhoneNumber: null,
+          vapiAssistantId: null,
+        });
       }
       res.json({
-        enabled: settings.aiReceptionistEnabled || false,
-        mode: settings.aiReceptionistMode || 'off',
-        voice: settings.aiReceptionistVoice || 'Jess',
-        greeting: settings.aiReceptionistGreeting || null,
-        transferNumbers: settings.aiReceptionistTransferNumbers || [],
-        businessHours: settings.aiReceptionistBusinessHours || null,
-        dedicatedPhoneNumber: settings.dedicatedPhoneNumber || null,
-        vapiAssistantId: settings.vapiAssistantId || null,
+        enabled: config.enabled,
+        mode: config.mode,
+        voice: config.voiceName || 'Jess',
+        greeting: config.greeting || null,
+        transferNumbers: config.transferNumbers || [],
+        businessHours: config.businessHours || null,
+        dedicatedPhoneNumber: config.dedicatedPhoneNumber || null,
+        vapiAssistantId: config.vapiAssistantId || null,
       });
-    } catch (error: any) {
-      console.error("Get AI receptionist config error:", error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Get AI receptionist config error:", message);
       res.status(500).json({ error: "Failed to get AI receptionist config" });
+    }
+  });
+
+  app.post("/api/ai-receptionist/config", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
+      const existing = await storage.getAiReceptionistConfig(userId);
+      if (existing) {
+        return res.status(409).json({ error: "Config already exists. Use PATCH to update." });
+      }
+
+      const { voice, greeting, mode, transferNumbers, businessHours } = req.body;
+      const config = await storage.createAiReceptionistConfig({
+        userId,
+        voiceName: voice || 'Jess',
+        greeting: greeting || null,
+        mode: mode || 'off',
+        transferNumbers: transferNumbers || [],
+        businessHours: businessHours || null,
+        enabled: false,
+      });
+
+      res.status(201).json({
+        enabled: config.enabled,
+        mode: config.mode,
+        voice: config.voiceName || 'Jess',
+        greeting: config.greeting || null,
+        transferNumbers: config.transferNumbers || [],
+        businessHours: config.businessHours || null,
+        dedicatedPhoneNumber: config.dedicatedPhoneNumber || null,
+        vapiAssistantId: config.vapiAssistantId || null,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Create AI receptionist config error:", message);
+      res.status(500).json({ error: "Failed to create AI receptionist config" });
     }
   });
 
@@ -42942,19 +42988,20 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         return res.status(400).json({ error: result.error });
       }
 
-      const settings = await storage.getBusinessSettings(userId);
+      const config = await storage.getAiReceptionistConfig(userId);
       res.json({
-        enabled: settings?.aiReceptionistEnabled || false,
-        mode: settings?.aiReceptionistMode || 'off',
-        voice: settings?.aiReceptionistVoice || 'Jess',
-        greeting: settings?.aiReceptionistGreeting || null,
-        transferNumbers: settings?.aiReceptionistTransferNumbers || [],
-        businessHours: settings?.aiReceptionistBusinessHours || null,
-        dedicatedPhoneNumber: settings?.dedicatedPhoneNumber || null,
-        vapiAssistantId: settings?.vapiAssistantId || null,
+        enabled: config?.enabled || false,
+        mode: config?.mode || 'off',
+        voice: config?.voiceName || 'Jess',
+        greeting: config?.greeting || null,
+        transferNumbers: config?.transferNumbers || [],
+        businessHours: config?.businessHours || null,
+        dedicatedPhoneNumber: config?.dedicatedPhoneNumber || null,
+        vapiAssistantId: config?.vapiAssistantId || null,
       });
-    } catch (error: any) {
-      console.error("Update AI receptionist config error:", error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Update AI receptionist config error:", message);
       res.status(500).json({ error: "Failed to update AI receptionist config" });
     }
   });
@@ -43073,8 +43120,34 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         aiReceptionistAvailability: available,
       });
       res.json({ success: true, available });
-    } catch (error: any) {
-      console.error('[AI Receptionist] Update my availability error:', error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[AI Receptionist] Update my availability error:', message);
+      res.status(500).json({ error: 'Failed to update availability' });
+    }
+  });
+
+  app.patch("/api/ai-receptionist/availability", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId || req.session?.userId;
+      const { available } = req.body;
+
+      if (typeof available !== 'boolean') {
+        return res.status(400).json({ error: 'available must be a boolean' });
+      }
+
+      const membership = await storage.getTeamMemberByUserId(userId);
+      if (!membership) {
+        return res.status(404).json({ error: 'You are not a team member' });
+      }
+
+      await storage.updateTeamMember(membership.id, membership.businessOwnerId, {
+        aiReceptionistAvailability: available,
+      });
+      res.json({ success: true, available });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[AI Receptionist] Update availability error:', message);
       res.status(500).json({ error: 'Failed to update availability' });
     }
   });
