@@ -38331,6 +38331,89 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+
+  // Admin revenue analytics
+  app.get("/api/admin/revenue", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const allUsers = await db.select().from(users);
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      const proUsers = allUsers.filter(u => u.subscriptionTier === 'pro');
+      const trialUsers = allUsers.filter(u => u.subscriptionTier === 'trial');
+      const freeUsers = allUsers.filter(u => u.subscriptionTier === 'free' || !u.subscriptionTier);
+      
+      const proPrice = 49;
+      const mrr = proUsers.length * proPrice;
+      const arr = mrr * 12;
+      
+      const recentSignups = allUsers.filter(u => {
+        const created = u.createdAt ? new Date(u.createdAt) : null;
+        return created && created >= thirtyDaysAgo;
+      });
+      const recentProConversions = recentSignups.filter(u => u.subscriptionTier === 'pro').length;
+      
+      const monthlyData: Array<{ month: string; mrr: number; subscribers: number; newUsers: number }> = [];
+      for (let i = 11; i >= 0; i--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+        const monthLabel = monthStart.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' });
+        
+        const usersAtMonth = allUsers.filter(u => {
+          const created = u.createdAt ? new Date(u.createdAt) : null;
+          return created && created <= monthEnd;
+        });
+        const proAtMonth = usersAtMonth.filter(u => u.subscriptionTier === 'pro').length;
+        const newInMonth = allUsers.filter(u => {
+          const created = u.createdAt ? new Date(u.createdAt) : null;
+          return created && created >= monthStart && created <= monthEnd;
+        }).length;
+        
+        monthlyData.push({
+          month: monthLabel,
+          mrr: proAtMonth * proPrice,
+          subscribers: proAtMonth,
+          newUsers: newInMonth,
+        });
+      }
+      
+      const trialConversionRate = (trialUsers.length + proUsers.length) > 0 
+        ? Math.round((proUsers.length / (trialUsers.length + proUsers.length)) * 100)
+        : 0;
+      
+      const avgRevenuePerUser = allUsers.length > 0 
+        ? Math.round((mrr / allUsers.length) * 100) / 100
+        : 0;
+      
+      res.json({
+        mrr,
+        arr,
+        totalRevenue: mrr,
+        proPrice,
+        subscribers: {
+          pro: proUsers.length,
+          trial: trialUsers.length,
+          free: freeUsers.length,
+          total: allUsers.length,
+        },
+        trialConversionRate,
+        avgRevenuePerUser,
+        recentProConversions,
+        monthlyData,
+        topUsers: proUsers.slice(0, 10).map(u => ({
+          id: u.id,
+          name: u.firstName && u.lastName ? u.firstName + ' ' + u.lastName : u.email || 'Unknown',
+          email: u.email,
+          tier: u.subscriptionTier,
+          joinedAt: u.createdAt,
+        })),
+      });
+    } catch (error: any) {
+      console.error('Error getting admin revenue:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Admin delete user - for testing purposes
   app.delete("/api/admin/users/:userId", requireAuth, requireAdmin, async (req: any, res) => {
     try {

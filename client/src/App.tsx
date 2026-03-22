@@ -747,6 +747,8 @@ function Router({
       <Route path="/calculators" component={Calculators} />
       
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/comms" component={AdminDashboard} />
+      <Route path="/admin/revenue" component={AdminDashboard} />
       <Route path="/admin/users" component={AdminDashboard} />
       <Route path="/admin/activity" component={AdminDashboard} />
       <Route path="/admin/health" component={AdminDashboard} />
@@ -1314,6 +1316,8 @@ function AppLayout() {
       >
         <Switch>
           <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin/comms" component={AdminDashboard} />
+          <Route path="/admin/revenue" component={AdminDashboard} />
           <Route path="/admin/users" component={AdminDashboard} />
           <Route path="/admin/activity" component={AdminDashboard} />
           <Route path="/admin/health" component={AdminDashboard} />

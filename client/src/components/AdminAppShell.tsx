@@ -24,6 +24,7 @@ import {
   Shield,
   HeartPulse,
   MessageSquare,
+  DollarSign,
 } from "lucide-react";
 import appIconUrl from "@assets/jobrunner-logo-cropped.png";
 
@@ -40,6 +41,11 @@ const adminNavItems = [
     icon: LayoutDashboard,
   },
   {
+    title: "Revenue",
+    url: "/admin/revenue",
+    icon: DollarSign,
+  },
+  {
     title: "Communications",
     url: "/admin/comms",
     icon: MessageSquare,
@@ -50,7 +56,7 @@ const adminNavItems = [
     icon: Users,
   },
   {
-    title: "Platform Activity",
+    title: "Activity",
     url: "/admin/activity",
     icon: Activity,
   },

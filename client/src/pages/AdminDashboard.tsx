@@ -131,6 +131,7 @@ interface AdminUsersResponse {
 
 const adminRoutes = [
   { path: "/admin", label: "Overview", icon: LayoutDashboard },
+  { path: "/admin/revenue", label: "Revenue", icon: DollarSign },
   { path: "/admin/comms", label: "Comms", icon: MessageSquare },
   { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/activity", label: "Activity", icon: Activity },
@@ -873,13 +874,18 @@ function ActivityView({
   );
 }
 
-function HealthView({ stats }: { stats: AdminStats | undefined }) {
-  const healthMetrics = [
-    { name: "API Server", status: "healthy", latency: "45ms", uptime: "99.9%", icon: Server },
-    { name: "Database", status: "healthy", latency: "12ms", uptime: "99.99%", icon: Database },
-    { name: "Background Jobs", status: "healthy", latency: "N/A", uptime: "99.5%", icon: Cpu },
-    { name: "File Storage", status: "healthy", latency: "78ms", uptime: "99.9%", icon: HardDrive },
-  ];
+interface HealthData {
+  api: { status: string; latency: number; avgResponseTime: number };
+  database: { status: string; latency: number; connections: number };
+  backgroundJobs: { status: string; pending: number };
+  storage: { status: string; used: string };
+  metrics: { totalUsers: number; totalJobs: number; errorRate: number; activeSessions: number };
+}
+
+function HealthView() {
+  const { data: health, isLoading } = useQuery<HealthData>({
+    queryKey: ['/api/admin/health'],
+  });
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -918,23 +924,63 @@ function HealthView({ stats }: { stats: AdminStats | undefined }) {
     }
   };
 
-  const tierData = [
-    { name: 'Free', value: stats?.tierBreakdown.free || 0, color: 'hsl(var(--muted-foreground))' },
-    { name: 'Trial', value: stats?.tierBreakdown.trial || 0, color: 'hsl(210, 100%, 60%)' },
-    { name: 'Pro', value: stats?.tierBreakdown.pro || 0, color: 'hsl(45, 100%, 50%)' },
+  const healthMetrics = [
+    { name: "API Server", status: health?.api.status || 'unknown', latency: health ? `${health.api.latency}ms` : '...', icon: Server },
+    { name: "Database", status: health?.database.status || 'unknown', latency: health ? `${health.database.latency}ms` : '...', icon: Database },
+    { name: "Background Jobs", status: health?.backgroundJobs.status || 'unknown', latency: health ? `${health.backgroundJobs.pending} pending` : '...', icon: Cpu },
+    { name: "File Storage", status: health?.storage.status || 'unknown', latency: health?.storage.used || '...', icon: HardDrive },
   ];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card data-testid="card-system-status">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg flex items-center gap-2">
-              <HeartPulse className="h-5 w-5 text-muted-foreground" />
-              System Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPICard
+          testId="card-api-latency"
+          title="API Latency"
+          value={isLoading ? '...' : `${health?.api.avgResponseTime || 0}ms`}
+          loading={isLoading}
+          icon={<Zap className="h-5 w-5 md:h-6 md:w-6 text-blue-600 dark:text-blue-400" />}
+          iconBgClass="bg-blue-100 dark:bg-blue-500/20"
+        />
+        <KPICard
+          testId="card-db-latency"
+          title="DB Latency"
+          value={isLoading ? '...' : `${health?.database.latency || 0}ms`}
+          loading={isLoading}
+          icon={<Database className="h-5 w-5 md:h-6 md:w-6 text-green-600 dark:text-green-400" />}
+          iconBgClass="bg-green-100 dark:bg-green-500/20"
+        />
+        <KPICard
+          testId="card-total-users-health"
+          title="Total Users"
+          value={isLoading ? '...' : (health?.metrics.totalUsers || 0)}
+          loading={isLoading}
+          icon={<Users className="h-5 w-5 md:h-6 md:w-6 text-purple-600 dark:text-purple-400" />}
+          iconBgClass="bg-purple-100 dark:bg-purple-500/20"
+        />
+        <KPICard
+          testId="card-total-jobs-health"
+          title="Total Jobs"
+          value={isLoading ? '...' : (health?.metrics.totalJobs || 0)}
+          loading={isLoading}
+          icon={<Briefcase className="h-5 w-5 md:h-6 md:w-6 text-amber-600 dark:text-amber-400" />}
+          iconBgClass="bg-amber-100 dark:bg-amber-500/20"
+        />
+      </div>
+
+      <Card data-testid="card-system-status">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base md:text-lg flex items-center gap-2">
+            <HeartPulse className="h-5 w-5 text-muted-foreground" />
+            System Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
             <div className="space-y-1">
               {healthMetrics.map((metric, idx) => {
                 const Icon = metric.icon;
@@ -952,9 +998,7 @@ function HealthView({ stats }: { stats: AdminStats | undefined }) {
                       </div>
                       <div>
                         <p className="font-medium text-sm">{metric.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {metric.latency !== "N/A" && `${metric.latency} latency · `}{metric.uptime} uptime
-                        </p>
+                        <p className="text-xs text-muted-foreground">{metric.latency}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -967,89 +1011,206 @@ function HealthView({ stats }: { stats: AdminStats | undefined }) {
                 );
               })}
             </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface RevenueData {
+  mrr: number;
+  arr: number;
+  totalRevenue: number;
+  proPrice: number;
+  subscribers: {
+    pro: number;
+    trial: number;
+    free: number;
+    total: number;
+  };
+  trialConversionRate: number;
+  avgRevenuePerUser: number;
+  recentProConversions: number;
+  monthlyData: Array<{ month: string; mrr: number; subscribers: number; newUsers: number }>;
+  topUsers: Array<{ id: string; name: string; email: string; tier: string; joinedAt: string }>;
+}
+
+function RevenueView() {
+  const { data: revenue, isLoading } = useQuery<RevenueData>({
+    queryKey: ['/api/admin/revenue'],
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPICard
+          testId="card-mrr"
+          title="Monthly Revenue (MRR)"
+          value={isLoading ? '...' : `$${(revenue?.mrr || 0).toLocaleString()}`}
+          loading={isLoading}
+          icon={<DollarSign className="h-5 w-5 md:h-6 md:w-6 text-green-600 dark:text-green-400" />}
+          iconBgClass="bg-green-100 dark:bg-green-500/20"
+        />
+        <KPICard
+          testId="card-arr"
+          title="Annual Revenue (ARR)"
+          value={isLoading ? '...' : `$${(revenue?.arr || 0).toLocaleString()}`}
+          loading={isLoading}
+          icon={<TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-blue-600 dark:text-blue-400" />}
+          iconBgClass="bg-blue-100 dark:bg-blue-500/20"
+        />
+        <KPICard
+          testId="card-pro-subscribers"
+          title="Pro Subscribers"
+          value={isLoading ? '...' : (revenue?.subscribers.pro || 0)}
+          loading={isLoading}
+          icon={<UserCheck className="h-5 w-5 md:h-6 md:w-6 text-amber-600 dark:text-amber-400" />}
+          iconBgClass="bg-amber-100 dark:bg-amber-500/20"
+        />
+        <KPICard
+          testId="card-trial-conversion"
+          title="Trial Conversion"
+          value={isLoading ? '...' : `${revenue?.trialConversionRate || 0}%`}
+          loading={isLoading}
+          icon={<Target className="h-5 w-5 md:h-6 md:w-6 text-purple-600 dark:text-purple-400" />}
+          iconBgClass="bg-purple-100 dark:bg-purple-500/20"
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card data-testid="card-mrr-chart">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base md:text-lg">MRR Trend (12 months)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[220px] md:h-[260px]">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={revenue?.monthlyData || []} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis 
+                      dataKey="month" 
+                      fontSize={10} 
+                      tickLine={false} 
+                      axisLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <YAxis 
+                      fontSize={12} 
+                      tickLine={false} 
+                      axisLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      tickFormatter={(v) => `$${v}`}
+                    />
+                    <Tooltip 
+                      formatter={(value: number, name: string) => {
+                        if (name === 'mrr') return [`$${value}`, 'MRR'];
+                        return [value, name];
+                      }}
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                      }}
+                      labelStyle={{ color: 'hsl(var(--foreground))' }}
+                    />
+                    <Bar dataKey="mrr" fill="hsl(142, 70%, 45%)" radius={[4, 4, 0, 0]} name="mrr" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        <Card data-testid="card-tier-distribution">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg">User Distribution</CardTitle>
+        <Card data-testid="card-subscriber-breakdown">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base md:text-lg">Subscriber Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={tierData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={70}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {tierData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value: number, name: string) => [value, name]}
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                    labelStyle={{ color: 'hsl(var(--foreground))' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex justify-center gap-6 mt-2">
-              {tierData.map((tier) => (
-                <div key={tier.name} className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: tier.color }}
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {tier.name} <span className="font-medium text-foreground">({tier.value})</span>
-                  </span>
+            <div className="space-y-4">
+              {[
+                { label: "Pro ($49/mo)", value: revenue?.subscribers.pro || 0, color: "bg-green-500", pct: revenue?.subscribers.total ? Math.round(((revenue?.subscribers.pro || 0) / revenue.subscribers.total) * 100) : 0 },
+                { label: "Trial", value: revenue?.subscribers.trial || 0, color: "bg-blue-500", pct: revenue?.subscribers.total ? Math.round(((revenue?.subscribers.trial || 0) / revenue.subscribers.total) * 100) : 0 },
+                { label: "Free", value: revenue?.subscribers.free || 0, color: "bg-muted-foreground/40", pct: revenue?.subscribers.total ? Math.round(((revenue?.subscribers.free || 0) / revenue.subscribers.total) * 100) : 0 },
+              ].map((tier) => (
+                <div key={tier.label} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>{tier.label}</span>
+                    <span className="font-semibold tabular-nums">{isLoading ? '...' : `${tier.value} (${tier.pct}%)`}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full ${tier.color} transition-all duration-500`}
+                      style={{ width: `${tier.pct}%` }}
+                    />
+                  </div>
                 </div>
               ))}
+
+              <div className="border-t pt-4 mt-4 space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Avg Revenue/User</span>
+                  <span className="font-semibold">${isLoading ? '...' : (revenue?.avgRevenuePerUser || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">New Pro (30d)</span>
+                  <span className="font-semibold">{isLoading ? '...' : (revenue?.recentProConversions || 0)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Total Users</span>
+                  <span className="font-semibold">{isLoading ? '...' : (revenue?.subscribers.total || 0)}</span>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card data-testid="card-performance-metrics">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base md:text-lg flex items-center gap-2">
-            <Zap className="h-5 w-5 text-muted-foreground" />
-            Performance Metrics
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: "Avg Response Time", value: "45ms", testId: "metric-response-time" },
-              { label: "Error Rate", value: "0.1%", color: "text-green-600 dark:text-green-400", testId: "metric-error-rate" },
-              { label: "Active Sessions", value: stats?.kpis.activeUsers || 0, testId: "metric-active-sessions" },
-              { label: "DB Connections", value: "12/100", testId: "metric-db-connections" },
-            ].map((metric) => (
-              <div 
-                key={metric.label} 
-                className="p-4 rounded-xl bg-muted/50 border border-border/50"
-                data-testid={metric.testId}
-              >
-                <p className="text-xs text-muted-foreground">{metric.label}</p>
-                <p className={`text-xl md:text-2xl font-bold mt-1 ${metric.color || ''}`}>
-                  {metric.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {revenue?.topUsers && revenue.topUsers.length > 0 && (
+        <Card data-testid="card-pro-users-list">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base md:text-lg">Pro Subscribers</CardTitle>
+          </CardHeader>
+          <CardContent className="px-0 pb-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="pl-6">Name</TableHead>
+                    <TableHead className="hidden sm:table-cell">Email</TableHead>
+                    <TableHead>Tier</TableHead>
+                    <TableHead className="pr-6 hidden md:table-cell">Joined</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {revenue.topUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="pl-6 font-medium">
+                        <span className="truncate block max-w-[150px]">{user.name}</span>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">
+                        <span className="truncate block max-w-[200px]">{user.email || '-'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="default" className="capitalize">{user.tier}</Badge>
+                      </TableCell>
+                      <TableCell className="pr-6 hidden md:table-cell text-muted-foreground text-sm">
+                        {formatDate(user.joinedAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -1425,6 +1586,8 @@ export default function AdminDashboard() {
 
   const renderView = () => {
     switch (location) {
+      case '/admin/revenue':
+        return <RevenueView />;
       case '/admin/comms':
         return <CommunicationsView />;
       case '/admin/users':
@@ -1432,7 +1595,7 @@ export default function AdminDashboard() {
       case '/admin/activity':
         return <ActivityView usersData={usersData} stats={stats} />;
       case '/admin/health':
-        return <HealthView stats={stats} />;
+        return <HealthView />;
       default:
         return (
           <OverviewView 
