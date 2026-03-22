@@ -417,9 +417,9 @@ export default function LandingPage() {
                     size="lg" 
                     className="w-full sm:w-auto bg-brand-accent text-white font-semibold h-12 px-7 text-base rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all" 
                     data-testid="hero-start-trial"
-                    onClick={() => trackEvent('cta_click', { location: 'hero', button: 'start_using_free' })}
+                    onClick={() => trackEvent('cta_click', { location: 'hero', button: 'get_started_free' })}
                   >
-                    Start Using Free
+                    Get Started Free
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
@@ -1004,17 +1004,19 @@ export default function LandingPage() {
                   </div>
                 </a>
                 
-                <div 
-                  className="flex items-center justify-center gap-3 bg-black text-white rounded-lg px-5 py-3 opacity-50 cursor-not-allowed"
+                <a 
+                  href="https://play.google.com/store/apps/details?id=com.avwebinnovation.jobrunner"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-3 bg-black text-white rounded-lg px-5 py-3 hover:bg-gray-800 transition-colors"
                   data-testid="download-google-play"
-                  title="Coming Soon"
                 >
                   <SiGoogleplay className="w-5 h-5" />
                   <div className="text-left">
-                    <div className="text-[9px] uppercase tracking-wider opacity-80">Coming soon to</div>
+                    <div className="text-[9px] uppercase tracking-wider opacity-80">Get it on</div>
                     <div className="text-base font-semibold -mt-0.5">Google Play</div>
                   </div>
-                </div>
+                </a>
               </div>
               </div>
             </AnimatedSection>
@@ -1040,9 +1042,9 @@ export default function LandingPage() {
               size="lg" 
               className="bg-brand-accent text-white font-semibold h-14 px-10 text-lg rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" 
               data-testid="cta-start-trial"
-              onClick={() => trackEvent('cta_click', { location: 'footer_cta', button: 'join_the_beta' })}
+              onClick={() => trackEvent('cta_click', { location: 'footer_cta', button: 'get_started_free' })}
             >
-              Join the Beta
+              Get Started Free
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
@@ -1301,17 +1303,19 @@ export default function LandingPage() {
                     <div className="text-sm font-semibold -mt-0.5">App Store</div>
                   </div>
                 </a>
-                <div 
-                  className="flex-1 flex items-center justify-center gap-2 bg-black/50 text-white/70 rounded-lg py-3 px-4 cursor-not-allowed"
-                  title="Coming Soon"
+                <a 
+                  href="https://play.google.com/store/apps/details?id=com.avwebinnovation.jobrunner"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-800 text-white rounded-lg py-3 px-4 transition-colors"
                   data-testid="popup-google-play"
                 >
                   <SiGoogleplay className="w-5 h-5" />
                   <div className="text-left">
-                    <div className="text-[9px] uppercase tracking-wider opacity-80">Coming soon to</div>
+                    <div className="text-[9px] uppercase tracking-wider opacity-80">Get it on</div>
                     <div className="text-sm font-semibold -mt-0.5">Google Play</div>
                   </div>
-                </div>
+                </a>
               </div>
 
               {/* Dismiss link */}

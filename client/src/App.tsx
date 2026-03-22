@@ -1266,6 +1266,12 @@ function AppLayout() {
     );
   }
 
+  // If authenticated and on /auth route, redirect to dashboard
+  if (userCheck && !error && (location === '/auth' || location.startsWith('/auth'))) {
+    setLocation('/');
+    return null;
+  }
+
   // If not authenticated, show landing page or auth flow based on route
   if (error || !userCheck) {
     // Show auth flow at /auth route

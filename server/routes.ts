@@ -14706,11 +14706,9 @@ Be specific about materials, colors, and features that would be included.`
       
       // Filter for activities related to this job
       const jobActivities = allActivityLogs.filter((log: any) => {
-        // Direct job activities
         if (log.entityType === 'job' && log.entityId === jobId) {
           return true;
         }
-        // Activities with jobId in metadata (quote/invoice linked to this job)
         if (log.metadata && (log.metadata as any).jobId === jobId) {
           return true;
         }
@@ -14729,6 +14727,65 @@ Be specific about materials, colors, and features that would be included.`
         entityId: log.entityId,
         metadata: log.metadata,
       }));
+      
+      // If no activity logs exist, generate synthetic timeline from job timestamps
+      if (activities.length === 0 && job) {
+        const synthetic: any[] = [];
+        if (job.createdAt) {
+          synthetic.push({
+            id: `synthetic-created-${jobId}`,
+            type: 'job_created',
+            title: `Job created: ${job.title}`,
+            description: job.clientId ? 'New job added' : 'New job added',
+            timestamp: job.createdAt,
+            status: 'success',
+            entityType: 'job',
+            entityId: jobId,
+            metadata: { synthetic: true },
+          });
+        }
+        if (job.scheduledAt) {
+          synthetic.push({
+            id: `synthetic-scheduled-${jobId}`,
+            type: 'job_scheduled',
+            title: `Job scheduled`,
+            description: `Scheduled for ${new Date(job.scheduledAt).toLocaleDateString('en-AU')}`,
+            timestamp: job.scheduledAt,
+            status: 'success',
+            entityType: 'job',
+            entityId: jobId,
+            metadata: { synthetic: true, newStatus: 'scheduled' },
+          });
+        }
+        if (job.startedAt) {
+          synthetic.push({
+            id: `synthetic-started-${jobId}`,
+            type: 'job_started',
+            title: `Job started`,
+            description: 'Work began on this job',
+            timestamp: job.startedAt,
+            status: 'success',
+            entityType: 'job',
+            entityId: jobId,
+            metadata: { synthetic: true, newStatus: 'in_progress' },
+          });
+        }
+        if (job.completedAt) {
+          synthetic.push({
+            id: `synthetic-completed-${jobId}`,
+            type: 'job_completed',
+            title: `Job completed`,
+            description: 'All work finished',
+            timestamp: job.completedAt,
+            status: 'success',
+            entityType: 'job',
+            entityId: jobId,
+            metadata: { synthetic: true, newStatus: 'done' },
+          });
+        }
+        synthetic.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        return res.json(synthetic.slice(0, limit));
+      }
       
       res.json(activities);
     } catch (error) {
