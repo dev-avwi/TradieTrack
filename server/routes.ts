@@ -147,9 +147,11 @@ import {
   smsConversations,
   aiReceptionistCalls,
   leads,
+  errorLogs,
 } from "@shared/schema";
 import { db } from "./storage";
-import { eq, sql, desc, asc, and, gte, lte, isNotNull, isNull, inArray, or } from "drizzle-orm";
+import { eq, sql, desc, asc, and, gte, lte, lt, isNotNull, isNull, inArray, or, count, sum, ne } from "drizzle-orm";
+import { logger } from "./logger";
 import { 
   ObjectStorageService, 
   ObjectNotFoundError,
@@ -825,12 +827,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
 
   // Public health check endpoint for deployment monitoring and Apple review
-  app.get("/api/health", (req: any, res) => {
-    res.json({
-      status: "healthy",
+  app.get("/api/health", async (req: any, res) => {
+    const startTime = Date.now();
+    let dbOk = false;
+    try {
+      await db.execute(sql`SELECT 1`);
+      dbOk = true;
+    } catch {}
+    const latency = Date.now() - startTime;
+    const status = dbOk ? "healthy" : "degraded";
+    res.status(dbOk ? 200 : 503).json({
+      status,
       timestamp: new Date().toISOString(),
       version: "1.0.0",
-      service: "jobrunner-api"
+      service: "jobrunner-api",
+      database: dbOk ? "connected" : "unreachable",
+      responseMs: latency,
     });
   });
 
@@ -22078,222 +22090,276 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  // Dashboard stats
+  // Dashboard stats — SQL aggregation (no full-table loads)
   app.get("/api/dashboard/stats", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      let [jobs, quotes, invoices] = await Promise.all([
-        storage.getJobs(userContext.effectiveUserId),
-        storage.getQuotes(userContext.effectiveUserId),
-        storage.getInvoices(userContext.effectiveUserId)
-      ]);
-      
-      // Staff tradies only see stats for their assigned jobs
+      const uid = userContext.effectiveUserId;
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
-      if (!hasViewAll && userContext.teamMemberId) {
-        jobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId);
-        // For staff, don't show financial stats - they only see job stats
-        quotes = [];
-        invoices = [];
-      }
+      const isStaffView = !hasViewAll && !!userContext.teamMemberId;
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-      const jobsToday = jobs.filter(job => {
-        if (!job.scheduledAt) return false;
-        const schedDate = new Date(job.scheduledAt);
-        return schedDate >= today && schedDate < tomorrow;
-      }).length;
+      const jobsTodayConditions = [
+        eq(jobs.userId, uid),
+        isNull(jobs.archivedAt),
+        gte(jobs.scheduledAt, today),
+        lt(jobs.scheduledAt, tomorrow),
+      ];
+      if (isStaffView && userContext.teamMemberId) {
+        jobsTodayConditions.push(eq(jobs.assignedTo, userContext.teamMemberId));
+      }
 
-      const unpaidInvoices = invoices.filter(inv => inv.status !== 'paid');
-      const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total), 0);
-
-      const quotesAwaiting = quotes.filter(q => q.status === 'sent').length;
-
-      const currentMonth = new Date();
-      currentMonth.setDate(1);
-      currentMonth.setHours(0, 0, 0, 0);
-      
-      const monthlyEarnings = invoices
-        .filter(inv => inv.status === 'paid' && inv.paidAt && new Date(inv.paidAt) >= currentMonth)
-        .reduce((sum, inv) => sum + parseFloat(inv.total), 0);
+      const [jobsTodayResult, unpaidResult, quotesResult, earningsResult] = await Promise.all([
+        db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(and(...jobsTodayConditions)),
+        isStaffView ? Promise.resolve([{ count: 0, total: 0 }]) :
+          db.select({
+            count: sql<number>`count(*)::int`,
+            total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+          }).from(invoices).where(and(
+            eq(invoices.userId, uid),
+            isNull(invoices.archivedAt),
+            ne(invoices.status, 'paid'),
+            ne(invoices.status, 'draft'),
+          )),
+        isStaffView ? Promise.resolve([{ count: 0 }]) :
+          db.select({ count: sql<number>`count(*)::int` }).from(quotes).where(and(
+            eq(quotes.userId, uid),
+            isNull(quotes.archivedAt),
+            eq(quotes.status, 'sent'),
+          )),
+        isStaffView ? Promise.resolve([{ total: 0 }]) :
+          db.select({
+            total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+          }).from(invoices).where(and(
+            eq(invoices.userId, uid),
+            isNull(invoices.archivedAt),
+            eq(invoices.status, 'paid'),
+            gte(invoices.paidAt, currentMonth),
+          )),
+      ]);
 
       res.json({
-        jobsToday,
-        unpaidInvoicesCount: unpaidInvoices.length,
-        unpaidInvoicesTotal: unpaidTotal,
-        quotesAwaiting,
-        monthlyEarnings,
-        isStaffView: !hasViewAll && userContext.teamMemberId ? true : false,
+        jobsToday: jobsTodayResult[0]?.count ?? 0,
+        unpaidInvoicesCount: unpaidResult[0]?.count ?? 0,
+        unpaidInvoicesTotal: Number(unpaidResult[0]?.total ?? 0),
+        quotesAwaiting: quotesResult[0]?.count ?? 0,
+        monthlyEarnings: Number(earningsResult[0]?.total ?? 0),
+        isStaffView,
       });
     } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
+      logger.error('api', 'Dashboard stats failed', { error, userId: req.userId });
       res.status(500).json({ error: "Failed to fetch dashboard stats" });
     }
   });
 
-  // Dashboard KPIs - main metrics for tradie dashboard
+  // Dashboard KPIs — SQL aggregation (no full-table loads)
   app.get("/api/dashboard/kpis", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      let [jobs, quotes, invoices] = await Promise.all([
-        storage.getJobs(userContext.effectiveUserId),
-        storage.getQuotes(userContext.effectiveUserId),
-        storage.getInvoices(userContext.effectiveUserId)
-      ]);
-      
-      // Staff tradies only see stats for their assigned jobs
+      const uid = userContext.effectiveUserId;
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
-      if (!hasViewAll && userContext.teamMemberId) {
-        jobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId);
-        quotes = [];
-        invoices = [];
-      }
+      const isStaffView = !hasViewAll && !!userContext.teamMemberId;
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-
-      // Jobs scheduled for today
-      const jobsToday = jobs.filter(job => {
-        if (!job.scheduledAt) return false;
-        const schedDate = new Date(job.scheduledAt);
-        return schedDate >= today && schedDate < tomorrow;
-      }).length;
-
-      // Unpaid invoices (money owed to tradie)
-      const unpaidInvoices = invoices.filter(inv => inv.status !== 'paid' && inv.status !== 'draft');
-      const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
-
-      // Quotes awaiting response
-      const quotesAwaiting = quotes.filter(q => q.status === 'sent').length;
-
-      // Jobs completed but not yet invoiced (money left on the table!)
-      // Exclude jobs that already have an invoice linked
-      const invoicedJobIds = new Set(invoices.filter(inv => inv.jobId).map(inv => inv.jobId));
-      const jobsToInvoice = jobs.filter(j => 
-        j.status === 'done' && !invoicedJobIds.has(j.id)
-      ).length;
-
-      // This week's earnings (motivation to see money coming in!)
       const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - today.getDay()); // Start from Sunday
+      startOfWeek.setDate(today.getDate() - today.getDay());
       startOfWeek.setHours(0, 0, 0, 0);
-      
-      const weeklyEarnings = invoices
-        .filter(inv => inv.status === 'paid' && inv.paidAt && new Date(inv.paidAt) >= startOfWeek)
-        .reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
+      const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-      // This month's earnings
-      const currentMonth = new Date();
-      currentMonth.setDate(1);
-      currentMonth.setHours(0, 0, 0, 0);
-      
-      const monthlyEarnings = invoices
-        .filter(inv => inv.status === 'paid' && inv.paidAt && new Date(inv.paidAt) >= currentMonth)
-        .reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
+      const jobsTodayConditions = [
+        eq(jobs.userId, uid),
+        isNull(jobs.archivedAt),
+        gte(jobs.scheduledAt, today),
+        lt(jobs.scheduledAt, tomorrow),
+      ];
+      if (isStaffView && userContext.teamMemberId) {
+        jobsTodayConditions.push(eq(jobs.assignedTo, userContext.teamMemberId));
+      }
 
-      const activeJobs = jobs.filter(j => j.status === 'in_progress').length;
+      const activeJobsConditions = [
+        eq(jobs.userId, uid),
+        isNull(jobs.archivedAt),
+        eq(jobs.status, 'in_progress'),
+      ];
+      if (isStaffView && userContext.teamMemberId) {
+        activeJobsConditions.push(eq(jobs.assignedTo, userContext.teamMemberId));
+      }
+
+      const [
+        jobsTodayResult,
+        activeJobsResult,
+        unpaidResult,
+        quotesResult,
+        weeklyResult,
+        monthlyResult,
+        jobsToInvoiceResult,
+      ] = await Promise.all([
+        db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(and(...jobsTodayConditions)),
+        db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(and(...activeJobsConditions)),
+        isStaffView ? Promise.resolve([{ count: 0, total: 0 }]) :
+          db.select({
+            count: sql<number>`count(*)::int`,
+            total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+          }).from(invoices).where(and(
+            eq(invoices.userId, uid),
+            isNull(invoices.archivedAt),
+            ne(invoices.status, 'paid'),
+            ne(invoices.status, 'draft'),
+          )),
+        isStaffView ? Promise.resolve([{ count: 0 }]) :
+          db.select({ count: sql<number>`count(*)::int` }).from(quotes).where(and(
+            eq(quotes.userId, uid),
+            isNull(quotes.archivedAt),
+            eq(quotes.status, 'sent'),
+          )),
+        isStaffView ? Promise.resolve([{ total: 0 }]) :
+          db.select({
+            total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+          }).from(invoices).where(and(
+            eq(invoices.userId, uid),
+            isNull(invoices.archivedAt),
+            eq(invoices.status, 'paid'),
+            gte(invoices.paidAt, startOfWeek),
+          )),
+        isStaffView ? Promise.resolve([{ total: 0 }]) :
+          db.select({
+            total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+          }).from(invoices).where(and(
+            eq(invoices.userId, uid),
+            isNull(invoices.archivedAt),
+            eq(invoices.status, 'paid'),
+            gte(invoices.paidAt, currentMonth),
+          )),
+        isStaffView ? Promise.resolve([{ count: 0 }]) :
+          db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(and(
+            eq(jobs.userId, uid),
+            isNull(jobs.archivedAt),
+            eq(jobs.status, 'done'),
+            sql`${jobs.id} NOT IN (SELECT job_id FROM invoices WHERE job_id IS NOT NULL AND user_id = ${uid} AND archived_at IS NULL)`,
+          )),
+      ]);
 
       res.json({
-        jobsToday,
-        unpaidInvoicesCount: unpaidInvoices.length,
-        unpaidInvoicesTotal: unpaidTotal,
-        quotesAwaiting,
-        monthlyEarnings,
-        weeklyEarnings,
-        jobsToInvoice,
-        activeJobs,
+        jobsToday: jobsTodayResult[0]?.count ?? 0,
+        unpaidInvoicesCount: unpaidResult[0]?.count ?? 0,
+        unpaidInvoicesTotal: Number(unpaidResult[0]?.total ?? 0),
+        quotesAwaiting: quotesResult[0]?.count ?? 0,
+        monthlyEarnings: Number(monthlyResult[0]?.total ?? 0),
+        weeklyEarnings: Number(weeklyResult[0]?.total ?? 0),
+        jobsToInvoice: jobsToInvoiceResult[0]?.count ?? 0,
+        activeJobs: activeJobsResult[0]?.count ?? 0,
       });
     } catch (error) {
-      console.error("Error fetching dashboard KPIs:", error);
+      logger.error('api', 'Dashboard KPIs failed', { error, userId: req.userId });
       res.status(500).json({ error: "Failed to fetch dashboard KPIs" });
     }
   });
 
   // Unified dashboard endpoint - single call for web/mobile consistency
+  // Unified dashboard — optimized with SQL aggregation for stats and targeted queries for lists
   app.get("/api/dashboard/unified", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const effectiveUserId = userContext.effectiveUserId;
+      const uid = userContext.effectiveUserId;
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
       const isOwner = userContext.isOwner;
-      const canManageTeam = hasViewAll; // Owners and managers with view_all can see team data
-      
-      // Fetch all data in parallel
-      let [jobs, quotes, invoices, clients, teamMembers, activities] = await Promise.all([
-        storage.getJobs(effectiveUserId),
-        storage.getQuotes(effectiveUserId),
-        storage.getInvoices(effectiveUserId),
-        storage.getClients(effectiveUserId),
-        canManageTeam ? storage.getTeamMembers(effectiveUserId) : Promise.resolve([]),
-        storage.getActivityLogs(effectiveUserId, 5)
-      ]);
-      
-      // Staff view filter
-      if (!hasViewAll && userContext.teamMemberId) {
-        jobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId);
-        quotes = [];
-        invoices = [];
-      }
-      
-      // Calculate today's jobs
+      const canManageTeam = hasViewAll;
+      const isStaffView = !hasViewAll && !!userContext.teamMemberId;
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      const todaysJobs = jobs.filter(job => {
-        if (!job.scheduledAt) return false;
-        const schedDate = new Date(job.scheduledAt);
-        return schedDate >= today && schedDate < tomorrow;
-      });
-      
-      // Unassigned jobs for team owners and managers with view_all permissions
-      const unassignedJobs = canManageTeam && teamMembers.length > 0 
-        ? jobs.filter(job => !job.assignedTo && job.status !== 'completed' && job.status !== 'invoiced')
-        : [];
-      
-      // Calculate stats
-      const unpaidInvoices = invoices.filter(inv => inv.status !== 'paid');
-      const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total), 0);
-      const quotesAwaiting = quotes.filter(q => q.status === 'sent').length;
-      
-      const currentMonth = new Date();
-      currentMonth.setDate(1);
-      currentMonth.setHours(0, 0, 0, 0);
-      
-      const monthlyEarnings = invoices
-        .filter(inv => inv.status === 'paid' && inv.paidAt && new Date(inv.paidAt) >= currentMonth)
-        .reduce((sum, inv) => sum + parseFloat(inv.total), 0);
-      
-      // Active team members only
+      const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+      const jobsTodayConditions: any[] = [
+        eq(jobs.userId, uid),
+        isNull(jobs.archivedAt),
+        gte(jobs.scheduledAt, today),
+        lt(jobs.scheduledAt, tomorrow),
+      ];
+      if (isStaffView && userContext.teamMemberId) {
+        jobsTodayConditions.push(eq(jobs.assignedTo, userContext.teamMemberId));
+      }
+
+      const [todaysJobs, unpaidResult, quotesResult, earningsResult, teamMembers, activities] = await Promise.all([
+        db.select().from(jobs).where(and(...jobsTodayConditions)).orderBy(asc(jobs.scheduledAt)).limit(20),
+        isStaffView ? Promise.resolve([{ count: 0, total: 0 }]) :
+          db.select({
+            count: sql<number>`count(*)::int`,
+            total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+          }).from(invoices).where(and(
+            eq(invoices.userId, uid),
+            isNull(invoices.archivedAt),
+            ne(invoices.status, 'paid'),
+            ne(invoices.status, 'draft'),
+          )),
+        isStaffView ? Promise.resolve([{ count: 0 }]) :
+          db.select({ count: sql<number>`count(*)::int` }).from(quotes).where(and(
+            eq(quotes.userId, uid),
+            isNull(quotes.archivedAt),
+            eq(quotes.status, 'sent'),
+          )),
+        isStaffView ? Promise.resolve([{ total: 0 }]) :
+          db.select({
+            total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+          }).from(invoices).where(and(
+            eq(invoices.userId, uid),
+            eq(invoices.status, 'paid'),
+            gte(invoices.paidAt, currentMonth),
+          )),
+        canManageTeam ? storage.getTeamMembers(uid) : Promise.resolve([]),
+        storage.getActivityLogs(uid, 5),
+      ]);
+
+      const clientIds = [...new Set(todaysJobs.map(j => j.clientId))];
+      let todaysJobsClients: any[] = [];
+      if (clientIds.length > 0) {
+        todaysJobsClients = await db.select().from(clients).where(inArray(clients.id, clientIds));
+      }
+      const clientMap = new Map(todaysJobsClients.map(c => [c.id, c]));
+
+      let unassignedJobs: any[] = [];
+      if (canManageTeam && teamMembers.length > 0) {
+        unassignedJobs = await db.select().from(jobs).where(and(
+          eq(jobs.userId, uid),
+          isNull(jobs.archivedAt),
+          isNull(jobs.assignedTo),
+          ne(jobs.status, 'done'),
+          ne(jobs.status, 'invoiced'),
+        )).orderBy(desc(jobs.createdAt)).limit(10);
+
+        const unassignedClientIds = [...new Set(unassignedJobs.map(j => j.clientId).filter(id => !clientMap.has(id)))];
+        if (unassignedClientIds.length > 0) {
+          const extraClients = await db.select().from(clients).where(inArray(clients.id, unassignedClientIds));
+          extraClients.forEach(c => clientMap.set(c.id, c));
+        }
+      }
+
       const activeTeamMembers = teamMembers.filter(m => m.status === 'active');
-      
+
       res.json({
         stats: {
           jobsToday: todaysJobs.length,
-          unpaidInvoicesCount: unpaidInvoices.length,
-          unpaidInvoicesTotal: unpaidTotal,
-          quotesAwaiting,
-          monthlyEarnings,
-          isStaffView: !hasViewAll && userContext.teamMemberId ? true : false,
+          unpaidInvoicesCount: unpaidResult[0]?.count ?? 0,
+          unpaidInvoicesTotal: Number(unpaidResult[0]?.total ?? 0),
+          quotesAwaiting: quotesResult[0]?.count ?? 0,
+          monthlyEarnings: Number(earningsResult[0]?.total ?? 0),
+          isStaffView,
         },
-        todaysJobs: todaysJobs.map(job => {
-          const client = clients.find(c => c.id === job.clientId);
-          return { ...job, client };
-        }),
-        unassignedJobs: unassignedJobs.map(job => {
-          const client = clients.find(c => c.id === job.clientId);
-          return { ...job, client };
-        }),
+        todaysJobs: todaysJobs.map(job => ({ ...job, client: clientMap.get(job.clientId) })),
+        unassignedJobs: unassignedJobs.map(job => ({ ...job, client: clientMap.get(job.clientId) })),
         teamMembers: activeTeamMembers.map(m => ({
           id: m.id,
-          userId: m.memberId, // Mobile expects userId, database stores memberId
+          userId: m.memberId,
           name: m.firstName && m.lastName ? `${m.firstName} ${m.lastName}` : m.email,
           firstName: m.firstName,
           lastName: m.lastName,
@@ -22307,7 +22373,7 @@ Be specific about materials, colors, and features that would be included.`
         hasActiveTeam: activeTeamMembers.length > 0,
       });
     } catch (error) {
-      console.error("Error fetching unified dashboard:", error);
+      logger.error('api', 'Unified dashboard failed', { error, userId: req.userId });
       res.status(500).json({ error: "Failed to fetch dashboard data" });
     }
   });
@@ -22396,7 +22462,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  // Cashflow insight endpoint
+  // Cashflow insight endpoint — SQL aggregation
   app.get("/api/dashboard/cashflow", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
@@ -22404,91 +22470,115 @@ Be specific about materials, colors, and features that would be included.`
       if (!isOwnerOrManager) {
         return res.status(403).json({ error: 'Access denied - owners and managers only' });
       }
-      const effectiveUserId = userContext.effectiveUserId;
+      const uid = userContext.effectiveUserId;
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
       const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-      const allInvoices = await storage.getInvoices(effectiveUserId);
+      const openStatuses = ['sent', 'viewed'];
 
-      let outstandingTotal = 0;
-      let overdueTotal = 0;
-      let overdueCount = 0;
-      let dueThisWeek = 0;
-      let dueThisWeekCount = 0;
-      let collectedThisMonth = 0;
-      let collectedLastMonth = 0;
+      const [
+        outstandingResult,
+        overdueResult,
+        dueThisWeekResult,
+        collectedThisMonthResult,
+        collectedLastMonthResult,
+        overdueInvoiceRows,
+        revenueByWeekResult,
+      ] = await Promise.all([
+        db.select({
+          total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+        }).from(invoices).where(and(
+          eq(invoices.userId, uid),
+          isNull(invoices.archivedAt),
+          inArray(invoices.status, openStatuses),
+        )),
+        db.select({
+          count: sql<number>`count(*)::int`,
+          total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+        }).from(invoices).where(and(
+          eq(invoices.userId, uid),
+          isNull(invoices.archivedAt),
+          inArray(invoices.status, openStatuses),
+          isNotNull(invoices.dueDate),
+          lte(invoices.dueDate, now),
+        )),
+        db.select({
+          count: sql<number>`count(*)::int`,
+          total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+        }).from(invoices).where(and(
+          eq(invoices.userId, uid),
+          isNull(invoices.archivedAt),
+          inArray(invoices.status, openStatuses),
+          isNotNull(invoices.dueDate),
+          gte(invoices.dueDate, now),
+          lte(invoices.dueDate, oneWeekFromNow),
+        )),
+        db.select({
+          total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+        }).from(invoices).where(and(
+          eq(invoices.userId, uid),
+          eq(invoices.status, 'paid'),
+          gte(invoices.paidAt, startOfMonth),
+        )),
+        db.select({
+          total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+        }).from(invoices).where(and(
+          eq(invoices.userId, uid),
+          eq(invoices.status, 'paid'),
+          gte(invoices.paidAt, startOfLastMonth),
+          lte(invoices.paidAt, endOfLastMonth),
+        )),
+        db.select({
+          id: invoices.id,
+          number: invoices.number,
+          total: invoices.total,
+          dueDate: invoices.dueDate,
+        }).from(invoices).where(and(
+          eq(invoices.userId, uid),
+          isNull(invoices.archivedAt),
+          inArray(invoices.status, openStatuses),
+          isNotNull(invoices.dueDate),
+          lte(invoices.dueDate, now),
+        )).orderBy(asc(invoices.dueDate)).limit(5),
+        db.select({
+          week: sql<string>`to_char(date_trunc('week', ${invoices.paidAt}), 'DD Mon')`,
+          amount: sql<number>`coalesce(sum(${invoices.total}), 0)::int`,
+        }).from(invoices).where(and(
+          eq(invoices.userId, uid),
+          eq(invoices.status, 'paid'),
+          gte(invoices.paidAt, new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000)),
+        )).groupBy(sql`date_trunc('week', ${invoices.paidAt})`).orderBy(sql`date_trunc('week', ${invoices.paidAt})`),
+      ]);
 
-      const overdueInvoices: any[] = [];
+      const overdueInvoicesList = overdueInvoiceRows.map(inv => ({
+        id: inv.id,
+        number: inv.number,
+        clientName: 'Unknown',
+        total: Number(inv.total),
+        dueDate: inv.dueDate,
+        daysOverdue: inv.dueDate ? Math.floor((now.getTime() - new Date(inv.dueDate).getTime()) / (1000 * 60 * 60 * 24)) : 0,
+      }));
 
-      for (const inv of allInvoices) {
-        const total = Number(inv.total || 0);
-        const dueDate = inv.dueDate ? new Date(inv.dueDate) : null;
-        const paidAt = inv.paidAt ? new Date(inv.paidAt) : null;
-
-        if (inv.status === 'sent' || inv.status === 'viewed') {
-          outstandingTotal += total;
-
-          if (dueDate && dueDate < now) {
-            overdueTotal += total;
-            overdueCount++;
-            const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-            overdueInvoices.push({
-              id: inv.id,
-              number: inv.number,
-              clientName: (inv as any).clientName || 'Unknown',
-              total: total,
-              dueDate: inv.dueDate,
-              daysOverdue,
-            });
-          }
-
-          if (dueDate && dueDate >= now && dueDate <= oneWeekFromNow) {
-            dueThisWeek += total;
-            dueThisWeekCount++;
-          }
-        }
-
-        if (inv.status === 'paid' && paidAt && paidAt >= startOfMonth) {
-          collectedThisMonth += total;
-        }
-
-        if (inv.status === 'paid' && paidAt && paidAt >= startOfLastMonth && paidAt <= endOfLastMonth) {
-          collectedLastMonth += total;
-        }
-      }
-
-      const revenueByWeek = [];
-      for (let i = 3; i >= 0; i--) {
-        const weekStart = new Date(now.getTime() - (i * 7 + now.getDay()) * 24 * 60 * 60 * 1000);
-        const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-        const weekLabel = weekStart.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-        let weekAmount = 0;
-        for (const inv of allInvoices) {
-          const paidAt = inv.paidAt ? new Date(inv.paidAt) : null;
-          if (inv.status === 'paid' && paidAt && paidAt >= weekStart && paidAt < weekEnd) {
-            weekAmount += Number(inv.total || 0);
-          }
-        }
-        revenueByWeek.push({ week: weekLabel, amount: Math.round(weekAmount) });
-      }
+      const collectedThisMonth = Number(collectedThisMonthResult[0]?.total ?? 0);
+      const collectedLastMonth = Number(collectedLastMonthResult[0]?.total ?? 0);
 
       res.json({
-        outstandingTotal: Math.round(outstandingTotal),
-        overdueTotal: Math.round(overdueTotal),
-        overdueCount,
-        overdueInvoices: overdueInvoices.slice(0, 5),
-        dueThisWeek: Math.round(dueThisWeek),
-        dueThisWeekCount,
+        outstandingTotal: Math.round(Number(outstandingResult[0]?.total ?? 0)),
+        overdueTotal: Math.round(Number(overdueResult[0]?.total ?? 0)),
+        overdueCount: overdueResult[0]?.count ?? 0,
+        overdueInvoices: overdueInvoicesList,
+        dueThisWeek: Math.round(Number(dueThisWeekResult[0]?.total ?? 0)),
+        dueThisWeekCount: dueThisWeekResult[0]?.count ?? 0,
         collectedThisMonth: Math.round(collectedThisMonth),
         collectedLastMonth: Math.round(collectedLastMonth),
         collectedTrend: collectedLastMonth > 0 ? Math.round(((collectedThisMonth - collectedLastMonth) / collectedLastMonth) * 100) : 0,
-        revenueByWeek,
+        revenueByWeek: revenueByWeekResult.map(r => ({ week: r.week, amount: Number(r.amount) })),
       });
     } catch (error: any) {
-      console.error('Cashflow endpoint error:', error);
+      logger.error('api', 'Cashflow endpoint failed', { error, userId: req.userId });
       res.status(500).json({ error: 'Failed to load cashflow data' });
     }
   });
@@ -38295,9 +38385,20 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       // API latency is just this request's processing time
       const apiLatency = Date.now() - startTime;
       
-      // Get some basic stats
-      const totalUsers = await db.select().from(users).then(r => r.length);
-      const totalJobs = await db.select().from(jobs).then(r => r.length);
+      let totalUsers = 0;
+      let totalJobs = 0;
+      if (dbStatus !== 'down') {
+        try {
+          const [userCount, jobCount] = await Promise.all([
+            db.select({ count: sql<number>`count(*)::int` }).from(users),
+            db.select({ count: sql<number>`count(*)::int` }).from(jobs),
+          ]);
+          totalUsers = userCount[0]?.count ?? 0;
+          totalJobs = jobCount[0]?.count ?? 0;
+        } catch {
+          dbStatus = 'degraded';
+        }
+      }
       
       res.json({
         api: { 
@@ -38331,6 +38432,36 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+
+  // Admin error logs endpoint
+  app.get("/api/admin/error-logs", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+      const offset = parseInt(req.query.offset as string) || 0;
+      const level = req.query.level as string;
+      const category = req.query.category as string;
+
+      const conditions: any[] = [];
+      if (level) conditions.push(eq(errorLogs.level, level));
+      if (category) conditions.push(eq(errorLogs.category, category));
+
+      const [logs, countResult] = await Promise.all([
+        db.select().from(errorLogs)
+          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          .orderBy(desc(errorLogs.createdAt))
+          .limit(limit)
+          .offset(offset),
+        db.select({ count: sql<number>`count(*)::int` }).from(errorLogs)
+          .where(conditions.length > 0 ? and(...conditions) : undefined),
+      ]);
+
+      res.setHeader('X-Total-Count', countResult[0]?.count ?? 0);
+      res.json(logs);
+    } catch (error) {
+      logger.error('api', 'Failed to fetch error logs', { error });
+      res.status(500).json({ error: 'Failed to fetch error logs' });
+    }
+  });
 
   // Admin revenue analytics
   app.get("/api/admin/revenue", requireAuth, requireAdmin, async (req: any, res) => {

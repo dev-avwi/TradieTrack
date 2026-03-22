@@ -1,5 +1,6 @@
 import sgMail from '@sendgrid/mail';
 import { sendViaGmailAPI, isGmailConnected } from './gmailClient';
+import { logger } from './logger';
 
 let connectorFromEmail: string | null = null;
 
@@ -123,9 +124,9 @@ const mockEmailService = {
       return sgMail.send(emailData);
     }
     const errorMsg = 'Email service not configured - SendGrid connection required';
-    console.error(`❌ EMAIL FAILED: ${errorMsg}`);
-    console.error(`   Recipient: ${emailData.to}`);
-    console.error(`   Subject: ${emailData.subject}`);
+    logger.error('email', 'Email send failed - service not configured', {
+      metadata: { recipient: emailData.to, subject: emailData.subject },
+    });
     throw new Error(errorMsg);
   }
 };

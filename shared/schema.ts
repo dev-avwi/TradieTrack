@@ -2945,6 +2945,8 @@ export const smsMessages = pgTable("sms_messages", {
   suggestedDescription: text("suggested_description"),
   jobCreatedFromSms: varchar("job_created_from_sms").references(() => jobs.id, { onDelete: 'set null' }),
   readAt: timestamp("read_at"),
+  retryCount: integer("retry_count").default(0),
+  nextRetryAt: timestamp("next_retry_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -4513,3 +4515,20 @@ export const aiReceptionistCalls = pgTable("ai_receptionist_calls", {
 export const insertAiReceptionistCallSchema = createInsertSchema(aiReceptionistCalls).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertAiReceptionistCall = z.infer<typeof insertAiReceptionistCallSchema>;
 export type AiReceptionistCall = typeof aiReceptionistCalls.$inferSelect;
+
+export const errorLogs = pgTable("error_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  level: text("level").notNull(),
+  category: text("category").notNull(),
+  message: text("message").notNull(),
+  userId: varchar("user_id"),
+  metadata: jsonb("metadata"),
+  errorDetails: jsonb("error_details"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_error_logs_level").on(table.level),
+  index("idx_error_logs_category").on(table.category),
+  index("idx_error_logs_created").on(table.createdAt),
+]);
+
+export type ErrorLog = typeof errorLogs.$inferSelect;

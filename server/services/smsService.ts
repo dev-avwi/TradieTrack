@@ -211,14 +211,20 @@ export async function sendSmsToClient(options: SendSmsOptions): Promise<SmsMessa
     options.businessOwnerId
   );
   
-  // Update message with result
-  const updatedMessage = await storage.updateSmsMessage(message.id, {
+  const updateData: any = {
     status: result.success ? 'sent' : 'failed',
     twilioSid: result.messageId || null,
     errorMessage: result.error || null,
-  });
+  };
+
+  if (!result.success && !result.notConfigured) {
+    const { scheduleRetry } = await import('../retryScheduler');
+    updateData.retryCount = 0;
+    updateData.nextRetryAt = scheduleRetry(0);
+  }
+
+  const updatedMessage = await storage.updateSmsMessage(message.id, updateData);
   
-  // Update conversation last message timestamp
   await storage.updateSmsConversation(conversation.id, {
     lastMessageAt: new Date(),
   });

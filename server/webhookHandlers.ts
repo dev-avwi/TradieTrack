@@ -5,6 +5,7 @@ import { processPaymentReceivedAutomation } from './automationService';
 import { markInvoicePaidInXero } from './xeroService';
 import { broadcastPaymentReceived } from './websocket';
 import { sendSMS } from './twilioClient';
+import { logger } from './logger';
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string, uuid: string, storage: any): Promise<void> {
@@ -583,7 +584,7 @@ async function handleStripeEvent(event: any, storage: any) {
             }
           }
         } catch (error) {
-          console.error('Error updating Connect account status:', error);
+          logger.error('webhook', 'Error updating Connect account status', { error });
         }
         break;
       }
@@ -592,7 +593,7 @@ async function handleStripeEvent(event: any, storage: any) {
         console.log(`Unhandled event type: ${event.type}`);
     }
   } catch (error) {
-    console.error('Error handling Stripe event:', error);
+    logger.error('webhook', 'Error handling Stripe event', { error, metadata: { eventType: event.type } });
     throw error;
   }
 }
