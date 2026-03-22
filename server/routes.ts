@@ -143,6 +143,10 @@ import {
   customForms,
   formSubmissions,
   rateLimits,
+  smsMessages,
+  smsConversations,
+  aiReceptionistCalls,
+  leads,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, asc, and, gte, lte, isNotNull, isNull, inArray, or } from "drizzle-orm";
@@ -38101,6 +38105,135 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
   
+  // Admin communications analytics
+  app.get("/api/admin/communications", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      const allSms = await db.select({
+        id: smsMessages.id,
+        direction: smsMessages.direction,
+        status: smsMessages.status,
+        isJobRequest: smsMessages.isJobRequest,
+        intentType: smsMessages.intentType,
+        createdAt: smsMessages.createdAt,
+      }).from(smsMessages);
+
+      const allCalls = await db.select({
+        id: aiReceptionistCalls.id,
+        status: aiReceptionistCalls.status,
+        outcome: aiReceptionistCalls.outcome,
+        callerIntent: aiReceptionistCalls.callerIntent,
+        duration: aiReceptionistCalls.duration,
+        cost: aiReceptionistCalls.cost,
+        leadId: aiReceptionistCalls.leadId,
+        createdAt: aiReceptionistCalls.createdAt,
+      }).from(aiReceptionistCalls);
+
+      const allLeads = await db.select({
+        id: leads.id,
+        source: leads.source,
+        status: leads.status,
+        estimatedValue: leads.estimatedValue,
+        createdAt: leads.createdAt,
+      }).from(leads);
+
+      const allConversations = await db.select({
+        id: smsConversations.id,
+        createdAt: smsConversations.createdAt,
+      }).from(smsConversations);
+
+      const sms30d = allSms.filter(s => s.createdAt && new Date(s.createdAt) >= thirtyDaysAgo);
+      const sms7d = allSms.filter(s => s.createdAt && new Date(s.createdAt) >= sevenDaysAgo);
+      const calls30d = allCalls.filter(c => c.createdAt && new Date(c.createdAt) >= thirtyDaysAgo);
+      const calls7d = allCalls.filter(c => c.createdAt && new Date(c.createdAt) >= sevenDaysAgo);
+      const leads30d = allLeads.filter(l => l.createdAt && new Date(l.createdAt) >= thirtyDaysAgo);
+
+      const smsDailyData: { date: string; inbound: number; outbound: number }[] = [];
+      for (let i = 29; i >= 0; i--) {
+        const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+        const dayLabel = dayStart.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+        const daySms = sms30d.filter(s => {
+          const d = new Date(s.createdAt!);
+          return d >= dayStart && d < dayEnd;
+        });
+        smsDailyData.push({
+          date: dayLabel,
+          inbound: daySms.filter(s => s.direction === 'inbound').length,
+          outbound: daySms.filter(s => s.direction === 'outbound').length,
+        });
+      }
+
+      const leadsBySource: Record<string, number> = {};
+      allLeads.forEach(l => {
+        const src = l.source || 'other';
+        leadsBySource[src] = (leadsBySource[src] || 0) + 1;
+      });
+
+      const leadsByStatus: Record<string, number> = {};
+      allLeads.forEach(l => {
+        const st = l.status || 'new';
+        leadsByStatus[st] = (leadsByStatus[st] || 0) + 1;
+      });
+
+      const callOutcomes: Record<string, number> = {};
+      allCalls.forEach(c => {
+        const out = c.outcome || 'unknown';
+        callOutcomes[out] = (callOutcomes[out] || 0) + 1;
+      });
+
+      const totalCallDuration = allCalls.reduce((sum, c) => sum + (c.duration || 0), 0);
+      const totalCallCost = allCalls.reduce((sum, c) => sum + (c.cost ? parseFloat(String(c.cost)) : 0), 0);
+
+      res.json({
+        sms: {
+          total: allSms.length,
+          last30d: sms30d.length,
+          last7d: sms7d.length,
+          inbound: allSms.filter(s => s.direction === 'inbound').length,
+          outbound: allSms.filter(s => s.direction === 'outbound').length,
+          delivered: allSms.filter(s => s.status === 'delivered' || s.status === 'sent').length,
+          failed: allSms.filter(s => s.status === 'failed').length,
+          jobRequests: allSms.filter(s => s.isJobRequest).length,
+          dailyData: smsDailyData,
+        },
+        conversations: {
+          total: allConversations.length,
+        },
+        calls: {
+          total: allCalls.length,
+          last30d: calls30d.length,
+          last7d: calls7d.length,
+          completed: allCalls.filter(c => c.status === 'completed').length,
+          missed: allCalls.filter(c => c.status === 'missed').length,
+          transferred: allCalls.filter(c => c.outcome === 'transferred').length,
+          leadsCreated: allCalls.filter(c => c.leadId).length,
+          avgDuration: allCalls.length > 0 ? Math.round(totalCallDuration / allCalls.length) : 0,
+          totalCost: Math.round(totalCallCost * 100) / 100,
+          outcomes: callOutcomes,
+        },
+        leads: {
+          total: allLeads.length,
+          last30d: leads30d.length,
+          bySource: leadsBySource,
+          byStatus: leadsByStatus,
+          newLeads: allLeads.filter(l => l.status === 'new').length,
+          wonLeads: allLeads.filter(l => l.status === 'won').length,
+          conversionRate: allLeads.length > 0 
+            ? Math.round((allLeads.filter(l => l.status === 'won').length / allLeads.length) * 100) 
+            : 0,
+          totalEstimatedValue: allLeads.reduce((sum, l) => sum + (l.estimatedValue ? parseFloat(String(l.estimatedValue)) : 0), 0),
+        },
+      });
+    } catch (error: any) {
+      console.error('Error getting admin communications stats:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get all users for admin
   app.get("/api/admin/users", requireAuth, requireAdmin, async (req: any, res) => {
     try {

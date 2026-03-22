@@ -23,6 +23,7 @@ import {
   LogOut,
   Shield,
   HeartPulse,
+  MessageSquare,
 } from "lucide-react";
 import appIconUrl from "@assets/jobrunner-logo-cropped.png";
 
@@ -37,6 +38,11 @@ const adminNavItems = [
     title: "Overview",
     url: "/admin",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Communications",
+    url: "/admin/comms",
+    icon: MessageSquare,
   },
   {
     title: "Users",

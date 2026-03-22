@@ -45,6 +45,12 @@ import {
   XCircle,
   Trash2,
   Loader2,
+  MessageSquare,
+  Phone,
+  PhoneIncoming,
+  PhoneForwarded,
+  Target,
+  DollarSign,
 } from "lucide-react";
 import { format } from "date-fns";
 import { 
@@ -125,6 +131,7 @@ interface AdminUsersResponse {
 
 const adminRoutes = [
   { path: "/admin", label: "Overview", icon: LayoutDashboard },
+  { path: "/admin/comms", label: "Comms", icon: MessageSquare },
   { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/activity", label: "Activity", icon: Activity },
   { path: "/admin/health", label: "Health", icon: HeartPulse },
@@ -1047,6 +1054,312 @@ function HealthView({ stats }: { stats: AdminStats | undefined }) {
   );
 }
 
+interface CommsStats {
+  sms: {
+    total: number;
+    last30d: number;
+    last7d: number;
+    inbound: number;
+    outbound: number;
+    delivered: number;
+    failed: number;
+    jobRequests: number;
+    dailyData: Array<{ date: string; inbound: number; outbound: number }>;
+  };
+  conversations: { total: number };
+  calls: {
+    total: number;
+    last30d: number;
+    last7d: number;
+    completed: number;
+    missed: number;
+    transferred: number;
+    leadsCreated: number;
+    avgDuration: number;
+    totalCost: number;
+    outcomes: Record<string, number>;
+  };
+  leads: {
+    total: number;
+    last30d: number;
+    bySource: Record<string, number>;
+    byStatus: Record<string, number>;
+    newLeads: number;
+    wonLeads: number;
+    conversionRate: number;
+    totalEstimatedValue: number;
+  };
+}
+
+function CommunicationsView() {
+  const { data: comms, isLoading } = useQuery<CommsStats>({
+    queryKey: ['/api/admin/communications'],
+  });
+
+  const LEAD_STATUS_COLORS: Record<string, string> = {
+    new: 'hsl(var(--primary))',
+    contacted: 'hsl(210 70% 50%)',
+    quoted: 'hsl(45 90% 50%)',
+    won: 'hsl(142 70% 45%)',
+    lost: 'hsl(0 70% 55%)',
+  };
+
+  const leadStatusData = useMemo(() => {
+    if (!comms?.leads.byStatus) return [];
+    return Object.entries(comms.leads.byStatus).map(([key, value]) => ({
+      name: key.charAt(0).toUpperCase() + key.slice(1),
+      value,
+    }));
+  }, [comms?.leads.byStatus]);
+
+  const formatDuration = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPICard
+          testId="card-total-sms"
+          title="SMS Messages"
+          value={isLoading ? '...' : (comms?.sms.total || 0)}
+          loading={isLoading}
+          icon={<MessageSquare className="h-5 w-5 md:h-6 md:w-6 text-blue-600 dark:text-blue-400" />}
+          iconBgClass="bg-blue-100 dark:bg-blue-500/20"
+        />
+        <KPICard
+          testId="card-total-calls"
+          title="AI Calls"
+          value={isLoading ? '...' : (comms?.calls.total || 0)}
+          loading={isLoading}
+          icon={<Phone className="h-5 w-5 md:h-6 md:w-6 text-green-600 dark:text-green-400" />}
+          iconBgClass="bg-green-100 dark:bg-green-500/20"
+        />
+        <KPICard
+          testId="card-total-leads"
+          title="Total Leads"
+          value={isLoading ? '...' : (comms?.leads.total || 0)}
+          loading={isLoading}
+          icon={<Target className="h-5 w-5 md:h-6 md:w-6 text-purple-600 dark:text-purple-400" />}
+          iconBgClass="bg-purple-100 dark:bg-purple-500/20"
+        />
+        <KPICard
+          testId="card-conversion-rate"
+          title="Lead Conversion"
+          value={isLoading ? '...' : `${comms?.leads.conversionRate || 0}%`}
+          loading={isLoading}
+          icon={<TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-amber-600 dark:text-amber-400" />}
+          iconBgClass="bg-amber-100 dark:bg-amber-500/20"
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card data-testid="card-sms-volume">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base md:text-lg">SMS Volume (30 days)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[220px] md:h-[260px]">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={comms?.sms.dailyData || []} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis 
+                      dataKey="date" 
+                      fontSize={10} 
+                      tickLine={false} 
+                      axisLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      interval={4}
+                    />
+                    <YAxis 
+                      fontSize={12} 
+                      tickLine={false} 
+                      axisLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      allowDecimals={false}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                      }}
+                      labelStyle={{ color: 'hsl(var(--foreground))' }}
+                    />
+                    <Bar dataKey="inbound" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} stackId="sms" name="Inbound" />
+                    <Bar dataKey="outbound" fill="hsl(var(--primary) / 0.5)" radius={[2, 2, 0, 0]} stackId="sms" name="Outbound" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-lead-pipeline">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base md:text-lg">Lead Pipeline</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[220px] md:h-[260px]">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : leadStatusData.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                  No leads yet
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={leadStatusData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={3}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}`}
+                    >
+                      {leadStatusData.map((entry, index) => (
+                        <Cell 
+                          key={index} 
+                          fill={LEAD_STATUS_COLORS[entry.name.toLowerCase()] || 'hsl(var(--muted))'} 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card data-testid="card-sms-breakdown">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              SMS Breakdown
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[
+                { label: "Conversations", value: comms?.conversations.total || 0 },
+                { label: "Inbound", value: comms?.sms.inbound || 0 },
+                { label: "Outbound", value: comms?.sms.outbound || 0 },
+                { label: "Delivered", value: comms?.sms.delivered || 0, color: "text-green-500" },
+                { label: "Failed", value: comms?.sms.failed || 0, color: "text-destructive" },
+                { label: "Job Requests (AI)", value: comms?.sms.jobRequests || 0, color: "text-blue-500" },
+                { label: "Last 7 days", value: comms?.sms.last7d || 0 },
+                { label: "Last 30 days", value: comms?.sms.last30d || 0 },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between py-1">
+                  <span className="text-sm text-muted-foreground">{item.label}</span>
+                  <span className={`font-semibold tabular-nums text-sm ${item.color || ''}`}>
+                    {isLoading ? '...' : item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-calls-breakdown">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+              <Phone className="h-4 w-4" />
+              AI Receptionist Calls
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[
+                { label: "Total Calls", value: comms?.calls.total || 0 },
+                { label: "Completed", value: comms?.calls.completed || 0, color: "text-green-500" },
+                { label: "Missed", value: comms?.calls.missed || 0, color: "text-destructive" },
+                { label: "Transferred", value: comms?.calls.transferred || 0 },
+                { label: "Leads Created", value: comms?.calls.leadsCreated || 0, color: "text-blue-500" },
+                { label: "Avg Duration", value: formatDuration(comms?.calls.avgDuration || 0) },
+                { label: "Total Cost", value: `$${(comms?.calls.totalCost || 0).toFixed(2)}` },
+                { label: "Last 7 days", value: comms?.calls.last7d || 0 },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between py-1">
+                  <span className="text-sm text-muted-foreground">{item.label}</span>
+                  <span className={`font-semibold tabular-nums text-sm ${item.color || ''}`}>
+                    {isLoading ? '...' : item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-leads-breakdown">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Lead Analytics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[
+                { label: "Total Leads", value: comms?.leads.total || 0 },
+                { label: "New (Uncontacted)", value: comms?.leads.newLeads || 0 },
+                { label: "Won", value: comms?.leads.wonLeads || 0, color: "text-green-500" },
+                { label: "Conversion Rate", value: `${comms?.leads.conversionRate || 0}%` },
+                { label: "Pipeline Value", value: `$${Math.round(comms?.leads.totalEstimatedValue || 0).toLocaleString()}` },
+                { label: "Last 30 days", value: comms?.leads.last30d || 0 },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between py-1">
+                  <span className="text-sm text-muted-foreground">{item.label}</span>
+                  <span className={`font-semibold tabular-nums text-sm ${item.color || ''}`}>
+                    {isLoading ? '...' : item.value}
+                  </span>
+                </div>
+              ))}
+              {comms?.leads.bySource && Object.keys(comms.leads.bySource).length > 0 && (
+                <>
+                  <div className="border-t pt-2 mt-2">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">By Source</p>
+                    {Object.entries(comms.leads.bySource).map(([source, count]) => (
+                      <div key={source} className="flex items-center justify-between py-0.5">
+                        <span className="text-xs text-muted-foreground capitalize">{source}</span>
+                        <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5">{count}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [location, setLocation] = useLocation();
 
@@ -1112,6 +1425,8 @@ export default function AdminDashboard() {
 
   const renderView = () => {
     switch (location) {
+      case '/admin/comms':
+        return <CommunicationsView />;
       case '/admin/users':
         return <UsersView usersData={usersData} usersLoading={usersLoading} />;
       case '/admin/activity':
