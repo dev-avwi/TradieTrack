@@ -2046,7 +2046,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 4,
     backgroundColor: colors.card,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.cardBorder,
   },
@@ -2109,9 +2109,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   linkedDocStatus: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 20,
   },
   linkedDocStatusText: {
     fontSize: 11,
@@ -2208,7 +2208,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.warningLight,
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     marginTop: 12,
     borderWidth: 1,
     borderColor: colors.warning + '30',
@@ -2234,7 +2234,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     backgroundColor: colors.primary,
-    borderRadius: 14,
+    borderRadius: 50,
     paddingVertical: 16,
   },
   successButton: {
@@ -2243,7 +2243,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     backgroundColor: colors.success,
-    borderRadius: 14,
+    borderRadius: 50,
     paddingVertical: 16,
   },
   primaryButtonText: {
@@ -2260,7 +2260,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    borderRadius: 14,
+    borderRadius: 50,
     paddingVertical: 16,
   },
   secondaryButtonText: {

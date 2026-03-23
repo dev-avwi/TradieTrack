@@ -5405,6 +5405,64 @@ export default function JobDetailScreen() {
       {/* Job Progress Bar - Visual workflow indicator */}
       <JobProgressBar status={job.status} />
 
+      {/* Client Portal & Proof Pack — Featured (high visibility) */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              backgroundColor: colors.primary,
+              borderRadius: 16,
+              padding: spacing.md,
+              alignItems: 'center',
+              gap: spacing.xs,
+            }}
+            onPress={() => setShowProofPackModal(true)}
+            activeOpacity={0.7}
+          >
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Feather name="file-text" size={20} color="#FFFFFF" />
+            </View>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' }}>Proof Pack</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>Generate report</Text>
+          </TouchableOpacity>
+          {!!client && (
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                backgroundColor: colors.invoiced,
+                borderRadius: 16,
+                padding: spacing.md,
+                alignItems: 'center',
+                gap: spacing.xs,
+              }}
+              onPress={() => setActiveTab('manage')}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Feather name="globe" size={20} color="#FFFFFF" />
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' }}>Client Portal</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>{portalEnabled ? 'Enabled' : 'Share tracking'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       {/* Safety & Compliance Section - Prominent before work starts */}
       {(job.status === 'scheduled' || job.status === 'in_progress') && (availableForms.some(isSafetyForm) || swmsDocuments.length > 0 || hasNoSafetyDocs) && (
         <View style={[
@@ -6156,64 +6214,6 @@ export default function JobDetailScreen() {
             </Text>
           )}
         </TouchableOpacity>
-      )}
-
-      {/* Client Portal & Proof Pack — Featured */}
-      {(isOwnerOrManager || isSoloOwner) && (
-        <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
-          <TouchableOpacity
-            style={{
-              flex: 1,
-              backgroundColor: colors.primary,
-              borderRadius: 16,
-              padding: spacing.md,
-              alignItems: 'center',
-              gap: spacing.xs,
-            }}
-            onPress={() => setShowProofPackModal(true)}
-            activeOpacity={0.7}
-          >
-            <View style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <Feather name="file-text" size={20} color="#FFFFFF" />
-            </View>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' }}>Proof Pack</Text>
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>Generate report</Text>
-          </TouchableOpacity>
-          {!!client && (
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: colors.invoiced,
-                borderRadius: 16,
-                padding: spacing.md,
-                alignItems: 'center',
-                gap: spacing.xs,
-              }}
-              onPress={() => setActiveTab('manage')}
-              activeOpacity={0.7}
-            >
-              <View style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <Feather name="globe" size={20} color="#FFFFFF" />
-              </View>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' }}>Client Portal</Text>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>{portalEnabled ? 'Enabled' : 'Share tracking'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
       )}
 
       {/* Quick Access to More Tab */}
