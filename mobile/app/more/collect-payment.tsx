@@ -2976,6 +2976,15 @@ export default function CollectScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
+            <TouchableOpacity 
+              style={[styles.customAmountButton, { marginBottom: spacing.md, borderWidth: 1, borderColor: colors.primary + '30', borderRadius: radius.lg, backgroundColor: colors.primary + '08' }]}
+              onPress={handleCustomAmountFromPicker}
+              activeOpacity={0.7}
+            >
+              <Feather name="dollar-sign" size={20} color={colors.primary} />
+              <Text style={[styles.customAmountButtonText, { color: colors.primary }]}>Quick Collect — Custom Amount</Text>
+            </TouchableOpacity>
+
             {pickerTab === 'jobs' ? (
               <>
                 {filteredJobs.length === 0 ? (
@@ -3093,14 +3102,6 @@ export default function CollectScreen() {
               </>
             )}
 
-            <TouchableOpacity 
-              style={styles.customAmountButton}
-              onPress={handleCustomAmountFromPicker}
-              activeOpacity={0.7}
-            >
-              <Feather name="dollar-sign" size={20} color={colors.primary} />
-              <Text style={[styles.customAmountButtonText, { color: colors.primary }]}>Quick Collect — Custom Amount</Text>
-            </TouchableOpacity>
           </ScrollView>
         </View>
       </Modal>

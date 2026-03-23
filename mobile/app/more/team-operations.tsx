@@ -186,7 +186,7 @@ export default function TeamOperationsScreen() {
   
   // Subscription-aware access control
   const { hasTeamSubscription, hasProSubscription, subscriptionTier } = useUserRole();
-  const needsUpgradeBase = !hasTeamSubscription && subscriptionTier !== 'beta' && (subscriptionTier === 'pro' || subscriptionTier === 'free' || subscriptionTier === 'trial');
+  const needsUpgradeBase = false;
 
   const [activeTab, setActiveTab] = useState<TabType>('live');
   const [liveViewMode, setLiveViewMode] = useState<LiveViewMode>('status');

@@ -1053,6 +1053,8 @@ export default function TemplatesScreen() {
   const [isLoadingPresets, setIsLoadingPresets] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<'all' | 'quote' | 'invoice' | 'job'>('all');
+  const [templateSearchQuery, setTemplateSearchQuery] = useState('');
+  const [showAllTemplates, setShowAllTemplates] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<DocumentTemplate | null>(null);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
@@ -1507,7 +1509,21 @@ export default function TemplatesScreen() {
     address: '123 Sample Street, Sydney NSW 2000',
   }), []);
 
-  const filteredTemplates = templates;
+  const filteredTemplates = useMemo(() => {
+    let result = templates;
+    if (templateSearchQuery.trim()) {
+      const q = templateSearchQuery.toLowerCase();
+      result = result.filter(t => 
+        t.name.toLowerCase().includes(q) || 
+        t.tradeType?.toLowerCase().includes(q) ||
+        t.defaults?.title?.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [templates, templateSearchQuery]);
+  const isSearching = templateSearchQuery.trim().length > 0;
+  const displayedTemplates = isSearching || showAllTemplates ? filteredTemplates : filteredTemplates.slice(0, 5);
+  const hasMoreTemplates = filteredTemplates.length > 5;
   const quoteTemplates = templates.filter(t => t.type === 'quote').length;
   const invoiceTemplates = templates.filter(t => t.type === 'invoice').length;
   const jobTemplates = templates.filter(t => t.type === 'job').length;
@@ -2374,6 +2390,36 @@ export default function TemplatesScreen() {
             </View>
           </View>
 
+          <View style={{ paddingHorizontal: spacing.md, marginBottom: spacing.sm }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: colors.muted,
+              borderRadius: radius.md,
+              paddingHorizontal: spacing.sm,
+              height: 40,
+            }}>
+              <Feather name="search" size={16} color={colors.mutedForeground} />
+              <TextInput
+                style={{
+                  flex: 1,
+                  marginLeft: spacing.xs,
+                  color: colors.foreground,
+                  fontSize: 14,
+                }}
+                placeholder="Search templates..."
+                placeholderTextColor={colors.mutedForeground}
+                value={templateSearchQuery}
+                onChangeText={setTemplateSearchQuery}
+              />
+              {templateSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setTemplateSearchQuery('')}>
+                  <Feather name="x" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
           <View style={styles.filtersRow}>
             {(['all', 'quote', 'invoice', 'job'] as const).map((type) => (
               <TouchableOpacity
@@ -2422,7 +2468,7 @@ export default function TemplatesScreen() {
             </View>
           ) : (
             <View style={styles.templateList}>
-              {filteredTemplates.map((template) => (
+              {displayedTemplates.map((template) => (
                 <View key={template.id} style={styles.templateCard}>
                   <View style={styles.templateHeader}>
                     <View style={styles.templateInfo}>
@@ -2487,6 +2533,28 @@ export default function TemplatesScreen() {
                   </View>
                 </View>
               ))}
+              {hasMoreTemplates && !templateSearchQuery && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingVertical: spacing.md,
+                    gap: spacing.xs,
+                  }}
+                  onPress={() => setShowAllTemplates(!showAllTemplates)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>
+                    {showAllTemplates ? 'Show Less' : `View All (${filteredTemplates.length})`}
+                  </Text>
+                  <Feather 
+                    name={showAllTemplates ? 'chevron-up' : 'chevron-down'} 
+                    size={16} 
+                    color={colors.primary} 
+                  />
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </ScrollView>

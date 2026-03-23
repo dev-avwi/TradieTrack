@@ -21,6 +21,7 @@ type TabKey = 'overview' | 'jobs' | 'quotes' | 'invoices';
 
 interface ActivityItem {
   id: string;
+  entityId: string;
   type: 'job' | 'quote' | 'invoice';
   title: string;
   date: Date;
@@ -112,6 +113,7 @@ export default function ClientDetailScreen() {
     clientJobs.forEach(job => {
       activities.push({
         id: `job-${job.id}`,
+        entityId: job.id,
         type: 'job',
         title: job.title,
         date: new Date(job.scheduledAt || job.createdAt || Date.now()),
@@ -122,6 +124,7 @@ export default function ClientDetailScreen() {
     clientQuotes.forEach(quote => {
       activities.push({
         id: `quote-${quote.id}`,
+        entityId: quote.id,
         type: 'quote',
         title: `Quote #${quote.quoteNumber || quote.id.slice(0,6)}`,
         date: new Date(quote.createdAt || Date.now()),
@@ -132,6 +135,7 @@ export default function ClientDetailScreen() {
     clientInvoices.forEach(invoice => {
       activities.push({
         id: `invoice-${invoice.id}`,
+        entityId: invoice.id,
         type: 'invoice',
         title: `Invoice #${invoice.invoiceNumber || invoice.id.slice(0,6)}`,
         date: new Date(invoice.createdAt || Date.now()),
@@ -397,13 +401,24 @@ export default function ClientDetailScreen() {
                 <View style={styles.timelineCard}>
                   {activityTimeline.map((activity, index) => {
                     const icon = getTimelineIcon(activity.type);
+                    const handleActivityPress = () => {
+                      if (activity.type === 'job') {
+                        router.push(`/job/${activity.entityId}`);
+                      } else if (activity.type === 'quote') {
+                        router.push(`/more/quote/${activity.entityId}`);
+                      } else if (activity.type === 'invoice') {
+                        router.push(`/more/invoice/${activity.entityId}`);
+                      }
+                    };
                     return (
-                      <View 
+                      <TouchableOpacity 
                         key={activity.id} 
                         style={[
                           styles.timelineItem,
                           index === activityTimeline.length - 1 && { borderBottomWidth: 0 }
                         ]}
+                        onPress={handleActivityPress}
+                        activeOpacity={0.7}
                       >
                         <View style={[styles.timelineIcon, { backgroundColor: icon.color + '20' }]}>
                           <Feather name={icon.name} size={16} color={icon.color} />
@@ -428,7 +443,8 @@ export default function ClientDetailScreen() {
                         {activity.amount !== undefined && (
                           <Text style={styles.timelineAmount}>{formatCurrency(activity.amount)}</Text>
                         )}
-                      </View>
+                        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                      </TouchableOpacity>
                     );
                   })}
                 </View>

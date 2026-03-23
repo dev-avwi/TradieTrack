@@ -23033,7 +23033,7 @@ Be specific about materials, colors, and features that would be included.`
           }) ? "fix_now" : "this_week",
           title: `${staleQuotes.length} quote${staleQuotes.length > 1 ? 's' : ''} waiting over 7 days`,
           description: "Quotes older than a week are much less likely to convert. Follow up or close them.",
-          impact: `$${staleTotal.toLocaleString('en-AU', {minimumFractionDigits: 0})} potential revenue`,
+          impact: `$${staleTotal.toLocaleString('en-AU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} potential revenue`,
           cta: "Follow Up",
           ctaUrl: "/documents?tab=quotes&filter=sent",
           metric: `${staleQuotes.length} quotes`,
@@ -23049,10 +23049,10 @@ Be specific about materials, colors, and features that would be included.`
           priority: draftInvoices.length >= 3 ? "this_week" : "suggestions",
           title: `${draftInvoices.length} draft invoice${draftInvoices.length > 1 ? 's' : ''} not sent`,
           description: "Invoices sitting in draft aren't earning you money. Review and send them.",
-          impact: `$${draftTotal.toLocaleString('en-AU', {minimumFractionDigits: 0})} waiting to be sent`,
+          impact: `$${draftTotal.toLocaleString('en-AU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} waiting to be sent`,
           cta: "Review Drafts",
           ctaUrl: "/documents?tab=invoices&filter=draft",
-          metric: `$${draftTotal.toLocaleString('en-AU', {minimumFractionDigits: 0})}`,
+          metric: `$${draftTotal.toLocaleString('en-AU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
           category: "revenue",
         });
       }

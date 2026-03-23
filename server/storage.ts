@@ -6428,6 +6428,10 @@ Thank you for your prompt attention to this matter.`,
         deletedCounts.invoiceReminderLogs = reminderResult.length;
       }
       
+      // Delete receipts (before invoices due to foreign key)
+      const receiptsResult = await db.delete(receipts).where(eq(receipts.userId, userId)).returning();
+      deletedCounts.receipts = receiptsResult.length;
+      
       // Delete invoices
       const invoicesResult = await db.delete(invoices).where(eq(invoices.userId, userId)).returning();
       deletedCounts.invoices = invoicesResult.length;
@@ -6496,6 +6500,18 @@ Thank you for your prompt attention to this matter.`,
       const activityResult = await db.delete(activityLogs).where(eq(activityLogs.userId, userId)).returning();
       deletedCounts.activityLogs = activityResult.length;
       
+      // Delete team presence
+      try {
+        const presenceResult = await db.delete(teamPresence).where(eq(teamPresence.businessOwnerId, userId)).returning();
+        deletedCounts.teamPresence = presenceResult.length;
+      } catch (e: any) {
+        if (e?.message?.includes('relation') && e?.message?.includes('does not exist')) {
+          console.log('teamPresence table does not exist, skipping');
+        } else {
+          throw e;
+        }
+      }
+      
       // Delete team members where user is owner
       const teamResult = await db.delete(teamMembers).where(eq(teamMembers.ownerId, userId)).returning();
       deletedCounts.teamMembers = teamResult.length;
@@ -6503,6 +6519,14 @@ Thank you for your prompt attention to this matter.`,
       // Delete staff schedules
       const schedResult = await db.delete(staffSchedules).where(eq(staffSchedules.userId, userId)).returning();
       deletedCounts.staffSchedules = schedResult.length;
+      
+      // Delete SMS messages first (foreign key to conversations)
+      const userSmsConvs = await db.select({ id: smsConversations.id }).from(smsConversations).where(eq(smsConversations.businessOwnerId, userId));
+      const smsConvIds = userSmsConvs.map(c => c.id);
+      if (smsConvIds.length > 0) {
+        const smsMsgResult = await db.delete(smsMessages).where(inArray(smsMessages.conversationId, smsConvIds)).returning();
+        deletedCounts.smsMessages = smsMsgResult.length;
+      }
       
       // Delete SMS conversations
       const smsConvResult = await db.delete(smsConversations).where(eq(smsConversations.businessOwnerId, userId)).returning();

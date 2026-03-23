@@ -5448,6 +5448,28 @@ export default function JobDetailScreen() {
         </View>
       )}
 
+      {/* Site Update Quick Action - visible during in_progress - positioned prominently */}
+      {job.status === 'in_progress' && (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={[styles.card, { borderColor: colors.primary + '40' }]}
+          onPress={() => {
+            setSiteUpdateNote('');
+            setSiteUpdatePhotoUri(null);
+            setShowSiteUpdateModal(true);
+          }}
+        >
+          <View style={[styles.cardIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.15) }]}>
+            <Feather name="send" size={iconSizes.xl} color={colors.primary} />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardLabel}>Quick Action</Text>
+            <Text style={[styles.cardValue, { color: colors.primary, fontWeight: '600' }]}>Post Site Update</Text>
+          </View>
+          <Feather name="chevron-right" size={iconSizes.lg} color={colors.primary} style={styles.cardActionIcon} />
+        </TouchableOpacity>
+      )}
+
       {/* Quick Geofence Status - visible on overview for easy access */}
       {job.latitude && job.longitude && ['scheduled', 'in_progress', 'on_my_way'].includes(job.status) && (
         <TouchableOpacity 
@@ -5968,28 +5990,6 @@ export default function JobDetailScreen() {
           </Animated.View>
         );
       })()}
-
-      {/* Site Update Quick Action - visible during in_progress */}
-      {job.status === 'in_progress' && (
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={[styles.card, { borderColor: colors.primary + '40' }]}
-          onPress={() => {
-            setSiteUpdateNote('');
-            setSiteUpdatePhotoUri(null);
-            setShowSiteUpdateModal(true);
-          }}
-        >
-          <View style={[styles.cardIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.15) }]}>
-            <Feather name="send" size={iconSizes.xl} color={colors.primary} />
-          </View>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Quick Action</Text>
-            <Text style={[styles.cardValue, { color: colors.primary, fontWeight: '600' }]}>Post Site Update</Text>
-          </View>
-          <Feather name="chevron-right" size={iconSizes.lg} color={colors.primary} style={styles.cardActionIcon} />
-        </TouchableOpacity>
-      )}
 
       {/* Linked Documents Card */}
       <LinkedDocumentsCard
@@ -7458,6 +7458,24 @@ export default function JobDetailScreen() {
                     </View>
                   )}
 
+                  {swms.signatures && swms.signatures.length > 0 && (
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: spacing.xs,
+                      backgroundColor: `${colors.success}15`,
+                      paddingVertical: spacing.sm,
+                      paddingHorizontal: spacing.md,
+                      borderRadius: radius.md,
+                      marginBottom: spacing.sm,
+                    }}>
+                      <Feather name="check-circle" size={14} color={colors.success} />
+                      <Text style={{ fontSize: 13, color: colors.success, fontWeight: '600' }}>
+                        Signed by {swms.signatures.length} worker{swms.signatures.length !== 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                  )}
+
                   <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                     <TouchableOpacity
                       style={{
@@ -7465,9 +7483,11 @@ export default function JobDetailScreen() {
                         flexDirection: 'row',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        backgroundColor: colors.primary,
+                        backgroundColor: swms.signatures && swms.signatures.length > 0 ? colors.muted : colors.primary,
                         paddingVertical: spacing.md,
                         borderRadius: radius.lg,
+                        borderWidth: swms.signatures && swms.signatures.length > 0 ? 1 : 0,
+                        borderColor: colors.border,
                         gap: spacing.xs,
                         minHeight: 44,
                       }}
@@ -7478,8 +7498,10 @@ export default function JobDetailScreen() {
                       }}
                       activeOpacity={0.7}
                     >
-                      <Feather name="edit-3" size={16} color={colors.primaryForeground} />
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>Sign</Text>
+                      <Feather name="edit-3" size={16} color={swms.signatures && swms.signatures.length > 0 ? colors.foreground : colors.primaryForeground} />
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: swms.signatures && swms.signatures.length > 0 ? colors.foreground : colors.primaryForeground }}>
+                        {swms.signatures && swms.signatures.length > 0 ? 'Add Signature' : 'Sign'}
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={{

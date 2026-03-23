@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Linking,
   Alert,
+  Modal,
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -162,6 +163,9 @@ export default function PaymentHubScreen() {
   const [toneSelector, setToneSelector] = useState<string | null>(null);
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [previewModal, setPreviewModal] = useState<{ visible: boolean; invoiceId: string; tone: string; clientName: string; invoiceNumber: string; amount: number; preview: string; loading: boolean }>({
+    visible: false, invoiceId: '', tone: '', clientName: '', invoiceNumber: '', amount: 0, preview: '', loading: false,
+  });
 
   const clientMap = useMemo(() => {
     return new Map(clients.map(c => [c.id, c]));
@@ -206,6 +210,43 @@ export default function PaymentHubScreen() {
       setChaserLoading(false);
     }
   }, []);
+
+  const generatePreviewMessage = (tone: string, clientName: string, invoiceNumber: string, amount: number) => {
+    const formattedAmount = `$${amount.toFixed(2)}`;
+    const firstName = clientName.split(' ')[0];
+    if (tone === 'friendly') {
+      return `Hi ${firstName},\n\nJust a friendly reminder that invoice ${invoiceNumber} for ${formattedAmount} is still outstanding. I understand things can get busy — if you've already taken care of it, please disregard this message.\n\nHappy to answer any questions you might have.\n\nCheers!`;
+    } else if (tone === 'professional') {
+      return `Dear ${firstName},\n\nThis is a reminder regarding invoice ${invoiceNumber} for ${formattedAmount} which remains unpaid. We would appreciate your prompt attention to this matter.\n\nPlease don't hesitate to reach out if you have any queries regarding this invoice.\n\nKind regards`;
+    } else {
+      return `Dear ${firstName},\n\nThis is a final notice regarding the overdue invoice ${invoiceNumber} for ${formattedAmount}. Despite previous reminders, this amount remains outstanding.\n\nImmediate payment is required to avoid further action. Please settle this invoice within 7 days.\n\nRegards`;
+    }
+  };
+
+  const handlePreviewReminder = useCallback((invoiceId: string, tone: string, clientName: string, invoiceNumber: string, amount: number) => {
+    const preview = generatePreviewMessage(tone, clientName, invoiceNumber, amount);
+    setPreviewModal({ visible: true, invoiceId, tone, clientName, invoiceNumber, amount, preview, loading: false });
+  }, []);
+
+  const handleConfirmSendReminder = useCallback(async () => {
+    const { invoiceId, tone } = previewModal;
+    setPreviewModal(prev => ({ ...prev, loading: true }));
+    try {
+      const response = await api.post(`/api/invoices/${invoiceId}/reminder`, { tone });
+      if (response.error) {
+        Alert.alert('Failed to Send', response.error);
+      } else {
+        Alert.alert('Reminder Sent', `${tone.charAt(0).toUpperCase() + tone.slice(1)} reminder sent successfully`);
+        setToneSelector(null);
+        fetchChaserData();
+      }
+    } catch (error: any) {
+      Alert.alert('Failed to Send', error?.message || 'Could not send reminder');
+    } finally {
+      setPreviewModal(prev => ({ ...prev, visible: false, loading: false }));
+      setSendingReminder(null);
+    }
+  }, [previewModal, fetchChaserData]);
 
   const handleSendReminder = useCallback(async (invoiceId: string, tone: string) => {
     setSendingReminder(invoiceId);
@@ -1132,7 +1173,7 @@ export default function PaymentHubScreen() {
                                 ? { backgroundColor: colors.primary, borderColor: colors.primary }
                                 : { backgroundColor: colors.card, borderColor: colors.border },
                             ]}
-                            onPress={() => handleSendReminder(item.invoiceId, tone)}
+                            onPress={() => handlePreviewReminder(item.invoiceId, tone, item.clientName, item.invoiceNumber, item.outstanding)}
                             disabled={isSending}
                             activeOpacity={0.7}
                           >
@@ -1335,6 +1376,68 @@ export default function PaymentHubScreen() {
           {activeTab === 'payments' && renderPayments()}
         </View>
       </ScrollView>
+
+      <Modal
+        visible={previewModal.visible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPreviewModal(prev => ({ ...prev, visible: false }))}
+      >
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius['2xl'], borderTopRightRadius: radius['2xl'], maxHeight: '80%' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <View>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: colors.foreground }}>Preview Reminder</Text>
+                <Text style={{ fontSize: 13, color: colors.mutedForeground, marginTop: 2 }}>
+                  {previewModal.tone.charAt(0).toUpperCase() + previewModal.tone.slice(1)} tone to {previewModal.clientName}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setPreviewModal(prev => ({ ...prev, visible: false }))} style={{ padding: spacing.xs }}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ padding: spacing.lg }} showsVerticalScrollIndicator={false}>
+              <View style={{ backgroundColor: colors.background, borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, borderColor: colors.border }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+                  <Feather name="mail" size={16} color={colors.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Email to {previewModal.clientName}</Text>
+                </View>
+                <View style={{ backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.mutedForeground, marginBottom: spacing.xs }}>Subject: Payment Reminder — Invoice {previewModal.invoiceNumber}</Text>
+                  <View style={{ height: 1, backgroundColor: colors.border, marginBottom: spacing.sm }} />
+                  <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 22 }}>{previewModal.preview}</Text>
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={{ padding: spacing.lg, paddingBottom: spacing['2xl'], gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
+              <TouchableOpacity
+                style={{ backgroundColor: colors.primary, paddingVertical: spacing.md, borderRadius: radius.lg, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, opacity: previewModal.loading ? 0.6 : 1 }}
+                onPress={handleConfirmSendReminder}
+                disabled={previewModal.loading}
+                activeOpacity={0.8}
+              >
+                {previewModal.loading ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <>
+                    <Feather name="send" size={16} color={colors.primaryForeground} />
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primaryForeground }}>Send Reminder</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ paddingVertical: spacing.sm, alignItems: 'center' }}
+                onPress={() => setPreviewModal(prev => ({ ...prev, visible: false }))}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
