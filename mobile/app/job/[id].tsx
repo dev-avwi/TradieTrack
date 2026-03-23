@@ -6158,6 +6158,64 @@ export default function JobDetailScreen() {
         </TouchableOpacity>
       )}
 
+      {/* Client Portal & Proof Pack — Featured */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              backgroundColor: colors.primary,
+              borderRadius: 16,
+              padding: spacing.md,
+              alignItems: 'center',
+              gap: spacing.xs,
+            }}
+            onPress={() => setShowProofPackModal(true)}
+            activeOpacity={0.7}
+          >
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Feather name="file-text" size={20} color="#FFFFFF" />
+            </View>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' }}>Proof Pack</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>Generate report</Text>
+          </TouchableOpacity>
+          {!!client && (
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                backgroundColor: colors.invoiced,
+                borderRadius: 16,
+                padding: spacing.md,
+                alignItems: 'center',
+                gap: spacing.xs,
+              }}
+              onPress={() => setActiveTab('manage')}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Feather name="globe" size={20} color="#FFFFFF" />
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' }}>Client Portal</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>{portalEnabled ? 'Enabled' : 'Share tracking'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       {/* Quick Access to More Tab */}
       {(isOwnerOrManager || isSoloOwner) && (
         <View style={styles.costingCard}>
@@ -6169,8 +6227,6 @@ export default function JobDetailScreen() {
           </View>
           <View style={{ gap: 1, marginTop: spacing.xs }}>
             {[
-              { icon: 'file-text' as const, label: 'Proof Pack', subtitle: 'Generate client report', color: colors.primary, show: true, action: () => setShowProofPackModal(true) },
-              { icon: 'globe' as const, label: 'Client Portal', subtitle: portalEnabled ? 'Enabled' : 'Share live tracking', color: colors.invoiced, show: !!client, action: () => setActiveTab('manage') },
               { icon: 'dollar-sign' as const, label: 'Profitability & Costing', subtitle: profitabilityData ? `${profitabilityData.profit.margin.toFixed(0)}% margin` : 'View financials', color: colors.success, show: true, action: () => setActiveTab('manage') },
               { icon: 'credit-card' as const, label: 'Expenses', subtitle: jobExpenses.length > 0 ? `${jobExpenses.length} expense${jobExpenses.length !== 1 ? 's' : ''}` : 'Track costs', color: colors.destructive, show: true, action: () => setActiveTab('manage') },
               { icon: 'git-branch' as const, label: 'Variations', subtitle: 'Change orders', color: colors.warning, show: true, action: () => setActiveTab('manage') },

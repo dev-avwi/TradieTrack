@@ -458,16 +458,20 @@ export default function ExpensesScreen() {
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
               onPress={() => {
-                Alert.alert('Scan Receipt', 'Choose source', [
-                  { text: 'Camera', onPress: () => handleScanReceipt('camera') },
-                  { text: 'Photo Library', onPress: () => handleScanReceipt('library') },
-                  { text: 'Cancel', style: 'cancel' },
-                ]);
+                Alert.alert(
+                  'AI Receipt Scanner',
+                  'Take a photo of a receipt or invoice and AI will automatically extract the vendor, amount, GST, date and line items.',
+                  [
+                    { text: 'Take Photo', onPress: () => handleScanReceipt('camera') },
+                    { text: 'Choose from Library', onPress: () => handleScanReceipt('library') },
+                    { text: 'Cancel', style: 'cancel' },
+                  ]
+                );
               }}
               activeOpacity={0.7}
             >
-              <Feather name="camera" size={16} color={colors.foreground} />
-              <Text style={[styles.actionButtonText, { color: colors.foreground }]}>Scan Receipt</Text>
+              <Feather name="zap" size={16} color={colors.foreground} />
+              <Text style={[styles.actionButtonText, { color: colors.foreground }]}>AI Scan Receipt</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: colors.primary }]}

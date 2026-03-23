@@ -399,9 +399,16 @@ async function logActivity(
   description: string | null,
   entityType: 'job' | 'quote' | 'invoice' | null,
   entityId: string | null,
-  metadata?: Record<string, any>
+  metadata?: Record<string, any>,
+  req?: Express.Request
 ): Promise<void> {
   try {
+    const enrichedMetadata = { ...(metadata || {}) };
+    if (req && (req as any).headers?.['x-mobile-app'] === 'true') {
+      enrichedMetadata.source = 'mobile';
+    } else if (req) {
+      enrichedMetadata.source = 'web';
+    }
     await storage.createActivityLog({
       userId,
       type,
@@ -409,7 +416,7 @@ async function logActivity(
       description,
       entityType,
       entityId,
-      metadata: metadata || {},
+      metadata: enrichedMetadata,
     });
   } catch (error) {
     console.error('Failed to log activity:', error);

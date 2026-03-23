@@ -1289,8 +1289,11 @@ export default function ChatHubScreen() {
           onPress={() => {
             Alert.alert(
               'SMS Number',
-              `Your SMS number is ${twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'connected'}.\n\nTo change your SMS number, go to Settings > Integrations on the web dashboard.`,
-              [{ text: 'OK' }]
+              `Your SMS number is ${twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'connected'}.\n\nYou can manage your SMS number, buy additional numbers, or change settings from the Integrations page.`,
+              [
+                { text: 'Manage Number', onPress: () => router.push('/more/settings' as any) },
+                { text: 'OK', style: 'cancel' },
+              ]
             );
           }}
           activeOpacity={0.8}
@@ -1299,9 +1302,9 @@ export default function ChatHubScreen() {
             <Feather name="check" size={16} color="#FFFFFF" />
           </View>
           <Text style={styles.twilioConnectedText}>
-            SMS connected{twilioStatus.phoneNumber ? `: ${formatPhoneDisplay(twilioStatus.phoneNumber)}` : ''}
+            SMS{twilioStatus.phoneNumber ? `: ${formatPhoneDisplay(twilioStatus.phoneNumber)}` : ' connected'}
           </Text>
-          <Feather name="info" size={16} color={colors.success} style={{ marginLeft: 'auto' }} />
+          <Feather name="settings" size={16} color={colors.success} style={{ marginLeft: 'auto' }} />
         </TouchableOpacity>
       );
     }
@@ -1369,15 +1372,9 @@ export default function ChatHubScreen() {
       
       <View style={styles.container}>
         <View style={styles.headerCard}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
-          >
-            <Feather name="chevron-left" size={24} color={colors.foreground} />
-          </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Chat Hub</Text>
-            <Text style={styles.headerSubtitle}>Messages, SMS & team chat for your jobs</Text>
+            <Text style={styles.headerSubtitle}>Messages, SMS & team chat</Text>
           </View>
         </View>
 

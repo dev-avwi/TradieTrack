@@ -36,6 +36,7 @@ interface CommunicationItem {
   entityNumber?: string;
   hasAttachment?: boolean;
   attachmentType?: string;
+  source?: 'mobile' | 'web';
 }
 
 interface ActivityLog {
@@ -502,6 +503,7 @@ export default function CommunicationsScreen() {
               entityNumber: metadata.quoteNumber || metadata.invoiceNumber || metadata.receiptNumber,
               hasAttachment,
               attachmentType,
+              source: metadata.source === 'mobile' ? 'mobile' : metadata.source === 'web' ? 'web' : undefined,
             });
           });
       }
@@ -636,11 +638,17 @@ export default function CommunicationsScreen() {
             <Text style={styles.itemBody} numberOfLines={2}>{item.body}</Text>
             
             <View style={styles.itemFooter}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Feather name="clock" size={12} color={colors.mutedForeground} />
                 <Text style={styles.itemTime as any}>
                   {formatDistanceToNow(item.timestamp, { addSuffix: true })}
                 </Text>
+                {item.source && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: item.source === 'mobile' ? `${colors.info}15` : `${colors.success}15`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                    <Feather name={item.source === 'mobile' ? 'smartphone' : 'monitor'} size={10} color={item.source === 'mobile' ? colors.info : colors.success} />
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: item.source === 'mobile' ? colors.info : colors.success }}>{item.source === 'mobile' ? 'Mobile' : 'Web'}</Text>
+                  </View>
+                )}
               </View>
               
               {item.entityType && item.entityId && (

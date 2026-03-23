@@ -466,6 +466,7 @@ export const handleQuoteSend = async (req: any, res: any, storage: any) => {
           total: updatedQuote.total,
           emailSubject: loggedSubject,
           emailBody: loggedBody,
+          source: req.headers['x-mobile-app'] === 'true' ? 'mobile' : 'web',
         }
       });
     } catch (activityError) {
@@ -836,6 +837,7 @@ export const handleInvoiceSend = async (req: any, res: any, storage: any) => {
           total: updatedInvoice.total,
           emailSubject: loggedSubject,
           emailBody: loggedBody,
+          source: req.headers['x-mobile-app'] === 'true' ? 'mobile' : 'web',
         }
       });
     } catch (activityError) {
@@ -954,7 +956,7 @@ export const handleInvoiceMarkPaid = async (req: any, res: any, storage: any) =>
         description: `${formattedTotal} from ${client.name}`,
         entityType: 'invoice',
         entityId: invoiceWithItems.id,
-        metadata: { invoiceNumber: invoiceWithItems.number, clientName: client.name, total: invoiceWithItems.total }
+        metadata: { invoiceNumber: invoiceWithItems.number, clientName: client.name, total: invoiceWithItems.total, source: req.headers['x-mobile-app'] === 'true' ? 'mobile' : 'web' }
       });
     } catch (activityError) {
       console.error('Failed to log invoice paid activity:', activityError);
@@ -1314,6 +1316,7 @@ export const handleQuoteEmailWithPDF = async (req: any, res: any, storage: any) 
             deliveryMethod,
             emailSubject: loggedSubject,
             emailBody: loggedBody,
+            source: req.headers['x-mobile-app'] === 'true' ? 'mobile' : 'web',
           }
         });
       } catch (activityError) {
@@ -1667,6 +1670,7 @@ export const handleInvoiceEmailWithPDF = async (req: any, res: any, storage: any
             deliveryMethod,
             emailSubject: loggedSubject,
             emailBody: loggedBody,
+            source: req.headers['x-mobile-app'] === 'true' ? 'mobile' : 'web',
           }
         });
       } catch (activityError) {
