@@ -5463,6 +5463,75 @@ export default function JobDetailScreen() {
         </View>
       )}
 
+      {/* Main Action Button - Prominent at top for quick access */}
+      <View style={styles.actionButtonContainer}>
+        {action ? (
+          job.status === 'scheduled' && job.clientId ? (
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.xs,
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: radius.lg,
+                  borderWidth: 2,
+                  borderColor: colors.info,
+                  backgroundColor: colors.card,
+                  opacity: isSendingOnMyWay ? 0.6 : 1,
+                  minHeight: 52,
+                }}
+                onPress={handleOnMyWay}
+                activeOpacity={0.8}
+                disabled={isSendingOnMyWay}
+                data-testid="button-on-my-way"
+              >
+                <Feather name="navigation" size={18} color={colors.info} />
+                <Text style={{ 
+                  color: colors.info, 
+                  fontWeight: '600', 
+                  fontSize: 14 
+                }}>
+                  On My Way
+                </Text>
+                {isSendingOnMyWay && (
+                  <ActivityIndicator size="small" color={colors.info} style={{ marginLeft: 4 }} />
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.mainActionButton, { backgroundColor: statusColor, flex: 1 }]}
+                onPress={handleStatusChange}
+                activeOpacity={0.8}
+                data-testid="button-main-action"
+              >
+                <View style={styles.mainActionButtonIcon}>
+                  <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
+                </View>
+                <Text style={styles.mainActionText}>{action.label}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.mainActionButton, { backgroundColor: statusColor }]}
+              onPress={handleStatusChange}
+              activeOpacity={0.8}
+              data-testid="button-main-action"
+            >
+              <View style={styles.mainActionButtonIcon}>
+                <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
+              </View>
+              <Text style={styles.mainActionText}>{action.label}</Text>
+            </TouchableOpacity>
+          )
+        ) : job.status === 'invoiced' && !invoice && (
+          <Text style={styles.invoicedMessage}>This job has been invoiced</Text>
+        )}
+      </View>
+
       {/* Safety & Compliance Section - Prominent before work starts */}
       {(job.status === 'scheduled' || job.status === 'in_progress') && (availableForms.some(isSafetyForm) || swmsDocuments.length > 0 || hasNoSafetyDocs) && (
         <View style={[
@@ -6268,76 +6337,6 @@ export default function JobDetailScreen() {
       )}
 
 
-      {/* Main Action Button */}
-      <View style={styles.actionButtonContainer}>
-        {action ? (
-          job.status === 'scheduled' && job.clientId ? (
-            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              {/* On My Way Button */}
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: spacing.xs,
-                  paddingVertical: spacing.md,
-                  paddingHorizontal: spacing.md,
-                  borderRadius: radius.lg,
-                  borderWidth: 2,
-                  borderColor: colors.info,
-                  backgroundColor: colors.card,
-                  opacity: isSendingOnMyWay ? 0.6 : 1,
-                  minHeight: 52,
-                }}
-                onPress={handleOnMyWay}
-                activeOpacity={0.8}
-                disabled={isSendingOnMyWay}
-                data-testid="button-on-my-way"
-              >
-                <Feather name="navigation" size={18} color={colors.info} />
-                <Text style={{ 
-                  color: colors.info, 
-                  fontWeight: '600', 
-                  fontSize: 14 
-                }}>
-                  On My Way
-                </Text>
-                {isSendingOnMyWay && (
-                  <ActivityIndicator size="small" color={colors.info} style={{ marginLeft: 4 }} />
-                )}
-              </TouchableOpacity>
-              
-              {/* Main Action Button */}
-              <TouchableOpacity
-                style={[styles.mainActionButton, { backgroundColor: statusColor, flex: 1 }]}
-                onPress={handleStatusChange}
-                activeOpacity={0.8}
-                data-testid="button-main-action"
-              >
-                <View style={styles.mainActionButtonIcon}>
-                  <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
-                </View>
-                <Text style={styles.mainActionText}>{action.label}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={[styles.mainActionButton, { backgroundColor: statusColor }]}
-              onPress={handleStatusChange}
-              activeOpacity={0.8}
-              data-testid="button-main-action"
-            >
-              <View style={styles.mainActionButtonIcon}>
-                <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
-              </View>
-              <Text style={styles.mainActionText}>{action.label}</Text>
-            </TouchableOpacity>
-          )
-        ) : job.status === 'invoiced' && !invoice && (
-          <Text style={styles.invoicedMessage}>This job has been invoiced</Text>
-        )}
-      </View>
     </>
   );
 
