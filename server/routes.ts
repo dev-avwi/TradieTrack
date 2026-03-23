@@ -22985,6 +22985,7 @@ Be specific about materials, colors, and features that would be included.`
       const invoicedJobIds = new Set(invoices.filter(inv => inv.jobId).map(inv => inv.jobId));
       const doneNotInvoiced = jobs.filter(j => j.status === 'done' && !invoicedJobIds.has(j.id));
       if (doneNotInvoiced.length > 0) {
+        const uninvoicedJobIds = doneNotInvoiced.map(j => j.id).join(',');
         actions.push({
           id: "revenue-leak-uninvoiced",
           priority: "fix_now",
@@ -22992,7 +22993,7 @@ Be specific about materials, colors, and features that would be included.`
           description: "Completed work without invoices means money left on the table.",
           impact: "Revenue at risk",
           cta: "Create Invoices",
-          ctaUrl: "/documents?tab=invoices&action=create",
+          ctaUrl: `/documents?tab=invoices&action=batch_invoice&jobIds=${uninvoicedJobIds}`,
           metric: `${doneNotInvoiced.length} jobs`,
           category: "revenue",
         });

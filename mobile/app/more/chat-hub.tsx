@@ -107,6 +107,18 @@ interface TeamMember {
   inviteStatus?: string;
 }
 
+const formatPhoneDisplay = (phone: string): string => {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('61') && digits.length === 11) {
+    const local = '0' + digits.slice(2);
+    return `${local.slice(0,4)} ${local.slice(4,7)} ${local.slice(7)}`;
+  }
+  if (digits.startsWith('0') && digits.length === 10) {
+    return `${digits.slice(0,4)} ${digits.slice(4,7)} ${digits.slice(7)}`;
+  }
+  return phone;
+};
+
 interface ConversationItem {
   id: string;
   type: 'job' | 'team' | 'client' | 'sms' | 'direct' | 'member';
@@ -804,7 +816,7 @@ export default function ChatHubScreen() {
         return !hasJob;
       });
       unassignedSms.forEach(sms => {
-        const displayName = sms.clientName || sms.clientPhone;
+        const displayName = sms.clientName || formatPhoneDisplay(sms.clientPhone);
         const lastMsg = sms.messages && sms.messages.length > 0
           ? sms.messages[sms.messages.length - 1]
           : null;
@@ -1277,7 +1289,7 @@ export default function ChatHubScreen() {
           onPress={() => {
             Alert.alert(
               'SMS Number',
-              `Your SMS number is ${twilioStatus.phoneNumber || 'connected'}.\n\nTo change your SMS number, go to Settings > Integrations on the web dashboard.`,
+              `Your SMS number is ${twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'connected'}.\n\nTo change your SMS number, go to Settings > Integrations on the web dashboard.`,
               [{ text: 'OK' }]
             );
           }}
@@ -1287,7 +1299,7 @@ export default function ChatHubScreen() {
             <Feather name="check" size={16} color="#FFFFFF" />
           </View>
           <Text style={styles.twilioConnectedText}>
-            SMS connected{twilioStatus.phoneNumber ? `: ${twilioStatus.phoneNumber}` : ''}
+            SMS connected{twilioStatus.phoneNumber ? `: ${formatPhoneDisplay(twilioStatus.phoneNumber)}` : ''}
           </Text>
           <Feather name="info" size={16} color={colors.success} style={{ marginLeft: 'auto' }} />
         </TouchableOpacity>

@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Linking, Modal, Alert } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, colorWithOpacity } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, typographySizes, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 
 interface ActionItem {
@@ -310,6 +310,98 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...typography.button,
     color: colors.primaryForeground,
   },
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    paddingTop: spacing.xl,
+  },
+  modalTitle: {
+    fontSize: typographySizes.lg,
+    fontWeight: '700',
+  },
+  modalSelectAll: {
+    fontSize: typographySizes.sm,
+    fontWeight: '600',
+  },
+  batchSubtitle: {
+    fontSize: typographySizes.sm,
+    lineHeight: 20,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  batchJobList: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+  },
+  batchJobItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  batchCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.sm,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  batchJobInfo: {
+    flex: 1,
+  },
+  batchJobTitle: {
+    fontSize: typographySizes.md,
+    fontWeight: '600',
+  },
+  batchJobClient: {
+    fontSize: typographySizes.sm,
+    marginTop: 2,
+  },
+  batchStatusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+  },
+  batchStatusText: {
+    fontSize: typographySizes.xs,
+    fontWeight: '600',
+  },
+  batchFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    paddingBottom: spacing.xl,
+  },
+  batchFooterText: {
+    fontSize: typographySizes.sm,
+  },
+  batchCreateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+  },
+  batchCreateText: {
+    fontSize: typographySizes.md,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
 });
 
 export default function ActionCenterScreen() {
@@ -323,6 +415,10 @@ export default function ActionCenterScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchJobs, setBatchJobs] = useState<Array<{id: string; title: string; clientName?: string; selected: boolean}>>([]);
+  const [isBatchCreating, setIsBatchCreating] = useState(false);
+  const [batchJobIds, setBatchJobIds] = useState<string[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -350,6 +446,85 @@ export default function ActionCenterScreen() {
     fetchData();
   }, [fetchData]);
 
+  const openBatchInvoiceModal = useCallback(async (jobIdsCsv: string) => {
+    const ids = jobIdsCsv.split(',').filter(Boolean);
+    if (ids.length === 0) {
+      router.push('/more/invoices' as any);
+      return;
+    }
+    setBatchJobIds(ids);
+    setBatchJobs(ids.map(id => {
+      const actionTitle = data?.actions.find(a => a.id === 'revenue-leak-uninvoiced')?.title || '';
+      return { id, title: '', clientName: '', selected: true };
+    }));
+
+    try {
+      const response = await api.get<any[]>('/api/jobs');
+      if (response.data) {
+        const jobMap = new Map(response.data.map((j: any) => [j.id, j]));
+        const clientIds = [...new Set(response.data.filter((j: any) => j.clientId).map((j: any) => j.clientId))];
+        let clientMap = new Map<string, string>();
+        try {
+          const clientResponse = await api.get<any[]>('/api/clients');
+          if (clientResponse.data) {
+            clientMap = new Map(clientResponse.data.map((c: any) => [c.id, c.name || c.firstName || 'Client']));
+          }
+        } catch {}
+        
+        setBatchJobs(ids.map(id => {
+          const job = jobMap.get(id);
+          return {
+            id,
+            title: job?.title || `Job #${id.slice(0, 6)}`,
+            clientName: job?.clientId ? (clientMap.get(job.clientId) || '') : '',
+            selected: true,
+          };
+        }));
+      }
+    } catch {}
+
+    setShowBatchModal(true);
+  }, [data]);
+
+  const toggleBatchJob = (jobId: string) => {
+    setBatchJobs(prev => prev.map(j => j.id === jobId ? { ...j, selected: !j.selected } : j));
+  };
+
+  const selectAllBatchJobs = () => {
+    const allSelected = batchJobs.every(j => j.selected);
+    setBatchJobs(prev => prev.map(j => ({ ...j, selected: !allSelected })));
+  };
+
+  const handleBatchCreate = async () => {
+    const selectedIds = batchJobs.filter(j => j.selected).map(j => j.id);
+    if (selectedIds.length === 0) {
+      Alert.alert('No Jobs Selected', 'Please select at least one job to create invoices for.');
+      return;
+    }
+    setIsBatchCreating(true);
+    try {
+      const response = await api.post<{ results: any[]; summary: { success: number; failed: number; totalAmount: string } }>('/api/invoices/batch', { jobIds: selectedIds });
+      if (response.error) {
+        Alert.alert('Error', response.error);
+      } else if (response.data) {
+        const { summary } = response.data;
+        setShowBatchModal(false);
+        Alert.alert(
+          'Invoices Created',
+          `${summary.success} invoice${summary.success !== 1 ? 's' : ''} created${summary.failed > 0 ? `, ${summary.failed} failed` : ''}.\n\nTotal: $${parseFloat(summary.totalAmount).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          [
+            { text: 'View Invoices', onPress: () => router.push('/more/invoices' as any) },
+            { text: 'OK', onPress: () => fetchData() },
+          ]
+        );
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to create invoices. Please try again.');
+    } finally {
+      setIsBatchCreating(false);
+    }
+  };
+
   const handleCTA = (url: string) => {
     if (url.startsWith('http')) {
       Linking.openURL(url);
@@ -360,9 +535,13 @@ export default function ActionCenterScreen() {
     const [basePath, queryString] = url.split('?');
     const params = new URLSearchParams(queryString || '');
     const tab = params.get('tab');
+    const action = params.get('action');
 
     if (basePath === '/documents' || basePath.startsWith('/documents')) {
-      if (tab === 'invoices') {
+      if (action === 'batch_invoice') {
+        const jobIds = params.get('jobIds') || '';
+        openBatchInvoiceModal(jobIds);
+      } else if (tab === 'invoices') {
         router.push('/more/invoices' as any);
       } else if (tab === 'quotes') {
         router.push('/more/quotes' as any);
@@ -527,6 +706,8 @@ export default function ActionCenterScreen() {
 
   const hasActions = data && data.summary && data.summary.totalCount > 0;
 
+  const selectedCount = batchJobs.filter(j => j.selected).length;
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -566,6 +747,82 @@ export default function ActionCenterScreen() {
           </ScrollView>
         )}
       </View>
+
+      <Modal
+        visible={showBatchModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowBatchModal(false)}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <TouchableOpacity onPress={() => setShowBatchModal(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Feather name="x" size={22} color={colors.foreground} />
+            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Create Invoices</Text>
+            <TouchableOpacity onPress={selectAllBatchJobs} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Text style={[styles.modalSelectAll, { color: colors.primary }]}>
+                {batchJobs.every(j => j.selected) ? 'Deselect All' : 'Select All'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={[styles.batchSubtitle, { color: colors.mutedForeground }]}>
+            Select completed jobs to generate draft invoices. Invoices will be created from quote line items or time entries.
+          </Text>
+
+          <ScrollView style={styles.batchJobList} showsVerticalScrollIndicator={false}>
+            {batchJobs.map(job => (
+              <TouchableOpacity
+                key={job.id}
+                style={[styles.batchJobItem, { borderColor: job.selected ? colors.primary : colors.border, backgroundColor: job.selected ? colorWithOpacity(colors.primary, 0.04) : 'transparent' }]}
+                onPress={() => toggleBatchJob(job.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.batchCheckbox, { borderColor: job.selected ? colors.primary : colors.border, backgroundColor: job.selected ? colors.primary : 'transparent' }]}>
+                  {job.selected && <Feather name="check" size={14} color="#FFFFFF" />}
+                </View>
+                <View style={styles.batchJobInfo}>
+                  <Text style={[styles.batchJobTitle, { color: colors.foreground }]} numberOfLines={1}>
+                    {job.title || `Job #${job.id.slice(0, 6)}`}
+                  </Text>
+                  {job.clientName ? (
+                    <Text style={[styles.batchJobClient, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      {job.clientName}
+                    </Text>
+                  ) : null}
+                </View>
+                <View style={[styles.batchStatusBadge, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
+                  <Text style={[styles.batchStatusText, { color: colors.success }]}>Done</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <View style={[styles.batchFooter, { borderTopColor: colors.border }]}>
+            <Text style={[styles.batchFooterText, { color: colors.mutedForeground }]}>
+              {selectedCount} of {batchJobs.length} job{batchJobs.length !== 1 ? 's' : ''} selected
+            </Text>
+            <TouchableOpacity
+              style={[styles.batchCreateButton, { backgroundColor: selectedCount > 0 ? colors.primary : colors.muted, opacity: isBatchCreating ? 0.7 : 1 }]}
+              onPress={handleBatchCreate}
+              disabled={isBatchCreating || selectedCount === 0}
+              activeOpacity={0.7}
+            >
+              {isBatchCreating ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Feather name="file-text" size={16} color="#FFFFFF" />
+                  <Text style={styles.batchCreateText}>
+                    Create {selectedCount} Invoice{selectedCount !== 1 ? 's' : ''}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
