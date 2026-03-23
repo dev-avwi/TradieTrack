@@ -126,6 +126,9 @@ export const WORKER_PERMISSIONS = {
   // Communication
   TEAM_CHAT: 'team_chat',                    // Access team chat
   CLIENT_SMS: 'client_sms',                  // Send SMS to clients
+  
+  // AI Receptionist
+  MANAGE_AI_RECEPTIONIST: 'manage_ai_receptionist',  // Manage AI receptionist settings
 } as const;
 
 export type WorkerPermission = typeof WORKER_PERMISSIONS[keyof typeof WORKER_PERMISSIONS];
@@ -276,6 +279,7 @@ export const PERMISSION_LABELS: Record<WorkerPermission, string> = {
   [WORKER_PERMISSIONS.GPS_CHECKIN]: 'GPS Check-in',
   [WORKER_PERMISSIONS.TEAM_CHAT]: 'Team Chat',
   [WORKER_PERMISSIONS.CLIENT_SMS]: 'Send SMS to Clients',
+  [WORKER_PERMISSIONS.MANAGE_AI_RECEPTIONIST]: 'Manage AI Receptionist',
 };
 
 // User storage table - Updated for Replit Auth compatibility
