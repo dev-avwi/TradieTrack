@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import { storage } from './storage';
 import { loginSchema, insertUserSchema, SafeUser, User } from '@shared/schema';
 import crypto from 'crypto';
+import { sendWelcomeEmail } from './emailService';
 
 const SALT_ROUNDS = 12;
 const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
