@@ -588,15 +588,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    // Priority 3: Fall back to business settings brand color
-    const brandColor = brandColorFromSettings;
+    // Priority 3: Fall back to business settings brand color (or default blue)
+    const brandColor = brandColorFromSettings || DEFAULT_BRAND_COLOR;
     if (brandColor && /^#[0-9A-Fa-f]{6}$/i.test(brandColor)) {
-      const isDefaultColor = brandColor.toUpperCase() === DEFAULT_BRAND_COLOR.toUpperCase();
-      
-      if (!isDefaultColor) {
-        const brandPalette = generateBrandPalette(brandColor, isDark);
-        return { ...baseColors, ...brandPalette };
-      }
+      const brandPalette = generateBrandPalette(brandColor, isDark);
+      return { ...baseColors, ...brandPalette };
     }
     
     return baseColors;
@@ -606,7 +602,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   
   // Effective brand color - use active palette primary if customized, otherwise business settings
   const activePaletteForBrand = getActivePalette();
-  const brandColor = activePaletteForBrand?.primary || customPalette?.primary || brandColorFromSettings;
+  const brandColor = activePaletteForBrand?.primary || customPalette?.primary || brandColorFromSettings || DEFAULT_BRAND_COLOR;
 
   return (
     <ThemeContext.Provider value={{ themeMode, isDark, colors, shadows, brandColor, setThemeMode }}>
@@ -618,12 +614,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 export function useTheme(): ThemeContextType {
   const context = useContext(ThemeContext);
   if (!context) {
+    const defaultBrandPalette = generateBrandPalette(DEFAULT_BRAND_COLOR, false);
     return {
       themeMode: 'light',
       isDark: false,
-      colors: lightColors,
+      colors: { ...lightColors, ...defaultBrandPalette },
       shadows: getShadows(false),
-      brandColor: null,
+      brandColor: DEFAULT_BRAND_COLOR,
       setThemeMode: () => {},
     };
   }
