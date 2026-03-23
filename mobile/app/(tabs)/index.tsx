@@ -1702,17 +1702,20 @@ function EmptyTodayState({ onCreateJob }: { onCreateJob: () => void }) {
   
   return (
     <View style={styles.emptyState}>
-      <View style={styles.emptyStateIcon}>
-        <Feather name="briefcase" size={sizes.emptyIcon} color={colors.mutedForeground} />
+      <View style={[styles.emptyStateIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
+        <Feather name="calendar" size={sizes.emptyIcon} color={colors.primary} />
       </View>
-      <Text style={styles.emptyStateTitle}>No jobs scheduled for today</Text>
+      <Text style={[styles.emptyStateTitle, { fontWeight: '600' }]}>Nothing scheduled today</Text>
+      <Text style={[styles.emptyStateTitle, { fontSize: 13, marginBottom: 0, marginTop: -spacing.sm }]}>
+        Create a job or check your upcoming work
+      </Text>
       <TouchableOpacity 
         style={styles.scheduleJobButton}
         onPress={onCreateJob}
         activeOpacity={0.8}
       >
         <Feather name="plus" size={iconSizes.md} color={colors.white} />
-        <Text style={styles.scheduleJobButtonText}>Schedule a Job</Text>
+        <Text style={styles.scheduleJobButtonText}>Create Job</Text>
       </TouchableOpacity>
     </View>
   );
@@ -2526,9 +2529,10 @@ export default function DashboardScreen() {
               </View>
             </View>
             <Text style={styles.headerSubtitle}>
+              {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
               {todaysJobs.length > 0 
-                ? `You have ${todaysJobs.length} job${todaysJobs.length > 1 ? 's' : ''} scheduled today`
-                : businessSettings?.businessName || "Welcome back"}
+                ? ` \u00b7 ${todaysJobs.length} job${todaysJobs.length > 1 ? 's' : ''} today`
+                : ''}
             </Text>
           </View>
           <View style={styles.headerRight}>
@@ -2550,10 +2554,66 @@ export default function DashboardScreen() {
       {/* Usage Limit Warning - Free Plan Users */}
       <UsageLimitBanner />
 
-      {/* Weather Widget */}
-      <View style={styles.section}>
-        <WeatherWidget />
-      </View>
+      {/* Getting Started Guide - Show for new owners who haven't set up their business yet */}
+      {!isStaffUser && !businessSettings?.businessName && (
+        <View style={styles.section}>
+          <View style={[styles.gettingStartedCard]}>
+            <View style={styles.gettingStartedHeader}>
+              <View style={[styles.gettingStartedIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
+                <Feather name="compass" size={22} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.gettingStartedTitle}>Get set up</Text>
+                <Text style={styles.gettingStartedSubtitle}>A few things to get you started</Text>
+              </View>
+            </View>
+            <View style={styles.gettingStartedSteps}>
+              <TouchableOpacity 
+                style={styles.gettingStartedStep}
+                onPress={() => router.push('/more/settings')}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.gettingStartedStepIcon, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
+                  <Feather name="briefcase" size={16} color={colors.success} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.gettingStartedStepTitle}>Set up your business</Text>
+                  <Text style={styles.gettingStartedStepDesc}>Name, ABN, logo & trade type</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.gettingStartedStep}
+                onPress={() => router.push('/more/create-job')}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.gettingStartedStepIcon, { backgroundColor: colorWithOpacity(colors.info, 0.12) }]}>
+                  <Feather name="plus-circle" size={16} color={colors.info} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.gettingStartedStepTitle}>Create your first job</Text>
+                  <Text style={styles.gettingStartedStepDesc}>Add a client and schedule work</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.gettingStartedStep, { borderBottomWidth: 0 }]}
+                onPress={() => router.push('/more/branding')}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.gettingStartedStepIcon, { backgroundColor: colorWithOpacity(colors.warning, 0.12) }]}>
+                  <Feather name="edit-3" size={16} color={colors.warning} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.gettingStartedStepTitle}>Customise your brand</Text>
+                  <Text style={styles.gettingStartedStepDesc}>Colours, templates & logo</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Time Tracking Widget - Staff Only */}
       {isStaffUser && (
@@ -2562,11 +2622,10 @@ export default function DashboardScreen() {
         </View>
       )}
 
-
-      {/* Quick Links - Different for staff vs owner */}
+      {/* Quick Stats - Different for staff vs owner */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>
-          {isStaffUser ? 'My Stats' : 'Quick Links'}
+          {isStaffUser ? 'My Stats' : 'Overview'}
         </Text>
         <View style={styles.kpiGrid}>
           <KPICard
@@ -2683,6 +2742,11 @@ export default function DashboardScreen() {
           </View>
         </View>
       )}
+
+      {/* Weather Widget - Compact, below stats */}
+      <View style={styles.section}>
+        <WeatherWidget />
+      </View>
 
       {/* Revenue Chart - Owner Only */}
       {isOwnerUser && (
@@ -3153,6 +3217,68 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     zIndex: 1000,
+  },
+
+  gettingStartedCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  gettingStartedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  gettingStartedIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gettingStartedTitle: {
+    ...typography.subtitle,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  gettingStartedSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  gettingStartedSteps: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  gettingStartedStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardBorder,
+  },
+  gettingStartedStepIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gettingStartedStepTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  gettingStartedStepDesc: {
+    ...typography.captionSmall,
+    color: colors.mutedForeground,
+    marginTop: 1,
   },
 
   header: {
