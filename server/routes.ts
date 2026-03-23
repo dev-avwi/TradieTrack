@@ -4211,6 +4211,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const requireProSubscription = (req: any, res: any, next: any) => {
+    const { IS_BETA } = require('./freemiumService');
+    if (IS_BETA) {
+      return next();
+    }
     const tier = req.user?.subscriptionTier;
     if (tier === 'pro' || tier === 'team' || tier === 'beta') {
       return next();
@@ -4225,6 +4229,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   };
+
+  app.patch("/api/auth/profile", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId || req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { firstName, lastName, phone, tradeType } = req.body;
+
+      if (!firstName?.trim() || !lastName?.trim()) {
+        return res.status(400).json({ error: "First name and last name are required" });
+      }
+
+      const updateData: any = {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      };
+      if (phone !== undefined) updateData.phone = phone.trim() || null;
+      if (tradeType !== undefined) updateData.tradeType = tradeType.trim() || null;
+
+      const updated = await storage.updateUser(userId, updateData);
+      if (!updated) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const safeUser = {
+        id: updated.id,
+        email: updated.email,
+        firstName: updated.firstName,
+        lastName: updated.lastName,
+        phone: (updated as any).phone || null,
+        tradeType: updated.tradeType,
+        profileImageUrl: updated.profileImageUrl,
+      };
+
+      res.json({ success: true, user: safeUser });
+    } catch (error) {
+      console.error("Profile update error:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
 
   // Change password endpoint
   app.post("/api/auth/change-password", requireAuth, async (req: any, res) => {
