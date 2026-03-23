@@ -111,7 +111,7 @@ export async function generateLabourSummary(
   
   for (const [workerId, entries] of byWorker) {
     const assignment = assignments.find(a => a.userId === workerId);
-    const teamMember = await storage.getTeamMemberByUserId(businessOwnerId, workerId);
+    const teamMember = await storage.getTeamMemberByOwnerAndMemberId(businessOwnerId, workerId);
     
     let effectiveRate: number;
     if (assignment?.hourlyRateOverride) {

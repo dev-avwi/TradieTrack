@@ -671,7 +671,7 @@ export interface IStorage {
   getJobAssignmentForUser(jobId: string, userId: string): Promise<JobAssignment | undefined>;
   createJobAssignment(assignment: InsertJobAssignment): Promise<JobAssignment>;
   updateJobAssignment(assignmentId: string, data: Partial<InsertJobAssignment & { lastSmsSentAt: Date; travelStartedAt: Date; arrivedAt: Date; etaMinutes: number; etaUpdatedAt: Date; assignmentStatus: string }>): Promise<JobAssignment | undefined>;
-  getTeamMemberByUserId(businessOwnerId: string, memberId: string): Promise<TeamMember | undefined>;
+  getTeamMemberByOwnerAndMemberId(businessOwnerId: string, memberId: string): Promise<TeamMember | undefined>;
 
   // Assignment Events & SMS Log
   getAssignmentEvents(assignmentId: string): Promise<any[]>;
@@ -7697,7 +7697,7 @@ Thank you for your prompt attention to this matter.`,
     return result[0];
   }
 
-  async getTeamMemberByUserId(businessOwnerId: string, memberId: string): Promise<TeamMember | undefined> {
+  async getTeamMemberByOwnerAndMemberId(businessOwnerId: string, memberId: string): Promise<TeamMember | undefined> {
     const result = await db.select().from(teamMembers)
       .where(and(eq(teamMembers.businessOwnerId, businessOwnerId), eq(teamMembers.memberId, memberId)))
       .limit(1);
