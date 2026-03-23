@@ -341,7 +341,9 @@ export default function LeadsScreen() {
       >
         {error ? (
           <View style={styles.emptyState}>
-            <Feather name="alert-circle" size={48} color={colors.destructive} />
+            <View style={[styles.emptyIconWrap, { backgroundColor: `${colors.destructive}12` }]}>
+              <Feather name="alert-circle" size={28} color={colors.destructive} />
+            </View>
             <Text style={styles.emptyTitle}>Something went wrong</Text>
             <Text style={styles.emptySubtitle}>{error}</Text>
             <TouchableOpacity style={styles.emptyButton} onPress={() => { setLoading(true); fetchLeads(); }}>
@@ -351,7 +353,9 @@ export default function LeadsScreen() {
           </View>
         ) : filteredLeads.length === 0 ? (
           <View style={styles.emptyState}>
-            <Feather name="user-plus" size={48} color={colors.mutedForeground} />
+            <View style={styles.emptyIconWrap}>
+              <Feather name="user-plus" size={28} color={colors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>No Leads Found</Text>
             <Text style={styles.emptySubtitle}>
               {searchQuery || activeFilter !== 'all' ? 'Try adjusting your filters' : 'Add your first lead to get started'}
@@ -574,7 +578,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   filterChipTextActive: { color: colors.primary, fontWeight: '600' },
   list: { flex: 1 },
   listContent: { paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2, gap: spacing.sm },
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2, paddingHorizontal: spacing.lg, gap: spacing.sm },
+  emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
   emptyTitle: { ...typography.subtitle, color: colors.foreground },
   emptySubtitle: { ...typography.body, color: colors.mutedForeground, textAlign: 'center' },
   emptyButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, marginTop: spacing.sm },

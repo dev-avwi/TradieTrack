@@ -236,8 +236,8 @@ export const mainMenuItems: NavItem[] = [
     url: "/more/whs-hub",
     icon: "shield",
     description: "Incidents, JSAs, emergency plans & compliance",
-    color: "warning",
-    bgColor: "warning",
+    color: "primary",
+    bgColor: "primary",
     showInMore: true,
     category: "work",
     allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff'],
@@ -253,19 +253,6 @@ export const mainMenuItems: NavItem[] = [
     showInMore: true,
     category: "work",
     allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
-  },
-  {
-    title: "AI Visualization",
-    url: "/more/ai-visualization",
-    icon: "aperture",
-    description: "Before & after concept images",
-    color: "primary",
-    bgColor: "primary",
-    requiresProPlan: true,
-    hideForStaff: true,
-    showInMore: true,
-    category: "work",
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
 ];
 
@@ -751,17 +738,6 @@ export const sidebarMainItems: SidebarNavItem[] = [
     section: 'main',
     hideForStaff: true,
     allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin'],
-  },
-  { 
-    id: 'ai-visualization',
-    title: 'AI Visualization', 
-    icon: 'aperture', 
-    path: '/more/ai-visualization',
-    matchPaths: ['/more/ai-visualization'],
-    section: 'main',
-    hideForStaff: true,
-    requiresProPlan: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
 ];
 

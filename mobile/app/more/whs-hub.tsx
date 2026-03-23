@@ -279,24 +279,31 @@ export default function WhsHubScreen() {
   const openIncidents = incidents.filter(r => r.status === 'open').length;
 
   const styles = StyleSheet.create({
-    container: { ...pageShell, backgroundColor: colors.background },
-    header: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.md },
-    statsRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md, marginBottom: spacing.md },
-    statCard: { flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center', ...shadows.sm },
-    statNumber: { fontSize: 24, fontWeight: '700', color: colors.text, marginTop: spacing.xs },
-    statLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+    container: { flex: 1, backgroundColor: colors.background },
+    headerBar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm, backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border },
+    headerTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
+    headerSubtitle: { fontSize: 12, color: colors.textSecondary },
+    backBtn: { padding: spacing.xs },
+    statsRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.md, marginBottom: spacing.md },
+    statCard: { flex: 1, backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
+    statIconWrap: { width: 32, height: 32, borderRadius: 16, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' },
+    statNumber: { fontSize: 20, fontWeight: '700', color: colors.text, marginTop: 4 },
+    statLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 1 },
     tabsRow: { flexDirection: 'row', paddingHorizontal: spacing.md, marginBottom: spacing.md, gap: spacing.xs },
-    tab: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.card },
-    tabActive: { backgroundColor: colors.primary },
+    tab: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+    tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     tabText: { fontSize: 12, color: colors.textSecondary },
     tabTextActive: { color: '#fff' },
-    card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, ...shadows.sm },
+    card: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
     cardTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
     cardSubtext: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
     badge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.full, marginRight: spacing.xs, marginBottom: spacing.xs },
     badgeText: { fontSize: 11, fontWeight: '600' },
-    fab: { position: 'absolute', bottom: spacing.xl, right: spacing.lg, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', ...shadows.lg },
-    emptyState: { alignItems: 'center', paddingVertical: spacing.xxl },
+    fab: { position: 'absolute', bottom: spacing.xl, right: spacing.lg, width: 52, height: 52, borderRadius: 26, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', ...shadows.lg },
+    emptyState: { alignItems: 'center', paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
+    emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
+    emptyTitle: { fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: spacing.xs },
+    emptyDesc: { fontSize: 13, color: colors.textSecondary, textAlign: 'center' as const, lineHeight: 18 },
     emptyText: { fontSize: 14, color: colors.textSecondary, marginTop: spacing.md, textAlign: 'center' },
     modalContainer: { flex: 1, backgroundColor: colors.background },
     modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -322,8 +329,6 @@ export default function WhsHubScreen() {
     checkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.border },
     sectionTitle: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: spacing.sm, marginTop: spacing.sm },
     chipButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md, borderWidth: 1 },
-    emptyTitle: { fontSize: 16, fontWeight: '600', marginTop: spacing.md },
-    emptyDesc: { fontSize: 13, marginTop: spacing.xs, textAlign: 'center' as const },
     cardMeta: { fontSize: 12 },
     saveButton: { fontSize: 16, fontWeight: '600' },
   });
@@ -332,8 +337,11 @@ export default function WhsHubScreen() {
     if (incidents.length === 0) {
       return (
         <View style={styles.emptyState}>
-          <Feather name="alert-triangle" size={40} color={colors.textSecondary} />
-          <Text style={styles.emptyText}>No incident reports yet.{'\n'}Report incidents to keep your site safe.</Text>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="alert-triangle" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>No Incident Reports</Text>
+          <Text style={styles.emptyDesc}>Report incidents to keep your site safe and maintain compliance.</Text>
         </View>
       );
     }
@@ -383,8 +391,11 @@ export default function WhsHubScreen() {
     if (emergencyInfo.length === 0) {
       return (
         <View style={styles.emptyState}>
-          <Feather name="phone" size={40} color={colors.textSecondary} />
-          <Text style={styles.emptyText}>No emergency plans yet.{'\n'}Set up emergency info for your sites.</Text>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="phone" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>No Emergency Plans</Text>
+          <Text style={styles.emptyDesc}>Set up emergency info for your sites including assembly points and first aid.</Text>
         </View>
       );
     }
@@ -441,8 +452,11 @@ export default function WhsHubScreen() {
     if (jsaDocs.length === 0) {
       return (
         <View style={styles.emptyState}>
-          <Feather name="clipboard" size={40} color={colors.textSecondary} />
-          <Text style={styles.emptyText}>No JSAs created yet.{'\n'}Create a Job Safety Analysis before starting work.</Text>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="clipboard" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>No JSAs Created</Text>
+          <Text style={styles.emptyDesc}>Create a Job Safety Analysis before starting work on site.</Text>
         </View>
       );
     }
@@ -491,8 +505,11 @@ export default function WhsHubScreen() {
     if (environments.length === 0) {
       return (
         <View style={styles.emptyState}>
-          <Feather name="zap" size={40} color={colors.textSecondary} />
-          <Text style={styles.emptyText}>No hazardous environments tracked yet.</Text>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="zap" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>No Hazardous Environments</Text>
+          <Text style={styles.emptyDesc}>Track hazardous environments and required PPE for your work sites.</Text>
         </View>
       );
     }
@@ -535,8 +552,11 @@ export default function WhsHubScreen() {
     if (signs.length === 0) {
       return (
         <View style={styles.emptyState}>
-          <Feather name="eye" size={40} color={colors.textSecondary} />
-          <Text style={styles.emptyText}>No safety signage requirements tracked yet.</Text>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="eye" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>No Safety Signage</Text>
+          <Text style={styles.emptyDesc}>Track safety signage requirements for your work sites.</Text>
         </View>
       );
     }
@@ -840,10 +860,12 @@ export default function WhsHubScreen() {
     const statusLabels: Record<string, string> = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
     if (hazardReports.length === 0) {
       return (
-        <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <Feather name="file-text" size={40} color={colors.textSecondary} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Hazard Reports</Text>
-          <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>Spot a hazard? Report it before someone gets hurt.</Text>
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="file-text" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>No Hazard Reports</Text>
+          <Text style={styles.emptyDesc}>Spot a hazard? Report it before someone gets hurt.</Text>
         </View>
       );
     }
@@ -974,9 +996,11 @@ export default function WhsHubScreen() {
     if (ppeChecklists.length === 0) {
       return (
         <View style={styles.emptyState}>
-          <Feather name="check-square" size={40} color={colors.textSecondary} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No PPE Check-ins</Text>
-          <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>Start a daily PPE check-in to verify workers have proper safety gear.</Text>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="check-square" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>No PPE Check-ins</Text>
+          <Text style={styles.emptyDesc}>Start a daily PPE check-in to verify workers have proper safety gear.</Text>
         </View>
       );
     }
@@ -1057,9 +1081,11 @@ export default function WhsHubScreen() {
     if (trainingRecords.length === 0) {
       return (
         <View style={styles.emptyState}>
-          <Feather name="award" size={40} color={colors.textSecondary} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Training Records</Text>
-          <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>Track White Cards, licences, first aid certs, and other qualifications.</Text>
+          <View style={styles.emptyIconWrap}>
+            <Feather name="award" size={28} color={colors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>No Training Records</Text>
+          <Text style={styles.emptyDesc}>Track White Cards, licences, first aid certs, and other qualifications.</Text>
         </View>
       );
     }
@@ -1172,7 +1198,17 @@ export default function WhsHubScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'WHS Hub', headerShown: true, headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.text }} />
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <View style={styles.headerBar}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Feather name="arrow-left" size={20} color={colors.text} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>WHS Safety</Text>
+          <Text style={styles.headerSubtitle}>Incidents, JSAs & compliance</Text>
+        </View>
+      </View>
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -1183,22 +1219,30 @@ export default function WhsHubScreen() {
           <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
-                <Feather name="alert-triangle" size={20} color="#f59e0b" />
+                <View style={styles.statIconWrap}>
+                  <Feather name="alert-triangle" size={16} color={colors.primary} />
+                </View>
                 <Text style={styles.statNumber}>{openIncidents}</Text>
                 <Text style={styles.statLabel}>Open</Text>
               </View>
               <View style={styles.statCard}>
-                <Feather name="phone" size={20} color="#22c55e" />
+                <View style={styles.statIconWrap}>
+                  <Feather name="phone" size={16} color={colors.primary} />
+                </View>
                 <Text style={styles.statNumber}>{emergencyInfo.length}</Text>
                 <Text style={styles.statLabel}>Plans</Text>
               </View>
               <View style={styles.statCard}>
-                <Feather name="clipboard" size={20} color="#3b82f6" />
+                <View style={styles.statIconWrap}>
+                  <Feather name="clipboard" size={16} color={colors.primary} />
+                </View>
                 <Text style={styles.statNumber}>{jsaDocs.length}</Text>
                 <Text style={styles.statLabel}>JSAs</Text>
               </View>
               <View style={styles.statCard}>
-                <Feather name="activity" size={20} color="#8b5cf6" />
+                <View style={styles.statIconWrap}>
+                  <Feather name="activity" size={16} color={colors.primary} />
+                </View>
                 <Text style={styles.statNumber}>{incidents.length}</Text>
                 <Text style={styles.statLabel}>Total</Text>
               </View>
