@@ -526,21 +526,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     
     try {
       const roleResponse = await api.get<{
-        roleId: string;
-        roleName: string;
-        permissions: string[];
-        hasCustomPermissions: boolean;
+        roleId?: string;
+        roleName?: string;
+        role?: string;
+        permissions: string[] | Record<string, boolean>;
+        hasCustomPermissions?: boolean;
+        isOwner?: boolean;
       }>('/api/team/my-role');
       
       if (roleResponse.data) {
-        const permissions = Array.isArray(roleResponse.data.permissions) ? roleResponse.data.permissions : [];
+        const data = roleResponse.data as any;
+        const isOwnerRole = data.isOwner === true || data.role === 'owner';
+        const roleName = data.roleName || (isOwnerRole ? 'OWNER' : data.role?.toUpperCase() || 'STAFF');
+        const roleId = data.roleId || data.role || (isOwnerRole ? 'owner' : 'staff');
+        const permissions = Array.isArray(data.permissions) ? data.permissions : (isOwnerRole ? ['*'] : []);
         set({
           roleInfo: {
-            roleId: roleResponse.data.roleId,
-            roleName: roleResponse.data.roleName,
+            roleId,
+            roleName,
             permissions,
-            hasCustomPermissions: roleResponse.data.hasCustomPermissions,
-            isOwner: false,
+            hasCustomPermissions: data.hasCustomPermissions || false,
+            isOwner: isOwnerRole,
           }
         });
       } else {

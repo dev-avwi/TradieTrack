@@ -2521,7 +2521,7 @@ export default function DashboardScreen() {
               <Text style={styles.headerTitle}>{getGreeting()}, {userName}</Text>
               <View style={[styles.roleBadge, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
                 <Text style={[styles.roleBadgeText, { color: colors.primary }]}>
-                  {isOwner() ? 'Owner' : roleInfo?.roleName || 'Team'}
+                  {isOwner() ? 'Owner' : roleInfo?.roleName === 'OWNER' ? 'Owner' : roleInfo?.roleName || 'Staff'}
                 </Text>
               </View>
             </View>

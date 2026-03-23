@@ -1272,14 +1272,25 @@ export default function ChatHubScreen() {
 
     if (twilioConnected) {
       return (
-        <View style={styles.twilioConnectedBanner}>
+        <TouchableOpacity 
+          style={styles.twilioConnectedBanner}
+          onPress={() => {
+            Alert.alert(
+              'SMS Number',
+              `Your SMS number is ${twilioStatus.phoneNumber || 'connected'}.\n\nTo change your SMS number, go to Settings > Integrations on the web dashboard.`,
+              [{ text: 'OK' }]
+            );
+          }}
+          activeOpacity={0.8}
+        >
           <View style={styles.twilioConnectedIcon}>
             <Feather name="check" size={16} color="#FFFFFF" />
           </View>
           <Text style={styles.twilioConnectedText}>
             SMS connected{twilioStatus.phoneNumber ? `: ${twilioStatus.phoneNumber}` : ''}
           </Text>
-        </View>
+          <Feather name="info" size={16} color={colors.success} style={{ marginLeft: 'auto' }} />
+        </TouchableOpacity>
       );
     }
 
