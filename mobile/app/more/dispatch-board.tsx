@@ -22,8 +22,17 @@ import { useAuthStore } from '../../src/lib/store';
 import { isTablet, useContentWidth } from '../../src/lib/device';
 import { format, isToday, parseISO, isBefore, startOfDay } from 'date-fns';
 import { getAvatarColor } from '../../src/lib/avatar-colors';
+import { Swipeable } from 'react-native-gesture-handler';
 
 type ViewMode = 'schedule' | 'kanban' | 'map';
+
+const KANBAN_STATUS_ORDER = [
+  { key: 'unassigned', status: 'pending', label: 'Unassigned', icon: 'inbox' as const },
+  { key: 'assigned', status: 'scheduled', label: 'Assigned', icon: 'user-check' as const },
+  { key: 'en_route', status: 'en_route', label: 'En Route', icon: 'navigation' as const },
+  { key: 'in_progress', status: 'in_progress', label: 'In Progress', icon: 'play-circle' as const },
+  { key: 'completed', status: 'done', label: 'Complete', icon: 'check-circle' as const },
+];
 
 interface TeamMember {
   id: string;
@@ -565,13 +574,76 @@ export default function DispatchBoardScreen() {
     </View>
   );
 
-  const renderKanbanJobCard = (job: JobData, showAssignAction: boolean = true) => {
+  const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
+
+  const getAdjacentStatus = (currentColumnKey: string, direction: 'prev' | 'next') => {
+    const idx = KANBAN_STATUS_ORDER.findIndex(s => s.key === currentColumnKey);
+    if (idx === -1) return null;
+    const targetIdx = direction === 'prev' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= KANBAN_STATUS_ORDER.length) return null;
+    return KANBAN_STATUS_ORDER[targetIdx];
+  };
+
+  const renderSwipeAction = (direction: 'prev' | 'next', columnKey: string) => {
+    const target = getAdjacentStatus(columnKey, direction);
+    if (!target) return () => null;
+    const col = getKanbanColumns(colors).find(c => c.key === target.key);
+    const actionColor = col?.color || colors.primary;
+    const isAssignTransition = columnKey === 'unassigned' && target.key === 'assigned';
+    const isUnassignTransition = columnKey === 'assigned' && target.key === 'unassigned';
+    const actionLabel = isAssignTransition ? 'Assign' : isUnassignTransition ? 'Unassign' : target.label;
+    const actionIcon = isAssignTransition ? 'user-plus' : isUnassignTransition ? 'user-minus' : (direction === 'prev' ? 'chevron-left' : 'chevron-right');
+    return () => (
+      <View style={{
+        backgroundColor: actionColor,
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: 80,
+        borderRadius: radius.md,
+        marginBottom: spacing.sm,
+        paddingHorizontal: spacing.sm,
+      }}>
+        <Feather
+          name={actionIcon as any}
+          size={16}
+          color="#fff"
+        />
+        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600', textAlign: 'center', marginTop: 2 }} numberOfLines={1}>
+          {actionLabel}
+        </Text>
+      </View>
+    );
+  };
+
+  const handleSwipeOpen = (job: JobData, columnKey: string, direction: 'left' | 'right') => {
+    const swipeDirection = direction === 'left' ? 'next' : 'prev';
+    const target = getAdjacentStatus(columnKey, swipeDirection);
+    const ref = swipeableRefs.current.get(job.id);
+    if (ref) {
+      setTimeout(() => ref.close(), 200);
+    }
+    if (!target) return;
+
+    if (columnKey === 'unassigned' && target.key === 'assigned') {
+      openAssignModal(job);
+      return;
+    }
+    if (columnKey === 'assigned' && target.key === 'unassigned') {
+      handleUnassign(job);
+      return;
+    }
+
+    handleStatusChange(job, target.status);
+  };
+
+  const renderKanbanJobCard = (job: JobData, showAssignAction: boolean = true, columnKey: string = '') => {
     const statusColor = getStatusColor(job.status);
     const assignedMember = job.assignedTo ? teamMembers.find(m => m.userId === job.assignedTo) : null;
+    const hasPrev = !!getAdjacentStatus(columnKey, 'prev');
+    const hasNext = !!getAdjacentStatus(columnKey, 'next');
 
-    return (
+    const cardContent = (
       <TouchableOpacity
-        key={job.id}
         style={styles.kanbanJobCard}
         onPress={() => router.push(`/job/${job.id}`)}
         onLongPress={() => showMoveMenu(job)}
@@ -627,6 +699,25 @@ export default function DispatchBoardScreen() {
         </View>
       </TouchableOpacity>
     );
+
+    if (!hasPrev && !hasNext) {
+      return <View key={job.id}>{cardContent}</View>;
+    }
+
+    return (
+      <Swipeable
+        key={job.id}
+        ref={(ref) => { if (ref) swipeableRefs.current.set(job.id, ref); }}
+        renderLeftActions={hasNext ? renderSwipeAction('next', columnKey) : undefined}
+        renderRightActions={hasPrev ? renderSwipeAction('prev', columnKey) : undefined}
+        onSwipeableOpen={(direction) => handleSwipeOpen(job, columnKey, direction)}
+        overshootLeft={false}
+        overshootRight={false}
+        friction={2}
+      >
+        {cardContent}
+      </Swipeable>
+    );
   };
 
   const renderKanbanColumn = (column: ReturnType<typeof getKanbanColumns>[0]) => {
@@ -653,7 +744,7 @@ export default function DispatchBoardScreen() {
               <Text style={styles.kanbanEmptyText}>No jobs</Text>
             </View>
           ) : (
-            columnJobs.map(j => renderKanbanJobCard(j, column.key === 'unassigned'))
+            columnJobs.map(j => renderKanbanJobCard(j, column.key === 'unassigned', column.key))
           )}
         </ScrollView>
       </View>
@@ -664,7 +755,7 @@ export default function DispatchBoardScreen() {
     <View>
       <View style={styles.kanbanHint}>
         <Feather name="info" size={12} color={colors.mutedForeground} />
-        <Text style={styles.kanbanHintText}>Long-press a card or tap the move icon to change status</Text>
+        <Text style={styles.kanbanHintText}>Swipe cards left/right to move between columns</Text>
       </View>
       <ScrollView
         horizontal

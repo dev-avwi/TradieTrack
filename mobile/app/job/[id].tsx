@@ -7516,22 +7516,55 @@ export default function JobDetailScreen() {
 
                   {swms.signatures && swms.signatures.length > 0 && (
                     <View style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: spacing.xs,
-                      backgroundColor: `${colors.success}15`,
-                      paddingVertical: spacing.sm,
-                      paddingHorizontal: spacing.md,
-                      borderRadius: radius.md,
+                      backgroundColor: `${colors.success}10`,
+                      borderWidth: 1,
+                      borderColor: `${colors.success}30`,
+                      borderRadius: radius.lg,
+                      padding: spacing.md,
                       marginBottom: spacing.sm,
                     }}>
-                      <Feather name="check-circle" size={14} color={colors.success} />
-                      <Text style={{ fontSize: 13, color: colors.success, fontWeight: '600' }}>
-                        Signed by {swms.signatures.length} worker{swms.signatures.length !== 1 ? 's' : ''}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm }}>
+                        <Feather name="shield" size={16} color={colors.success} />
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.success }}>
+                          SWMS Signed
+                        </Text>
+                        <View style={{ flex: 1 }} />
+                        <Text style={{ fontSize: 12, color: colors.success, fontWeight: '600' }}>
+                          {swms.signatures.length} worker{swms.signatures.length !== 1 ? 's' : ''}
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: spacing.sm }}>
+                        This SWMS has been signed and is on record. You can view the PDF or add another worker's signature below.
                       </Text>
+                      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                        <TouchableOpacity
+                          style={{
+                            flex: 1,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: colors.muted,
+                            paddingVertical: spacing.sm,
+                            borderRadius: radius.lg,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            gap: spacing.xs,
+                          }}
+                          onPress={() => {
+                            setSigningSwmsId(swms.id);
+                            setSignWorkerName('');
+                            setShowSignSwmsModal(true);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="user-plus" size={14} color={colors.foreground} />
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Add Worker</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   )}
 
+                  {(!swms.signatures || swms.signatures.length === 0) && (
                   <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                     <TouchableOpacity
                       style={{
@@ -7539,11 +7572,9 @@ export default function JobDetailScreen() {
                         flexDirection: 'row',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        backgroundColor: swms.signatures && swms.signatures.length > 0 ? colors.muted : colors.primary,
+                        backgroundColor: colors.primary,
                         paddingVertical: spacing.md,
                         borderRadius: radius.lg,
-                        borderWidth: swms.signatures && swms.signatures.length > 0 ? 1 : 0,
-                        borderColor: colors.border,
                         gap: spacing.xs,
                         minHeight: 44,
                       }}
@@ -7554,11 +7585,15 @@ export default function JobDetailScreen() {
                       }}
                       activeOpacity={0.7}
                     >
-                      <Feather name="edit-3" size={16} color={swms.signatures && swms.signatures.length > 0 ? colors.foreground : colors.primaryForeground} />
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: swms.signatures && swms.signatures.length > 0 ? colors.foreground : colors.primaryForeground }}>
-                        {swms.signatures && swms.signatures.length > 0 ? 'Add Signature' : 'Sign'}
+                      <Feather name="edit-3" size={16} color={colors.primaryForeground} />
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
+                        Sign SWMS
                       </Text>
                     </TouchableOpacity>
+                  </View>
+                  )}
+
+                  <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: (!swms.signatures || swms.signatures.length === 0) ? 0 : spacing.xs }}>
                     <TouchableOpacity
                       style={{
                         flex: 1,
