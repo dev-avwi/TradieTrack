@@ -1990,7 +1990,7 @@ export default function JobDetailScreen() {
   // Forms data is loaded by JobForms component and passed via onFormsChange/onSubmissionsChange callbacks
   // This eliminates duplicate API calls
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'photos' | 'notes' | 'materials' | 'chat' | 'manage'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'chat' | 'manage'>('overview');
 
   const [materials, setMaterials] = useState<JobMaterial[]>([]);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
@@ -2876,7 +2876,7 @@ export default function JobDetailScreen() {
     if (activeTab === 'chat' && id) {
       loadJobMessages();
     }
-    if (activeTab === 'materials' && id) {
+    if (activeTab === 'manage' && id) {
       loadMaterials();
     }
     if (activeTab === 'documents' && id) {
@@ -4545,7 +4545,7 @@ export default function JobDetailScreen() {
           'Before Photo Required',
           'A "Before" photo is required before starting this job. Please take a photo to document the work site and mark it as "Before".',
           [
-            { text: 'Take Photo', onPress: () => setActiveTab('photos') },
+            { text: 'Take Photo', onPress: () => setActiveTab('documents') },
             { text: 'Cancel', style: 'cancel' }
           ]
         );
@@ -4563,7 +4563,7 @@ export default function JobDetailScreen() {
             'After Photo Required',
             'An "After" photo is required before completing this job. Please take a photo to document the completed work and mark it as "After".',
             [
-              { text: 'Take Photo', onPress: () => setActiveTab('photos') },
+              { text: 'Take Photo', onPress: () => setActiveTab('documents') },
               { text: 'Cancel', style: 'cancel' }
             ]
           );
@@ -5377,9 +5377,6 @@ export default function JobDetailScreen() {
   const TAB_CONFIG = [
     { id: 'overview' as const, label: 'Info', icon: 'briefcase' as const },
     { id: 'documents' as const, label: 'Docs', icon: 'file-text' as const },
-    { id: 'materials' as const, label: 'Stock', icon: 'package' as const },
-    { id: 'photos' as const, label: 'Photos', icon: 'camera' as const },
-    { id: 'notes' as const, label: 'Notes', icon: 'file' as const },
     { id: 'chat' as const, label: 'Chat', icon: 'message-circle' as const },
     { id: 'manage' as const, label: 'More', icon: 'settings' as const },
   ];
@@ -5906,7 +5903,7 @@ export default function JobDetailScreen() {
         return (
           <TouchableOpacity
             style={styles.card}
-            onPress={() => setActiveTab('materials')}
+            onPress={() => setActiveTab('manage')}
             activeOpacity={0.7}
           >
             <View style={[styles.cardIconContainer, { backgroundColor: `${colors.warning}15` }]}>
@@ -9081,12 +9078,20 @@ export default function JobDetailScreen() {
         }
       >
         {activeTab === 'overview' && renderOverviewTab()}
-        {activeTab === 'documents' && renderDocumentsTab()}
-        {activeTab === 'materials' && renderMaterialsTab()}
-        {activeTab === 'photos' && renderPhotosTab()}
-        {activeTab === 'notes' && renderNotesTab()}
+        {activeTab === 'documents' && (
+          <>
+            {renderDocumentsTab()}
+            {renderPhotosTab()}
+            {renderNotesTab()}
+          </>
+        )}
         {activeTab === 'chat' && renderChatTab()}
-        {activeTab === 'manage' && renderManageTab()}
+        {activeTab === 'manage' && (
+          <>
+            {renderMaterialsTab()}
+            {renderManageTab()}
+          </>
+        )}
       </ScrollView>
 
       {/* Floating Voice Dictation FAB */}
