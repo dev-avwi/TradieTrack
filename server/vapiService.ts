@@ -761,8 +761,12 @@ async function findFirstAvailableTarget(userId: string, transferNumbers: Transfe
 async function shouldTransferSelectiveByClient(userId: string, callerPhone: string | null): Promise<boolean> {
   if (!callerPhone) return false;
   try {
-    const clients = await storage.getClientsByPhone(callerPhone);
-    return clients.length > 0;
+    const allClients = await storage.getClients(userId);
+    const normalizedPhone = callerPhone.replace(/\D/g, '');
+    return allClients.some(c => {
+      const clientPhone = (c.phone || '').replace(/\D/g, '');
+      return clientPhone && (clientPhone === normalizedPhone || clientPhone.endsWith(normalizedPhone) || normalizedPhone.endsWith(clientPhone));
+    });
   } catch {
     return false;
   }
