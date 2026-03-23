@@ -43585,7 +43585,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.get("/api/ai-receptionist/calls/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+  app.get("/api/ai-receptionist/calls/:id", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const call = await storage.getAiReceptionistCall(req.params.id, userId);
