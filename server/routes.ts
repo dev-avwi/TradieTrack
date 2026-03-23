@@ -23008,12 +23008,12 @@ Be specific about materials, colors, and features that would be included.`
         actions.push({
           id: "revenue-leak-overdue",
           priority: "fix_now",
-          title: `$${overdueTotal.toLocaleString('en-AU', {minimumFractionDigits: 0})} overdue across ${overdueInvoices.length} invoice${overdueInvoices.length > 1 ? 's' : ''}`,
+          title: `$${overdueTotal.toLocaleString('en-AU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} overdue across ${overdueInvoices.length} invoice${overdueInvoices.length > 1 ? 's' : ''}`,
           description: "Overdue invoices hurt your cashflow. Send reminders or follow up.",
-          impact: `$${overdueTotal.toLocaleString('en-AU', {minimumFractionDigits: 0})} at risk`,
+          impact: `$${overdueTotal.toLocaleString('en-AU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} at risk`,
           cta: "Chase Payments",
           ctaUrl: "/documents?tab=invoices&filter=overdue",
-          metric: `$${overdueTotal.toLocaleString('en-AU', {minimumFractionDigits: 0})}`,
+          metric: `$${overdueTotal.toLocaleString('en-AU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
           category: "revenue",
         });
       }

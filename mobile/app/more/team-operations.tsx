@@ -186,7 +186,7 @@ export default function TeamOperationsScreen() {
   
   // Subscription-aware access control
   const { hasTeamSubscription, hasProSubscription, subscriptionTier } = useUserRole();
-  const needsUpgrade = !hasTeamSubscription && subscriptionTier !== 'beta' && (subscriptionTier === 'pro' || subscriptionTier === 'free' || subscriptionTier === 'trial');
+  const needsUpgradeBase = !hasTeamSubscription && subscriptionTier !== 'beta' && (subscriptionTier === 'pro' || subscriptionTier === 'free' || subscriptionTier === 'trial');
 
   const [activeTab, setActiveTab] = useState<TabType>('live');
   const [liveViewMode, setLiveViewMode] = useState<LiveViewMode>('status');
@@ -294,6 +294,8 @@ export default function TeamOperationsScreen() {
     teamMembers.filter(m => m.inviteStatus === 'accepted'),
     [teamMembers]
   );
+
+  const needsUpgrade = needsUpgradeBase && acceptedMembers.length === 0;
 
   const membersWithDetails = useMemo(() => {
     return acceptedMembers.map(member => {

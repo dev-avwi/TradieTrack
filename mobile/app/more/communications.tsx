@@ -518,7 +518,7 @@ export default function CommunicationsScreen() {
                   type: 'sms',
                   direction: 'outbound',
                   status: (msg.status as any) || 'sent',
-                  recipient: conv.clientName || 'Client',
+                  recipient: conv.clientName || conv.clientPhone || 'Client',
                   recipientPhone: conv.clientPhone,
                   body: msg.body || '',
                   fullBody: msg.body || '',

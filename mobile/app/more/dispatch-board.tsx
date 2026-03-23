@@ -409,7 +409,7 @@ export default function DispatchBoardScreen() {
         <View style={[styles.opsHealthCard, opsHealth.unassigned > 0 && styles.opsHealthCardWarn]}>
           <Feather name="user-x" size={16} color={opsHealth.unassigned > 0 ? colors.warning : colors.mutedForeground} />
           <Text style={[styles.opsHealthValue, opsHealth.unassigned > 0 && { color: colors.warning }]}>{opsHealth.unassigned}</Text>
-          <Text style={styles.opsHealthLabel}>Unassigned</Text>
+          <Text style={styles.opsHealthLabel} numberOfLines={1}>Unassigned</Text>
         </View>
         <View style={styles.opsHealthCard}>
           <Feather name="briefcase" size={16} color={colors.primary} />
@@ -1115,6 +1115,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   opsHealthLabel: {
     ...typography.captionSmall,
     color: colors.mutedForeground,
+    textAlign: 'center',
   },
   viewToggle: {
     flexDirection: 'row',

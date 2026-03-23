@@ -2037,7 +2037,6 @@ ${businessName}`;
                     onValueChange={async () => {
                       const newValue = !invoice.allowOnlinePayment;
                       await toggleOnlinePayment();
-                      // If enabling and no payment link exists, generate one
                       if (newValue && !invoice.stripePaymentLink && !invoice.paymentToken) {
                         await generatePaymentLink();
                       }

@@ -441,7 +441,7 @@ export async function createDemoUserAndData() {
       { clientIdx: 5, title: 'Dishwasher Installation', description: 'Install new Bosch dishwasher, connect to water and waste', address: clientsData[5].address, scheduledAt: getTodayAt(16, 0), scheduledTime: '16:00' },
       // 4 JOBS UPCOMING (next few days)
       { clientIdx: 6, title: 'Garden Tap Installation', description: 'Install new outdoor tap near garden shed', address: clientsData[6].address, scheduledAt: getDaysFromNow(1), scheduledTime: '09:00', isXeroImport: true, xeroJobId: generateXeroId('JOB') },
-      { clientIdx: 7, title: 'Shower Head Replacement', description: 'Replace old shower head with water-saving model', address: clientsData[7].address, scheduledAt: getDaysFromNow(2), scheduledTime: '14:00' },
+      { clientIdx: 7, title: 'Shower Head Replacement', description: 'Replace old shower head with water-efficient model', address: clientsData[7].address, scheduledAt: getDaysFromNow(2), scheduledTime: '14:00' },
       { clientIdx: 8, title: 'Pipe Inspection', description: 'CCTV camera inspection of sewer line', address: clientsData[8].address, scheduledAt: getDaysFromNow(3), scheduledTime: '08:00', isXeroImport: true, xeroJobId: generateXeroId('JOB') },
       { clientIdx: 9, title: 'Water Pressure Check', description: 'Investigate low water pressure complaints', address: clientsData[9].address, scheduledAt: getDaysFromNow(4), scheduledTime: '11:00' },
     ];
