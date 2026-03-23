@@ -400,8 +400,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
-    padding: spacing.xl,
-    marginBottom: spacing.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
@@ -5388,7 +5388,7 @@ export default function JobDetailScreen() {
     <>
       {/* Smart Actions Panel */}
       {smartActions.length > 0 && (
-        <View style={{ marginBottom: spacing.sm }}>
+        <View style={{ marginBottom: spacing.md }}>
           <SmartActionsPanel
             title="Suggested Actions"
             subtitle="AI-recommended next steps for this job"
@@ -5408,7 +5408,7 @@ export default function JobDetailScreen() {
 
       {/* Client Portal & Proof Pack — Featured (high visibility) */}
       {(isOwnerOrManager || isSoloOwner) && (
-        <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
+        <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
           <TouchableOpacity
             style={{
               flex: 1,

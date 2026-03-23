@@ -1107,8 +1107,6 @@ function KPICard({
   iconBg,
   iconColor,
   onPress,
-  trend,
-  trendLabel,
 }: { 
   title: string; 
   value: string | number; 
@@ -1116,20 +1114,9 @@ function KPICard({
   iconBg: string;
   iconColor: string;
   onPress?: () => void;
-  trend?: number;
-  trendLabel?: string;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  
-  const hasTrend = trend !== undefined && trend !== null && isFinite(trend);
-  const trendUp = hasTrend && trend > 0;
-  const trendDown = hasTrend && trend < 0;
-  const trendColor = trendUp ? colors.success : trendDown ? colors.destructive : colors.mutedForeground;
-  const trendIcon: keyof typeof Feather.glyphMap = trendUp ? 'trending-up' : trendDown ? 'trending-down' : 'minus';
-  const trendText = hasTrend 
-    ? `${trendUp ? '+' : ''}${Math.round(trend)}%` 
-    : '';
   
   return (
     <TouchableOpacity
@@ -1139,22 +1126,11 @@ function KPICard({
     >
       <View style={styles.kpiCardContent}>
         <View style={[styles.kpiIconContainer, { backgroundColor: iconBg }]}>
-          <Feather name={icon} size={20} color={iconColor} />
+          <Feather name={icon} size={18} color={iconColor} />
         </View>
         <View style={styles.kpiTextContainer}>
-          <View style={styles.kpiValueRow}>
-            <Text style={styles.kpiValue}>{value}</Text>
-            {hasTrend && (
-              <View style={[styles.kpiTrendBadge, { backgroundColor: colorWithOpacity(trendColor, 0.12) }]}>
-                <Feather name={trendIcon} size={10} color={trendColor} />
-                <Text style={[styles.kpiTrendText, { color: trendColor }]}>{trendText}</Text>
-              </View>
-            )}
-          </View>
+          <Text style={styles.kpiValue}>{value}</Text>
           <Text style={styles.kpiTitle}>{title}</Text>
-          {hasTrend && trendLabel ? (
-            <Text style={styles.kpiTrendLabel}>{trendLabel}</Text>
-          ) : null}
         </View>
       </View>
     </TouchableOpacity>
@@ -2455,20 +2431,9 @@ export default function DashboardScreen() {
   const userName = user?.firstName || 'there';
   const jobsToday = stats.jobsToday || todaysJobs.length;
   const overdueCount = stats.overdueJobs || 0;
-  const quotesCount = stats.pendingQuotes || 0;
   const monthRevenue = formatCurrency(stats.thisMonthRevenue || 0);
   const outstandingAmount = formatCurrency(stats.outstandingAmount || 0);
   const paidLast30Days = formatCurrency(stats.paidLast30Days || 0);
-
-  const calcTrend = (current: number, previous: number): number | undefined => {
-    if (previous === 0 && current === 0) return undefined;
-    if (previous === 0) return 100;
-    return ((current - previous) / previous) * 100;
-  };
-
-  const revenueTrend = calcTrend(stats.thisMonthRevenue, stats.lastMonthRevenue);
-  const jobsCompletedTrend = calcTrend(stats.thisMonthJobsCompleted, stats.lastMonthJobsCompleted);
-  const quotesTrend = calcTrend(stats.thisMonthQuotesSent, stats.lastMonthQuotesSent);
 
   // Calculate this week's jobs (next 7 days, excluding today) for staff
   const thisWeeksJobs = useMemo(() => {
@@ -2623,32 +2588,22 @@ export default function DashboardScreen() {
         </View>
       )}
 
-      {/* Quick Stats - Different for staff vs owner */}
+      {/* Quick Stats - 4 clean cards */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>
           {isStaffUser ? 'My Stats' : 'Overview'}
         </Text>
         <View style={styles.kpiGrid}>
           <KPICard
-            title={isStaffUser ? "My Jobs Today" : "Jobs Today"}
+            title={isStaffUser ? "My Jobs" : "Jobs Today"}
             value={jobsToday}
             icon="briefcase"
             iconBg={colors.primaryLight}
             iconColor={colors.primary}
             onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
-            trend={!isStaffUser ? jobsCompletedTrend : undefined}
-            trendLabel={!isStaffUser ? "completed vs last mo" : undefined}
           />
           {isStaffUser ? (
             <>
-              <KPICard
-                title="Assigned"
-                value={myAllJobs.filter(j => j.status === 'scheduled' || j.status === 'pending').length}
-                icon="clipboard"
-                iconBg={colors.muted}
-                iconColor={colors.mutedForeground}
-                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
-              />
               <KPICard
                 title="In Progress"
                 value={myAllJobs.filter(j => j.status === 'in_progress').length}
@@ -2665,6 +2620,14 @@ export default function DashboardScreen() {
                 iconColor={colors.success}
                 onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
               />
+              <KPICard
+                title="Assigned"
+                value={myAllJobs.filter(j => j.status === 'scheduled' || j.status === 'pending').length}
+                icon="clipboard"
+                iconBg={colors.muted}
+                iconColor={colors.mutedForeground}
+                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
+              />
             </>
           ) : (
             <>
@@ -2676,27 +2639,14 @@ export default function DashboardScreen() {
                 iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
                 onPress={() => router.push('/more/documents?tab=invoices&filter=overdue')}
               />
-              {hasActiveTeam ? (
-                <KPICard
-                  title="Team Members"
-                  value={teamMembers.length}
-                  icon="users"
-                  iconBg={colors.infoLight}
-                  iconColor={colors.info}
-                  onPress={() => router.push('/more/team-operations')}
-                />
-              ) : (
-                <KPICard
-                  title="Quotes Pending"
-                  value={quotesCount}
-                  icon="file-text"
-                  iconBg={colors.infoLight}
-                  iconColor={colors.info}
-                  onPress={() => router.push('/more/quotes')}
-                  trend={quotesTrend}
-                  trendLabel="vs last month"
-                />
-              )}
+              <KPICard
+                title="To Invoice"
+                value={toInvoiceCount}
+                icon="file-plus"
+                iconBg={toInvoiceCount > 0 ? colors.warningLight : colors.muted}
+                iconColor={toInvoiceCount > 0 ? colors.warning : colors.mutedForeground}
+                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
+              />
               <KPICard
                 title="Revenue"
                 value={monthRevenue}
@@ -2704,45 +2654,11 @@ export default function DashboardScreen() {
                 iconBg={colors.successLight}
                 iconColor={colors.success}
                 onPress={() => router.push('/more/money-hub')}
-                trend={revenueTrend}
-                trendLabel="vs last month"
               />
             </>
           )}
         </View>
       </View>
-
-      {/* To Invoice & Action Centre - Owner Only */}
-      {!isStaffUser && (
-        <View style={styles.section}>
-          <View style={styles.kpiGrid}>
-            <KPICard
-              title="To Invoice"
-              value={toInvoiceCount}
-              icon="file-plus"
-              iconBg={toInvoiceCount > 0 ? colors.warningLight : colors.muted}
-              iconColor={toInvoiceCount > 0 ? colors.warning : colors.mutedForeground}
-              onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
-            />
-            <TouchableOpacity
-              style={styles.actionCentreCard}
-              onPress={() => router.push('/more/action-center')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.kpiCardContent}>
-                <View style={[styles.kpiIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
-                  <Feather name="crosshair" size={20} color={colors.primary} />
-                </View>
-                <View style={styles.kpiTextContainer}>
-                  <Text style={[styles.kpiTitle, { marginTop: 0 }]}>Action Centre</Text>
-                  <Text style={styles.actionCentreSubtext}>What needs attention</Text>
-                </View>
-                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
 
       {/* Weather Widget - Compact, below stats */}
       <View style={styles.section}>
@@ -3447,13 +3363,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   kpiCardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.lg,
+    gap: spacing.sm,
+    padding: spacing.md,
   },
   kpiIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.xl,
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -3461,40 +3377,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   kpiTextContainer: {
     flex: 1,
   },
-  kpiValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    flexWrap: 'wrap',
-  },
   kpiValue: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     color: colors.foreground,
     letterSpacing: -0.5,
   },
-  kpiTrendBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 1,
-    borderRadius: radius.xs,
-  },
-  kpiTrendText: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  kpiTrendLabel: {
-    fontSize: 10,
-    color: colors.mutedForeground,
-    marginTop: 1,
-  },
   kpiTitle: {
-    ...typography.label,
+    fontSize: 11,
+    fontWeight: '600',
     color: colors.mutedForeground,
-    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginTop: 1,
   },
 
   // Job Scheduler styles
@@ -4624,18 +4519,4 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
 
-  actionCentreCard: {
-    flex: 1,
-    minWidth: '46%',
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadows.md,
-  },
-  actionCentreSubtext: {
-    ...typography.captionSmall,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
 });
