@@ -42,6 +42,7 @@ import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { MobileSendModal } from '../../src/components/MobileSendModal';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
+import { getAvatarColor } from '../../src/lib/avatar-colors';
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
@@ -5597,39 +5598,6 @@ export default function JobDetailScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Quick Geofence Status - visible on overview for easy access */}
-      {job.latitude && job.longitude && ['scheduled', 'in_progress', 'on_my_way'].includes(job.status) && (
-        <TouchableOpacity 
-          style={[styles.card, { borderColor: job.geofenceEnabled ? colors.success + '40' : colors.border }]}
-          onPress={() => setActiveTab('notes')}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.cardIconContainer, { backgroundColor: job.geofenceEnabled ? colors.success + '15' : colors.muted + '30' }]}>
-            <Feather 
-              name="crosshair" 
-              size={iconSizes.xl} 
-              color={job.geofenceEnabled ? colors.success : colors.mutedForeground} 
-            />
-          </View>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Auto Clock-In</Text>
-            <Text style={[styles.cardValue, { color: job.geofenceEnabled ? colors.success : colors.mutedForeground }]}>
-              {job.geofenceEnabled 
-                ? `Active (${job.geofenceRadius || 100}m radius)` 
-                : 'Tap to enable'}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-            {job.geofenceEnabled && job.geofenceAutoClockIn && (
-              <View style={{ backgroundColor: colors.success + '15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                <Text style={{ color: colors.success, fontSize: 10, fontWeight: '700' }}>ON</Text>
-              </View>
-            )}
-            <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
-          </View>
-        </TouchableOpacity>
-      )}
-
       {/* Smart Next Action Card - guides tradie through workflow */}
       <NextActionCard
         jobStatus={job.status}
@@ -5752,8 +5720,8 @@ export default function JobDetailScreen() {
             onPress={handleViewClient}
             activeOpacity={0.7}
           >
-            <View style={[styles.clientAvatar, { backgroundColor: statusColor }]}>
-              <Text style={styles.clientAvatarText}>{clientInitials}</Text>
+            <View style={[styles.clientAvatar, { backgroundColor: getAvatarColor(client?.name || '').bg }]}>
+              <Text style={[styles.clientAvatarText, { color: getAvatarColor(client?.name || '').fg }]}>{clientInitials}</Text>
             </View>
             <View style={styles.clientInfo}>
               <Text style={styles.clientName}>{client.name}</Text>
@@ -5783,16 +5751,6 @@ export default function JobDetailScreen() {
               >
                 <Feather name="message-square" size={iconSizes.md} color={colors.scheduled} />
                 <Text style={[styles.clientActionText, { color: colors.scheduled }]}>SMS</Text>
-              </TouchableOpacity>
-            )}
-            {client.phone && (
-              <TouchableOpacity 
-                style={[styles.clientActionButton, { backgroundColor: `${colors.warning}15` }]}
-                onPress={handleSendPhotoSms}
-                activeOpacity={0.7}
-              >
-                <Feather name="image" size={iconSizes.md} color={colors.warning} />
-                <Text style={[styles.clientActionText, { color: colors.warning }]}>Photo</Text>
               </TouchableOpacity>
             )}
             {client.email && (

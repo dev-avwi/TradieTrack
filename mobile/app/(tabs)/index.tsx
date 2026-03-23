@@ -2081,6 +2081,7 @@ export default function DashboardScreen() {
   const displayJobs = isRouteOptimized ? optimizedJobs : todaysJobs;
   
   // Determine if user is staff (team member with limited permissions)
+  const roleResolved = roleInfo !== null;
   const isStaffUser = isStaff();
   const isOwnerUser = isOwner();
   // Match web's canViewMap logic: only owners and managers can see the map
@@ -2555,7 +2556,7 @@ export default function DashboardScreen() {
       <UsageLimitBanner />
 
       {/* Getting Started Guide - Show for new owners who haven't set up their business yet */}
-      {!isStaffUser && !businessSettings?.businessName && (
+      {roleResolved && !isStaffUser && !isLoading && !businessSettings?.businessName && (
         <View style={styles.section}>
           <View style={[styles.gettingStartedCard]}>
             <View style={styles.gettingStartedHeader}>
@@ -2616,7 +2617,7 @@ export default function DashboardScreen() {
       )}
 
       {/* Time Tracking Widget - Staff Only */}
-      {isStaffUser && (
+      {roleResolved && isStaffUser && (
         <View style={styles.section}>
           <TimeTrackingWidget />
         </View>

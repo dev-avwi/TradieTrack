@@ -1063,7 +1063,13 @@ export default function ChatHubScreen() {
     if (item.type === 'team') {
       router.push('/more/team-chat');
     } else if (item.type === 'job') {
-      router.push(`/job/chat?jobId=${item.data.id}` as any);
+      const linkedSms = item.data?.linkedSms;
+      if (linkedSms) {
+        const clientName = item.subtitle || item.title;
+        router.push(`/more/sms-conversation?id=${linkedSms.id}&phone=${encodeURIComponent(linkedSms.clientPhone || '')}&name=${encodeURIComponent(clientName)}&jobId=${item.data.id}` as any);
+      } else {
+        router.push(`/job/chat?jobId=${item.data.id}` as any);
+      }
     } else if (item.type === 'sms') {
       router.push(`/more/sms-conversation?id=${item.data.id}&phone=${encodeURIComponent(item.phone || '')}&name=${encodeURIComponent(item.title)}` as any);
     } else if (item.type === 'direct') {

@@ -12,7 +12,16 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import MapView, { Marker, Callout, Region } from 'react-native-maps';
+let MapView: any;
+let Marker: any;
+let Callout: any;
+type Region = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
+if (Platform.OS !== 'web') {
+  const maps = require('react-native-maps');
+  MapView = maps.default;
+  Marker = maps.Marker;
+  Callout = maps.Callout;
+}
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -119,7 +128,8 @@ export default function DispatchBoardScreen() {
   const [assigningJob, setAssigningJob] = useState<JobData | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedMapJob, setSelectedMapJob] = useState<JobData | null>(null);
-  const mapRef = useRef<MapView | null>(null);
+  const mapRef = useRef<any>(null);
+  const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
 
   const fetchData = useCallback(async () => {
     try {
@@ -574,8 +584,6 @@ export default function DispatchBoardScreen() {
     </View>
   );
 
-  const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
-
   const getAdjacentStatus = (currentColumnKey: string, direction: 'prev' | 'next') => {
     const idx = KANBAN_STATUS_ORDER.findIndex(s => s.key === currentColumnKey);
     if (idx === -1) return null;
@@ -784,6 +792,18 @@ export default function DispatchBoardScreen() {
   };
 
   const renderMapView = () => {
+    if (Platform.OS === 'web' || !MapView) {
+      return (
+        <View style={{ padding: spacing.xl, alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+          <Feather name="map" size={48} color={colors.mutedForeground} />
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.foreground, marginTop: spacing.md }}>Map Not Available</Text>
+          <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: 'center', marginTop: spacing.xs }}>
+            Map view is available in the native app
+          </Text>
+        </View>
+      );
+    }
+
     const screenHeight = Dimensions.get('window').height;
     const mapHeight = screenHeight - 280;
 

@@ -18,6 +18,7 @@ import MapView, { Marker, Region, PROVIDER_DEFAULT, MapStyleElement } from 'reac
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, sizes, iconSizes, usePageShell, pageShell, componentStyles } from '../../src/lib/design-tokens';
+import { getAvatarColor } from '../../src/lib/avatar-colors';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { formatDistanceToNow, format, isAfter } from 'date-fns';
@@ -535,8 +536,8 @@ export default function TeamOperationsScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.avatarContainer}>
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>{getInitials(member.firstName, member.lastName, member.email)}</Text>
+          <View style={[styles.avatar, { backgroundColor: getAvatarColor(`${member.firstName} ${member.lastName}`).bg }]}>
+            <Text style={[styles.avatarText, { color: getAvatarColor(`${member.firstName} ${member.lastName}`).fg }]}>{getInitials(member.firstName, member.lastName, member.email)}</Text>
           </View>
           <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
         </View>
@@ -640,7 +641,7 @@ export default function TeamOperationsScreen() {
               const lastName = member.lastName || '';
               const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
               const shortName = firstName || member.email?.split('@')[0] || 'Team';
-              const memberColor = statusConfig?.color || colors.primary;
+              const memberColor = getAvatarColor(`${firstName} ${lastName}`).bg;
               
               return (
                 <Marker
@@ -789,8 +790,8 @@ export default function TeamOperationsScreen() {
           onPress={() => router.push(`/more/team-management?memberId=${member.id}`)}
           activeOpacity={0.7}
         >
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>{getInitials(member.firstName, member.lastName, member.email)}</Text>
+          <View style={[styles.avatar, { backgroundColor: getAvatarColor(`${member.firstName} ${member.lastName}`).bg }]}>
+            <Text style={[styles.avatarText, { color: getAvatarColor(`${member.firstName} ${member.lastName}`).fg }]}>{getInitials(member.firstName, member.lastName, member.email)}</Text>
           </View>
           <View style={styles.memberInfo}>
             <Text style={styles.memberName}>{member.firstName} {member.lastName}</Text>
@@ -985,8 +986,8 @@ export default function TeamOperationsScreen() {
           <View style={[styles.performanceRank, index < 3 && { backgroundColor: `${rankColor}20` }]}>
             <Text style={[styles.performanceRankText, index < 3 && { color: rankColor }]}>{index + 1}</Text>
           </View>
-          <View style={[styles.avatar, { backgroundColor: colors.primary, width: 36, height: 36, borderRadius: 18 }]}>
-            <Text style={[styles.avatarText, { fontSize: 14 }]}>{getInitials(member.firstName, member.lastName, member.email)}</Text>
+          <View style={[styles.avatar, { backgroundColor: getAvatarColor(`${member.firstName} ${member.lastName}`).bg, width: 36, height: 36, borderRadius: 18 }]}>
+            <Text style={[styles.avatarText, { fontSize: 14, color: getAvatarColor(`${member.firstName} ${member.lastName}`).fg }]}>{getInitials(member.firstName, member.lastName, member.email)}</Text>
           </View>
           <View style={styles.performanceInfo}>
             <Text style={styles.performanceName}>{member.firstName} {member.lastName}</Text>

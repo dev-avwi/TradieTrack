@@ -1250,11 +1250,11 @@ export default function JobChatScreen() {
             </TouchableOpacity>
           )}
           <View style={styles.headerIconContainer}>
-            <Feather name="message-circle" size={16} color={colors.primary} />
+            <Feather name="lock" size={16} color={colors.primary} />
           </View>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle} numberOfLines={1}>Team Notes</Text>
-            <Text style={styles.headerSubtitle} numberOfLines={1}>{job?.title}</Text>
+            <Text style={styles.headerTitle} numberOfLines={1}>{job?.title || 'Job Chat'}</Text>
+            <Text style={styles.headerSubtitle} numberOfLines={1}>Internal team notes</Text>
           </View>
           <View style={styles.headerActions}>
             <View style={styles.messageBadge}>
