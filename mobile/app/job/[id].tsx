@@ -1571,25 +1571,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    marginHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    marginHorizontal: spacing.md,
     marginBottom: spacing.md,
     padding: spacing.xs,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     gap: 2,
-    ...shadows.sm,
   },
   tab: {
-    minWidth: 56,
-    paddingHorizontal: spacing.sm,
+    flex: 1,
+    paddingHorizontal: spacing.xs,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     gap: 4,
-    minHeight: 52,
+    minHeight: 48,
   },
   tabActive: {
     backgroundColor: colors.primary,
@@ -5403,59 +5402,63 @@ export default function JobDetailScreen() {
       {/* Job Progress Bar - Visual workflow indicator */}
       <JobProgressBar status={job.status} />
 
-      {/* Client Portal & Proof Pack — Featured (high visibility) */}
+      {/* Client Portal & Proof Pack */}
       {(isOwnerOrManager || isSoloOwner) && (
         <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
           <TouchableOpacity
             style={{
               flex: 1,
-              backgroundColor: colors.primary,
-              borderRadius: 16,
+              backgroundColor: colors.card,
+              borderRadius: radius.md,
               padding: spacing.md,
               alignItems: 'center',
               gap: spacing.xs,
+              borderWidth: 1,
+              borderColor: colors.cardBorder,
             }}
             onPress={() => setShowProofPackModal(true)}
             activeOpacity={0.7}
           >
             <View style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: 'rgba(255,255,255,0.2)',
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: `${colors.primary}15`,
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-              <Feather name="file-text" size={20} color="#FFFFFF" />
+              <Feather name="file-text" size={18} color={colors.primary} />
             </View>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' }}>Proof Pack</Text>
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>Generate report</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, textAlign: 'center' }}>Proof Pack</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center' }}>Generate report</Text>
           </TouchableOpacity>
           {!!client && (
             <TouchableOpacity
               style={{
                 flex: 1,
-                backgroundColor: colors.invoiced,
-                borderRadius: 16,
+                backgroundColor: colors.card,
+                borderRadius: radius.md,
                 padding: spacing.md,
                 alignItems: 'center',
                 gap: spacing.xs,
+                borderWidth: 1,
+                borderColor: colors.cardBorder,
               }}
               onPress={() => setActiveTab('manage')}
               activeOpacity={0.7}
             >
               <View style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: 'rgba(255,255,255,0.2)',
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: `${colors.primary}15`,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>
-                <Feather name="globe" size={20} color="#FFFFFF" />
+                <Feather name="globe" size={18} color={colors.primary} />
               </View>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' }}>Client Portal</Text>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>{portalEnabled ? 'Enabled' : 'Share tracking'}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, textAlign: 'center' }}>Client Portal</Text>
+              <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center' }}>{portalEnabled ? 'Enabled' : 'Share tracking'}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -9040,12 +9043,7 @@ export default function JobDetailScreen() {
       </View>
 
       {/* Tab Bar */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        contentContainerStyle={styles.tabBar}
-        style={{ flexGrow: 0 }}
-      >
+      <View style={styles.tabBar}>
         {TAB_CONFIG.map((tab) => (
           <TouchableOpacity
             key={tab.id}
@@ -9063,7 +9061,7 @@ export default function JobDetailScreen() {
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       {/* Tab Content - Scrollable */}
       <ScrollView 
