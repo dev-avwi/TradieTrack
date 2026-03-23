@@ -193,8 +193,8 @@ export default function OnboardingSetupScreen() {
         return;
       }
 
-      if (response.data?.onboardingUrl) {
-        await Linking.openURL(response.data.onboardingUrl);
+      if ((response.data as any)?.onboardingUrl) {
+        await Linking.openURL((response.data as any).onboardingUrl);
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to connect Stripe');

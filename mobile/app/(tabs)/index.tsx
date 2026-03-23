@@ -610,7 +610,7 @@ function TimeTrackingWidget() {
         );
       };
       updateElapsed();
-      timerIntervalRef.current = setInterval(updateElapsed, 1000);
+      timerIntervalRef.current = setInterval(updateElapsed, 1000) as unknown as ReturnType<typeof setInterval>;
     } else if (!activeTimer) {
       setElapsedTime('00:00:00');
     }
@@ -1813,7 +1813,7 @@ export default function DashboardScreen() {
     setActivitiesLoading(true);
     try {
       const { default: api } = await import('../../src/lib/api');
-      const response = await api.get('/api/activity/recent/5');
+      const response = await api.get<any[]>('/api/activity/recent/5');
       if (response.data) {
         setActivities(response.data);
       }
@@ -1976,8 +1976,8 @@ export default function DashboardScreen() {
         setUserLocation({ latitude: startLat, longitude: startLon });
       } else {
         // Use first job as starting point
-        startLat = jobsWithCoords[0].latitude;
-        startLon = jobsWithCoords[0].longitude;
+        startLat = jobsWithCoords[0].latitude!;
+        startLon = jobsWithCoords[0].longitude!;
       }
 
       // Nearest-neighbor algorithm
@@ -1993,7 +1993,7 @@ export default function DashboardScreen() {
         for (let i = 0; i < unvisited.length; i++) {
           const dist = haversineDistance(
             currentLat, currentLon,
-            unvisited[i].latitude, unvisited[i].longitude
+            unvisited[i].latitude!, unvisited[i].longitude!
           );
           if (dist < nearestDistance) {
             nearestDistance = dist;
@@ -2003,8 +2003,8 @@ export default function DashboardScreen() {
 
         const nearest = unvisited.splice(nearestIndex, 1)[0];
         route.push(nearest);
-        currentLat = nearest.latitude;
-        currentLon = nearest.longitude;
+        currentLat = nearest.latitude!;
+        currentLon = nearest.longitude!;
       }
 
       // Add jobs without coordinates at the end (maintain original order)
@@ -2111,7 +2111,7 @@ export default function DashboardScreen() {
     if (!isStaffUser) return;
     try {
       const { default: api } = await import('../../src/lib/api');
-      const response = await api.get('/api/jobs/my-jobs');
+      const response = await api.get<any[]>('/api/jobs/my-jobs');
       if (response.data) {
         setMyAllJobs(response.data);
       }
@@ -2185,13 +2185,13 @@ export default function DashboardScreen() {
     try {
       const { default: api } = await import('../../src/lib/api');
       const [teamRes, jobsRes, unassignedRes] = await Promise.all([
-        api.get('/api/team/members'),
-        api.get('/api/jobs'),
-        api.get('/api/jobs?unassigned=true'),
-        fetchTeamStateRef.current(), // Use ref for stable reference
+        api.get<any[]>('/api/team/members'),
+        api.get<any[]>('/api/jobs'),
+        api.get<any[]>('/api/jobs?unassigned=true'),
+        fetchTeamStateRef.current(),
       ]);
       if (teamRes.data) {
-        setTeamMembers(teamRes.data.filter((m: any) => m.inviteStatus === 'accepted'));
+        setTeamMembers((teamRes.data as any[]).filter((m: any) => m.inviteStatus === 'accepted'));
       }
       if (jobsRes.data) {
         setAllJobs(jobsRes.data);
@@ -2396,7 +2396,7 @@ export default function DashboardScreen() {
               
               if (clientId) {
                 const response = await api.post(`/api/jobs/${jobId}/on-my-way`);
-                if (response.demoMode) {
+                if ((response.data as any)?.demoMode) {
                   Alert.alert(
                     'SMS Not Configured',
                     'Twilio SMS is not set up. The "On My Way" action was logged but no message was sent to the client.\n\nSet up Twilio in Settings > Integrations to enable real SMS notifications.',
@@ -2841,7 +2841,7 @@ export default function DashboardScreen() {
                         >
                           <Text style={styles.memberJobTitle} numberOfLines={1}>{job.title}</Text>
                           <View style={styles.memberJobActions}>
-                            <StatusBadge status={job.status} size="small" />
+                            <StatusBadge status={job.status} size="sm" />
                             <Feather name="x-circle" size={iconSizes.md} color={colors.mutedForeground} style={{ marginLeft: 6 }} />
                           </View>
                         </TouchableOpacity>
