@@ -80,6 +80,8 @@ export default function InvoiceDetailScreen() {
   const [includeBeforePhotos, setIncludeBeforePhotos] = useState(false);
   const [includeAfterPhotos, setIncludeAfterPhotos] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(true);
+  const [includeSignatures, setIncludeSignatures] = useState(true);
+  const [includeTerms, setIncludeTerms] = useState(true);
   const [jobPhotos, setJobPhotos] = useState<any[]>([]);
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'bank_transfer' | 'cheque' | 'card' | 'other'>('cash');
@@ -3069,37 +3071,53 @@ ${businessName}`;
               </TouchableOpacity>
             </View>
           </View>
-          {(invoice.jobId || invoice.notes) && (
-            <View style={styles.previewOptionsRow}>
-              {invoice.jobId && (
-                <TouchableOpacity
-                  style={[styles.previewOptionChip, includeBeforePhotos && styles.previewOptionChipActive]}
-                  onPress={() => setIncludeBeforePhotos(!includeBeforePhotos)}
-                >
-                  <Feather name={includeBeforePhotos ? "check-square" : "square"} size={14} color={includeBeforePhotos ? colors.primary : colors.mutedForeground} />
-                  <Text style={[styles.previewOptionChipText, includeBeforePhotos && { color: colors.primary }]}>Before</Text>
-                </TouchableOpacity>
-              )}
-              {invoice.jobId && (
-                <TouchableOpacity
-                  style={[styles.previewOptionChip, includeAfterPhotos && styles.previewOptionChipActive]}
-                  onPress={() => setIncludeAfterPhotos(!includeAfterPhotos)}
-                >
-                  <Feather name={includeAfterPhotos ? "check-square" : "square"} size={14} color={includeAfterPhotos ? colors.primary : colors.mutedForeground} />
-                  <Text style={[styles.previewOptionChipText, includeAfterPhotos && { color: colors.primary }]}>After</Text>
-                </TouchableOpacity>
-              )}
-              {invoice.notes && (
-                <TouchableOpacity
-                  style={[styles.previewOptionChip, includeNotes && styles.previewOptionChipActive]}
-                  onPress={() => setIncludeNotes(!includeNotes)}
-                >
-                  <Feather name={includeNotes ? "check-square" : "square"} size={14} color={includeNotes ? colors.primary : colors.mutedForeground} />
-                  <Text style={[styles.previewOptionChipText, includeNotes && { color: colors.primary }]}>Notes</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
+          <View style={styles.previewOptionsRow}>
+            {invoice.jobId && (
+              <TouchableOpacity
+                style={[styles.previewOptionChip, includeBeforePhotos && styles.previewOptionChipActive]}
+                onPress={() => setIncludeBeforePhotos(!includeBeforePhotos)}
+              >
+                <Feather name={includeBeforePhotos ? "check-square" : "square"} size={14} color={includeBeforePhotos ? colors.primary : colors.mutedForeground} />
+                <Text style={[styles.previewOptionChipText, includeBeforePhotos && { color: colors.primary }]}>Before</Text>
+              </TouchableOpacity>
+            )}
+            {invoice.jobId && (
+              <TouchableOpacity
+                style={[styles.previewOptionChip, includeAfterPhotos && styles.previewOptionChipActive]}
+                onPress={() => setIncludeAfterPhotos(!includeAfterPhotos)}
+              >
+                <Feather name={includeAfterPhotos ? "check-square" : "square"} size={14} color={includeAfterPhotos ? colors.primary : colors.mutedForeground} />
+                <Text style={[styles.previewOptionChipText, includeAfterPhotos && { color: colors.primary }]}>After</Text>
+              </TouchableOpacity>
+            )}
+            {invoice.notes && (
+              <TouchableOpacity
+                style={[styles.previewOptionChip, includeNotes && styles.previewOptionChipActive]}
+                onPress={() => setIncludeNotes(!includeNotes)}
+              >
+                <Feather name={includeNotes ? "check-square" : "square"} size={14} color={includeNotes ? colors.primary : colors.mutedForeground} />
+                <Text style={[styles.previewOptionChipText, includeNotes && { color: colors.primary }]}>Notes</Text>
+              </TouchableOpacity>
+            )}
+            {allSignatures.length > 0 && (
+              <TouchableOpacity
+                style={[styles.previewOptionChip, includeSignatures && styles.previewOptionChipActive]}
+                onPress={() => setIncludeSignatures(!includeSignatures)}
+              >
+                <Feather name={includeSignatures ? "check-square" : "square"} size={14} color={includeSignatures ? colors.primary : colors.mutedForeground} />
+                <Text style={[styles.previewOptionChipText, includeSignatures && { color: colors.primary }]}>Signatures</Text>
+              </TouchableOpacity>
+            )}
+            {invoice.terms && (
+              <TouchableOpacity
+                style={[styles.previewOptionChip, includeTerms && styles.previewOptionChipActive]}
+                onPress={() => setIncludeTerms(!includeTerms)}
+              >
+                <Feather name={includeTerms ? "check-square" : "square"} size={14} color={includeTerms ? colors.primary : colors.mutedForeground} />
+                <Text style={[styles.previewOptionChipText, includeTerms && { color: colors.primary }]}>Terms</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <LiveDocumentPreview
             type="invoice"
             documentNumber={invoice.invoiceNumber}
@@ -3131,13 +3149,14 @@ ${businessName}`;
             status={invoice.status}
             templateId={(invoice as any).documentTemplate || businessSettings?.documentTemplate}
             templateCustomization={(invoice as any).documentTemplateSettings || businessSettings?.documentTemplateSettings}
-            jobSignatures={allSignatures.map(sig => ({
+            jobSignatures={includeSignatures ? allSignatures.map(sig => ({
               id: sig.id,
               signerName: sig.signerName || 'Client',
               signatureData: sig.signatureData,
               signedAt: sig.signedAt || new Date().toISOString(),
               documentType: sig.documentType,
-            }))}
+            })) : []}
+            terms={includeTerms ? invoice.terms : undefined}
             serverSubtotal={invoice.subtotal}
             serverGstAmount={invoice.gstAmount}
             serverTotal={invoice.total}

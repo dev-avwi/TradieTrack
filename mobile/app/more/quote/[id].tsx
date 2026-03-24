@@ -1778,16 +1778,16 @@ ${businessName}`;
             status={quote.status}
             templateId={(quote as any).documentTemplate || businessSettings?.documentTemplate}
             templateCustomization={(quote as any).documentTemplateSettings || businessSettings?.documentTemplateSettings}
-            jobSignatures={allSignatures.map(sig => ({
+            jobSignatures={!hideSignature ? allSignatures.map(sig => ({
               id: sig.id,
               signerName: sig.signerName || 'Client',
               signatureData: sig.signatureData,
               signedAt: sig.signedAt || new Date().toISOString(),
               documentType: sig.documentType,
-            }))}
-            acceptedAt={quote.acceptedAt}
-            acceptedBy={quote.acceptedBy}
-            clientSignatureData={client?.savedSignatureData}
+            })) : []}
+            acceptedAt={!hideSignature ? quote.acceptedAt : undefined}
+            acceptedBy={!hideSignature ? quote.acceptedBy : undefined}
+            clientSignatureData={!hideSignature ? client?.savedSignatureData : undefined}
             serverSubtotal={quote.subtotal}
             serverGstAmount={quote.gstAmount}
             serverTotal={quote.total}

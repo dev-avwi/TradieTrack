@@ -10,6 +10,7 @@ import {
   Image,
   Share,
   Linking,
+  Modal,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -76,6 +77,10 @@ export default function ReceiptDetailScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [includePaymentDetails, setIncludePaymentDetails] = useState(true);
+  const [includeBusinessInfo, setIncludeBusinessInfo] = useState(true);
+  const [includeClientInfo, setIncludeClientInfo] = useState(true);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#22c55e';
 
@@ -634,6 +639,12 @@ ${businessName}`;
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity 
+                onPress={() => setShowPreview(true)}
+                style={styles.headerButton}
+              >
+                <Feather name="eye" size={22} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity 
                 onPress={handleDeleteReceipt}
                 style={styles.headerButton}
                 disabled={isDeleting}
@@ -915,6 +926,205 @@ ${businessName}`;
 
         <View style={{ height: spacing['4xl'] }} />
       </ScrollView>
+
+      {/* Receipt Preview Modal */}
+      <Modal
+        visible={showPreview}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPreview(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={styles.previewModalHeader}>
+            <TouchableOpacity onPress={() => setShowPreview(false)} style={styles.previewCloseButton}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+            <Text style={styles.previewModalTitle}>Receipt Preview</Text>
+            <View style={styles.previewActionButtons}>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowPreview(false);
+                  setTimeout(() => handleSendReceipt(), 300);
+                }}
+                style={styles.previewActionButton}
+              >
+                <Feather name="mail" size={20} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowPreview(false);
+                  setTimeout(() => handleSharePdf(), 300);
+                }}
+                style={styles.previewActionButton}
+                disabled={isDownloadingPdf}
+              >
+                <Feather name="share-2" size={20} color={isDownloadingPdf ? colors.mutedForeground : colors.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.previewOptionsRow}>
+            <TouchableOpacity
+              style={[styles.previewOptionChip, includeBusinessInfo && styles.previewOptionChipActive]}
+              onPress={() => setIncludeBusinessInfo(!includeBusinessInfo)}
+            >
+              <Feather name={includeBusinessInfo ? "check-square" : "square"} size={14} color={includeBusinessInfo ? colors.primary : colors.mutedForeground} />
+              <Text style={[styles.previewOptionChipText, includeBusinessInfo && { color: colors.primary }]}>Business</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.previewOptionChip, includeClientInfo && styles.previewOptionChipActive]}
+              onPress={() => setIncludeClientInfo(!includeClientInfo)}
+            >
+              <Feather name={includeClientInfo ? "check-square" : "square"} size={14} color={includeClientInfo ? colors.primary : colors.mutedForeground} />
+              <Text style={[styles.previewOptionChipText, includeClientInfo && { color: colors.primary }]}>Client</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.previewOptionChip, includePaymentDetails && styles.previewOptionChipActive]}
+              onPress={() => setIncludePaymentDetails(!includePaymentDetails)}
+            >
+              <Feather name={includePaymentDetails ? "check-square" : "square"} size={14} color={includePaymentDetails ? colors.primary : colors.mutedForeground} />
+              <Text style={[styles.previewOptionChipText, includePaymentDetails && { color: colors.primary }]}>Details</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView 
+            style={{ flex: 1 }} 
+            contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.previewDocumentCard}>
+              <View style={styles.previewDocumentContent}>
+                {/* Header */}
+                <View style={[styles.previewHeader, { borderBottomColor: brandColor }]}>
+                  {includeBusinessInfo && (
+                    <View style={{ flex: 1 }}>
+                      {businessSettings?.logoUrl && (
+                        <Image 
+                          source={{ uri: businessSettings.logoUrl }} 
+                          style={styles.logo}
+                          resizeMode="contain"
+                        />
+                      )}
+                      <Text style={styles.businessName}>
+                        {businessSettings?.businessName || 'Your Business Name'}
+                      </Text>
+                      {businessSettings?.abn && (
+                        <Text style={styles.businessDetail}>ABN: {businessSettings.abn}</Text>
+                      )}
+                      {businessSettings?.address && (
+                        <Text style={styles.businessDetail}>{businessSettings.address}</Text>
+                      )}
+                      {businessSettings?.phone && (
+                        <Text style={styles.businessDetail}>Phone: {businessSettings.phone}</Text>
+                      )}
+                    </View>
+                  )}
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ fontSize: 20, fontWeight: '700', color: brandColor, letterSpacing: 2 }}>RECEIPT</Text>
+                    <Text style={{ fontSize: 14, color: '#1a1a1a', fontWeight: '600', marginTop: 4 }}>{receipt.receiptNumber}</Text>
+                    <View style={{ backgroundColor: '#22c55e', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, marginTop: 6 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#ffffff' }}>PAID</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Client & Payment Info */}
+                <View style={{ flexDirection: 'row', marginTop: 16, gap: 16 }}>
+                  {includeClientInfo && client && (
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>RECEIVED FROM</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#1a1a1a' }}>{client.name}</Text>
+                      {client.address && <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{client.address}</Text>}
+                      {client.email && <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{client.email}</Text>}
+                      {client.phone && <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{client.phone}</Text>}
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>PAYMENT DATE</Text>
+                    <Text style={{ fontSize: 13, color: '#1a1a1a' }}>
+                      {receipt.paidAt 
+                        ? format(new Date(receipt.paidAt), 'd MMMM yyyy') 
+                        : format(new Date(receipt.createdAt), 'd MMMM yyyy')}
+                    </Text>
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 12 }}>METHOD</Text>
+                    <Text style={{ fontSize: 13, color: '#1a1a1a' }}>{formatPaymentMethod(receipt.paymentMethod)}</Text>
+                  </View>
+                </View>
+
+                {/* Amount Section */}
+                <View style={{ marginTop: 20, borderWidth: 1, borderColor: '#22c55e', borderRadius: 8, padding: 16 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#1a1a1a' }}>Payment Received</Text>
+                    <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#16a34a' }}>Paid</Text>
+                    </View>
+                  </View>
+                  {gst > 0 && (
+                    <>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                        <Text style={{ fontSize: 12, color: '#6b7280' }}>Subtotal (excl. GST)</Text>
+                        <Text style={{ fontSize: 12, color: '#1a1a1a' }}>{formatCurrency(subtotal)}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#e5e7eb' }}>
+                        <Text style={{ fontSize: 12, color: '#6b7280' }}>GST (10%)</Text>
+                        <Text style={{ fontSize: 12, color: '#1a1a1a' }}>{formatCurrency(gst)}</Text>
+                      </View>
+                    </>
+                  )}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#22c55e', marginTop: 4 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#1a1a1a' }}>
+                      Amount Paid {gst > 0 ? '(incl. GST)' : ''}
+                    </Text>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#1a1a1a' }}>{formatCurrency(receipt.amount)}</Text>
+                  </View>
+                </View>
+
+                {/* Payment Details */}
+                {includePaymentDetails && (
+                  <View style={{ marginTop: 16, gap: 8 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e5e7eb' }}>
+                      <Text style={{ fontSize: 12, color: '#6b7280' }}>Payment Method</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '500', color: '#1a1a1a' }}>{formatPaymentMethod(receipt.paymentMethod)}</Text>
+                    </View>
+                    {receipt.paymentReference && (
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e5e7eb' }}>
+                        <Text style={{ fontSize: 12, color: '#6b7280' }}>Reference</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '500', color: '#1a1a1a' }}>{receipt.paymentReference}</Text>
+                      </View>
+                    )}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e5e7eb' }}>
+                      <Text style={{ fontSize: 12, color: '#6b7280' }}>Transaction ID</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '500', color: '#1a1a1a' }} numberOfLines={1}>{receipt.id.slice(0, 12)}...</Text>
+                    </View>
+                    {receipt.paidAt && (
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                        <Text style={{ fontSize: 12, color: '#6b7280' }}>Date & Time</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '500', color: '#1a1a1a' }}>
+                          {format(new Date(receipt.paidAt), 'd MMM yyyy, h:mm a')}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Thank You */}
+                <View style={{ marginTop: 20, padding: 16, backgroundColor: `${brandColor}10`, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: brandColor }}>Thank you for your payment!</Text>
+                  <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 4, textAlign: 'center' }}>
+                    This receipt confirms your payment has been received and processed.
+                  </Text>
+                </View>
+
+                {/* Footer */}
+                <View style={{ marginTop: 20, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#e5e7eb', alignItems: 'center' }}>
+                  {businessSettings?.abn && (
+                    <Text style={{ fontSize: 10, color: '#6b7280' }}>ABN: {businessSettings.abn}</Text>
+                  )}
+                  <Text style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>Generated by JobRunner</Text>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* Email Compose Modal for customizing receipt email */}
       {receipt && client && (
@@ -1458,5 +1668,92 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primary,
     flex: 1,
     textAlign: 'center',
+  },
+  previewModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  previewCloseButton: {
+    padding: 4,
+  },
+  previewModalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  previewActionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  previewActionButton: {
+    padding: 4,
+  },
+  previewOptionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: colors.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  previewOptionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  previewOptionChipActive: {
+    borderColor: `${colors.primary}40`,
+    backgroundColor: `${colors.primary}08`,
+  },
+  previewOptionChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.mutedForeground,
+  },
+  previewDocumentCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    overflow: 'hidden',
+  },
+  previewDocumentContent: {
+    padding: 24,
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingBottom: 16,
+    borderBottomWidth: 2,
+    marginBottom: 0,
+  },
+  logo: {
+    width: 80,
+    height: 40,
+    marginBottom: 8,
+  },
+  businessName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  businessDetail: {
+    fontSize: 11,
+    color: '#6b7280',
+    marginTop: 2,
   },
 });
