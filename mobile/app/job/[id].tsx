@@ -3079,7 +3079,7 @@ export default function JobDetailScreen() {
                 method: 'email',
               });
               if (emailResponse.error) {
-                const invoiceNumber = (invoice as any)?.number || invoice.id.slice(0, 8);
+                const invoiceNumber = (invoice as any)?.number || (invoice.id || '').slice(0, 8);
                 const total = invoice?.total ? `$${Number(invoice.total).toFixed(2)}` : '';
                 const subject = `Invoice ${invoiceNumber}${total ? ` - ${total}` : ''}`;
                 const body = `G'day ${client.name || 'there'},\n\nPlease find your invoice for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and pay your invoice here:\n${API_URL.replace('/api', '')}/invoices/${invoice.id}/pay\n\nThanks for your business!`;
@@ -3089,7 +3089,7 @@ export default function JobDetailScreen() {
                 Alert.alert('Email Sent', `Invoice email sent to ${client.email}`);
               }
             } catch {
-              const invoiceNumber = (invoice as any)?.number || invoice.id.slice(0, 8);
+              const invoiceNumber = (invoice as any)?.number || (invoice.id || '').slice(0, 8);
               const total = invoice?.total ? `$${Number(invoice.total).toFixed(2)}` : '';
               const subject = `Invoice ${invoiceNumber}${total ? ` - ${total}` : ''}`;
               const body = `G'day ${client.name || 'there'},\n\nPlease find your invoice for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and pay your invoice here:\n${API_URL.replace('/api', '')}/invoices/${invoice.id}/pay\n\nThanks for your business!`;
@@ -3131,7 +3131,7 @@ export default function JobDetailScreen() {
                 method: 'email',
               });
               if (quoteEmailResponse.error) {
-                const quoteNumber = (quote as any)?.number || quote.id.slice(0, 8);
+                const quoteNumber = (quote as any)?.number || (quote.id || '').slice(0, 8);
                 const total = (quote as any)?.total ? `$${Number((quote as any).total).toFixed(2)}` : '';
                 const subject = `Quote ${quoteNumber}${total ? ` - ${total}` : ''}`;
                 const body = `G'day ${client.name || 'there'},\n\nPlease find your quote for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and accept this quote here:\n${API_URL.replace('/api', '')}/q/${(quote as any)?.acceptanceToken || quote.id}\n\nLet me know if you have any questions!`;
@@ -3141,7 +3141,7 @@ export default function JobDetailScreen() {
                 Alert.alert('Email Sent', `Quote email sent to ${client.email}`);
               }
             } catch {
-              const quoteNumber = (quote as any)?.number || quote.id.slice(0, 8);
+              const quoteNumber = (quote as any)?.number || (quote.id || '').slice(0, 8);
               const total = (quote as any)?.total ? `$${Number((quote as any).total).toFixed(2)}` : '';
               const subject = `Quote ${quoteNumber}${total ? ` - ${total}` : ''}`;
               const body = `G'day ${client.name || 'there'},\n\nPlease find your quote for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and accept this quote here:\n${API_URL.replace('/api', '')}/q/${(quote as any)?.acceptanceToken || quote.id}\n\nLet me know if you have any questions!`;
@@ -6414,7 +6414,7 @@ export default function JobDetailScreen() {
                         numberOfLines={1}
                         ellipsizeMode="middle"
                       >
-                        {link.url || `Portal link #${link.id.slice(0, 8)}`}
+                        {link.url || `Portal link #${(link.id || '').slice(0, 8)}`}
                       </Text>
                       <TouchableOpacity
                         onPress={() => handleSharePortalLink(link.url)}
