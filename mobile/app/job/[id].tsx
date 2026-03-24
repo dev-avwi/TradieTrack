@@ -6308,10 +6308,39 @@ export default function JobDetailScreen() {
               <Feather name="file-text" size={iconSizes.lg} color={colors.primary} />
             </View>
             <Text style={styles.costingTitle}>Proof Pack</Text>
+            {(job.status === 'done' || job.status === 'invoiced') && (
+              <View style={{ backgroundColor: `${colors.success}20`, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.success }}>Ready</Text>
+              </View>
+            )}
           </View>
           <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.md, lineHeight: 19 }}>
             Generate a comprehensive PDF with job timeline, photos, signatures, and compliance records to share with your client.
           </Text>
+
+          {/* Content Preview */}
+          <View style={{ backgroundColor: colors.muted, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md, gap: spacing.xs }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.foreground, marginBottom: 4 }}>Pack Contents</Text>
+            {[
+              { icon: 'clock' as const, label: 'Job Timeline', available: true },
+              { icon: 'camera' as const, label: 'Site Photos', available: (job as any).photos?.length > 0 || (job as any).photoCount > 0 },
+              { icon: 'edit-3' as const, label: 'Signatures', available: (job as any).signatureUrl || (job as any).clientSignatureUrl },
+              { icon: 'map-pin' as const, label: 'GPS Records', available: true },
+              { icon: 'shield' as const, label: 'Compliance & SWMS', available: true },
+              { icon: 'file-text' as const, label: 'Invoice', available: job.status === 'invoiced' },
+            ].map((item, idx) => (
+              <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 3 }}>
+                <Feather name={item.icon} size={14} color={item.available ? colors.primary : colors.mutedForeground} />
+                <Text style={{ fontSize: 13, color: item.available ? colors.foreground : colors.mutedForeground, flex: 1 }}>{item.label}</Text>
+                <Feather 
+                  name={item.available ? "check-circle" : "minus-circle"} 
+                  size={14} 
+                  color={item.available ? colors.success : colors.mutedForeground} 
+                />
+              </View>
+            ))}
+          </View>
+
           <TouchableOpacity
             style={{
               flexDirection: 'row',
@@ -8189,191 +8218,6 @@ export default function JobDetailScreen() {
         </View>
       )}
 
-      {/* Proof Pack - accessible from Docs tab */}
-      {(isOwnerOrManager || isSoloOwner) && (
-        <View style={styles.photosCard}>
-          <View style={styles.photosHeader}>
-            <View style={[styles.photosIconContainer, { backgroundColor: `${colors.primary}15` }]}>
-              <Feather name="package" size={iconSizes.lg} color={colors.primary} />
-            </View>
-            <Text style={styles.photosHeaderLabel}>Proof Pack</Text>
-            {(job.status === 'done' || job.status === 'invoiced') && (
-              <View style={{ backgroundColor: `${colors.success}20`, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm }}>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.success }}>Ready</Text>
-              </View>
-            )}
-          </View>
-          <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.md, lineHeight: 19 }}>
-            Generate a comprehensive PDF with job timeline, photos, signatures, and compliance records to share with your client.
-          </Text>
-          {(job.status === 'done' || job.status === 'invoiced') ? (
-            <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: spacing.sm,
-                backgroundColor: colors.primary,
-                paddingVertical: spacing.md,
-                borderRadius: radius.lg,
-                opacity: isGeneratingProofPack ? 0.6 : 1,
-                minHeight: 44,
-              }}
-              onPress={handleGenerateProofPack}
-              activeOpacity={0.8}
-              disabled={isGeneratingProofPack}
-            >
-              {isGeneratingProofPack ? (
-                <ActivityIndicator size="small" color={colors.primaryForeground} />
-              ) : (
-                <>
-                  <Feather name="share" size={18} color={colors.primaryForeground} />
-                  <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
-                    Generate & Share Proof Pack
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          ) : (
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.sm,
-              backgroundColor: colors.muted,
-              paddingVertical: spacing.md,
-              paddingHorizontal: spacing.md,
-              borderRadius: radius.lg,
-            }}>
-              <Feather name="info" size={16} color={colors.mutedForeground} />
-              <Text style={{ fontSize: 13, color: colors.mutedForeground, flex: 1 }}>
-                Available once the job is marked as completed
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Client Portal - accessible from Docs tab */}
-      {(isOwnerOrManager || isSoloOwner) && (
-        <View style={styles.photosCard}>
-          <View style={styles.photosHeader}>
-            <View style={[styles.photosIconContainer, { backgroundColor: `${colors.invoiced}15` }]}>
-              <Feather name="globe" size={iconSizes.lg} color={colors.invoiced} />
-            </View>
-            <Text style={styles.photosHeaderLabel}>Client Portal</Text>
-          </View>
-
-          {client ? (
-            <>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, color: colors.foreground, fontWeight: '500' }}>Enable Portal</Text>
-                  <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
-                    Let your client view job progress online
-                  </Text>
-                </View>
-                {isTogglingPortal ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Switch
-                    value={portalEnabled}
-                    onValueChange={handleTogglePortal}
-                    trackColor={{ false: colors.muted, true: colors.primary }}
-                    thumbColor={portalEnabled ? colors.primaryForeground : colors.foreground}
-                  />
-                )}
-              </View>
-
-              {portalEnabled && (
-                <View style={{ marginTop: spacing.md }}>
-                  {portalLinks.length > 0 ? (
-                    <View style={{ gap: spacing.sm }}>
-                      {portalLinks.map((link) => (
-                        <View
-                          key={link.id}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            backgroundColor: colors.muted,
-                            borderRadius: radius.lg,
-                            padding: spacing.md,
-                            gap: spacing.sm,
-                          }}
-                        >
-                          <Feather name="link" size={16} color={colors.primary} />
-                          <Text
-                            style={{ flex: 1, fontSize: 13, color: colors.foreground }}
-                            numberOfLines={1}
-                            ellipsizeMode="middle"
-                          >
-                            {link.url || `Portal link #${link.id.slice(0, 8)}`}
-                          </Text>
-                          <TouchableOpacity
-                            onPress={() => handleSharePortalLink(link.url)}
-                            style={{ padding: spacing.xs }}
-                            activeOpacity={0.7}
-                          >
-                            <Feather name="share-2" size={16} color={colors.primary} />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </View>
-                  ) : (
-                    <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.sm }}>
-                      No portal links yet. Generate one to share with your client.
-                    </Text>
-                  )}
-                  <TouchableOpacity
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: spacing.sm,
-                      backgroundColor: colors.card,
-                      paddingVertical: spacing.md,
-                      borderRadius: radius.lg,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      marginTop: spacing.sm,
-                      opacity: isGeneratingPortalLink ? 0.6 : 1,
-                      minHeight: 44,
-                    }}
-                    onPress={handleGeneratePortalLink}
-                    activeOpacity={0.8}
-                    disabled={isGeneratingPortalLink}
-                  >
-                    {isGeneratingPortalLink ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    ) : (
-                      <>
-                        <Feather name="plus" size={16} color={colors.foreground} />
-                        <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>
-                          Generate Portal Link
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-            </>
-          ) : (
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.sm,
-              backgroundColor: colors.muted,
-              paddingVertical: spacing.md,
-              paddingHorizontal: spacing.md,
-              borderRadius: radius.lg,
-            }}>
-              <Feather name="info" size={16} color={colors.mutedForeground} />
-              <Text style={{ fontSize: 13, color: colors.mutedForeground, flex: 1 }}>
-                Add a client to this job to enable the client portal
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
     </>
   );
 

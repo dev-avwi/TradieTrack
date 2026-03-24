@@ -430,7 +430,7 @@ export default function ActionCenterScreen() {
         setData(response.data || null);
       }
     } catch (err) {
-      setError('Failed to load action center');
+      setError('Failed to load action centre');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -715,7 +715,7 @@ export default function ActionCenterScreen() {
         {isLoading && !data ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading action center...</Text>
+            <Text style={styles.loadingText}>Loading action centre...</Text>
           </View>
         ) : (
           <ScrollView

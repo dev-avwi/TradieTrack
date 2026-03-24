@@ -27,6 +27,7 @@ import { XeroBadge } from '../../src/components/ui/XeroBadge';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell, usePageShell } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
+import { getAvatarColor } from '../../src/lib/avatar-colors';
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import UsageLimitBanner from '../../src/components/UsageLimitBanner';
@@ -2588,6 +2589,11 @@ export default function DashboardScreen() {
         </View>
       )}
 
+      {/* Weather Widget - Above stats for quick glance */}
+      <View style={styles.section}>
+        <WeatherWidget />
+      </View>
+
       {/* Quick Stats - 4 clean cards */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>
@@ -2648,21 +2654,16 @@ export default function DashboardScreen() {
                 onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
               />
               <KPICard
-                title="Revenue"
-                value={monthRevenue}
-                icon="dollar-sign"
-                iconBg={colors.successLight}
-                iconColor={colors.success}
-                onPress={() => router.push('/more/money-hub')}
+                title="Assigned"
+                value={allJobs.filter((j: any) => j.status === 'scheduled' || j.status === 'in_progress').length}
+                icon="users"
+                iconBg={colors.primaryLight}
+                iconColor={colors.primary}
+                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
               />
             </>
           )}
         </View>
-      </View>
-
-      {/* Weather Widget - Compact, below stats */}
-      <View style={styles.section}>
-        <WeatherWidget />
       </View>
 
       {/* Revenue Chart - Owner Only */}
@@ -2795,9 +2796,15 @@ export default function DashboardScreen() {
                   disabled={!isClickable}
                 >
                   <View style={styles.teamMemberHeader}>
-                    <View style={styles.teamMemberAvatar}>
-                      <Text style={styles.teamMemberAvatarText}>{getMemberInitials(member)}</Text>
-                    </View>
+                    {(() => {
+                      const memberName = getMemberName(member);
+                      const avatarColor = getAvatarColor(memberName);
+                      return (
+                        <View style={[styles.teamMemberAvatar, { backgroundColor: avatarColor.bg }]}>
+                          <Text style={[styles.teamMemberAvatarText, { color: avatarColor.fg }]}>{getMemberInitials(member)}</Text>
+                        </View>
+                      );
+                    })()}
                     <View style={styles.teamMemberInfo}>
                       <Text style={styles.teamMemberName}>{getMemberName(member)}</Text>
                       <Text style={styles.teamMemberJobCount}>
