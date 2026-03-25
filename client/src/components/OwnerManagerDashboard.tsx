@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,10 @@ import {
   Calendar,
   ArrowRight,
   TrendingUp,
+  TrendingDown,
+  BarChart3,
+  CircleDollarSign,
+  Hammer,
 } from "lucide-react";
 
 interface OwnerManagerDashboardProps {
@@ -91,12 +95,55 @@ export default function OwnerManagerDashboard({
   interface CashflowData {
     overdueTotal: number;
     overdueCount: number;
+    outstandingTotal: number;
+    dueThisWeek: number;
+    dueThisWeekCount: number;
+    collectedThisMonth: number;
+    collectedLastMonth: number;
+    collectedTrend: number;
+    revenueByWeek: { week: string; amount: number }[];
   }
 
   const { data: cashflow } = useQuery<CashflowData>({
     queryKey: ["/api/dashboard/cashflow"],
     staleTime: 5 * 60 * 1000,
   });
+
+  interface ProfitData {
+    revenueToday: number;
+    revenueThisWeek: number;
+    revenueThisMonth: number;
+    grossProfit: number;
+    grossMargin: number;
+  }
+
+  const { data: profitData } = useQuery<ProfitData>({
+    queryKey: ["/api/dashboard/profit-snapshot"],
+    staleTime: 5 * 60 * 1000,
+  });
+
+  interface JobPipelineData {
+    scheduled: number;
+    inProgress: number;
+    completed: number;
+    quoted: number;
+  }
+
+  const { data: allJobs } = useQuery<any[]>({
+    queryKey: ["/api/jobs"],
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const jobPipeline = useMemo<JobPipelineData>(() => {
+    if (!allJobs) return { scheduled: 0, inProgress: 0, completed: 0, quoted: 0 };
+    const active = allJobs.filter((j: any) => !j.archivedAt);
+    return {
+      scheduled: active.filter((j: any) => j.status === 'pending' || j.status === 'scheduled').length,
+      inProgress: active.filter((j: any) => j.status === 'in_progress').length,
+      completed: active.filter((j: any) => j.status === 'done' || j.status === 'invoiced' || j.status === 'paid').length,
+      quoted: active.filter((j: any) => j.status === 'quoted').length,
+    };
+  }, [allJobs]);
 
   interface ActionItem {
     id: string;
@@ -557,10 +604,153 @@ export default function OwnerManagerDashboard({
       </Card>
       </div>
 
-      <ActivityFeed 
-        limit={5}
-        onViewAll={() => onNavigate?.('/communications')}
-      />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
+        <Card className="hidden xl:block">
+          <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
+            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <CircleDollarSign className="h-4 w-4" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+              Revenue
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => onNavigate?.('/payment-hub')} data-testid="button-view-revenue">
+              Details <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-0 px-4 pb-4">
+            <div className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <p className="text-2xl font-bold">${(profitData?.revenueThisMonth ?? 0).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">This month</p>
+                </div>
+                {cashflow?.collectedTrend !== undefined && cashflow.collectedTrend !== 0 && (
+                  <div className={`flex items-center gap-1 text-xs font-medium ${cashflow.collectedTrend > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    {cashflow.collectedTrend > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                    {cashflow.collectedTrend > 0 ? '+' : ''}{cashflow.collectedTrend}%
+                  </div>
+                )}
+              </div>
+
+              {cashflow?.revenueByWeek && cashflow.revenueByWeek.length > 0 && (
+                <div className="flex items-end gap-1.5 h-16 pt-1">
+                  {(() => {
+                    const maxVal = Math.max(...cashflow.revenueByWeek.map(w => w.amount), 1);
+                    return cashflow.revenueByWeek.map((week, i) => (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                        <div
+                          className="w-full rounded-sm min-h-[4px]"
+                          style={{
+                            height: `${Math.max((week.amount / maxVal) * 48, 4)}px`,
+                            backgroundColor: i === cashflow.revenueByWeek!.length - 1 ? 'hsl(var(--trade))' : 'hsl(var(--trade) / 0.3)',
+                          }}
+                        />
+                        <span className="text-[9px] text-muted-foreground truncate w-full text-center">{week.week}</span>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3 pt-1 border-t">
+                <div>
+                  <p className="text-xs text-muted-foreground">Outstanding</p>
+                  <p className="text-sm font-semibold">${(cashflow?.outstandingTotal ?? 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">This week</p>
+                  <p className="text-sm font-semibold">${(profitData?.revenueThisWeek ?? 0).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="xl:col-span-1">
+          <ActivityFeed 
+            limit={4}
+            onViewAll={() => onNavigate?.('/communications')}
+            compact
+          />
+        </div>
+
+        <Card className="hidden xl:block">
+          <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
+            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Hammer className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+              Job Pipeline
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => onNavigate?.('/work')} data-testid="button-view-pipeline">
+              All Jobs <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-0 px-4 pb-4">
+            <div className="space-y-3">
+              {(() => {
+                const total = jobPipeline.scheduled + jobPipeline.inProgress + jobPipeline.completed + jobPipeline.quoted;
+                const segments = [
+                  { label: 'Quoted', count: jobPipeline.quoted, color: 'hsl(38 92% 50%)' },
+                  { label: 'Scheduled', count: jobPipeline.scheduled, color: 'hsl(var(--trade))' },
+                  { label: 'In Progress', count: jobPipeline.inProgress, color: 'hsl(217.2 91.2% 59.8%)' },
+                  { label: 'Completed', count: jobPipeline.completed, color: 'hsl(142.1 76.2% 36.3%)' },
+                ];
+                return (
+                  <>
+                    <div className="flex rounded-full h-3 overflow-hidden bg-muted">
+                      {total > 0 && segments.map((seg, i) => seg.count > 0 && (
+                        <div
+                          key={i}
+                          style={{ width: `${(seg.count / total) * 100}%`, backgroundColor: seg.color }}
+                          className="transition-all duration-500"
+                        />
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {segments.map((seg, i) => (
+                        <div key={i} className="flex items-center gap-2 p-2 rounded-md">
+                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold">{seg.count}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{seg.label}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+
+              {(cashflow?.overdueCount ?? 0) > 0 && (
+                <div 
+                  className="flex items-center gap-2 p-2.5 rounded-md cursor-pointer hover-elevate border border-red-200 dark:border-red-900/30 bg-red-50/50 dark:bg-red-950/20"
+                  onClick={() => onNavigate?.('/payment-hub')}
+                >
+                  <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-red-700 dark:text-red-400">{cashflow?.overdueCount} overdue invoice{(cashflow?.overdueCount ?? 0) > 1 ? 's' : ''}</p>
+                    <p className="text-[10px] text-red-500/80">${(cashflow?.overdueTotal ?? 0).toLocaleString()} outstanding</p>
+                  </div>
+                  <ArrowRight className="h-3.5 w-3.5 text-red-400 flex-shrink-0" />
+                </div>
+              )}
+
+              {profitData && (
+                <div className="pt-1 border-t">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">Gross margin</p>
+                    <p className="text-sm font-semibold">{profitData.grossMargin}%</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="xl:hidden">
+        <ActivityFeed 
+          limit={5}
+          onViewAll={() => onNavigate?.('/communications')}
+        />
+      </div>
 
       <GettingStartedChecklist 
         onNavigate={onNavigate}
