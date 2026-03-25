@@ -616,48 +616,61 @@ export default function OwnerManagerDashboard({
             </Button>
           </CardHeader>
           <CardContent className="pt-0 px-4 pb-4">
-            <div className="space-y-3">
-              <div className="flex items-baseline justify-between">
+            <div className="space-y-4">
+              <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-2xl font-bold">${(profitData?.revenueThisMonth ?? 0).toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">This month</p>
+                  <p className="text-3xl font-bold tracking-tight">${(profitData?.revenueThisMonth ?? 0).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Collected this month</p>
                 </div>
                 {cashflow?.collectedTrend !== undefined && cashflow.collectedTrend !== 0 && (
-                  <div className={`flex items-center gap-1 text-xs font-medium ${cashflow.collectedTrend > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {cashflow.collectedTrend > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                  <div className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${cashflow.collectedTrend > 0 ? 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-950/40' : 'text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-950/40'}`}>
+                    {cashflow.collectedTrend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {cashflow.collectedTrend > 0 ? '+' : ''}{cashflow.collectedTrend}%
                   </div>
                 )}
               </div>
 
               {cashflow?.revenueByWeek && cashflow.revenueByWeek.length > 0 && (
-                <div className="flex items-end gap-1.5 h-16 pt-1">
-                  {(() => {
-                    const maxVal = Math.max(...cashflow.revenueByWeek.map(w => w.amount), 1);
-                    return cashflow.revenueByWeek.map((week, i) => (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                        <div
-                          className="w-full rounded-sm min-h-[4px]"
-                          style={{
-                            height: `${Math.max((week.amount / maxVal) * 48, 4)}px`,
-                            backgroundColor: i === cashflow.revenueByWeek!.length - 1 ? 'hsl(var(--trade))' : 'hsl(var(--trade) / 0.3)',
-                          }}
-                        />
-                        <span className="text-[9px] text-muted-foreground truncate w-full text-center">{week.week}</span>
-                      </div>
-                    ));
-                  })()}
+                <div className="relative">
+                  <div className="flex items-end gap-[3px] h-20">
+                    {(() => {
+                      const maxVal = Math.max(...cashflow.revenueByWeek.map(w => w.amount), 1);
+                      return cashflow.revenueByWeek.map((week, i) => {
+                        const isLast = i === cashflow.revenueByWeek!.length - 1;
+                        const barHeight = Math.max((week.amount / maxVal) * 64, 3);
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1 group relative">
+                            <div className="invisible group-hover:visible absolute -top-5 bg-foreground text-background text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap z-10">
+                              ${week.amount.toLocaleString()}
+                            </div>
+                            <div
+                              className="w-full rounded-t-sm transition-all duration-300"
+                              style={{
+                                height: `${barHeight}px`,
+                                backgroundColor: isLast ? 'hsl(var(--trade))' : 'hsl(var(--trade) / 0.25)',
+                              }}
+                            />
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                  <div className="flex gap-[3px] mt-1.5">
+                    {cashflow.revenueByWeek.map((week, i) => (
+                      <span key={i} className="flex-1 text-[9px] text-muted-foreground text-center truncate">{week.week}</span>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3 pt-1 border-t">
-                <div>
-                  <p className="text-xs text-muted-foreground">Outstanding</p>
-                  <p className="text-sm font-semibold">${(cashflow?.outstandingTotal ?? 0).toLocaleString()}</p>
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="p-2.5 rounded-lg bg-muted/40">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Outstanding</p>
+                  <p className="text-sm font-bold">${(cashflow?.outstandingTotal ?? 0).toLocaleString()}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">This week</p>
-                  <p className="text-sm font-semibold">${(profitData?.revenueThisWeek ?? 0).toLocaleString()}</p>
+                <div className="p-2.5 rounded-lg bg-muted/40">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">This week</p>
+                  <p className="text-sm font-bold">${(profitData?.revenueThisWeek ?? 0).toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -694,34 +707,33 @@ export default function OwnerManagerDashboard({
             </Button>
           </CardHeader>
           <CardContent className="pt-0 px-4 pb-4">
-            <div className="space-y-3">
+            <div className="space-y-4">
               {(() => {
                 const total = jobPipeline.scheduled + jobPipeline.inProgress + jobPipeline.completed + jobPipeline.quoted;
                 const segments = [
-                  { label: 'Quoted', count: jobPipeline.quoted, color: 'hsl(38 92% 50%)' },
-                  { label: 'Scheduled', count: jobPipeline.scheduled, color: 'hsl(var(--trade))' },
-                  { label: 'In Progress', count: jobPipeline.inProgress, color: 'hsl(217.2 91.2% 59.8%)' },
-                  { label: 'Completed', count: jobPipeline.completed, color: 'hsl(142.1 76.2% 36.3%)' },
+                  { label: 'Quoted', count: jobPipeline.quoted, color: 'hsl(38 92% 50%)', bgLight: 'rgba(245, 158, 11, 0.1)', bgDark: 'rgba(245, 158, 11, 0.08)' },
+                  { label: 'Scheduled', count: jobPipeline.scheduled, color: 'hsl(var(--trade))', bgLight: 'hsl(var(--trade) / 0.1)', bgDark: 'hsl(var(--trade) / 0.08)' },
+                  { label: 'In Progress', count: jobPipeline.inProgress, color: 'hsl(217.2 91.2% 59.8%)', bgLight: 'rgba(59, 130, 246, 0.1)', bgDark: 'rgba(59, 130, 246, 0.08)' },
+                  { label: 'Completed', count: jobPipeline.completed, color: 'hsl(142.1 76.2% 36.3%)', bgLight: 'rgba(22, 163, 74, 0.1)', bgDark: 'rgba(22, 163, 74, 0.08)' },
                 ];
                 return (
                   <>
-                    <div className="flex rounded-full h-3 overflow-hidden bg-muted">
+                    <div className="flex rounded-full h-2.5 overflow-hidden bg-muted/60 gap-0.5">
                       {total > 0 && segments.map((seg, i) => seg.count > 0 && (
                         <div
                           key={i}
                           style={{ width: `${(seg.count / total) * 100}%`, backgroundColor: seg.color }}
-                          className="transition-all duration-500"
+                          className="transition-all duration-500 first:rounded-l-full last:rounded-r-full"
                         />
                       ))}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {segments.map((seg, i) => (
-                        <div key={i} className="flex items-center gap-2 p-2 rounded-md">
-                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold">{seg.count}</p>
-                            <p className="text-[10px] text-muted-foreground truncate">{seg.label}</p>
+                        <div key={i} className="flex items-center gap-2.5 p-2 rounded-lg" style={{ backgroundColor: seg.bgLight }}>
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: seg.color + '20' }}>
+                            <span className="text-sm font-bold" style={{ color: seg.color }}>{seg.count}</span>
                           </div>
+                          <p className="text-xs font-medium text-muted-foreground">{seg.label}</p>
                         </div>
                       ))}
                     </div>
@@ -731,24 +743,24 @@ export default function OwnerManagerDashboard({
 
               {(cashflow?.overdueCount ?? 0) > 0 && (
                 <div 
-                  className="flex items-center gap-2 p-2.5 rounded-md cursor-pointer hover-elevate border border-red-200 dark:border-red-900/30 bg-red-50/50 dark:bg-red-950/20"
+                  className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover-elevate bg-red-50 dark:bg-red-950/20"
                   onClick={() => onNavigate?.('/payment-hub')}
                 >
-                  <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-red-700 dark:text-red-400">{cashflow?.overdueCount} overdue invoice{(cashflow?.overdueCount ?? 0) > 1 ? 's' : ''}</p>
-                    <p className="text-[10px] text-red-500/80">${(cashflow?.overdueTotal ?? 0).toLocaleString()} outstanding</p>
+                  <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
                   </div>
-                  <ArrowRight className="h-3.5 w-3.5 text-red-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-red-700 dark:text-red-400">{cashflow?.overdueCount} overdue invoice{(cashflow?.overdueCount ?? 0) > 1 ? 's' : ''}</p>
+                    <p className="text-[10px] text-red-500/70 mt-0.5">${(cashflow?.overdueTotal ?? 0).toLocaleString()} outstanding</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-red-400 flex-shrink-0" />
                 </div>
               )}
 
               {profitData && (
-                <div className="pt-1 border-t">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">Gross margin</p>
-                    <p className="text-sm font-semibold">{profitData.grossMargin}%</p>
-                  </div>
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-muted/40">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Gross margin</p>
+                  <p className="text-sm font-bold">{profitData.grossMargin}%</p>
                 </div>
               )}
             </div>
