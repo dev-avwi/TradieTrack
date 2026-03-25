@@ -664,13 +664,24 @@ export default function OwnerManagerDashboard({
           </CardContent>
         </Card>
 
-        <div className="xl:col-span-1">
-          <ActivityFeed 
-            limit={4}
-            onViewAll={() => onNavigate?.('/communications')}
-            compact
-          />
-        </div>
+        <Card className="hidden xl:flex xl:flex-col overflow-visible">
+          <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
+            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" style={{ color: 'hsl(var(--primary))' }} />
+              Team Activity
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => onNavigate?.('/communications')} data-testid="button-view-all-activity-card">
+              See All <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-0 px-4 pb-4 flex-1">
+            <ActivityFeed 
+              limit={4}
+              onViewAll={() => onNavigate?.('/communications')}
+              compact
+            />
+          </CardContent>
+        </Card>
 
         <Card className="hidden xl:block">
           <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">

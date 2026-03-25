@@ -179,120 +179,8 @@ export default function ActivityFeed({
     }
   };
 
-  if (compact) {
-    return (
-      <div className="space-y-2" data-testid="activity-feed-compact">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 ios-caption">
-            <Clock className="h-3 w-3" />
-            <span>Team Activity</span>
-            {unreadCount > 0 && (
-              <Badge variant="default" className="h-4 min-w-4 text-[10px] px-1.5 rounded-full">
-                {unreadCount}
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {emailWorking && (
-              <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-green-300 text-green-600 rounded-full">
-                <span className="w-1 h-1 rounded-full bg-green-500 mr-1" />
-                Email
-              </Badge>
-            )}
-            {smsWorking && (
-              <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-green-300 text-green-600 rounded-full">
-                <span className="w-1 h-1 rounded-full bg-green-500 mr-1" />
-                SMS
-              </Badge>
-            )}
-          </div>
-        </div>
-        
-        {activities.length === 0 ? (
-          <p className="ios-caption py-2">
-            No recent activity. Team events will show here.
-          </p>
-        ) : (
-          <div className="space-y-1">
-            {activities.slice(0, 3).map((activity) => {
-              const Icon = activityIcons[activity.activityType] || Bell;
-              return (
-                <div 
-                  key={activity.id}
-                  className={`flex items-center gap-2 text-xs py-1 ${!activity.isRead ? 'font-medium' : ''}`}
-                  onClick={() => handleActivityClick(activity)}
-                  role="button"
-                >
-                  <Icon className="h-3 w-3 text-muted-foreground" />
-                  <span className="truncate flex-1">
-                    {activity.description || activity.entityTitle || activity.activityType}
-                  </span>
-                  <span className="text-muted-foreground shrink-0">
-                    {formatHistoryDate(activity.createdAt)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <section data-testid="activity-feed">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <h2 className="ios-label">Team Activity</h2>
-          {unreadCount > 0 && (
-            <Badge variant="default" className="h-5 min-w-5 text-xs px-2 rounded-full">
-              {unreadCount} new
-            </Badge>
-          )}
-          <div className="flex items-center gap-1.5">
-            {emailWorking && (
-              <Badge variant="outline" className="text-[10px] py-0.5 px-2 border-green-300/50 text-green-600 rounded-full bg-green-50/50 dark:bg-green-950/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse" />
-                Email Live
-              </Badge>
-            )}
-            {smsWorking && (
-              <Badge variant="outline" className="text-[10px] py-0.5 px-2 border-green-300/50 text-green-600 rounded-full bg-green-50/50 dark:bg-green-950/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse" />
-                SMS Live
-              </Badge>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => markAllReadMutation.mutate()}
-              disabled={markAllReadMutation.isPending}
-              className="text-xs h-8 px-3 rounded-xl"
-            >
-              Mark all read
-            </Button>
-          )}
-          {onViewAll && activities.length > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onViewAll}
-              className="text-xs h-8 px-3 rounded-xl press-scale"
-              data-testid="button-view-all-activity"
-            >
-              See All
-              <ChevronRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="feed-card">
-        <div className="card-padding">
+  const activityList = (
+    <div>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" 
@@ -369,6 +257,68 @@ export default function ActivityFeed({
               </div>
             </div>
           )}
+    </div>
+  );
+
+  if (compact) {
+    return activityList;
+  }
+
+  return (
+    <section data-testid="activity-feed">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <h2 className="ios-label">Team Activity</h2>
+          {unreadCount > 0 && (
+            <Badge variant="default" className="h-5 min-w-5 text-xs px-2 rounded-full">
+              {unreadCount} new
+            </Badge>
+          )}
+          <div className="flex items-center gap-1.5">
+            {emailWorking && (
+              <Badge variant="outline" className="text-[10px] py-0.5 px-2 border-green-300/50 text-green-600 rounded-full bg-green-50/50 dark:bg-green-950/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse" />
+                Email Live
+              </Badge>
+            )}
+            {smsWorking && (
+              <Badge variant="outline" className="text-[10px] py-0.5 px-2 border-green-300/50 text-green-600 rounded-full bg-green-50/50 dark:bg-green-950/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse" />
+                SMS Live
+              </Badge>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => markAllReadMutation.mutate()}
+              disabled={markAllReadMutation.isPending}
+              className="text-xs h-8 px-3 rounded-xl"
+            >
+              Mark all read
+            </Button>
+          )}
+          {onViewAll && activities.length > 0 && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onViewAll}
+              className="text-xs h-8 px-3 rounded-xl press-scale"
+              data-testid="button-view-all-activity"
+            >
+              See All
+              <ChevronRight className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="feed-card">
+        <div className="card-padding">
+          {activityList}
         </div>
       </div>
     </section>
