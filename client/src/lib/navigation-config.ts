@@ -238,7 +238,6 @@ export const mainMenuItems: NavItem[] = [
     color: "text-primary",
     bgColor: "bg-primary/10",
     requiresOwnerOrManager: true,
-    requiresProPlan: true,
     hideForStaff: true,
     showInSidebar: true,
     showInMore: true,
