@@ -416,6 +416,80 @@ export async function notifyOwnerViaSms(
   }
 }
 
+export async function notifyOwnerViaEmail(
+  ownerEmail: string,
+  type: 'quote_accepted' | 'invoice_paid',
+  data: { clientName: string; documentNumber: string; amount: string; jobTitle?: string; businessName?: string }
+): Promise<{ success: boolean; error?: string }> {
+  if (!ownerEmail) {
+    return { success: false, error: 'No owner email' };
+  }
+
+  try {
+    let subject: string;
+    let html: string;
+    const brandColor = '#2563EB';
+
+    if (type === 'quote_accepted') {
+      subject = `Quote ${data.documentNumber} Accepted by ${data.clientName}`;
+      html = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: ${brandColor}; color: white; padding: 20px 24px; border-radius: 8px 8px 0 0;">
+            <h2 style="margin: 0; font-size: 20px;">Quote Accepted</h2>
+          </div>
+          <div style="border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
+            <p style="margin: 0 0 16px; font-size: 16px; color: #1a1a1a;">
+              Great news! <strong>${data.clientName}</strong> has accepted your quote.
+            </p>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Quote Number</td><td style="padding: 4px 0; text-align: right; font-weight: 600; color: #1a1a1a;">${data.documentNumber}</td></tr>
+                <tr><td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Client</td><td style="padding: 4px 0; text-align: right; font-weight: 600; color: #1a1a1a;">${data.clientName}</td></tr>
+                ${data.jobTitle ? `<tr><td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Job</td><td style="padding: 4px 0; text-align: right; font-weight: 600; color: #1a1a1a;">${data.jobTitle}</td></tr>` : ''}
+                <tr style="border-top: 1px solid #bbf7d0;"><td style="padding: 8px 0 4px; color: #6b7280; font-size: 14px;">Amount</td><td style="padding: 8px 0 4px; text-align: right; font-weight: 700; font-size: 18px; color: #16a34a;">$${data.amount}</td></tr>
+              </table>
+            </div>
+            <p style="margin: 0; font-size: 13px; color: #9ca3af;">
+              This is an automated notification from ${data.businessName || 'JobRunner'}. Open the app to view details and schedule the work.
+            </p>
+          </div>
+        </div>`;
+    } else {
+      subject = `Payment Received - Invoice ${data.documentNumber} from ${data.clientName}`;
+      html = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: #16a34a; color: white; padding: 20px 24px; border-radius: 8px 8px 0 0;">
+            <h2 style="margin: 0; font-size: 20px;">Payment Received</h2>
+          </div>
+          <div style="border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
+            <p style="margin: 0 0 16px; font-size: 16px; color: #1a1a1a;">
+              <strong>${data.clientName}</strong> has paid invoice <strong>${data.documentNumber}</strong>.
+            </p>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Invoice</td><td style="padding: 4px 0; text-align: right; font-weight: 600; color: #1a1a1a;">${data.documentNumber}</td></tr>
+                <tr><td style="padding: 4px 0; color: #6b7280; font-size: 14px;">Client</td><td style="padding: 4px 0; text-align: right; font-weight: 600; color: #1a1a1a;">${data.clientName}</td></tr>
+                <tr style="border-top: 1px solid #bbf7d0;"><td style="padding: 8px 0 4px; color: #6b7280; font-size: 14px;">Amount Paid</td><td style="padding: 8px 0 4px; text-align: right; font-weight: 700; font-size: 18px; color: #16a34a;">$${data.amount}</td></tr>
+              </table>
+            </div>
+            <p style="margin: 0; font-size: 13px; color: #9ca3af;">
+              This is an automated notification from ${data.businessName || 'JobRunner'}. Open the app to view the receipt.
+            </p>
+          </div>
+        </div>`;
+    }
+
+    const result = await sendEmail({ to: ownerEmail, subject, html });
+    if (result.success) {
+      console.log(`[OwnerEmail] ${type} notification sent to ${ownerEmail}`);
+    }
+    return { success: result.success, error: result.error };
+  } catch (error: any) {
+    console.error(`[OwnerEmail] Failed to send ${type}:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 // Get notification service status
 export function getNotificationStatus() {
   return {

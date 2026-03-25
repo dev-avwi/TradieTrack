@@ -539,6 +539,8 @@ export const businessSettings = pgTable("business_settings", {
   bookingPageEnabled: boolean("booking_page_enabled").default(false),
   bookingPageServices: json("booking_page_services").default([]),
   bookingPageDescription: text("booking_page_description"),
+  emailOnQuoteAccepted: boolean("email_on_quote_accepted").default(false),
+  emailOnInvoicePaid: boolean("email_on_invoice_paid").default(false),
   simpleMode: boolean("simple_mode").default(true),
   scheduleStartHour: integer("schedule_start_hour").default(6),
   scheduleEndHour: integer("schedule_end_hour").default(20),

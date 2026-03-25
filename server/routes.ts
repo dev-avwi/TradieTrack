@@ -177,7 +177,7 @@ import * as myobService from "./myobService";
 import * as quickbooksService from "./quickbooksService";
 import { getProductionBaseUrl, getQuotePublicUrl, getInvoicePublicUrl, getReceiptPublicUrl } from './urlHelper';
 import { generateQuoteEmailTemplate, generateInvoiceEmailTemplate } from './emailTemplates';
-import { notifyOwnerViaSms } from './notificationService';
+import { notifyOwnerViaSms, notifyOwnerViaEmail } from './notificationService';
 
 // Environment check for development-only endpoints
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -1188,6 +1188,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 await notifyOwnerViaSms(owner.phone, 'quoteAccepted', accepted_by || 'Client', quote.number || quote.id, Number(quote.total || 0).toFixed(2));
               }
             } catch (e) { console.error('Owner SMS failed:', e); }
+
+            try {
+              const ownerSettings = await storage.getBusinessSettings(quote.userId);
+              if (ownerSettings?.emailOnQuoteAccepted) {
+                const ownerEmail = ownerSettings.email || (await storage.getUser(quote.userId))?.email;
+                let jobTitle: string | undefined;
+                if (quote.jobId) {
+                  try {
+                    const linkedJob = await storage.getJob(quote.jobId, quote.userId);
+                    jobTitle = linkedJob?.title;
+                  } catch {}
+                }
+                if (ownerEmail) {
+                  await notifyOwnerViaEmail(ownerEmail, 'quote_accepted', {
+                    clientName: accepted_by || 'Client',
+                    documentNumber: quote.number || (quote.id || '').slice(0, 8),
+                    amount: Number(quote.total || 0).toFixed(2),
+                    jobTitle,
+                    businessName: ownerSettings.businessName,
+                  });
+                }
+              }
+            } catch (e) { console.error('Owner email notification failed:', e); }
 
             // Update linked job status to scheduled if quote is accepted
             if (quote.jobId) {
@@ -21113,6 +21136,22 @@ Be specific about materials, colors, and features that would be included.`
           await notifyOwnerViaSms(owner.phone, 'paymentReceived', payClient?.name || 'Client', (amountInCents / 100).toFixed(2), invoice.number || `INV-${invoice.id}`);
         }
       } catch (e) { console.error('Owner SMS failed:', e); }
+
+      try {
+        const ownerSettings = await storage.getBusinessSettings(userContext.effectiveUserId);
+        if (ownerSettings?.emailOnInvoicePaid) {
+          const ownerEmail = ownerSettings.email || (await storage.getUser(userContext.effectiveUserId))?.email;
+          const payClient = invoice.clientId ? await storage.getClient(invoice.clientId, userContext.effectiveUserId) : null;
+          if (ownerEmail) {
+            await notifyOwnerViaEmail(ownerEmail, 'invoice_paid', {
+              clientName: payClient?.name || 'Client',
+              documentNumber: invoice.number || (invoice.id || '').slice(0, 8),
+              amount: (amountInCents / 100).toFixed(2),
+              businessName: ownerSettings.businessName,
+            });
+          }
+        }
+      } catch (e) { console.error('Owner email notification failed:', e); }
 
       if (isFullyPaid) {
         try {

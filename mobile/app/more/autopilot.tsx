@@ -658,6 +658,9 @@ export default function AutopilotScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [runningLateEnabled, setRunningLateEnabled] = useState(false);
   const [togglingRunningLate, setTogglingRunningLate] = useState(false);
+  const [emailOnQuoteAccepted, setEmailOnQuoteAccepted] = useState(false);
+  const [emailOnInvoicePaid, setEmailOnInvoicePaid] = useState(false);
+  const [togglingEmailAlert, setTogglingEmailAlert] = useState(false);
 
   const activeCount = useMemo(() => automations.filter(a => a.isActive).length, [automations]);
   const totalCount = automations.length;
@@ -695,6 +698,12 @@ export default function AutopilotScreen() {
         setRunningLateEnabled(res.data.smartRunningLateEnabled !== false);
       }
     });
+    api.get('/api/business-settings').then(res => {
+      if (res.data && !res.error) {
+        setEmailOnQuoteAccepted(res.data.emailOnQuoteAccepted === true);
+        setEmailOnInvoicePaid(res.data.emailOnInvoicePaid === true);
+      }
+    });
   }, [fetchData]);
 
   const handleRefresh = useCallback(() => {
@@ -721,6 +730,26 @@ export default function AutopilotScreen() {
       Alert.alert('Error', 'Failed to update setting');
     } finally {
       setTogglingRunningLate(false);
+    }
+  }, []);
+
+  const handleEmailAlertToggle = useCallback(async (field: 'emailOnQuoteAccepted' | 'emailOnInvoicePaid', value: boolean) => {
+    setTogglingEmailAlert(true);
+    if (field === 'emailOnQuoteAccepted') setEmailOnQuoteAccepted(value);
+    else setEmailOnInvoicePaid(value);
+    try {
+      const res = await api.patch('/api/business-settings', { [field]: value });
+      if (res.error) {
+        if (field === 'emailOnQuoteAccepted') setEmailOnQuoteAccepted(!value);
+        else setEmailOnInvoicePaid(!value);
+        Alert.alert('Error', 'Failed to update email alert setting');
+      }
+    } catch {
+      if (field === 'emailOnQuoteAccepted') setEmailOnQuoteAccepted(!value);
+      else setEmailOnInvoicePaid(!value);
+      Alert.alert('Error', 'Failed to update setting');
+    } finally {
+      setTogglingEmailAlert(false);
     }
   }, []);
 
@@ -1605,7 +1634,49 @@ export default function AutopilotScreen() {
                 </View>
               </View>
 
-              <Text style={[styles.sectionTitle, { marginTop: spacing.md }]}>YOUR AUTOMATIONS</Text>
+              <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>EMAIL ALERTS</Text>
+              <View style={[styles.card, { borderColor: emailOnQuoteAccepted ? colors.success + '40' : colors.border }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                  <View style={{ width: 36, height: 36, borderRadius: radius.md, backgroundColor: '#3b82f6' + '15', alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather name="mail" size={18} color="#3b82f6" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.cardTitle, { marginBottom: 2 }]}>Quote Accepted</Text>
+                    <Text style={[styles.cardDescription, { fontSize: typography.sizes.xs }]}>
+                      Get an email when a client accepts your quote via the link you sent them.
+                    </Text>
+                  </View>
+                  <Switch
+                    value={emailOnQuoteAccepted}
+                    onValueChange={(v) => handleEmailAlertToggle('emailOnQuoteAccepted', v)}
+                    disabled={togglingEmailAlert}
+                    trackColor={{ false: colors.muted, true: colors.success + '60' }}
+                    thumbColor={emailOnQuoteAccepted ? colors.success : colors.mutedForeground}
+                  />
+                </View>
+              </View>
+              <View style={[styles.card, { marginTop: spacing.sm, borderColor: emailOnInvoicePaid ? colors.success + '40' : colors.border }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                  <View style={{ width: 36, height: 36, borderRadius: radius.md, backgroundColor: '#22c55e' + '15', alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather name="dollar-sign" size={18} color="#22c55e" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.cardTitle, { marginBottom: 2 }]}>Invoice Paid</Text>
+                    <Text style={[styles.cardDescription, { fontSize: typography.sizes.xs }]}>
+                      Get an email when a client pays an invoice online.
+                    </Text>
+                  </View>
+                  <Switch
+                    value={emailOnInvoicePaid}
+                    onValueChange={(v) => handleEmailAlertToggle('emailOnInvoicePaid', v)}
+                    disabled={togglingEmailAlert}
+                    trackColor={{ false: colors.muted, true: colors.success + '60' }}
+                    thumbColor={emailOnInvoicePaid ? colors.success : colors.mutedForeground}
+                  />
+                </View>
+              </View>
+
+              <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>YOUR AUTOMATIONS</Text>
               {automations.length === 0
                 ? renderEmptyState('automations')
                 : automations.map(renderAutomationCard)}
