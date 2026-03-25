@@ -420,18 +420,18 @@ export default function OwnerManagerDashboard({
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        {actionData && actionData.summary.totalCount > 0 && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
-              <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Target className="h-4 w-4" style={{ color: 'hsl(var(--destructive))' }} />
-                Action Centre
-              </CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => onNavigate?.('/action-center')} data-testid="button-view-action-center">
-                View All <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
-              </Button>
-            </CardHeader>
-            <CardContent className="pt-0 px-4 pb-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
+            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Target className="h-4 w-4" style={{ color: 'hsl(var(--destructive))' }} />
+              Action Centre
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => onNavigate?.('/action-center')} data-testid="button-view-action-center">
+              View All <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-0 px-4 pb-4">
+            {actionData && actionData.actions.length > 0 ? (
               <div className="space-y-2">
                 {actionData.actions.slice(0, 3).map((action) => {
                   const priorityIcon = action.priority === 'fix_now' ? AlertTriangle : action.priority === 'this_week' ? Clock : Lightbulb;
@@ -457,9 +457,15 @@ export default function OwnerManagerDashboard({
                   );
                 })}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="text-center py-6">
+                <Target className="h-8 w-8 text-muted-foreground/25 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">You're all caught up</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">No actions needed right now</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
