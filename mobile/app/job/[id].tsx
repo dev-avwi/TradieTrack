@@ -2067,6 +2067,11 @@ export default function JobDetailScreen() {
   const [portalLinks, setPortalLinks] = useState<{ id: string; url: string; token: string; expiresAt?: string; createdAt?: string }[]>([]);
   const [isTogglingPortal, setIsTogglingPortal] = useState(false);
   const [isGeneratingPortalLink, setIsGeneratingPortalLink] = useState(false);
+  const [isSendingPortalSMS, setIsSendingPortalSMS] = useState(false);
+  const [isSendingPortalEmail, setIsSendingPortalEmail] = useState(false);
+  const [proofPackPreviewHtml, setProofPackPreviewHtml] = useState<string | null>(null);
+  const [showProofPackPreview, setShowProofPackPreview] = useState(false);
+  const [isLoadingProofPackPreview, setIsLoadingProofPackPreview] = useState(false);
 
   interface ProfitabilityData {
     jobId: string;
@@ -3868,7 +3873,15 @@ export default function JobDetailScreen() {
       setPortalEnabled(newValue);
       setJob({ ...job, portalEnabled: newValue } as any);
       if (newValue) {
-        loadPortalLinks();
+        await loadPortalLinks();
+        if (portalLinks.length === 0) {
+          try {
+            const res = await api.post<any>(`/api/jobs/${job.id}/portal-links`, {});
+            if (res.data) {
+              setPortalLinks([res.data]);
+            }
+          } catch {}
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to toggle client portal');
@@ -3916,6 +3929,69 @@ export default function JobDetailScreen() {
       }
     } catch {
       Linking.openURL(url);
+    }
+  };
+
+  const handleSendPortalSMS = async () => {
+    if (!job) return;
+    setIsSendingPortalSMS(true);
+    try {
+      const res = await api.post(`/api/jobs/${job.id}/share-portal-sms`, {});
+      if (res.error) {
+        Alert.alert('SMS Failed', res.error || 'Could not send SMS');
+      } else {
+        Alert.alert('SMS Sent', 'Tracking link sent to client via SMS');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to send portal link via SMS');
+    } finally {
+      setIsSendingPortalSMS(false);
+    }
+  };
+
+  const handleSendPortalEmail = async () => {
+    if (!job) return;
+    setIsSendingPortalEmail(true);
+    try {
+      const res = await api.post(`/api/jobs/${job.id}/share-portal-email`, {});
+      if (res.error) {
+        Alert.alert('Email Failed', res.error || 'Could not send email');
+      } else {
+        Alert.alert('Email Sent', 'Tracking link sent to client via email');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to send portal link via email');
+    } finally {
+      setIsSendingPortalEmail(false);
+    }
+  };
+
+  const handleLoadProofPackPreview = async () => {
+    if (!job) return;
+    setIsLoadingProofPackPreview(true);
+    try {
+      const token = await api.getToken();
+      const hiddenParts: string[] = [];
+      Object.entries(proofPackSections).forEach(([key, val]) => {
+        if (!val) hiddenParts.push(`hide_${key}=1`);
+      });
+      const queryStr = hiddenParts.join('&');
+      const previewUrl = `${API_URL}/api/jobs/${job.id}/proof-pack/preview${queryStr ? `?${queryStr}` : ''}`;
+      const response = await fetch(previewUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (response.ok) {
+        const html = await response.text();
+        setProofPackPreviewHtml(html);
+        setShowProofPackPreview(true);
+        setShowProofPackModal(false);
+      } else {
+        Alert.alert('Error', 'Failed to load proof pack preview');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to load preview');
+    } finally {
+      setIsLoadingProofPackPreview(false);
     }
   };
 
@@ -5430,7 +5506,7 @@ export default function JobDetailScreen() {
               <Feather name="file-text" size={18} color={colors.primary} />
             </View>
             <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, textAlign: 'center' }}>Proof Pack</Text>
-            <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center' }}>Generate report</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center' }}>Preview & share</Text>
           </TouchableOpacity>
           {!!client && (
             <TouchableOpacity
@@ -6300,6 +6376,14 @@ export default function JobDetailScreen() {
 
   const renderManageTab = () => (
     <>
+      {/* Client Tools Section Header */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, gap: spacing.sm }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.mutedForeground, letterSpacing: 0.5, textTransform: 'uppercase' }}>Client Tools</Text>
+          <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+        </View>
+      )}
+
       {/* Proof Pack Section - Available for all job statuses */}
       {(isOwnerOrManager || isSoloOwner) && (
         <View style={styles.costingCard}>
@@ -6371,9 +6455,14 @@ export default function JobDetailScreen() {
               <Feather name="globe" size={iconSizes.lg} color={colors.invoiced} />
             </View>
             <Text style={styles.costingTitle}>Client Portal</Text>
+            {portalEnabled && (
+              <View style={{ backgroundColor: `${colors.success}20`, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.success }}>Active</Text>
+              </View>
+            )}
           </View>
           
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, marginBottom: spacing.sm }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, color: colors.foreground, fontWeight: '500' }}>Enable Portal</Text>
               <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
@@ -6392,71 +6481,114 @@ export default function JobDetailScreen() {
             )}
           </View>
 
-          {portalEnabled && (
-            <View style={{ marginTop: spacing.md }}>
-              {portalLinks.length > 0 ? (
-                <View style={{ gap: spacing.sm }}>
-                  {portalLinks.map((link) => (
-                    <View
-                      key={link.id}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: colors.muted,
-                        borderRadius: radius.lg,
-                        padding: spacing.md,
-                        gap: spacing.sm,
-                      }}
-                    >
-                      <Feather name="link" size={16} color={colors.primary} />
-                      <Text
-                        style={{ flex: 1, fontSize: 13, color: colors.foreground }}
-                        numberOfLines={1}
-                        ellipsizeMode="middle"
-                      >
-                        {link.url || `Portal link #${(link.id || '').slice(0, 8)}`}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => handleSharePortalLink(link.url)}
-                        style={{ padding: spacing.xs }}
-                        activeOpacity={0.7}
-                      >
-                        <Feather name="share-2" size={16} color={colors.primary} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
+          {portalEnabled && portalLinks.length > 0 && (
+            <View style={{ gap: spacing.sm }}>
+              <View style={{ 
+                backgroundColor: colors.muted, 
+                borderRadius: radius.lg, 
+                padding: spacing.md,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+              }}>
+                <Feather name="link" size={14} color={colors.primary} />
+                <Text
+                  style={{ flex: 1, fontSize: 12, color: colors.mutedForeground }}
+                  numberOfLines={1}
+                  ellipsizeMode="middle"
+                >
+                  {portalLinks[0].url || `Portal link active`}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    const url = portalLinks[0].url;
+                    if (url) {
+                      Clipboard.setStringAsync(url).then(() => {
+                        Alert.alert('Copied', 'Portal link copied to clipboard');
+                      }).catch(() => {
+                        Alert.alert('Link', url);
+                      });
+                    }
+                  }}
+                  style={{ padding: spacing.xs }}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="copy" size={14} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
 
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: spacing.xs,
-                  backgroundColor: colors.invoiced,
-                  paddingVertical: spacing.md,
-                  borderRadius: radius.lg,
-                  marginTop: spacing.md,
-                  opacity: isGeneratingPortalLink ? 0.6 : 1,
-                }}
-                onPress={handleGeneratePortalLink}
-                activeOpacity={0.8}
-                disabled={isGeneratingPortalLink}
-              >
-                {isGeneratingPortalLink ? (
-                  <ActivityIndicator size="small" color={colors.primaryForeground} />
-                ) : (
-                  <>
-                    <Feather name="link" size={16} color={colors.primaryForeground} />
-                    <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
-                      Generate Portal Link
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: spacing.xs,
+                    paddingVertical: spacing.sm + 2,
+                    borderRadius: radius.lg,
+                    backgroundColor: `${colors.success}12`,
+                    opacity: isSendingPortalSMS || !client?.phone ? 0.5 : 1,
+                  }}
+                  onPress={handleSendPortalSMS}
+                  activeOpacity={0.7}
+                  disabled={isSendingPortalSMS || !client?.phone}
+                >
+                  {isSendingPortalSMS ? (
+                    <ActivityIndicator size="small" color={colors.success} />
+                  ) : (
+                    <>
+                      <Feather name="message-square" size={16} color={colors.success} />
+                      <Text style={{ color: colors.success, fontWeight: '600', fontSize: 13 }}>Send SMS</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: spacing.xs,
+                    paddingVertical: spacing.sm + 2,
+                    borderRadius: radius.lg,
+                    backgroundColor: `${colors.invoiced}12`,
+                    opacity: isSendingPortalEmail || !client?.email ? 0.5 : 1,
+                  }}
+                  onPress={handleSendPortalEmail}
+                  activeOpacity={0.7}
+                  disabled={isSendingPortalEmail || !client?.email}
+                >
+                  {isSendingPortalEmail ? (
+                    <ActivityIndicator size="small" color={colors.invoiced} />
+                  ) : (
+                    <>
+                      <Feather name="mail" size={16} color={colors.invoiced} />
+                      <Text style={{ color: colors.invoiced, fontWeight: '600', fontSize: 13 }}>Send Email</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           )}
+
+          {portalEnabled && portalLinks.length === 0 && !isTogglingPortal && (
+            <View style={{ alignItems: 'center', paddingVertical: spacing.md }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: spacing.xs }}>
+                Setting up portal...
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Financials Section Header */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, marginTop: spacing.sm, gap: spacing.sm }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.mutedForeground, letterSpacing: 0.5, textTransform: 'uppercase' }}>Financials</Text>
+          <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
         </View>
       )}
 
@@ -11025,6 +11157,33 @@ export default function JobDetailScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.xs,
+                  paddingVertical: spacing.sm + 2,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.primary,
+                  opacity: isLoadingProofPackPreview || !Object.values(proofPackSections).some(Boolean) ? 0.5 : 1,
+                  minHeight: 44,
+                }}
+                onPress={handleLoadProofPackPreview}
+                activeOpacity={0.8}
+                disabled={isLoadingProofPackPreview || !Object.values(proofPackSections).some(Boolean)}
+              >
+                {isLoadingProofPackPreview ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <>
+                    <Feather name="eye" size={15} color={colors.primary} />
+                    <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>Preview</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
                   flex: 1,
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -11046,7 +11205,77 @@ export default function JobDetailScreen() {
                   <>
                     <Feather name="download" size={16} color={colors.primaryForeground} />
                     <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
-                      Generate & Share
+                      Generate PDF
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Proof Pack Preview Modal */}
+      <Modal visible={showProofPackPreview} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '90%', flex: 1 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Proof Pack Preview</Text>
+              <TouchableOpacity onPress={() => setShowProofPackPreview(false)}>
+                <Feather name="x" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
+              {proofPackPreviewHtml ? (
+                <WebView
+                  source={{ html: proofPackPreviewHtml }}
+                  style={{ flex: 1, backgroundColor: '#ffffff' }}
+                  scalesPageToFit
+                  javaScriptEnabled
+                />
+              ) : (
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+              )}
+            </View>
+            <View style={[styles.modalFooter, { gap: spacing.sm }]}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowProofPackPreview(false);
+                  setShowProofPackModal(true);
+                }}
+                style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md }}
+              >
+                <Text style={{ color: colors.mutedForeground, fontWeight: '600', fontSize: 14 }}>Edit Sections</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.sm,
+                  backgroundColor: colors.primary,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.md,
+                  opacity: isGeneratingProofPack ? 0.5 : 1,
+                  minHeight: 44,
+                }}
+                onPress={() => {
+                  setShowProofPackPreview(false);
+                  handleGenerateProofPack();
+                }}
+                activeOpacity={0.8}
+                disabled={isGeneratingProofPack}
+              >
+                {isGeneratingProofPack ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <>
+                    <Feather name="download" size={16} color={colors.primaryForeground} />
+                    <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
+                      Download & Share
                     </Text>
                   </>
                 )}
