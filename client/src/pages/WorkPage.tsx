@@ -33,7 +33,8 @@ import {
   BookmarkCheck,
   Filter,
   Download,
-  ExternalLink
+  ExternalLink,
+  FileText
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -152,7 +153,7 @@ export default function WorkPage({
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     const filterParam = params.get('filter');
-    const validFilters = ['pending', 'scheduled', 'in_progress', 'done', 'invoiced', 'today', 'archived', 'inspection', 'requests'];
+    const validFilters = ['pending', 'quoted', 'scheduled', 'in_progress', 'done', 'invoiced', 'today', 'archived', 'inspection', 'requests'];
     if (filterParam && validFilters.includes(filterParam)) {
       setActiveFilter(filterParam);
     }
@@ -379,6 +380,7 @@ export default function WorkPage({
   const stats = useMemo(() => ({
     total: jobs.length,
     pending: jobs.filter(j => j.status === 'pending').length,
+    quoted: jobs.filter(j => j.status === 'quoted').length,
     scheduled: jobs.filter(j => j.status === 'scheduled').length,
     inProgress: jobs.filter(j => j.status === 'in_progress').length,
     done: jobs.filter(j => j.status === 'done').length,
@@ -836,6 +838,7 @@ export default function WorkPage({
             { id: 'all', label: 'All', count: stats.total, icon: <Briefcase className="h-3 w-3" /> },
             { id: 'requests', label: 'Requests', count: stats.requests, icon: <ClipboardList className="h-3 w-3" /> },
             { id: 'pending', label: 'Pending', count: stats.pending, icon: <Hourglass className="h-3 w-3" /> },
+            { id: 'quoted', label: 'Quoted', count: stats.quoted, icon: <FileText className="h-3 w-3" /> },
             { id: 'scheduled', label: 'Scheduled', count: stats.scheduled, icon: <Calendar className="h-3 w-3" /> },
             { id: 'in_progress', label: 'In Progress', count: stats.inProgress, icon: <Play className="h-3 w-3" /> },
             { id: 'done', label: 'Completed', count: stats.done, icon: <CheckCircle className="h-3 w-3" /> },

@@ -630,38 +630,49 @@ export default function OwnerManagerDashboard({
                 )}
               </div>
 
-              {cashflow?.revenueByWeek && cashflow.revenueByWeek.length > 0 && (
-                <div className="relative">
-                  <div className="flex items-end gap-[3px] h-20">
-                    {(() => {
-                      const maxVal = Math.max(...cashflow.revenueByWeek.map(w => w.amount), 1);
-                      return cashflow.revenueByWeek.map((week, i) => {
-                        const isLast = i === cashflow.revenueByWeek!.length - 1;
-                        const barHeight = Math.max((week.amount / maxVal) * 64, 3);
+              {(() => {
+                const rawWeeks = cashflow?.revenueByWeek ?? [];
+                const now = new Date();
+                const paddedWeeks: { week: string; amount: number }[] = [];
+                for (let i = 3; i >= 0; i--) {
+                  const d = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
+                  const weekStart = new Date(d);
+                  weekStart.setDate(d.getDate() - d.getDay() + 1);
+                  const label = `${String(weekStart.getDate()).padStart(2, '0')} ${weekStart.toLocaleString('en-AU', { month: 'short' })}`;
+                  const match = rawWeeks.find(w => w.week === label);
+                  paddedWeeks.push({ week: label, amount: match?.amount ?? 0 });
+                }
+                const maxVal = Math.max(...paddedWeeks.map(w => w.amount), 1);
+                return (
+                  <div className="relative">
+                    <div className="flex items-end gap-2 h-24">
+                      {paddedWeeks.map((week, i) => {
+                        const isLast = i === paddedWeeks.length - 1;
+                        const barHeight = week.amount > 0 ? Math.max((week.amount / maxVal) * 80, 6) : 3;
                         return (
-                          <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1 group relative">
-                            <div className="invisible group-hover:visible absolute -top-5 bg-foreground text-background text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap z-10">
+                          <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                            <div className="invisible group-hover:visible absolute -top-6 bg-foreground text-background text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap z-10">
                               ${week.amount.toLocaleString()}
                             </div>
                             <div
-                              className="w-full rounded-t-sm transition-all duration-300"
+                              className="w-full rounded-md transition-all duration-300"
                               style={{
                                 height: `${barHeight}px`,
-                                backgroundColor: isLast ? 'hsl(var(--trade))' : 'hsl(var(--trade) / 0.25)',
+                                backgroundColor: isLast ? 'hsl(var(--trade))' : week.amount > 0 ? 'hsl(var(--trade) / 0.35)' : 'hsl(var(--trade) / 0.08)',
                               }}
                             />
                           </div>
                         );
-                      });
-                    })()}
+                      })}
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      {paddedWeeks.map((week, i) => (
+                        <span key={i} className="flex-1 text-[10px] text-muted-foreground text-center">{week.week}</span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex gap-[3px] mt-1.5">
-                    {cashflow.revenueByWeek.map((week, i) => (
-                      <span key={i} className="flex-1 text-[9px] text-muted-foreground text-center truncate">{week.week}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="p-2.5 rounded-lg bg-muted/40">
@@ -711,10 +722,10 @@ export default function OwnerManagerDashboard({
               {(() => {
                 const total = jobPipeline.scheduled + jobPipeline.inProgress + jobPipeline.completed + jobPipeline.quoted;
                 const segments = [
-                  { label: 'Quoted', count: jobPipeline.quoted, color: 'hsl(38 92% 50%)', bgLight: 'rgba(245, 158, 11, 0.1)', bgDark: 'rgba(245, 158, 11, 0.08)' },
-                  { label: 'Scheduled', count: jobPipeline.scheduled, color: 'hsl(var(--trade))', bgLight: 'hsl(var(--trade) / 0.1)', bgDark: 'hsl(var(--trade) / 0.08)' },
-                  { label: 'In Progress', count: jobPipeline.inProgress, color: 'hsl(217.2 91.2% 59.8%)', bgLight: 'rgba(59, 130, 246, 0.1)', bgDark: 'rgba(59, 130, 246, 0.08)' },
-                  { label: 'Completed', count: jobPipeline.completed, color: 'hsl(142.1 76.2% 36.3%)', bgLight: 'rgba(22, 163, 74, 0.1)', bgDark: 'rgba(22, 163, 74, 0.08)' },
+                  { label: 'Quoted', count: jobPipeline.quoted, color: 'hsl(38 92% 50%)', bgLight: 'rgba(245, 158, 11, 0.1)', bgDark: 'rgba(245, 158, 11, 0.08)', filter: 'quoted' },
+                  { label: 'Scheduled', count: jobPipeline.scheduled, color: 'hsl(var(--trade))', bgLight: 'hsl(var(--trade) / 0.1)', bgDark: 'hsl(var(--trade) / 0.08)', filter: 'scheduled' },
+                  { label: 'In Progress', count: jobPipeline.inProgress, color: 'hsl(217.2 91.2% 59.8%)', bgLight: 'rgba(59, 130, 246, 0.1)', bgDark: 'rgba(59, 130, 246, 0.08)', filter: 'in_progress' },
+                  { label: 'Completed', count: jobPipeline.completed, color: 'hsl(142.1 76.2% 36.3%)', bgLight: 'rgba(22, 163, 74, 0.1)', bgDark: 'rgba(22, 163, 74, 0.08)', filter: 'done' },
                 ];
                 return (
                   <>
@@ -729,7 +740,13 @@ export default function OwnerManagerDashboard({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {segments.map((seg, i) => (
-                        <div key={i} className="flex items-center gap-2.5 p-2 rounded-lg" style={{ backgroundColor: seg.bgLight }}>
+                        <div
+                          key={i}
+                          data-testid={`pipeline-${seg.filter}`}
+                          className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover-elevate active-elevate-2 transition-colors"
+                          style={{ backgroundColor: seg.bgLight }}
+                          onClick={() => onNavigate?.(`/work?filter=${seg.filter}`)}
+                        >
                           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: seg.color + '20' }}>
                             <span className="text-sm font-bold" style={{ color: seg.color }}>{seg.count}</span>
                           </div>
