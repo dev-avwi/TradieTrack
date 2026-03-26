@@ -2589,10 +2589,247 @@ export default function DashboardScreen() {
         </View>
       )}
 
-      {/* Weather Widget - Above stats for quick glance */}
-      <View style={styles.section}>
-        <WeatherWidget />
-      </View>
+      {/* Today's Schedule - THE most important section, always first */}
+      {<View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <View style={styles.sectionTitleIcon}>
+              <Feather name="calendar" size={iconSizes.md} color={colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>Today</Text>
+            {isRouteOptimized && (
+              <View style={styles.optimizedBadge}>
+                <Feather name="check" size={12} color={colors.success} />
+                <Text style={styles.optimizedBadgeText}>Optimized</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.headerActions}>
+            {jobsWithCoords.length >= 2 && (
+              <TouchableOpacity 
+                style={[
+                  styles.optimizeButton,
+                  isRouteOptimized && styles.optimizeButtonActive
+                ]}
+                onPress={isRouteOptimized ? resetRouteOrder : optimizeRoute}
+                activeOpacity={0.7}
+                disabled={isOptimizing}
+                data-testid="button-optimize-route"
+              >
+                {isOptimizing ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <>
+                    <Feather 
+                      name={isRouteOptimized ? "x" : "navigation"} 
+                      size={iconSizes.sm} 
+                      color={isRouteOptimized ? colors.mutedForeground : colors.primary} 
+                    />
+                    <Text style={[
+                      styles.optimizeButtonText,
+                      isRouteOptimized && styles.optimizeButtonTextActive
+                    ]}>
+                      {isRouteOptimized ? 'Reset' : 'Optimize'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+            {todaysJobs.length > 0 && (
+              <TouchableOpacity 
+                style={styles.viewAllButton}
+                onPress={() => router.push('/(tabs)/jobs')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.viewAllText}>View All</Text>
+                <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Start Route Button - shown when jobs exist */}
+        {jobsWithCoords.length >= 1 && (
+          <TouchableOpacity 
+            style={styles.startRouteButton}
+            onPress={startRoute}
+            activeOpacity={0.8}
+            data-testid="button-start-route"
+          >
+            <View style={styles.startRouteIcon}>
+              <Feather name="map" size={18} color={colors.white} />
+            </View>
+            <Text style={styles.startRouteText}>
+              Start Route ({jobsWithCoords.length} stop{jobsWithCoords.length !== 1 ? 's' : ''})
+              {totalDriveTime !== null ? ` \u00b7 ~${totalDriveTime < 60 ? `${totalDriveTime} min` : `${Math.floor(totalDriveTime / 60)}h ${totalDriveTime % 60}m`}` : ''}
+            </Text>
+            <Feather name="chevron-right" size={18} color={colors.white} />
+          </TouchableOpacity>
+        )}
+
+        {/* Smart Next Job Suggestion */}
+        {nextJobSuggestion && jobDistances[nextJobSuggestion.id] && (
+          <TouchableOpacity 
+            style={styles.nextJobSuggestion}
+            onPress={() => router.push(`/job/${nextJobSuggestion.id}`)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.nextJobSuggestionIcon}>
+              <Feather name="zap" size={16} color={colors.warning} />
+            </View>
+            <View style={styles.nextJobSuggestionContent}>
+              <Text style={styles.nextJobSuggestionLabel}>Nearest Job</Text>
+              <Text style={styles.nextJobSuggestionTitle} numberOfLines={1}>{nextJobSuggestion.title}</Text>
+              <Text style={styles.nextJobSuggestionMeta}>
+                {jobDistances[nextJobSuggestion.id].distanceKm < 1 
+                  ? `${Math.round(jobDistances[nextJobSuggestion.id].distanceKm * 1000)}m`
+                  : `${jobDistances[nextJobSuggestion.id].distanceKm} km`}
+                {' away \u00b7 ~'}
+                {jobDistances[nextJobSuggestion.id].driveMinutes} min drive
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.nextJobGoButton}
+              onPress={() => openDirections(nextJobSuggestion)}
+              activeOpacity={0.7}
+            >
+              <Feather name="navigation" size={14} color={colors.white} />
+              <Text style={styles.nextJobGoButtonText}>Go</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        )}
+
+        {todaysJobs.length === 0 ? (
+          <EmptyTodayState onCreateJob={() => router.push('/more/create-job')} />
+        ) : (
+          <View style={styles.jobsList}>
+            {displayJobs.map((job: any, index: number) => (
+              <TodayJobCard
+                key={job.id}
+                job={job}
+                clients={clients}
+                isFirst={index === 0}
+                onPress={() => router.push(`/job/${job.id}`)}
+                onStartJob={handleStartJob}
+                onCompleteJob={handleCompleteJob}
+                onOnMyWay={handleOnMyWay}
+                isUpdating={isUpdating}
+                onGetDirections={openDirections}
+                orderNumber={isRouteOptimized ? index + 1 : undefined}
+                distanceInfo={jobDistances[job.id]}
+              />
+            ))}
+          </View>
+        )}
+      </View>}
+
+      {/* This Week Section - Staff Only (right after today) */}
+      {isStaffUser && thisWeeksJobs.length > 0 && (
+        <ThisWeekSection 
+          jobs={thisWeeksJobs} 
+          onViewJob={(id) => router.push(`/job/${id}`)} 
+        />
+      )}
+
+      {/* Day Summary Card - shows after 4pm or when all jobs done */}
+      {showDaySummary && dailySummary && (
+        <View style={styles.section}>
+          <View style={styles.daySummaryCard}>
+            <View style={styles.daySummaryHeader}>
+              <View style={styles.daySummaryTitleRow}>
+                <View style={[styles.daySummaryIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
+                  <Feather name="sunset" size={20} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.daySummaryTitle}>Day Summary</Text>
+                  <Text style={styles.daySummarySubtitle}>
+                    {dailySummary.allJobsDone ? 'All jobs complete' : 'Your day so far'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.daySummaryStatsGrid}>
+              <View style={styles.daySummaryStat}>
+                <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.info, 0.1) }]}>
+                  <Feather name="clock" size={16} color={colors.info} />
+                </View>
+                <Text style={styles.daySummaryStatValue}>{dailySummary.totalHoursTracked ?? 0}h</Text>
+                <Text style={styles.daySummaryStatLabel}>Hours</Text>
+              </View>
+              <View style={styles.daySummaryStat}>
+                <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
+                  <Feather name="check-circle" size={16} color={colors.success} />
+                </View>
+                <Text style={styles.daySummaryStatValue}>
+                  {dailySummary.jobsCompletedToday ?? 0}/{dailySummary.totalJobsToday ?? 0}
+                </Text>
+                <Text style={styles.daySummaryStatLabel}>Jobs Done</Text>
+              </View>
+              <View style={styles.daySummaryStat}>
+                <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.warning, 0.1) }]}>
+                  <Feather name="file-text" size={16} color={colors.warning} />
+                </View>
+                <Text style={styles.daySummaryStatValue}>{dailySummary.invoicesCreatedToday ?? 0}</Text>
+                <Text style={styles.daySummaryStatLabel}>Invoices</Text>
+              </View>
+              <View style={styles.daySummaryStat}>
+                <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
+                  <Feather name="dollar-sign" size={16} color={colors.success} />
+                </View>
+                <Text style={styles.daySummaryStatValue}>
+                  ${(dailySummary.moneyCollectedToday ?? 0).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </Text>
+                <Text style={styles.daySummaryStatLabel}>Collected</Text>
+              </View>
+            </View>
+
+            {dailySummary.tomorrowFirstJob && (
+              <TouchableOpacity
+                style={styles.daySummaryTomorrow}
+                onPress={() => router.push(`/job/${dailySummary.tomorrowFirstJob!.id}`)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.daySummaryTomorrowHeader}>
+                  <Feather name="sunrise" size={14} color={colors.primary} />
+                  <Text style={styles.daySummaryTomorrowLabel}>
+                    Tomorrow{dailySummary.tomorrowJobCount > 1 ? ` (${dailySummary.tomorrowJobCount} jobs)` : ''}
+                  </Text>
+                </View>
+                <Text style={styles.daySummaryTomorrowTitle} numberOfLines={1}>
+                  {dailySummary.tomorrowFirstJob.title}
+                </Text>
+                <View style={styles.daySummaryTomorrowMeta}>
+                  {dailySummary.tomorrowFirstJob.scheduledAt && (
+                    <View style={styles.daySummaryTomorrowMetaItem}>
+                      <Feather name="clock" size={12} color={colors.mutedForeground} />
+                      <Text style={styles.daySummaryTomorrowMetaText}>
+                        {new Date(dailySummary.tomorrowFirstJob.scheduledAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                      </Text>
+                    </View>
+                  )}
+                  {dailySummary.tomorrowFirstJob.address && (
+                    <View style={styles.daySummaryTomorrowMetaItem}>
+                      <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                      <Text style={styles.daySummaryTomorrowMetaText} numberOfLines={1}>
+                        {dailySummary.tomorrowFirstJob.address}
+                      </Text>
+                    </View>
+                  )}
+                  {dailySummary.tomorrowFirstJob.clientName && (
+                    <View style={styles.daySummaryTomorrowMetaItem}>
+                      <Feather name="user" size={12} color={colors.mutedForeground} />
+                      <Text style={styles.daySummaryTomorrowMetaText}>
+                        {dailySummary.tomorrowFirstJob.clientName}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
 
       {/* Quick Stats - 4 clean cards */}
       <View style={styles.section}>
@@ -2664,6 +2901,11 @@ export default function DashboardScreen() {
             </>
           )}
         </View>
+      </View>
+
+      {/* Weather Widget - Below stats for context */}
+      <View style={styles.section}>
+        <WeatherWidget />
       </View>
 
       {/* Revenue Chart - Owner Only */}
@@ -2841,248 +3083,6 @@ export default function DashboardScreen() {
             })}
           </View>
         </View>
-      )}
-
-      {/* Day Summary Card - shows after 4pm or when all jobs done */}
-      {showDaySummary && dailySummary && (
-        <View style={styles.section}>
-          <View style={styles.daySummaryCard}>
-            <View style={styles.daySummaryHeader}>
-              <View style={styles.daySummaryTitleRow}>
-                <View style={[styles.daySummaryIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
-                  <Feather name="sunset" size={20} color={colors.primary} />
-                </View>
-                <View>
-                  <Text style={styles.daySummaryTitle}>Day Summary</Text>
-                  <Text style={styles.daySummarySubtitle}>
-                    {dailySummary.allJobsDone ? 'All jobs complete' : 'Your day so far'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.daySummaryStatsGrid}>
-              <View style={styles.daySummaryStat}>
-                <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.info, 0.1) }]}>
-                  <Feather name="clock" size={16} color={colors.info} />
-                </View>
-                <Text style={styles.daySummaryStatValue}>{dailySummary.totalHoursTracked ?? 0}h</Text>
-                <Text style={styles.daySummaryStatLabel}>Hours</Text>
-              </View>
-              <View style={styles.daySummaryStat}>
-                <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
-                  <Feather name="check-circle" size={16} color={colors.success} />
-                </View>
-                <Text style={styles.daySummaryStatValue}>
-                  {dailySummary.jobsCompletedToday ?? 0}/{dailySummary.totalJobsToday ?? 0}
-                </Text>
-                <Text style={styles.daySummaryStatLabel}>Jobs Done</Text>
-              </View>
-              <View style={styles.daySummaryStat}>
-                <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.warning, 0.1) }]}>
-                  <Feather name="file-text" size={16} color={colors.warning} />
-                </View>
-                <Text style={styles.daySummaryStatValue}>{dailySummary.invoicesCreatedToday ?? 0}</Text>
-                <Text style={styles.daySummaryStatLabel}>Invoices</Text>
-              </View>
-              <View style={styles.daySummaryStat}>
-                <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
-                  <Feather name="dollar-sign" size={16} color={colors.success} />
-                </View>
-                <Text style={styles.daySummaryStatValue}>
-                  ${(dailySummary.moneyCollectedToday ?? 0).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </Text>
-                <Text style={styles.daySummaryStatLabel}>Collected</Text>
-              </View>
-            </View>
-
-            {dailySummary.tomorrowFirstJob && (
-              <TouchableOpacity
-                style={styles.daySummaryTomorrow}
-                onPress={() => router.push(`/job/${dailySummary.tomorrowFirstJob!.id}`)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.daySummaryTomorrowHeader}>
-                  <Feather name="sunrise" size={14} color={colors.primary} />
-                  <Text style={styles.daySummaryTomorrowLabel}>
-                    Tomorrow{dailySummary.tomorrowJobCount > 1 ? ` (${dailySummary.tomorrowJobCount} jobs)` : ''}
-                  </Text>
-                </View>
-                <Text style={styles.daySummaryTomorrowTitle} numberOfLines={1}>
-                  {dailySummary.tomorrowFirstJob.title}
-                </Text>
-                <View style={styles.daySummaryTomorrowMeta}>
-                  {dailySummary.tomorrowFirstJob.scheduledAt && (
-                    <View style={styles.daySummaryTomorrowMetaItem}>
-                      <Feather name="clock" size={12} color={colors.mutedForeground} />
-                      <Text style={styles.daySummaryTomorrowMetaText}>
-                        {new Date(dailySummary.tomorrowFirstJob.scheduledAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                      </Text>
-                    </View>
-                  )}
-                  {dailySummary.tomorrowFirstJob.address && (
-                    <View style={styles.daySummaryTomorrowMetaItem}>
-                      <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-                      <Text style={styles.daySummaryTomorrowMetaText} numberOfLines={1}>
-                        {dailySummary.tomorrowFirstJob.address}
-                      </Text>
-                    </View>
-                  )}
-                  {dailySummary.tomorrowFirstJob.clientName && (
-                    <View style={styles.daySummaryTomorrowMetaItem}>
-                      <Feather name="user" size={12} color={colors.mutedForeground} />
-                      <Text style={styles.daySummaryTomorrowMetaText}>
-                        {dailySummary.tomorrowFirstJob.clientName}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      )}
-
-      {/* Today's Schedule */}
-      {<View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <View style={styles.sectionTitleIcon}>
-              <Feather name="calendar" size={iconSizes.md} color={colors.primary} />
-            </View>
-            <Text style={styles.sectionTitle}>Today</Text>
-            {isRouteOptimized && (
-              <View style={styles.optimizedBadge}>
-                <Feather name="check" size={12} color={colors.success} />
-                <Text style={styles.optimizedBadgeText}>Optimized</Text>
-              </View>
-            )}
-          </View>
-          <View style={styles.headerActions}>
-            {jobsWithCoords.length >= 2 && (
-              <TouchableOpacity 
-                style={[
-                  styles.optimizeButton,
-                  isRouteOptimized && styles.optimizeButtonActive
-                ]}
-                onPress={isRouteOptimized ? resetRouteOrder : optimizeRoute}
-                activeOpacity={0.7}
-                disabled={isOptimizing}
-                data-testid="button-optimize-route"
-              >
-                {isOptimizing ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <>
-                    <Feather 
-                      name={isRouteOptimized ? "x" : "navigation"} 
-                      size={iconSizes.sm} 
-                      color={isRouteOptimized ? colors.mutedForeground : colors.primary} 
-                    />
-                    <Text style={[
-                      styles.optimizeButtonText,
-                      isRouteOptimized && styles.optimizeButtonTextActive
-                    ]}>
-                      {isRouteOptimized ? 'Reset' : 'Optimize'}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
-            {todaysJobs.length > 0 && (
-              <TouchableOpacity 
-                style={styles.viewAllButton}
-                onPress={() => router.push('/(tabs)/jobs')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.viewAllText}>View All</Text>
-                <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {/* Start Route Button - shown when jobs exist */}
-        {jobsWithCoords.length >= 1 && (
-          <TouchableOpacity 
-            style={styles.startRouteButton}
-            onPress={startRoute}
-            activeOpacity={0.8}
-            data-testid="button-start-route"
-          >
-            <View style={styles.startRouteIcon}>
-              <Feather name="map" size={18} color={colors.white} />
-            </View>
-            <Text style={styles.startRouteText}>
-              Start Route ({jobsWithCoords.length} stop{jobsWithCoords.length !== 1 ? 's' : ''})
-              {totalDriveTime !== null ? ` \u00b7 ~${totalDriveTime < 60 ? `${totalDriveTime} min` : `${Math.floor(totalDriveTime / 60)}h ${totalDriveTime % 60}m`}` : ''}
-            </Text>
-            <Feather name="chevron-right" size={18} color={colors.white} />
-          </TouchableOpacity>
-        )}
-
-        {/* Smart Next Job Suggestion */}
-        {nextJobSuggestion && jobDistances[nextJobSuggestion.id] && (
-          <TouchableOpacity 
-            style={styles.nextJobSuggestion}
-            onPress={() => router.push(`/job/${nextJobSuggestion.id}`)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.nextJobSuggestionIcon}>
-              <Feather name="zap" size={16} color={colors.warning} />
-            </View>
-            <View style={styles.nextJobSuggestionContent}>
-              <Text style={styles.nextJobSuggestionLabel}>Nearest Job</Text>
-              <Text style={styles.nextJobSuggestionTitle} numberOfLines={1}>{nextJobSuggestion.title}</Text>
-              <Text style={styles.nextJobSuggestionMeta}>
-                {jobDistances[nextJobSuggestion.id].distanceKm < 1 
-                  ? `${Math.round(jobDistances[nextJobSuggestion.id].distanceKm * 1000)}m`
-                  : `${jobDistances[nextJobSuggestion.id].distanceKm} km`}
-                {' away \u00b7 ~'}
-                {jobDistances[nextJobSuggestion.id].driveMinutes} min drive
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.nextJobGoButton}
-              onPress={() => openDirections(nextJobSuggestion)}
-              activeOpacity={0.7}
-            >
-              <Feather name="navigation" size={14} color={colors.white} />
-              <Text style={styles.nextJobGoButtonText}>Go</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        )}
-
-        {todaysJobs.length === 0 ? (
-          <EmptyTodayState onCreateJob={() => router.push('/more/create-job')} />
-        ) : (
-          <View style={styles.jobsList}>
-            {displayJobs.map((job: any, index: number) => (
-              <TodayJobCard
-                key={job.id}
-                job={job}
-                clients={clients}
-                isFirst={index === 0}
-                onPress={() => router.push(`/job/${job.id}`)}
-                onStartJob={handleStartJob}
-                onCompleteJob={handleCompleteJob}
-                onOnMyWay={handleOnMyWay}
-                isUpdating={isUpdating}
-                onGetDirections={openDirections}
-                orderNumber={isRouteOptimized ? index + 1 : undefined}
-                distanceInfo={jobDistances[job.id]}
-              />
-            ))}
-          </View>
-        )}
-      </View>}
-
-      {/* This Week Section - Staff Only */}
-      {isStaffUser && thisWeeksJobs.length > 0 && (
-        <ThisWeekSection 
-          jobs={thisWeeksJobs} 
-          onViewJob={(id) => router.push(`/job/${id}`)} 
-        />
       )}
 
       {/* Recent Activity */}
