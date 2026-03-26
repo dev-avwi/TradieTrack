@@ -4306,28 +4306,12 @@ export default function JobDetailScreen() {
     );
   };
 
-  const handleSMS = async () => {
+  const handleSMS = () => {
     if (client?.phone) {
       const phone = client.phone.replace(/\s/g, '');
       const message = `Hi${client.name ? ` ${client.name.split(' ')[0]}` : ''}, just reaching out about ${job?.title || 'your job'}.`;
-      setIsSendingSms(true);
-      try {
-        const response = await api.post('/api/sms/send', {
-          clientPhone: phone,
-          message,
-          clientId: client.id,
-          jobId: job?.id,
-        });
-        if (response.error) {
-          fallbackToNativeSms(phone, message);
-        } else {
-          Alert.alert('SMS Sent', `Message sent to ${client.name || phone}`);
-        }
-      } catch {
-        fallbackToNativeSms(phone, message);
-      } finally {
-        setIsSendingSms(false);
-      }
+      const url = `sms:${phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
+      Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
     }
   };
 
@@ -5852,20 +5836,36 @@ export default function JobDetailScreen() {
                 <Text style={[styles.clientActionText, { color: colors.invoiced }]}>Email</Text>
               </TouchableOpacity>
             )}
-            {(client?.email || client?.phone) && (
-              <TouchableOpacity 
-                style={[styles.clientActionButton, { backgroundColor: `${colors.primary}15` }]}
-                onPress={() => {
-                  setSendModalDefaultTab(client?.email ? 'email' : 'sms');
-                  setShowSendModal(true);
-                }}
-                activeOpacity={0.7}
-              >
-                <Feather name="send" size={iconSizes.md} color={colors.primary} />
-                <Text style={[styles.clientActionText, { color: colors.primary }]}>Send</Text>
-              </TouchableOpacity>
-            )}
           </View>
+          {(client?.email || client?.phone) && (
+            <TouchableOpacity 
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: spacing.sm,
+                marginTop: spacing.sm,
+                paddingVertical: spacing.sm + 2,
+                borderRadius: radius.lg,
+                backgroundColor: `${colors.primary}10`,
+                borderWidth: 1,
+                borderColor: `${colors.primary}25`,
+              }}
+              onPress={() => {
+                setSendModalDefaultTab(client?.email ? 'email' : 'sms');
+                setShowSendModal(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <Feather name="zap" size={14} color={colors.primary} />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
+                Send via JobRunner
+              </Text>
+              <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                SMS & Email from +61 485 013 993
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -7913,17 +7913,108 @@ export default function JobDetailScreen() {
     const currentUserId = user?.id;
     return (
       <>
-        {/* Chat Header */}
+        {/* Contact Client Section */}
+        {client && (client.phone || client.email) && (
+          <View style={{
+            backgroundColor: colors.card,
+            borderRadius: radius.xl,
+            padding: spacing.md,
+            marginBottom: spacing.lg,
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            ...shadows.sm,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: `${colors.invoiced}12`, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm }}>
+                <Feather name="user" size={14} color={colors.invoiced} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...typography.bodySmall, fontWeight: '700', color: colors.foreground }}>
+                  Contact {client.name?.split(' ')[0] || 'Client'}
+                </Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                  Reach out directly or via JobRunner
+                </Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {client.phone && (
+                <TouchableOpacity
+                  onPress={handleCall}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.lg, backgroundColor: `${colors.success}10` }}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="phone" size={14} color={colors.success} />
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.success }}>Call</Text>
+                </TouchableOpacity>
+              )}
+              {client.phone && (
+                <TouchableOpacity
+                  onPress={handleSMS}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.lg, backgroundColor: `${colors.scheduled}10` }}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="message-square" size={14} color={colors.scheduled} />
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.scheduled }}>SMS</Text>
+                </TouchableOpacity>
+              )}
+              {client.email && (
+                <TouchableOpacity
+                  onPress={handleEmail}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.lg, backgroundColor: `${colors.invoiced}10` }}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="mail" size={14} color={colors.invoiced} />
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.invoiced }}>Email</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                setSendModalDefaultTab(client?.email ? 'email' : 'sms');
+                setShowSendModal(true);
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: spacing.sm,
+                marginTop: spacing.sm,
+                paddingVertical: spacing.sm,
+                borderRadius: radius.lg,
+                backgroundColor: `${colors.primary}08`,
+                borderWidth: 1,
+                borderColor: `${colors.primary}20`,
+              }}
+              activeOpacity={0.7}
+            >
+              <Feather name="zap" size={13} color={colors.primary} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>
+                Send via JobRunner
+              </Text>
+              <Text style={{ fontSize: 10, color: colors.mutedForeground }}>
+                +61 485 013 993
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Team Chat Section */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
           <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15`, marginRight: spacing.sm }]}>
-            <Feather name="message-circle" size={iconSizes.lg} color={colors.primary} />
+            <Feather name="users" size={iconSizes.lg} color={colors.primary} />
           </View>
-          <View>
-            <Text style={styles.tabSectionTitle}>JOB CHAT</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.tabSectionTitle}>TEAM CHAT</Text>
             <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
-              Team discussion for this job
+              Internal discussion about this job
             </Text>
           </View>
+          {jobMessages.length > 0 && (
+            <View style={{ backgroundColor: `${colors.primary}15`, borderRadius: 10, paddingHorizontal: spacing.sm, paddingVertical: 2 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>{jobMessages.length}</Text>
+            </View>
+          )}
         </View>
 
         {isLoadingMessages ? (
@@ -7934,7 +8025,7 @@ export default function JobDetailScreen() {
           <View style={{
             backgroundColor: colors.card,
             borderRadius: radius.xl,
-            padding: spacing.xl,
+            padding: spacing.lg,
             marginBottom: spacing.md,
             flexDirection: 'column',
             alignItems: 'center',
@@ -7942,14 +8033,14 @@ export default function JobDetailScreen() {
             borderColor: colors.cardBorder,
             ...shadows.sm,
           }}>
-            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
-              <Feather name="message-circle" size={28} color={colors.mutedForeground} />
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
+              <Feather name="message-circle" size={22} color={colors.mutedForeground} />
             </View>
-            <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center' }}>
-              No messages yet
+            <Text style={{ ...typography.bodySmall, fontWeight: '600', color: colors.mutedForeground, textAlign: 'center' }}>
+              No team messages yet
             </Text>
-            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center', paddingHorizontal: spacing.md }}>
-              Start a conversation with your team about this job
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 4, textAlign: 'center' }}>
+              Discuss this job with your team
             </Text>
           </View>
         ) : (
@@ -7998,7 +8089,7 @@ export default function JobDetailScreen() {
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.sm,
           alignItems: 'flex-end',
-          marginBottom: spacing.md,
+          marginBottom: spacing.lg,
           minHeight: 52,
           ...shadows.xs,
         }}>
@@ -8037,6 +8128,33 @@ export default function JobDetailScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Quick link to full ChatHub */}
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/chat')}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: spacing.sm,
+            paddingVertical: spacing.md,
+            borderRadius: radius.xl,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            ...shadows.sm,
+          }}
+          activeOpacity={0.7}
+        >
+          <Feather name="message-circle" size={16} color={colors.primary} />
+          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
+            Open ChatHub
+          </Text>
+          <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+            All conversations in one place
+          </Text>
+          <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+        </TouchableOpacity>
       </>
     );
   };
@@ -9083,21 +9201,24 @@ export default function JobDetailScreen() {
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
           headerRight: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-              {(isOwnerOrManager || isSoloOwner) && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginRight: spacing.xs }}>
+              {(isOwnerOrManager || isSoloOwner) && (client?.email || client?.phone) && (
                 <TouchableOpacity
-                  onPress={() => setShowProofPackModal(true)}
+                  onPress={() => {
+                    setSendModalDefaultTab(client?.email ? 'email' : 'sms');
+                    setShowSendModal(true);
+                  }}
                   style={{ 
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
                     backgroundColor: colorWithOpacity(colors.primary, 0.1),
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
-                  data-testid="button-proof-pack-header"
+                  data-testid="button-send-header"
                 >
-                  <Feather name="file-text" size={18} color={colors.primary} />
+                  <Feather name="send" size={16} color={colors.primary} />
                 </TouchableOpacity>
               )}
               {canDeleteJobs && (
@@ -9105,20 +9226,19 @@ export default function JobDetailScreen() {
                   onPress={handleDeleteJob}
                   disabled={isDeletingJob}
                   style={{ 
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: colorWithOpacity(colors.destructive, 0.1),
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: colorWithOpacity(colors.destructive, 0.08),
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginRight: spacing.sm,
                   }}
                   data-testid="button-delete-job"
                 >
                   {isDeletingJob ? (
                     <ActivityIndicator size="small" color={colors.destructive} />
                   ) : (
-                    <Feather name="trash-2" size={18} color={colors.destructive} />
+                    <Feather name="trash-2" size={16} color={colors.destructive} />
                   )}
                 </TouchableOpacity>
               )}
