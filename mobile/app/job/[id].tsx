@@ -33,6 +33,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as Location from 'expo-location';
 import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 import api, { API_URL } from '../../src/lib/api';
 import { locationTracking } from '../../src/lib/location-tracking';
 import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/store';
@@ -3780,6 +3781,7 @@ export default function JobDetailScreen() {
   };
 
   const handleRefresh = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     await Promise.all([
       loadJob(), 
@@ -5449,6 +5451,17 @@ export default function JobDetailScreen() {
   const statusColor = getStatusColor(job.status);
   const clientInitials = client?.name ? client.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
 
+  const tabBadgeCounts = useMemo(() => {
+    const chatCount = jobMessages.length;
+    const docsCount = pendingSafetyForms.length + (hasIncompleteSwms ? 1 : 0);
+    return {
+      overview: 0,
+      documents: docsCount,
+      chat: chatCount,
+      manage: 0,
+    };
+  }, [jobMessages.length, pendingSafetyForms.length, hasIncompleteSwms]);
+
   const TAB_CONFIG = [
     { id: 'overview' as const, label: 'Info', icon: 'briefcase' as const },
     { id: 'documents' as const, label: 'Docs', icon: 'file-text' as const },
@@ -5970,98 +5983,67 @@ export default function JobDetailScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Materials Summary Card */}
-      {materials.length > 0 && (() => {
-        const matCost = materials.reduce((s, m) => s + (Number(m.totalCost) || 0), 0);
-        const matSell = materials.reduce((s, m) => {
-          const up = Number(m.unitPrice || 0);
-          return s + (up > 0 ? up * Number(m.quantity || 1) : 0);
-        }, 0);
-        const matHasCost = materials.some(m => Number(m.unitCost || 0) > 0);
-        const matMargin = matSell > 0 && matHasCost ? ((matSell - matCost) / matSell * 100).toFixed(0) : null;
-        return (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => setActiveTab('manage')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.cardIconContainer, { backgroundColor: `${colors.warning}15` }]}>
-              <Feather name="package" size={iconSizes.xl} color={colors.warning} />
-            </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardLabel}>Materials</Text>
-              <Text style={styles.cardValue}>
-                {materials.length} item{materials.length !== 1 ? 's' : ''} · Cost {matHasCost ? `$${matCost.toFixed(2)}` : 'Not set'}{matSell > 0 ? ` · Sell $${matSell.toFixed(2)}` : ''}
-              </Text>
-              {matMargin !== null && (
-                <Text style={{ ...typography.caption, color: Number(matMargin) >= 0 ? colors.success : colors.destructive, fontWeight: '600', marginTop: 2 }}>
-                  {matMargin}% margin
-                </Text>
-              )}
-            </View>
-            <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        );
-      })()}
-
-
-      {/* Compact Profitability Summary - Full details in More tab */}
-      {(() => {
-        const pd = profitabilityData;
-        const hasFinancialData = pd && (pd.revenue.invoiced > 0 || pd.revenue.pending > 0 || pd.costs.total > 0);
-        
-        if (isLoadingProfitability) return null;
-
-        if (!hasFinancialData) {
-          if (job.estimatedCost !== undefined || materials.length > 0) {
-            return (
-              <View style={styles.card}>
-                <View style={[styles.cardIconContainer, { backgroundColor: `${colors.success}15` }]}>
-                  <Feather name="trending-up" size={iconSizes.xl} color={colors.success} />
-                </View>
-                <View style={styles.cardContent}>
-                  <Text style={styles.cardLabel}>Job Value</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }}>
-                    {job.estimatedCost !== undefined && (
-                      <Text style={styles.cardValue}>Est. ${Number(job.estimatedCost).toFixed(2)}</Text>
-                    )}
-                    {invoice && (
-                      <Text style={[styles.cardValue, { color: colors.success }]}>
-                        · Invoice ${Number(invoice.total).toFixed(2)}
-                      </Text>
-                    )}
-                  </View>
-                </View>
+      {/* Description & Notes Card */}
+      {(job.description || job.notes) && (
+        <View style={{
+          backgroundColor: colors.card,
+          borderRadius: radius.xl,
+          padding: spacing.lg,
+          marginBottom: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          ...shadows.sm,
+        }}>
+          {job.description && (
+            <View style={{ marginBottom: job.notes ? spacing.md : 0 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+                <Feather name="align-left" size={14} color={colors.mutedForeground} />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.3 }}>Description</Text>
               </View>
-            );
-          }
-          return null;
-        }
-
-        const profitColor = pd.status === 'profitable' ? colors.success : pd.status === 'tight' ? colors.warning : colors.destructive;
-
-        return (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => setActiveTab('manage')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.cardIconContainer, { backgroundColor: `${profitColor}15` }]}>
-              <Feather name="trending-up" size={iconSizes.xl} color={profitColor} />
+              <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 20 }}>{job.description}</Text>
             </View>
-            <View style={[styles.cardContent, { flex: 1 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                <Text style={styles.cardLabel}>Profit</Text>
-                <View style={{ backgroundColor: `${profitColor}15`, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: profitColor, textTransform: 'capitalize' }}>{pd.status}</Text>
-                </View>
+          )}
+          {job.notes && (
+            <TouchableOpacity
+              onPress={() => setShowNotesModal(true)}
+              activeOpacity={0.7}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+                <Feather name="edit-3" size={14} color={colors.mutedForeground} />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.3 }}>Notes</Text>
+                <Feather name="edit-2" size={12} color={colors.primary} style={{ marginLeft: 'auto' }} />
               </View>
-              <Text style={[styles.cardValue, { color: profitColor }]}>{formatCurrency(pd.profit.amount)} · {pd.profit.margin.toFixed(1)}%</Text>
-            </View>
-            <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        );
-      })()}
+              <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }} numberOfLines={3}>{job.notes}</Text>
+            </TouchableOpacity>
+          )}
+          {!job.notes && (
+            <TouchableOpacity
+              onPress={() => setShowNotesModal(true)}
+              activeOpacity={0.7}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: job.description ? spacing.md : 0, borderTopWidth: job.description ? 1 : 0, borderTopColor: colors.border }}
+            >
+              <Feather name="plus" size={14} color={colors.primary} />
+              <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>Add private notes</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+      {!job.description && !job.notes && (
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => setShowNotesModal(true)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+            <Feather name="edit-3" size={iconSizes.xl} color={colors.primary} />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardLabel}>Notes</Text>
+            <Text style={[styles.cardValue, { color: colors.primary }]}>Add private notes</Text>
+          </View>
+          <Feather name="plus" size={iconSizes.lg} color={colors.primary} />
+        </TouchableOpacity>
+      )}
 
       {/* Time Tracking Card with Pulse Animation */}
       {(job.status === 'scheduled' || job.status === 'in_progress') && (() => {
@@ -6319,53 +6301,133 @@ export default function JobDetailScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Quick Access to More Tab */}
-      {(isOwnerOrManager || isSoloOwner) && (
-        <View style={styles.costingCard}>
-          <View style={styles.costingHeader}>
-            <View style={[styles.costingIconContainer, { backgroundColor: `${colors.primary}15` }]}>
-              <Feather name="settings" size={iconSizes.lg} color={colors.primary} />
+      {/* Compact Activity Log - Recent job activity */}
+      {activityLog.length > 0 && (
+        <View style={{
+          backgroundColor: colors.card,
+          borderRadius: radius.xl,
+          padding: spacing.lg,
+          marginBottom: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          ...shadows.sm,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
+            <View style={{
+              width: 32,
+              height: 32,
+              borderRadius: radius.md,
+              backgroundColor: `${colors.inProgress}15`,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: spacing.sm,
+            }}>
+              <Feather name="activity" size={iconSizes.md} color={colors.inProgress} />
             </View>
-            <Text style={styles.costingTitle}>Manage Job</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, flex: 1 }}>Recent Activity</Text>
+            <TouchableOpacity onPress={() => setActiveTab('manage')} activeOpacity={0.7}>
+              <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '500' }}>View All</Text>
+            </TouchableOpacity>
           </View>
-          <View style={{ gap: 1, marginTop: spacing.xs }}>
-            {[
-              { icon: 'dollar-sign' as const, label: 'Profitability & Costing', subtitle: profitabilityData ? `${profitabilityData.profit.margin.toFixed(0)}% margin` : 'View financials', color: colors.success, show: true, action: () => setActiveTab('manage') },
-              { icon: 'credit-card' as const, label: 'Expenses', subtitle: jobExpenses.length > 0 ? `${jobExpenses.length} expense${jobExpenses.length !== 1 ? 's' : ''}` : 'Track costs', color: colors.destructive, show: true, action: () => setActiveTab('manage') },
-              { icon: 'git-branch' as const, label: 'Variations', subtitle: 'Change orders', color: colors.warning, show: true, action: () => setActiveTab('manage') },
-              { icon: 'user-plus' as const, label: 'Subcontractors', subtitle: subcontractorTokens.filter(t => t.status !== 'revoked').length > 0 ? `${subcontractorTokens.filter(t => t.status !== 'revoked').length} active` : 'Invite contractors', color: colors.invoiced, show: true, action: () => setActiveTab('manage') },
-            ].filter(item => item.show).map((item) => (
-              <TouchableOpacity
-                key={item.label}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: spacing.md,
-                  paddingHorizontal: spacing.xs,
-                  gap: spacing.md,
-                  borderBottomWidth: 1,
-                  borderBottomColor: colors.border,
-                }}
-                onPress={item.action}
-                activeOpacity={0.7}
-              >
-                <View style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: `${item.color}15`,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <Feather name={item.icon} size={14} color={item.color} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{item.label}</Text>
-                  <Text style={{ fontSize: 12, color: colors.mutedForeground }}>{item.subtitle}</Text>
-                </View>
-                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            ))}
+          {activityLog.slice(0, 3).map((item, index) => (
+            <View key={item.id || index} style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              paddingVertical: spacing.sm,
+              borderTopWidth: index > 0 ? 1 : 0,
+              borderTopColor: colors.muted,
+              gap: spacing.sm,
+            }}>
+              <View style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: colors.inProgress,
+                marginTop: 6,
+              }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, color: colors.foreground, fontWeight: '500' }} numberOfLines={1}>
+                  {item.title || item.description}
+                </Text>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 2 }}>
+                  {new Date(item.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Quick Financial Summary - Compact overview with tap to More */}
+      {(isOwnerOrManager || isSoloOwner) && (
+        <View style={{
+          backgroundColor: colors.card,
+          borderRadius: radius.xl,
+          padding: spacing.lg,
+          marginBottom: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          ...shadows.sm,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
+            <View style={{
+              width: 32,
+              height: 32,
+              borderRadius: radius.md,
+              backgroundColor: `${colors.success}15`,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: spacing.sm,
+            }}>
+              <Feather name="bar-chart-2" size={iconSizes.md} color={colors.success} />
+            </View>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, flex: 1 }}>Financials</Text>
+            <TouchableOpacity onPress={() => setActiveTab('manage')} activeOpacity={0.7}>
+              <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '500' }}>Details</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            {(() => {
+              const pd = profitabilityData;
+              const summaryItems = [];
+              if (pd && pd.revenue.invoiced > 0) {
+                summaryItems.push({ label: 'Revenue', value: formatCurrency(pd.revenue.invoiced), color: colors.foreground });
+              }
+              if (pd && pd.costs.total > 0) {
+                summaryItems.push({ label: 'Costs', value: formatCurrency(pd.costs.total), color: colors.foreground });
+              }
+              if (pd && (pd.revenue.invoiced > 0 || pd.costs.total > 0)) {
+                const profitColor = pd.status === 'profitable' ? colors.success : pd.status === 'tight' ? colors.warning : colors.destructive;
+                summaryItems.push({ label: 'Profit', value: `${pd.profit.margin.toFixed(0)}%`, color: profitColor });
+              }
+              if (materials.length > 0) {
+                summaryItems.push({ label: 'Materials', value: `${materials.length}`, color: colors.foreground });
+              }
+              if (jobExpenses.length > 0) {
+                summaryItems.push({ label: 'Expenses', value: `${jobExpenses.length}`, color: colors.foreground });
+              }
+              if (summaryItems.length === 0) {
+                summaryItems.push({ label: 'Revenue', value: '$0', color: colors.mutedForeground });
+                summaryItems.push({ label: 'Costs', value: '$0', color: colors.mutedForeground });
+              }
+              return summaryItems.slice(0, 4).map((item, i) => (
+                <TouchableOpacity
+                  key={item.label}
+                  onPress={() => setActiveTab('manage')}
+                  activeOpacity={0.7}
+                  style={{
+                    flex: 1,
+                    backgroundColor: colors.muted,
+                    borderRadius: radius.lg,
+                    padding: spacing.sm,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: item.color }}>{item.value}</Text>
+                  <Text style={{ fontSize: 10, color: colors.mutedForeground, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.3 }}>{item.label}</Text>
+                </TouchableOpacity>
+              ));
+            })()}
           </View>
         </View>
       )}
@@ -6862,6 +6924,12 @@ export default function JobDetailScreen() {
         )}
       </View>
 
+      {/* Team & Operations Section Header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, marginTop: spacing.sm, gap: spacing.sm }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.mutedForeground, letterSpacing: 0.5, textTransform: 'uppercase' }}>Team & Operations</Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+      </View>
+
       {/* Recurring Schedule Section */}
       {job.isRecurring && (
         <View style={styles.costingCard}>
@@ -7166,6 +7234,105 @@ export default function JobDetailScreen() {
           )}
         </View>
       )}
+
+      {/* Activity & History Section Header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, marginTop: spacing.sm, gap: spacing.sm }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.mutedForeground, letterSpacing: 0.5, textTransform: 'uppercase' }}>Activity & History</Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+      </View>
+
+      {/* Full Activity Log */}
+      <View style={styles.costingCard}>
+        <View style={styles.costingHeader}>
+          <View style={[styles.costingIconContainer, { backgroundColor: `${colors.inProgress}15` }]}>
+            <Feather name="activity" size={iconSizes.lg} color={colors.inProgress} />
+          </View>
+          <Text style={styles.costingTitle}>Activity Log</Text>
+          {activityLog.length > 0 && (
+            <View style={{ backgroundColor: colors.muted, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: colors.mutedForeground }}>{activityLog.length}</Text>
+            </View>
+          )}
+        </View>
+        {activityLog.length > 0 ? (
+          <View style={{ gap: 0 }}>
+            {activityLog.slice(0, 10).map((item, index) => {
+              const iconMap: Record<string, string> = {
+                job_created: 'plus-circle',
+                job_scheduled: 'calendar',
+                job_started: 'play-circle',
+                job_completed: 'check-circle',
+                status_change: 'arrow-right-circle',
+                invoice_sent: 'send',
+                invoice_paid: 'dollar-sign',
+                quote_sent: 'mail',
+                quote_accepted: 'thumbs-up',
+                photo_added: 'camera',
+                note_added: 'edit-3',
+                sms_sent: 'message-square',
+                email_sent: 'mail',
+                timer_started: 'clock',
+                timer_stopped: 'square',
+              };
+              const iconName = iconMap[item.type] || 'circle';
+              const actColor = item.type?.includes('completed') || item.type?.includes('paid') || item.type?.includes('accepted')
+                ? colors.success
+                : item.type?.includes('started') || item.type?.includes('progress')
+                ? colors.inProgress
+                : colors.mutedForeground;
+              return (
+                <View key={item.id || index} style={{
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  paddingVertical: spacing.sm + 2,
+                  borderTopWidth: index > 0 ? 1 : 0,
+                  borderTopColor: colors.border,
+                  gap: spacing.sm,
+                }}>
+                  <View style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: `${actColor}12`,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginTop: 1,
+                  }}>
+                    <Feather name={iconName as any} size={13} color={actColor} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, color: colors.foreground, fontWeight: '500' }} numberOfLines={2}>
+                      {item.title || item.description}
+                    </Text>
+                    {item.description && item.title && (
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 1 }} numberOfLines={1}>
+                        {item.description}
+                      </Text>
+                    )}
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 3 }}>
+                      {new Date(item.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+            {activityLog.length > 10 && (
+              <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: 'center', paddingVertical: spacing.sm }}>
+                +{activityLog.length - 10} more activities
+              </Text>
+            )}
+          </View>
+        ) : (
+          <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+            <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center' }}>
+              No activity recorded yet
+            </Text>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs, textAlign: 'center' }}>
+              Actions taken on this job will appear here
+            </Text>
+          </View>
+        )}
+      </View>
 
       {/* Status Rollback Button */}
       {(isOwnerOrManager || isSoloOwner) && job.status !== 'pending' && (
@@ -8886,38 +9053,22 @@ export default function JobDetailScreen() {
         )}
       </View>
 
-      {/* Activity Log Section */}
+      {/* Activity Log Link - Full log is now in More tab */}
       {activityLog.length > 0 && (
-        <View style={styles.activityCard}>
-          <View style={styles.activityHeader}>
-            <View style={[styles.activityIconContainer, { backgroundColor: `${colors.inProgress}15` }]}>
-              <Feather name="activity" size={iconSizes.lg} color={colors.inProgress} />
-            </View>
-            <Text style={styles.activityTitle}>Activity Log</Text>
-            <Text style={styles.activityCount}>{activityLog.length}</Text>
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => setActiveTab('manage')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.inProgress}15` }]}>
+            <Feather name="activity" size={iconSizes.xl} color={colors.inProgress} />
           </View>
-          <View style={styles.activityList}>
-            {activityLog.slice(0, 5).map((item, index) => (
-              <View key={item.id || index} style={styles.activityItem}>
-                <View style={styles.activityDot} />
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityDescription}>{item.description}</Text>
-                  <Text style={styles.activityTime}>
-                    {new Date(item.createdAt).toLocaleDateString('en-AU', { 
-                      day: 'numeric', 
-                      month: 'short',
-                      hour: 'numeric',
-                      minute: '2-digit'
-                    })}
-                  </Text>
-                </View>
-              </View>
-            ))}
-            {activityLog.length > 5 && (
-              <Text style={styles.activityMore}>+{activityLog.length - 5} more activities</Text>
-            )}
+          <View style={styles.cardContent}>
+            <Text style={styles.cardLabel}>Activity Log</Text>
+            <Text style={styles.cardValue}>{activityLog.length} activit{activityLog.length === 1 ? 'y' : 'ies'} recorded</Text>
           </View>
-        </View>
+          <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
+        </TouchableOpacity>
       )}
     </>
   );
@@ -9020,23 +9171,50 @@ export default function JobDetailScreen() {
 
       {/* Tab Bar */}
       <View style={styles.tabBar}>
-        {TAB_CONFIG.map((tab) => (
-          <TouchableOpacity
-            key={tab.id}
-            style={[styles.tab, activeTab === tab.id && styles.tabActive]}
-            onPress={() => setActiveTab(tab.id)}
-            activeOpacity={0.7}
-          >
-            <Feather 
-              name={tab.icon} 
-              size={iconSizes.lg} 
-              color={activeTab === tab.id ? colors.primaryForeground : colors.mutedForeground} 
-            />
-            <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {TAB_CONFIG.map((tab) => {
+          const badgeCount = tabBadgeCounts[tab.id] || 0;
+          const isActive = activeTab === tab.id;
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              style={[styles.tab, isActive && styles.tabActive]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setActiveTab(tab.id);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{ position: 'relative' }}>
+                <Feather 
+                  name={tab.icon} 
+                  size={iconSizes.lg} 
+                  color={isActive ? colors.primaryForeground : colors.mutedForeground} 
+                />
+                {badgeCount > 0 && !isActive && (
+                  <View style={{
+                    position: 'absolute',
+                    top: -4,
+                    right: -8,
+                    backgroundColor: tab.id === 'documents' ? colors.warning : colors.primary,
+                    minWidth: 16,
+                    height: 16,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 3,
+                  }}>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>
+                      {badgeCount > 99 ? '99+' : badgeCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Tab Content - Scrollable */}
