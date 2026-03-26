@@ -5418,6 +5418,17 @@ export default function JobDetailScreen() {
     });
   };
 
+  const tabBadgeCounts = useMemo(() => {
+    const chatCount = jobMessages.length;
+    const docsCount = pendingSafetyForms.length + (hasIncompleteSwms ? 1 : 0);
+    return {
+      overview: 0,
+      documents: docsCount,
+      chat: chatCount,
+      manage: 0,
+    };
+  }, [jobMessages.length, pendingSafetyForms.length, hasIncompleteSwms]);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -5450,17 +5461,6 @@ export default function JobDetailScreen() {
   const action = STATUS_ACTIONS[job.status];
   const statusColor = getStatusColor(job.status);
   const clientInitials = client?.name ? client.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
-
-  const tabBadgeCounts = useMemo(() => {
-    const chatCount = jobMessages.length;
-    const docsCount = pendingSafetyForms.length + (hasIncompleteSwms ? 1 : 0);
-    return {
-      overview: 0,
-      documents: docsCount,
-      chat: chatCount,
-      manage: 0,
-    };
-  }, [jobMessages.length, pendingSafetyForms.length, hasIncompleteSwms]);
 
   const TAB_CONFIG = [
     { id: 'overview' as const, label: 'Info', icon: 'briefcase' as const },
