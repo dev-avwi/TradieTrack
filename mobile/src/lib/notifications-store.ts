@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { apiClient } from './api';
+import api from './api';
 import notificationService from './notifications';
 
 // Unified notification interface matching web implementation
@@ -61,7 +61,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     set({ isLoading: true, error: null, lastFetchTime: now });
     try {
       // Use unified endpoint like web - includes system, SMS, and chat notifications
-      const response = await apiClient.get<UnifiedNotificationsResponse>('/api/notifications/unified');
+      const response = await api.get<UnifiedNotificationsResponse>('/api/notifications/unified');
       const data = response.data;
       set({ 
         notifications: data.notifications || [], 
@@ -73,7 +73,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     } catch (error: any) {
       // Fallback to basic notifications endpoint if unified fails
       try {
-        const fallbackResponse = await apiClient.get('/api/notifications');
+        const fallbackResponse = await api.get('/api/notifications');
         const notifications = (fallbackResponse.data as any[]).map(n => ({
           ...n,
           id: String(n.id),
@@ -99,11 +99,11 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     try {
       // Use appropriate endpoint based on notification type (matching web behavior)
       if (notificationType === 'sms') {
-        await apiClient.patch(`/api/notifications/sms/${id}/read`);
+        await api.patch(`/api/notifications/sms/${id}/read`);
       } else if (notificationType === 'chat') {
-        await apiClient.patch(`/api/notifications/chat/${id}/read`);
+        await api.patch(`/api/notifications/chat/${id}/read`);
       } else {
-        await apiClient.patch(`/api/notifications/${id}/read`);
+        await api.patch(`/api/notifications/${id}/read`);
       }
       
       const notifications = get().notifications.map(n => 
@@ -120,7 +120,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   markAllAsRead: async () => {
     try {
       // Use batch endpoint to mark all as read in one request
-      await apiClient.patch('/api/notifications/read-all');
+      await api.patch('/api/notifications/read-all');
       const notifications = get().notifications.map(n => ({ ...n, read: true }));
       set({ notifications, unreadCount: 0 });
       get().updateBadgeCount();
@@ -135,7 +135,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
 
   dismissNotification: async (id: string) => {
     try {
-      await apiClient.patch(`/api/notifications/${id}/dismiss`);
+      await api.patch(`/api/notifications/${id}/dismiss`);
       const notifications = get().notifications.map(n => 
         n.id === id ? { ...n, dismissed: true } : n
       );

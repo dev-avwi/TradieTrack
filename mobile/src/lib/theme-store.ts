@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import * as SecureStore from 'expo-secure-store';
 import { Appearance } from 'react-native';
-import { apiClient } from './api';
+import api from './api';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -50,7 +50,7 @@ export const useThemeStore = create<ThemeState>()(
       
       setModeWithSync: (mode: ThemeMode) => {
         set({ mode });
-        apiClient.request('PATCH', '/api/user/preferences', { themeMode: mode })
+        api.request('PATCH', '/api/user/preferences', { themeMode: mode })
           .catch(err => { if (__DEV__) console.warn('Failed to sync theme to server:', err); });
       },
       
@@ -58,7 +58,7 @@ export const useThemeStore = create<ThemeState>()(
         const currentMode = get().mode;
         const newMode = currentMode === 'light' ? 'dark' : 'light';
         set({ mode: newMode });
-        apiClient.request('PATCH', '/api/user/preferences', { themeMode: newMode })
+        api.request('PATCH', '/api/user/preferences', { themeMode: newMode })
           .catch(err => { if (__DEV__) console.warn('Failed to sync theme to server:', err); });
       },
       

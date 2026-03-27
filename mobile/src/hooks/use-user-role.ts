@@ -107,7 +107,7 @@ const isBusinessOwner = (settings: any, userId: string | undefined): boolean => 
 
 export function useUserRole() {
   const { user, businessSettings } = useAuthStore();
-  const userId = user?.id;
+  const userId: string | undefined = user?.id;
   const { isOnline } = useOfflineStore();
   
   // Force re-render trigger when fetch completes

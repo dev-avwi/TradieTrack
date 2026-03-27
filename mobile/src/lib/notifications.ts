@@ -17,6 +17,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -294,7 +296,7 @@ class NotificationService {
         data,
         sound: 'default',
       },
-      trigger: triggerSeconds ? { seconds: triggerSeconds } : null,
+      trigger: triggerSeconds ? { type: 'timeInterval' as const, seconds: triggerSeconds, repeats: false } : null,
     });
     
     return id;

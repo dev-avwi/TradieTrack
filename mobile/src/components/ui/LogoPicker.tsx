@@ -96,13 +96,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   previewImage: {
     width: 160,
     height: 160,
-    borderRadius: radius.xxl,
+    borderRadius: radius['2xl'],
     backgroundColor: colors.muted,
   },
   previewPlaceholder: {
     width: 160,
     height: 160,
-    borderRadius: radius.xxl,
+    borderRadius: radius['2xl'],
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
@@ -118,7 +118,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   uploadOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: radius.xxl,
+    borderRadius: radius['2xl'],
     alignItems: 'center',
     justifyContent: 'center',
   },

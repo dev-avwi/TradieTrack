@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { useOfflineStore } from './offline-storage';
 
 // Automatic API URL detection
