@@ -3935,36 +3935,27 @@ export default function JobDetailScreen() {
   };
 
   const handleSendPortalSMS = async () => {
-    if (!job) return;
-    setIsSendingPortalSMS(true);
+    if (!job || !client?.phone) return;
+    const portalLink = portalLinks.length > 0 ? (portalLinks[0].url || (portalLinks[0] as any).link || '') : '';
+    const message = `Hi ${client.name || 'there'}, here's a link to track your job "${job.title}" progress: ${portalLink}`;
+    const smsUrl = `sms:${client.phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
     try {
-      const res = await api.post(`/api/jobs/${job.id}/share-portal-sms`, {});
-      if (res.error) {
-        Alert.alert('SMS Failed', res.error || 'Could not send SMS');
-      } else {
-        Alert.alert('SMS Sent', 'Tracking link sent to client via SMS');
-      }
+      await Linking.openURL(smsUrl);
     } catch {
-      Alert.alert('Error', 'Failed to send portal link via SMS');
-    } finally {
-      setIsSendingPortalSMS(false);
+      Alert.alert('Error', 'Could not open SMS app');
     }
   };
 
   const handleSendPortalEmail = async () => {
-    if (!job) return;
-    setIsSendingPortalEmail(true);
+    if (!job || !client?.email) return;
+    const portalLink = portalLinks.length > 0 ? (portalLinks[0].url || (portalLinks[0] as any).link || '') : '';
+    const subject = `Job Progress: ${job.title}`;
+    const body = `Hi ${client.name || 'there'},\n\nHere's a link to track your job progress:\n${portalLink}\n\nYou can view the latest status, photos, and updates for "${job.title}".\n\nThanks`;
+    const mailUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     try {
-      const res = await api.post(`/api/jobs/${job.id}/share-portal-email`, {});
-      if (res.error) {
-        Alert.alert('Email Failed', res.error || 'Could not send email');
-      } else {
-        Alert.alert('Email Sent', 'Tracking link sent to client via email');
-      }
+      await Linking.openURL(mailUrl);
     } catch {
-      Alert.alert('Error', 'Failed to send portal link via email');
-    } finally {
-      setIsSendingPortalEmail(false);
+      Alert.alert('Error', 'Could not open email app');
     }
   };
 
@@ -5845,7 +5836,8 @@ export default function JobDetailScreen() {
                 justifyContent: 'center',
                 gap: spacing.sm,
                 marginTop: spacing.sm,
-                paddingVertical: spacing.sm + 2,
+                paddingVertical: spacing.md,
+                paddingHorizontal: spacing.lg,
                 borderRadius: radius.lg,
                 backgroundColor: `${colors.primary}10`,
                 borderWidth: 1,
@@ -5861,7 +5853,7 @@ export default function JobDetailScreen() {
               <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
                 Send via JobRunner
               </Text>
-              <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+              <Text style={{ fontSize: 11, color: colors.mutedForeground, marginLeft: spacing.xs }}>
                 SMS & Email from +61 485 013 993
               </Text>
             </TouchableOpacity>
@@ -6487,25 +6479,54 @@ export default function JobDetailScreen() {
             ))}
           </View>
 
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: spacing.sm,
-              backgroundColor: colors.primary,
-              paddingVertical: spacing.md,
-              borderRadius: radius.lg,
-              minHeight: 44,
-            }}
-            onPress={() => setShowProofPackModal(true)}
-            activeOpacity={0.8}
-          >
-            <Feather name="sliders" size={18} color={colors.primaryForeground} />
-            <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
-              Customise & Generate Proof Pack
-            </Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: spacing.sm,
+                backgroundColor: `${colors.primary}12`,
+                paddingVertical: spacing.md,
+                borderRadius: radius.lg,
+                minHeight: 44,
+                borderWidth: 1,
+                borderColor: `${colors.primary}25`,
+              }}
+              onPress={handleLoadProofPackPreview}
+              activeOpacity={0.8}
+              disabled={isLoadingProofPackPreview}
+            >
+              {isLoadingProofPackPreview ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <>
+                  <Feather name="eye" size={16} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>Preview</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: spacing.sm,
+                backgroundColor: colors.primary,
+                paddingVertical: spacing.md,
+                borderRadius: radius.lg,
+                minHeight: 44,
+              }}
+              onPress={() => setShowProofPackModal(true)}
+              activeOpacity={0.8}
+            >
+              <Feather name="sliders" size={16} color={colors.primaryForeground} />
+              <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>Customise</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -6590,20 +6611,14 @@ export default function JobDetailScreen() {
                     paddingVertical: spacing.sm + 2,
                     borderRadius: radius.lg,
                     backgroundColor: `${colors.success}12`,
-                    opacity: isSendingPortalSMS || !client?.phone ? 0.5 : 1,
+                    opacity: !client?.phone ? 0.5 : 1,
                   }}
                   onPress={handleSendPortalSMS}
                   activeOpacity={0.7}
-                  disabled={isSendingPortalSMS || !client?.phone}
+                  disabled={!client?.phone}
                 >
-                  {isSendingPortalSMS ? (
-                    <ActivityIndicator size="small" color={colors.success} />
-                  ) : (
-                    <>
-                      <Feather name="message-square" size={16} color={colors.success} />
-                      <Text style={{ color: colors.success, fontWeight: '600', fontSize: 13 }}>Send SMS</Text>
-                    </>
-                  )}
+                  <Feather name="message-square" size={16} color={colors.success} />
+                  <Text style={{ color: colors.success, fontWeight: '600', fontSize: 13 }}>SMS Link</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -6616,20 +6631,14 @@ export default function JobDetailScreen() {
                     paddingVertical: spacing.sm + 2,
                     borderRadius: radius.lg,
                     backgroundColor: `${colors.invoiced}12`,
-                    opacity: isSendingPortalEmail || !client?.email ? 0.5 : 1,
+                    opacity: !client?.email ? 0.5 : 1,
                   }}
                   onPress={handleSendPortalEmail}
                   activeOpacity={0.7}
-                  disabled={isSendingPortalEmail || !client?.email}
+                  disabled={!client?.email}
                 >
-                  {isSendingPortalEmail ? (
-                    <ActivityIndicator size="small" color={colors.invoiced} />
-                  ) : (
-                    <>
-                      <Feather name="mail" size={16} color={colors.invoiced} />
-                      <Text style={{ color: colors.invoiced, fontWeight: '600', fontSize: 13 }}>Send Email</Text>
-                    </>
-                  )}
+                  <Feather name="mail" size={16} color={colors.invoiced} />
+                  <Text style={{ color: colors.invoiced, fontWeight: '600', fontSize: 13 }}>Email Link</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -7980,7 +7989,8 @@ export default function JobDetailScreen() {
                 justifyContent: 'center',
                 gap: spacing.sm,
                 marginTop: spacing.sm,
-                paddingVertical: spacing.sm,
+                paddingVertical: spacing.md,
+                paddingHorizontal: spacing.lg,
                 borderRadius: radius.lg,
                 backgroundColor: `${colors.primary}08`,
                 borderWidth: 1,
@@ -7992,7 +8002,7 @@ export default function JobDetailScreen() {
               <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>
                 Send via JobRunner
               </Text>
-              <Text style={{ fontSize: 10, color: colors.mutedForeground }}>
+              <Text style={{ fontSize: 10, color: colors.mutedForeground, marginLeft: spacing.xs }}>
                 +61 485 013 993
               </Text>
             </TouchableOpacity>
@@ -9202,11 +9212,10 @@ export default function JobDetailScreen() {
           headerLeft: () => <IOSBackButton />,
           headerRight: () => (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginRight: spacing.xs }}>
-              {(isOwnerOrManager || isSoloOwner) && (client?.email || client?.phone) && (
+              {(isOwnerOrManager || isSoloOwner) && (
                 <TouchableOpacity
                   onPress={() => {
-                    setSendModalDefaultTab(client?.email ? 'email' : 'sms');
-                    setShowSendModal(true);
+                    setActiveTab('manage');
                   }}
                   style={{ 
                     width: 36,
@@ -9216,9 +9225,9 @@ export default function JobDetailScreen() {
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
-                  data-testid="button-send-header"
+                  data-testid="button-edit-header"
                 >
-                  <Feather name="send" size={16} color={colors.primary} />
+                  <Feather name="edit-2" size={16} color={colors.primary} />
                 </TouchableOpacity>
               )}
               {canDeleteJobs && (
