@@ -2589,7 +2589,84 @@ export default function DashboardScreen() {
         </View>
       )}
 
-      {/* Today's Schedule - THE most important section, always first */}
+      {/* Weather Widget - Quick glance before jumping into the day */}
+      <View style={styles.section}>
+        <WeatherWidget />
+      </View>
+
+      {/* Quick Stats - Compact KPI overview */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>
+          {isStaffUser ? 'My Stats' : 'Overview'}
+        </Text>
+        <View style={styles.kpiGrid}>
+          <KPICard
+            title={isStaffUser ? "My Jobs" : "Jobs Today"}
+            value={jobsToday}
+            icon="briefcase"
+            iconBg={colors.primaryLight}
+            iconColor={colors.primary}
+            onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
+          />
+          {isStaffUser ? (
+            <>
+              <KPICard
+                title="In Progress"
+                value={myAllJobs.filter(j => j.status === 'in_progress').length}
+                icon="clock"
+                iconBg={colors.warningLight}
+                iconColor={colors.warning}
+                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'in_progress' } })}
+              />
+              <KPICard
+                title="Completed"
+                value={myAllJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length}
+                icon="check-circle"
+                iconBg={colors.successLight}
+                iconColor={colors.success}
+                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
+              />
+              <KPICard
+                title="Assigned"
+                value={myAllJobs.filter(j => j.status === 'scheduled' || j.status === 'pending').length}
+                icon="clipboard"
+                iconBg={colors.muted}
+                iconColor={colors.mutedForeground}
+                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
+              />
+            </>
+          ) : (
+            <>
+              <KPICard
+                title="Overdue"
+                value={overdueCount}
+                icon="alert-circle"
+                iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
+                iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
+                onPress={() => router.push('/more/documents?tab=invoices&filter=overdue')}
+              />
+              <KPICard
+                title="To Invoice"
+                value={toInvoiceCount}
+                icon="file-plus"
+                iconBg={toInvoiceCount > 0 ? colors.warningLight : colors.muted}
+                iconColor={toInvoiceCount > 0 ? colors.warning : colors.mutedForeground}
+                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
+              />
+              <KPICard
+                title="Assigned"
+                value={allJobs.filter((j: any) => j.status === 'scheduled' || j.status === 'in_progress').length}
+                icon="users"
+                iconBg={colors.primaryLight}
+                iconColor={colors.primary}
+                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
+              />
+            </>
+          )}
+        </View>
+      </View>
+
+      {/* Today's Schedule */}
       {<View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
@@ -2830,83 +2907,6 @@ export default function DashboardScreen() {
           </View>
         </View>
       )}
-
-      {/* Quick Stats - 4 clean cards */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>
-          {isStaffUser ? 'My Stats' : 'Overview'}
-        </Text>
-        <View style={styles.kpiGrid}>
-          <KPICard
-            title={isStaffUser ? "My Jobs" : "Jobs Today"}
-            value={jobsToday}
-            icon="briefcase"
-            iconBg={colors.primaryLight}
-            iconColor={colors.primary}
-            onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
-          />
-          {isStaffUser ? (
-            <>
-              <KPICard
-                title="In Progress"
-                value={myAllJobs.filter(j => j.status === 'in_progress').length}
-                icon="clock"
-                iconBg={colors.warningLight}
-                iconColor={colors.warning}
-                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'in_progress' } })}
-              />
-              <KPICard
-                title="Completed"
-                value={myAllJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length}
-                icon="check-circle"
-                iconBg={colors.successLight}
-                iconColor={colors.success}
-                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
-              />
-              <KPICard
-                title="Assigned"
-                value={myAllJobs.filter(j => j.status === 'scheduled' || j.status === 'pending').length}
-                icon="clipboard"
-                iconBg={colors.muted}
-                iconColor={colors.mutedForeground}
-                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
-              />
-            </>
-          ) : (
-            <>
-              <KPICard
-                title="Overdue"
-                value={overdueCount}
-                icon="alert-circle"
-                iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
-                iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
-                onPress={() => router.push('/more/documents?tab=invoices&filter=overdue')}
-              />
-              <KPICard
-                title="To Invoice"
-                value={toInvoiceCount}
-                icon="file-plus"
-                iconBg={toInvoiceCount > 0 ? colors.warningLight : colors.muted}
-                iconColor={toInvoiceCount > 0 ? colors.warning : colors.mutedForeground}
-                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
-              />
-              <KPICard
-                title="Assigned"
-                value={allJobs.filter((j: any) => j.status === 'scheduled' || j.status === 'in_progress').length}
-                icon="users"
-                iconBg={colors.primaryLight}
-                iconColor={colors.primary}
-                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
-              />
-            </>
-          )}
-        </View>
-      </View>
-
-      {/* Weather Widget - Below stats for context */}
-      <View style={styles.section}>
-        <WeatherWidget />
-      </View>
 
       {/* Revenue Chart - Owner Only */}
       {isOwnerUser && (
