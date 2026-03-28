@@ -5878,13 +5878,14 @@ export default function JobDetailScreen() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: spacing.sm,
-                marginTop: spacing.sm,
+                marginTop: spacing.md,
                 paddingVertical: spacing.md,
-                paddingHorizontal: spacing.lg,
+                paddingHorizontal: spacing.xl,
                 borderRadius: radius.lg,
                 backgroundColor: `${colors.primary}10`,
                 borderWidth: 1,
                 borderColor: `${colors.primary}25`,
+                minHeight: 48,
               }}
               onPress={() => {
                 setSendModalDefaultTab(client?.email ? 'email' : 'sms');
@@ -5892,11 +5893,11 @@ export default function JobDetailScreen() {
               }}
               activeOpacity={0.7}
             >
-              <Feather name="zap" size={14} color={colors.primary} />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
+              <Feather name="zap" size={15} color={colors.primary} />
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary }}>
                 Send via JobRunner
               </Text>
-              <Text style={{ fontSize: 11, color: colors.mutedForeground, marginLeft: spacing.xs }}>
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginLeft: spacing.xs }}>
                 SMS & Email from +61 485 013 993
               </Text>
             </TouchableOpacity>
@@ -9332,9 +9333,6 @@ export default function JobDetailScreen() {
           activeOpacity={0.7}
         >
           <Text style={styles.title}>{job.title}</Text>
-          <View style={{ padding: spacing.xs, opacity: 0.6 }}>
-            <Feather name="edit-2" size={14} color={colors.mutedForeground} />
-          </View>
         </TouchableOpacity>
         {job.description && (
           <Text style={styles.description}>{job.description}</Text>

@@ -51,9 +51,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
-    ...shadows.sm,
   },
   backButton: {
     width: sizes.inputHeightSm,
@@ -68,7 +67,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: sizes.avatarMd,
     height: sizes.avatarMd,
     borderRadius: sizes.avatarMd / 2,
-    backgroundColor: colors.successLight,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
@@ -132,22 +131,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginLeft: spacing.xs,
   },
   messageBubble: {
-    maxWidth: '80%',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius['2xl'],
+    maxWidth: '78%',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: 18,
   },
   messageBubbleOutbound: {
     backgroundColor: colors.primary,
-    borderBottomRightRadius: radius.xs,
+    borderBottomRightRadius: 4,
   },
   messageBubbleInbound: {
-    backgroundColor: colors.muted,
-    borderBottomLeftRadius: radius.xs,
+    backgroundColor: colors.card,
+    borderBottomLeftRadius: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.cardBorder,
   },
   messageText: {
     ...typography.body,
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 21,
   },
   messageTextOutbound: {
     color: colors.primaryForeground,
@@ -156,11 +158,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   messageTime: {
-    fontSize: 10,
-    marginTop: spacing.xs,
+    fontSize: 11,
+    marginTop: 4,
   },
   messageTimeOutbound: {
-    color: colors.primaryForeground + '80',
+    color: colors.primaryForeground + '70',
     textAlign: 'right',
   },
   messageTimeInbound: {
@@ -195,43 +197,44 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   composerContainer: {
     paddingTop: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.card,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
   composerRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   composerInputWrapper: {
     flex: 1,
     backgroundColor: colors.muted,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     overflow: 'hidden',
   },
   composerInput: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     ...typography.body,
+    fontSize: 15,
     color: colors.foreground,
     maxHeight: 100,
-    minHeight: sizes.inputHeightSm,
+    minHeight: 42,
   },
   sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   sendButtonDisabled: {
-    opacity: 0.4,
+    backgroundColor: colors.muted,
   },
   loadingContainer: {
     flex: 1,
@@ -239,12 +242,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   quickRepliesToggle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 1,
   },
   quickRepliesContainer: {
     backgroundColor: colors.card,
@@ -387,7 +391,9 @@ export default function SmsConversationScreen() {
           </TouchableOpacity>
 
           <View style={styles.headerIconContainer}>
-            <Feather name="smartphone" size={20} color={colors.success} />
+            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primaryForeground }}>
+              {(clientName || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+            </Text>
           </View>
 
           <View style={styles.headerContent}>
@@ -527,14 +533,18 @@ export default function SmsConversationScreen() {
               />
             </View>
             <TouchableOpacity
-              style={[styles.sendButton, (!messageText.trim() || isSending) && styles.sendButtonDisabled]}
+              style={[
+                styles.sendButton,
+                (!messageText.trim() || isSending) && styles.sendButtonDisabled,
+              ]}
               onPress={handleSend}
               disabled={!messageText.trim() || isSending}
+              activeOpacity={0.7}
             >
               {isSending ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
-                <Feather name="send" size={18} color={colors.primaryForeground} />
+                <Feather name="send" size={16} color={messageText.trim() ? colors.primaryForeground : colors.mutedForeground} />
               )}
             </TouchableOpacity>
           </View>

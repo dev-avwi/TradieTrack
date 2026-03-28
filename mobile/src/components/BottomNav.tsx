@@ -150,7 +150,7 @@ export function BottomNav() {
   const unreadCount = useNotificationsStore((s) => s.unreadCount);
 
   const isActive = (item: NavItem) => {
-    const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'];
+    const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages', '/more/sms-conversation', '/more/new-sms-conversation'];
     const isChatRoute = chatRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
     if (isChatRoute) {
       return item.title === 'Chat';
