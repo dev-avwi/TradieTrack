@@ -3934,29 +3934,72 @@ export default function JobDetailScreen() {
     }
   };
 
-  const handleSendPortalSMS = async () => {
-    if (!job || !client?.phone) return;
-    const portalLink = portalLinks.length > 0 ? (portalLinks[0].url || (portalLinks[0] as any).link || '') : '';
-    const message = `Hi ${client.name || 'there'}, here's a link to track your job "${job.title}" progress: ${portalLink}`;
-    const smsUrl = `sms:${client.phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
-    try {
-      await Linking.openURL(smsUrl);
-    } catch {
-      Alert.alert('Error', 'Could not open SMS app');
-    }
+  const getPortalLink = () => {
+    return portalLinks.length > 0 ? (portalLinks[0].url || (portalLinks[0] as any).link || '') : '';
   };
 
-  const handleSendPortalEmail = async () => {
+  const handleSendPortalSMS = () => {
+    if (!job || !client?.phone) return;
+    const portalLink = getPortalLink();
+    const message = `Hi ${client.name || 'there'}, here's a link to track your job "${job.title}" progress: ${portalLink}`;
+
+    Alert.alert(
+      'Send Portal Link via SMS',
+      'How would you like to send the portal link?',
+      [
+        {
+          text: 'Send via JobRunner',
+          onPress: () => {
+            setSendModalDefaultTab('sms');
+            setShowSendModal(true);
+          },
+        },
+        {
+          text: 'Open Phone SMS',
+          onPress: async () => {
+            try {
+              const separator = Platform.OS === 'ios' ? '&' : '?';
+              await Linking.openURL(`sms:${client.phone}${separator}body=${encodeURIComponent(message)}`);
+            } catch {
+              Alert.alert('Error', 'Could not open SMS app');
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handleSendPortalEmail = () => {
     if (!job || !client?.email) return;
-    const portalLink = portalLinks.length > 0 ? (portalLinks[0].url || (portalLinks[0] as any).link || '') : '';
+    const portalLink = getPortalLink();
     const subject = `Job Progress: ${job.title}`;
     const body = `Hi ${client.name || 'there'},\n\nHere's a link to track your job progress:\n${portalLink}\n\nYou can view the latest status, photos, and updates for "${job.title}".\n\nThanks`;
-    const mailUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    try {
-      await Linking.openURL(mailUrl);
-    } catch {
-      Alert.alert('Error', 'Could not open email app');
-    }
+
+    Alert.alert(
+      'Send Portal Link via Email',
+      'How would you like to send the portal link?',
+      [
+        {
+          text: 'Send via JobRunner',
+          onPress: () => {
+            setSendModalDefaultTab('email');
+            setShowSendModal(true);
+          },
+        },
+        {
+          text: 'Open Phone Email',
+          onPress: async () => {
+            try {
+              await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+            } catch {
+              Alert.alert('Error', 'Could not open email app');
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
   };
 
   const handleLoadProofPackPreview = async () => {
