@@ -633,7 +633,8 @@ export default function TeamOperationsScreen() {
             provider={PROVIDER_DEFAULT}
             initialRegion={mapRegion}
             region={mapRegion}
-            customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
+            mapType="standard"
+            userInterfaceStyle={isDark ? 'dark' : 'light'}
           >
             {membersWithLocations.map(member => {
               const statusConfig = STATUS_CONFIG[member.presence?.status || 'offline'];
