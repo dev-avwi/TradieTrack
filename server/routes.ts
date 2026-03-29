@@ -15875,13 +15875,6 @@ Be specific about materials, colors, and features that would be included.`
       const editableFields = ['title', 'description', 'address', 'scheduledAt', 'estimatedHours', 'priority', 'geofenceEnabled', 'geofenceRadius'];
       const hasEditableFieldChanges = Object.keys(data).some(k => editableFields.includes(k));
       
-      if (existingJob && hasEditableFieldChanges && submittedVersion === undefined) {
-        return res.status(400).json({
-          error: "Version field is required when editing job details to prevent conflicts.",
-          code: "VERSION_REQUIRED",
-          serverVersion: existingJob.version,
-        });
-      }
       
       // Validate: Can't set status to "invoiced" without a linked invoice
       if (data.status === 'invoiced' && existingJob?.status !== 'invoiced') {
