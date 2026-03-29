@@ -225,54 +225,52 @@ class SyncManager {
     }
 
     if (uploaded.length > 0 && resolvedEntityId) {
-      try {
-        const entityEndpoint = `/api/${operation.storeName}/${resolvedEntityId}`;
-        const entityResponse = await fetch(entityEndpoint, { credentials: 'include' });
-        if (entityResponse.ok) {
-          const entity = await entityResponse.json();
+      const entityEndpoint = `/api/${operation.storeName}/${resolvedEntityId}`;
+      const entityResponse = await fetch(entityEndpoint, { credentials: 'include' });
+      if (!entityResponse.ok) {
+        throw new Error(`Failed to fetch entity for attachment linking: ${entityResponse.status} ${entityResponse.statusText}`);
+      }
 
-          interface PhotoEntry { url: string; uploadedAt: string; source: string }
-          interface FileEntry { url: string; filename: string; uploadedAt: string }
-          const photos: PhotoEntry[] = Array.isArray(entity.photos) ? [...entity.photos] : [];
-          const voiceNotes: FileEntry[] = Array.isArray(entity.voiceNotes) ? [...entity.voiceNotes] : [];
-          const documents: FileEntry[] = Array.isArray(entity.documents) ? [...entity.documents] : [];
-          let signatureUrl: string | undefined;
+      const entity = await entityResponse.json();
 
-          for (const file of uploaded) {
-            const ts = new Date().toISOString();
-            if (file.type === 'photo' || file.type === 'image') {
-              photos.push({ url: file.url, uploadedAt: ts, source: 'offline_sync' });
-            } else if (file.type === 'signature') {
-              signatureUrl = file.url;
-            } else if (file.type === 'voice_note' || file.type === 'audio') {
-              voiceNotes.push({ url: file.url, filename: file.filename, uploadedAt: ts });
-            } else {
-              documents.push({ url: file.url, filename: file.filename, uploadedAt: ts });
-            }
-          }
+      interface PhotoEntry { url: string; uploadedAt: string; source: string }
+      interface FileEntry { url: string; filename: string; uploadedAt: string }
+      const photos: PhotoEntry[] = Array.isArray(entity.photos) ? [...entity.photos] : [];
+      const voiceNotes: FileEntry[] = Array.isArray(entity.voiceNotes) ? [...entity.voiceNotes] : [];
+      const documents: FileEntry[] = Array.isArray(entity.documents) ? [...entity.documents] : [];
+      let signatureUrl: string | undefined;
 
-          const patchData: Record<string, PhotoEntry[] | FileEntry[] | string> = {};
-          if (photos.length > (Array.isArray(entity.photos) ? entity.photos.length : 0)) {
-            patchData.photos = photos;
-          }
-          if (signatureUrl) patchData.signatureUrl = signatureUrl;
-          if (voiceNotes.length > (Array.isArray(entity.voiceNotes) ? entity.voiceNotes.length : 0)) {
-            patchData.voiceNotes = voiceNotes;
-          }
-          if (documents.length > (Array.isArray(entity.documents) ? entity.documents.length : 0)) {
-            patchData.documents = documents;
-          }
-
-          if (Object.keys(patchData).length > 0) {
-            await apiRequest('PATCH', entityEndpoint, patchData);
-          }
+      for (const file of uploaded) {
+        const ts = new Date().toISOString();
+        if (file.type === 'photo' || file.type === 'image') {
+          photos.push({ url: file.url, uploadedAt: ts, source: 'offline_sync' });
+        } else if (file.type === 'signature') {
+          signatureUrl = file.url;
+        } else if (file.type === 'voice_note' || file.type === 'audio') {
+          voiceNotes.push({ url: file.url, filename: file.filename, uploadedAt: ts });
+        } else {
+          documents.push({ url: file.url, filename: file.filename, uploadedAt: ts });
         }
+      }
 
-        for (const file of uploaded) {
-          await markFileAttachmentSynced(file.id, file.url);
-        }
-      } catch (linkError) {
-        throw new Error(`Failed to link attachments to entity: ${linkError instanceof Error ? linkError.message : String(linkError)}`);
+      const patchData: Record<string, PhotoEntry[] | FileEntry[] | string> = {};
+      if (photos.length > (Array.isArray(entity.photos) ? entity.photos.length : 0)) {
+        patchData.photos = photos;
+      }
+      if (signatureUrl) patchData.signatureUrl = signatureUrl;
+      if (voiceNotes.length > (Array.isArray(entity.voiceNotes) ? entity.voiceNotes.length : 0)) {
+        patchData.voiceNotes = voiceNotes;
+      }
+      if (documents.length > (Array.isArray(entity.documents) ? entity.documents.length : 0)) {
+        patchData.documents = documents;
+      }
+
+      if (Object.keys(patchData).length > 0) {
+        await apiRequest('PATCH', entityEndpoint, patchData);
+      }
+
+      for (const file of uploaded) {
+        await markFileAttachmentSynced(file.id, file.url);
       }
     }
 
