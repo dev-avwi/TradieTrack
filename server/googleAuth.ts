@@ -7,34 +7,23 @@ import type { Express } from 'express';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
-// Use APP_DOMAIN in production, Replit dev domain in development
+// Determine the base URL for Google OAuth callback
+// In production, always use the custom domain to match Google Cloud Console configuration
 const getBaseUrl = () => {
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://jobrunner.com.au';
+  }
   if (process.env.APP_DOMAIN) {
     return `https://${process.env.APP_DOMAIN}`;
   }
-  const isDev = process.env.NODE_ENV === 'development';
-  if (isDev) {
-    if (process.env.REPLIT_DEV_DOMAIN) {
-      return `https://${process.env.REPLIT_DEV_DOMAIN}`;
-    }
-    const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
-    if (domains[0]) {
-      return `https://${domains[0]}`;
-    }
-    return process.env.REPL_URL || 'http://localhost:5000';
-  }
-  if (process.env.VITE_APP_URL) {
-    return process.env.VITE_APP_URL;
+  if (process.env.REPLIT_DEV_DOMAIN) {
+    return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   }
   const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
-  const customDomain = domains.find(d => !d.endsWith('.replit.app') && !d.endsWith('.replit.dev') && !d.endsWith('.repl.co'));
-  if (customDomain) {
-    return `https://${customDomain}`;
-  }
   if (domains[0]) {
     return `https://${domains[0]}`;
   }
-  return 'http://localhost:5000';
+  return process.env.REPL_URL || 'http://localhost:5000';
 };
 const BASE_URL = getBaseUrl();
 
@@ -160,11 +149,16 @@ export function setupGoogleAuth(app: Express) {
     }
   });
 
+  // Log the OAuth callback URL for debugging
+  const callbackURL = `${BASE_URL}/api/auth/google/callback`;
+  console.log(`🔐 Google OAuth Callback URL: ${callbackURL}`);
+  console.log(`🔐 Google OAuth env: APP_DOMAIN=${process.env.APP_DOMAIN || 'not set'}, VITE_APP_URL=${process.env.VITE_APP_URL || 'not set'}, REPLIT_DOMAINS=${process.env.REPLIT_DOMAINS || 'not set'}`);
+
   // Google OAuth Strategy with passReqToCallback to access session
   passport.use(new GoogleStrategy({
     clientID: GOOGLE_CLIENT_ID!,
     clientSecret: GOOGLE_CLIENT_SECRET!,
-    callbackURL: `${BASE_URL}/api/auth/google/callback`,
+    callbackURL: callbackURL,
     passReqToCallback: true
   }, async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
     try {
