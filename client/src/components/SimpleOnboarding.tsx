@@ -39,7 +39,8 @@ import {
   DollarSign,
   Camera,
   X,
-  Plus
+  Plus,
+  Download
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -479,8 +480,8 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [seedDemoData, setSeedDemoData] = useState(true);
-  const [importMode, setImportMode] = useState<'none' | 'clients' | 'catalog'>('none');
-  const [importPreview, setImportPreview] = useState<{ headers: string[]; rows: any[]; totalRows: number; suggestedMappings: Record<string, string> } | null>(null);
+  const [importMode, setImportMode] = useState<'none' | 'clients' | 'catalog' | 'tradify' | 'servicem8'>('none');
+  const [importPreview, setImportPreview] = useState<{ headers: string[]; rows: any[]; totalRows: number; suggestedMappings: Record<string, string>; detectedType?: string; detectedPlatform?: string; duplicateCount?: number; duplicates?: { row: number; reason: string }[]; formatWarning?: string } | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; skipped: number; errors: string[] } | null>(null);
@@ -511,7 +512,12 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     
     const formDataUpload = new FormData();
     formDataUpload.append('file', file);
-    formDataUpload.append('type', importMode);
+    const isCompetitor = importMode === 'tradify' || importMode === 'servicem8';
+    if (isCompetitor) {
+      formDataUpload.append('platform', importMode);
+    } else {
+      formDataUpload.append('type', importMode);
+    }
     
     try {
       const res = await fetch('/api/import/preview', {
@@ -532,16 +538,24 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     if (!importPreview) return;
     setIsImporting(true);
     try {
+      const isCompetitor = importMode === 'tradify' || importMode === 'servicem8';
+      const importType = isCompetitor ? (importPreview.detectedType || 'clients') : importMode;
       const res = await apiRequest('POST', '/api/import/execute', {
-        type: importMode,
+        type: importType,
         data: importPreview.rows,
         mappings: importPreview.suggestedMappings,
+        platform: isCompetitor ? importMode : 'generic',
+        skipDuplicates: true,
       });
       const result = await res.json();
       setImportResult(result);
       if (result.imported > 0) {
-        await queryClient.invalidateQueries({ queryKey: importMode === 'clients' ? ['/api/clients'] : ['/api/catalog'] });
-        toast({ title: `Imported ${result.imported} ${importMode === 'clients' ? 'clients' : 'items'}` });
+        const keys = ['/api/clients', '/api/jobs', '/api/quotes', '/api/invoices', '/api/catalog'];
+        for (const k of keys) {
+          await queryClient.invalidateQueries({ queryKey: [k] });
+        }
+        const typeLabels: Record<string, string> = { clients: 'clients', catalog: 'items', jobs: 'jobs', quotes: 'quotes', invoices: 'invoices' };
+        toast({ title: `Imported ${result.imported} ${typeLabels[importType] || 'records'}` });
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Import failed", description: "Please check your file and try again." });
@@ -977,12 +991,48 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           Switching from another app?
         </h2>
         <p className="text-muted-foreground max-w-sm mx-auto">
-          Bring your clients and price list across in seconds. Or skip this and start fresh.
+          Bring your data across in seconds. We auto-detect Tradify and ServiceM8 exports.
         </p>
       </div>
       
       {importMode === 'none' && !importResult && (
         <div className="max-w-md mx-auto space-y-3">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">Import from competitor</p>
+          <div 
+            className="p-4 rounded-xl border hover-elevate cursor-pointer transition-all"
+            onClick={() => setImportMode('tradify')}
+            data-testid="import-tradify-option"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center flex-shrink-0">
+                <Download className="h-5 w-5 text-orange-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-gray-900 dark:text-white">Import from Tradify</p>
+                <p className="text-sm text-muted-foreground">Clients, jobs, quotes & invoices</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          
+          <div 
+            className="p-4 rounded-xl border hover-elevate cursor-pointer transition-all"
+            onClick={() => setImportMode('servicem8')}
+            data-testid="import-servicem8-option"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center flex-shrink-0">
+                <Download className="h-5 w-5 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-gray-900 dark:text-white">Import from ServiceM8</p>
+                <p className="text-sm text-muted-foreground">Clients, jobs, quotes & invoices</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1 pt-2">Or upload a generic CSV</p>
           <div 
             className="p-4 rounded-xl border hover-elevate cursor-pointer transition-all"
             onClick={() => setImportMode('clients')}
@@ -1027,7 +1077,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         <div className="max-w-md mx-auto space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-gray-900 dark:text-white">
-              {importMode === 'clients' ? 'Import Clients' : 'Import Price List'}
+              {importMode === 'tradify' ? 'Import from Tradify' : importMode === 'servicem8' ? 'Import from ServiceM8' : importMode === 'clients' ? 'Import Clients' : 'Import Price List'}
             </h3>
             <Button variant="ghost" size="sm" onClick={resetImport}>
               <X className="h-4 w-4 mr-1" />
@@ -1037,6 +1087,12 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           
           {!importPreview && (
             <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {(importMode === 'tradify' || importMode === 'servicem8') 
+                  ? `Upload any CSV exported from ${importMode === 'tradify' ? 'Tradify' : 'ServiceM8'}. We'll auto-detect whether it's clients, jobs, quotes, or invoices.`
+                  : `Upload a CSV file with your ${importMode === 'clients' ? 'client list' : 'price list'}.`
+                }
+              </p>
               <div 
                 className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors hover:border-muted-foreground/40"
                 onClick={() => importFileRef.current?.click()}
@@ -1052,25 +1108,48 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
                 onChange={handleImportFileSelect}
                 className="hidden"
               />
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full"
-                onClick={() => handleDownloadTemplate(importMode === 'clients' ? 'clients' : 'catalog')}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Download CSV template
-              </Button>
+              {(importMode === 'clients' || importMode === 'catalog') && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => handleDownloadTemplate(importMode === 'clients' ? 'clients' : 'catalog')}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Download CSV template
+                </Button>
+              )}
             </div>
           )}
           
           {importPreview && (
             <div className="space-y-3">
               <div className="bg-muted/30 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
                   <p className="text-sm font-medium">{importFile?.name}</p>
-                  <Badge variant="secondary">{importPreview.totalRows} rows</Badge>
+                  <div className="flex gap-1 flex-wrap">
+                    {importPreview.detectedType && (importMode === 'tradify' || importMode === 'servicem8') && (
+                      <Badge variant="secondary" className="capitalize">{importPreview.detectedType}</Badge>
+                    )}
+                    <Badge variant="outline">{importPreview.totalRows} rows</Badge>
+                  </div>
                 </div>
+                {importPreview.formatWarning && (
+                  <div className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded p-2 mb-2">
+                    <p className="font-medium">{importPreview.formatWarning}</p>
+                  </div>
+                )}
+                {(importPreview.duplicateCount || 0) > 0 && (
+                  <div className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded p-2 mb-2 space-y-0.5">
+                    <p className="font-medium">{importPreview.duplicateCount} duplicate{importPreview.duplicateCount !== 1 ? 's' : ''} will be skipped:</p>
+                    {importPreview.duplicates?.slice(0, 3).map((d, i) => (
+                      <p key={i}>{d.reason}</p>
+                    ))}
+                    {(importPreview.duplicates?.length || 0) > 3 && (
+                      <p>...and {(importPreview.duplicates?.length || 0) - 3} more</p>
+                    )}
+                  </div>
+                )}
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
@@ -1112,7 +1191,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
                 ) : (
                   <>
                     <CheckCircle className="mr-2 h-4 w-4" />
-                    Import {importPreview.totalRows} {importMode === 'clients' ? 'clients' : 'items'}
+                    Import {importPreview.totalRows - (importPreview.duplicateCount || 0)} {(importMode === 'tradify' || importMode === 'servicem8') ? (importPreview.detectedType || 'records') : importMode === 'clients' ? 'clients' : 'items'}
                   </>
                 )}
               </Button>
@@ -1126,11 +1205,11 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 text-center">
             <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
             <p className="font-medium text-green-900 dark:text-green-100">
-              {importResult.imported} {importMode === 'clients' ? 'clients' : 'items'} imported
+              {importResult.imported} records imported
             </p>
             {importResult.skipped > 0 && (
               <p className="text-sm text-green-700 dark:text-green-300">
-                {importResult.skipped} skipped (missing required fields)
+                {importResult.skipped} skipped (duplicates or missing required fields)
               </p>
             )}
           </div>

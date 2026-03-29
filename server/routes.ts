@@ -10703,7 +10703,182 @@ Be specific about materials, colors, and features that would be included.`
     return rows;
   }
 
-  function suggestFieldMappings(headers: string[], type: 'clients' | 'catalog'): Record<string, string> {
+  type ImportDataType = 'clients' | 'catalog' | 'jobs' | 'quotes' | 'invoices';
+  type ImportPlatform = 'generic' | 'tradify' | 'servicem8';
+
+  interface CompetitorFormat {
+    platform: ImportPlatform;
+    dataType: ImportDataType;
+    signatureHeaders: string[];
+    mappings: Record<string, string>;
+  }
+
+  const COMPETITOR_FORMATS: CompetitorFormat[] = [
+    {
+      platform: 'tradify',
+      dataType: 'clients',
+      signatureHeaders: ['Customer Name', 'Customer Email', 'Customer Phone', 'Physical Address'],
+      mappings: {
+        'Customer Name': 'name', 'Customer Email': 'email', 'Customer Phone': 'phone',
+        'Physical Address': 'address', 'Postal Address': 'address',
+        'Company Name': 'name', 'Company': 'name',
+        'Notes': 'notes', 'Customer Notes': 'notes',
+        'Mobile': 'phone', 'Contact Phone': 'phone',
+      },
+    },
+    {
+      platform: 'tradify',
+      dataType: 'jobs',
+      signatureHeaders: ['Job Number', 'Job Description', 'Customer Name', 'Job Status'],
+      mappings: {
+        'Job Number': 'refNumber', 'Job Description': 'title', 'Description': 'description',
+        'Customer Name': 'clientName', 'Customer Email': 'clientEmail',
+        'Job Status': 'status', 'Status': 'status',
+        'Site Address': 'address', 'Address': 'address',
+        'Scheduled Date': 'scheduledAt', 'Start Date': 'scheduledAt',
+        'Notes': 'notes', 'Job Notes': 'notes',
+      },
+    },
+    {
+      platform: 'tradify',
+      dataType: 'quotes',
+      signatureHeaders: ['Quote Number', 'Customer Name', 'Quote Total', 'Quote Status'],
+      mappings: {
+        'Quote Number': 'refNumber', 'Quote Description': 'title', 'Description': 'title',
+        'Customer Name': 'clientName', 'Customer Email': 'clientEmail',
+        'Quote Status': 'status', 'Status': 'status',
+        'Quote Total': 'total', 'Total': 'total', 'Amount': 'total',
+        'GST': 'gstAmount', 'Tax': 'gstAmount',
+        'Subtotal': 'subtotal', 'Sub Total': 'subtotal',
+        'Valid Until': 'validUntil', 'Expiry Date': 'validUntil',
+        'Notes': 'notes',
+        'Line Description': 'lineDescription', 'Item Description': 'lineDescription',
+        'Quantity': 'lineQty', 'Qty': 'lineQty',
+        'Unit Price': 'lineUnitPrice', 'Rate': 'lineUnitPrice', 'Price': 'lineUnitPrice',
+        'Line Total': 'lineTotal',
+      },
+    },
+    {
+      platform: 'tradify',
+      dataType: 'invoices',
+      signatureHeaders: ['Invoice Number', 'Customer Name', 'Invoice Total', 'Invoice Status'],
+      mappings: {
+        'Invoice Number': 'refNumber', 'Invoice Description': 'title', 'Description': 'title',
+        'Customer Name': 'clientName', 'Customer Email': 'clientEmail',
+        'Invoice Status': 'status', 'Status': 'status',
+        'Invoice Total': 'total', 'Total': 'total', 'Amount': 'total',
+        'GST': 'gstAmount', 'Tax': 'gstAmount',
+        'Subtotal': 'subtotal', 'Sub Total': 'subtotal',
+        'Due Date': 'dueDate',
+        'Notes': 'notes',
+        'Line Description': 'lineDescription', 'Item Description': 'lineDescription',
+        'Quantity': 'lineQty', 'Qty': 'lineQty',
+        'Unit Price': 'lineUnitPrice', 'Rate': 'lineUnitPrice', 'Price': 'lineUnitPrice',
+        'Line Total': 'lineTotal',
+      },
+    },
+    {
+      platform: 'servicem8',
+      dataType: 'clients',
+      signatureHeaders: ['Company Name', 'First Name', 'Last Name', 'Email Address'],
+      mappings: {
+        'Company Name': 'name', 'First Name': 'firstName', 'Last Name': 'lastName',
+        'Email Address': 'email', 'Email': 'email',
+        'Phone': 'phone', 'Mobile': 'phone', 'Work Phone': 'phone',
+        'Street': 'street', 'City': 'city', 'State': 'state', 'Postcode': 'postcode', 'Country': 'country',
+        'Address': 'address',
+        'Notes': 'notes',
+      },
+    },
+    {
+      platform: 'servicem8',
+      dataType: 'jobs',
+      signatureHeaders: ['Job Number', 'Job Description', 'Company Name', 'Job Status', 'Generated Invoice Number'],
+      mappings: {
+        'Job Number': 'refNumber', 'Job Description': 'title', 'Description': 'title',
+        'Company Name': 'clientName', 'First Name': 'clientFirstName', 'Last Name': 'clientLastName',
+        'Email Address': 'clientEmail',
+        'Job Status': 'status', 'Status': 'status',
+        'Job Address': 'address', 'Site Address': 'address', 'Street': 'street', 'City': 'city', 'State': 'state', 'Postcode': 'postcode',
+        'Date': 'scheduledAt', 'Job Date': 'scheduledAt',
+        'Notes': 'notes', 'Job Notes': 'notes',
+        'Category': 'category',
+      },
+    },
+    {
+      platform: 'servicem8',
+      dataType: 'quotes',
+      signatureHeaders: ['Quote Number', 'Company Name', 'Total', 'Status'],
+      mappings: {
+        'Quote Number': 'refNumber', 'Description': 'title', 'Quote Description': 'title',
+        'Company Name': 'clientName', 'Email Address': 'clientEmail',
+        'Status': 'status',
+        'Total': 'total', 'Total (Inc Tax)': 'total', 'Amount': 'total',
+        'Tax': 'gstAmount', 'GST': 'gstAmount',
+        'Subtotal': 'subtotal', 'Total (Ex Tax)': 'subtotal',
+        'Expiry Date': 'validUntil',
+        'Notes': 'notes',
+        'Line Description': 'lineDescription', 'Item': 'lineDescription',
+        'Qty': 'lineQty', 'Quantity': 'lineQty',
+        'Unit Price': 'lineUnitPrice', 'Rate': 'lineUnitPrice',
+        'Line Total': 'lineTotal',
+      },
+    },
+    {
+      platform: 'servicem8',
+      dataType: 'invoices',
+      signatureHeaders: ['Invoice Number', 'Company Name', 'Total', 'Status', 'Generated Invoice Number'],
+      mappings: {
+        'Invoice Number': 'refNumber', 'Generated Invoice Number': 'refNumber',
+        'Description': 'title', 'Invoice Description': 'title',
+        'Company Name': 'clientName', 'Email Address': 'clientEmail',
+        'Status': 'status', 'Payment Status': 'status',
+        'Total': 'total', 'Total (Inc Tax)': 'total', 'Amount': 'total',
+        'Tax': 'gstAmount', 'GST': 'gstAmount',
+        'Subtotal': 'subtotal', 'Total (Ex Tax)': 'subtotal',
+        'Due Date': 'dueDate', 'Payment Due': 'dueDate',
+        'Notes': 'notes',
+        'Line Description': 'lineDescription', 'Item': 'lineDescription',
+        'Qty': 'lineQty', 'Quantity': 'lineQty',
+        'Unit Price': 'lineUnitPrice', 'Rate': 'lineUnitPrice',
+        'Line Total': 'lineTotal',
+      },
+    },
+  ];
+
+  function detectCompetitorFormat(headers: string[]): { platform: ImportPlatform; dataType: ImportDataType; mappings: Record<string, string> } | null {
+    const normalizedHeaders = headers.map(h => h.trim());
+    let bestMatch: CompetitorFormat | null = null;
+    let bestScore = 0;
+
+    for (const format of COMPETITOR_FORMATS) {
+      const matchCount = format.signatureHeaders.filter(sig =>
+        normalizedHeaders.some(h => h.toLowerCase() === sig.toLowerCase())
+      ).length;
+      const score = matchCount / format.signatureHeaders.length;
+      if (score > bestScore && score >= 0.5) {
+        bestScore = score;
+        bestMatch = format;
+      }
+    }
+
+    if (bestMatch) {
+      const applicableMappings: Record<string, string> = {};
+      for (const header of normalizedHeaders) {
+        const normalizedKey = header;
+        for (const [key, value] of Object.entries(bestMatch.mappings)) {
+          if (key.toLowerCase() === header.toLowerCase()) {
+            applicableMappings[normalizedKey] = value;
+            break;
+          }
+        }
+      }
+      return { platform: bestMatch.platform, dataType: bestMatch.dataType, mappings: applicableMappings };
+    }
+    return null;
+  }
+
+  function suggestFieldMappings(headers: string[], type: ImportDataType): Record<string, string> {
     const mappings: Record<string, string> = {};
     const clientMap: Record<string, string> = {
       'name': 'name', 'client name': 'name', 'client': 'name', 'full name': 'name', 'company': 'name', 'business name': 'name',
@@ -10720,7 +10895,49 @@ Be specific about materials, colors, and features that would be included.`
       'default qty': 'defaultQty', 'quantity': 'defaultQty', 'qty': 'defaultQty', 'default quantity': 'defaultQty', 'defaultqty': 'defaultQty', 'default_qty': 'defaultQty',
       'trade type': 'tradeType', 'trade': 'tradeType', 'tradetype': 'tradeType', 'trade_type': 'tradeType', 'category': 'tradeType',
     };
-    const map = type === 'clients' ? clientMap : catalogMap;
+    const jobMap: Record<string, string> = {
+      'title': 'title', 'job title': 'title', 'job name': 'title', 'job description': 'title', 'description': 'title',
+      'client': 'clientName', 'client name': 'clientName', 'customer': 'clientName', 'customer name': 'clientName',
+      'client email': 'clientEmail', 'customer email': 'clientEmail', 'email': 'clientEmail',
+      'address': 'address', 'site address': 'address', 'job address': 'address', 'location': 'address',
+      'status': 'status', 'job status': 'status',
+      'date': 'scheduledAt', 'scheduled date': 'scheduledAt', 'start date': 'scheduledAt', 'job date': 'scheduledAt',
+      'notes': 'notes', 'job notes': 'notes',
+      'reference': 'refNumber', 'ref': 'refNumber', 'job number': 'refNumber', 'job #': 'refNumber', 'job no': 'refNumber',
+    };
+    const quoteMap: Record<string, string> = {
+      'title': 'title', 'quote title': 'title', 'description': 'title', 'quote description': 'title',
+      'client': 'clientName', 'client name': 'clientName', 'customer': 'clientName', 'customer name': 'clientName',
+      'client email': 'clientEmail', 'customer email': 'clientEmail', 'email': 'clientEmail',
+      'status': 'status', 'quote status': 'status',
+      'total': 'total', 'amount': 'total', 'quote total': 'total',
+      'subtotal': 'subtotal', 'sub total': 'subtotal',
+      'gst': 'gstAmount', 'tax': 'gstAmount',
+      'valid until': 'validUntil', 'expiry': 'validUntil', 'expiry date': 'validUntil',
+      'notes': 'notes',
+      'reference': 'refNumber', 'quote number': 'refNumber', 'quote #': 'refNumber', 'quote no': 'refNumber',
+    };
+    const invoiceMap: Record<string, string> = {
+      'title': 'title', 'invoice title': 'title', 'description': 'title', 'invoice description': 'title',
+      'client': 'clientName', 'client name': 'clientName', 'customer': 'clientName', 'customer name': 'clientName',
+      'client email': 'clientEmail', 'customer email': 'clientEmail', 'email': 'clientEmail',
+      'status': 'status', 'invoice status': 'status', 'payment status': 'status',
+      'total': 'total', 'amount': 'total', 'invoice total': 'total',
+      'subtotal': 'subtotal', 'sub total': 'subtotal',
+      'gst': 'gstAmount', 'tax': 'gstAmount',
+      'due date': 'dueDate', 'payment due': 'dueDate',
+      'notes': 'notes',
+      'reference': 'refNumber', 'invoice number': 'refNumber', 'invoice #': 'refNumber', 'invoice no': 'refNumber',
+    };
+
+    const mapsByType: Record<string, Record<string, string>> = {
+      clients: clientMap,
+      catalog: catalogMap,
+      jobs: jobMap,
+      quotes: quoteMap,
+      invoices: invoiceMap,
+    };
+    const map = mapsByType[type] || clientMap;
 
     for (const header of headers) {
       const normalized = header.toLowerCase().trim();
@@ -10729,6 +10946,31 @@ Be specific about materials, colors, and features that would be included.`
       }
     }
     return mappings;
+  }
+
+  function mapStatusToJobRunner(status: string, dataType: ImportDataType, platform: ImportPlatform): string {
+    const s = status.toLowerCase().trim();
+    if (dataType === 'jobs') {
+      if (['completed', 'complete', 'done', 'finished', 'closed'].includes(s)) return 'done';
+      if (['in progress', 'in_progress', 'started', 'active', 'work order'].includes(s)) return 'in_progress';
+      if (['scheduled', 'confirmed', 'booked'].includes(s)) return 'scheduled';
+      if (['invoiced', 'billed'].includes(s)) return 'invoiced';
+      if (['cancelled', 'canceled', 'deleted'].includes(s)) return 'cancelled';
+      return 'pending';
+    }
+    if (dataType === 'quotes') {
+      if (['accepted', 'approved', 'won'].includes(s)) return 'accepted';
+      if (['declined', 'rejected', 'lost'].includes(s)) return 'declined';
+      if (['sent', 'pending', 'awaiting', 'open'].includes(s)) return 'sent';
+      return 'draft';
+    }
+    if (dataType === 'invoices') {
+      if (['paid', 'complete', 'completed', 'closed'].includes(s)) return 'paid';
+      if (['overdue', 'past due', 'late'].includes(s)) return 'overdue';
+      if (['sent', 'pending', 'awaiting payment', 'open', 'unpaid', 'outstanding'].includes(s)) return 'sent';
+      return 'draft';
+    }
+    return status;
   }
 
   const csvUpload = multer({
@@ -10750,10 +10992,8 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
-      const type = req.body?.type;
-      if (!type || (type !== 'clients' && type !== 'catalog')) {
-        return res.status(400).json({ error: 'Type must be "clients" or "catalog"' });
-      }
+      const requestedType = req.body?.type as string | undefined;
+      const platform = (req.body?.platform as ImportPlatform) || 'generic';
 
       const csvText = file.buffer.toString('utf-8');
       const rows = parseCSV(csvText);
@@ -10764,7 +11004,41 @@ Be specific about materials, colors, and features that would be included.`
 
       const headers = rows[0];
       const dataRows = rows.slice(1);
-      const previewRows = dataRows.slice(0, 5).map(row => {
+
+      let detectedPlatform: ImportPlatform = platform;
+      let detectedType: ImportDataType = (requestedType as ImportDataType) || 'clients';
+      let mappings: Record<string, string> = {};
+
+      let formatWarning: string | undefined;
+      if (platform !== 'generic') {
+        const detection = detectCompetitorFormat(headers);
+        if (detection && (detection.platform === platform || platform === 'generic')) {
+          detectedPlatform = detection.platform;
+          detectedType = detection.dataType;
+          mappings = detection.mappings;
+        } else {
+          formatWarning = `Could not auto-detect ${platform} format. Falling back to generic import as clients.`;
+          mappings = suggestFieldMappings(headers, detectedType);
+        }
+      } else if (!requestedType) {
+        const detection = detectCompetitorFormat(headers);
+        if (detection) {
+          detectedPlatform = detection.platform;
+          detectedType = detection.dataType;
+          mappings = detection.mappings;
+        } else {
+          mappings = suggestFieldMappings(headers, 'clients');
+        }
+      } else {
+        const validTypes: ImportDataType[] = ['clients', 'catalog', 'jobs', 'quotes', 'invoices'];
+        if (!validTypes.includes(requestedType as ImportDataType)) {
+          return res.status(400).json({ error: 'Type must be one of: clients, catalog, jobs, quotes, invoices' });
+        }
+        detectedType = requestedType as ImportDataType;
+        mappings = suggestFieldMappings(headers, detectedType);
+      }
+
+      const allRows = dataRows.map(row => {
         const obj: Record<string, string> = {};
         headers.forEach((h, i) => {
           obj[h] = row[i] || '';
@@ -10772,13 +11046,25 @@ Be specific about materials, colors, and features that would be included.`
         return obj;
       });
 
-      const mappings = suggestFieldMappings(headers, type);
+      const previewRows = allRows.slice(0, 5);
+
+      let duplicates: { row: number; reason: string }[] = [];
+      if (['clients', 'jobs', 'quotes', 'invoices'].includes(detectedType)) {
+        const userId = req.userId!;
+        duplicates = await detectDuplicates(userId, detectedType, allRows, mappings);
+      }
 
       res.json({
         headers,
         preview: previewRows,
+        rows: allRows,
         totalRows: dataRows.length,
         suggestedMappings: mappings,
+        detectedPlatform,
+        detectedType,
+        duplicates,
+        duplicateCount: duplicates.length,
+        ...(formatWarning ? { formatWarning } : {}),
       });
     } catch (error: any) {
       console.error('CSV preview error:', error);
@@ -10786,16 +11072,162 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  async function detectDuplicates(
+    userId: string,
+    dataType: ImportDataType,
+    rows: Record<string, string>[],
+    mappings: Record<string, string>
+  ): Promise<{ row: number; reason: string }[]> {
+    const duplicates: { row: number; reason: string }[] = [];
+
+    if (dataType === 'clients') {
+      const existingClients = await storage.getClients(userId);
+      const existingEmails = new Set(existingClients.map(c => c.email?.toLowerCase()).filter(Boolean));
+      const existingNames = new Set(existingClients.map(c => c.name?.toLowerCase()).filter(Boolean));
+      const existingPhones = new Set(existingClients.map(c => c.phone?.replace(/\s+/g, '')).filter(Boolean));
+
+      const seenInBatch = new Set<string>();
+      for (let i = 0; i < rows.length; i++) {
+        const mapped = applyMappings(rows[i], mappings);
+        const batchKey = (mapped.email || mapped.name || mapped.phone || '').toLowerCase().trim();
+        if (batchKey && seenInBatch.has(batchKey)) {
+          duplicates.push({ row: i, reason: `Duplicate row in file` });
+          continue;
+        }
+        if (batchKey) seenInBatch.add(batchKey);
+        if (mapped.email && existingEmails.has(mapped.email.toLowerCase())) {
+          duplicates.push({ row: i, reason: `Client with email "${mapped.email}" already exists` });
+        } else if (mapped.name && existingNames.has(mapped.name.toLowerCase())) {
+          duplicates.push({ row: i, reason: `Client "${mapped.name}" already exists` });
+        } else if (mapped.phone && existingPhones.has(mapped.phone.replace(/\s+/g, ''))) {
+          duplicates.push({ row: i, reason: `Client with phone "${mapped.phone}" already exists` });
+        }
+      }
+    } else if (dataType === 'jobs') {
+      const existingJobs = await storage.getJobs(userId);
+      const importRefTag = '[Imported-Ref:';
+      const existingRefs = new Set<string>();
+      for (const j of existingJobs) {
+        if (j.notes && j.notes.includes(importRefTag)) {
+          const match = j.notes.match(/\[Imported-Ref:([^\]]+)\]/);
+          if (match) existingRefs.add(match[1].toLowerCase());
+        }
+      }
+      const existingTitleClient = new Set(existingJobs.map(j => `${j.title?.toLowerCase().trim()}|${j.clientId}`));
+      const seenInBatch = new Set<string>();
+      for (let i = 0; i < rows.length; i++) {
+        const mapped = applyMappings(rows[i], mappings);
+        const batchKey = `${(mapped.refNumber || mapped.title || '').toLowerCase()}|${(mapped.clientName || '').toLowerCase()}`;
+        if (seenInBatch.has(batchKey)) {
+          duplicates.push({ row: i, reason: `Duplicate row in file` });
+          continue;
+        }
+        seenInBatch.add(batchKey);
+        if (mapped.refNumber && existingRefs.has(mapped.refNumber.toLowerCase())) {
+          duplicates.push({ row: i, reason: `Job with reference "${mapped.refNumber}" already imported` });
+        }
+      }
+    } else if (dataType === 'quotes') {
+      const existingQuotes = await storage.getQuotes(userId);
+      const importRefTag = '[Imported-Ref:';
+      const existingRefs = new Set<string>();
+      for (const q of existingQuotes) {
+        if (q.notes && q.notes.includes(importRefTag)) {
+          const match = q.notes.match(/\[Imported-Ref:([^\]]+)\]/);
+          if (match) existingRefs.add(match[1].toLowerCase());
+        }
+      }
+      const seenInBatch = new Set<string>();
+      for (let i = 0; i < rows.length; i++) {
+        const mapped = applyMappings(rows[i], mappings);
+        const batchKey = `${(mapped.refNumber || mapped.title || '').toLowerCase()}|${(mapped.clientName || '').toLowerCase()}`;
+        if (seenInBatch.has(batchKey)) {
+          duplicates.push({ row: i, reason: `Duplicate row in file` });
+          continue;
+        }
+        seenInBatch.add(batchKey);
+        if (mapped.refNumber && existingRefs.has(mapped.refNumber.toLowerCase())) {
+          duplicates.push({ row: i, reason: `Quote "${mapped.refNumber}" already imported` });
+        }
+      }
+    } else if (dataType === 'invoices') {
+      const existingInvoices = await storage.getInvoices(userId);
+      const importRefTag = '[Imported-Ref:';
+      const existingRefs = new Set<string>();
+      for (const inv of existingInvoices) {
+        if (inv.notes && inv.notes.includes(importRefTag)) {
+          const match = inv.notes.match(/\[Imported-Ref:([^\]]+)\]/);
+          if (match) existingRefs.add(match[1].toLowerCase());
+        }
+      }
+      const seenInBatch = new Set<string>();
+      for (let i = 0; i < rows.length; i++) {
+        const mapped = applyMappings(rows[i], mappings);
+        const batchKey = `${(mapped.refNumber || mapped.title || '').toLowerCase()}|${(mapped.clientName || '').toLowerCase()}`;
+        if (seenInBatch.has(batchKey)) {
+          duplicates.push({ row: i, reason: `Duplicate row in file` });
+          continue;
+        }
+        seenInBatch.add(batchKey);
+        if (mapped.refNumber && existingRefs.has(mapped.refNumber.toLowerCase())) {
+          duplicates.push({ row: i, reason: `Invoice "${mapped.refNumber}" already imported` });
+        }
+      }
+    }
+
+    return duplicates;
+  }
+
+  function applyMappings(row: Record<string, string>, mappings: Record<string, string>): Record<string, string> {
+    const mapped: Record<string, string> = {};
+    for (const [csvHeader, schemaField] of Object.entries(mappings)) {
+      if (row[csvHeader] !== undefined && row[csvHeader] !== '') {
+        mapped[schemaField] = row[csvHeader];
+      }
+    }
+    if (!mapped.name && mapped.firstName) {
+      mapped.name = [mapped.firstName, mapped.lastName].filter(Boolean).join(' ');
+    }
+    if (!mapped.address && mapped.street) {
+      mapped.address = [mapped.street, mapped.city, mapped.state, mapped.postcode, mapped.country].filter(Boolean).join(', ');
+    }
+    return mapped;
+  }
+
+  async function findOrCreateClient(userId: string, clientName: string, clientEmail?: string): Promise<string> {
+    const existingClients = await storage.getClients(userId);
+    if (clientEmail) {
+      const byEmail = existingClients.find(c => c.email?.toLowerCase() === clientEmail.toLowerCase());
+      if (byEmail) return byEmail.id;
+    }
+    const byName = existingClients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
+    if (byName) return byName.id;
+    const newClient = await storage.createClient({
+      userId,
+      name: clientName,
+      email: clientEmail || null,
+      phone: null,
+      address: null,
+      notes: null,
+    } as any);
+    return newClient.id;
+  }
+
   app.post("/api/import/execute", requireAuth, async (req: any, res) => {
     try {
-      const { type, data, mappings } = req.body;
+      const { type, data, mappings, skipDuplicates, platform } = req.body;
       const userId = req.userId!;
 
-      if (!type || (type !== 'clients' && type !== 'catalog')) {
-        return res.status(400).json({ error: 'Type must be "clients" or "catalog"' });
+      const validTypes: ImportDataType[] = ['clients', 'catalog', 'jobs', 'quotes', 'invoices'];
+      if (!type || !validTypes.includes(type)) {
+        return res.status(400).json({ error: 'Type must be one of: clients, catalog, jobs, quotes, invoices' });
       }
       if (!data || !Array.isArray(data) || data.length === 0) {
         return res.status(400).json({ error: 'Data array is required' });
+      }
+      const MAX_IMPORT_ROWS = 5000;
+      if (data.length > MAX_IMPORT_ROWS) {
+        return res.status(400).json({ error: `Maximum ${MAX_IMPORT_ROWS} rows per import. Your file has ${data.length} rows.` });
       }
       if (!mappings || typeof mappings !== 'object') {
         return res.status(400).json({ error: 'Field mappings are required' });
@@ -10803,18 +11235,22 @@ Be specific about materials, colors, and features that would be included.`
 
       let imported = 0;
       let skipped = 0;
+      let duplicatesSkipped = 0;
       const errors: string[] = [];
+
+      const duplicateRows = new Set<number>();
+      if (skipDuplicates !== false) {
+        const dups = await detectDuplicates(userId, type, data, mappings);
+        for (const d of dups) {
+          duplicateRows.add(d.row);
+        }
+      }
 
       if (type === 'clients') {
         for (let i = 0; i < data.length; i++) {
+          if (duplicateRows.has(i)) { duplicatesSkipped++; skipped++; continue; }
           try {
-            const row = data[i];
-            const mapped: Record<string, any> = {};
-            for (const [csvHeader, schemaField] of Object.entries(mappings)) {
-              if (row[csvHeader] !== undefined && row[csvHeader] !== '') {
-                mapped[schemaField as string] = row[csvHeader];
-              }
-            }
+            const mapped = applyMappings(data[i], mappings);
 
             if (!mapped.name) {
               errors.push(`Row ${i + 1}: Name is required`);
@@ -10844,13 +11280,7 @@ Be specific about materials, colors, and features that would be included.`
 
         for (let i = 0; i < data.length; i++) {
           try {
-            const row = data[i];
-            const mapped: Record<string, any> = {};
-            for (const [csvHeader, schemaField] of Object.entries(mappings)) {
-              if (row[csvHeader] !== undefined && row[csvHeader] !== '') {
-                mapped[schemaField as string] = row[csvHeader];
-              }
-            }
+            const mapped = applyMappings(data[i], mappings);
 
             if (!mapped.name) {
               errors.push(`Row ${i + 1}: Name is required`);
@@ -10892,9 +11322,191 @@ Be specific about materials, colors, and features that would be included.`
             skipped++;
           }
         }
+      } else if (type === 'jobs') {
+        for (let i = 0; i < data.length; i++) {
+          if (duplicateRows.has(i)) { duplicatesSkipped++; skipped++; continue; }
+          try {
+            const mapped = applyMappings(data[i], mappings);
+            if (!mapped.title && !mapped.refNumber) {
+              errors.push(`Row ${i + 1}: Job title or reference is required`);
+              skipped++;
+              continue;
+            }
+            if (!mapped.clientName) {
+              errors.push(`Row ${i + 1}: Client name is required`);
+              skipped++;
+              continue;
+            }
+
+            const clientId = await findOrCreateClient(userId, mapped.clientName, mapped.clientEmail);
+            const status = mapped.status ? mapStatusToJobRunner(mapped.status, 'jobs', (platform as ImportPlatform) || 'generic') : 'pending';
+            const title = mapped.title || `Job ${mapped.refNumber || ''}`.trim();
+
+            let scheduledAt: Date | undefined;
+            if (mapped.scheduledAt) {
+              const d = new Date(mapped.scheduledAt);
+              if (!isNaN(d.getTime())) scheduledAt = d;
+            }
+
+            const refTag = mapped.refNumber ? `[Imported-Ref:${mapped.refNumber}]` : '';
+            const jobNotes = [mapped.notes, refTag].filter(Boolean).join(' ');
+            await storage.createJob({
+              userId,
+              clientId,
+              title,
+              description: mapped.description || null,
+              address: mapped.address || null,
+              status,
+              scheduledAt: scheduledAt || null,
+              notes: jobNotes || null,
+            } as any);
+            imported++;
+          } catch (err: any) {
+            errors.push(`Row ${i + 1}: ${err.message || 'Failed to import'}`);
+            skipped++;
+          }
+        }
+      } else if (type === 'quotes') {
+        for (let i = 0; i < data.length; i++) {
+          if (duplicateRows.has(i)) { duplicatesSkipped++; skipped++; continue; }
+          try {
+            const mapped = applyMappings(data[i], mappings);
+            if (!mapped.clientName) {
+              errors.push(`Row ${i + 1}: Client name is required`);
+              skipped++;
+              continue;
+            }
+
+            const clientId = await findOrCreateClient(userId, mapped.clientName, mapped.clientEmail);
+            const status = mapped.status ? mapStatusToJobRunner(mapped.status, 'quotes', (platform as ImportPlatform) || 'generic') : 'draft';
+            const title = mapped.title || `Quote ${mapped.refNumber || ''}`.trim();
+            const total = parseFloat(mapped.total || '0');
+            const subtotal = parseFloat(mapped.subtotal || mapped.total || '0');
+            const gstAmount = parseFloat(mapped.gstAmount || '0');
+
+            const quoteNumber = await storage.generateQuoteNumber(userId);
+
+            let validUntil: Date | undefined;
+            if (mapped.validUntil) {
+              const d = new Date(mapped.validUntil);
+              if (!isNaN(d.getTime())) validUntil = d;
+            }
+
+            const refTag = mapped.refNumber ? `[Imported-Ref:${mapped.refNumber}]` : '';
+            const quoteNotes = [mapped.notes, refTag].filter(Boolean).join(' ');
+            const quote = await storage.createQuote({
+              userId,
+              clientId,
+              number: quoteNumber,
+              title,
+              description: mapped.description || null,
+              status,
+              subtotal: (isNaN(subtotal) ? 0 : subtotal).toFixed(2),
+              gstAmount: (isNaN(gstAmount) ? 0 : gstAmount).toFixed(2),
+              total: (isNaN(total) ? 0 : total).toFixed(2),
+              validUntil: validUntil || null,
+              notes: quoteNotes || null,
+            } as any);
+
+            if (mapped.lineDescription) {
+              const lineQty = parseFloat(mapped.lineQty || '1');
+              const lineUnitPrice = parseFloat(mapped.lineUnitPrice || '0');
+              const lineTotal = parseFloat(mapped.lineTotal || String(lineQty * lineUnitPrice));
+              await storage.createQuoteLineItem({
+                quoteId: quote.id,
+                description: mapped.lineDescription,
+                quantity: (isNaN(lineQty) ? 1 : lineQty).toFixed(2),
+                unitPrice: (isNaN(lineUnitPrice) ? 0 : lineUnitPrice).toFixed(2),
+                total: (isNaN(lineTotal) ? 0 : lineTotal).toFixed(2),
+              } as any, userId);
+            } else if (total > 0 && title) {
+              await storage.createQuoteLineItem({
+                quoteId: quote.id,
+                description: title,
+                quantity: '1.00',
+                unitPrice: (isNaN(subtotal) ? total : subtotal).toFixed(2),
+                total: (isNaN(subtotal) ? total : subtotal).toFixed(2),
+              } as any, userId);
+            }
+
+            imported++;
+          } catch (err: any) {
+            errors.push(`Row ${i + 1}: ${err.message || 'Failed to import'}`);
+            skipped++;
+          }
+        }
+      } else if (type === 'invoices') {
+        for (let i = 0; i < data.length; i++) {
+          if (duplicateRows.has(i)) { duplicatesSkipped++; skipped++; continue; }
+          try {
+            const mapped = applyMappings(data[i], mappings);
+            if (!mapped.clientName) {
+              errors.push(`Row ${i + 1}: Client name is required`);
+              skipped++;
+              continue;
+            }
+
+            const clientId = await findOrCreateClient(userId, mapped.clientName, mapped.clientEmail);
+            const status = mapped.status ? mapStatusToJobRunner(mapped.status, 'invoices', (platform as ImportPlatform) || 'generic') : 'draft';
+            const title = mapped.title || `Invoice ${mapped.refNumber || ''}`.trim();
+            const total = parseFloat(mapped.total || '0');
+            const subtotal = parseFloat(mapped.subtotal || mapped.total || '0');
+            const gstAmount = parseFloat(mapped.gstAmount || '0');
+
+            const invoiceNumber = await storage.generateInvoiceNumber(userId);
+
+            let dueDate: Date | undefined;
+            if (mapped.dueDate) {
+              const d = new Date(mapped.dueDate);
+              if (!isNaN(d.getTime())) dueDate = d;
+            }
+
+            const refTag = mapped.refNumber ? `[Imported-Ref:${mapped.refNumber}]` : '';
+            const invoiceNotes = [mapped.notes, refTag].filter(Boolean).join(' ');
+            const invoice = await storage.createInvoice({
+              userId,
+              clientId,
+              number: invoiceNumber,
+              title,
+              description: mapped.description || null,
+              status,
+              subtotal: (isNaN(subtotal) ? 0 : subtotal).toFixed(2),
+              gstAmount: (isNaN(gstAmount) ? 0 : gstAmount).toFixed(2),
+              total: (isNaN(total) ? 0 : total).toFixed(2),
+              dueDate: dueDate || null,
+              notes: invoiceNotes || null,
+            } as any);
+
+            if (mapped.lineDescription) {
+              const lineQty = parseFloat(mapped.lineQty || '1');
+              const lineUnitPrice = parseFloat(mapped.lineUnitPrice || '0');
+              const lineTotal = parseFloat(mapped.lineTotal || String(lineQty * lineUnitPrice));
+              await storage.createInvoiceLineItem({
+                invoiceId: invoice.id,
+                description: mapped.lineDescription,
+                quantity: (isNaN(lineQty) ? 1 : lineQty).toFixed(2),
+                unitPrice: (isNaN(lineUnitPrice) ? 0 : lineUnitPrice).toFixed(2),
+                total: (isNaN(lineTotal) ? 0 : lineTotal).toFixed(2),
+              } as any, userId);
+            } else if (total > 0 && title) {
+              await storage.createInvoiceLineItem({
+                invoiceId: invoice.id,
+                description: title,
+                quantity: '1.00',
+                unitPrice: (isNaN(subtotal) ? total : subtotal).toFixed(2),
+                total: (isNaN(subtotal) ? total : subtotal).toFixed(2),
+              } as any, userId);
+            }
+
+            imported++;
+          } catch (err: any) {
+            errors.push(`Row ${i + 1}: ${err.message || 'Failed to import'}`);
+            skipped++;
+          }
+        }
       }
 
-      res.json({ imported, skipped, errors });
+      res.json({ imported, skipped, duplicatesSkipped, errors });
     } catch (error: any) {
       console.error('CSV import execution error:', error);
       res.status(500).json({ error: error.message || 'Failed to execute import' });
@@ -10915,8 +11527,23 @@ Be specific about materials, colors, and features that would be included.`
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', 'attachment; filename="catalog_template.csv"');
         return res.send(csv);
+      } else if (type === 'jobs') {
+        const csv = 'Job Title,Client Name,Client Email,Address,Status,Scheduled Date,Notes\n"Fix leaking tap","John Smith","john@example.com","123 Main St, Sydney NSW 2000","pending","2025-04-01","Kitchen tap replacement"\n';
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="jobs_template.csv"');
+        return res.send(csv);
+      } else if (type === 'quotes') {
+        const csv = 'Quote Title,Client Name,Client Email,Status,Total,GST,Notes\n"Bathroom renovation","Jane Doe","jane@example.com","draft","5500.00","500.00","Full bathroom reno including tiles"\n';
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="quotes_template.csv"');
+        return res.send(csv);
+      } else if (type === 'invoices') {
+        const csv = 'Invoice Title,Client Name,Client Email,Status,Total,GST,Due Date,Notes\n"Bathroom renovation - Final","Jane Doe","jane@example.com","sent","5500.00","500.00","2025-04-15","Final invoice for completed work"\n';
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="invoices_template.csv"');
+        return res.send(csv);
       } else {
-        return res.status(400).json({ error: 'Type must be "clients" or "catalog"' });
+        return res.status(400).json({ error: 'Invalid template type' });
       }
     } catch (error: any) {
       console.error('CSV template download error:', error);

@@ -263,13 +263,187 @@ function ClearSampleDataCard() {
   );
 }
 
+type ImportDataType = 'clients' | 'catalog' | 'jobs' | 'quotes' | 'invoices';
+type ImportPlatform = 'generic' | 'tradify' | 'servicem8';
+
+interface ImportPreviewData {
+  headers: string[];
+  preview: Record<string, string>[];
+  rows: Record<string, string>[];
+  totalRows: number;
+  suggestedMappings: Record<string, string>;
+  detectedPlatform: ImportPlatform;
+  detectedType: ImportDataType;
+  duplicates: { row: number; reason: string }[];
+  duplicateCount: number;
+  formatWarning?: string;
+}
+
+function CompetitorImportFlow({ platform, onClose }: { platform: ImportPlatform; onClose: () => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const [preview, setPreview] = useState<ImportPreviewData | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [result, setResult] = useState<{ imported: number; skipped: number; duplicatesSkipped: number } | null>(null);
+
+  const platformName = platform === 'tradify' ? 'Tradify' : 'ServiceM8';
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('platform', platform);
+    try {
+      const res = await fetch('/api/import/preview', { method: 'POST', body: formData, credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to parse file');
+      setPreview(await res.json());
+    } catch {
+      toast({ variant: "destructive", title: "Could not read that file", description: "Make sure it's a CSV exported from " + platformName + "." });
+    }
+  };
+
+  const handleImport = async () => {
+    if (!preview) return;
+    setIsImporting(true);
+    try {
+      const res = await fetch('/api/import/execute', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({
+          type: preview.detectedType,
+          data: preview.rows,
+          mappings: preview.suggestedMappings,
+          platform,
+          skipDuplicates: true,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      setResult(data);
+      if (data.imported > 0) {
+        const keys = ['/api/clients', '/api/jobs', '/api/quotes', '/api/invoices', '/api/catalog'];
+        keys.forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
+        toast({ title: `Imported ${data.imported} ${preview.detectedType}` });
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Import failed" });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const typeLabel: Record<ImportDataType, string> = {
+    clients: 'Clients', catalog: 'Price List', jobs: 'Jobs', quotes: 'Quotes', invoices: 'Invoices',
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium">Import from {platformName}</p>
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          <X className="h-4 w-4 mr-1" />
+          Cancel
+        </Button>
+      </div>
+
+      {!preview && !result && (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Upload any CSV file exported from {platformName}. We'll automatically detect whether it contains clients, jobs, quotes, or invoices.
+          </p>
+          <input ref={fileRef} type="file" accept=".csv" onChange={handleFileSelect} className="hidden" />
+          <Button size="sm" onClick={() => fileRef.current?.click()}>Choose CSV File</Button>
+        </div>
+      )}
+
+      {preview && !result && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary">{typeLabel[preview.detectedType] || preview.detectedType}</Badge>
+            <Badge variant="outline">{preview.totalRows} rows</Badge>
+            {preview.duplicateCount > 0 && (
+              <Badge variant="outline" className="text-amber-600 border-amber-300">
+                {preview.duplicateCount} duplicate{preview.duplicateCount !== 1 ? 's' : ''} will be skipped
+              </Badge>
+            )}
+          </div>
+
+          {preview.formatWarning && (
+            <div className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2">
+              {preview.formatWarning}
+            </div>
+          )}
+
+          {preview.duplicateCount > 0 && (
+            <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-2 space-y-1">
+              {preview.duplicates.slice(0, 3).map((d, i) => (
+                <p key={i}>{d.reason}</p>
+              ))}
+              {preview.duplicates.length > 3 && (
+                <p>...and {preview.duplicates.length - 3} more</p>
+              )}
+            </div>
+          )}
+
+          <div className="overflow-x-auto bg-muted/30 rounded-lg p-2">
+            <table className="w-full text-xs">
+              <thead>
+                <tr>
+                  {preview.headers.slice(0, 4).map((h, i) => (
+                    <th key={i} className="text-left p-1 font-medium text-muted-foreground">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {preview.preview.slice(0, 3).map((row, i) => (
+                  <tr key={i} className="border-t border-border/50">
+                    {preview.headers.slice(0, 4).map((h, j) => (
+                      <td key={j} className="p-1 truncate max-w-[120px]">{row[h] || '-'}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleImport} disabled={isImporting}>
+              {isImporting ? (
+                <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Importing...</>
+              ) : (
+                `Import ${preview.totalRows - preview.duplicateCount} ${typeLabel[preview.detectedType] || 'records'}`
+              )}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {result && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <p className="text-sm text-green-600 font-medium">
+              Imported {result.imported} records
+              {result.duplicatesSkipped > 0 ? ` (${result.duplicatesSkipped} duplicates skipped)` : ''}
+              {(result.skipped - (result.duplicatesSkipped || 0)) > 0 ? ` (${result.skipped - (result.duplicatesSkipped || 0)} errors)` : ''}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => { setPreview(null); setResult(null); }}>Import another file</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ImportDataCard() {
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const [importType, setImportType] = useState<'clients' | 'catalog' | null>(null);
+  const [importType, setImportType] = useState<ImportDataType | null>(null);
+  const [competitorPlatform, setCompetitorPlatform] = useState<ImportPlatform | null>(null);
   const [preview, setPreview] = useState<any>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; skipped: number; duplicatesSkipped?: number } | null>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -292,14 +466,16 @@ function ImportDataCard() {
     try {
       const res = await fetch('/api/import/execute', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ type: importType, data: preview.rows, mappings: preview.suggestedMappings }),
+        body: JSON.stringify({ type: importType, data: preview.rows, mappings: preview.suggestedMappings, skipDuplicates: true }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Import failed');
       setResult(data);
       if (data.imported > 0) {
-        queryClient.invalidateQueries({ queryKey: importType === 'clients' ? ['/api/clients'] : ['/api/catalog'] });
-        toast({ title: `Imported ${data.imported} ${importType === 'clients' ? 'clients' : 'items'}` });
+        const queryKeyMap: Record<string, string> = { clients: '/api/clients', catalog: '/api/catalog', jobs: '/api/jobs', quotes: '/api/quotes', invoices: '/api/invoices' };
+        queryClient.invalidateQueries({ queryKey: [queryKeyMap[importType]] });
+        const typeLabels: Record<string, string> = { clients: 'clients', catalog: 'items', jobs: 'jobs', quotes: 'quotes', invoices: 'invoices' };
+        toast({ title: `Imported ${data.imported} ${typeLabels[importType] || 'records'}` });
       }
     } catch {
       toast({ variant: "destructive", title: "Import failed" });
@@ -308,7 +484,7 @@ function ImportDataCard() {
     }
   };
 
-  const reset = () => { setImportType(null); setPreview(null); setResult(null); };
+  const reset = () => { setImportType(null); setCompetitorPlatform(null); setPreview(null); setResult(null); };
 
   return (
     <Card>
@@ -319,60 +495,99 @@ function ImportDataCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {!importType && !result && (
+        {competitorPlatform && (
+          <CompetitorImportFlow platform={competitorPlatform} onClose={reset} />
+        )}
+
+        {!competitorPlatform && !importType && !result && (
           <>
             <p className="text-sm text-muted-foreground">
-              Import clients or price list items from a CSV file.
+              Switching from another app? Import your data automatically.
             </p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setImportType('clients')}>
-                <Users className="h-4 w-4 mr-1" />
-                Import Clients
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setImportType('catalog')}>
-                <FileText className="h-4 w-4 mr-1" />
-                Import Price List
-              </Button>
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Import from competitor</p>
+              <div className="flex gap-2 flex-wrap">
+                <Button variant="outline" size="sm" onClick={() => setCompetitorPlatform('tradify')}>
+                  <Download className="h-4 w-4 mr-1" />
+                  Import from Tradify
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setCompetitorPlatform('servicem8')}>
+                  <Download className="h-4 w-4 mr-1" />
+                  Import from ServiceM8
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => window.open('/api/import/templates/clients', '_blank')}>
-                Download client template
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => window.open('/api/import/templates/catalog', '_blank')}>
-                Download price list template
-              </Button>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Generic CSV import</p>
+              <div className="flex gap-2 flex-wrap">
+                <Button variant="outline" size="sm" onClick={() => setImportType('clients')}>
+                  <Users className="h-4 w-4 mr-1" />
+                  Clients
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setImportType('catalog')}>
+                  <FileText className="h-4 w-4 mr-1" />
+                  Price List
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setImportType('jobs')}>
+                  <Briefcase className="h-4 w-4 mr-1" />
+                  Jobs
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setImportType('quotes')}>
+                  <ClipboardList className="h-4 w-4 mr-1" />
+                  Quotes
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setImportType('invoices')}>
+                  <Receipt className="h-4 w-4 mr-1" />
+                  Invoices
+                </Button>
+              </div>
             </div>
           </>
         )}
-        {importType && !preview && !result && (
+        {!competitorPlatform && importType && !preview && !result && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Upload a CSV file with your {importType === 'clients' ? 'client list' : 'price list'}.
+              Upload a CSV file with your {importType}.
             </p>
             <input ref={fileRef} type="file" accept=".csv" onChange={handleFileSelect} className="hidden" />
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button size="sm" onClick={() => fileRef.current?.click()}>Choose CSV File</Button>
-              <Button variant="ghost" size="sm" onClick={reset}>Cancel</Button>
-            </div>
-          </div>
-        )}
-        {preview && !result && (
-          <div className="space-y-3">
-            <p className="text-sm font-medium">{preview.totalRows} rows found</p>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleImport} disabled={isImporting}>
-                {isImporting ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Importing...</> : `Import ${preview.totalRows} ${importType === 'clients' ? 'clients' : 'items'}`}
+              <Button variant="ghost" size="sm" onClick={() => window.open(`/api/import/templates/${importType}`, '_blank')}>
+                Download template
               </Button>
               <Button variant="ghost" size="sm" onClick={reset}>Cancel</Button>
             </div>
           </div>
         )}
-        {result && (
+        {!competitorPlatform && preview && !result && (
           <div className="space-y-3">
-            <p className="text-sm text-green-600 font-medium">
-              Imported {result.imported} {importType === 'clients' ? 'clients' : 'items'}
-              {result.skipped > 0 ? ` (${result.skipped} skipped)` : ''}
-            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-medium">{preview.totalRows} rows found</p>
+              {(preview.duplicateCount || 0) > 0 && (
+                <Badge variant="outline" className="text-amber-600 border-amber-300">
+                  {preview.duplicateCount} duplicate{preview.duplicateCount !== 1 ? 's' : ''} skipped
+                </Badge>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleImport} disabled={isImporting}>
+                {isImporting ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Importing...</> : `Import ${preview.totalRows - (preview.duplicateCount || 0)} records`}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={reset}>Cancel</Button>
+            </div>
+          </div>
+        )}
+        {!competitorPlatform && result && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <p className="text-sm text-green-600 font-medium">
+                Imported {result.imported} records
+                {(result.duplicatesSkipped || 0) > 0 ? ` (${result.duplicatesSkipped} duplicates skipped)` : ''}
+                {result.skipped > 0 && result.skipped !== (result.duplicatesSkipped || 0) ? ` (${result.skipped - (result.duplicatesSkipped || 0)} errors)` : ''}
+              </p>
+            </div>
             <Button variant="outline" size="sm" onClick={reset}>Import more</Button>
           </div>
         )}
