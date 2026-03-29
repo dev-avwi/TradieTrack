@@ -18,6 +18,7 @@ interface LocationUpdate {
 }
 
 interface ClientConnection {
+  id: string;
   ws: WebSocket;
   userId: string;
   businessId: string;
@@ -88,6 +89,7 @@ export function setupWebSocket(server: Server, store?: any) {
 
       const connectionId = `${authenticatedUser.userId}-${Date.now()}`;
       connections.set(connectionId, { 
+        id: connectionId,
         ws, 
         userId: authenticatedUser.userId, 
         businessId, 
@@ -106,14 +108,14 @@ export function setupWebSocket(server: Server, store?: any) {
       });
 
       ws.on('close', () => {
-        cleanupEditorPresence(authenticatedUser.userId);
+        cleanupEditorPresence(connectionId, authenticatedUser.userId);
         connections.delete(connectionId);
         console.log(`[WebSocket] Client disconnected: ${authenticatedUser.userId}`);
       });
 
       ws.on('error', (error) => {
         console.error(`[WebSocket] Error for ${authenticatedUser.userId}:`, error);
-        cleanupEditorPresence(authenticatedUser.userId);
+        cleanupEditorPresence(connectionId, authenticatedUser.userId);
         connections.delete(connectionId);
       });
 
@@ -548,26 +550,51 @@ export function broadcastTeamMemberChange(
   });
 }
 
-const jobEditors = new Map<string, Map<string, { userId: string; userName: string; joinedAt: number }>>();
+interface EditorEntry { userId: string; userName: string; joinedAt: number; connectionIds: Set<string> }
+const jobEditors = new Map<string, Map<string, EditorEntry>>();
 
 export function getJobEditors(jobId: string): { userId: string; userName: string; joinedAt: number }[] {
   const editors = jobEditors.get(jobId);
   if (!editors) return [];
-  return Array.from(editors.values());
+  return Array.from(editors.values()).map(e => ({
+    userId: e.userId,
+    userName: e.userName,
+    joinedAt: e.joinedAt,
+  }));
 }
 
-function handleJobEditingStart(connection: ClientConnection, message: any) {
-  const { jobId, userName } = message;
+async function resolveUserName(userId: string): Promise<string> {
+  try {
+    const { storage } = await import('./storage');
+    const user = await storage.getUser(userId);
+    if (user) {
+      const name = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      return name || user.email || 'Unknown';
+    }
+  } catch { /* fallback */ }
+  return 'Unknown';
+}
+
+async function handleJobEditingStart(connection: ClientConnection, message: { jobId?: string }) {
+  const { jobId } = message;
   if (!jobId) return;
 
   if (!jobEditors.has(jobId)) {
     jobEditors.set(jobId, new Map());
   }
-  jobEditors.get(jobId)!.set(connection.userId, {
-    userId: connection.userId,
-    userName: userName || 'Unknown',
-    joinedAt: Date.now(),
-  });
+  const editors = jobEditors.get(jobId)!;
+  const existing = editors.get(connection.userId);
+  if (existing) {
+    existing.connectionIds.add(connection.id);
+  } else {
+    const userName = await resolveUserName(connection.userId);
+    editors.set(connection.userId, {
+      userId: connection.userId,
+      userName,
+      joinedAt: Date.now(),
+      connectionIds: new Set([connection.id]),
+    });
+  }
 
   const presencePayload = JSON.stringify({
     type: 'job_editing_presence',
@@ -584,13 +611,19 @@ function handleJobEditingStart(connection: ClientConnection, message: any) {
   });
 }
 
-function handleJobEditingStop(connection: ClientConnection, message: any) {
+function handleJobEditingStop(connection: ClientConnection, message: { jobId?: string }) {
   const { jobId } = message;
   if (!jobId) return;
 
   const editors = jobEditors.get(jobId);
   if (editors) {
-    editors.delete(connection.userId);
+    const entry = editors.get(connection.userId);
+    if (entry) {
+      entry.connectionIds.delete(connection.id);
+      if (entry.connectionIds.size === 0) {
+        editors.delete(connection.userId);
+      }
+    }
     if (editors.size === 0) {
       jobEditors.delete(jobId);
     }
@@ -610,15 +643,19 @@ function handleJobEditingStop(connection: ClientConnection, message: any) {
   });
 }
 
-function cleanupEditorPresence(userId: string) {
+function cleanupEditorPresence(connectionId: string, userId: string) {
   const disconnectedConn = Array.from(connections.values()).find(c => c.userId === userId);
   const businessId = disconnectedConn?.businessId;
 
   const affectedJobs: string[] = [];
   jobEditors.forEach((editors, jobId) => {
-    if (editors.has(userId)) {
-      editors.delete(userId);
-      affectedJobs.push(jobId);
+    const entry = editors.get(userId);
+    if (entry) {
+      entry.connectionIds.delete(connectionId);
+      if (entry.connectionIds.size === 0) {
+        editors.delete(userId);
+        affectedJobs.push(jobId);
+      }
       if (editors.size === 0) {
         jobEditors.delete(jobId);
       }
