@@ -9,14 +9,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertTriangle, ArrowRight, Check, X } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, X, Merge } from 'lucide-react';
 import type { SyncConflict } from '@/lib/syncManager';
 
 interface ConflictResolutionPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   conflicts: SyncConflict[];
-  onResolve: (conflictId: string, useLocal: boolean) => Promise<void>;
+  onResolve: (conflictId: string, useLocal: boolean, mergedData?: Record<string, unknown>) => Promise<void>;
 }
 
 const DISPLAY_FIELDS: Record<string, string[]> = {
@@ -33,7 +33,7 @@ function formatFieldName(key: string): string {
 }
 
 function formatValue(value: unknown): string {
-  if (value === null || value === undefined) return '—';
+  if (value === null || value === undefined) return '\u2014';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'number') return String(value);
   if (value instanceof Date) return value.toLocaleDateString();
@@ -50,14 +50,16 @@ function formatValue(value: unknown): string {
   return JSON.stringify(value);
 }
 
+type FieldChoice = 'local' | 'server';
+
 function ConflictCard({
   conflict,
   onResolve,
 }: {
   conflict: SyncConflict;
-  onResolve: (useLocal: boolean) => Promise<void>;
+  onResolve: (useLocal: boolean, mergedData?: Record<string, unknown>) => Promise<void>;
 }) {
-  const [resolving, setResolving] = useState<'local' | 'server' | null>(null);
+  const [resolving, setResolving] = useState(false);
 
   const fields = DISPLAY_FIELDS[conflict.storeName] || Object.keys(conflict.localVersion || {}).filter(k => k !== 'id');
   const changedFields = fields.filter(f => {
@@ -66,14 +68,42 @@ function ConflictCard({
     return l !== s;
   });
 
-  const handleResolve = async (useLocal: boolean) => {
-    setResolving(useLocal ? 'local' : 'server');
+  const [fieldChoices, setFieldChoices] = useState<Record<string, FieldChoice>>(() => {
+    const defaults: Record<string, FieldChoice> = {};
+    changedFields.forEach(f => { defaults[f] = 'local'; });
+    return defaults;
+  });
+
+  const toggleFieldChoice = (field: string) => {
+    setFieldChoices(prev => ({
+      ...prev,
+      [field]: prev[field] === 'local' ? 'server' : 'local',
+    }));
+  };
+
+  const handleResolveAll = async (mode: 'local' | 'server' | 'merge') => {
+    setResolving(true);
     try {
-      await onResolve(useLocal);
+      if (mode === 'local') {
+        await onResolve(true);
+      } else if (mode === 'server') {
+        await onResolve(false);
+      } else {
+        const merged = { ...conflict.serverVersion };
+        for (const field of changedFields) {
+          if (fieldChoices[field] === 'local') {
+            merged[field] = conflict.localVersion?.[field];
+          }
+        }
+        await onResolve(true, merged);
+      }
     } finally {
-      setResolving(null);
+      setResolving(false);
     }
   };
+
+  const allLocal = changedFields.every(f => fieldChoices[f] === 'local');
+  const allServer = changedFields.every(f => fieldChoices[f] === 'server');
 
   return (
     <div className="border rounded-md p-3 space-y-3">
@@ -88,19 +118,36 @@ function ConflictCard({
       </div>
 
       {changedFields.length > 0 && (
-        <div className="space-y-2">
-          <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground font-medium px-1">
+        <div className="space-y-1">
+          <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-1 text-xs text-muted-foreground font-medium px-1">
             <span>Field</span>
             <span>Your version</span>
             <span>Server version</span>
+            <span className="w-14 text-center">Use</span>
           </div>
-          {changedFields.map(field => (
-            <div key={field} className="grid grid-cols-3 gap-2 text-xs bg-muted/30 rounded-md p-1.5">
-              <span className="text-muted-foreground">{formatFieldName(field)}</span>
-              <span className="break-words">{formatValue(conflict.localVersion?.[field])}</span>
-              <span className="break-words">{formatValue(conflict.serverVersion?.[field])}</span>
-            </div>
-          ))}
+          {changedFields.map(field => {
+            const choice = fieldChoices[field];
+            return (
+              <div key={field} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-1 text-xs bg-muted/30 rounded-md p-1.5 items-center">
+                <span className="text-muted-foreground">{formatFieldName(field)}</span>
+                <span className={`break-words ${choice === 'local' ? 'font-medium' : 'text-muted-foreground'}`}>
+                  {formatValue(conflict.localVersion?.[field])}
+                </span>
+                <span className={`break-words ${choice === 'server' ? 'font-medium' : 'text-muted-foreground'}`}>
+                  {formatValue(conflict.serverVersion?.[field])}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-14 text-xs px-1"
+                  onClick={() => toggleFieldChoice(field)}
+                  disabled={resolving}
+                >
+                  {choice === 'local' ? 'Mine' : 'Server'}
+                </Button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -109,29 +156,37 @@ function ConflictCard({
           variant="outline"
           size="sm"
           className="flex-1"
-          onClick={() => handleResolve(true)}
-          disabled={resolving !== null}
+          onClick={() => handleResolveAll('local')}
+          disabled={resolving}
         >
-          {resolving === 'local' ? (
-            <ArrowRight className="h-3 w-3 mr-1 animate-pulse" />
-          ) : (
-            <Check className="h-3 w-3 mr-1" />
-          )}
-          Keep mine
+          <Check className="h-3 w-3 mr-1" />
+          All mine
         </Button>
+        {changedFields.length > 1 && !allLocal && !allServer && (
+          <Button
+            variant="default"
+            size="sm"
+            className="flex-1"
+            onClick={() => handleResolveAll('merge')}
+            disabled={resolving}
+          >
+            {resolving ? (
+              <ArrowRight className="h-3 w-3 mr-1 animate-pulse" />
+            ) : (
+              <Merge className="h-3 w-3 mr-1" />
+            )}
+            Merge
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
           className="flex-1"
-          onClick={() => handleResolve(false)}
-          disabled={resolving !== null}
+          onClick={() => handleResolveAll('server')}
+          disabled={resolving}
         >
-          {resolving === 'server' ? (
-            <ArrowRight className="h-3 w-3 mr-1 animate-pulse" />
-          ) : (
-            <X className="h-3 w-3 mr-1" />
-          )}
-          Keep server
+          <X className="h-3 w-3 mr-1" />
+          All server
         </Button>
       </div>
     </div>
@@ -157,7 +212,7 @@ export default function ConflictResolutionPanel({
           <SheetDescription>
             {unresolvedConflicts.length === 0
               ? 'No conflicts to resolve.'
-              : `${unresolvedConflicts.length} conflict${unresolvedConflicts.length > 1 ? 's' : ''} found. Review the differences and choose which version to keep.`}
+              : `${unresolvedConflicts.length} conflict${unresolvedConflicts.length > 1 ? 's' : ''} found. For each field, choose your version or the server's, then merge or keep all.`}
           </SheetDescription>
         </SheetHeader>
 
@@ -167,7 +222,7 @@ export default function ConflictResolutionPanel({
               <ConflictCard
                 key={conflict.id}
                 conflict={conflict}
-                onResolve={(useLocal) => onResolve(conflict.id, useLocal)}
+                onResolve={(useLocal, mergedData) => onResolve(conflict.id, useLocal, mergedData)}
               />
             ))}
 

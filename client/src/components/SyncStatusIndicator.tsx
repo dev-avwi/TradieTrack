@@ -195,8 +195,8 @@ export default function SyncStatusIndicator({ compact = true }: SyncStatusIndica
           open={showConflicts}
           onOpenChange={setShowConflicts}
           conflicts={conflicts}
-          onResolve={async (conflictId, useLocal) => {
-            await syncManager.resolveConflict(conflictId, useLocal);
+          onResolve={async (conflictId, useLocal, mergedData) => {
+            await syncManager.resolveConflict(conflictId, useLocal, mergedData);
             refreshCounts();
           }}
         />
@@ -246,8 +246,8 @@ export default function SyncStatusIndicator({ compact = true }: SyncStatusIndica
         open={showConflicts}
         onOpenChange={setShowConflicts}
         conflicts={conflicts}
-        onResolve={async (conflictId, useLocal) => {
-          await syncManager.resolveConflict(conflictId, useLocal);
+        onResolve={async (conflictId, useLocal, mergedData) => {
+          await syncManager.resolveConflict(conflictId, useLocal, mergedData);
           refreshCounts();
         }}
       />

@@ -8,12 +8,20 @@ import {
   addToSyncQueue,
   generateOfflineId,
   isOnline,
+  saveFileAttachment,
+  type OfflineFileAttachment,
 } from '@/lib/offlineStorage';
 import { processSyncQueue, resolveId } from '@/lib/syncService';
 import { apiRequest, safeInvalidateQueries } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
 type StoreName = 'clients' | 'jobs' | 'quotes' | 'invoices';
+
+export interface OfflineAttachmentInput {
+  file: File;
+  type: 'photo' | 'signature' | 'voice_note' | 'document';
+  description?: string;
+}
 
 interface UseOfflineDataOptions<T> {
   storeName: StoreName;
@@ -28,8 +36,8 @@ interface UseOfflineDataResult<T> {
   isOffline: boolean;
   isSyncing: boolean;
   pendingSyncs: number;
-  create: (item: Omit<T, 'id'>) => Promise<T>;
-  update: (id: string | number, updates: Partial<T>) => Promise<T>;
+  create: (item: Omit<T, 'id'>, attachments?: OfflineAttachmentInput[]) => Promise<T>;
+  update: (id: string | number, updates: Partial<T>, attachments?: OfflineAttachmentInput[]) => Promise<T>;
   remove: (id: string | number) => Promise<void>;
   sync: () => Promise<void>;
   refetch: () => void;
@@ -171,12 +179,42 @@ export function useOfflineData<T extends { id: string | number }>(
     }
   };
 
-  const create = useCallback(async (itemData: Omit<T, 'id'>): Promise<T> => {
+  const persistAttachments = async (
+    entityId: string | number,
+    attachments: OfflineAttachmentInput[]
+  ): Promise<string[]> => {
+    const attachmentIds: string[] = [];
+    for (const a of attachments) {
+      const id = generateOfflineId();
+      const attachment: OfflineFileAttachment = {
+        id,
+        entityType: storeName === 'clients' ? 'client' : storeName === 'jobs' ? 'job' : storeName === 'quotes' ? 'quote' : 'invoice',
+        entityId,
+        type: a.type,
+        filename: a.file.name,
+        mimeType: a.file.type,
+        blob: a.file,
+        fileSize: a.file.size,
+        description: a.description,
+        createdAt: Date.now(),
+        synced: false,
+      };
+      await saveFileAttachment(attachment);
+      attachmentIds.push(id);
+    }
+    return attachmentIds;
+  };
+
+  const create = useCallback(async (itemData: Omit<T, 'id'>, attachments?: OfflineAttachmentInput[]): Promise<T> => {
     const offlineId = generateOfflineId();
     const newItem = { ...itemData, id: offlineId } as T;
 
     await saveItem(storeName, newItem);
     setCachedData(prev => prev ? [...prev, newItem] : [newItem]);
+
+    const fileAttachmentIds = attachments?.length
+      ? await persistAttachments(offlineId, attachments)
+      : undefined;
 
     if (isOnline()) {
       try {
@@ -191,6 +229,19 @@ export function useOfflineData<T extends { id: string | number }>(
         );
         
         safeInvalidateQueries({ queryKey });
+
+        if (fileAttachmentIds?.length) {
+          await addToSyncQueue({
+            type: 'update',
+            storeName,
+            data: serverItem,
+            endpoint: `${apiEndpoint}/${serverItem.id}`,
+            method: 'PATCH',
+            fileAttachmentIds,
+          });
+          await updatePendingCount();
+        }
+
         return serverItem;
       } catch (error) {
         await addToSyncQueue({
@@ -199,6 +250,7 @@ export function useOfflineData<T extends { id: string | number }>(
           data: newItem,
           endpoint: apiEndpoint,
           method: 'POST',
+          fileAttachmentIds,
         });
         
         await updatePendingCount();
@@ -217,6 +269,7 @@ export function useOfflineData<T extends { id: string | number }>(
         data: newItem,
         endpoint: apiEndpoint,
         method: 'POST',
+        fileAttachmentIds,
       });
       
       await updatePendingCount();
@@ -230,7 +283,7 @@ export function useOfflineData<T extends { id: string | number }>(
     }
   }, [storeName, apiEndpoint, queryKey, isOffline, toast]);
 
-  const update = useCallback(async (id: string | number, updates: Partial<T>): Promise<T> => {
+  const update = useCallback(async (id: string | number, updates: Partial<T>, attachments?: OfflineAttachmentInput[]): Promise<T> => {
     const resolvedId = resolveId(id);
     const existingItem = await getItem<T>(storeName, id) || await getItem<T>(storeName, resolvedId);
     
@@ -245,6 +298,10 @@ export function useOfflineData<T extends { id: string | number }>(
       prev ? prev.map(item => item.id === id || item.id === resolvedId ? updatedItem : item) : [updatedItem]
     );
 
+    const fileAttachmentIds = attachments?.length
+      ? await persistAttachments(resolvedId, attachments)
+      : undefined;
+
     if (isOnline()) {
       try {
         const response = await apiRequest('PATCH', `${apiEndpoint}/${resolvedId}`, updates);
@@ -256,6 +313,19 @@ export function useOfflineData<T extends { id: string | number }>(
         );
         
         safeInvalidateQueries({ queryKey });
+
+        if (fileAttachmentIds?.length) {
+          await addToSyncQueue({
+            type: 'update',
+            storeName,
+            data: serverItem,
+            endpoint: `${apiEndpoint}/${serverItem.id}`,
+            method: 'PATCH',
+            fileAttachmentIds,
+          });
+          await updatePendingCount();
+        }
+
         return serverItem;
       } catch (error) {
         await addToSyncQueue({
@@ -264,6 +334,7 @@ export function useOfflineData<T extends { id: string | number }>(
           data: updatedItem,
           endpoint: `${apiEndpoint}/${resolvedId}`,
           method: 'PATCH',
+          fileAttachmentIds,
         });
         
         await updatePendingCount();
@@ -282,6 +353,7 @@ export function useOfflineData<T extends { id: string | number }>(
         data: updatedItem,
         endpoint: `${apiEndpoint}/${resolvedId}`,
         method: 'PATCH',
+        fileAttachmentIds,
       });
       
       await updatePendingCount();

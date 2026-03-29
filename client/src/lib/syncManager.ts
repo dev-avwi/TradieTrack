@@ -205,14 +205,9 @@ class SyncManager {
 
       const formData = new FormData();
       formData.append('file', attachment.blob, attachment.filename);
-      formData.append('type', attachment.type);
-      formData.append('entityType', attachment.entityType);
-      formData.append('entityId', String(entityId));
-      if (attachment.description) {
-        formData.append('description', attachment.description);
-      }
+      formData.append('type', `${attachment.entityType}_${attachment.type}`);
 
-      const response = await fetch('/api/attachments/upload', {
+      const response = await fetch('/api/upload', {
         method: 'POST',
         credentials: 'include',
         body: formData,
@@ -223,7 +218,7 @@ class SyncManager {
       }
 
       const result = await response.json();
-      await markFileAttachmentSynced(attachmentId, result.url || result.remoteUrl || '');
+      await markFileAttachmentSynced(attachmentId, result.url || '');
     }
   }
 
@@ -533,20 +528,24 @@ class SyncManager {
     return [...this.conflicts];
   }
 
-  async resolveConflict(conflictId: string, useLocal: boolean): Promise<void> {
+  async resolveConflict(conflictId: string, useLocal: boolean, mergedData?: Record<string, unknown>): Promise<void> {
     const conflict = this.conflicts.find((c) => c.id === conflictId);
     if (!conflict) return;
 
-    if (useLocal) {
-      await saveItem(conflict.storeName, conflict.localVersion);
+    const resolvedVersion = mergedData
+      ? { ...conflict.serverVersion, ...mergedData, id: conflict.localVersion.id }
+      : useLocal
+        ? conflict.localVersion
+        : conflict.serverVersion;
 
-      if (isOnline()) {
-        try {
-          const endpoint = `/api/${conflict.storeName}/${conflict.localVersion.id}`;
-          await apiRequest('PATCH', endpoint, conflict.localVersion);
-        } catch (error) {
-          console.error('Failed to sync resolved conflict:', error);
-        }
+    await saveItem(conflict.storeName, resolvedVersion);
+
+    if (isOnline()) {
+      try {
+        const endpoint = `/api/${conflict.storeName}/${resolvedVersion.id}`;
+        await apiRequest('PATCH', endpoint, resolvedVersion);
+      } catch (error) {
+        console.error('Failed to sync resolved conflict:', error);
       }
     }
 
