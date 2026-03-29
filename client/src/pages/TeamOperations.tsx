@@ -272,6 +272,7 @@ function LiveOpsTab() {
   const [inviteFirstName, setInviteFirstName] = useState("");
   const [inviteLastName, setInviteLastName] = useState("");
   const [inviteRoleId, setInviteRoleId] = useState("");
+  const [invitePhone, setInvitePhone] = useState("");
 
   const { data: presence = [], isLoading: presenceLoading } = useQuery<TeamPresenceData[]>({
     queryKey: ["/api/team/presence"],
@@ -296,7 +297,7 @@ function LiveOpsTab() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: async (data: { email: string; firstName: string; lastName: string; roleId: string }) => {
+    mutationFn: async (data: { email: string; firstName: string; lastName: string; roleId: string; phone?: string }) => {
       const response = await apiRequest('POST', '/api/team/members/invite', data);
       return response.json();
     },
@@ -308,6 +309,7 @@ function LiveOpsTab() {
       setInviteFirstName("");
       setInviteLastName("");
       setInviteRoleId("");
+      setInvitePhone("");
     },
     onError: (error: any) => {
       toast({ title: "Failed to send invite", description: error.message, variant: "destructive" });
@@ -1101,6 +1103,22 @@ function LiveOpsTab() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number (Optional)</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={invitePhone}
+                onChange={(e) => setInvitePhone(e.target.value)}
+                placeholder="0412 345 678"
+                data-testid="input-phone"
+              />
+              {invitePhone.trim() && (
+                <p className="text-xs text-primary">
+                  Invite will also be sent via SMS with a smart link to download the app
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <Select value={inviteRoleId} onValueChange={setInviteRoleId}>
                 <SelectTrigger data-testid="select-invite-role">
@@ -1128,6 +1146,7 @@ function LiveOpsTab() {
                     firstName: inviteFirstName,
                     lastName: inviteLastName,
                     roleId: inviteRoleId,
+                    phone: invitePhone.trim() || undefined,
                   });
                 }
               }}

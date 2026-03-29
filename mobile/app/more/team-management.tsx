@@ -1286,6 +1286,7 @@ export default function TeamManagementScreen() {
   const [inviteLastName, setInviteLastName] = useState('');
   const [inviteRole, setInviteRole] = useState('staff');
   const [inviteHourlyRate, setInviteHourlyRate] = useState('');
+  const [invitePhone, setInvitePhone] = useState('');
   const [isSending, setIsSending] = useState(false);
   
   // Member detail modal state
@@ -1562,20 +1563,26 @@ export default function TeamManagementScreen() {
         return;
       }
       
-      await api.post('/api/team/members/invite', {
+      const result = await api.post('/api/team/members/invite', {
         email: inviteEmail,
         firstName: inviteFirstName,
         lastName: inviteLastName,
         roleId: roleObj.id,
         hourlyRate: inviteHourlyRate ? parseFloat(inviteHourlyRate) : undefined,
+        phone: invitePhone.trim() || undefined,
       });
-      Alert.alert('Invite Sent', `Invitation sent to ${inviteEmail}`);
+      let sentVia = 'email';
+      if (invitePhone.trim()) {
+        sentVia = result.data?.smsSent ? 'email and SMS' : 'email (SMS could not be sent)';
+      }
+      Alert.alert('Invite Sent', `Invitation sent via ${sentVia} to ${inviteFirstName}`);
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteFirstName('');
       setInviteLastName('');
       setInviteRole('staff');
       setInviteHourlyRate('');
+      setInvitePhone('');
       fetchTeam();
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to send invitation');
@@ -2266,6 +2273,22 @@ export default function TeamManagementScreen() {
                   autoCapitalize="none"
                   placeholderTextColor={colors.mutedForeground}
                 />
+
+                <Text style={styles.inputLabel}>Phone Number (Optional)</Text>
+                <TextInput
+                  testID="input-invite-phone"
+                  style={styles.input}
+                  value={invitePhone}
+                  onChangeText={setInvitePhone}
+                  placeholder="0412 345 678"
+                  keyboardType="phone-pad"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+                {invitePhone.trim() ? (
+                  <Text style={{ fontSize: 12, color: colors.primary, marginTop: 4, marginBottom: 8 }}>
+                    Invite will also be sent via SMS with a smart link
+                  </Text>
+                ) : null}
 
                 <Text style={styles.inputLabel}>Hourly Rate (Optional)</Text>
                 <TextInput

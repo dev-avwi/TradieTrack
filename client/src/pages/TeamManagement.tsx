@@ -456,6 +456,7 @@ export default function TeamManagement() {
   const [inviteLastName, setInviteLastName] = useState("");
   const [inviteRoleId, setInviteRoleId] = useState("");
   const [inviteHourlyRate, setInviteHourlyRate] = useState("");
+  const [invitePhone, setInvitePhone] = useState("");
   const [invitePreset, setInvitePreset] = useState<string>("");
 
   // Fetch team members
@@ -487,6 +488,8 @@ export default function TeamManagement() {
       lastName: string;
       roleId: string;
       hourlyRate?: number;
+      phone?: string;
+      sendSms?: boolean;
     }) => {
       const response = await apiRequest('POST', '/api/team/members/invite', data);
       return response.json();
@@ -608,6 +611,7 @@ export default function TeamManagement() {
     setInviteLastName("");
     setInviteRoleId("");
     setInviteHourlyRate("");
+    setInvitePhone("");
     setInvitePreset("");
   };
 
@@ -658,6 +662,8 @@ export default function TeamManagement() {
       lastName: inviteLastName,
       roleId: inviteRoleId,
       hourlyRate: hourlyRateNum,
+      phone: invitePhone.trim() || undefined,
+      sendSms: !!invitePhone.trim(),
     });
   };
 
@@ -1181,6 +1187,22 @@ export default function TeamManagement() {
                 placeholder="john.smith@example.com"
                 data-testid="input-email"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number (Optional)</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={invitePhone}
+                onChange={(e) => setInvitePhone(e.target.value)}
+                placeholder="0412 345 678"
+                data-testid="input-phone"
+              />
+              {invitePhone.trim() && (
+                <p className="text-xs text-primary">
+                  Invite will also be sent via SMS with a smart link to download the app
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Role Preset *</Label>

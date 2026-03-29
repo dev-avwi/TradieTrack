@@ -28296,36 +28296,56 @@ Respond with JSON in this format:
         inviteStatus: 'pending',
       });
       
+      const owner = await AuthService.getUserById(userId);
+      const businessSettings = await storage.getBusinessSettings(userId);
+      const role = await storage.getUserRole(inviteData.roleId);
+      const inviteeName = [inviteData.firstName, inviteData.lastName].filter(Boolean).join(' ') || null;
+      const baseUrl = getProductionBaseUrl(req);
+      const businessNameStr = businessSettings?.businessName || 'A JobRunner business';
+      const roleNameStr = role?.name || 'Team Member';
+
       // Send invitation email
       try {
-        const owner = await AuthService.getUserById(userId);
-        const businessSettings = await storage.getBusinessSettings(userId);
-        const role = await storage.getUserRole(inviteData.roleId);
-        
-        const inviteeName = [inviteData.firstName, inviteData.lastName].filter(Boolean).join(' ') || null;
         await sendTeamInviteEmail(
           inviteData.email,
           inviteeName,
           owner?.firstName || 'The business owner',
-          businessSettings?.businessName || 'A JobRunner business',
-          role?.name || 'Team Member',
+          businessNameStr,
+          roleNameStr,
           inviteToken,
-          getProductionBaseUrl(req)
+          baseUrl
         );
       } catch (emailError) {
         console.error('Failed to send team invite email:', emailError);
-        // Don't fail the invite if email fails
+      }
+
+      // Send SMS invite with smart link if phone provided
+      let smsSent = false;
+      let smsError: string | undefined;
+      if (inviteData.phone) {
+        try {
+          const smartLink = `${baseUrl}/open-app/accept-invite/${inviteToken}`;
+          const smsBody = `G'day${inviteeName ? ' ' + inviteeName.split(' ')[0] : ''}! You've been invited to join ${businessNameStr} on JobRunner as a ${roleNameStr}. Tap to accept: ${smartLink}`;
+          const smsResult = await sendSMS({ to: inviteData.phone, message: smsBody });
+          smsSent = smsResult.success;
+          if (!smsResult.success) {
+            smsError = smsResult.error || (smsResult.notConfigured ? 'SMS not configured' : 'SMS failed');
+          }
+          const maskedPhone = inviteData.phone.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2');
+          console.log(`[TeamInvite] SMS invite ${smsSent ? 'sent' : 'failed'} to ${maskedPhone}`);
+        } catch (err: any) {
+          console.error('Failed to send team invite SMS:', err?.message);
+          smsError = err?.message || 'SMS send failed';
+        }
       }
       
       try {
-        const businessSettings = await storage.getBusinessSettings(userId);
-        const role = await storage.getUserRole(inviteData.roleId);
-        await notifyTeamMemberInvited(storage, newMember.id, businessSettings?.businessName || 'A business', role?.name || 'Team Member');
+        await notifyTeamMemberInvited(storage, newMember.id, businessNameStr, roleNameStr);
       } catch (notifErr) {
         console.error('Failed to send team member invited notification:', notifErr);
       }
       
-      res.json(newMember);
+      res.json({ ...newMember, smsSent, smsError });
     } catch (error) {
       console.error('Error inviting team member:', error);
       res.status(500).json({ error: 'Failed to send invitation' });
@@ -28352,26 +28372,45 @@ Respond with JSON in this format:
         inviteSentAt: new Date(),
       });
       
+      const owner = await AuthService.getUserById(userId);
+      const businessSettings = await storage.getBusinessSettings(userId);
+      const role = await storage.getUserRole(member.roleId);
+      const baseUrl = getProductionBaseUrl(req);
+      const businessNameStr = businessSettings?.businessName || 'A JobRunner business';
+      const roleNameStr = role?.name || 'Team Member';
+
       // Resend invitation email
       try {
-        const owner = await AuthService.getUserById(userId);
-        const businessSettings = await storage.getBusinessSettings(userId);
-        const role = await storage.getUserRole(member.roleId);
-        
         await sendTeamInviteEmail(
           member.email,
           member.name || null,
           owner?.firstName || 'The business owner',
-          businessSettings?.businessName || 'A JobRunner business',
-          role?.name || 'Team Member',
+          businessNameStr,
+          roleNameStr,
           member.inviteToken!,
-          getProductionBaseUrl(req)
+          baseUrl
         );
       } catch (emailError) {
         console.error('Failed to resend team invite email:', emailError);
       }
+
+      // Also resend via SMS if member has a phone number
+      let smsSent = false;
+      if (member.phone) {
+        try {
+          const smartLink = `${baseUrl}/open-app/accept-invite/${member.inviteToken}`;
+          const firstName = member.firstName || member.name?.split(' ')[0] || '';
+          const smsBody = `G'day${firstName ? ' ' + firstName : ''}! Reminder: You've been invited to join ${businessNameStr} on JobRunner as a ${roleNameStr}. Tap to accept: ${smartLink}`;
+          const smsResult = await sendSMS({ to: member.phone, message: smsBody });
+          smsSent = smsResult.success;
+          const maskedPhone = member.phone.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2');
+          console.log(`[TeamInvite] SMS resend ${smsSent ? 'sent' : 'failed'} to ${maskedPhone}`);
+        } catch (smsErr: any) {
+          console.error('Failed to resend team invite SMS:', smsErr?.message);
+        }
+      }
       
-      res.json(updated);
+      res.json({ ...updated, smsSent });
     } catch (error) {
       console.error('Error resending invite:', error);
       res.status(500).json({ error: 'Failed to resend invitation' });
