@@ -374,7 +374,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                         <FormControl>
                           <Switch
                             checked={field.value}
-                            onCheckedChange={field.onChange}
+                            onCheckedChange={(val) => { collaboration.markFieldDirty('geofenceEnabled'); field.onChange(val); }}
                             data-testid="switch-geofence"
                           />
                         </FormControl>
@@ -395,7 +395,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                               min={50}
                               max={500}
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 100)}
+                              onChange={(e) => { collaboration.markFieldDirty('geofenceRadius'); field.onChange(parseInt(e.target.value) || 100); }}
                               data-testid="input-geofence-radius"
                             />
                           </FormControl>
@@ -426,6 +426,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                         <Input
                           type="datetime-local"
                           {...field}
+                          onChange={(e) => { collaboration.markFieldDirty('scheduledAt'); field.onChange(e); }}
                           data-testid="input-scheduled-at"
                         />
                       </FormControl>
@@ -449,6 +450,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                           step="0.5"
                           placeholder="e.g., 2.5"
                           {...field}
+                          onChange={(e) => { collaboration.markFieldDirty('estimatedHours'); field.onChange(e); }}
                           data-testid="input-estimated-hours"
                         />
                       </FormControl>

@@ -28,6 +28,9 @@ import JobProfitabilityCard from "./JobProfitabilityCard";
 import { UnifiedSendModal } from "./UnifiedSendModal";
 import { ManualSmsComposer } from "./ManualSmsComposer";
 import { SignatureDisplay } from '@/components/ui/signature-pad';
+import { PresenceIndicator } from './JobCollaborationUI';
+import { useJobCollaboration } from '@/hooks/use-job-collaboration';
+import { useAuth } from '@/hooks/useAuth';
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -209,9 +212,11 @@ export default function JobDetailView({
   onViewClient,
 }: JobDetailViewProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [, navigate] = useLocation();
   const searchString = useSearch();
   const { canUseAIFeatures } = useFeatureAccess();
+  const collaboration = useJobCollaboration(jobId, user?.id, user?.name || user?.email || 'Viewer');
   const chatSectionRef = useRef<HTMLDivElement>(null);
   const [showSmartActions, setShowSmartActions] = useState(false);
   const [smartActions, setSmartActions] = useState<SmartAction[]>([]);
@@ -1683,6 +1688,7 @@ export default function JobDetailView({
                 {client.name}
               </span>
             )}
+            <PresenceIndicator editors={collaboration.otherEditors} />
           </div>
         </div>
 

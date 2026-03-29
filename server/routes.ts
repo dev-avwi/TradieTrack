@@ -15872,13 +15872,24 @@ Be specific about materials, colors, and features that would be included.`
       
       const existingJob = await storage.getJob(req.params.id, effectiveUserId);
       
-      if (submittedVersion !== undefined && existingJob && existingJob.version !== undefined) {
-        if (Number(submittedVersion) !== Number(existingJob.version)) {
-          return res.status(409).json({
-            error: "This job has been modified by another user since you started editing. Please review the changes.",
-            code: "VERSION_CONFLICT",
+      const editableFields = ['title', 'description', 'address', 'scheduledAt', 'estimatedHours', 'notes', 'priority', 'geofenceEnabled', 'geofenceRadius'];
+      const hasEditableFieldChanges = Object.keys(data).some(k => editableFields.includes(k));
+      
+      if (existingJob && existingJob.version !== undefined) {
+        if (submittedVersion !== undefined) {
+          if (Number(submittedVersion) !== Number(existingJob.version)) {
+            return res.status(409).json({
+              error: "This job has been modified by another user since you started editing. Please review the changes.",
+              code: "VERSION_CONFLICT",
+              serverVersion: existingJob.version,
+              serverData: existingJob,
+            });
+          }
+        } else if (hasEditableFieldChanges) {
+          return res.status(400).json({
+            error: "Version field is required when editing job details to prevent conflicts.",
+            code: "VERSION_REQUIRED",
             serverVersion: existingJob.version,
-            serverData: existingJob,
           });
         }
       }
