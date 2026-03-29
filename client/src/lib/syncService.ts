@@ -223,7 +223,9 @@ async function uploadAndLinkAttachments(
 
   const entityEndpoint = `/api/${operation.storeName}/${entityId}`;
   const entityResponse = await makeApiCall(entityEndpoint, 'GET');
-  if (!entityResponse.ok) return;
+  if (!entityResponse.ok) {
+    throw new Error(`Failed to fetch entity for attachment linking: ${entityResponse.statusText}`);
+  }
 
   const entity = await entityResponse.json();
 

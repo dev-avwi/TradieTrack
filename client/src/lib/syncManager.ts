@@ -272,7 +272,7 @@ class SyncManager {
           await markFileAttachmentSynced(file.id, file.url);
         }
       } catch (linkError) {
-        console.warn('Failed to link uploaded attachments to entity:', linkError);
+        throw new Error(`Failed to link attachments to entity: ${linkError instanceof Error ? linkError.message : String(linkError)}`);
       }
     }
 
