@@ -991,7 +991,7 @@ export default function LandingPage() {
               {/* App Store Badges */}
               <div className="flex flex-col gap-3">
                 <a 
-                  href="https://apps.apple.com/app/jobrunner/id6756844699"
+                  href="https://apps.apple.com/app/jobrunner/id6760283858"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-3 bg-black text-white rounded-lg px-5 py-3 hover:bg-gray-800 transition-colors"
@@ -1005,7 +1005,7 @@ export default function LandingPage() {
                 </a>
                 
                 <a 
-                  href="https://play.google.com/store/apps/details?id=com.avwebinnovation.jobrunner"
+                  href="https://play.google.com/store/apps/details?id=com.jobrunner.app"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-3 bg-black text-white rounded-lg px-5 py-3 hover:bg-gray-800 transition-colors"
@@ -1291,7 +1291,7 @@ export default function LandingPage() {
               {/* App Store Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 mb-4">
                 <a 
-                  href="https://apps.apple.com/app/jobrunner/id6756844699" 
+                  href="https://apps.apple.com/app/jobrunner/id6760283858" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-800 text-white rounded-lg py-3 px-4 transition-colors"
@@ -1304,7 +1304,7 @@ export default function LandingPage() {
                   </div>
                 </a>
                 <a 
-                  href="https://play.google.com/store/apps/details?id=com.avwebinnovation.jobrunner"
+                  href="https://play.google.com/store/apps/details?id=com.jobrunner.app"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-800 text-white rounded-lg py-3 px-4 transition-colors"

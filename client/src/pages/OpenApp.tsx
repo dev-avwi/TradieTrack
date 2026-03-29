@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Smartphone, Globe, Apple, Download, Beaker } from "lucide-react";
 
-const APP_STORE_URL = "https://apps.apple.com/app/jobrunner/id6756844699";
+const APP_STORE_URL = "https://apps.apple.com/app/jobrunner/id6760283858";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.jobrunner.app";
 
 // For Expo Go testing - uses exp:// scheme which works in development
