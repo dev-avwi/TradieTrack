@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, getSessionToken } from "@/lib/queryClient";
 import { ArrowLeft, Loader2, Save, MapPin, Calendar, Clock, AlertTriangle } from "lucide-react";
 import AddressAutocomplete from "@/components/ui/address-autocomplete";
 import type { Job, Client } from "@shared/schema";
@@ -121,15 +121,24 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
 
   const updateJobMutation = useMutation({
     mutationFn: async (data: JobEditData & { version?: number }) => {
-      const response = await apiRequest('PATCH', `/api/jobs/${jobId}`, {
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      const token = getSessionToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const body = {
         ...data,
         version: data.version ?? jobVersionRef.current,
         scheduledAt: data.scheduledAt ? new Date(data.scheduledAt).toISOString() : null,
         estimatedHours: data.estimatedHours ? parseFloat(data.estimatedHours) : null,
+      };
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(body),
+        credentials: 'include',
       });
-      if (!response.ok) {
+      if (response.status === 409) {
         const errorData = await response.json();
-        if (response.status === 409 && errorData.code === 'VERSION_CONFLICT') {
+        if (errorData.code === 'VERSION_CONFLICT') {
           const localChanges = form.getValues();
           collaboration.handleConflictResponse(
             localChanges as Record<string, unknown>,
@@ -138,6 +147,10 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
           );
           throw new Error('VERSION_CONFLICT');
         }
+        throw new Error(errorData.error || 'Version conflict');
+      }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
         throw new Error(errorData.error || 'Failed to update job');
       }
       return response.json();
@@ -168,14 +181,19 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
     try {
       const normalizedData = { ...resolvedData };
       if (normalizedData.scheduledAt && typeof normalizedData.scheduledAt === 'string') {
-        normalizedData.scheduledAt = normalizedData.scheduledAt ? new Date(normalizedData.scheduledAt as string).toISOString() : null;
+        normalizedData.scheduledAt = new Date(normalizedData.scheduledAt as string).toISOString();
       }
       if (normalizedData.estimatedHours && typeof normalizedData.estimatedHours === 'string') {
         normalizedData.estimatedHours = parseFloat(normalizedData.estimatedHours as string) || null;
       }
-      const response = await apiRequest('PATCH', `/api/jobs/${jobId}`, {
-        ...normalizedData,
-        version: serverVersion,
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      const token = getSessionToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ ...normalizedData, version: serverVersion }),
+        credentials: 'include',
       });
       if (response.ok) {
         const updatedJob = await response.json();
