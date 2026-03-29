@@ -16012,9 +16012,6 @@ Be specific about materials, colors, and features that would be included.`
       
       let job: Awaited<ReturnType<typeof storage.updateJob>>;
       if (submittedVersion !== undefined && hasEditableFieldChanges) {
-        const { db } = await import('./db');
-        const { jobs } = await import('@shared/schema');
-        const { eq, and } = await import('drizzle-orm');
         const result = await db
           .update(jobs)
           .set({ ...updateData, updatedAt: new Date() })
