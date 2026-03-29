@@ -195,8 +195,9 @@ class SyncManager {
   }
 
   private async uploadFileAttachments(operation: SyncOperation, resolvedEntityId?: string | number): Promise<string[]> {
-    const uploadedUrls: string[] = [];
-    if (!operation.fileAttachmentIds?.length) return uploadedUrls;
+    interface UploadResult { id: string; url: string; type: string; filename: string }
+    const uploaded: UploadResult[] = [];
+    if (!operation.fileAttachmentIds?.length) return [];
 
     for (const attachmentId of operation.fileAttachmentIds) {
       const attachment = await getFileAttachment(attachmentId);
@@ -218,51 +219,64 @@ class SyncManager {
 
       const uploadResult = await response.json();
       const url = uploadResult.url || '';
-      await markFileAttachmentSynced(attachmentId, url);
-      if (url) uploadedUrls.push(url);
+      if (url) {
+        uploaded.push({ id: attachmentId, url, type: attachment.type, filename: attachment.filename });
+      }
     }
 
-    if (uploadedUrls.length > 0 && resolvedEntityId) {
+    if (uploaded.length > 0 && resolvedEntityId) {
       try {
         const entityEndpoint = `/api/${operation.storeName}/${resolvedEntityId}`;
         const entityResponse = await fetch(entityEndpoint, { credentials: 'include' });
         if (entityResponse.ok) {
           const entity = await entityResponse.json();
-          const patchData: Record<string, unknown> = {};
 
-          for (const attachmentId of operation.fileAttachmentIds!) {
-            const attachment = await getFileAttachment(attachmentId);
-            if (!attachment) continue;
-            const url = uploadedUrls.find(u => u);
-            if (!url) continue;
+          interface PhotoEntry { url: string; uploadedAt: string; source: string }
+          interface FileEntry { url: string; filename: string; uploadedAt: string }
+          const photos: PhotoEntry[] = Array.isArray(entity.photos) ? [...entity.photos] : [];
+          const voiceNotes: FileEntry[] = Array.isArray(entity.voiceNotes) ? [...entity.voiceNotes] : [];
+          const documents: FileEntry[] = Array.isArray(entity.documents) ? [...entity.documents] : [];
+          let signatureUrl: string | undefined;
 
-            if (attachment.type === 'photo' || attachment.type === 'image') {
-              const existing = Array.isArray(entity.photos) ? entity.photos : [];
-              if (!patchData.photos) patchData.photos = [...existing];
-              (patchData.photos as any[]).push({ url, uploadedAt: new Date().toISOString(), source: 'offline_sync' });
-            } else if (attachment.type === 'signature') {
-              patchData.signatureUrl = url;
-            } else if (attachment.type === 'voice_note' || attachment.type === 'audio') {
-              const existing = Array.isArray(entity.voiceNotes) ? entity.voiceNotes : [];
-              if (!patchData.voiceNotes) patchData.voiceNotes = [...existing];
-              (patchData.voiceNotes as any[]).push({ url, filename: attachment.filename, uploadedAt: new Date().toISOString() });
+          for (const file of uploaded) {
+            const ts = new Date().toISOString();
+            if (file.type === 'photo' || file.type === 'image') {
+              photos.push({ url: file.url, uploadedAt: ts, source: 'offline_sync' });
+            } else if (file.type === 'signature') {
+              signatureUrl = file.url;
+            } else if (file.type === 'voice_note' || file.type === 'audio') {
+              voiceNotes.push({ url: file.url, filename: file.filename, uploadedAt: ts });
             } else {
-              const existing = Array.isArray(entity.documents) ? entity.documents : [];
-              if (!patchData.documents) patchData.documents = [...existing];
-              (patchData.documents as any[]).push({ url, filename: attachment.filename, uploadedAt: new Date().toISOString() });
+              documents.push({ url: file.url, filename: file.filename, uploadedAt: ts });
             }
+          }
+
+          const patchData: Record<string, PhotoEntry[] | FileEntry[] | string> = {};
+          if (photos.length > (Array.isArray(entity.photos) ? entity.photos.length : 0)) {
+            patchData.photos = photos;
+          }
+          if (signatureUrl) patchData.signatureUrl = signatureUrl;
+          if (voiceNotes.length > (Array.isArray(entity.voiceNotes) ? entity.voiceNotes.length : 0)) {
+            patchData.voiceNotes = voiceNotes;
+          }
+          if (documents.length > (Array.isArray(entity.documents) ? entity.documents.length : 0)) {
+            patchData.documents = documents;
           }
 
           if (Object.keys(patchData).length > 0) {
             await apiRequest('PATCH', entityEndpoint, patchData);
           }
         }
+
+        for (const file of uploaded) {
+          await markFileAttachmentSynced(file.id, file.url);
+        }
       } catch (linkError) {
         console.warn('Failed to link uploaded attachments to entity:', linkError);
       }
     }
 
-    return uploadedUrls;
+    return uploaded.map(u => u.url);
   }
 
   private async processOperation(operation: SyncOperation): Promise<boolean> {

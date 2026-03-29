@@ -18,7 +18,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useNetwork } from '@/contexts/NetworkContext';
-import { syncManager, type SyncError } from '@/lib/syncManager';
+import { syncManager } from '@/lib/syncManager';
 import { getOfflineSyncStats } from '@/lib/offlineStorage';
 import { formatDistanceToNow } from 'date-fns';
 import ConflictResolutionPanel from './ConflictResolutionPanel';
@@ -27,11 +27,16 @@ interface SyncStatusIndicatorProps {
   compact?: boolean;
 }
 
+interface DisplayError {
+  id: string;
+  message: string;
+}
+
 export default function SyncStatusIndicator({ compact = true }: SyncStatusIndicatorProps) {
-  const { isOnline, isSyncing, pendingSyncCount, lastSyncTime, sync } = useNetwork();
+  const { isOnline, isSyncing, pendingSyncCount, lastSyncTime, lastSyncResult, sync } = useNetwork();
   const [conflictsCount, setConflictsCount] = useState(0);
   const [pendingFileCount, setPendingFileCount] = useState(0);
-  const [syncErrors, setSyncErrors] = useState<SyncError[]>([]);
+  const [displayErrors, setDisplayErrors] = useState<DisplayError[]>([]);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
   const [conflicts, setConflicts] = useState(syncManager.getConflicts());
@@ -40,14 +45,33 @@ export default function SyncStatusIndicator({ compact = true }: SyncStatusIndica
     const c = syncManager.getConflicts();
     setConflicts(c);
     setConflictsCount(c.filter(x => !x.resolvedAt).length);
-    setSyncErrors(syncManager.getErrors());
+
+    const managerErrors: DisplayError[] = syncManager.getErrors().map(e => ({
+      id: e.operationId,
+      message: e.error,
+    }));
+    const serviceErrors: DisplayError[] = lastSyncResult?.errors?.map((e, i) => ({
+      id: `svc-${i}`,
+      message: e.error,
+    })) ?? [];
+
+    const seen = new Set<string>();
+    const combined: DisplayError[] = [];
+    for (const err of [...serviceErrors, ...managerErrors]) {
+      if (!seen.has(err.message)) {
+        seen.add(err.message);
+        combined.push(err);
+      }
+    }
+    setDisplayErrors(combined);
+
     try {
       const stats = await getOfflineSyncStats();
       setPendingFileCount(stats.fileAttachmentCount);
     } catch {
       // silently ignore
     }
-  }, []);
+  }, [lastSyncResult]);
 
   useEffect(() => {
     refreshCounts();
@@ -172,21 +196,23 @@ export default function SyncStatusIndicator({ compact = true }: SyncStatusIndica
                 </div>
               )}
 
-              {syncErrors.length > 0 && (
+              {displayErrors.length > 0 && (
                 <div className="space-y-1.5">
                   <div className="text-xs font-medium text-destructive flex items-center gap-1">
                     <XCircle className="h-3 w-3" />
                     Failed operations
                   </div>
-                  {syncErrors.slice(0, 3).map((err) => (
-                    <div key={err.operationId} className="flex items-center justify-between gap-2 text-xs bg-destructive/10 rounded-md p-1.5">
-                      <span className="text-destructive truncate flex-1">{err.error}</span>
+                  {displayErrors.slice(0, 3).map((err) => (
+                    <div key={err.id} className="flex items-center justify-between gap-2 text-xs bg-destructive/10 rounded-md p-1.5">
+                      <span className="text-destructive truncate flex-1">{err.message}</span>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-6 px-2 text-xs"
-                        onClick={() => {
+                        onClick={async () => {
                           syncManager.retryFailedOperations();
+                          await sync();
+                          refreshCounts();
                         }}
                       >
                         <RotateCcw className="h-3 w-3 mr-1" />
@@ -194,9 +220,9 @@ export default function SyncStatusIndicator({ compact = true }: SyncStatusIndica
                       </Button>
                     </div>
                   ))}
-                  {syncErrors.length > 3 && (
+                  {displayErrors.length > 3 && (
                     <div className="text-xs text-muted-foreground text-center">
-                      +{syncErrors.length - 3} more
+                      +{displayErrors.length - 3} more
                     </div>
                   )}
                 </div>
@@ -217,7 +243,7 @@ export default function SyncStatusIndicator({ compact = true }: SyncStatusIndica
                 </Button>
               )}
 
-              {isOnline && totalPending === 0 && conflictsCount === 0 && syncErrors.length === 0 && (
+              {isOnline && totalPending === 0 && conflictsCount === 0 && displayErrors.length === 0 && (
                 <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-500">
                   <Check className="h-3 w-3" />
                   <span>All changes synced</span>
