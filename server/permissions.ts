@@ -406,23 +406,8 @@ export async function canAccessJobMedia(userContext: UserContext, jobId: string)
     return false;
   }
   
-  // Check if assigned to this job
-  try {
-    const job = await storage.getJob(jobId, userContext.effectiveUserId);
-    if (!job) {
-      return false;
-    }
-    
-    // Check if user is assigned to this job
-    // assignedTo typically stores userId of the team member
-    // Also check teamMemberId for backwards compatibility with legacy data
-    const isAssigned = job.assignedTo === userContext.userId ||
-                       (userContext.teamMemberId && job.assignedTo === userContext.teamMemberId);
-    return isAssigned;
-  } catch (error) {
-    console.error('Error checking job access:', error);
-    return false;
-  }
+  // Check if assigned to this job (legacy assignedTo field + job_assignments table)
+  return isUserAssignedToJob(userContext.userId, jobId, userContext.effectiveUserId, userContext.teamMemberId);
 }
 
 /**
@@ -456,32 +441,47 @@ export async function canWriteJobMedia(userContext: UserContext, jobId: string):
     return false;
   }
   
-  // Check if assigned to this job
-  try {
-    const job = await storage.getJob(jobId, userContext.effectiveUserId);
-    if (!job) {
-      return false;
-    }
-    // Check both userId and teamMemberId for assignment
-    const isAssigned = job.assignedTo === userContext.userId ||
-                       (userContext.teamMemberId && job.assignedTo === userContext.teamMemberId);
-    return isAssigned;
-  } catch (error) {
-    console.error('Error checking job write access:', error);
-    return false;
-  }
+  // Check if assigned to this job (legacy assignedTo field + job_assignments table)
+  return isUserAssignedToJob(userContext.userId, jobId, userContext.effectiveUserId, userContext.teamMemberId);
 }
 
 /**
  * Helper to check if user is assigned to a job (for staff assignment validation)
+ * Checks both legacy assignedTo field AND the job_assignments table for multi-worker assignments
  */
-export async function isUserAssignedToJob(userId: string, jobId: string, effectiveUserId: string): Promise<boolean> {
+export async function isUserAssignedToJob(
+  userId: string, 
+  jobId: string, 
+  effectiveUserId: string,
+  teamMemberId?: string | null
+): Promise<boolean> {
   try {
     const job = await storage.getJob(jobId, effectiveUserId);
     if (!job) {
       return false;
     }
-    return job.assignedTo === userId;
+    
+    // Check legacy assignedTo field
+    if (job.assignedTo === userId || (teamMemberId && job.assignedTo === teamMemberId)) {
+      return true;
+    }
+    
+    // Check job_assignments table for multi-worker assignments
+    try {
+      const assignments = await storage.getJobAssignments(jobId);
+      if (assignments && assignments.length > 0) {
+        return assignments.some((a: any) => 
+          a.isActive && (
+            a.userId === userId || 
+            (teamMemberId && a.teamMemberId === teamMemberId)
+          )
+        );
+      }
+    } catch (e) {
+      // job_assignments table may not exist in all environments
+    }
+    
+    return false;
   } catch (error) {
     console.error('Error checking job assignment:', error);
     return false;
