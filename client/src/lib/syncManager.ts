@@ -33,6 +33,7 @@ export interface SyncConflict {
   storeName: OfflineStoreName;
   localVersion: any;
   serverVersion: any;
+  fileAttachmentIds?: string[];
   resolvedAt?: number;
   createdAt: number;
 }
@@ -394,6 +395,7 @@ class SyncManager {
       storeName: operation.storeName,
       localVersion: operation.data,
       serverVersion,
+      fileAttachmentIds: operation.fileAttachmentIds,
       createdAt: Date.now(),
     };
 
@@ -619,6 +621,7 @@ class SyncManager {
         endpoint: `/api/${conflict.storeName}/${entityId}`,
         method: 'PATCH',
         data: resolvedVersion,
+        fileAttachmentIds: conflict.fileAttachmentIds,
       });
     };
 

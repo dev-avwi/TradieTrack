@@ -1,5 +1,6 @@
 import {
   getSyncQueue,
+  addToSyncQueue,
   removeSyncItem,
   saveItem,
   getAllItems,
@@ -385,8 +386,22 @@ export async function processSyncQueue(): Promise<SyncResult> {
             }
           }
 
+          await removeSyncItem(operation.id);
+          result.synced++;
+
           if (operation.fileAttachmentIds?.length && serverId) {
-            await uploadAndLinkAttachments(operation, serverId);
+            try {
+              await uploadAndLinkAttachments(operation, serverId);
+            } catch (attachErr) {
+              await addToSyncQueue({
+                storeName: operation.storeName,
+                type: 'update',
+                endpoint: `/api/${operation.storeName}/${serverId}`,
+                method: 'PATCH',
+                data: { id: serverId },
+                fileAttachmentIds: operation.fileAttachmentIds,
+              });
+            }
           }
         } else if (operation.type === 'update') {
           const serverResponse = await response.json();
@@ -395,20 +410,32 @@ export async function processSyncQueue(): Promise<SyncResult> {
             queryClient.setQueryData([`/api/${operation.storeName}`, String(serverResponse.id)], serverResponse);
           }
 
+          await removeSyncItem(operation.id);
+          result.synced++;
+
           if (operation.fileAttachmentIds?.length && serverResponse.id) {
-            await uploadAndLinkAttachments(operation, serverResponse.id);
+            try {
+              await uploadAndLinkAttachments(operation, serverResponse.id);
+            } catch (attachErr) {
+              await addToSyncQueue({
+                storeName: operation.storeName,
+                type: 'update',
+                endpoint: `/api/${operation.storeName}/${serverResponse.id}`,
+                method: 'PATCH',
+                data: { id: serverResponse.id },
+                fileAttachmentIds: operation.fileAttachmentIds,
+              });
+            }
           }
         } else if (operation.type === 'delete') {
           const itemId = operation.data?.id;
           if (itemId) {
             await deleteItem(operation.storeName, itemId);
-            // Remove from detail cache
             queryClient.removeQueries({ queryKey: [`/api/${operation.storeName}`, String(itemId)] });
           }
+          await removeSyncItem(operation.id);
+          result.synced++;
         }
-
-        await removeSyncItem(operation.id);
-        result.synced++;
         
         // Invalidate list cache to refresh the list view
         queryClient.invalidateQueries({ queryKey: [`/api/${operation.storeName}`] });
