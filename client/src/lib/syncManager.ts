@@ -588,7 +588,16 @@ class SyncManager {
 
     let entityId = conflict.localVersion.id;
     if (typeof entityId === 'string' && entityId.startsWith('offline_')) {
-      const serverId = this.idMappings.get(entityId);
+      let serverId = this.idMappings.get(entityId);
+      if (!serverId) {
+        try {
+          const stored = localStorage.getItem('jobrunner_id_mapping');
+          if (stored) {
+            const mapping = JSON.parse(stored);
+            serverId = mapping[entityId];
+          }
+        } catch { /* ignore parse errors */ }
+      }
       if (serverId) entityId = serverId;
     }
 

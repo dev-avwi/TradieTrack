@@ -350,6 +350,7 @@ export async function processSyncQueue(): Promise<SyncResult> {
         if (serverCheckResponse.ok) {
           const serverItem = await serverCheckResponse.json();
           if (serverItem && hasFieldConflict(resolvedData, serverItem)) {
+            await removeSyncItem(operation.id);
             syncManager.registerConflict(operation, serverItem);
             continue;
           }
