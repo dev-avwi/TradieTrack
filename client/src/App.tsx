@@ -63,6 +63,8 @@ import TeamOperations from "@/pages/TeamOperations";
 import PaymentPage from "@/pages/PaymentPage";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
+import DeleteAccount from "@/pages/DeleteAccount";
+import Support from "@/pages/Support";
 import TrackArrival from "@/pages/TrackArrival";
 import Reports from "@/pages/Reports";
 import Calculators from "@/pages/Calculators";
@@ -1296,6 +1298,12 @@ function AppLayout() {
     }
     if (location === '/terms' || location === '/terms-of-service') {
       return <TermsOfService />;
+    }
+    if (location === '/delete-account' || location === '/delete-account/') {
+      return <DeleteAccount />;
+    }
+    if (location === '/support' || location === '/support/') {
+      return <Support />;
     }
     // Show accept-invite page without authentication (team members accepting invitations)
     if (location.startsWith('/accept-invite/')) {
