@@ -612,34 +612,26 @@ class SyncManager {
 
     await removeSyncItem(conflict.operationId);
 
+    const requeueResolution = async () => {
+      await addToSyncQueue({
+        storeName: conflict.storeName,
+        type: 'update',
+        endpoint: `/api/${conflict.storeName}/${entityId}`,
+        method: 'PATCH',
+        data: resolvedVersion,
+      });
+    };
+
     if (isOnline()) {
       try {
         const endpoint = `/api/${conflict.storeName}/${entityId}`;
         await apiRequest('PATCH', endpoint, resolvedVersion);
       } catch (error) {
         console.error('Failed to sync resolved conflict:', error);
-        await addToSyncQueue({
-          id: `resolved_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-          storeName: conflict.storeName,
-          type: 'update',
-          endpoint: `/api/${conflict.storeName}/${entityId}`,
-          method: 'PATCH',
-          data: resolvedVersion,
-          retries: 0,
-          createdAt: Date.now(),
-        });
+        await requeueResolution();
       }
     } else {
-      await addToSyncQueue({
-        id: `resolved_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-        storeName: conflict.storeName,
-        type: 'update',
-        endpoint: `/api/${conflict.storeName}/${entityId}`,
-        method: 'PATCH',
-        data: resolvedVersion,
-        retries: 0,
-        createdAt: Date.now(),
-      });
+      await requeueResolution();
     }
 
     conflict.resolvedAt = Date.now();
