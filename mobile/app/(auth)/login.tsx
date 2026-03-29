@@ -457,6 +457,16 @@ export default function LoginScreen() {
             </CardContent>
           </Card>
 
+          <Text style={styles.termsNotice}>
+            By signing in, you agree to our{' '}
+            <Text style={styles.termsLink} onPress={() => router.push('/more/terms-of-service' as any)}>
+              Terms of Service
+            </Text>{' '}and{' '}
+            <Text style={styles.termsLink} onPress={() => router.push('/more/privacy-policy' as any)}>
+              Privacy Policy
+            </Text>
+          </Text>
+
           <View style={styles.spacer} />
 
           <View style={styles.signUpContainer}>
@@ -715,6 +725,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   primaryButtonText: {
     color: colors.primaryForeground,
     fontSize: 16,
+    fontWeight: '600',
+  },
+  termsNotice: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: 16,
+    paddingHorizontal: 20,
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: colors.primary,
     fontWeight: '600',
   },
 });

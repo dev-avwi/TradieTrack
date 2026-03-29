@@ -477,6 +477,16 @@ export default function RegisterScreen() {
             </CardContent>
           </Card>
 
+          <Text style={styles.termsNotice}>
+            By creating an account, you agree to our{' '}
+            <Text style={styles.termsLink} onPress={() => router.push('/more/terms-of-service' as any)}>
+              Terms of Service
+            </Text>{' '}and{' '}
+            <Text style={styles.termsLink} onPress={() => router.push('/more/privacy-policy' as any)}>
+              Privacy Policy
+            </Text>
+          </Text>
+
           <View style={styles.spacer} />
 
           <View style={styles.signInContainer}>
@@ -734,5 +744,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 12,
     color: colors.mutedForeground,
     textAlign: 'center',
+  },
+  termsNotice: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: 16,
+    paddingHorizontal: 20,
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: colors.primary,
+    fontWeight: '600',
   },
 });

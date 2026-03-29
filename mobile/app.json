@@ -156,7 +156,11 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
-      "newArchEnabled": true
+      "newArchEnabled": true,
+      "runtimeVersion": {
+        "policy": "appVersion"
+      },
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
