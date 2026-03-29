@@ -68,7 +68,6 @@ export default function TradieDashboard({
   // Fetch active time entry across all jobs
   const { data: activeTimeEntry } = useQuery<any>({
     queryKey: ["/api/time-entries/active/current"],
-    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Fetch today's time entries for summary using time-tracking dashboard

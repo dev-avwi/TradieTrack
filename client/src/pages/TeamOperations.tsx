@@ -276,7 +276,6 @@ function LiveOpsTab() {
 
   const { data: presence = [], isLoading: presenceLoading } = useQuery<TeamPresenceData[]>({
     queryKey: ["/api/team/presence"],
-    refetchInterval: 10000,
   });
 
   const { data: members = [], isLoading: membersLoading } = useQuery<TeamMemberData[]>({
@@ -285,7 +284,6 @@ function LiveOpsTab() {
 
   const { data: activities = [], isLoading: activitiesLoading } = useQuery<ActivityFeedItem[]>({
     queryKey: ["/api/activity-feed", { limit: 30 }],
-    refetchInterval: 10000,
   });
 
   const { data: allJobs = [] } = useQuery<JobData[]>({

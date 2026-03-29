@@ -50,7 +50,6 @@ export default function TeamChatPage() {
 
   const { data: messages = [], isLoading } = useQuery<TeamChatMessage[]>({
     queryKey: ['/api/team-chat'],
-    refetchInterval: 5000,
   });
 
   const sendMessageMutation = useMutation({

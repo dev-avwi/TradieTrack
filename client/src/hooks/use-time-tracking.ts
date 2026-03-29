@@ -44,7 +44,6 @@ export function useTimeTracking(jobId: string): UseTimeTrackingReturn {
       if (!response.ok) throw new Error('Failed to fetch time entries');
       return response.json();
     },
-    refetchInterval: 60000, // Refresh every minute to reconcile cross-client changes
   });
 
   // Derive active entry (entry without endTime)

@@ -637,13 +637,11 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
   const { data: teamLocations = [], isLoading: teamLoading, refetch: refetchTeam } = useQuery<TeamMemberLocation[]>({
     queryKey: ["/api/map/team-locations"],
     enabled: isTeam,
-    refetchInterval: 30000,
   });
 
   const { data: geofenceAlerts = [], refetch: refetchAlerts } = useQuery<GeofenceAlert[]>({
     queryKey: ["/api/map/geofence-alerts"],
     enabled: isTeam,
-    refetchInterval: 60000,
   });
 
   const { data: currentUser } = useQuery<any>({

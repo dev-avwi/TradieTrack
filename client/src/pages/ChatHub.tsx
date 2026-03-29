@@ -430,12 +430,10 @@ export default function ChatHub() {
 
   const { data: unreadCounts = { teamChat: 0, directMessages: 0, jobChats: 0, sms: 0 } } = useQuery<UnreadCounts>({
     queryKey: ['/api/chat/unread-counts'],
-    refetchInterval: 30000,
   });
 
   const { data: teamMessages = [], isLoading: teamLoading } = useQuery<TeamChatMessage[]>({
     queryKey: ['/api/team-chat'],
-    refetchInterval: 30000,
   });
 
   const { data: dmConversations = [], isLoading: dmLoading } = useQuery<Conversation[]>({
@@ -463,7 +461,6 @@ export default function ChatHub() {
 
   const { data: smsConversations = [], isLoading: smsLoading } = useQuery<SmsConversation[]>({
     queryKey: ['/api/sms/conversations'],
-    refetchInterval: 30000,
   });
 
   const { data: userSmsTemplates = [] } = useQuery<MessageTemplate[]>({

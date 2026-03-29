@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { RefreshCw } from "lucide-react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient, clearSessionToken, getSessionToken, apiRequest } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -1038,10 +1039,19 @@ function AppLayout() {
   // Wire up real-time WebSocket updates for live UI synchronization
   // This handles job status changes, timer events, document updates, payments, etc.
   // MUST be called unconditionally before any early returns (React Rules of Hooks)
-  useRealtimeUpdates({
+  const wsEnabled = !!userCheck && !!realtimeBusinessId && !isLoading && !businessSettingsLoading;
+  const { isConnected: wsConnected } = useRealtimeUpdates({
     businessId: realtimeBusinessId,
-    enabled: !!userCheck && !!realtimeBusinessId && !isLoading && !businessSettingsLoading,
+    enabled: wsEnabled,
   });
+  const [showReconnecting, setShowReconnecting] = useState(false);
+  useEffect(() => {
+    if (wsEnabled && !wsConnected) {
+      const timer = setTimeout(() => setShowReconnecting(true), 3000);
+      return () => clearTimeout(timer);
+    }
+    setShowReconnecting(false);
+  }, [wsEnabled, wsConnected]);
 
   // Initialize and update trade colors based on theme and trade selection
   // IMPORTANT: All useEffect hooks must be called before any conditional returns
@@ -1468,6 +1478,13 @@ function AppLayout() {
               {userCheck && !userCheck.isOwner && <BusinessPicker userId={userCheck.id} />}
               {/* Offline Indicator */}
               <OfflineIndicator />
+              {/* WebSocket Reconnecting Indicator */}
+              {showReconnecting && (
+                <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-yellow-500/90 text-white text-xs font-medium" role="status" aria-live="polite" data-testid="ws-reconnecting-banner">
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                  <span>Reconnecting to live updates...</span>
+                </div>
+              )}
               {/* Trial Banner */}
               {userCheck?.trialStatus === 'active' && userCheck?.trialEndsAt && (
                 <TrialBanner trialEndsAt={userCheck.trialEndsAt} onUpgrade={() => setLocation('/settings?tab=subscription')} />

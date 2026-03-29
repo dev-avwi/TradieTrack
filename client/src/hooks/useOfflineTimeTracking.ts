@@ -272,7 +272,6 @@ export function useOfflineTimeTracking(
     queryKey: jobId ? ['/api/time-entries', jobId] : ['/api/time-entries'],
     queryFn,
     staleTime: 60000,
-    refetchInterval: isOffline ? false : 60000,
   });
 
   useEffect(() => {

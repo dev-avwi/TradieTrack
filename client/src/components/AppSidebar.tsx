@@ -50,7 +50,6 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
   // Fetch unread counts for notification badges
   const { data: unreadCounts } = useQuery<UnreadCounts>({
     queryKey: ['/api/chat/unread-counts'],
-    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   const filterOptions = { isTeam, isTradie, isOwner, isManager, userRole, isSimpleMode, hasProSubscription: canUseAIFeatures };

@@ -100,6 +100,38 @@ interface ChatMessageEvent {
   timestamp: number;
 }
 
+interface TeamPresenceChangedEvent {
+  type: 'team_presence_changed';
+  userId: string;
+  status: string;
+  statusMessage?: string;
+  currentJobId?: string;
+  timestamp: number;
+}
+
+interface ActivityFeedUpdatedEvent {
+  type: 'activity_feed_updated';
+  timestamp: number;
+}
+
+interface TeamMemberChangedEvent {
+  type: 'team_member_changed';
+  action: 'invited' | 'updated' | 'removed' | 'accepted';
+  memberId?: string;
+  timestamp: number;
+}
+
+interface GeofenceAlertEvent {
+  type: 'geofence_alert';
+  alertId: string;
+  alertType: string;
+  userId: string;
+  jobId: string;
+  userName?: string;
+  jobTitle?: string;
+  timestamp: number;
+}
+
 type RealtimeEvent = 
   | JobStatusEvent 
   | TimerEvent 
@@ -110,7 +142,11 @@ type RealtimeEvent =
   | BusinessSettingsChangedEvent
   | TemplateChangedEvent
   | FormChangedEvent
-  | ChatMessageEvent;
+  | ChatMessageEvent
+  | TeamPresenceChangedEvent
+  | ActivityFeedUpdatedEvent
+  | TeamMemberChangedEvent
+  | GeofenceAlertEvent;
 
 interface UseRealtimeUpdatesOptions {
   businessId: string;
@@ -176,10 +212,18 @@ export function useRealtimeUpdates({
     switch (event.type) {
       case 'job_status_changed':
         callbacks.onJobStatusChange?.(event);
-        // Auto-invalidate job queries
         safeInvalidateQueries({ queryKey: ['/api/jobs'] });
         safeInvalidateQueries({ queryKey: ['/api/jobs', event.jobId] });
         safeInvalidateQueries({ queryKey: ['/api/dashboard'] });
+        safeInvalidateQueries({ queryKey: ['/api/dispatch/board'] });
+        safeInvalidateQueries({ queryKey: ['/api/ops/health'] });
+        safeInvalidateQueries({ queryKey: ['/api/ops/job-aging'] });
+        safeInvalidateQueries({ queryKey: ['/api/dispatch/resources'] });
+        safeInvalidateQueries({ queryKey: ['/api/map/jobs'] });
+        safeInvalidateQueries({ queryKey: ['/api/activity-feed'] });
+        safeInvalidateQueries({ queryKey: ['/api/notifications'] });
+        safeInvalidateQueries({ queryKey: ['/api/notifications/missed'] });
+        safeInvalidateQueries({ queryKey: ['/api/notifications/unified'] });
         break;
 
       case 'timer_event':
@@ -187,8 +231,10 @@ export function useRealtimeUpdates({
         // Auto-invalidate time entry queries
         safeInvalidateQueries({ queryKey: ['/api/time-entries'] });
         safeInvalidateQueries({ queryKey: ['/api/time-entries/active/current'] });
+        safeInvalidateQueries({ queryKey: ['/api/time-tracking/dashboard'] });
         if (event.jobId) {
           safeInvalidateQueries({ queryKey: ['/api/jobs', event.jobId] });
+          safeInvalidateQueries({ queryKey: ['/api/time-entries', event.jobId] });
         }
         break;
 
@@ -206,13 +252,15 @@ export function useRealtimeUpdates({
 
       case 'payment_received':
         callbacks.onPaymentReceived?.(event);
-        // Show celebratory toast
         toast({
           title: "Payment Received!",
           description: `$${(event.amount / 100).toFixed(2)} from ${event.clientName || 'a client'}`,
         });
         safeInvalidateQueries({ queryKey: ['/api/invoices'] });
         safeInvalidateQueries({ queryKey: ['/api/payments'] });
+        safeInvalidateQueries({ queryKey: ['/api/notifications'] });
+        safeInvalidateQueries({ queryKey: ['/api/notifications/missed'] });
+        safeInvalidateQueries({ queryKey: ['/api/notifications/unified'] });
         safeInvalidateQueries({ queryKey: ['/api/payment-requests'] });
         safeInvalidateQueries({ queryKey: ['/api/dashboard'] });
         break;
@@ -231,6 +279,7 @@ export function useRealtimeUpdates({
           variant: event.severity === 'error' ? 'destructive' : 'default',
         });
         safeInvalidateQueries({ queryKey: ['/api/notifications'] });
+        safeInvalidateQueries({ queryKey: ['/api/notifications/missed'] });
         break;
 
       case 'business_settings_changed':
@@ -281,6 +330,30 @@ export function useRealtimeUpdates({
             }
           }
         }
+        break;
+
+      case 'team_presence_changed':
+        safeInvalidateQueries({ queryKey: ['/api/team/presence'] });
+        safeInvalidateQueries({ queryKey: ['/api/map/team-locations'] });
+        safeInvalidateQueries({ queryKey: ['/api/team/utilization'] });
+        break;
+
+      case 'activity_feed_updated':
+        safeInvalidateQueries({ queryKey: ['/api/activity-feed'] });
+        safeInvalidateQueries({ queryKey: ['/api/notifications/unified'] });
+        safeInvalidateQueries({ queryKey: ['/api/notifications/missed'] });
+        safeInvalidateQueries({ queryKey: ['/api/notifications'] });
+        break;
+
+      case 'team_member_changed':
+        safeInvalidateQueries({ queryKey: ['/api/team/members'] });
+        safeInvalidateQueries({ queryKey: ['/api/team/presence'] });
+        safeInvalidateQueries({ queryKey: ['/api/dispatch/board'] });
+        break;
+
+      case 'geofence_alert':
+        safeInvalidateQueries({ queryKey: ['/api/geofence-alerts'] });
+        safeInvalidateQueries({ queryKey: ['/api/map/geofence-alerts'] });
         break;
     }
   }, [toast]);
@@ -356,7 +429,11 @@ export function useRealtimeUpdates({
             'business_settings_changed',
             'template_changed',
             'form_changed',
-            'chat_message'
+            'chat_message',
+            'team_presence_changed',
+            'activity_feed_updated',
+            'team_member_changed',
+            'geofence_alert'
           ].includes(message.type)) {
             handleMessage(message as RealtimeEvent);
           }

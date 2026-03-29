@@ -170,7 +170,6 @@ export default function WorkerCommandCenter({ memberId, open, onOpenChange }: Wo
       return response.json();
     },
     enabled: open && !!memberId,
-    refetchInterval: 30000,
   });
 
   const assignJobMutation = useMutation({

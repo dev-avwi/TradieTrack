@@ -80,7 +80,6 @@ export default function JobCard({
   // Fetch active timer to check if it's for this job
   const { data: activeTimer } = useQuery({
     queryKey: ['/api/time-entries/active/current'],
-    refetchInterval: 15000,
     staleTime: 10000,
   });
   

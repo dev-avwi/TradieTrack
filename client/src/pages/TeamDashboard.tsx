@@ -1108,7 +1108,6 @@ export default function TeamDashboard() {
 
   const { data: presence = [], isLoading: presenceLoading } = useQuery<TeamPresenceData[]>({
     queryKey: ["/api/team/presence"],
-    refetchInterval: 10000,
   });
 
   const { data: members = [], isLoading: membersLoading } = useQuery<TeamMemberData[]>({
@@ -1117,7 +1116,6 @@ export default function TeamDashboard() {
 
   const { data: activities = [], isLoading: activitiesLoading } = useQuery<ActivityFeedItem[]>({
     queryKey: ["/api/activity-feed", { limit: 30 }],
-    refetchInterval: 10000,
     enabled: !!user,
   });
 
@@ -1128,7 +1126,6 @@ export default function TeamDashboard() {
 
   const { data: utilization, isLoading: utilizationLoading } = useQuery<TeamUtilizationData>({
     queryKey: ["/api/team/utilization"],
-    refetchInterval: 30000,
   });
 
   // Derive filtered views from allJobs

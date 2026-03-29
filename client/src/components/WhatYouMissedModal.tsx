@@ -54,7 +54,6 @@ export default function WhatYouMissedModal() {
 
   const { data } = useQuery<MissedNotificationsResponse>({
     queryKey: ['/api/notifications/missed'],
-    refetchInterval: 60000,
   });
 
   // Show modal when there are new notifications that haven't been shown yet

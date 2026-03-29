@@ -171,7 +171,6 @@ export default function StaffTradieDashboard({
   // Fetch active time entry
   const { data: activeTimeEntry } = useQuery<any>({
     queryKey: ["/api/time-entries/active/current"],
-    refetchInterval: 30000,
   });
 
   // Fetch today's time tracking data

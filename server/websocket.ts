@@ -503,3 +503,57 @@ export function broadcastDirectChatMessage(
     timestamp: Date.now(),
   });
 }
+
+export function broadcastTeamPresenceChange(
+  businessId: string,
+  presenceDetails: {
+    userId: string;
+    status: string;
+    statusMessage?: string;
+    currentJobId?: string;
+  }
+) {
+  broadcastToBusinessUsers(businessId, {
+    type: 'team_presence_changed',
+    ...presenceDetails,
+    timestamp: Date.now(),
+  });
+}
+
+export function broadcastActivityFeedUpdate(businessId: string) {
+  broadcastToBusinessUsers(businessId, {
+    type: 'activity_feed_updated',
+    timestamp: Date.now(),
+  });
+}
+
+export function broadcastTeamMemberChange(
+  businessId: string,
+  action: 'invited' | 'updated' | 'removed' | 'accepted',
+  memberId?: string
+) {
+  broadcastToBusinessUsers(businessId, {
+    type: 'team_member_changed',
+    action,
+    memberId,
+    timestamp: Date.now(),
+  });
+}
+
+export function broadcastGeofenceAlert(
+  businessId: string,
+  alertDetails: {
+    alertId: string;
+    alertType: string;
+    userId: string;
+    jobId: string;
+    userName?: string;
+    jobTitle?: string;
+  }
+) {
+  broadcastToBusinessUsers(businessId, {
+    type: 'geofence_alert',
+    ...alertDetails,
+    timestamp: Date.now(),
+  });
+}

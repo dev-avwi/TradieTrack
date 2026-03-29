@@ -825,7 +825,6 @@ function OpsHealthBanner({ opsHealth }: { opsHealth?: OpsHealth }) {
 
   const { data: jobAgingData } = useQuery({
     queryKey: ['/api/ops/job-aging'],
-    refetchInterval: 30000,
   });
 
   if (!opsHealth) return null;
@@ -1071,7 +1070,6 @@ export default function DispatchBoard() {
 
   const { data: opsHealth } = useQuery<OpsHealth>({
     queryKey: ['/api/ops/health'],
-    refetchInterval: 30000,
   });
 
   const { data: dispatchResources } = useQuery<{
@@ -1083,7 +1081,6 @@ export default function DispatchBoard() {
     availableEquipment: number;
   }>({
     queryKey: ['/api/dispatch/resources'],
-    refetchInterval: 60000,
   });
 
   // Apply AI suggestion mutation

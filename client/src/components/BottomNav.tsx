@@ -33,7 +33,6 @@ export default function BottomNav({ onNavigate }: BottomNavProps) {
 
   const { data: unreadCounts } = useQuery<UnreadCountsResponse>({
     queryKey: ['/api/chat/unread-counts'],
-    refetchInterval: 30000,
     staleTime: 10000,
   });
 

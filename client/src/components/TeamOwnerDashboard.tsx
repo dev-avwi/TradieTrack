@@ -150,7 +150,6 @@ export default function TeamOwnerDashboard({
   }
   const { data: presenceData = [] } = useQuery<PresenceData[]>({
     queryKey: ["/api/team/presence"],
-    refetchInterval: 30000,
     enabled: hasActiveTeam,
   });
   

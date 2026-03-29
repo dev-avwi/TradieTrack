@@ -426,6 +426,10 @@ async function logActivity(
       entityId,
       metadata: enrichedMetadata,
     });
+    try {
+      const { broadcastActivityFeedUpdate } = await import('./websocket');
+      broadcastActivityFeedUpdate(userId);
+    } catch {}
   } catch (error) {
     console.error('Failed to log activity:', error);
   }
@@ -29073,6 +29077,11 @@ Respond with JSON in this format:
       } catch (notifErr) {
         console.error('Failed to send team member invited notification:', notifErr);
       }
+
+      try {
+        const { broadcastTeamMemberChange } = await import('./websocket');
+        broadcastTeamMemberChange(userId, 'invited', newMember.id);
+      } catch {}
       
       res.json({ ...newMember, smsSent, smsError });
     } catch (error) {
@@ -29168,6 +29177,10 @@ Respond with JSON in this format:
       if (roleId !== undefined) updateData.roleId = roleId;
       
       const updated = await storage.updateTeamMember(memberId, effectiveUserId, updateData);
+      try {
+        const { broadcastTeamMemberChange } = await import('./websocket');
+        broadcastTeamMemberChange(effectiveUserId, 'updated', memberId);
+      } catch {}
       res.json(updated);
     } catch (error) {
       console.error('Error updating team member:', error);
@@ -29188,6 +29201,10 @@ Respond with JSON in this format:
       }
       
       await storage.deleteTeamMember(memberId, effectiveUserId);
+      try {
+        const { broadcastTeamMemberChange } = await import('./websocket');
+        broadcastTeamMemberChange(effectiveUserId, 'removed', memberId);
+      } catch {}
       res.json({ success: true });
     } catch (error) {
       console.error('Error removing team member:', error);
@@ -31756,6 +31773,17 @@ Respond with JSON in this format:
         ...logContext,
         alertId: alert.id
       }));
+
+      try {
+        const { broadcastGeofenceAlert } = await import('./websocket');
+        broadcastGeofenceAlert(effectiveUserId, {
+          alertId: alert.id,
+          alertType: action === 'enter' ? 'arrival' : 'departure',
+          userId,
+          jobId: job.id,
+          jobTitle: job.title,
+        });
+      } catch {}
 
       // Create in-app notification and push notification for geofence events
       try {
@@ -39684,6 +39712,15 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       }
       
       const presence = await storage.updatePresence(userId, businessOwnerId, updateData);
+      try {
+        const { broadcastTeamPresenceChange } = await import('./websocket');
+        broadcastTeamPresenceChange(businessOwnerId, {
+          userId,
+          status: status || 'online',
+          statusMessage,
+          currentJobId,
+        });
+      } catch {}
       res.json(presence);
     } catch (error: any) {
       console.error('Error updating presence:', error);

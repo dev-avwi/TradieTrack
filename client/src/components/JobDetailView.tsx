@@ -650,7 +650,6 @@ export default function JobDetailView({
   // Fetch active timer to check if timer is running for this job
   const { data: globalActiveTimer } = useQuery<{ id: string; jobId?: string; startTime: string; description?: string } | null>({
     queryKey: ['/api/time-entries/active/current'],
-    refetchInterval: 15000,
     staleTime: 10000,
   });
 

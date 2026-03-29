@@ -20,7 +20,6 @@ export function PaymentToastProvider() {
 
   const { data: notifications } = useQuery<PaymentNotification[]>({
     queryKey: ['/api/notifications'],
-    refetchInterval: 30000,
     refetchOnWindowFocus: true,
   });
 
