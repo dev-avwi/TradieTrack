@@ -31480,7 +31480,7 @@ Respond with JSON in this format:
   // Upload media to a job via multipart form (for large files like videos)
   const upload = multer({ 
     storage: multer.memoryStorage(),
-    limits: { fileSize: 500 * 1024 * 1024 } // 500MB limit for videos
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit for photos/videos
   });
   
   // Team-aware: multipart uploads stored under effectiveUserId so all team members can see them
@@ -33394,7 +33394,7 @@ Respond with JSON in this format:
   // Upload attachment for job chat (photos, videos, files)
   const chatUpload = multer({ 
     storage: multer.memoryStorage(),
-    limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit for chat attachments
+    limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit for chat attachments
   });
   
   app.post("/api/jobs/:jobId/chat/upload", requireAuth, chatUpload.single('file'), async (req: any, res) => {

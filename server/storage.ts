@@ -1176,9 +1176,11 @@ export interface IStorage {
   deleteTrainingRecord(id: string, userId: string): Promise<boolean>;
 }
 
-// Initialize database connection using standard pg driver
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL!,
+  max: 30,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 export const db = drizzle(pool);
 
