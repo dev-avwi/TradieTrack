@@ -1043,12 +1043,12 @@ function AppLayout() {
   const wsEnabled = !!userCheck && !!realtimeBusinessId && !isLoading && !businessSettingsLoading;
   const collaborationCtx = React.useContext(JobCollaborationCtxRaw);
   
-  const handleJobEditingPresence = useCallback((event: any) => {
-    (collaborationCtx as any)?._dispatchPresence?.(event.jobId, event.editors);
+  const handleJobEditingPresence = useCallback((event: { jobId: string; editors: { userId: string; userName: string; joinedAt: number }[] }) => {
+    collaborationCtx?._dispatchPresence(event.jobId, event.editors);
   }, [collaborationCtx]);
   
-  const handleJobFieldUpdated = useCallback((event: any) => {
-    (collaborationCtx as any)?._dispatchFieldUpdate?.(event);
+  const handleJobFieldUpdated = useCallback((event: { jobId: string; updatedFields: string[]; updatedBy: string; updatedByName: string; version: number; serverData: Record<string, unknown>; timestamp: number }) => {
+    collaborationCtx?._dispatchFieldUpdate(event);
   }, [collaborationCtx]);
   
   const { isConnected: wsConnected, sendMessage: wsSendMessage } = useRealtimeUpdates({

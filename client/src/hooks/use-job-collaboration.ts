@@ -85,7 +85,8 @@ export function useJobCollaboration(jobId: string | undefined, currentUserId: st
     serverData: Record<string, unknown>,
     serverVersion: number,
   ) => {
-    const changedFields = Object.keys(localChanges).filter(k =>
+    const dirty = dirtyFieldsRef.current;
+    const changedFields = Array.from(dirty).filter(k =>
       k !== 'version' && k !== 'updatedAt' &&
       JSON.stringify(localChanges[k]) !== JSON.stringify(serverData[k])
     );

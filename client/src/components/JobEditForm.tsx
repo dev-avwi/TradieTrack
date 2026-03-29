@@ -26,7 +26,6 @@ const jobEditSchema = z.object({
   scheduledAt: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
   estimatedHours: z.string().optional(),
-  notes: z.string().optional(),
   geofenceEnabled: z.boolean().default(false),
   geofenceRadius: z.coerce.number().min(50).max(500).default(100),
 });
@@ -45,6 +44,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
   const [isLoading, setIsLoading] = useState(true);
   const [addressConfirmed, setAddressConfirmed] = useState(true);
   const jobVersionRef = useRef<number>(1);
+  const initialLoadDone = useRef(false);
 
   const { data: job, isLoading: jobLoading, error: jobError } = useQuery<Job>({
     queryKey: ['/api/jobs', jobId],
@@ -66,14 +66,14 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
       scheduledAt: "",
       priority: "medium",
       estimatedHours: "",
-      notes: "",
       geofenceEnabled: false,
       geofenceRadius: 100,
     },
   });
 
   useEffect(() => {
-    if (job) {
+    if (job && !initialLoadDone.current) {
+      initialLoadDone.current = true;
       form.reset({
         title: job.title || "",
         description: job.description || "",
@@ -81,14 +81,43 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
         scheduledAt: job.scheduledAt ? new Date(job.scheduledAt).toISOString().slice(0, 16) : "",
         priority: (job.priority as "low" | "medium" | "high") || "medium",
         estimatedHours: job.estimatedHours?.toString() || "",
-        notes: job.notes || "",
         geofenceEnabled: job.geofenceEnabled || false,
         geofenceRadius: job.geofenceRadius || 100,
       });
-      jobVersionRef.current = (job as any).version || 1;
+      jobVersionRef.current = (job as Record<string, unknown>).version as number || 1;
       setIsLoading(false);
+    } else if (job && initialLoadDone.current) {
+      jobVersionRef.current = (job as Record<string, unknown>).version as number || jobVersionRef.current;
+      const dirtyFields = collaboration.dirtyFieldsRef.current;
+      if (dirtyFields.size === 0) {
+        form.reset({
+          title: job.title || "",
+          description: job.description || "",
+          address: job.address || "",
+          scheduledAt: job.scheduledAt ? new Date(job.scheduledAt).toISOString().slice(0, 16) : "",
+          priority: (job.priority as "low" | "medium" | "high") || "medium",
+          estimatedHours: job.estimatedHours?.toString() || "",
+          geofenceEnabled: job.geofenceEnabled || false,
+          geofenceRadius: job.geofenceRadius || 100,
+        });
+      } else {
+        const serverValues: Record<string, string | boolean | number> = {
+          title: job.title || "",
+          description: job.description || "",
+          address: job.address || "",
+          scheduledAt: job.scheduledAt ? new Date(job.scheduledAt).toISOString().slice(0, 16) : "",
+          priority: (job.priority as "low" | "medium" | "high") || "medium",
+          estimatedHours: job.estimatedHours?.toString() || "",
+          geofenceEnabled: job.geofenceEnabled || false,
+          geofenceRadius: job.geofenceRadius || 100,
+        };
+        const fieldsToUpdate = Object.keys(serverValues).filter(f => !dirtyFields.has(f));
+        fieldsToUpdate.forEach(field => {
+          form.setValue(field as keyof JobEditData, serverValues[field] as never);
+        });
+      }
     }
-  }, [job, form]);
+  }, [job, form, collaboration.dirtyFieldsRef]);
 
   const updateJobMutation = useMutation({
     mutationFn: async (data: JobEditData & { version?: number }) => {
@@ -124,7 +153,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
       });
       onSave?.(jobId);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       if (error.message === 'VERSION_CONFLICT') return;
       toast({
         title: "Failed to update job",
@@ -239,6 +268,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                         <Input
                           placeholder="e.g., Hot Water System Repair"
                           {...field}
+                          onChange={(e) => { collaboration.markFieldDirty('title'); field.onChange(e); }}
                           data-testid="input-job-title"
                         />
                       </FormControl>
@@ -261,6 +291,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                           placeholder="Describe the job..."
                           className="min-h-[100px]"
                           {...field}
+                          onChange={(e) => { collaboration.markFieldDirty('description'); field.onChange(e); }}
                           data-testid="input-job-description"
                         />
                       </FormControl>
@@ -278,7 +309,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                         <FieldUpdateIndicator fieldName="priority" updatedByName={collaboration.getFieldUpdateInfo('priority')?.updatedByName || ''} />
                       )}
                       <FormLabel>Priority</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={(val) => { collaboration.markFieldDirty('priority'); field.onChange(val); }} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-priority">
                             <SelectValue placeholder="Select priority" />
@@ -317,7 +348,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                       <FormControl>
                         <AddressAutocomplete
                           value={field.value || ''}
-                          onChange={field.onChange}
+                          onChange={(val: string) => { collaboration.markFieldDirty('address'); field.onChange(val); }}
                           onConfirmedChange={(confirmed) => setAddressConfirmed(confirmed)}
                           placeholder="Start typing an address..."
                           data-testid="input-job-address"
@@ -433,23 +464,9 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                 <CardTitle className="text-base">Notes</CardTitle>
               </CardHeader>
               <CardContent>
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Add any notes about this job..."
-                          className="min-h-[120px]"
-                          {...field}
-                          data-testid="input-job-notes"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <p className="text-sm text-muted-foreground">
+                  Notes are managed on the job detail view to prevent conflicts between editors.
+                </p>
               </CardContent>
             </Card>
           </form>
