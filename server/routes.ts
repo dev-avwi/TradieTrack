@@ -35599,7 +35599,7 @@ Respond with JSON in this format:
   });
   
   // Voice webhook for shared Twilio number — professional SMS-only message
-  app.post("/api/twilio/voice/shared", (req, res) => {
+  app.post("/api/twilio/voice/shared", validateTwilioWebhook, (req: any, res) => {
     res.type('text/xml');
     res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>

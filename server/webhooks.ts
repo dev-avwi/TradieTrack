@@ -8,29 +8,24 @@ export function setupStripeWebhooks(app: Express, stripe: any, storage: any) {
     return;
   }
 
-  // Stripe webhook endpoint (webhook signature verification)
+  // Legacy Stripe webhook endpoint (webhook signature verification)
   app.post('/api/webhooks/stripe', async (req: any, res) => {
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
-      console.warn('⚠️ STRIPE_WEBHOOK_SECRET not set - webhook verification disabled');
-      // In development, we can still process webhooks without verification
-      if (process.env.NODE_ENV === 'production') {
-        return res.status(400).send('Webhook secret not configured');
-      }
+      console.warn('⚠️ STRIPE_WEBHOOK_SECRET not set - rejecting webhook');
+      return res.status(400).send('Webhook secret not configured');
+    }
+
+    if (!sig) {
+      return res.status(400).send('Missing stripe-signature header');
     }
 
     let event;
 
     try {
-      // Verify webhook signature
-      if (webhookSecret && sig) {
-        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-      } else {
-        // Development mode - use raw body
-        event = req.body;
-      }
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
     } catch (err: any) {
       console.error('⚠️ Webhook signature verification failed:', err.message);
       return res.status(400).send(`Webhook Error: ${err.message}`);
