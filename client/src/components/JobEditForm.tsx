@@ -166,8 +166,15 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
   const handleConflictResolve = useCallback(async (resolvedData: Record<string, unknown>, serverVersion: number) => {
     collaboration.resolveConflict();
     try {
+      const normalizedData = { ...resolvedData };
+      if (normalizedData.scheduledAt && typeof normalizedData.scheduledAt === 'string') {
+        normalizedData.scheduledAt = normalizedData.scheduledAt ? new Date(normalizedData.scheduledAt as string).toISOString() : null;
+      }
+      if (normalizedData.estimatedHours && typeof normalizedData.estimatedHours === 'string') {
+        normalizedData.estimatedHours = parseFloat(normalizedData.estimatedHours as string) || null;
+      }
       const response = await apiRequest('PATCH', `/api/jobs/${jobId}`, {
-        ...resolvedData,
+        ...normalizedData,
         version: serverVersion,
       });
       if (response.ok) {
