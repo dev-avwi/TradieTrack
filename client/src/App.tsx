@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient, clearSessionToken, getSessionToken, apiRequest } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -14,104 +14,105 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeProvider, useTheme } from "@/components/ThemeProvider";
 import { getTradeInfo } from "@/data/tradeTypes";
 
-// Import components
 import AppSidebar from "@/components/AppSidebar";
 import BottomNav from "@/components/BottomNav";
 import Header from "@/components/Header";
 import FloatingAIChat from "@/components/FloatingAIChat";
 import PaymentToastProvider from "@/components/PaymentToastProvider";
 import RouteGuard from "@/components/RouteGuard";
-import Dashboard from "@/components/Dashboard";
-import JobsList from "@/components/JobsList";
-import ClientsList from "@/components/ClientsList";
-import QuotesList from "@/components/QuotesList";
-import QuoteForm from "@/components/QuoteForm";
-import QuoteDetailView from "@/components/QuoteDetailView";
-import JobForm from "@/components/JobForm";
-import JobEditForm from "@/components/JobEditForm";
-import InvoiceForm from "@/components/InvoiceForm";
-import DocumentEditor from "@/components/DocumentEditor";
-import LiveQuoteEditor from "@/components/LiveQuoteEditor";
-import LiveInvoiceEditor from "@/components/LiveInvoiceEditor";
-import ClientForm from "@/components/ClientForm";
-import InvoiceDetailView from "@/components/InvoiceDetailView";
-import ReceiptDetailView from "@/components/ReceiptDetailView";
-import ClientDetailView from "@/components/ClientDetailView";
-import JobDetailView from "@/components/JobDetailView";
-import JobCompletion from "@/components/JobCompletion";
-import InvoicesList from "@/components/InvoicesList";
-import CalendarView from "@/components/CalendarView";
-import Settings from "@/components/Settings";
-import EmailSetupGuide from "@/components/EmailSetupGuide";
-import More from "@/pages/More";
-import Integrations from "@/pages/Integrations";
-import ActionCenter from "@/pages/ActionCenter";
-import Insights from "@/pages/Insights";
-import Autopilot from "@/pages/Autopilot";
-import NotFound from "@/pages/not-found";
-import VerifyEmail from "@/pages/VerifyEmail";
-import VerifyEmailPending from "@/pages/VerifyEmailPending";
-import ResetPassword from "@/pages/ResetPassword";
-import AcceptInvite from "@/pages/AcceptInvite";
-import AcceptAssignment from "@/pages/AcceptAssignment";
-import JobInvite from "@/pages/JobInvite";
-import OpenApp from "@/pages/OpenApp";
-import QuoteModal from "@/components/QuoteModal";
-import InvoiceModal from "@/components/InvoiceModal";
-import TimeTrackingPage from "@/pages/TimeTracking";
-import TeamOperations from "@/pages/TeamOperations";
-import PaymentPage from "@/pages/PaymentPage";
-import PrivacyPolicy from "@/pages/PrivacyPolicy";
-import TermsOfService from "@/pages/TermsOfService";
-import DeleteAccount from "@/pages/DeleteAccount";
-import Support from "@/pages/Support";
-import TrackArrival from "@/pages/TrackArrival";
-import Reports from "@/pages/Reports";
-import Calculators from "@/pages/Calculators";
-import CollectPayment from "@/pages/CollectPayment";
-import TeamChatPage from "@/pages/TeamChat";
-import ChatHub from "@/pages/ChatHub";
-import JobMapPage from "@/pages/JobMap";
-import DirectMessagesPage from "@/pages/DirectMessages";
-import DispatchBoard from "@/pages/DispatchBoard";
-import SchedulePage from "@/pages/SchedulePage";
-import Automations from "@/pages/Automations";
-import RecurringJobs from "@/pages/RecurringJobs";
-import ServiceRemindersPage from "@/pages/ServiceReminders";
-import InventoryPage from "@/pages/InventoryPage";
-import RebatesPage from "@/pages/Rebates";
-import Leads from "@/pages/Leads";
-import AIVisualizationPage from "@/pages/AIVisualization";
-import PayrollReports from "@/pages/PayrollReports";
-import ClientPortal from "@/pages/ClientPortal";
-import BookingPage from "@/pages/BookingPage";
-import ClientPortalHub from "@/pages/ClientPortalHub";
-import JobPortal from "@/pages/JobPortal";
-import TeamGroups from "@/pages/TeamGroups";
-import PaymentHub from "@/pages/PaymentHub";
-import ExpensesPage from "@/pages/ExpensesPage";
-import WorkPage from "@/pages/WorkPage";
-import AdminDashboard from "@/pages/AdminDashboard";
-import AdminAppShell from "@/components/AdminAppShell";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
-import LandingPage from "@/pages/LandingPage";
-import SubscriptionPage from "@/pages/SubscriptionPage";
-import TemplatesHub from "@/pages/TemplatesHub";
-import DocumentsHub from "@/pages/DocumentsHub";
-import WhsHubPage from "@/pages/WhsHub";
-import CommunicationsHub from "@/pages/CommunicationsHub";
 import { KeyboardShortcutsDialog, useKeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import FirstTimeWalkthrough from "@/components/FirstTimeWalkthrough";
 import ImmersiveOnboarding from "@/components/ImmersiveOnboarding";
 import WhatYouMissedModal from "@/components/WhatYouMissedModal";
-import TimeEditAuditLog from "@/pages/TimeEditAuditLog";
-import ProfitabilityReport from "@/pages/ProfitabilityReport";
-import SubcontractorWebView from "@/pages/SubcontractorWebView";
-import FilesPage from "@/pages/Files";
-import AIReceptionist from "@/pages/AIReceptionist";
-import AIReceptionistCalls from "@/pages/AIReceptionistCalls";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import { useFeatureAccess } from "@/hooks/use-subscription";
+import AdminAppShell from "@/components/AdminAppShell";
+
+const Dashboard = React.lazy(() => import("@/components/Dashboard"));
+const JobsList = React.lazy(() => import("@/components/JobsList"));
+const ClientsList = React.lazy(() => import("@/components/ClientsList"));
+const QuotesList = React.lazy(() => import("@/components/QuotesList"));
+const QuoteForm = React.lazy(() => import("@/components/QuoteForm"));
+const QuoteDetailView = React.lazy(() => import("@/components/QuoteDetailView"));
+const JobForm = React.lazy(() => import("@/components/JobForm"));
+const JobEditForm = React.lazy(() => import("@/components/JobEditForm"));
+const InvoiceForm = React.lazy(() => import("@/components/InvoiceForm"));
+const DocumentEditor = React.lazy(() => import("@/components/DocumentEditor"));
+const LiveQuoteEditor = React.lazy(() => import("@/components/LiveQuoteEditor"));
+const LiveInvoiceEditor = React.lazy(() => import("@/components/LiveInvoiceEditor"));
+const ClientForm = React.lazy(() => import("@/components/ClientForm"));
+const InvoiceDetailView = React.lazy(() => import("@/components/InvoiceDetailView"));
+const ReceiptDetailView = React.lazy(() => import("@/components/ReceiptDetailView"));
+const ClientDetailView = React.lazy(() => import("@/components/ClientDetailView"));
+const JobDetailView = React.lazy(() => import("@/components/JobDetailView"));
+const JobCompletion = React.lazy(() => import("@/components/JobCompletion"));
+const InvoicesList = React.lazy(() => import("@/components/InvoicesList"));
+const CalendarView = React.lazy(() => import("@/components/CalendarView"));
+const Settings = React.lazy(() => import("@/components/Settings"));
+const EmailSetupGuide = React.lazy(() => import("@/components/EmailSetupGuide"));
+const QuoteModal = React.lazy(() => import("@/components/QuoteModal"));
+const InvoiceModal = React.lazy(() => import("@/components/InvoiceModal"));
+
+const More = React.lazy(() => import("@/pages/More"));
+const Integrations = React.lazy(() => import("@/pages/Integrations"));
+const ActionCenter = React.lazy(() => import("@/pages/ActionCenter"));
+const Insights = React.lazy(() => import("@/pages/Insights"));
+const Autopilot = React.lazy(() => import("@/pages/Autopilot"));
+const NotFound = React.lazy(() => import("@/pages/not-found"));
+const VerifyEmail = React.lazy(() => import("@/pages/VerifyEmail"));
+const VerifyEmailPending = React.lazy(() => import("@/pages/VerifyEmailPending"));
+const ResetPassword = React.lazy(() => import("@/pages/ResetPassword"));
+const AcceptInvite = React.lazy(() => import("@/pages/AcceptInvite"));
+const AcceptAssignment = React.lazy(() => import("@/pages/AcceptAssignment"));
+const JobInvite = React.lazy(() => import("@/pages/JobInvite"));
+const OpenApp = React.lazy(() => import("@/pages/OpenApp"));
+const TimeTrackingPage = React.lazy(() => import("@/pages/TimeTracking"));
+const TeamOperations = React.lazy(() => import("@/pages/TeamOperations"));
+const PaymentPage = React.lazy(() => import("@/pages/PaymentPage"));
+const PrivacyPolicy = React.lazy(() => import("@/pages/PrivacyPolicy"));
+const TermsOfService = React.lazy(() => import("@/pages/TermsOfService"));
+const DeleteAccount = React.lazy(() => import("@/pages/DeleteAccount"));
+const Support = React.lazy(() => import("@/pages/Support"));
+const TrackArrival = React.lazy(() => import("@/pages/TrackArrival"));
+const Reports = React.lazy(() => import("@/pages/Reports"));
+const Calculators = React.lazy(() => import("@/pages/Calculators"));
+const CollectPayment = React.lazy(() => import("@/pages/CollectPayment"));
+const TeamChatPage = React.lazy(() => import("@/pages/TeamChat"));
+const ChatHub = React.lazy(() => import("@/pages/ChatHub"));
+const JobMapPage = React.lazy(() => import("@/pages/JobMap"));
+const DirectMessagesPage = React.lazy(() => import("@/pages/DirectMessages"));
+const DispatchBoard = React.lazy(() => import("@/pages/DispatchBoard"));
+const SchedulePage = React.lazy(() => import("@/pages/SchedulePage"));
+const Automations = React.lazy(() => import("@/pages/Automations"));
+const RecurringJobs = React.lazy(() => import("@/pages/RecurringJobs"));
+const ServiceRemindersPage = React.lazy(() => import("@/pages/ServiceReminders"));
+const InventoryPage = React.lazy(() => import("@/pages/InventoryPage"));
+const RebatesPage = React.lazy(() => import("@/pages/Rebates"));
+const Leads = React.lazy(() => import("@/pages/Leads"));
+const AIVisualizationPage = React.lazy(() => import("@/pages/AIVisualization"));
+const PayrollReports = React.lazy(() => import("@/pages/PayrollReports"));
+const ClientPortal = React.lazy(() => import("@/pages/ClientPortal"));
+const BookingPage = React.lazy(() => import("@/pages/BookingPage"));
+const ClientPortalHub = React.lazy(() => import("@/pages/ClientPortalHub"));
+const JobPortal = React.lazy(() => import("@/pages/JobPortal"));
+const TeamGroups = React.lazy(() => import("@/pages/TeamGroups"));
+const PaymentHub = React.lazy(() => import("@/pages/PaymentHub"));
+const ExpensesPage = React.lazy(() => import("@/pages/ExpensesPage"));
+const WorkPage = React.lazy(() => import("@/pages/WorkPage"));
+const AdminDashboard = React.lazy(() => import("@/pages/AdminDashboard"));
+const LandingPage = React.lazy(() => import("@/pages/LandingPage"));
+const SubscriptionPage = React.lazy(() => import("@/pages/SubscriptionPage"));
+const TemplatesHub = React.lazy(() => import("@/pages/TemplatesHub"));
+const DocumentsHub = React.lazy(() => import("@/pages/DocumentsHub"));
+const WhsHubPage = React.lazy(() => import("@/pages/WhsHub"));
+const CommunicationsHub = React.lazy(() => import("@/pages/CommunicationsHub"));
+const TimeEditAuditLog = React.lazy(() => import("@/pages/TimeEditAuditLog"));
+const ProfitabilityReport = React.lazy(() => import("@/pages/ProfitabilityReport"));
+const SubcontractorWebView = React.lazy(() => import("@/pages/SubcontractorWebView"));
+const FilesPage = React.lazy(() => import("@/pages/Files"));
+const AIReceptionist = React.lazy(() => import("@/pages/AIReceptionist"));
+const AIReceptionistCalls = React.lazy(() => import("@/pages/AIReceptionistCalls"));
 
 function BusinessPicker({ userId }: { userId: string }) {
   const { data: businessData } = useQuery({
@@ -472,7 +473,8 @@ function Router({
   }, [onNavigate]);
 
   return (
-    <Switch location={location}>
+    <Suspense fallback={<div className="flex items-center justify-center h-full p-8"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+      <Switch location={location}>
       {/* Work page - unified job workflow view */}
       <Route path="/work" component={() => (
         <WorkPage 
@@ -858,7 +860,8 @@ function Router({
       )} />
       
       <Route component={NotFound} />
-    </Switch>
+      </Switch>
+    </Suspense>
   );
 }
 
@@ -1328,6 +1331,7 @@ function AppLayout() {
         onLogout={handleLogout} 
         onNavigate={(path) => setLocation(path)}
       >
+        <Suspense fallback={<div className="flex items-center justify-center h-full p-8"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
         <Switch>
           <Route path="/admin" component={AdminDashboard} />
           <Route path="/admin/comms" component={AdminDashboard} />
@@ -1341,6 +1345,7 @@ function AppLayout() {
             <Redirect to="/admin" />
           </Route>
         </Switch>
+        </Suspense>
       </AdminAppShell>
     );
   }
@@ -1564,6 +1569,7 @@ function App() {
       <ThemeProvider defaultTheme="light" storageKey="jobrunner-ui-theme">
         <NetworkProvider>
           <TooltipProvider>
+            <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
             <Switch>
               {/* Public routes - no auth required, more specific paths first */}
               <Route path="/q/:token">{(params) => <QuoteShortRedirect token={params.token} />}</Route>
@@ -1584,6 +1590,7 @@ function App() {
                 <AppLayout />
               </Route>
             </Switch>
+            </Suspense>
             <Toaster />
           </TooltipProvider>
         </NetworkProvider>

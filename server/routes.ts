@@ -870,17 +870,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         isBeta: IS_BETA,
-        maxLifetimeSpots: BETA_CONFIG.maxLifetimeUsers,
-        businessSignups: businessCount,
-        spotsRemaining,
+        spotsRemaining: spotsRemaining > 0 ? spotsRemaining : 0,
         betaFull: spotsRemaining <= 0,
       });
     } catch (error: any) {
       console.error('Error getting beta status:', error);
       res.json({
         isBeta: true,
-        maxLifetimeSpots: 10,
-        businessSignups: 0,
         spotsRemaining: 10,
         betaFull: false,
       });
@@ -3337,6 +3333,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth providers config endpoint - returns available auth methods
   app.get("/api/auth/config", async (req: any, res) => {
+    const baseUrl = getProductionBaseUrl(req);
     const config = {
       google: {
         enabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
@@ -3344,9 +3341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       apple: {
         enabled: !!(process.env.APPLE_WEB_SERVICE_ID && process.env.APPLE_WEB_CLIENT_ID),
         clientId: process.env.APPLE_WEB_SERVICE_ID || null,
-        redirectUri: process.env.REPLIT_DOMAINS 
-          ? `https://${process.env.REPLIT_DOMAINS}/api/auth/apple/callback`
-          : null,
+        redirectUri: `${baseUrl}/api/auth/apple/callback`,
       },
       emailPassword: {
         enabled: true,
