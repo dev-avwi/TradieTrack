@@ -19,14 +19,18 @@ interface JobFieldUpdateEvent {
 type PresenceListener = (jobId: string, editors: JobEditor[]) => void;
 type FieldUpdateListener = (event: JobFieldUpdateEvent) => void;
 
+type ReconnectListener = () => void;
+
 interface JobCollaborationContextType {
   sendEditingStart: (jobId: string, userName: string) => void;
   sendEditingStop: (jobId: string) => void;
   onPresenceChange: (listener: PresenceListener) => () => void;
   onFieldUpdate: (listener: FieldUpdateListener) => () => void;
+  onReconnect: (listener: ReconnectListener) => () => void;
   setSendMessage: (fn: (msg: Record<string, unknown>) => void) => void;
   _dispatchPresence: (jobId: string, editors: JobEditor[]) => void;
   _dispatchFieldUpdate: (event: JobFieldUpdateEvent) => void;
+  _dispatchReconnect: () => void;
 }
 
 export const JobCollaborationCtxRaw = createContext<JobCollaborationContextType | null>(null);
@@ -35,6 +39,7 @@ export function JobCollaborationProvider({ children }: { children: React.ReactNo
   const sendMessageRef = useRef<(msg: Record<string, unknown>) => void>(() => {});
   const presenceListeners = useRef<Set<PresenceListener>>(new Set());
   const fieldUpdateListeners = useRef<Set<FieldUpdateListener>>(new Set());
+  const reconnectListeners = useRef<Set<ReconnectListener>>(new Set());
 
   const setSendMessage = useCallback((fn: (msg: Record<string, unknown>) => void) => {
     sendMessageRef.current = fn;
@@ -66,14 +71,25 @@ export function JobCollaborationProvider({ children }: { children: React.ReactNo
     fieldUpdateListeners.current.forEach(l => l(event));
   }, []);
 
+  const onReconnect = useCallback((listener: ReconnectListener) => {
+    reconnectListeners.current.add(listener);
+    return () => { reconnectListeners.current.delete(listener); };
+  }, []);
+
+  const _dispatchReconnect = useCallback(() => {
+    reconnectListeners.current.forEach(l => l());
+  }, []);
+
   const value: JobCollaborationContextType = {
     sendEditingStart,
     sendEditingStop,
     onPresenceChange,
     onFieldUpdate,
+    onReconnect,
     setSendMessage,
     _dispatchPresence,
     _dispatchFieldUpdate,
+    _dispatchReconnect,
   };
 
   return (

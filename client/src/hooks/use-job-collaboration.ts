@@ -123,9 +123,15 @@ export function useJobCollaboration(jobId: string | undefined, currentUserId: st
         handleFieldUpdateEvent(event);
       }
     });
+    const unsubReconnect = ctx.onReconnect(() => {
+      if (userName && jobId) {
+        ctx.sendEditingStart(jobId, userName);
+      }
+    });
     return () => {
       unsubPresence();
       unsubFieldUpdate();
+      unsubReconnect();
       if (jobId) ctx.sendEditingStop(jobId);
     };
   }, [ctx, jobId, userName, handleFieldUpdateEvent]);

@@ -1058,11 +1058,16 @@ function AppLayout() {
     onJobFieldUpdated: handleJobFieldUpdated,
   });
   
+  const prevWsConnected = useRef(false);
   useEffect(() => {
     if (collaborationCtx) {
       collaborationCtx.setSendMessage(wsSendMessage);
+      if (wsConnected && !prevWsConnected.current) {
+        collaborationCtx._dispatchReconnect();
+      }
+      prevWsConnected.current = wsConnected;
     }
-  }, [collaborationCtx, wsSendMessage]);
+  }, [collaborationCtx, wsSendMessage, wsConnected]);
   const [showReconnecting, setShowReconnecting] = useState(false);
   useEffect(() => {
     if (wsEnabled && !wsConnected) {
