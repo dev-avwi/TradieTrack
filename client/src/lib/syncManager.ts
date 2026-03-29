@@ -586,17 +586,25 @@ class SyncManager {
     const conflict = this.conflicts.find((c) => c.id === conflictId);
     if (!conflict) return;
 
+    let entityId = conflict.localVersion.id;
+    if (typeof entityId === 'string' && entityId.startsWith('offline_')) {
+      const serverId = this.idMappings.get(entityId);
+      if (serverId) entityId = serverId;
+    }
+
     const resolvedVersion = mergedData
-      ? { ...conflict.serverVersion, ...mergedData, id: conflict.localVersion.id }
+      ? { ...conflict.serverVersion, ...mergedData, id: entityId }
       : useLocal
-        ? conflict.localVersion
+        ? { ...conflict.localVersion, id: entityId }
         : conflict.serverVersion;
 
     await saveItem(conflict.storeName, resolvedVersion);
 
+    await removeSyncItem(conflict.operationId);
+
     if (isOnline()) {
       try {
-        const endpoint = `/api/${conflict.storeName}/${resolvedVersion.id}`;
+        const endpoint = `/api/${conflict.storeName}/${entityId}`;
         await apiRequest('PATCH', endpoint, resolvedVersion);
       } catch (error) {
         console.error('Failed to sync resolved conflict:', error);
@@ -606,6 +614,8 @@ class SyncManager {
     conflict.resolvedAt = Date.now();
     this.conflicts = this.conflicts.filter((c) => c.id !== conflictId);
     await this.saveConflicts();
+
+    this.emit('syncComplete');
   }
 
   async clearResolvedConflicts(): Promise<void> {
