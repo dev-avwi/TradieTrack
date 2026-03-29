@@ -11105,72 +11105,109 @@ Be specific about materials, colors, and features that would be included.`
       }
     } else if (dataType === 'jobs') {
       const existingJobs = await storage.getJobs(userId);
-      const importRefTag = '[Imported-Ref:';
-      const existingRefs = new Set<string>();
+      const existingClients = await storage.getClients(userId);
+      const clientNameById = new Map(existingClients.map(c => [c.id, c.name?.toLowerCase().trim()]));
+      const importedRefs = new Set<string>();
+      const existingTitleClient = new Set<string>();
       for (const j of existingJobs) {
-        if (j.notes && j.notes.includes(importRefTag)) {
+        if (j.notes) {
           const match = j.notes.match(/\[Imported-Ref:([^\]]+)\]/);
-          if (match) existingRefs.add(match[1].toLowerCase());
+          if (match) importedRefs.add(match[1].toLowerCase());
         }
+        const clientName = clientNameById.get(j.clientId) || '';
+        if (j.title) existingTitleClient.add(`${j.title.toLowerCase().trim()}|${clientName}`);
       }
-      const existingTitleClient = new Set(existingJobs.map(j => `${j.title?.toLowerCase().trim()}|${j.clientId}`));
       const seenInBatch = new Set<string>();
       for (let i = 0; i < rows.length; i++) {
         const mapped = applyMappings(rows[i], mappings);
-        const batchKey = `${(mapped.refNumber || mapped.title || '').toLowerCase()}|${(mapped.clientName || '').toLowerCase()}`;
-        if (seenInBatch.has(batchKey)) {
+        const batchKey = `${(mapped.refNumber || mapped.title || '').toLowerCase().trim()}|${(mapped.clientName || '').toLowerCase().trim()}`;
+        if (batchKey && seenInBatch.has(batchKey)) {
           duplicates.push({ row: i, reason: `Duplicate row in file` });
           continue;
         }
-        seenInBatch.add(batchKey);
-        if (mapped.refNumber && existingRefs.has(mapped.refNumber.toLowerCase())) {
+        if (batchKey) seenInBatch.add(batchKey);
+        if (mapped.refNumber && importedRefs.has(mapped.refNumber.toLowerCase())) {
           duplicates.push({ row: i, reason: `Job with reference "${mapped.refNumber}" already imported` });
+        } else {
+          const title = (mapped.title || `Job ${mapped.refNumber || ''}`).toLowerCase().trim();
+          const clientName = (mapped.clientName || '').toLowerCase().trim();
+          if (title && clientName && existingTitleClient.has(`${title}|${clientName}`)) {
+            duplicates.push({ row: i, reason: `Job "${mapped.title || mapped.refNumber}" for client "${mapped.clientName}" may already exist` });
+          }
         }
       }
     } else if (dataType === 'quotes') {
       const existingQuotes = await storage.getQuotes(userId);
-      const importRefTag = '[Imported-Ref:';
-      const existingRefs = new Set<string>();
+      const importedRefs = new Set<string>();
+      const existingNumbers = new Set<string>();
+      const existingTitleClient = new Set<string>();
+      const existingClients = await storage.getClients(userId);
+      const clientNameById = new Map(existingClients.map(c => [c.id, c.name?.toLowerCase().trim()]));
       for (const q of existingQuotes) {
-        if (q.notes && q.notes.includes(importRefTag)) {
+        if (q.notes) {
           const match = q.notes.match(/\[Imported-Ref:([^\]]+)\]/);
-          if (match) existingRefs.add(match[1].toLowerCase());
+          if (match) importedRefs.add(match[1].toLowerCase());
         }
+        if (q.number) existingNumbers.add(q.number.toLowerCase());
+        const clientName = clientNameById.get(q.clientId) || '';
+        if (q.title) existingTitleClient.add(`${q.title.toLowerCase().trim()}|${clientName}`);
       }
       const seenInBatch = new Set<string>();
       for (let i = 0; i < rows.length; i++) {
         const mapped = applyMappings(rows[i], mappings);
-        const batchKey = `${(mapped.refNumber || mapped.title || '').toLowerCase()}|${(mapped.clientName || '').toLowerCase()}`;
-        if (seenInBatch.has(batchKey)) {
+        const batchKey = `${(mapped.refNumber || mapped.title || '').toLowerCase().trim()}|${(mapped.clientName || '').toLowerCase().trim()}`;
+        if (batchKey && seenInBatch.has(batchKey)) {
           duplicates.push({ row: i, reason: `Duplicate row in file` });
           continue;
         }
-        seenInBatch.add(batchKey);
-        if (mapped.refNumber && existingRefs.has(mapped.refNumber.toLowerCase())) {
+        if (batchKey) seenInBatch.add(batchKey);
+        if (mapped.refNumber && importedRefs.has(mapped.refNumber.toLowerCase())) {
           duplicates.push({ row: i, reason: `Quote "${mapped.refNumber}" already imported` });
+        } else if (mapped.refNumber && existingNumbers.has(mapped.refNumber.toLowerCase())) {
+          duplicates.push({ row: i, reason: `Quote number "${mapped.refNumber}" already exists` });
+        } else {
+          const title = (mapped.title || `Quote ${mapped.refNumber || ''}`).toLowerCase().trim();
+          const clientName = (mapped.clientName || '').toLowerCase().trim();
+          if (title && clientName && existingTitleClient.has(`${title}|${clientName}`)) {
+            duplicates.push({ row: i, reason: `Quote "${mapped.title || mapped.refNumber}" for client "${mapped.clientName}" may already exist` });
+          }
         }
       }
     } else if (dataType === 'invoices') {
       const existingInvoices = await storage.getInvoices(userId);
-      const importRefTag = '[Imported-Ref:';
-      const existingRefs = new Set<string>();
+      const importedRefs = new Set<string>();
+      const existingNumbers = new Set<string>();
+      const existingTitleClient = new Set<string>();
+      const existingClients = await storage.getClients(userId);
+      const clientNameById = new Map(existingClients.map(c => [c.id, c.name?.toLowerCase().trim()]));
       for (const inv of existingInvoices) {
-        if (inv.notes && inv.notes.includes(importRefTag)) {
+        if (inv.notes) {
           const match = inv.notes.match(/\[Imported-Ref:([^\]]+)\]/);
-          if (match) existingRefs.add(match[1].toLowerCase());
+          if (match) importedRefs.add(match[1].toLowerCase());
         }
+        if (inv.number) existingNumbers.add(inv.number.toLowerCase());
+        const clientName = clientNameById.get(inv.clientId) || '';
+        if (inv.title) existingTitleClient.add(`${inv.title.toLowerCase().trim()}|${clientName}`);
       }
       const seenInBatch = new Set<string>();
       for (let i = 0; i < rows.length; i++) {
         const mapped = applyMappings(rows[i], mappings);
-        const batchKey = `${(mapped.refNumber || mapped.title || '').toLowerCase()}|${(mapped.clientName || '').toLowerCase()}`;
-        if (seenInBatch.has(batchKey)) {
+        const batchKey = `${(mapped.refNumber || mapped.title || '').toLowerCase().trim()}|${(mapped.clientName || '').toLowerCase().trim()}`;
+        if (batchKey && seenInBatch.has(batchKey)) {
           duplicates.push({ row: i, reason: `Duplicate row in file` });
           continue;
         }
-        seenInBatch.add(batchKey);
-        if (mapped.refNumber && existingRefs.has(mapped.refNumber.toLowerCase())) {
+        if (batchKey) seenInBatch.add(batchKey);
+        if (mapped.refNumber && importedRefs.has(mapped.refNumber.toLowerCase())) {
           duplicates.push({ row: i, reason: `Invoice "${mapped.refNumber}" already imported` });
+        } else if (mapped.refNumber && existingNumbers.has(mapped.refNumber.toLowerCase())) {
+          duplicates.push({ row: i, reason: `Invoice number "${mapped.refNumber}" already exists` });
+        } else {
+          const title = (mapped.title || `Invoice ${mapped.refNumber || ''}`).toLowerCase().trim();
+          const clientName = (mapped.clientName || '').toLowerCase().trim();
+          if (title && clientName && existingTitleClient.has(`${title}|${clientName}`)) {
+            duplicates.push({ row: i, reason: `Invoice "${mapped.title || mapped.refNumber}" for client "${mapped.clientName}" may already exist` });
+          }
         }
       }
     }
