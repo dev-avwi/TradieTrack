@@ -39757,6 +39757,12 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       }
       
       const presence = await storage.updatePresence(userId, businessOwnerId, updateData);
+      try {
+        const { broadcastTeamPresenceChange } = await import('./websocket');
+        broadcastTeamPresenceChange(businessOwnerId, userId);
+      } catch (wsErr) {
+        console.warn('[WS] Failed to broadcast presence heartbeat:', wsErr);
+      }
       res.json({ success: true, lastSeenAt: presence.lastSeenAt });
     } catch (error: any) {
       console.error('Error updating heartbeat:', error);

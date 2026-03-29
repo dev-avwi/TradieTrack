@@ -526,6 +526,36 @@ export function useRealtimeUpdates({
     };
   }, [enabled, businessId, authLoading, isAuthenticated, connect]);
 
+  const fallbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    if (enabled && !isConnected && hadPriorConnectionRef.current) {
+      const startFallback = setTimeout(() => {
+        if (!fallbackIntervalRef.current) {
+          console.log('[RealtimeUpdates] WS unavailable, starting fallback polling for critical data');
+          fallbackIntervalRef.current = setInterval(() => {
+            const criticalKeys = [
+              ['/api/jobs'], ['/api/team/presence'], ['/api/notifications'],
+              ['/api/chat/unread-counts'], ['/api/time-entries/active/current'],
+            ];
+            criticalKeys.forEach(queryKey => safeInvalidateQueries({ queryKey }));
+          }, 60000);
+        }
+      }, 30000);
+      return () => {
+        clearTimeout(startFallback);
+        if (fallbackIntervalRef.current) {
+          clearInterval(fallbackIntervalRef.current);
+          fallbackIntervalRef.current = null;
+        }
+      };
+    }
+    if (isConnected && fallbackIntervalRef.current) {
+      console.log('[RealtimeUpdates] WS restored, stopping fallback polling');
+      clearInterval(fallbackIntervalRef.current);
+      fallbackIntervalRef.current = null;
+    }
+  }, [enabled, isConnected]);
+
   return {
     isConnected,
     disconnect,
