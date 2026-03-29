@@ -460,8 +460,10 @@ export function useRealtimeUpdates({
           return;
         }
 
-        if (reconnectAttempts.current < maxReconnectAttempts && enabled) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+        if (enabled) {
+          const delay = reconnectAttempts.current < maxReconnectAttempts
+            ? Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000)
+            : 60000;
           reconnectAttempts.current++;
           console.log(`[RealtimeUpdates] Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
           reconnectTimeoutRef.current = setTimeout(connect, delay);
@@ -528,7 +530,7 @@ export function useRealtimeUpdates({
 
   const fallbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
-    if (enabled && !isConnected && hadPriorConnectionRef.current) {
+    if (enabled && !isConnected) {
       const startFallback = setTimeout(() => {
         if (!fallbackIntervalRef.current) {
           console.log('[RealtimeUpdates] WS unavailable, starting fallback polling for critical data');
