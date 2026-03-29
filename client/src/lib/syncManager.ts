@@ -228,15 +228,34 @@ class SyncManager {
         const entityResponse = await fetch(entityEndpoint, { credentials: 'include' });
         if (entityResponse.ok) {
           const entity = await entityResponse.json();
-          const existingPhotos = Array.isArray(entity.photos) ? entity.photos : [];
-          const newPhotos = uploadedUrls.map(url => ({
-            url,
-            uploadedAt: new Date().toISOString(),
-            source: 'offline_sync',
-          }));
-          await apiRequest('PATCH', entityEndpoint, {
-            photos: [...existingPhotos, ...newPhotos],
-          });
+          const patchData: Record<string, unknown> = {};
+
+          for (const attachmentId of operation.fileAttachmentIds!) {
+            const attachment = await getFileAttachment(attachmentId);
+            if (!attachment) continue;
+            const url = uploadedUrls.find(u => u);
+            if (!url) continue;
+
+            if (attachment.type === 'photo' || attachment.type === 'image') {
+              const existing = Array.isArray(entity.photos) ? entity.photos : [];
+              if (!patchData.photos) patchData.photos = [...existing];
+              (patchData.photos as any[]).push({ url, uploadedAt: new Date().toISOString(), source: 'offline_sync' });
+            } else if (attachment.type === 'signature') {
+              patchData.signatureUrl = url;
+            } else if (attachment.type === 'voice_note' || attachment.type === 'audio') {
+              const existing = Array.isArray(entity.voiceNotes) ? entity.voiceNotes : [];
+              if (!patchData.voiceNotes) patchData.voiceNotes = [...existing];
+              (patchData.voiceNotes as any[]).push({ url, filename: attachment.filename, uploadedAt: new Date().toISOString() });
+            } else {
+              const existing = Array.isArray(entity.documents) ? entity.documents : [];
+              if (!patchData.documents) patchData.documents = [...existing];
+              (patchData.documents as any[]).push({ url, filename: attachment.filename, uploadedAt: new Date().toISOString() });
+            }
+          }
+
+          if (Object.keys(patchData).length > 0) {
+            await apiRequest('PATCH', entityEndpoint, patchData);
+          }
         }
       } catch (linkError) {
         console.warn('Failed to link uploaded attachments to entity:', linkError);
