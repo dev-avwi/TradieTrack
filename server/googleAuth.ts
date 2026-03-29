@@ -9,6 +9,9 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
 // Use APP_DOMAIN in production, Replit dev domain in development
 const getBaseUrl = () => {
+  if (process.env.APP_DOMAIN) {
+    return `https://${process.env.APP_DOMAIN}`;
+  }
   const isDev = process.env.NODE_ENV === 'development';
   if (isDev) {
     if (process.env.REPLIT_DEV_DOMAIN) {
@@ -19,9 +22,6 @@ const getBaseUrl = () => {
       return `https://${domains[0]}`;
     }
     return process.env.REPL_URL || 'http://localhost:5000';
-  }
-  if (process.env.APP_DOMAIN) {
-    return `https://${process.env.APP_DOMAIN}`;
   }
   if (process.env.VITE_APP_URL) {
     return process.env.VITE_APP_URL;
