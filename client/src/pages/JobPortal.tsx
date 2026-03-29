@@ -10,7 +10,7 @@ import {
   Phone, Mail, MapPin, AlertCircle, CheckCircle2, Clock, Calendar,
   User, Navigation, FileText, Camera, ChevronRight, Timer, Building2,
   MessageCircle, Loader2, Signal, ClipboardCheck, Package, CreditCard, Shield,
-  Activity, Receipt, CircleDot
+  Activity, Receipt, CircleDot, RefreshCw
 } from "lucide-react";
 import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
 import { useEffect, useLayoutEffect, useState, useRef, useCallback } from "react";
@@ -781,6 +781,9 @@ export default function JobPortal() {
     };
   }, []);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState('');
+
   const { data, isLoading, error } = useQuery<JobPortalData>({
     queryKey: ['/api/public/job-portal', token],
     queryFn: async () => {
@@ -871,6 +874,24 @@ export default function JobPortal() {
     );
   }
 
+  const handleRefreshLink = async () => {
+    setRefreshing(true);
+    setRefreshError('');
+    try {
+      const res = await fetch(`/api/public/job-portal/${token}/refresh`, { method: 'POST' });
+      const result = await res.json();
+      if (res.ok && result.token) {
+        window.location.href = `/p/${result.token}`;
+      } else {
+        setRefreshError(result.error || 'Unable to refresh link');
+      }
+    } catch {
+      setRefreshError('Something went wrong. Please try again.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (error || !data) {
     const errorMsg = (error as Error)?.message || '';
     const isExpired = errorMsg.toLowerCase().includes('expired');
@@ -884,9 +905,14 @@ export default function JobPortal() {
               <>
                 <Clock className="w-14 h-14 text-amber-500 mx-auto mb-4" />
                 <h2 className="text-xl font-semibold text-foreground mb-2">Link Expired</h2>
-                <p className="text-muted-foreground text-sm">
-                  This tracking link has expired. Please contact the business for an updated link.
+                <p className="text-muted-foreground text-sm mb-4">
+                  This tracking link has expired.
                 </p>
+                <Button onClick={handleRefreshLink} disabled={refreshing}>
+                  {refreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Get New Link
+                </Button>
+                {refreshError && <p className="text-sm text-red-500 mt-3">{refreshError}</p>}
               </>
             ) : isRevoked ? (
               <>

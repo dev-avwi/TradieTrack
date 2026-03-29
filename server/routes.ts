@@ -1655,6 +1655,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }));
       
+      const { nanoid: nanoidForTokens } = await import('nanoid');
+      const cryptoModule = await import('crypto');
       const jobsWithPortalTokens = await Promise.all(jobs.map(async (j) => {
         let portalToken = null;
         let assignedWorkers: Array<{ id: string; name: string }> = [];
@@ -1663,6 +1665,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const activeToken = tokens?.find((t: any) => !t.revokedAt && (!t.expiresAt || new Date(t.expiresAt) > new Date()));
           if (activeToken) {
             portalToken = activeToken.token;
+          } else if (tokens && tokens.length > 0) {
+            const expiredToken = tokens.find((t: any) => !t.revokedAt && t.expiresAt && new Date(t.expiresAt) <= new Date());
+            if (expiredToken) {
+              const newTokenStr = cryptoModule.randomBytes(32).toString('hex');
+              const newExpiresAt = new Date();
+              newExpiresAt.setDate(newExpiresAt.getDate() + 30);
+              const newToken = await storage.createJobPortalToken({
+                jobId: j.id,
+                userId: j.userId,
+                token: newTokenStr,
+                expiresAt: newExpiresAt,
+                createdBy: j.userId,
+              });
+              portalToken = newToken.token;
+            }
           }
         } catch (e) {}
         try {
@@ -18372,6 +18389,48 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error: any) {
       console.error('[BookingPage] Error submitting booking:', error);
       res.status(500).json({ error: 'Failed to submit booking request' });
+    }
+  });
+
+  // ============================================
+  // PUBLIC JOB PORTAL - REFRESH EXPIRED TOKEN
+  // ============================================
+  app.post("/api/public/job-portal/:token/refresh", portalIpRateLimiterMiddleware, async (req: any, res) => {
+    try {
+      const oldToken = await storage.getJobPortalTokenByToken(req.params.token);
+      if (!oldToken) {
+        return res.status(404).json({ error: 'Link not found' });
+      }
+      if (oldToken.revokedAt) {
+        return res.status(410).json({ error: 'This link has been deactivated and cannot be refreshed' });
+      }
+      if (!oldToken.expiresAt || new Date(oldToken.expiresAt) > new Date()) {
+        return res.json({ token: oldToken.token, message: 'Link is still active' });
+      }
+
+      const job = await storage.getJob(oldToken.jobId, oldToken.userId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job no longer exists' });
+      }
+
+      const cryptoMod = await import('crypto');
+      const newTokenStr = cryptoMod.randomBytes(32).toString('hex');
+      const newExpiresAt = new Date();
+      newExpiresAt.setDate(newExpiresAt.getDate() + 30);
+
+      const newToken = await storage.createJobPortalToken({
+        jobId: oldToken.jobId,
+        userId: oldToken.userId,
+        token: newTokenStr,
+        expiresAt: newExpiresAt,
+        createdBy: oldToken.userId,
+        assignmentId: oldToken.assignmentId || undefined,
+      });
+
+      res.json({ token: newToken.token, message: 'Link refreshed successfully' });
+    } catch (error: any) {
+      console.error('[JobPortal] Error refreshing token:', error);
+      res.status(500).json({ error: 'Failed to refresh link' });
     }
   });
 
