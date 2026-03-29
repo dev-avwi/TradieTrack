@@ -1,24 +1,28 @@
 {
-  "_comment": "REPLACE THIS FILE with the actual google-services.json downloaded from Firebase Console. Go to: Firebase Console > Project Settings > Add Android App (com.jobrunner.app) > Download google-services.json",
   "project_info": {
-    "project_number": "REPLACE_ME",
-    "firebase_url": "REPLACE_ME",
-    "project_id": "REPLACE_ME",
-    "storage_bucket": "REPLACE_ME"
+    "project_number": "797006866223",
+    "project_id": "jobrunner-8fe9d",
+    "storage_bucket": "jobrunner-8fe9d.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "REPLACE_ME",
+        "mobilesdk_app_id": "1:797006866223:android:9e21bd017f742549fda3da",
         "android_client_info": {
           "package_name": "com.jobrunner.app"
         }
       },
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "REPLACE_ME"
+          "current_key": "AIzaSyCxuTz7CF7fuLq4pD85tuquilZFyIleHeU"
         }
-      ]
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
     }
   ],
   "configuration_version": "1"
