@@ -432,6 +432,18 @@ async function logActivity(
     } catch (wsErr) {
       console.warn('[WS] Failed to broadcast activity feed update:', wsErr);
     }
+    if ((entityType === 'quote' || entityType === 'invoice') && entityId) {
+      try {
+        const { broadcastDocumentStatusChange } = await import('./websocket');
+        broadcastDocumentStatusChange(userId, {
+          documentType: entityType as 'quote' | 'invoice',
+          documentId: entityId,
+          status: enrichedMetadata?.status || type,
+        });
+      } catch (wsErr) {
+        console.warn('[WS] Failed to broadcast document status change:', wsErr);
+      }
+    }
   } catch (error) {
     console.error('Failed to log activity:', error);
   }
@@ -39759,7 +39771,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       const presence = await storage.updatePresence(userId, businessOwnerId, updateData);
       try {
         const { broadcastTeamPresenceChange } = await import('./websocket');
-        broadcastTeamPresenceChange(businessOwnerId, userId);
+        broadcastTeamPresenceChange(businessOwnerId, { userId, status: 'online' });
       } catch (wsErr) {
         console.warn('[WS] Failed to broadcast presence heartbeat:', wsErr);
       }
