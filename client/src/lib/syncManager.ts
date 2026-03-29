@@ -8,10 +8,23 @@ import {
   updateSyncMetadata,
   isOnline,
   markPaymentAsSynced,
+  getFileAttachment,
+  markFileAttachmentSynced,
+  deleteFileAttachment,
   type SyncOperation,
   type OfflineStoreName,
 } from './offlineStorage';
 import { apiRequest, queryClient, getStoreNameFromEndpoint } from './queryClient';
+
+const STORE_PRIORITY: Record<string, number> = {
+  clients: 0,
+  jobs: 1,
+  quotes: 2,
+  invoices: 3,
+  timeEntries: 4,
+  payments: 5,
+  templates: 6,
+};
 
 export interface SyncConflict {
   id: string;
@@ -124,7 +137,14 @@ class SyncManager {
     try {
       const queue = await getSyncQueue();
       
-      const sortedQueue = queue.sort((a, b) => a.createdAt - b.createdAt);
+      const sortedQueue = queue.sort((a, b) => {
+        const priorityA = STORE_PRIORITY[a.storeName] ?? 99;
+        const priorityB = STORE_PRIORITY[b.storeName] ?? 99;
+        if (priorityA !== priorityB) return priorityA - priorityB;
+        if (a.type === 'create' && b.type !== 'create') return -1;
+        if (a.type !== 'create' && b.type === 'create') return 1;
+        return a.createdAt - b.createdAt;
+      });
 
       this.progress = {
         total: sortedQueue.length,
@@ -171,6 +191,39 @@ class SyncManager {
       this.emit('syncError', { error: error instanceof Error ? error.message : 'Unknown error' });
     } finally {
       this.isSyncing = false;
+    }
+  }
+
+  private async uploadFileAttachments(operation: SyncOperation, resolvedEntityId?: string | number): Promise<void> {
+    if (!operation.fileAttachmentIds?.length) return;
+
+    for (const attachmentId of operation.fileAttachmentIds) {
+      const attachment = await getFileAttachment(attachmentId);
+      if (!attachment || attachment.synced) continue;
+
+      const entityId = resolvedEntityId ?? attachment.entityId;
+
+      const formData = new FormData();
+      formData.append('file', attachment.blob, attachment.filename);
+      formData.append('type', attachment.type);
+      formData.append('entityType', attachment.entityType);
+      formData.append('entityId', String(entityId));
+      if (attachment.description) {
+        formData.append('description', attachment.description);
+      }
+
+      const response = await fetch('/api/attachments/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Attachment upload failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      await markFileAttachmentSynced(attachmentId, result.url || result.remoteUrl || '');
     }
   }
 
@@ -221,6 +274,11 @@ class SyncManager {
             throw error;
           }
         }
+      }
+
+      if (operation.fileAttachmentIds?.length) {
+        const resolvedEntityId = result?.id || operation.data?.id;
+        await this.uploadFileAttachments(operation, resolvedEntityId);
       }
 
       await removeSyncItem(operation.id);
@@ -364,14 +422,23 @@ class SyncManager {
 
     const pendingQueue = await getSyncQueue();
     for (const op of pendingQueue) {
+      let updated = false;
+      const updatedOp = { ...op };
+
       if (op.data && op.data[`${storeName.slice(0, -1)}Id`] === offlineId) {
-        const updatedOp = {
-          ...op,
-          data: {
-            ...op.data,
-            [`${storeName.slice(0, -1)}Id`]: serverId,
-          },
+        updatedOp.data = {
+          ...op.data,
+          [`${storeName.slice(0, -1)}Id`]: serverId,
         };
+        updated = true;
+      }
+
+      if (op.endpoint.includes(String(offlineId))) {
+        updatedOp.endpoint = op.endpoint.replace(String(offlineId), String(serverId));
+        updated = true;
+      }
+
+      if (updated) {
         await saveItem('syncQueue', updatedOp);
       }
     }

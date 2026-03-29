@@ -1,5 +1,5 @@
 const DB_NAME = 'jobrunner-offline';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const STORE_NAMES = [
   'clients',
@@ -12,7 +12,8 @@ const STORE_NAMES = [
   'templates',
   'subscriptionCache',
   'syncMetadata',
-  'syncQueue'
+  'syncQueue',
+  'fileAttachments'
 ] as const;
 type StoreName = typeof STORE_NAMES[number];
 
@@ -27,6 +28,22 @@ export interface SyncOperation {
   method: 'POST' | 'PATCH' | 'DELETE';
   createdAt: number;
   retries: number;
+  fileAttachmentIds?: string[];
+}
+
+export interface OfflineFileAttachment {
+  id: string;
+  entityType: 'job' | 'quote' | 'invoice' | 'client';
+  entityId: string | number;
+  type: 'photo' | 'signature' | 'voice_note' | 'document';
+  filename: string;
+  mimeType: string;
+  blob: Blob;
+  fileSize: number;
+  description?: string;
+  createdAt: number;
+  synced: boolean;
+  remoteUrl?: string;
 }
 
 export interface SubscriptionCacheEntry {
@@ -356,4 +373,65 @@ export async function getTemplate(id: string | number): Promise<any | undefined>
 
 export async function getAllTemplates(): Promise<any[]> {
   return getAllItems('templates');
+}
+
+export async function saveFileAttachment(attachment: OfflineFileAttachment): Promise<OfflineFileAttachment> {
+  await saveItem('fileAttachments', attachment);
+  return attachment;
+}
+
+export async function getFileAttachment(id: string): Promise<OfflineFileAttachment | undefined> {
+  return getItem<OfflineFileAttachment>('fileAttachments', id);
+}
+
+export async function getAllFileAttachments(): Promise<OfflineFileAttachment[]> {
+  return getAllItems<OfflineFileAttachment>('fileAttachments');
+}
+
+export async function getPendingFileAttachments(): Promise<OfflineFileAttachment[]> {
+  const all = await getAllFileAttachments();
+  return all.filter(a => !a.synced);
+}
+
+export async function getFileAttachmentsForEntity(
+  entityType: string,
+  entityId: string | number
+): Promise<OfflineFileAttachment[]> {
+  const all = await getAllFileAttachments();
+  return all.filter(a => a.entityType === entityType && String(a.entityId) === String(entityId));
+}
+
+export async function markFileAttachmentSynced(id: string, remoteUrl: string): Promise<void> {
+  const attachment = await getFileAttachment(id);
+  if (attachment) {
+    attachment.synced = true;
+    attachment.remoteUrl = remoteUrl;
+    const { blob, ...withoutBlob } = attachment;
+    await saveItem('fileAttachments', { ...withoutBlob, blob: new Blob([]) });
+  }
+}
+
+export async function deleteFileAttachment(id: string): Promise<void> {
+  await deleteItem('fileAttachments', id);
+}
+
+export async function getOfflineSyncStats(): Promise<{
+  pendingCount: number;
+  failedCount: number;
+  fileAttachmentCount: number;
+  lastSyncedAt: number | null;
+}> {
+  const queue = await getSyncQueue();
+  const files = await getPendingFileAttachments();
+  const metadata = await getAllSyncMetadata();
+  const latestSync = metadata.reduce((latest, m) => 
+    m.lastSyncedAt > (latest || 0) ? m.lastSyncedAt : latest, 
+    null as number | null
+  );
+  return {
+    pendingCount: queue.length,
+    failedCount: queue.filter(op => op.retries >= 3).length,
+    fileAttachmentCount: files.length,
+    lastSyncedAt: latestSync,
+  };
 }
