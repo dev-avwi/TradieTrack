@@ -201,7 +201,7 @@ export default function Integrations() {
 
   const { data: health, isLoading, isError, refetch } = useQuery<HealthStatus>({
     queryKey: ['/api/integrations/health'],
-    refetchInterval: 30000,
+    refetchInterval: 30000, // Intentional: external service health has no WS event source
   });
 
   const connectStripeMutation = useMutation({

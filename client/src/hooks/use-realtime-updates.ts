@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { safeInvalidateQueries, isRemoteChange } from '@/lib/queryClient';
+import { safeInvalidateQueries, isRemoteChange, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -182,6 +182,7 @@ export function useRealtimeUpdates({
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pongTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const awaitingPongRef = useRef(false);
+  const hadPriorConnectionRef = useRef(false);
 
   // Use refs for callbacks to avoid reconnection on callback changes
   const callbacksRef = useRef({
@@ -415,6 +416,11 @@ export function useRealtimeUpdates({
             console.log('[RealtimeUpdates] Authenticated successfully');
             setIsConnected(true);
             reconnectAttempts.current = 0;
+            if (hadPriorConnectionRef.current) {
+              console.log('[RealtimeUpdates] Reconnected — invalidating all queries to catch up on missed events');
+              queryClient.invalidateQueries();
+            }
+            hadPriorConnectionRef.current = true;
             return;
           }
           

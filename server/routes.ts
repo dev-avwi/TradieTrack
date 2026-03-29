@@ -429,7 +429,9 @@ async function logActivity(
     try {
       const { broadcastActivityFeedUpdate } = await import('./websocket');
       broadcastActivityFeedUpdate(userId);
-    } catch {}
+    } catch (wsErr) {
+      console.warn('[WS] Failed to broadcast activity feed update:', wsErr);
+    }
   } catch (error) {
     console.error('Failed to log activity:', error);
   }
@@ -29081,7 +29083,9 @@ Respond with JSON in this format:
       try {
         const { broadcastTeamMemberChange } = await import('./websocket');
         broadcastTeamMemberChange(userId, 'invited', newMember.id);
-      } catch {}
+      } catch (wsErr) {
+        console.warn('[WS] Failed to broadcast team member invite:', wsErr);
+      }
       
       res.json({ ...newMember, smsSent, smsError });
     } catch (error) {
@@ -29180,7 +29184,9 @@ Respond with JSON in this format:
       try {
         const { broadcastTeamMemberChange } = await import('./websocket');
         broadcastTeamMemberChange(effectiveUserId, 'updated', memberId);
-      } catch {}
+      } catch (wsErr) {
+        console.warn('[WS] Failed to broadcast team member update:', wsErr);
+      }
       res.json(updated);
     } catch (error) {
       console.error('Error updating team member:', error);
@@ -29204,7 +29210,9 @@ Respond with JSON in this format:
       try {
         const { broadcastTeamMemberChange } = await import('./websocket');
         broadcastTeamMemberChange(effectiveUserId, 'removed', memberId);
-      } catch {}
+      } catch (wsErr) {
+        console.warn('[WS] Failed to broadcast team member removal:', wsErr);
+      }
       res.json({ success: true });
     } catch (error) {
       console.error('Error removing team member:', error);
