@@ -38689,7 +38689,29 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   });
 
 
-  // Admin error logs endpoint
+  app.post("/api/client-errors", async (req: any, res) => {
+    try {
+      const { message, stack, componentStack, url, userAgent } = req.body;
+      if (!message) return res.status(400).json({ error: 'Message required' });
+
+      const userId = req.session?.userId || null;
+      logger.error('frontend', `Client error: ${String(message).substring(0, 500)}`, {
+        userId,
+        metadata: {
+          stack: String(stack || '').substring(0, 2000),
+          componentStack: String(componentStack || '').substring(0, 1000),
+          url: String(url || '').substring(0, 500),
+          userAgent: String(userAgent || '').substring(0, 300),
+        },
+        error: new Error(String(message)),
+      });
+
+      res.json({ received: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to log error' });
+    }
+  });
+
   app.get("/api/admin/error-logs", requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);

@@ -1,8 +1,46 @@
-import React, { Component, ErrorInfo } from "react";
+import { Component, ErrorInfo } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/analytics";
+
+function reportErrorToServer(data: {
+  message: string;
+  stack?: string;
+  componentStack?: string;
+  url?: string;
+}) {
+  try {
+    fetch('/api/client-errors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...data,
+        url: data.url || window.location.href,
+        userAgent: navigator.userAgent,
+      }),
+    }).catch(() => {});
+  } catch {
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    reportErrorToServer({
+      message: event.message || 'Unhandled window error',
+      stack: event.error?.stack,
+      url: event.filename ? `${event.filename}:${event.lineno}:${event.colno}` : window.location.href,
+    });
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    reportErrorToServer({
+      message: reason?.message || String(reason) || 'Unhandled promise rejection',
+      stack: reason?.stack,
+    });
+  });
+}
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -29,6 +67,12 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     trackEvent("app_crash", {
       error: error.message?.substring(0, 200),
       componentStack: errorInfo.componentStack?.substring(0, 500),
+    });
+
+    reportErrorToServer({
+      message: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack || undefined,
     });
   }
 
