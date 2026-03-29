@@ -9,6 +9,7 @@ import AuthFlow from "@/components/AuthFlow";
 import SimpleOnboarding from "@/components/SimpleOnboarding";
 import { useCompleteOnboarding } from "@/hooks/useCompleteOnboarding";
 import { useRealtimeUpdates } from "@/hooks/use-realtime-updates";
+import { JobCollaborationProvider, JobCollaborationCtxRaw } from "@/contexts/JobCollaborationContext";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -1040,10 +1041,28 @@ function AppLayout() {
   // This handles job status changes, timer events, document updates, payments, etc.
   // MUST be called unconditionally before any early returns (React Rules of Hooks)
   const wsEnabled = !!userCheck && !!realtimeBusinessId && !isLoading && !businessSettingsLoading;
-  const { isConnected: wsConnected } = useRealtimeUpdates({
+  const collaborationCtx = React.useContext(JobCollaborationCtxRaw);
+  
+  const handleJobEditingPresence = useCallback((event: any) => {
+    (collaborationCtx as any)?._dispatchPresence?.(event.jobId, event.editors);
+  }, [collaborationCtx]);
+  
+  const handleJobFieldUpdated = useCallback((event: any) => {
+    (collaborationCtx as any)?._dispatchFieldUpdate?.(event);
+  }, [collaborationCtx]);
+  
+  const { isConnected: wsConnected, sendMessage: wsSendMessage } = useRealtimeUpdates({
     businessId: realtimeBusinessId,
     enabled: wsEnabled,
+    onJobEditingPresence: handleJobEditingPresence,
+    onJobFieldUpdated: handleJobFieldUpdated,
   });
+  
+  useEffect(() => {
+    if (collaborationCtx) {
+      collaborationCtx.setSendMessage(wsSendMessage);
+    }
+  }, [collaborationCtx, wsSendMessage]);
   const [showReconnecting, setShowReconnecting] = useState(false);
   useEffect(() => {
     if (wsEnabled && !wsConnected) {
@@ -1585,6 +1604,7 @@ function App() {
       <ErrorBoundary>
       <ThemeProvider defaultTheme="light" storageKey="jobrunner-ui-theme">
         <NetworkProvider>
+          <JobCollaborationProvider>
           <TooltipProvider>
             <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
             <Switch>
@@ -1610,6 +1630,7 @@ function App() {
             </Suspense>
             <Toaster />
           </TooltipProvider>
+          </JobCollaborationProvider>
         </NetworkProvider>
       </ThemeProvider>
       </ErrorBoundary>

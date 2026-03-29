@@ -132,6 +132,24 @@ interface GeofenceAlertEvent {
   timestamp: number;
 }
 
+interface JobEditingPresenceEvent {
+  type: 'job_editing_presence';
+  jobId: string;
+  editors: { userId: string; userName: string; joinedAt: number }[];
+  timestamp: number;
+}
+
+interface JobFieldUpdatedEvent {
+  type: 'job_field_updated';
+  jobId: string;
+  updatedFields: string[];
+  updatedBy: string;
+  updatedByName: string;
+  version: number;
+  serverData: Record<string, unknown>;
+  timestamp: number;
+}
+
 type RealtimeEvent = 
   | JobStatusEvent 
   | TimerEvent 
@@ -146,7 +164,9 @@ type RealtimeEvent =
   | TeamPresenceChangedEvent
   | ActivityFeedUpdatedEvent
   | TeamMemberChangedEvent
-  | GeofenceAlertEvent;
+  | GeofenceAlertEvent
+  | JobEditingPresenceEvent
+  | JobFieldUpdatedEvent;
 
 interface UseRealtimeUpdatesOptions {
   businessId: string;
@@ -158,6 +178,8 @@ interface UseRealtimeUpdatesOptions {
   onSmsNotification?: (event: SmsNotificationEvent) => void;
   onNotification?: (event: NotificationEvent) => void;
   onChatMessage?: (event: ChatMessageEvent) => void;
+  onJobEditingPresence?: (event: JobEditingPresenceEvent) => void;
+  onJobFieldUpdated?: (event: JobFieldUpdatedEvent) => void;
 }
 
 export function useRealtimeUpdates({
@@ -170,6 +192,8 @@ export function useRealtimeUpdates({
   onSmsNotification,
   onNotification,
   onChatMessage,
+  onJobEditingPresence,
+  onJobFieldUpdated,
 }: UseRealtimeUpdatesOptions) {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -184,7 +208,6 @@ export function useRealtimeUpdates({
   const awaitingPongRef = useRef(false);
   const hadPriorConnectionRef = useRef(false);
 
-  // Use refs for callbacks to avoid reconnection on callback changes
   const callbacksRef = useRef({
     onJobStatusChange,
     onTimerEvent,
@@ -193,6 +216,8 @@ export function useRealtimeUpdates({
     onSmsNotification,
     onNotification,
     onChatMessage,
+    onJobEditingPresence,
+    onJobFieldUpdated,
   });
 
   useEffect(() => {
@@ -204,8 +229,10 @@ export function useRealtimeUpdates({
       onSmsNotification,
       onNotification,
       onChatMessage,
+      onJobEditingPresence,
+      onJobFieldUpdated,
     };
-  }, [onJobStatusChange, onTimerEvent, onDocumentStatusChange, onPaymentReceived, onSmsNotification, onNotification, onChatMessage]);
+  }, [onJobStatusChange, onTimerEvent, onDocumentStatusChange, onPaymentReceived, onSmsNotification, onNotification, onChatMessage, onJobEditingPresence, onJobFieldUpdated]);
 
   const handleMessage = useCallback((event: RealtimeEvent) => {
     const callbacks = callbacksRef.current;
@@ -356,6 +383,15 @@ export function useRealtimeUpdates({
         safeInvalidateQueries({ queryKey: ['/api/geofence-alerts'] });
         safeInvalidateQueries({ queryKey: ['/api/map/geofence-alerts'] });
         break;
+
+      case 'job_editing_presence':
+        callbacks.onJobEditingPresence?.(event);
+        break;
+
+      case 'job_field_updated':
+        callbacks.onJobFieldUpdated?.(event);
+        safeInvalidateQueries({ queryKey: ['/api/jobs', event.jobId] });
+        break;
     }
   }, [toast]);
 
@@ -439,7 +475,9 @@ export function useRealtimeUpdates({
             'team_presence_changed',
             'activity_feed_updated',
             'team_member_changed',
-            'geofence_alert'
+            'geofence_alert',
+            'job_editing_presence',
+            'job_field_updated'
           ].includes(message.type)) {
             handleMessage(message as RealtimeEvent);
           }
@@ -558,9 +596,16 @@ export function useRealtimeUpdates({
     }
   }, [enabled, isConnected]);
 
+  const sendMessage = useCallback((message: Record<string, unknown>) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(message));
+    }
+  }, []);
+
   return {
     isConnected,
     disconnect,
     reconnect: connect,
+    sendMessage,
   };
 }

@@ -15854,6 +15854,9 @@ Be specific about materials, colors, and features that would be included.`
         body.inspectionCompletedAt = new Date(body.inspectionCompletedAt);
       }
       
+      const submittedVersion = body.version;
+      delete body.version;
+      
       const data = insertJobSchema.partial().parse(body);
       
       if (data.scheduledAt && !data.scheduledTime) {
@@ -15868,6 +15871,17 @@ Be specific about materials, colors, and features that would be included.`
       console.log('[PATCH /api/jobs/:id] Parsed data after validation:', JSON.stringify(data, null, 2));
       
       const existingJob = await storage.getJob(req.params.id, effectiveUserId);
+      
+      if (submittedVersion !== undefined && existingJob && existingJob.version !== undefined) {
+        if (Number(submittedVersion) !== Number(existingJob.version)) {
+          return res.status(409).json({
+            error: "This job has been modified by another user since you started editing. Please review the changes.",
+            code: "VERSION_CONFLICT",
+            serverVersion: existingJob.version,
+            serverData: existingJob,
+          });
+        }
+      }
       
       // Validate: Can't set status to "invoiced" without a linked invoice
       if (data.status === 'invoiced' && existingJob?.status !== 'invoiced') {
@@ -15987,6 +16001,8 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
       
+      updateData.version = (existingJob?.version || 1) + 1;
+      
       // Debug logging for updateData before saving
       console.log('[PATCH /api/jobs/:id] updateData being saved:', JSON.stringify(updateData, null, 2));
       console.log('[PATCH /api/jobs/:id] assignedTo in updateData:', updateData.assignedTo);
@@ -15994,6 +16010,28 @@ Be specific about materials, colors, and features that would be included.`
       const job = await storage.updateJob(req.params.id, effectiveUserId, updateData);
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
+      }
+      
+      const changedFields = Object.keys(data).filter(k => {
+        if (k === 'version' || k === 'updatedAt') return false;
+        return existingJob && JSON.stringify((data as any)[k]) !== JSON.stringify((existingJob as any)[k]);
+      });
+      if (changedFields.length > 0) {
+        try {
+          const user = await storage.getUser(req.userId);
+          const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown' : 'Unknown';
+          const { broadcastJobFieldUpdate } = await import('./websocket');
+          broadcastJobFieldUpdate(effectiveUserId, {
+            jobId: req.params.id,
+            updatedFields: changedFields,
+            updatedBy: req.userId,
+            updatedByName: userName,
+            version: job.version || 1,
+            serverData: job as any,
+          });
+        } catch (e) {
+          console.error('[PATCH /api/jobs/:id] Failed to broadcast field update:', e);
+        }
       }
 
       // Log activity for note changes

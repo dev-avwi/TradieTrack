@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,6 +15,9 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { ArrowLeft, Loader2, Save, MapPin, Calendar, Clock, AlertTriangle } from "lucide-react";
 import AddressAutocomplete from "@/components/ui/address-autocomplete";
 import type { Job, Client } from "@shared/schema";
+import { PresenceIndicator, FieldUpdateIndicator, ConflictResolutionDialog } from "./JobCollaborationUI";
+import { useJobCollaboration } from "@/hooks/use-job-collaboration";
+import { useAuth } from "@/hooks/useAuth";
 
 const jobEditSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -38,8 +41,10 @@ interface JobEditFormProps {
 
 export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [addressConfirmed, setAddressConfirmed] = useState(true);
+  const jobVersionRef = useRef<number>(1);
 
   const { data: job, isLoading: jobLoading, error: jobError } = useQuery<Job>({
     queryKey: ['/api/jobs', jobId],
@@ -49,6 +54,8 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
     queryKey: ['/api/clients', job?.clientId],
     enabled: !!job?.clientId,
   });
+
+  const collaboration = useJobCollaboration(jobId, user?.id, user?.name || user?.email || 'Unknown');
 
   const form = useForm<JobEditData>({
     resolver: zodResolver(jobEditSchema),
@@ -78,20 +85,37 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
         geofenceEnabled: job.geofenceEnabled || false,
         geofenceRadius: job.geofenceRadius || 100,
       });
+      jobVersionRef.current = (job as any).version || 1;
       setIsLoading(false);
     }
   }, [job, form]);
 
   const updateJobMutation = useMutation({
-    mutationFn: async (data: JobEditData) => {
+    mutationFn: async (data: JobEditData & { version?: number }) => {
       const response = await apiRequest('PATCH', `/api/jobs/${jobId}`, {
         ...data,
+        version: data.version ?? jobVersionRef.current,
         scheduledAt: data.scheduledAt ? new Date(data.scheduledAt).toISOString() : null,
         estimatedHours: data.estimatedHours ? parseFloat(data.estimatedHours) : null,
       });
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 409 && errorData.code === 'VERSION_CONFLICT') {
+          const localChanges = form.getValues();
+          collaboration.handleConflictResponse(
+            localChanges as Record<string, unknown>,
+            errorData.serverData,
+            errorData.serverVersion,
+          );
+          throw new Error('VERSION_CONFLICT');
+        }
+        throw new Error(errorData.error || 'Failed to update job');
+      }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedJob) => {
+      jobVersionRef.current = updatedJob.version || jobVersionRef.current + 1;
+      collaboration.clearDirtyFields();
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
       toast({
@@ -101,6 +125,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
       onSave?.(jobId);
     },
     onError: (error: any) => {
+      if (error.message === 'VERSION_CONFLICT') return;
       toast({
         title: "Failed to update job",
         description: error.message || "Please try again",
@@ -108,6 +133,28 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
       });
     },
   });
+
+  const handleConflictResolve = useCallback(async (resolvedData: Record<string, unknown>, serverVersion: number) => {
+    collaboration.resolveConflict();
+    try {
+      const response = await apiRequest('PATCH', `/api/jobs/${jobId}`, {
+        ...resolvedData,
+        version: serverVersion,
+      });
+      if (response.ok) {
+        const updatedJob = await response.json();
+        jobVersionRef.current = updatedJob.version || serverVersion + 1;
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
+        toast({ title: "Job updated", description: "Conflict resolved and changes saved" });
+        onSave?.(jobId);
+      } else {
+        toast({ title: "Failed to save", description: "Please try again", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Failed to save", description: "Please try again", variant: "destructive" });
+    }
+  }, [jobId, collaboration, toast, onSave]);
 
   const handleSubmit = (data: JobEditData) => {
     if (!addressConfirmed && data.address) {
@@ -153,6 +200,7 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
             <div>
               <h1 className="text-lg font-semibold">Edit Job</h1>
               {client && <p className="text-sm text-muted-foreground">{client.name}</p>}
+              <PresenceIndicator editors={collaboration.otherEditors} />
             </div>
           </div>
           <Button
@@ -182,7 +230,10 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                   control={form.control}
                   name="title"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="relative">
+                      {collaboration.isFieldRecentlyUpdated('title') && (
+                        <FieldUpdateIndicator fieldName="title" updatedByName={collaboration.getFieldUpdateInfo('title')?.updatedByName || ''} />
+                      )}
                       <FormLabel>Job Title</FormLabel>
                       <FormControl>
                         <Input
@@ -200,7 +251,10 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                   control={form.control}
                   name="description"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="relative">
+                      {collaboration.isFieldRecentlyUpdated('description') && (
+                        <FieldUpdateIndicator fieldName="description" updatedByName={collaboration.getFieldUpdateInfo('description')?.updatedByName || ''} />
+                      )}
                       <FormLabel>Description</FormLabel>
                       <FormControl>
                         <Textarea
@@ -219,7 +273,10 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                   control={form.control}
                   name="priority"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="relative">
+                      {collaboration.isFieldRecentlyUpdated('priority') && (
+                        <FieldUpdateIndicator fieldName="priority" updatedByName={collaboration.getFieldUpdateInfo('priority')?.updatedByName || ''} />
+                      )}
                       <FormLabel>Priority</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
@@ -252,7 +309,10 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
                   control={form.control}
                   name="address"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="relative">
+                      {collaboration.isFieldRecentlyUpdated('address') && (
+                        <FieldUpdateIndicator fieldName="address" updatedByName={collaboration.getFieldUpdateInfo('address')?.updatedByName || ''} />
+                      )}
                       <FormLabel>Address</FormLabel>
                       <FormControl>
                         <AddressAutocomplete
@@ -395,6 +455,14 @@ export default function JobEditForm({ jobId, onSave, onCancel }: JobEditFormProp
           </form>
         </Form>
       </div>
+
+      {collaboration.conflict && (
+        <ConflictResolutionDialog
+          conflict={collaboration.conflict}
+          onResolve={handleConflictResolve}
+          onCancel={collaboration.resolveConflict}
+        />
+      )}
     </div>
   );
 }

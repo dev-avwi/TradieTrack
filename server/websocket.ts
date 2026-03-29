@@ -106,12 +106,14 @@ export function setupWebSocket(server: Server, store?: any) {
       });
 
       ws.on('close', () => {
+        cleanupEditorPresence(authenticatedUser.userId);
         connections.delete(connectionId);
         console.log(`[WebSocket] Client disconnected: ${authenticatedUser.userId}`);
       });
 
       ws.on('error', (error) => {
         console.error(`[WebSocket] Error for ${authenticatedUser.userId}:`, error);
+        cleanupEditorPresence(authenticatedUser.userId);
         connections.delete(connectionId);
       });
 
@@ -188,6 +190,12 @@ function handleMessage(connectionId: string, message: any) {
   switch (message.type) {
     case 'location_update':
       handleLocationUpdate(connection, message);
+      break;
+    case 'job_editing_start':
+      handleJobEditingStart(connection, message);
+      break;
+    case 'job_editing_stop':
+      handleJobEditingStop(connection, message);
       break;
     case 'ping':
       connection.ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
@@ -537,6 +545,126 @@ export function broadcastTeamMemberChange(
     action,
     memberId,
     timestamp: Date.now(),
+  });
+}
+
+const jobEditors = new Map<string, Map<string, { userId: string; userName: string; joinedAt: number }>>();
+
+export function getJobEditors(jobId: string): { userId: string; userName: string; joinedAt: number }[] {
+  const editors = jobEditors.get(jobId);
+  if (!editors) return [];
+  return Array.from(editors.values());
+}
+
+function handleJobEditingStart(connection: ClientConnection, message: any) {
+  const { jobId, userName } = message;
+  if (!jobId) return;
+
+  if (!jobEditors.has(jobId)) {
+    jobEditors.set(jobId, new Map());
+  }
+  jobEditors.get(jobId)!.set(connection.userId, {
+    userId: connection.userId,
+    userName: userName || 'Unknown',
+    joinedAt: Date.now(),
+  });
+
+  const presencePayload = JSON.stringify({
+    type: 'job_editing_presence',
+    jobId,
+    editors: getJobEditors(jobId),
+    timestamp: Date.now(),
+  });
+
+  connections.forEach((conn) => {
+    if (conn.businessId === connection.businessId &&
+        conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.send(presencePayload);
+    }
+  });
+}
+
+function handleJobEditingStop(connection: ClientConnection, message: any) {
+  const { jobId } = message;
+  if (!jobId) return;
+
+  const editors = jobEditors.get(jobId);
+  if (editors) {
+    editors.delete(connection.userId);
+    if (editors.size === 0) {
+      jobEditors.delete(jobId);
+    }
+  }
+
+  connections.forEach((conn) => {
+    if (conn.businessId === connection.businessId &&
+        conn.userId !== connection.userId &&
+        conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.send(JSON.stringify({
+        type: 'job_editing_presence',
+        jobId,
+        editors: getJobEditors(jobId),
+        timestamp: Date.now(),
+      }));
+    }
+  });
+}
+
+function cleanupEditorPresence(userId: string) {
+  const disconnectedConn = Array.from(connections.values()).find(c => c.userId === userId);
+  const businessId = disconnectedConn?.businessId;
+
+  const affectedJobs: string[] = [];
+  jobEditors.forEach((editors, jobId) => {
+    if (editors.has(userId)) {
+      editors.delete(userId);
+      affectedJobs.push(jobId);
+      if (editors.size === 0) {
+        jobEditors.delete(jobId);
+      }
+    }
+  });
+
+  if (businessId && affectedJobs.length > 0) {
+    affectedJobs.forEach(jobId => {
+      const presencePayload = JSON.stringify({
+        type: 'job_editing_presence',
+        jobId,
+        editors: getJobEditors(jobId),
+        timestamp: Date.now(),
+      });
+      connections.forEach((conn) => {
+        if (conn.businessId === businessId &&
+            conn.userId !== userId &&
+            conn.ws.readyState === WebSocket.OPEN) {
+          conn.ws.send(presencePayload);
+        }
+      });
+    });
+  }
+}
+
+export function broadcastJobFieldUpdate(
+  businessId: string,
+  jobDetails: {
+    jobId: string;
+    updatedFields: string[];
+    updatedBy: string;
+    updatedByName: string;
+    version: number;
+    serverData: Record<string, unknown>;
+  }
+) {
+  connections.forEach((conn) => {
+    if (conn.businessId === businessId &&
+        conn.userId !== jobDetails.updatedBy &&
+        conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.send(JSON.stringify({
+        type: 'job_field_updated',
+        ...jobDetails,
+        timestamp: Date.now(),
+      }));
+    }
   });
 }
 

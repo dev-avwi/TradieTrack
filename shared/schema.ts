@@ -755,6 +755,7 @@ export const jobs = pgTable("jobs", {
   requiresInspection: boolean("requires_inspection").default(false),
   inspectionCompletedAt: timestamp("inspection_completed_at"),
   inspectionNotes: text("inspection_notes"),
+  version: integer("version").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
