@@ -15875,23 +15875,12 @@ Be specific about materials, colors, and features that would be included.`
       const editableFields = ['title', 'description', 'address', 'scheduledAt', 'estimatedHours', 'priority', 'geofenceEnabled', 'geofenceRadius'];
       const hasEditableFieldChanges = Object.keys(data).some(k => editableFields.includes(k));
       
-      if (existingJob && existingJob.version !== undefined) {
-        if (submittedVersion !== undefined) {
-          if (Number(submittedVersion) !== Number(existingJob.version)) {
-            return res.status(409).json({
-              error: "This job has been modified by another user since you started editing. Please review the changes.",
-              code: "VERSION_CONFLICT",
-              serverVersion: existingJob.version,
-              serverData: existingJob,
-            });
-          }
-        } else if (hasEditableFieldChanges) {
-          return res.status(400).json({
-            error: "Version field is required when editing job details to prevent conflicts.",
-            code: "VERSION_REQUIRED",
-            serverVersion: existingJob.version,
-          });
-        }
+      if (existingJob && hasEditableFieldChanges && submittedVersion === undefined) {
+        return res.status(400).json({
+          error: "Version field is required when editing job details to prevent conflicts.",
+          code: "VERSION_REQUIRED",
+          serverVersion: existingJob.version,
+        });
       }
       
       // Validate: Can't set status to "invoiced" without a linked invoice
@@ -16018,11 +16007,39 @@ Be specific about materials, colors, and features that would be included.`
       
       updateData.version = (existingJob?.version || 1) + 1;
       
-      // Debug logging for updateData before saving
       console.log('[PATCH /api/jobs/:id] updateData being saved:', JSON.stringify(updateData, null, 2));
       console.log('[PATCH /api/jobs/:id] assignedTo in updateData:', updateData.assignedTo);
       
-      const job = await storage.updateJob(req.params.id, effectiveUserId, updateData);
+      let job: Awaited<ReturnType<typeof storage.updateJob>>;
+      if (submittedVersion !== undefined && hasEditableFieldChanges) {
+        const { db } = await import('./db');
+        const { jobs } = await import('@shared/schema');
+        const { eq, and } = await import('drizzle-orm');
+        const result = await db
+          .update(jobs)
+          .set({ ...updateData, updatedAt: new Date() })
+          .where(and(
+            eq(jobs.id, req.params.id),
+            eq(jobs.userId, effectiveUserId),
+            eq(jobs.version, Number(submittedVersion)),
+          ))
+          .returning();
+        if (result.length === 0) {
+          const freshJob = await storage.getJob(req.params.id, effectiveUserId);
+          if (!freshJob) {
+            return res.status(404).json({ error: "Job not found" });
+          }
+          return res.status(409).json({
+            error: "This job has been modified by another user since you started editing. Please review the changes.",
+            code: "VERSION_CONFLICT",
+            serverVersion: freshJob.version,
+            serverData: freshJob,
+          });
+        }
+        job = result[0];
+      } else {
+        job = await storage.updateJob(req.params.id, effectiveUserId, updateData);
+      }
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
       }
