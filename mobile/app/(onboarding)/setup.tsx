@@ -266,7 +266,7 @@ export default function OnboardingSetupScreen() {
     setSendingInvites(true);
     try {
       for (const invite of teamInvites) {
-        await api.post('/api/team/invite', {
+        await api.post('/api/team/members/invite', {
           email: invite.email,
           roleId: invite.role
         });
