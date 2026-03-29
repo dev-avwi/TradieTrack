@@ -11,6 +11,7 @@ import {
 } from './offlineStorage';
 import { getSessionToken } from './queryClient';
 import { queryClient } from './queryClient';
+import { syncManager } from './syncManager';
 
 const MAX_RETRIES = 3;
 const ID_MAPPING_KEY = 'jobrunner_id_mapping';
@@ -277,6 +278,20 @@ async function uploadAndLinkAttachments(
   }
 }
 
+function hasFieldConflict(localData: Record<string, unknown>, serverData: Record<string, unknown>): boolean {
+  if (!localData || !serverData) return false;
+  const ignoreFields = new Set(['id', 'createdAt', 'updatedAt', 'version']);
+  for (const key of Object.keys(localData)) {
+    if (ignoreFields.has(key)) continue;
+    if (key in serverData && localData[key] !== undefined && serverData[key] !== undefined) {
+      const localVal = JSON.stringify(localData[key]);
+      const serverVal = JSON.stringify(serverData[key]);
+      if (localVal !== serverVal) return true;
+    }
+  }
+  return false;
+}
+
 export async function processSyncQueue(): Promise<SyncResult> {
   const queue = await getSyncQueue();
   
@@ -330,6 +345,17 @@ export async function processSyncQueue(): Promise<SyncResult> {
         }
       }
       
+      if (operation.type === 'update') {
+        const serverCheckResponse = await makeApiCall(endpoint, 'GET');
+        if (serverCheckResponse.ok) {
+          const serverItem = await serverCheckResponse.json();
+          if (serverItem && hasFieldConflict(resolvedData, serverItem)) {
+            syncManager.registerConflict(operation, serverItem);
+            continue;
+          }
+        }
+      }
+
       const response = await makeApiCall(
         endpoint,
         operation.method,

@@ -578,6 +578,10 @@ class SyncManager {
     return [...this.conflicts];
   }
 
+  async registerConflict(operation: SyncOperation, serverVersion: Record<string, unknown>): Promise<void> {
+    await this.handleConflict(operation, serverVersion);
+  }
+
   async resolveConflict(conflictId: string, useLocal: boolean, mergedData?: Record<string, unknown>): Promise<void> {
     const conflict = this.conflicts.find((c) => c.id === conflictId);
     if (!conflict) return;
