@@ -15872,7 +15872,7 @@ Be specific about materials, colors, and features that would be included.`
       
       const existingJob = await storage.getJob(req.params.id, effectiveUserId);
       
-      const editableFields = ['title', 'description', 'address', 'scheduledAt', 'estimatedHours', 'notes', 'priority', 'geofenceEnabled', 'geofenceRadius'];
+      const editableFields = ['title', 'description', 'address', 'scheduledAt', 'estimatedHours', 'priority', 'geofenceEnabled', 'geofenceRadius'];
       const hasEditableFieldChanges = Object.keys(data).some(k => editableFields.includes(k));
       
       if (existingJob && existingJob.version !== undefined) {
@@ -15959,6 +15959,10 @@ Be specific about materials, colors, and features that would be included.`
         }
       }
       
+      if (data.notes !== undefined) {
+        delete data.notes;
+      }
+      
       // Auto-geocode if address changed (always re-geocode when address changes)
       let updateData = { ...data };
       if (data.address && data.address !== existingJob?.address) {
@@ -16023,9 +16027,11 @@ Be specific about materials, colors, and features that would be included.`
         return res.status(404).json({ error: "Job not found" });
       }
       
+      const dataRecord = data as Record<string, unknown>;
+      const existingRecord = existingJob as Record<string, unknown> | null;
       const changedFields = Object.keys(data).filter(k => {
         if (k === 'version' || k === 'updatedAt') return false;
-        return existingJob && JSON.stringify((data as any)[k]) !== JSON.stringify((existingJob as any)[k]);
+        return existingRecord && JSON.stringify(dataRecord[k]) !== JSON.stringify(existingRecord[k]);
       });
       if (changedFields.length > 0) {
         try {
@@ -16038,32 +16044,13 @@ Be specific about materials, colors, and features that would be included.`
             updatedBy: req.userId,
             updatedByName: userName,
             version: job.version || 1,
-            serverData: job as any,
+            serverData: job as unknown as Record<string, unknown>,
           });
         } catch (e) {
           console.error('[PATCH /api/jobs/:id] Failed to broadcast field update:', e);
         }
       }
 
-      // Log activity for note changes
-      if (data.notes !== undefined && existingJob && data.notes !== existingJob.notes) {
-        try {
-          const client = job.clientId ? await storage.getClient(job.clientId, effectiveUserId) : null;
-          const clientName = client?.name || 'Unknown client';
-          const notePreview = (data.notes || '').substring(0, 50) + ((data.notes || '').length > 50 ? '...' : '');
-          await logActivity(
-            effectiveUserId, 
-            'note_updated', 
-            `Job notes updated: ${job.title}`, 
-            notePreview || 'Notes cleared',
-            'job', 
-            job.id, 
-            { jobTitle: job.title, clientName, hasContent: !!data.notes }
-          );
-        } catch (activityError) {
-          console.error('Failed to log note update activity:', activityError);
-        }
-      }
 
       // Create notifications and log activity for status changes
       if (data.status && existingJob && data.status !== existingJob.status) {
