@@ -11012,12 +11012,15 @@ Be specific about materials, colors, and features that would be included.`
       let formatWarning: string | undefined;
       if (platform !== 'generic') {
         const detection = detectCompetitorFormat(headers);
-        if (detection && (detection.platform === platform || platform === 'generic')) {
+        if (detection) {
           detectedPlatform = detection.platform;
           detectedType = detection.dataType;
           mappings = detection.mappings;
+          if (detection.platform !== platform) {
+            formatWarning = `Detected ${detection.platform === 'tradify' ? 'Tradify' : 'ServiceM8'} ${detection.dataType} format instead of ${platform === 'tradify' ? 'Tradify' : 'ServiceM8'}.`;
+          }
         } else {
-          formatWarning = `Could not auto-detect ${platform} format. Falling back to generic import as clients.`;
+          formatWarning = `Could not auto-detect ${platform === 'tradify' ? 'Tradify' : 'ServiceM8'} format. Falling back to generic import as clients.`;
           mappings = suggestFieldMappings(headers, detectedType);
         }
       } else if (!requestedType) {
