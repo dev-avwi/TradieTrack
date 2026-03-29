@@ -194,14 +194,13 @@ class SyncManager {
     }
   }
 
-  private async uploadFileAttachments(operation: SyncOperation, resolvedEntityId?: string | number): Promise<void> {
-    if (!operation.fileAttachmentIds?.length) return;
+  private async uploadFileAttachments(operation: SyncOperation, resolvedEntityId?: string | number): Promise<string[]> {
+    const uploadedUrls: string[] = [];
+    if (!operation.fileAttachmentIds?.length) return uploadedUrls;
 
     for (const attachmentId of operation.fileAttachmentIds) {
       const attachment = await getFileAttachment(attachmentId);
       if (!attachment || attachment.synced) continue;
-
-      const entityId = resolvedEntityId ?? attachment.entityId;
 
       const formData = new FormData();
       formData.append('file', attachment.blob, attachment.filename);
@@ -217,9 +216,34 @@ class SyncManager {
         throw new Error(`Attachment upload failed: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      await markFileAttachmentSynced(attachmentId, result.url || '');
+      const uploadResult = await response.json();
+      const url = uploadResult.url || '';
+      await markFileAttachmentSynced(attachmentId, url);
+      if (url) uploadedUrls.push(url);
     }
+
+    if (uploadedUrls.length > 0 && resolvedEntityId) {
+      try {
+        const entityEndpoint = `/api/${operation.storeName}/${resolvedEntityId}`;
+        const entityResponse = await fetch(entityEndpoint, { credentials: 'include' });
+        if (entityResponse.ok) {
+          const entity = await entityResponse.json();
+          const existingPhotos = Array.isArray(entity.photos) ? entity.photos : [];
+          const newPhotos = uploadedUrls.map(url => ({
+            url,
+            uploadedAt: new Date().toISOString(),
+            source: 'offline_sync',
+          }));
+          await apiRequest('PATCH', entityEndpoint, {
+            photos: [...existingPhotos, ...newPhotos],
+          });
+        }
+      } catch (linkError) {
+        console.warn('Failed to link uploaded attachments to entity:', linkError);
+      }
+    }
+
+    return uploadedUrls;
   }
 
   private async processOperation(operation: SyncOperation): Promise<boolean> {
