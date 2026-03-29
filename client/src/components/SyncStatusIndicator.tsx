@@ -210,7 +210,7 @@ export default function SyncStatusIndicator({ compact = true }: SyncStatusIndica
                         size="sm"
                         className="h-6 px-2 text-xs"
                         onClick={async () => {
-                          syncManager.retryFailedOperations();
+                          syncManager.clearSyncErrors();
                           await sync();
                           refreshCounts();
                         }}

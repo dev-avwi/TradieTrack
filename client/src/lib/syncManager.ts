@@ -362,24 +362,19 @@ class SyncManager {
     }
   }
 
-  private async fetchServerItem(endpoint: string): Promise<any | null> {
-    try {
-      const response = await fetch(endpoint, {
-        credentials: 'include',
-      });
+  private async fetchServerItem(endpoint: string): Promise<Record<string, unknown> | null> {
+    const response = await fetch(endpoint, {
+      credentials: 'include',
+    });
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null;
-        }
-        throw new Error(`Failed to fetch: ${response.status}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
       }
-
-      return await response.json();
-    } catch (error) {
-      console.warn('Failed to fetch server item for conflict check:', error);
-      return null;
+      throw new Error(`Failed to fetch server item for conflict check: ${response.status}`);
     }
+
+    return await response.json();
   }
 
   private hasConflict(localData: any, serverData: any): boolean {
