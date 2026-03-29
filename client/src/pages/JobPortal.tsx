@@ -872,15 +872,39 @@ export default function JobPortal() {
   }
 
   if (error || !data) {
+    const errorMsg = (error as Error)?.message || '';
+    const isExpired = errorMsg.toLowerCase().includes('expired');
+    const isRevoked = errorMsg.toLowerCase().includes('revoked');
+
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-white">
         <Card className="max-w-md w-full rounded-2xl shadow-lg">
           <CardContent className="pt-8 pb-8 text-center">
-            <AlertCircle className="w-14 h-14 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">Job Not Found</h2>
-            <p className="text-muted-foreground text-sm">
-              This link may have expired or the job doesn't exist. Please contact the business directly if you need assistance.
-            </p>
+            {isExpired ? (
+              <>
+                <Clock className="w-14 h-14 text-amber-500 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-foreground mb-2">Link Expired</h2>
+                <p className="text-muted-foreground text-sm">
+                  This tracking link has expired. Please contact the business for an updated link.
+                </p>
+              </>
+            ) : isRevoked ? (
+              <>
+                <AlertCircle className="w-14 h-14 text-red-500 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-foreground mb-2">Link No Longer Active</h2>
+                <p className="text-muted-foreground text-sm">
+                  This tracking link has been deactivated. Please contact the business if you need access.
+                </p>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="w-14 h-14 text-muted-foreground mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-foreground mb-2">Job Not Found</h2>
+                <p className="text-muted-foreground text-sm">
+                  This job doesn't exist or the link is invalid. Please contact the business directly if you need assistance.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

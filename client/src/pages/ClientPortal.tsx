@@ -269,12 +269,25 @@ export default function ClientPortal() {
   }
 
   if (error || !data) {
+    const errorMsg = (error as Error)?.message || '';
+    const isExpired = errorMsg.toLowerCase().includes('expired');
+
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-white">
         <div className="max-w-md w-full text-center py-12">
-          <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
-          <h2 className="text-lg font-semibold mb-2 text-foreground">Document not found</h2>
-          <p className="text-sm text-muted-foreground mb-4">This link may have expired or the document may no longer be available.</p>
+          {isExpired ? (
+            <>
+              <Clock className="w-12 h-12 mx-auto text-amber-500 mb-4" />
+              <h2 className="text-lg font-semibold mb-2 text-foreground">Link Expired</h2>
+              <p className="text-sm text-muted-foreground mb-4">This document link has expired. Please contact the business for an updated link.</p>
+            </>
+          ) : (
+            <>
+              <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
+              <h2 className="text-lg font-semibold mb-2 text-foreground">Document not found</h2>
+              <p className="text-sm text-muted-foreground mb-4">This document doesn't exist or the link is invalid.</p>
+            </>
+          )}
           <p className="text-xs text-muted-foreground">If you think this is an error, please contact the business that sent this to you.</p>
         </div>
       </div>
