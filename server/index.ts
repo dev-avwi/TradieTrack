@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { randomUUID } from "crypto";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { createDemoUserAndData, fixTestUserPasswords, seedSmsDataForTestUsers, createDemoTeamMembers, startDemoDataRefreshScheduler } from "./demoData";
@@ -179,6 +180,13 @@ if (process.env.DATABASE_URL) {
   // Increase limit to 10MB for voice note and photo uploads (base64 encoded)
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+  }));
 
   // Serve static public assets (logo, etc.) for emails
   app.use('/public', express.static('public'));

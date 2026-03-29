@@ -211,6 +211,14 @@ const paymentRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const messageSendLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { error: 'Too many messages sent. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Database-backed rate limiter using the rate_limits table
 // Falls back to in-memory Maps if DB is unavailable
 const fallbackChatMap = new Map<string, { count: number; resetAt: number }>();
@@ -19706,7 +19714,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Send quote via SMS
-  app.post("/api/quotes/:id/send-sms", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
+  app.post("/api/quotes/:id/send-sms", requireAuth, messageSendLimiter, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { sendSmsToClient } = await import('./services/smsService');
@@ -20939,7 +20947,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Send invoice via SMS
-  app.post("/api/invoices/:id/send-sms", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+  app.post("/api/invoices/:id/send-sms", requireAuth, messageSendLimiter, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { sendSmsToClient } = await import('./services/smsService');
@@ -23540,7 +23548,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Share payment request via SMS
-  app.post("/api/payment-requests/:id/send-sms", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+  app.post("/api/payment-requests/:id/send-sms", requireAuth, messageSendLimiter, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { phone } = req.body;
@@ -23622,7 +23630,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Share payment request via email
-  app.post("/api/payment-requests/:id/send-email", requireAuth, async (req: any, res) => {
+  app.post("/api/payment-requests/:id/send-email", requireAuth, messageSendLimiter, async (req: any, res) => {
     try {
       const { email } = req.body;
       if (!email) {
@@ -24387,7 +24395,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Send receipt via email
-  app.post("/api/receipts/:id/send-email", requireAuth, async (req: any, res) => {
+  app.post("/api/receipts/:id/send-email", requireAuth, messageSendLimiter, async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;
       const { email, customSubject, customMessage } = req.body;
@@ -24532,7 +24540,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Send receipt via SMS
-  app.post("/api/receipts/:id/send-sms", requireAuth, async (req: any, res) => {
+  app.post("/api/receipts/:id/send-sms", requireAuth, messageSendLimiter, async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;
       const { sendSmsToClient } = await import('./services/smsService');
@@ -35252,7 +35260,7 @@ Respond with JSON in this format:
   });
   
   // Send SMS/MMS to a client
-  app.post("/api/sms/send", requireAuth, async (req: any, res) => {
+  app.post("/api/sms/send", requireAuth, messageSendLimiter, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { clientId, clientPhone, clientName, jobId, message, mediaUrls } = req.body;
