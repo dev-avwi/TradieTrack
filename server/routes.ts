@@ -35905,6 +35905,7 @@ Respond with JSON in this format:
         businessOwnerId = membership.businessOwnerId;
       }
 
+      const { IS_BETA } = await import('./freemiumService');
       if (!IS_BETA) {
         const ownerUser = await storage.getUser(businessOwnerId);
         if (ownerUser && ownerUser.subscriptionTier === 'free' && !ownerUser.betaLifetimeAccess) {
