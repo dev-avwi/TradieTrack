@@ -168,8 +168,11 @@ export default function TermsOfService() {
 
               <section>
                 <h2 className="text-xl font-semibold mb-3">10. No Escrow / Payment Intermediary</h2>
-                <p className="text-muted-foreground leading-relaxed">
-                  JobRunner does not act as an escrow service, financial intermediary, or payment guarantor between you and your clients. All payment processing is handled by Stripe, a PCI-DSS compliant third-party payment processor. JobRunner does not store credit card information directly. You are responsible for following up on unpaid invoices and managing payment disputes directly with your clients. Stripe's terms of service apply to all payment transactions processed through the platform.
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  JobRunner does not act as an escrow service, financial intermediary, or payment guarantor between you and your clients. All payment processing is handled by Stripe, a PCI-DSS compliant third-party payment processor. JobRunner does not store credit card information directly. You are responsible for following up on unpaid invoices and managing payment disputes directly with your clients.
+                </p>
+                <p className="text-muted-foreground leading-relaxed mb-3">
+                  <strong>Stripe Connected Account Agreement:</strong> Payment processing services for users on JobRunner are provided by Stripe and are subject to the <a href="https://stripe.com/au/connect-account/legal" className="underline" target="_blank" rel="noopener noreferrer">Stripe Connected Account Agreement</a>, which includes the Stripe Terms of Service (collectively, the "Stripe Services Agreement"). By agreeing to these terms or continuing to operate as a user on JobRunner, you agree to be bound by the Stripe Services Agreement, as the same may be modified by Stripe from time to time. As a condition of JobRunner enabling payment processing services through Stripe, you agree to provide JobRunner accurate and complete information about you and your business, and you authorise JobRunner to share it and transaction information related to your use of the payment processing services provided by Stripe.
                 </p>
               </section>
 
@@ -378,7 +381,7 @@ export default function TermsOfService() {
                   <li>The AI Receptionist is designed for information collection and initial customer enquiry handling only. It does not confirm jobs, provide quotes, or make commitments on behalf of your business</li>
                   <li>All job details, quotes, and scheduling communicated by the AI Receptionist must be confirmed by you, the business owner, before any work is undertaken</li>
                   <li>The AI Receptionist may misinterpret customer messages or provide incomplete responses. You are responsible for reviewing all AI-handled conversations and following up with customers as needed</li>
-                  <li>Customers interacting with the AI Receptionist will be informed that they are communicating with an automated system</li>
+                  <li>You agree that the AI Receptionist must play an automated greeting informing callers that they are interacting with an AI system and that the call is being recorded and transcribed for quality and business purposes, in compliance with Australian telecommunications laws including the Telecommunications (Interception and Access) Act 1979 (Cth)</li>
                   <li>SMS messages sent and received through the AI Receptionist are stored in accordance with our Privacy Policy and may be retained for quality assurance and dispute resolution purposes</li>
                   <li>JobRunner is not liable for any miscommunication, missed enquiries, lost business, or customer disputes arising from the AI Receptionist's responses</li>
                   <li>You are responsible for ensuring that any information the AI Receptionist provides to your customers is accurate and up-to-date by maintaining current business details in your settings</li>

@@ -372,6 +372,13 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View style={styles.card}>
+          <Text style={styles.sectionTitle}>6A. Data of Our Customers' Clients</Text>
+          <Text style={[styles.paragraph, styles.lastParagraph]}>
+            JobRunner processes the personal information of our customers' clients (e.g., homeowners, tenants, property managers) solely on behalf of our customers. If you are a client of a business that uses JobRunner and you wish to access, correct, or delete your personal information, please contact that business directly. If we receive such a request, we will forward it to the relevant business for them to action in accordance with their obligations under the Privacy Act 1988 (Cth).
+          </Text>
+        </View>
+
+        <View style={styles.card}>
           <Text style={styles.sectionTitle}>7. Cookies and Tracking</Text>
           <Text style={styles.paragraph}>
             Our mobile app may use local storage and similar technologies to:

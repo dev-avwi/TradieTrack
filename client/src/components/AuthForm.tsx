@@ -612,6 +612,13 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
                   )}
                 </div>
                 
+                <p className="text-xs text-muted-foreground text-center">
+                  By creating an account, you agree to our{' '}
+                  <a href="/terms" className="underline" target="_blank" rel="noopener noreferrer">Terms of Service</a>
+                  {' '}and acknowledge our{' '}
+                  <a href="/privacy" className="underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+                </p>
+
                 <Button 
                   type="submit" 
                   className="w-full" 

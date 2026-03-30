@@ -179,9 +179,16 @@ export default function PrivacyPolicy() {
                 <h2 className="text-xl font-semibold mb-3">7A. Employee Records Exemption</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   The employee records exemption under the Privacy Act 1988 does not apply to the data of our 
-                  customers' employees that we handle as part of providing our Service. This Privacy Policy 
+                  customers' employees, subcontractors, and independent contractors that we handle as part of providing our Service. This Privacy Policy 
                   applies to all personal information processed by the JobRunner platform, including the personal 
-                  information of team members and employees added to the platform by our customers.
+                  information of team members, employees, subcontractors, and independent contractors added to the platform by our customers.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">7B. Data of Our Customers' Clients</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  JobRunner processes the personal information of our customers' clients (e.g., homeowners, tenants, property managers) solely on behalf of our customers. If you are a client of a business that uses JobRunner and you wish to access, correct, or delete your personal information, please contact that business directly. If we receive such a request, we will forward it to the relevant business for them to action in accordance with their obligations under the Privacy Act 1988 (Cth).
                 </p>
               </section>
 
