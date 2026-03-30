@@ -4482,10 +4482,12 @@ export const aiReceptionistConfig = pgTable("ai_receptionist_config", {
   businessHours: json("business_hours"),
   enabled: boolean("enabled").notNull().default(false),
   dedicatedPhoneNumber: text("dedicated_phone_number"),
+  approvalStatus: text("approval_status").notNull().default('pending_approval'),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_ai_config_user").on(table.userId),
+  index("idx_ai_config_approval").on(table.approvalStatus),
 ]);
 
 export const insertAiReceptionistConfigSchema = createInsertSchema(aiReceptionistConfig).omit({ id: true, createdAt: true, updatedAt: true });
@@ -4539,3 +4541,61 @@ export const errorLogs = pgTable("error_logs", {
 ]);
 
 export type ErrorLog = typeof errorLogs.$inferSelect;
+
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminUserId: varchar("admin_user_id").notNull().references(() => users.id),
+  targetUserId: varchar("target_user_id").notNull().references(() => users.id),
+  actionType: text("action_type").notNull(),
+  metadata: jsonb("metadata"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_audit_logs_admin").on(table.adminUserId),
+  index("idx_audit_logs_target").on(table.targetUserId),
+  index("idx_audit_logs_created").on(table.createdAt),
+]);
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+
+export const systemEvents = pgTable("system_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventType: text("event_type").notNull(),
+  severity: text("severity").notNull().default('info'),
+  source: text("source").notNull(),
+  message: text("message").notNull(),
+  metadata: jsonb("metadata"),
+  userId: varchar("user_id"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_system_events_type").on(table.eventType),
+  index("idx_system_events_severity").on(table.severity),
+  index("idx_system_events_source").on(table.source),
+  index("idx_system_events_created").on(table.createdAt),
+]);
+
+export const insertSystemEventSchema = createInsertSchema(systemEvents).omit({ id: true, createdAt: true });
+export type InsertSystemEvent = z.infer<typeof insertSystemEventSchema>;
+export type SystemEvent = typeof systemEvents.$inferSelect;
+
+export const websiteChangeRequests = pgTable("website_change_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: text("title").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default('todo'),
+  priority: text("priority").default('medium'),
+  assignedTo: varchar("assigned_to"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_wcr_user").on(table.userId),
+  index("idx_wcr_status").on(table.status),
+]);
+
+export const insertWebsiteChangeRequestSchema = createInsertSchema(websiteChangeRequests).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertWebsiteChangeRequest = z.infer<typeof insertWebsiteChangeRequestSchema>;
+export type WebsiteChangeRequest = typeof websiteChangeRequests.$inferSelect;

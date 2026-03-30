@@ -6,6 +6,7 @@ import { markInvoicePaidInXero } from './xeroService';
 import { broadcastPaymentReceived } from './websocket';
 import { sendSMS } from './twilioClient';
 import { logger } from './logger';
+import { logSystemEvent } from './systemEventService';
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string, uuid: string, storage: any): Promise<void> {
@@ -261,6 +262,7 @@ async function handleStripeEvent(event: any, storage: any) {
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
         console.log('⚠️ Invoice payment failed:', invoice.id);
+        logSystemEvent('stripe', 'error', 'invoice_payment_failed', `Invoice payment failed: ${invoice.id}`, { invoiceId: invoice.id, customerId: invoice.customer });
 
         const customerId = invoice.customer;
         const businessSettings = await storage.getBusinessSettingsByStripeCustomer(customerId);
@@ -535,6 +537,7 @@ async function handleStripeEvent(event: any, storage: any) {
       case 'payment_intent.payment_failed': {
         const paymentIntent = event.data.object;
         console.log('⚠️ Payment intent failed:', paymentIntent.id);
+        logSystemEvent('stripe', 'error', 'payment_intent_failed', `Payment intent failed: ${paymentIntent.id}`, { paymentIntentId: paymentIntent.id });
         
         // Notify tradie if this was a Connect payment attempt
         const invoiceId = paymentIntent.metadata?.invoiceId;
@@ -594,6 +597,7 @@ async function handleStripeEvent(event: any, storage: any) {
     }
   } catch (error) {
     logger.error('webhook', 'Error handling Stripe event', { error, metadata: { eventType: event.type } });
+    logSystemEvent('stripe', 'error', 'webhook_handler_error', `Stripe webhook handler error for ${event.type}: ${(error as any)?.message || 'Unknown'}`, { eventType: event.type });
     throw error;
   }
 }

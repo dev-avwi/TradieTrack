@@ -21,7 +21,10 @@ export type TeamActivityType =
   | 'milestone'           // Milestone reached (e.g., 100 jobs completed)
   | 'check_in'            // Team member checked in at job site
   | 'check_out'           // Team member checked out from job site
-  | 'message_sent';       // Team chat message
+  | 'message_sent'        // Team chat message
+  | 'website_change_submitted'     // Website change request submitted
+  | 'ai_receptionist_provisioned'  // AI receptionist provisioned (pending approval)
+  | 'impersonation_started';       // Admin started impersonation session
 
 interface LogActivityOptions {
   businessOwnerId: string;

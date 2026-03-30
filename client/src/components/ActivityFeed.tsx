@@ -74,6 +74,9 @@ const activityIcons: Record<string, typeof Mail> = {
   check_out: MapPinOff,
   milestone: Trophy,
   message_sent: MessageSquare,
+  website_change_submitted: FileText,
+  ai_receptionist_provisioned: Bell,
+  impersonation_started: UserCheck,
 };
 
 const activityColors: Record<string, { bg: string; icon: string }> = {
@@ -101,6 +104,9 @@ const activityColors: Record<string, { bg: string; icon: string }> = {
   check_out: { bg: 'hsl(35 90% 55% / 0.1)', icon: 'hsl(35 90% 55%)' },
   milestone: { bg: 'hsl(45 100% 50% / 0.15)', icon: 'hsl(45 100% 45%)' },
   message_sent: { bg: 'hsl(280 65% 60% / 0.1)', icon: 'hsl(280 65% 60%)' },
+  website_change_submitted: { bg: 'hsl(210 80% 52% / 0.1)', icon: 'hsl(210 80% 52%)' },
+  ai_receptionist_provisioned: { bg: 'hsl(280 65% 60% / 0.1)', icon: 'hsl(280 65% 60%)' },
+  impersonation_started: { bg: 'hsl(25 90% 55% / 0.1)', icon: 'hsl(25 90% 55%)' },
 };
 
 function getNavigationPath(activity: ActivityItem): string | null {

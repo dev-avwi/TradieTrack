@@ -466,6 +466,10 @@ export async function enableAiReceptionist(userId: string): Promise<{
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[Vapi] Failed to enable AI Receptionist for user ${userId}:`, message);
+    try {
+      const { logSystemEvent } = await import('./systemEventService');
+      logSystemEvent('vapi', 'error', 'ai_receptionist_enable_failed', `Failed to enable AI Receptionist for user ${userId}: ${message}`, { userId });
+    } catch {}
     return { success: false, error: message };
   }
 }

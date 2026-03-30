@@ -308,6 +308,10 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResult> {
     };
   } catch (error: any) {
     console.error(`❌ Failed to send ${isMMS ? 'MMS' : 'SMS'}:`, error.message);
+    try {
+      const { logSystemEvent } = await import('./systemEventService');
+      logSystemEvent('twilio', 'error', 'sms_send_failed', `Failed to send ${isMMS ? 'MMS' : 'SMS'}: ${error.message}`, { to: options.to, error: error.message });
+    } catch {}
     return {
       success: false,
       error: error.message

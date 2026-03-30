@@ -146,8 +146,12 @@ import {
   smsMessages,
   smsConversations,
   aiReceptionistCalls,
+  aiReceptionistConfig,
   leads,
   errorLogs,
+  auditLogs,
+  systemEvents,
+  websiteChangeRequests,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, asc, and, gte, lte, lt, isNotNull, isNull, inArray, or, count, sum, ne } from "drizzle-orm";
@@ -395,10 +399,13 @@ setInterval(async () => {
 
 }, 5 * 60 * 1000);
 
+import { logSystemEvent } from './systemEventService';
+
 // Helper function to log activity events for dashboard feed
 type ActivityType = 'job_created' | 'job_status_changed' | 'job_completed' | 'job_scheduled' | 'job_started' |
   'quote_created' | 'quote_sent' | 'quote_accepted' | 'quote_rejected' |
-  'invoice_created' | 'invoice_sent' | 'invoice_paid' | 'payment_received';
+  'invoice_created' | 'invoice_sent' | 'invoice_paid' | 'payment_received' |
+  'website_change_submitted' | 'ai_receptionist_provisioned' | 'impersonation_started';
 
 async function logActivity(
   userId: string,
@@ -3467,6 +3474,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         teamMemberId: workerPermissionContext.teamMemberId,
         businessOwnerId: workerPermissionContext.businessOwnerId,
       };
+
+      if (req.session?.impersonating) {
+        response.isImpersonated = true;
+        response.impersonatedBy = req.session.originalAdminUserId;
+        response.impersonationExpiresAt = req.session.impersonationExpiresAt;
+      }
       
       if (!userContext.isOwner) {
         response.ownerSubscriptionValid = userContext.ownerSubscriptionValid;
@@ -4290,6 +4303,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     if (!userId) {
       return res.status(401).json({ error: "Authentication required" });
+    }
+
+    if (req.session?.impersonating && req.session?.impersonationExpiresAt) {
+      if (Date.now() > req.session.impersonationExpiresAt) {
+        const adminId = req.session.originalAdminUserId;
+        req.session.userId = adminId;
+        delete req.session.impersonating;
+        delete req.session.originalAdminUserId;
+        delete req.session.impersonationExpiresAt;
+        await new Promise<void>((resolve) => {
+          req.session.save(() => resolve());
+        });
+        userId = adminId;
+      }
     }
     
     // Get fresh user data
@@ -5702,6 +5729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const initialized = await initializeTwilio();
           if (!initialized) {
             console.error('[SMS] Twilio not configured - cannot send SMS');
+            logSystemEvent('twilio', 'error', 'twilio_not_configured', 'Twilio SMS service not configured - cannot send SMS');
             return { success: false, error: 'SMS service not configured' };
           }
         }
@@ -8684,6 +8712,7 @@ Be specific about materials, colors, and features that would be included.`
       }
     } catch (error) {
       console.error("Error testing Stripe:", error);
+      logSystemEvent('stripe', 'error', 'stripe_test_failed', `Stripe test failed: ${(error as any)?.message || 'Unknown error'}`);
       res.status(500).json({ error: "Failed to test Stripe connection" });
     }
   });
@@ -18374,6 +18403,7 @@ Be specific about materials, colors, and features that would be included.`
           }
         } catch (stripeError: any) {
           console.error("Stripe payment link error:", stripeError);
+          logSystemEvent('stripe', 'error', 'payment_link_error', `Failed to create payment link: ${stripeError.message}`, { error: stripeError.message });
           return res.status(500).json({ error: `Failed to create payment link: ${stripeError.message}` });
         }
       }
@@ -39693,6 +39723,365 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   });
 
   // ============================================
+  // ADMIN SUPER-DASHBOARD ROUTES
+  // ============================================
+
+  // Shadow Mode - Impersonate a user (admin only)
+  app.post("/api/admin/impersonate/:userId", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const adminUserId = req.userId;
+      const targetUserId = req.params.userId;
+
+      if (targetUserId === adminUserId) {
+        return res.status(400).json({ error: 'Cannot impersonate yourself' });
+      }
+
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (targetUser.isPlatformAdmin) {
+        return res.status(403).json({ error: 'Cannot impersonate other admin accounts' });
+      }
+
+      req.session.impersonating = true;
+      req.session.originalAdminUserId = adminUserId;
+      req.session.impersonationExpiresAt = Date.now() + 15 * 60 * 1000;
+      req.session.userId = targetUserId;
+
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err: any) => err ? reject(err) : resolve());
+      });
+
+      await db.insert(auditLogs).values({
+        adminUserId,
+        targetUserId,
+        actionType: 'impersonation_start',
+        metadata: {
+          targetEmail: targetUser.email,
+          targetName: targetUser.firstName ? `${targetUser.firstName} ${targetUser.lastName || ''}`.trim() : targetUser.email,
+        },
+        ipAddress: req.ip || req.connection?.remoteAddress || null,
+      });
+
+      await logActivity(
+        adminUserId,
+        'impersonation_started',
+        `Admin started impersonation of ${targetUser.email}`,
+        `Target: ${targetUser.email}`,
+        null,
+        targetUserId,
+        { targetEmail: targetUser.email },
+      );
+
+      const businessSettings = await storage.getBusinessSettings(targetUserId);
+
+      console.log(`[Admin] ${adminUserId} started impersonation of ${targetUserId} (${targetUser.email})`);
+
+      res.json({
+        success: true,
+        targetUser: {
+          id: targetUser.id,
+          email: targetUser.email,
+          firstName: targetUser.firstName,
+          lastName: targetUser.lastName,
+          businessName: businessSettings?.businessName || null,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error starting impersonation:', error);
+      res.status(500).json({ error: error.message || 'Failed to start impersonation' });
+    }
+  });
+
+  app.post("/api/admin/exit-impersonation", requireAuth, async (req: any, res) => {
+    try {
+      if (!req.session.impersonating || !req.session.originalAdminUserId) {
+        return res.status(400).json({ error: 'Not currently impersonating' });
+      }
+
+      const adminUserId = req.session.originalAdminUserId;
+      const targetUserId = req.userId;
+
+      req.session.userId = adminUserId;
+      delete req.session.impersonating;
+      delete req.session.originalAdminUserId;
+
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err: any) => err ? reject(err) : resolve());
+      });
+
+      await db.insert(auditLogs).values({
+        adminUserId,
+        targetUserId,
+        actionType: 'impersonation_end',
+        metadata: {},
+        ipAddress: req.ip || req.connection?.remoteAddress || null,
+      });
+
+      console.log(`[Admin] ${adminUserId} ended impersonation of ${targetUserId}`);
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error exiting impersonation:', error);
+      res.status(500).json({ error: error.message || 'Failed to exit impersonation' });
+    }
+  });
+
+  // Get audit logs (admin only)
+  app.get("/api/admin/audit-logs", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const logs = await db.select().from(auditLogs)
+        .orderBy(desc(auditLogs.createdAt))
+        .limit(limit);
+      res.json(logs);
+    } catch (error: any) {
+      console.error('Error fetching audit logs:', error);
+      res.status(500).json({ error: 'Failed to fetch audit logs' });
+    }
+  });
+
+  // Website Change Requests - CRUD + Kanban
+  app.get("/api/admin/website-change-requests", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const requests = await db.select({
+        request: websiteChangeRequests,
+        userName: users.firstName,
+        userLastName: users.lastName,
+        userEmail: users.email,
+      })
+      .from(websiteChangeRequests)
+      .leftJoin(users, eq(websiteChangeRequests.userId, users.id))
+      .orderBy(desc(websiteChangeRequests.createdAt));
+
+      const result = requests.map(r => ({
+        ...r.request,
+        userName: r.userName && r.userLastName ? `${r.userName} ${r.userLastName}` : r.userEmail || 'Unknown',
+      }));
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error fetching website change requests:', error);
+      res.status(500).json({ error: 'Failed to fetch website change requests' });
+    }
+  });
+
+  app.patch("/api/admin/website-change-requests/:id", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, priority, assignedTo } = req.body;
+
+      const validStatuses = ['todo', 'in_progress', 'done'];
+      const validPriorities = ['low', 'medium', 'high', 'urgent'];
+
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json({ error: 'Invalid status. Must be: todo, in_progress, or done' });
+      }
+      if (priority && !validPriorities.includes(priority)) {
+        return res.status(400).json({ error: 'Invalid priority. Must be: low, medium, high, or urgent' });
+      }
+
+      const updates: any = { updatedAt: new Date() };
+      if (status) updates.status = status;
+      if (priority) updates.priority = priority;
+      if (assignedTo !== undefined) updates.assignedTo = assignedTo;
+
+      const [updated] = await db.update(websiteChangeRequests)
+        .set(updates)
+        .where(eq(websiteChangeRequests.id, id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Change request not found' });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error updating website change request:', error);
+      res.status(500).json({ error: 'Failed to update change request' });
+    }
+  });
+
+  app.post("/api/admin/website-change-requests", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { title, description, userId, priority } = req.body;
+      if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
+      }
+      const effectiveUserId = userId || req.userId;
+      const [created] = await db.insert(websiteChangeRequests).values({
+        title,
+        description: description || null,
+        userId: effectiveUserId,
+        priority: priority || 'medium',
+        status: 'todo',
+      }).returning();
+
+      await logActivity(
+        effectiveUserId,
+        'website_change_submitted',
+        `Website change request: ${title}`,
+        description || null,
+        null,
+        created.id,
+        { priority: priority || 'medium' },
+      );
+
+      res.json(created);
+    } catch (error: any) {
+      console.error('Error creating website change request:', error);
+      res.status(500).json({ error: 'Failed to create change request' });
+    }
+  });
+
+  // System Events
+  app.get("/api/admin/system-events", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const severity = req.query.severity as string;
+      const source = req.query.source as string;
+
+      let query = db.select().from(systemEvents).orderBy(desc(systemEvents.createdAt)).limit(limit);
+
+      const conditions: any[] = [];
+      if (severity) conditions.push(eq(systemEvents.severity, severity));
+      if (source) conditions.push(eq(systemEvents.source, source));
+
+      const events = conditions.length > 0
+        ? await db.select().from(systemEvents).where(and(...conditions)).orderBy(desc(systemEvents.createdAt)).limit(limit)
+        : await db.select().from(systemEvents).orderBy(desc(systemEvents.createdAt)).limit(limit);
+
+      // Group by source for summary
+      const summary = {
+        stripe: { count: 0, errors: 0 },
+        twilio: { count: 0, errors: 0 },
+        vapi: { count: 0, errors: 0 },
+        system: { count: 0, errors: 0 },
+      };
+
+      events.forEach(e => {
+        const src = (e.source || 'system').toLowerCase() as keyof typeof summary;
+        if (summary[src]) {
+          summary[src].count++;
+          if (e.severity === 'error' || e.severity === 'critical') {
+            summary[src].errors++;
+          }
+        }
+      });
+
+      res.json({ events, summary });
+    } catch (error: any) {
+      console.error('Error fetching system events:', error);
+      res.status(500).json({ error: 'Failed to fetch system events' });
+    }
+  });
+
+  // AI Receptionist Approval Queue
+  app.get("/api/admin/ai-approval-queue", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const pending = await db.select({
+        config: aiReceptionistConfig,
+        userName: users.firstName,
+        userLastName: users.lastName,
+        userEmail: users.email,
+      })
+      .from(aiReceptionistConfig)
+      .leftJoin(users, eq(aiReceptionistConfig.userId, users.id))
+      .where(eq(aiReceptionistConfig.approvalStatus, 'pending_approval'))
+      .orderBy(desc(aiReceptionistConfig.createdAt));
+
+      const result = await Promise.all(pending.map(async (p) => {
+        const settings = await storage.getBusinessSettings(p.config.userId);
+        return {
+          ...p.config,
+          userName: p.userName && p.userLastName ? `${p.userName} ${p.userLastName}` : p.userEmail || 'Unknown',
+          userEmail: p.userEmail,
+          businessName: settings?.businessName || null,
+          businessPhone: settings?.phone || null,
+          tradeType: settings?.industry || null,
+        };
+      }));
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error fetching AI approval queue:', error);
+      res.status(500).json({ error: 'Failed to fetch AI approval queue' });
+    }
+  });
+
+  app.patch("/api/admin/ai-approval/:configId", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { configId } = req.params;
+      const { approvalStatus, greeting } = req.body;
+
+      if (!approvalStatus || !['active', 'disabled', 'pending_approval'].includes(approvalStatus)) {
+        return res.status(400).json({ error: 'Invalid approval status' });
+      }
+
+      const updates: any = {
+        approvalStatus,
+        updatedAt: new Date(),
+      };
+      if (greeting !== undefined) updates.greeting = greeting;
+      if (approvalStatus === 'active') updates.enabled = true;
+      if (approvalStatus === 'disabled') updates.enabled = false;
+
+      const [updated] = await db.update(aiReceptionistConfig)
+        .set(updates)
+        .where(eq(aiReceptionistConfig.id, configId))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ error: 'AI Receptionist config not found' });
+      }
+
+      if (approvalStatus === 'active' && updated.userId) {
+        try {
+          const { enableAiReceptionist } = await import('./vapiService');
+          const vapiResult = await enableAiReceptionist(updated.userId);
+          if (!vapiResult.success) {
+            logSystemEvent('vapi', 'warning', 'ai_receptionist_activation_partial', `AI Receptionist approved but Vapi activation failed: ${vapiResult.error}`, { configId, userId: updated.userId });
+          }
+        } catch (vapiErr: any) {
+          logSystemEvent('vapi', 'error', 'ai_receptionist_activation_error', `AI Receptionist Vapi activation error: ${vapiErr.message}`, { configId, userId: updated.userId });
+        }
+      }
+
+      if (approvalStatus === 'disabled' && updated.userId) {
+        try {
+          const { disableAiReceptionist } = await import('./vapiService');
+          await disableAiReceptionist(updated.userId);
+        } catch (vapiErr: any) {
+          logSystemEvent('vapi', 'warning', 'ai_receptionist_disable_error', `AI Receptionist Vapi disable error: ${vapiErr.message}`, { configId, userId: updated.userId });
+        }
+      }
+
+      await db.insert(auditLogs).values({
+        adminUserId: req.userId,
+        targetUserId: updated.userId,
+        actionType: approvalStatus === 'active' ? 'ai_receptionist_approved' : 'ai_receptionist_status_changed',
+        metadata: { configId, newStatus: approvalStatus },
+      });
+
+      await logActivity(
+        updated.userId,
+        'ai_receptionist_provisioned',
+        `AI Receptionist ${approvalStatus === 'active' ? 'approved' : 'status changed to ' + approvalStatus}`,
+        null,
+        null,
+        configId,
+        { newStatus: approvalStatus },
+      );
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error updating AI approval:', error);
+      res.status(500).json({ error: 'Failed to update AI receptionist approval' });
+    }
+  });
+
+    // ============================================
   // ACCOUNT DELETION (Apple App Store Compliance)
   // ============================================
   
@@ -44491,6 +44880,16 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         enabled: false,
       });
 
+      await logActivity(
+        userId,
+        'ai_receptionist_provisioned',
+        'AI Receptionist config submitted for approval',
+        null,
+        null,
+        null,
+        { mode: mode || 'off', voice: voice || 'Jess' },
+      );
+
       res.status(201).json({
         enabled: config.enabled,
         mode: config.mode,
@@ -44565,6 +44964,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       });
     } catch (error: any) {
       console.error("Enable AI receptionist error:", error);
+      logSystemEvent('vapi', 'error', 'ai_receptionist_enable_failed', `Failed to enable AI Receptionist: ${error.message}`, { error: error.message });
       res.status(500).json({ error: "Failed to enable AI Receptionist" });
     }
   });
@@ -44585,6 +44985,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       });
     } catch (error: any) {
       console.error("Disable AI receptionist error:", error);
+      logSystemEvent('vapi', 'error', 'ai_receptionist_disable_failed', `Failed to disable AI Receptionist: ${error.message}`, { error: error.message });
       res.status(500).json({ error: "Failed to disable AI Receptionist" });
     }
   });

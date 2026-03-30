@@ -23,6 +23,7 @@ import FloatingAIChat from "@/components/FloatingAIChat";
 import PaymentToastProvider from "@/components/PaymentToastProvider";
 import RouteGuard from "@/components/RouteGuard";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { useFeatureAccess } from "@/hooks/use-subscription";
 import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
 import { KeyboardShortcutsDialog, useKeyboardShortcuts } from "@/components/KeyboardShortcuts";
@@ -1607,6 +1608,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
+      <ImpersonationBanner />
       <ThemeProvider defaultTheme="light" storageKey="jobrunner-ui-theme">
         <NetworkProvider>
           <JobCollaborationProvider>

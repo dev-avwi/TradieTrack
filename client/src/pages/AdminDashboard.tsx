@@ -51,6 +51,14 @@ import {
   PhoneForwarded,
   Target,
   DollarSign,
+  Eye,
+  LogOut,
+  Kanban,
+  Bot,
+  GripVertical,
+  ArrowRight,
+  Plus,
+  Edit,
 } from "lucide-react";
 import { format } from "date-fns";
 import { 
@@ -134,6 +142,8 @@ const adminRoutes = [
   { path: "/admin/revenue", label: "Revenue", icon: DollarSign },
   { path: "/admin/comms", label: "Comms", icon: MessageSquare },
   { path: "/admin/users", label: "Users", icon: Users },
+  { path: "/admin/kanban", label: "Kanban", icon: Kanban },
+  { path: "/admin/ai-queue", label: "AI Queue", icon: Bot },
   { path: "/admin/activity", label: "Activity", icon: Activity },
   { path: "/admin/health", label: "Health", icon: HeartPulse },
 ];
@@ -430,6 +440,7 @@ function UsersView({
   usersLoading: boolean;
 }) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -462,6 +473,39 @@ function UsersView({
       setDeletingUserId(null);
     },
   });
+
+  const impersonateMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest("POST", `/api/admin/impersonate/${userId}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to start impersonation");
+      }
+      return response.json();
+    },
+    onSuccess: (data: { success: boolean; targetUser: { id: string; email: string; firstName: string | null; lastName: string | null; businessName: string | null } }) => {
+      sessionStorage.setItem('impersonation', JSON.stringify({
+        targetUser: data.targetUser,
+      }));
+      toast({
+        title: "Shadow Mode Active",
+        description: `Now viewing as ${data.targetUser.businessName || data.targetUser.email}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      setLocation('/');
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Impersonation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleImpersonate = (userId: string) => {
+    impersonateMutation.mutate(userId);
+  };
 
   const filteredUsers = useMemo(() => {
     if (!usersData?.users) return [];
@@ -567,7 +611,7 @@ function UsersView({
                   <TableHead>Tier</TableHead>
                   <TableHead className="hidden lg:table-cell">Last Active</TableHead>
                   <TableHead className="hidden lg:table-cell">Status</TableHead>
-                  <TableHead className="pr-6 text-right">Actions</TableHead>
+                  <TableHead className="pr-6 text-right min-w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -628,6 +672,16 @@ function UsersView({
                         </div>
                       </TableCell>
                       <TableCell className="pr-6 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleImpersonate(user.id)}
+                            title="Login as this user"
+                            data-testid={`button-impersonate-${user.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button 
@@ -666,6 +720,7 @@ function UsersView({
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -887,6 +942,10 @@ function HealthView() {
     queryKey: ['/api/admin/health'],
   });
 
+  const { data: systemEventsData } = useQuery<SystemEventsResponse>({
+    queryKey: ['/api/admin/system-events'],
+  });
+
   const getStatusConfig = (status: string) => {
     switch (status) {
       case 'healthy': 
@@ -1014,8 +1073,441 @@ function HealthView() {
           )}
         </CardContent>
       </Card>
+
+      {systemEventsData && systemEventsData.events.length > 0 && (
+        <Card data-testid="card-system-events">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-muted-foreground" />
+              Recent System Events
+              <div className="flex gap-2 ml-auto">
+                {Object.entries(systemEventsData.summary).map(([source, data]) => (
+                  data.errors > 0 ? (
+                    <Badge key={source} variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30 capitalize">
+                      {source}: {data.errors} errors
+                    </Badge>
+                  ) : null
+                ))}
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              {systemEventsData.events.slice(0, 20).map((event, idx) => {
+                const severityConfig: Record<string, { icon: typeof CheckCircle2; color: string }> = {
+                  info: { icon: Activity, color: 'text-blue-500' },
+                  warning: { icon: AlertTriangle, color: 'text-amber-500' },
+                  error: { icon: XCircle, color: 'text-red-500' },
+                  critical: { icon: XCircle, color: 'text-red-600' },
+                };
+                const config = severityConfig[event.severity] || severityConfig.info;
+                const SevIcon = config.icon;
+                return (
+                  <div
+                    key={event.id}
+                    className={`flex items-start gap-3 py-3 ${idx !== Math.min(19, systemEventsData.events.length - 1) ? 'border-b' : ''}`}
+                  >
+                    <SevIcon className={`h-4 w-4 mt-0.5 flex-shrink-0 ${config.color}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-xs capitalize">{event.source}</Badge>
+                        <Badge variant="outline" className="text-xs capitalize">{event.severity}</Badge>
+                      </div>
+                      <p className="text-sm mt-1">{event.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{formatRelativeDate(event.createdAt)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
+}
+
+interface WebsiteChangeRequest {
+  id: string;
+  userId: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string | null;
+  assignedTo: string | null;
+  userName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function KanbanView() {
+  const { toast } = useToast();
+  const [newTitle, setNewTitle] = useState("");
+
+  const { data: requests = [], isLoading } = useQuery<WebsiteChangeRequest[]>({
+    queryKey: ['/api/admin/website-change-requests'],
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const response = await apiRequest("PATCH", `/api/admin/website-change-requests/${id}`, { status });
+      if (!response.ok) throw new Error('Failed to update');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/website-change-requests'] });
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (title: string) => {
+      const response = await apiRequest("POST", `/api/admin/website-change-requests`, { title });
+      if (!response.ok) throw new Error('Failed to create');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/website-change-requests'] });
+      setNewTitle("");
+      toast({ title: "Request Created", description: "New change request added to To Do" });
+    },
+  });
+
+  const columns = [
+    { key: 'todo', label: 'To Do', color: 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' },
+    { key: 'in_progress', label: 'In Progress', color: 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400' },
+    { key: 'done', label: 'Done', color: 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400' },
+  ];
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('requestId', id);
+  };
+
+  const handleDrop = (e: React.DragEvent, status: string) => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData('requestId');
+    if (id) {
+      updateMutation.mutate({ id, status });
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const getPriorityBadge = (priority: string | null) => {
+    switch (priority) {
+      case 'high': return <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30">High</Badge>;
+      case 'medium': return <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30">Medium</Badge>;
+      case 'low': return <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30">Low</Badge>;
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-2 items-center">
+          <Input
+            placeholder="Add new change request..."
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            className="flex-1 min-w-[200px]"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newTitle.trim()) {
+                createMutation.mutate(newTitle.trim());
+              }
+            }}
+          />
+          <Button
+            onClick={() => newTitle.trim() && createMutation.mutate(newTitle.trim())}
+            disabled={!newTitle.trim() || createMutation.isPending}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Request
+          </Button>
+        </div>
+      </Card>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {columns.map((col) => {
+            const colRequests = requests.filter(r => r.status === col.key);
+            return (
+              <div
+                key={col.key}
+                className="space-y-3"
+                onDrop={(e) => handleDrop(e, col.key)}
+                onDragOver={handleDragOver}
+                data-testid={`kanban-column-${col.key}`}
+              >
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className={`${col.color} font-medium`}>
+                    {col.label}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">{colRequests.length}</span>
+                </div>
+                <div className="space-y-2 min-h-[200px] p-2 rounded-lg border border-dashed border-border/60">
+                  {colRequests.map((request) => (
+                    <Card
+                      key={request.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, request.id)}
+                      className="cursor-grab active:cursor-grabbing hover-elevate"
+                      data-testid={`kanban-card-${request.id}`}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-start gap-2">
+                          <GripVertical className="h-4 w-4 text-muted-foreground/50 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{request.title}</p>
+                            {request.description && (
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{request.description}</p>
+                            )}
+                            <div className="flex items-center flex-wrap gap-1.5 mt-2">
+                              {getPriorityBadge(request.priority)}
+                              <span className="text-xs text-muted-foreground">{request.userName}</span>
+                            </div>
+                          </div>
+                        </div>
+                        {col.key !== 'done' && (
+                          <div className="flex justify-end mt-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => updateMutation.mutate({
+                                id: request.id,
+                                status: col.key === 'todo' ? 'in_progress' : 'done',
+                              })}
+                            >
+                              <ArrowRight className="h-3 w-3 mr-1" />
+                              {col.key === 'todo' ? 'Start' : 'Complete'}
+                            </Button>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {colRequests.length === 0 && (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground/50 text-sm">
+                      Drop cards here
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface AiQueueItem {
+  id: string;
+  userId: string;
+  vapiAssistantId: string | null;
+  greeting: string | null;
+  mode: string;
+  voiceName: string | null;
+  enabled: boolean;
+  approvalStatus: string;
+  userName: string;
+  userEmail: string | null;
+  businessName: string | null;
+  businessPhone: string | null;
+  tradeType: string | null;
+}
+
+function AIApprovalView() {
+  const { toast } = useToast();
+  const [editingGreeting, setEditingGreeting] = useState<string | null>(null);
+  const [greetingText, setGreetingText] = useState("");
+
+  const { data: queue = [], isLoading } = useQuery<AiQueueItem[]>({
+    queryKey: ['/api/admin/ai-approval-queue'],
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async ({ configId, approvalStatus, greeting }: { configId: string; approvalStatus: string; greeting?: string }) => {
+      const body: Record<string, string> = { approvalStatus };
+      if (greeting !== undefined) body.greeting = greeting;
+      const response = await apiRequest("PATCH", `/api/admin/ai-approval/${configId}`, body);
+      if (!response.ok) throw new Error('Failed to update');
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/ai-approval-queue'] });
+      toast({
+        title: variables.approvalStatus === 'active' ? "Approved & Activated" : "Status Updated",
+        description: variables.approvalStatus === 'active' ? "AI Receptionist is now live" : "Status has been updated",
+      });
+      setEditingGreeting(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <KPICard
+          testId="card-pending-approvals"
+          title="Pending Approvals"
+          value={queue.length}
+          loading={isLoading}
+          icon={<Bot className="h-5 w-5 md:h-6 md:w-6 text-amber-600 dark:text-amber-400" />}
+          iconBgClass="bg-amber-100 dark:bg-amber-500/20"
+        />
+        <KPICard
+          testId="card-ai-queue-total"
+          title="Queue Status"
+          value={isLoading ? '...' : (queue.length > 0 ? 'Needs Review' : 'All Clear')}
+          loading={isLoading}
+          icon={<CheckCircle2 className="h-5 w-5 md:h-6 md:w-6 text-green-600 dark:text-green-400" />}
+          iconBgClass="bg-green-100 dark:bg-green-500/20"
+        />
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base md:text-lg flex items-center gap-2">
+            <Bot className="h-5 w-5 text-muted-foreground" />
+            AI Receptionist Approval Queue
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : queue.length === 0 ? (
+            <div className="text-center py-12">
+              <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+              <p className="text-muted-foreground font-medium">No pending approvals</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">New AI Receptionists will appear here for review</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {queue.map((item) => (
+                <Card key={item.id} className="hover-elevate" data-testid={`ai-queue-item-${item.id}`}>
+                  <CardContent className="p-4">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium">{item.businessName || item.userName}</p>
+                          <p className="text-sm text-muted-foreground">{item.userEmail}</p>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {item.tradeType && (
+                              <Badge variant="outline" className="text-xs capitalize">{item.tradeType}</Badge>
+                            )}
+                            {item.businessPhone && (
+                              <Badge variant="outline" className="text-xs">{item.businessPhone}</Badge>
+                            )}
+                            <Badge variant="outline" className="text-xs capitalize">{item.mode}</Badge>
+                            <Badge variant="outline" className="text-xs">{item.voiceName || 'Jess'}</Badge>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 flex-shrink-0">
+                          Pending
+                        </Badge>
+                      </div>
+
+                      <div className="bg-muted/50 rounded-md p-3">
+                        <p className="text-xs text-muted-foreground mb-1">AI Greeting</p>
+                        {editingGreeting === item.id ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={greetingText}
+                              onChange={(e) => setGreetingText(e.target.value)}
+                              className="text-sm"
+                            />
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => {
+                                approveMutation.mutate({ configId: item.id, approvalStatus: 'active', greeting: greetingText });
+                              }}>
+                                Save & Approve
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setEditingGreeting(null)}>
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm">
+                            {item.greeting || `G'day, thanks for calling ${item.businessName || 'the business'}. How can I help you today?`}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingGreeting(item.id);
+                            setGreetingText(item.greeting || `G'day, thanks for calling ${item.businessName || 'the business'}. How can I help you today?`);
+                          }}
+                        >
+                          <Edit className="h-3.5 w-3.5 mr-1.5" />
+                          Edit Prompt
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => approveMutation.mutate({ configId: item.id, approvalStatus: 'disabled' })}
+                          disabled={approveMutation.isPending}
+                        >
+                          Reject
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => approveMutation.mutate({ configId: item.id, approvalStatus: 'active' })}
+                          disabled={approveMutation.isPending}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                          Approve & Activate
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
+interface SystemEventItem {
+  id: string;
+  eventType: string;
+  severity: string;
+  source: string;
+  message: string;
+  metadata: any;
+  userId: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
+interface SystemEventsResponse {
+  events: SystemEventItem[];
+  summary: {
+    stripe: { count: number; errors: number };
+    twilio: { count: number; errors: number };
+    vapi: { count: number; errors: number };
+    system: { count: number; errors: number };
+  };
 }
 
 interface RevenueData {
@@ -1596,6 +2088,10 @@ export default function AdminDashboard() {
         return <ActivityView usersData={usersData} stats={stats} />;
       case '/admin/health':
         return <HealthView />;
+      case '/admin/kanban':
+        return <KanbanView />;
+      case '/admin/ai-queue':
+        return <AIApprovalView />;
       default:
         return (
           <OverviewView 
@@ -1611,37 +2107,37 @@ export default function AdminDashboard() {
 
   return (
     <PageShell data-testid="admin-dashboard">
-      <PageHeader
-        title="Admin Dashboard"
-        subtitle="Platform analytics and user management"
-        leading={<Shield className="h-5 w-5 text-primary" />}
-      />
+        <PageHeader
+          title="Admin Dashboard"
+          subtitle="Platform analytics and user management"
+          leading={<Shield className="h-5 w-5 text-primary" />}
+        />
 
-      <Tabs 
-        value={currentRoute.path} 
-        onValueChange={handleTabChange} 
-        className="mb-6"
-        data-testid="admin-tabs"
-      >
-        <TabsList className="w-full sm:w-auto justify-start h-auto p-1 gap-1 flex-wrap">
-          {adminRoutes.map((route) => {
-            const Icon = route.icon;
-            return (
-              <TabsTrigger 
-                key={route.path} 
-                value={route.path}
-                className="flex items-center gap-2 px-3 py-2"
-                data-testid={`tab-${route.label.toLowerCase()}`}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{route.label}</span>
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
-      </Tabs>
+        <Tabs 
+          value={currentRoute.path} 
+          onValueChange={handleTabChange} 
+          className="mb-6"
+          data-testid="admin-tabs"
+        >
+          <TabsList className="w-full sm:w-auto justify-start h-auto p-1 gap-1 flex-wrap">
+            {adminRoutes.map((route) => {
+              const Icon = route.icon;
+              return (
+                <TabsTrigger 
+                  key={route.path} 
+                  value={route.path}
+                  className="flex items-center gap-2 px-3 py-2"
+                  data-testid={`tab-${route.label.toLowerCase()}`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{route.label}</span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
 
-      {renderView()}
+        {renderView()}
     </PageShell>
   );
 }
