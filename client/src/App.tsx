@@ -1581,7 +1581,7 @@ function AppLayout() {
               <OfflineIndicator />
               {/* WebSocket Reconnecting Indicator */}
               {showReconnecting && (
-                <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-yellow-500/90 text-white text-xs font-medium" role="status" aria-live="polite" data-testid="ws-reconnecting-banner">
+                <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-muted border-b border-border text-muted-foreground text-xs font-medium" role="status" aria-live="polite" data-testid="ws-reconnecting-banner">
                   <RefreshCw className="h-3 w-3 animate-spin" />
                   <span>Reconnecting to live updates...</span>
                 </div>
