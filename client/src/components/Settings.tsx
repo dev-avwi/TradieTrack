@@ -1237,6 +1237,27 @@ export default function Settings({
         </Card>
       )}
 
+      {canAccessBusinessSettings && (
+        <Card 
+          className="hover-elevate cursor-pointer" 
+          onClick={() => { window.location.href = '/website'; }}
+          data-testid="card-website-addon-link"
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Globe className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                <div>
+                  <p className="font-semibold">Website</p>
+                  <p className="text-sm text-muted-foreground">Preview your website, check status & request changes</p>
+                </div>
+              </div>
+              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs 
         value={activeTab} 
         onValueChange={(value) => {

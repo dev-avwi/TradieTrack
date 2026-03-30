@@ -377,6 +377,12 @@ import {
   type InsertAiReceptionistConfig,
   type AiReceptionistCall,
   type InsertAiReceptionistCall,
+  websiteAddons,
+  websiteChangeRequests,
+  type WebsiteAddon,
+  type InsertWebsiteAddon,
+  type WebsiteChangeRequest,
+  type InsertWebsiteChangeRequest,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -1174,6 +1180,17 @@ export interface IStorage {
   createTrainingRecord(record: InsertTrainingRecord): Promise<TrainingRecord>;
   updateTrainingRecord(id: string, userId: string, updates: Partial<InsertTrainingRecord>): Promise<TrainingRecord | undefined>;
   deleteTrainingRecord(id: string, userId: string): Promise<boolean>;
+
+  // Website Addons
+  getWebsiteAddon(businessId: string): Promise<WebsiteAddon | undefined>;
+  createWebsiteAddon(data: InsertWebsiteAddon): Promise<WebsiteAddon>;
+  updateWebsiteAddon(businessId: string, updates: Partial<InsertWebsiteAddon>): Promise<WebsiteAddon | undefined>;
+
+  // Website Change Requests
+  getWebsiteChangeRequests(businessId: string): Promise<WebsiteChangeRequest[]>;
+  getAllWebsiteChangeRequests(): Promise<WebsiteChangeRequest[]>;
+  createWebsiteChangeRequest(data: InsertWebsiteChangeRequest): Promise<WebsiteChangeRequest>;
+  updateWebsiteChangeRequestStatus(id: string, status: string): Promise<WebsiteChangeRequest | undefined>;
 }
 
 const pool = new pg.Pool({
@@ -8323,6 +8340,45 @@ Thank you for your prompt attention to this matter.`,
   async deleteTrainingRecord(id: string, userId: string): Promise<boolean> {
     const result = await db.delete(trainingRecords).where(and(eq(trainingRecords.id, id), eq(trainingRecords.userId, userId))).returning();
     return result.length > 0;
+  }
+
+  // ============================================
+  // Website Addons
+  // ============================================
+  async getWebsiteAddon(businessId: string): Promise<WebsiteAddon | undefined> {
+    const [result] = await db.select().from(websiteAddons).where(eq(websiteAddons.businessId, businessId)).limit(1);
+    return result;
+  }
+
+  async createWebsiteAddon(data: InsertWebsiteAddon): Promise<WebsiteAddon> {
+    const [result] = await db.insert(websiteAddons).values(data).returning();
+    return result;
+  }
+
+  async updateWebsiteAddon(businessId: string, updates: Partial<InsertWebsiteAddon>): Promise<WebsiteAddon | undefined> {
+    const [result] = await db.update(websiteAddons).set({ ...updates, updatedAt: new Date() }).where(eq(websiteAddons.businessId, businessId)).returning();
+    return result;
+  }
+
+  // ============================================
+  // Website Change Requests
+  // ============================================
+  async getWebsiteChangeRequests(businessId: string): Promise<WebsiteChangeRequest[]> {
+    return await db.select().from(websiteChangeRequests).where(eq(websiteChangeRequests.businessId, businessId)).orderBy(desc(websiteChangeRequests.createdAt));
+  }
+
+  async getAllWebsiteChangeRequests(): Promise<WebsiteChangeRequest[]> {
+    return await db.select().from(websiteChangeRequests).orderBy(desc(websiteChangeRequests.createdAt));
+  }
+
+  async createWebsiteChangeRequest(data: InsertWebsiteChangeRequest): Promise<WebsiteChangeRequest> {
+    const [result] = await db.insert(websiteChangeRequests).values(data).returning();
+    return result;
+  }
+
+  async updateWebsiteChangeRequestStatus(id: string, status: string): Promise<WebsiteChangeRequest | undefined> {
+    const [result] = await db.update(websiteChangeRequests).set({ status, updatedAt: new Date() }).where(eq(websiteChangeRequests.id, id)).returning();
+    return result;
   }
 }
 

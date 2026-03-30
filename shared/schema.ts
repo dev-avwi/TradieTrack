@@ -4586,19 +4586,40 @@ export const insertSystemEventSchema = createInsertSchema(systemEvents).omit({ i
 export type InsertSystemEvent = z.infer<typeof insertSystemEventSchema>;
 export type SystemEvent = typeof systemEvents.$inferSelect;
 
+export const websiteAddons = pgTable("website_addons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  domainUrl: text("domain_url"),
+  domainStatus: text("domain_status").notNull().default('not_set_up'),
+  hostingStatus: text("hosting_status").notNull().default('inactive'),
+  monthlyFee: decimal("monthly_fee", { precision: 10, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_website_addons_business").on(table.businessId),
+  unique("website_addons_business_id_unique").on(table.businessId),
+]);
+
+export const insertWebsiteAddonSchema = createInsertSchema(websiteAddons).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertWebsiteAddon = z.infer<typeof insertWebsiteAddonSchema>;
+export type WebsiteAddon = typeof websiteAddons.$inferSelect;
+
 export const websiteChangeRequests = pgTable("website_change_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessId: varchar("business_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  title: text("title").notNull(),
-  description: text("description"),
+  title: text("title"),
+  description: text("description").notNull(),
+  priority: text("priority").notNull().default('normal'),
   status: text("status").notNull().default('todo'),
-  priority: text("priority").default('medium'),
+  screenshotUrl: text("screenshot_url"),
   assignedTo: varchar("assigned_to"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
-  index("idx_wcr_user").on(table.userId),
-  index("idx_wcr_status").on(table.status),
+  index("idx_website_cr_business").on(table.businessId),
+  index("idx_website_cr_user").on(table.userId),
+  index("idx_website_cr_status").on(table.status),
 ]);
 
 export const insertWebsiteChangeRequestSchema = createInsertSchema(websiteChangeRequests).omit({ id: true, createdAt: true, updatedAt: true });

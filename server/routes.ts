@@ -39979,13 +39979,13 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       const { status, priority, assignedTo } = req.body;
 
       const validStatuses = ['todo', 'in_progress', 'done'];
-      const validPriorities = ['low', 'medium', 'high', 'urgent'];
+      const validPriorities = ['low', 'normal', 'medium', 'high', 'urgent'];
 
       if (status && !validStatuses.includes(status)) {
         return res.status(400).json({ error: 'Invalid status. Must be: todo, in_progress, or done' });
       }
       if (priority && !validPriorities.includes(priority)) {
-        return res.status(400).json({ error: 'Invalid priority. Must be: low, medium, high, or urgent' });
+        return res.status(400).json({ error: 'Invalid priority. Must be: low, normal, medium, high, or urgent' });
       }
 
       const updates: any = { updatedAt: new Date() };
@@ -40011,27 +40011,30 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 
   app.post("/api/admin/website-change-requests", requireAuth, requireAdmin, async (req: any, res) => {
     try {
-      const { title, description, userId, priority } = req.body;
-      if (!title) {
-        return res.status(400).json({ error: 'Title is required' });
+      const { title, description, userId, businessId, priority } = req.body;
+      if (!description && !title) {
+        return res.status(400).json({ error: 'Description or title is required' });
       }
       const effectiveUserId = userId || req.userId;
+      const effectiveBusinessId = businessId || effectiveUserId;
+      const effectiveTitle = title || (description ? description.substring(0, 80) : 'Untitled');
       const [created] = await db.insert(websiteChangeRequests).values({
-        title,
-        description: description || null,
+        title: effectiveTitle,
+        description: description || effectiveTitle,
+        businessId: effectiveBusinessId,
         userId: effectiveUserId,
-        priority: priority || 'medium',
+        priority: priority || 'normal',
         status: 'todo',
       }).returning();
 
       await logActivity(
         effectiveUserId,
         'website_change_submitted',
-        `Website change request: ${title}`,
+        `Website change request: ${effectiveTitle}`,
         description || null,
         null,
         created.id,
-        { priority: priority || 'medium' },
+        { priority: priority || 'normal' },
       );
 
       res.json(created);
@@ -45265,6 +45268,132 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       { id: 'Harry', name: 'Harry', description: 'Soothing Australian male voice', accent: 'Australian' },
       { id: 'Chris', name: 'Chris', description: 'Mature Australian male voice', accent: 'Australian' },
     ]);
+  });
+
+  // ============================================
+  // Website Addon Routes
+  // ============================================
+
+  app.get("/api/website-addon", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const addon = await storage.getWebsiteAddon(effectiveUserId);
+      res.json(addon || null);
+    } catch (error) {
+      console.error("Error fetching website addon:", error);
+      res.status(500).json({ error: "Failed to fetch website addon" });
+    }
+  });
+
+  app.post("/api/website-addon", requireAuth, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.userId);
+      if (!user?.isPlatformAdmin) {
+        return res.status(403).json({ error: "Platform admin access required" });
+      }
+
+      const addonSchema = z.object({
+        businessId: z.string().min(1),
+        domainUrl: z.string().optional().nullable(),
+        domainStatus: z.enum(["active", "configuring", "dns_pending", "pending", "error", "not_set_up"]).optional(),
+        hostingStatus: z.enum(["active", "provisioning", "inactive", "error"]).optional(),
+        monthlyFee: z.string().optional().nullable(),
+      });
+
+      const parsed = addonSchema.parse(req.body);
+      const existing = await storage.getWebsiteAddon(parsed.businessId);
+      if (existing) {
+        const { businessId, ...updates } = parsed;
+        const updated = await storage.updateWebsiteAddon(parsed.businessId, updates);
+        return res.json(updated);
+      }
+      const addon = await storage.createWebsiteAddon(parsed);
+      res.json(addon);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error("Error saving website addon:", error);
+      res.status(500).json({ error: "Failed to save website addon" });
+    }
+  });
+
+  app.get("/api/website-addon/change-requests", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const addon = await storage.getWebsiteAddon(effectiveUserId);
+      if (!addon) {
+        return res.status(403).json({ error: "Website add-on is not active for this business. Please upgrade to access this feature." });
+      }
+      const requests = await storage.getWebsiteChangeRequests(effectiveUserId);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching change requests:", error);
+      res.status(500).json({ error: "Failed to fetch change requests" });
+    }
+  });
+
+  app.post("/api/website-addon/change-requests", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const userId = req.userId;
+
+      const addon = await storage.getWebsiteAddon(effectiveUserId);
+      if (!addon) {
+        return res.status(403).json({ error: "Website add-on is not active for this business. Please upgrade to access this feature." });
+      }
+
+      const schema = z.object({
+        description: z.string().min(1, "Description is required"),
+        priority: z.enum(["low", "normal", "urgent"]),
+        screenshotUrl: z.string().optional().nullable(),
+      });
+
+      const parsed = schema.parse(req.body);
+
+      const request = await storage.createWebsiteChangeRequest({
+        businessId: effectiveUserId,
+        userId: userId,
+        title: parsed.description.substring(0, 80),
+        description: parsed.description,
+        priority: parsed.priority,
+        status: "todo",
+        screenshotUrl: parsed.screenshotUrl || null,
+      });
+
+      try {
+        const user = await storage.getUser(userId);
+        const businessSettings = await storage.getBusinessSettings(effectiveUserId);
+        const actorName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'User' : 'User';
+        const businessName = businessSettings?.businessName || 'Unknown Business';
+
+        await logTeamActivity({
+          businessOwnerId: effectiveUserId,
+          actorUserId: userId,
+          actorName,
+          activityType: 'milestone',
+          entityTitle: `Website Change Request`,
+          description: `${actorName} submitted a ${parsed.priority} priority website change request: "${parsed.description.substring(0, 80)}${parsed.description.length > 80 ? '...' : ''}"`,
+          metadata: {
+            milestoneType: 'website_change_request',
+            requestId: request.id,
+            priority: parsed.priority,
+            businessName,
+          },
+          isImportant: parsed.priority === 'urgent',
+        });
+      } catch (activityError) {
+        console.error("Failed to log website change request activity:", activityError);
+      }
+
+      res.json(request);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error("Error creating change request:", error);
+      res.status(500).json({ error: "Failed to create change request" });
+    }
   });
 
   const httpServer = createServer(app);

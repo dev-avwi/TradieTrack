@@ -116,6 +116,7 @@ const SubcontractorWebView = React.lazy(() => import("@/pages/SubcontractorWebVi
 const FilesPage = React.lazy(() => import("@/pages/Files"));
 const AIReceptionist = React.lazy(() => import("@/pages/AIReceptionist"));
 const AIReceptionistCalls = React.lazy(() => import("@/pages/AIReceptionistCalls"));
+const WebsiteAddonPage = React.lazy(() => import("@/pages/WebsiteAddon"));
 
 function BusinessPicker({ userId }: { userId: string }) {
   const { data: businessData } = useQuery({
@@ -843,6 +844,10 @@ function Router({
       
       <Route path="/ai-receptionist" component={() => (
         <AIReceptionist />
+      )} />
+
+      <Route path="/website" component={() => (
+        <WebsiteAddonPage />
       )} />
 
       <Route path="/ai-visualization" component={GatedAIVisualizationPage} />
