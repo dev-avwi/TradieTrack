@@ -698,6 +698,8 @@ export const clients = pgTable("clients", {
   tags: text("tags").array().default(sql`'{}'::text[]`),
   clientType: text("client_type"),
   referralSource: text("referral_source"),
+  xeroContactId: varchar("xero_contact_id"),
+  xeroSyncedAt: timestamp("xero_synced_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -3327,6 +3329,12 @@ export const xeroSyncState = pgTable("xero_sync_state", {
   lastSyncCursor: varchar("last_sync_cursor"),
   lastSyncAt: timestamp("last_sync_at"),
   syncDirection: varchar("sync_direction").default('bidirectional'),
+  outcome: varchar("outcome"),
+  recordsProcessed: integer("records_processed").default(0),
+  recordsFailed: integer("records_failed").default(0),
+  durationMs: integer("duration_ms"),
+  errorDetails: text("error_details"),
+  startedAt: timestamp("started_at"),
 });
 
 export const insertXeroSyncStateSchema = createInsertSchema(xeroSyncState).omit({

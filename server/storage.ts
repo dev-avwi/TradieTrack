@@ -919,6 +919,9 @@ export interface IStorage {
   createXeroConnection(data: InsertXeroConnection): Promise<XeroConnection>;
   updateXeroConnection(id: string, data: Partial<XeroConnection>): Promise<XeroConnection | undefined>;
   deleteXeroConnection(userId: string): Promise<boolean>;
+  recordXeroSyncRun(data: InsertXeroSyncState): Promise<XeroSyncState>;
+  getXeroSyncHistory(userId: string, limit?: number): Promise<XeroSyncState[]>;
+  getAllXeroConnections(): Promise<XeroConnection[]>;
 
   // MYOB Integration
   getMyobConnection(userId: string): Promise<MyobConnection | undefined>;
@@ -5253,6 +5256,22 @@ export class PostgresStorage implements IStorage {
       .where(eq(xeroConnections.userId, userId))
       .returning();
     return result.length > 0;
+  }
+
+  async recordXeroSyncRun(data: InsertXeroSyncState): Promise<XeroSyncState> {
+    const [result] = await db.insert(xeroSyncState).values(data).returning();
+    return result;
+  }
+
+  async getXeroSyncHistory(userId: string, limit: number = 50): Promise<XeroSyncState[]> {
+    return await db.select().from(xeroSyncState)
+      .where(eq(xeroSyncState.userId, userId))
+      .orderBy(desc(xeroSyncState.startedAt))
+      .limit(limit);
+  }
+
+  async getAllXeroConnections(): Promise<XeroConnection[]> {
+    return await db.select().from(xeroConnections);
   }
 
   // MYOB Integration

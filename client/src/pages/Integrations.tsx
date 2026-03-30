@@ -38,6 +38,7 @@ interface XeroStatus {
   lastSyncAt?: string;
   status?: string;
   message?: string;
+  needsReconnect?: boolean;
 }
 
 interface GoogleCalendarStatus {
@@ -1400,11 +1401,15 @@ export default function Integrations() {
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    xeroStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
+                    xeroStatus?.needsReconnect || xeroStatus?.status === 'token_expired' || xeroStatus?.status === 'disconnected'
+                      ? 'bg-red-100 dark:bg-red-900/50'
+                      : xeroStatus?.connected ? 'bg-green-100 dark:bg-green-900/50' :
                     'bg-gray-100 dark:bg-gray-800/50'
                   }`}>
                     <SiXero className={`w-5 h-5 ${
-                      xeroStatus?.connected ? 'text-green-600 dark:text-green-400' :
+                      xeroStatus?.needsReconnect || xeroStatus?.status === 'token_expired' || xeroStatus?.status === 'disconnected'
+                        ? 'text-red-600 dark:text-red-400'
+                        : xeroStatus?.connected ? 'text-green-600 dark:text-green-400' :
                       'text-gray-500 dark:text-gray-400'
                     }`} />
                   </div>
@@ -1413,10 +1418,15 @@ export default function Integrations() {
                     <p className="text-xs text-muted-foreground">Sync invoices and contacts with Xero</p>
                   </div>
                 </div>
-                {xeroStatus?.connected ? (
+                {xeroStatus?.connected && !xeroStatus?.needsReconnect ? (
                   <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0">
                     <CheckCircle className="w-3 h-3 mr-1" />
                     Connected
+                  </Badge>
+                ) : xeroStatus?.needsReconnect || xeroStatus?.status === 'token_expired' || xeroStatus?.status === 'disconnected' ? (
+                  <Badge className="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-0">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    Reconnect Required
                   </Badge>
                 ) : xeroStatus?.configured === false ? (
                   <Badge variant="outline" className="border-amber-400 text-amber-600 dark:text-amber-400">
@@ -1430,7 +1440,50 @@ export default function Integrations() {
               </div>
             </CardHeader>
             <CardContent className="pt-0 space-y-3">
-              {xeroStatus?.connected ? (
+              {(xeroStatus?.needsReconnect || xeroStatus?.status === 'token_expired' || xeroStatus?.status === 'disconnected') ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>
+                      {xeroStatus?.status === 'token_expired' 
+                        ? 'Your Xero session has expired. Please reconnect to resume syncing.'
+                        : 'Your Xero connection was lost. Please reconnect to resume syncing.'}
+                    </span>
+                  </div>
+                  {xeroStatus?.tenantName && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Building2 className="w-4 h-4" />
+                      <span>{xeroStatus.tenantName}</span>
+                    </div>
+                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      onClick={() => connectXeroMutation.mutate()}
+                      disabled={connectXeroMutation.isPending}
+                      data-testid="button-reconnect-xero"
+                    >
+                      {connectXeroMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      Reconnect to Xero
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => disconnectXeroMutation.mutate()}
+                      disabled={disconnectXeroMutation.isPending}
+                    >
+                      {disconnectXeroMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Link2Off className="w-4 h-4 mr-2" />
+                      )}
+                      Disconnect
+                    </Button>
+                  </div>
+                </>
+              ) : xeroStatus?.connected ? (
                 <>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Building2 className="w-4 h-4" />

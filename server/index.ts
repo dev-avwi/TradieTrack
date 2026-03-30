@@ -180,6 +180,46 @@ if (process.env.DATABASE_URL) {
   );
   console.log('✅ Vapi webhook route configured');
 
+  app.post(
+    '/api/webhooks/xero',
+    express.raw({ type: 'application/json' }),
+    async (req, res) => {
+      try {
+        const xeroService = await import('./xeroService');
+        const signature = req.headers['x-xero-signature'] as string;
+
+        if (!Buffer.isBuffer(req.body)) {
+          return res.status(401).send();
+        }
+
+        const rawBody = req.body.toString('utf8');
+
+        if (!signature || !xeroService.verifyWebhookSignature(rawBody, signature)) {
+          return res.status(401).send();
+        }
+
+        res.status(200).send();
+
+        const payload = JSON.parse(rawBody);
+        const events = payload.events || [];
+        for (const event of events) {
+          xeroService.processWebhookEvent({
+            tenantId: event.tenantId,
+            resourceId: event.resourceId,
+            eventCategory: event.eventCategory,
+            eventType: event.eventType,
+          }).catch(err => console.error('[Xero Webhook] Event processing error:', err));
+        }
+      } catch (error: unknown) {
+        console.error('[Xero Webhook] Error:', error);
+        if (!res.headersSent) {
+          res.status(200).send();
+        }
+      }
+    }
+  );
+  console.log('✅ Xero webhook route configured');
+
   // Now apply JSON middleware for all other routes
   // Increase limit to 10MB for voice note and photo uploads (base64 encoded)
   app.use(express.json({ limit: '10mb' }));

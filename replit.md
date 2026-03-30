@@ -36,7 +36,7 @@ Core architectural and design decisions include:
 *   **SMS Notifications**: Twilio (alphanumeric sender ID "JobRunner" for system messages; self-service dedicated number purchase for two-way texting)
 *   **Object Storage**: Google Cloud Storage (GCS)
 *   **Maps**: Leaflet with react-leaflet
-*   **Accounting Integration**: Xero, MYOB AccountRight, QuickBooks Online
+*   **Accounting Integration**: Xero (hardened for Marketplace cert: token refresh retry/backoff, xeroApiCall wrapper with 429/401/403 handling, HMAC-SHA256 webhook endpoint at POST /api/webhooks/xero, health check at GET /api/integrations/xero/health, sync history at GET /api/integrations/xero/sync-history, two-way contact sync, structured [Xero:<op>] logging with audit trail to xero_sync_state, UI reconnect states for token_expired/disconnected), MYOB AccountRight, QuickBooks Online
 *   **Calendar Integration**: Google Calendar, Outlook/Microsoft 365
 *   **Weather API**: Open-Meteo
 *   **Routing/ETA**: OSRM (Open Source Routing Machine)

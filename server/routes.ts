@@ -9835,6 +9835,27 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Xero Health Check
+  app.get("/api/integrations/xero/health", requireAuth, async (req: any, res) => {
+    try {
+      const health = await xeroService.checkConnectionHealth(req.userId);
+      res.json(health);
+    } catch (error: any) {
+      res.status(500).json({ healthy: false, status: "error", tokenValid: false, error: error.message });
+    }
+  });
+
+  // Xero Sync History
+  app.get("/api/integrations/xero/sync-history", requireAuth, async (req: any, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const history = await xeroService.getSyncHistory(req.userId, Math.min(limit, 200));
+      res.json(history);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to get sync history" });
+    }
+  });
+
   // MYOB Integration Routes
   app.post("/api/integrations/myob/mobile-connect", requireAuth, async (req: any, res) => {
     try {
