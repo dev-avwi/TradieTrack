@@ -304,6 +304,12 @@ if (process.env.DATABASE_URL) {
       console.error('Failed to start retry scheduler:', error);
     });
 
+    import('./lifecycleEmailService').then(({ startLifecycleEmailScheduler }) => {
+      startLifecycleEmailScheduler();
+    }).catch(error => {
+      console.error('Failed to start lifecycle email scheduler:', error);
+    });
+
     // Start stale timer detection scheduler - runs every 30 minutes
     import('./staleTimerService').then(({ checkAndAutoStopStaleTimers }) => {
       const STALE_TIMER_INTERVAL = 30 * 60 * 1000; // 30 minutes

@@ -329,6 +329,8 @@ export const users = pgTable("users", {
   activeBusinessId: varchar("active_business_id"), // For multi-business subcontractors: which business they're currently viewing
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  lifecycleEmailsSent: jsonb("lifecycle_emails_sent").default({}),
+  lastLifecycleEmailAt: timestamp("last_lifecycle_email_at"),
 });
 
 // Replit Auth user upsert type

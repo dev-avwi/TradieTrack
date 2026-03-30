@@ -3679,7 +3679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST endpoint for actual verification (used by both web and mobile)
-  app.post("/api/auth/verify-email", async (req: any, res) => {
+  app.post("/api/auth/verify-email", authRateLimiter, async (req: any, res) => {
     try {
       const { token } = req.body;
       if (!token) {
@@ -3792,7 +3792,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Password Reset - Verify token and reset password
-  app.post("/api/auth/reset-password", async (req: any, res) => {
+  app.post("/api/auth/reset-password", authRateLimiter, async (req: any, res) => {
     try {
       const { token, password } = req.body;
       if (!token || !password) {
