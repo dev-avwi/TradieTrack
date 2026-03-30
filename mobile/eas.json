@@ -15,7 +15,8 @@
       },
       "ios": {
         "resourceClass": "m-medium",
-        "simulator": false
+        "simulator": false,
+        "image": "macos-sequoia-xcode-16.2"
       },
       "android": {
         "buildType": "apk"
@@ -30,7 +31,8 @@
         "EXPO_PUBLIC_API_URL": "https://jobrunner.com.au"
       },
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "image": "macos-sequoia-xcode-16.2"
       },
       "android": {
         "buildType": "apk"
@@ -45,7 +47,8 @@
         "EXPO_PUBLIC_API_URL": "https://jobrunner.com.au"
       },
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "image": "macos-sequoia-xcode-16.2"
       },
       "android": {
         "buildType": "app-bundle"
