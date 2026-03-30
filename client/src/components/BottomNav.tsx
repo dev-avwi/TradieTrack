@@ -45,6 +45,10 @@ export default function BottomNav({ onNavigate }: BottomNavProps) {
     return null;
   }
   
+  if (location === '/auth' || location.startsWith('/auth') || location === '/verify-email' || location === '/verify-email-pending') {
+    return null;
+  }
+  
   return (
     <nav 
       className="md:hidden fixed bottom-0 left-0 right-0 z-[55]"

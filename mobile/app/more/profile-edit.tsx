@@ -135,12 +135,16 @@ export default function ProfileEditScreen() {
 
     setIsLoading(true);
     try {
-      const response = await api.patch('/api/auth/profile', {
+      const payload: any = {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         phone: form.phone.trim() || undefined,
         tradeType: form.tradeType.trim() || undefined,
-      });
+      };
+      if (form.email.trim() && form.email.trim() !== user?.email) {
+        payload.email = form.email.trim();
+      }
+      const response = await api.patch('/api/auth/profile', payload);
 
       if (!response.error) {
         await checkAuth();
@@ -226,13 +230,20 @@ export default function ProfileEditScreen() {
               <Text style={styles.inputLabelText}>Email</Text>
             </View>
             <TextInput
-              style={[styles.input, styles.inputDisabled]}
+              style={styles.input}
               value={form.email}
-              editable={false}
-              placeholder="Email"
+              onChangeText={(text) => setForm({ ...form, email: text.trim() })}
+              placeholder="your@email.com"
               placeholderTextColor={colors.mutedForeground}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
             />
-            <Text style={styles.inputNote}>Email cannot be changed</Text>
+            {form.email?.includes('privaterelay.appleid.com') && (
+              <Text style={[styles.inputNote, { color: colors.warning || '#f59e0b' }]}>
+                Apple is hiding your real email. Update it above to receive job notifications directly.
+              </Text>
+            )}
           </View>
 
           <View style={styles.inputGroup}>

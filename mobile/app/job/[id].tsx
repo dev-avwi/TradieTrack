@@ -5877,10 +5877,11 @@ export default function JobDetailScreen() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: spacing.sm,
+                flexWrap: 'wrap',
+                gap: spacing.xs,
                 marginTop: spacing.md,
                 paddingVertical: spacing.md,
-                paddingHorizontal: spacing.xl,
+                paddingHorizontal: spacing.lg,
                 borderRadius: radius.lg,
                 backgroundColor: `${colors.primary}10`,
                 borderWidth: 1,
@@ -5897,7 +5898,7 @@ export default function JobDetailScreen() {
               <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary }}>
                 Send via JobRunner
               </Text>
-              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginLeft: spacing.xs }}>
+              <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
                 SMS & Email from +61 485 013 993
               </Text>
             </TouchableOpacity>
@@ -8046,7 +8047,7 @@ export default function JobDetailScreen() {
               <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>
                 Send via JobRunner
               </Text>
-              <Text style={{ fontSize: 10, color: colors.mutedForeground, marginLeft: spacing.xs }}>
+              <Text style={{ fontSize: 10, color: colors.mutedForeground }}>
                 +61 485 013 993
               </Text>
             </TouchableOpacity>

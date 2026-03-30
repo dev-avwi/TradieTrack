@@ -4381,7 +4381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
-      const { firstName, lastName, phone, tradeType } = req.body;
+      const { firstName, lastName, phone, tradeType, email } = req.body;
 
       if (!firstName?.trim() || !lastName?.trim()) {
         return res.status(400).json({ error: "First name and last name are required" });
@@ -4393,6 +4393,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       if (phone !== undefined) updateData.phone = phone.trim() || null;
       if (tradeType !== undefined) updateData.tradeType = tradeType.trim() || null;
+      if (email?.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+          return res.status(400).json({ error: "Please enter a valid email address" });
+        }
+        const existing = await storage.getUserByEmail(email.trim());
+        if (existing && existing.id !== userId) {
+          return res.status(400).json({ error: "This email is already in use" });
+        }
+        updateData.email = email.trim();
+      }
 
       const updated = await storage.updateUser(userId, updateData);
       if (!updated) {
