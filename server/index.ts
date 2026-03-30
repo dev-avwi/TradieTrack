@@ -190,6 +190,7 @@ if (process.env.DATABASE_URL) {
     crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: false,
     crossOriginResourcePolicy: false,
+    frameguard: false,
   }));
 
   // Serve static public assets (logo, etc.) for emails
