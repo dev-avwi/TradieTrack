@@ -35,7 +35,7 @@ View all your jobs on a calendar. Optimise your route for the day. Sync with Goo
 Track your business performance with easy-to-read reports. See revenue, outstanding invoices, and job completion rates. Export data for your accountant or BAS reporting.
 
 **INTEGRATIONS**
-Connect to Xero for seamless accounting. Sync contacts and push invoices automatically. More integrations coming soon.
+Connect to Xero for seamless accounting. Sync contacts and push invoices automatically.
 
 **BUILT FOR AUSSIE TRADIES**
 - Australian dollar (AUD) support
@@ -85,6 +85,10 @@ https://jobrunner.com.au
 ## Privacy Policy URL
 
 https://jobrunner.com.au/privacy
+
+## Terms of Service URL
+
+https://jobrunner.com.au/terms
 
 ---
 
@@ -213,7 +217,7 @@ All services comply with Australian Privacy Principles and GDPR.
 
 **Developer:** LinkUp2Care Pty Ltd  
 **Email:** admin@avwebinnovation.com  
-**Phone:** +61 1800 XXX XXX  
+**Phone:** +61 485 013 994  
 **Address:** Sydney, NSW, Australia  
 
 ---

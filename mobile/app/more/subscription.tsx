@@ -556,6 +556,7 @@ export default function SubscriptionScreen() {
   const [managingSubscription, setManagingSubscription] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [teamSeats, setTeamSeats] = useState(2);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   const fetchSubscriptionStatus = useCallback(async () => {
     try {
@@ -638,7 +639,37 @@ export default function SubscriptionScreen() {
 
   const getCtaButtonText = (tier: Tier) => {
     if (isCurrentTier(tier.id)) return 'Current Plan';
-    return 'Included Free';
+    if (tier.id === 'free') return 'Free Plan';
+    return `Start Free Trial`;
+  };
+
+  const handleCheckout = async (tierId: string) => {
+    setCheckoutLoading(tierId);
+    try {
+      const response = await api.post<{ url?: string; success?: boolean; betaAccess?: boolean }>('/api/subscription/create-checkout', {
+        tier: tierId,
+        seats: tierId === 'team' ? teamSeats : undefined,
+      });
+
+      if (response.data?.url) {
+        const canOpen = await Linking.canOpenURL(response.data.url);
+        if (canOpen) {
+          await Linking.openURL(response.data.url);
+        } else {
+          Alert.alert('Error', 'Unable to open checkout. Please try again.');
+        }
+      } else if (response.data?.success || response.data?.betaAccess) {
+        Alert.alert('Success', 'Your plan has been upgraded successfully.');
+        fetchSubscriptionStatus();
+      } else {
+        Alert.alert('Error', response.error || 'Failed to start checkout. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      Alert.alert('Error', error.message || 'Failed to start checkout.');
+    } finally {
+      setCheckoutLoading(null);
+    }
   };
 
   const renderTierCard = (tier: Tier) => {
@@ -716,21 +747,41 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
-        <View
-          style={[
-            styles.ctaButton,
-            styles.ctaButtonOutline,
-            styles.ctaButtonDisabled
-          ]}
-        >
-          <Text style={[styles.ctaButtonText, styles.ctaButtonTextOutline]}>
-            {getCtaButtonText(tier)}
-          </Text>
-        </View>
+        {isDisabled || tier.id === 'free' ? (
+          <View
+            style={[
+              styles.ctaButton,
+              styles.ctaButtonOutline,
+              styles.ctaButtonDisabled
+            ]}
+          >
+            <Text style={[styles.ctaButtonText, styles.ctaButtonTextOutline]}>
+              {getCtaButtonText(tier)}
+            </Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.ctaButton,
+              tier.popular ? styles.ctaButtonPrimary : styles.ctaButtonOutline
+            ]}
+            onPress={() => handleCheckout(tier.id)}
+            disabled={isLoading}
+            activeOpacity={0.7}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color={tier.popular ? '#FFFFFF' : colors.primary} />
+            ) : (
+              <Text style={[styles.ctaButtonText, tier.popular ? styles.ctaButtonTextPrimary : styles.ctaButtonTextOutline]}>
+                {getCtaButtonText(tier)}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         {tier.id !== 'free' && !isCurrentTier(tier.id) && (
           <Text style={styles.ctaSubtext}>
-            Paid plans coming soon — free for all founding members
+            14-day free trial, cancel anytime
           </Text>
         )}
 
@@ -783,13 +834,13 @@ export default function SubscriptionScreen() {
               <View style={styles.heroSection}>
                 <View style={styles.trialBadge}>
                   <Feather name="star" size={14} color={colors.primary} />
-                  <Text style={styles.trialBadgeText}>Early Access</Text>
+                  <Text style={styles.trialBadgeText}>Free Plan</Text>
                 </View>
                 <Text style={styles.heroTitle}>
                   Choose Your Plan
                 </Text>
                 <Text style={styles.heroSubtitle}>
-                  All features included free during Early Access. No credit card required.
+                  Start free and upgrade as your business grows. No credit card required.
                 </Text>
                 
                 <View style={styles.trustBadges}>
@@ -799,11 +850,11 @@ export default function SubscriptionScreen() {
                   </View>
                   <View style={styles.trustBadge}>
                     <Feather name="credit-card" size={14} color={colors.success} />
-                    <Text style={styles.trustBadgeText}>All features unlocked</Text>
+                    <Text style={styles.trustBadgeText}>14-day free trial</Text>
                   </View>
                   <View style={styles.trustBadge}>
                     <Feather name="award" size={14} color={colors.success} />
-                    <Text style={styles.trustBadgeText}>Founding member perks</Text>
+                    <Text style={styles.trustBadgeText}>Cancel anytime</Text>
                   </View>
                 </View>
               </View>
@@ -824,7 +875,7 @@ export default function SubscriptionScreen() {
                           <Text style={styles.currentPlanName}>
                             {subscriptionStatus?.tier === 'trial' ? 'Pro' : subscriptionStatus?.tier} Plan
                           </Text>
-                          {subscriptionStatus?.isBeta && (
+                          {subscriptionStatus?.status === 'active' && (
                             <View style={[styles.currentPlanBadge, { backgroundColor: colors.success + '20' }]}>
                               <Text style={[styles.currentPlanBadgeText, { color: colors.success }]}>
                                 Active
@@ -840,9 +891,7 @@ export default function SubscriptionScreen() {
                           )}
                         </View>
                         <Text style={styles.currentPlanSubtext}>
-                          {subscriptionStatus?.isBeta ? (
-                            `All features included - active subscription`
-                          ) : subscriptionStatus?.nextBillingDate ? (
+                          {subscriptionStatus?.nextBillingDate ? (
                             `Next billing: ${formatDate(subscriptionStatus.nextBillingDate)}`
                           ) : subscriptionStatus?.currentPeriodEnd ? (
                             `Active until ${formatDate(subscriptionStatus.currentPeriodEnd)}`
@@ -861,7 +910,7 @@ export default function SubscriptionScreen() {
                         )}
                       </View>
                     </View>
-                    {!subscriptionStatus?.isBeta && (
+                    {subscriptionStatus?.stripeSubscriptionId && (
                       <TouchableOpacity 
                         style={styles.manageButton}
                         onPress={handleManageSubscription}
@@ -967,7 +1016,7 @@ export default function SubscriptionScreen() {
               <View style={styles.trialInfoCard}>
                 <Text style={styles.trialInfoTitle}>
                   <Feather name="gift" size={18} color={colors.foreground} />
-                  {'  '}Early Access — All Features Included
+                  {'  '}How It Works
                 </Text>
                 
                 <View style={styles.trialSteps}>
@@ -978,7 +1027,7 @@ export default function SubscriptionScreen() {
                     <View style={styles.trialStepContent}>
                       <Text style={styles.trialStepTitle}>Sign up free</Text>
                       <Text style={styles.trialStepText}>
-                        No credit card needed. All features are unlocked during Early Access.
+                        No credit card needed. Get started with the Free plan instantly.
                       </Text>
                     </View>
                   </View>
@@ -988,9 +1037,9 @@ export default function SubscriptionScreen() {
                       <Text style={styles.trialStepNumberText}>2</Text>
                     </View>
                     <View style={styles.trialStepContent}>
-                      <Text style={styles.trialStepTitle}>Full access to everything</Text>
+                      <Text style={styles.trialStepTitle}>Try Pro free for 14 days</Text>
                       <Text style={styles.trialStepText}>
-                        Use all Pro and Team features with no restrictions as a founding member.
+                        Upgrade to Pro or Team and get full access to all features during your trial.
                       </Text>
                     </View>
                   </View>
@@ -1000,9 +1049,9 @@ export default function SubscriptionScreen() {
                       <Text style={styles.trialStepNumberText}>3</Text>
                     </View>
                     <View style={styles.trialStepContent}>
-                      <Text style={styles.trialStepTitle}>Founding member perks</Text>
+                      <Text style={styles.trialStepTitle}>Grow your business</Text>
                       <Text style={styles.trialStepText}>
-                        Early members who provide a testimonial get lifetime free access.
+                        Keep your plan or cancel anytime. Your data is always safe and accessible.
                       </Text>
                     </View>
                   </View>

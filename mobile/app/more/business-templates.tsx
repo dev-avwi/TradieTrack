@@ -28,6 +28,7 @@ import {
 } from '../../src/hooks/useBusinessTemplates';
 import { useIntegrationHealth } from '../../src/hooks/useIntegrationHealth';
 import { openEmailClient, getAvailableEmailClients, renderTemplatePreview } from '../../src/lib/emailClients';
+import { useAuthStore } from '../../src/lib/store';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -612,6 +613,8 @@ export default function BusinessTemplatesScreen() {
   } = useBusinessTemplates();
   
   const { health: integrationHealth } = useIntegrationHealth();
+  const user = useAuthStore((state) => state.user);
+  const previewEmailAddress = user?.email || 'your-email@example.com';
   
   const [activeCategory, setActiveCategory] = useState<Category>('communications');
   const [expandedFamily, setExpandedFamily] = useState<BusinessTemplateFamily | null>(null);
@@ -647,7 +650,7 @@ export default function BusinessTemplatesScreen() {
     const body = renderTemplatePreview(previewTemplate.content);
     
     const success = await openEmailClient(clientId as any, {
-      to: 'test@example.com',
+      to: previewEmailAddress,
       subject,
       body,
     });
@@ -658,7 +661,7 @@ export default function BusinessTemplatesScreen() {
     } else {
       Alert.alert('Error', 'Could not open email client');
     }
-  }, [previewTemplate]);
+  }, [previewTemplate, previewEmailAddress]);
   
   const handleQuickEmailClient = useCallback(async (clientId: string, template: BusinessTemplate) => {
     const subject = template.subject 
@@ -667,7 +670,7 @@ export default function BusinessTemplatesScreen() {
     const body = renderTemplatePreview(template.content);
     
     const success = await openEmailClient(clientId as any, {
-      to: 'test@example.com',
+      to: previewEmailAddress,
       subject,
       body,
     });
@@ -675,7 +678,7 @@ export default function BusinessTemplatesScreen() {
     if (!success) {
       Alert.alert('Error', 'Could not open email client');
     }
-  }, []);
+  }, [previewEmailAddress]);
 
   const resetForm = () => {
     setFormData({
