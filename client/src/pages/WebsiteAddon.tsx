@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -111,6 +112,7 @@ function getStatusConfig(status: string) {
 export default function WebsiteAddon() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const { canPurchaseAddons, isLoading: subscriptionLoading } = useFeatureAccess();
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("normal");
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
@@ -208,7 +210,7 @@ export default function WebsiteAddon() {
   const hasWebsite = addon?.domainUrl && addon.domainStatus === "active";
   const hasAddonAccess = !!addon;
 
-  if (!addonLoading && !hasAddonAccess) {
+  if (!addonLoading && !hasAddonAccess && !subscriptionLoading) {
     return (
       <PageShell>
         <PageHeader

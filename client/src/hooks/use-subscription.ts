@@ -11,14 +11,13 @@ export interface FreemiumLimits {
 export interface UsageCounts {
   jobsCreatedThisMonth: number;
   remainingJobs: number;
-  subscriptionTier: 'free' | 'pro' | 'business';
+  subscriptionTier: 'free' | 'pro' | 'team' | 'business' | 'trial';
   canCreateJob: boolean;
   nextResetDate: Date;
+  betaLifetimeAccess?: boolean;
+  isBeta?: boolean;
 }
 
-/**
- * Hook to fetch user's subscription usage information
- */
 export function useSubscriptionUsage() {
   return useQuery<UsageCounts>({
     queryKey: ['/api/subscription/usage'],
@@ -29,27 +28,30 @@ export function useSubscriptionUsage() {
       }
       return response.json();
     },
-    staleTime: 30000, // 30 seconds - refresh usage counts regularly
+    staleTime: 30000,
     refetchOnWindowFocus: true,
   });
 }
 
-/**
- * Hook to check if user can access a specific feature
- * Returns isLoading to allow callers to avoid flicker during initial load
- */
 export function useFeatureAccess() {
   const { data: usage, isLoading } = useSubscriptionUsage();
   
+  const tier = usage?.subscriptionTier ?? 'free';
+  const isBeta = usage?.isBeta ?? false;
+  const isFoundingMember = usage?.betaLifetimeAccess ?? false;
+  const isPaidTier = tier === 'pro' || tier === 'team' || tier === 'business' || tier === 'trial';
+  const canPurchaseAddons = isLoading ? true : (isBeta || isFoundingMember || isPaidTier);
+
   return {
-    // While loading, optimistically enable features to avoid flicker for Pro users
-    // Once loaded, the real tier determines access
-    canUploadLogo: isLoading ? true : usage?.subscriptionTier !== 'free',
-    canCustomizeBranding: isLoading ? true : usage?.subscriptionTier !== 'free',
-    canAddTeamMembers: isLoading ? false : usage?.subscriptionTier === 'business',
-    canUseAIFeatures: isLoading ? true : usage?.subscriptionTier !== 'free',
+    canUploadLogo: isLoading ? true : tier !== 'free',
+    canCustomizeBranding: isLoading ? true : tier !== 'free',
+    canAddTeamMembers: isLoading ? false : tier === 'business',
+    canUseAIFeatures: isLoading ? true : tier !== 'free',
     canCreateJob: usage?.canCreateJob ?? true,
-    subscriptionTier: usage?.subscriptionTier ?? 'free',
+    canPurchaseAddons,
+    isFoundingMember,
+    isBeta,
+    subscriptionTier: tier,
     jobsRemaining: usage?.remainingJobs ?? 5,
     jobsUsed: usage?.jobsCreatedThisMonth ?? 0,
     isLoading,

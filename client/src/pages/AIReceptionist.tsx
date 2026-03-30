@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAppMode } from "@/hooks/use-app-mode";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Phone,
@@ -44,6 +45,7 @@ import {
   DollarSign,
   FileText,
   Send,
+  Sparkles,
 } from "lucide-react";
 
 interface KnowledgeBankContent {
@@ -246,6 +248,7 @@ export default function AIReceptionist() {
   const [, setLocation] = useLocation();
   const { isOwner, isManager, isTeam, isOfficeAdmin } = useAppMode();
 
+  const { canPurchaseAddons, isLoading: subscriptionLoading } = useFeatureAccess();
   const canManageConfig = isOwner || isManager || isOfficeAdmin;
   const canToggleEnabled = isOwner || isOfficeAdmin;
 
@@ -485,6 +488,53 @@ export default function AIReceptionist() {
         <PageHeader title="AI Receptionist" />
         <div className="p-4 max-w-3xl mx-auto space-y-4">
           <MyAvailabilityToggle />
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (!subscriptionLoading && !canPurchaseAddons) {
+    return (
+      <PageShell>
+        <PageHeader title="AI Receptionist" />
+        <div className="p-4 max-w-3xl mx-auto">
+          <Card>
+            <CardContent className="flex flex-col items-center text-center py-12 px-6">
+              <div className="rounded-full p-4 mb-5" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
+                <Phone className="h-8 w-8" style={{ color: 'hsl(var(--trade))' }} />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">AI Receptionist</h2>
+              <p className="text-muted-foreground mb-4 max-w-sm">
+                Never miss a call again. Your AI receptionist answers calls 24/7, takes messages, captures leads, and can transfer callers to your team.
+              </p>
+              <div className="space-y-2 text-sm text-left w-full max-w-xs mb-6">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                  <span>Dedicated Australian phone number</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                  <span>AI-powered with natural Australian voice</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                  <span>Automatic lead capture and job creation</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                  <span>Call transfer to your team members</span>
+                </div>
+              </div>
+              <div className="bg-muted/50 rounded-md p-4 mb-6 w-full">
+                <p className="text-sm text-muted-foreground">Available as an add-on with Pro or Team plan</p>
+                <p className="text-2xl font-bold mt-1">$60/month</p>
+              </div>
+              <Button onClick={() => setLocation("/settings/subscription")} data-testid="button-upgrade-ai-receptionist">
+                <Sparkles className="h-4 w-4 mr-2" />
+                Upgrade to Pro
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </PageShell>
     );

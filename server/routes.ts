@@ -4563,6 +4563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Freemium usage tracking endpoint
   app.get("/api/subscription/usage", requireAuth, async (req: any, res) => {
     try {
+      const { IS_BETA } = await import('./freemiumService');
       const usageInfo = await FreemiumService.getFullUsageInfo(req.userId);
       const user = await storage.getUser(req.userId);
       const businessSettings = await storage.getBusinessSettings(req.userId);
@@ -4570,6 +4571,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...usageInfo,
         subscriptionTier: user?.subscriptionTier || 'free',
         subscriptionStatus: businessSettings?.subscriptionStatus || 'none',
+        betaLifetimeAccess: user?.betaLifetimeAccess || false,
+        isBeta: IS_BETA,
       });
     } catch (error) {
       console.error("Error fetching usage info:", error);
@@ -4789,7 +4792,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // PRODUCTION MODE: Use Stripe checkout
+      // PRODUCTION MODE: Check plan tier before allowing add-on purchase
+      const tier = user.subscriptionTier || 'free';
+      const hasLifetimeAccess = user.betaLifetimeAccess === true;
+      if (tier === 'free' && !hasLifetimeAccess) {
+        return res.status(403).json({
+          error: 'Pro plan or higher required for AI Receptionist',
+          upgradeRequired: true,
+          requiredTier: 'pro',
+        });
+      }
+
       const { createAiReceptionistCheckout } = await import('./billingService');
       const protocol = req.headers['x-forwarded-proto'] || 'https';
       const host = req.headers.host;
@@ -14554,6 +14567,7 @@ Be specific about materials, colors, and features that would be included.`
       const userContext = await getUserContext(req.userId);
       const jobs = await storage.getJobs(userContext.effectiveUserId);
       const clients = await storage.getClients(userContext.effectiveUserId);
+      const canSeeSensitiveData = userContext.isOwner || hasPermission(userContext, PERMISSIONS.READ_CLIENTS_SENSITIVE);
       
       // Filter to only jobs assigned to this user (use teamMemberId, not userId)
       const myJobs = jobs
@@ -14563,8 +14577,8 @@ Be specific about materials, colors, and features that would be included.`
           return {
             ...job,
             clientName: client?.name || 'Unknown Client',
-            clientPhone: client?.phone || null,
-            clientEmail: client?.email || null,
+            clientPhone: canSeeSensitiveData ? (client?.phone || null) : null,
+            clientEmail: canSeeSensitiveData ? (client?.email || null) : null,
           };
         })
         .sort((a, b) => {
@@ -44173,7 +44187,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   // WHS - Incident Reports
   // ============================================
 
-  app.get("/api/whs/incidents", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/incidents", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.query.jobId as string | undefined;
@@ -44185,7 +44199,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.get("/api/whs/incidents/:id", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/incidents/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const report = await storage.getIncidentReport(req.params.id, userId);
@@ -44197,7 +44211,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/whs/incidents", requireAuth, async (req: any, res) => {
+  app.post("/api/whs/incidents", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const report = await storage.createIncidentReport({ ...req.body, userId });
@@ -44208,7 +44222,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.patch("/api/whs/incidents/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/whs/incidents/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const report = await storage.updateIncidentReport(req.params.id, userId, req.body);
@@ -44220,7 +44234,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.delete("/api/whs/incidents/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/whs/incidents/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const deleted = await storage.deleteIncidentReport(req.params.id, userId);
@@ -44236,7 +44250,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   // WHS - Site Emergency Info
   // ============================================
 
-  app.get("/api/whs/emergency-info", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/emergency-info", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.query.jobId as string | undefined;
@@ -44248,7 +44262,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.get("/api/whs/emergency-info/:id", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/emergency-info/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const info = await storage.getSiteEmergencyInfoById(req.params.id, userId);
@@ -44260,7 +44274,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/whs/emergency-info", requireAuth, async (req: any, res) => {
+  app.post("/api/whs/emergency-info", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const info = await storage.createSiteEmergencyInfo({ ...req.body, userId });
@@ -44271,7 +44285,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.patch("/api/whs/emergency-info/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/whs/emergency-info/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const info = await storage.updateSiteEmergencyInfo(req.params.id, userId, req.body);
@@ -44283,7 +44297,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.delete("/api/whs/emergency-info/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/whs/emergency-info/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const deleted = await storage.deleteSiteEmergencyInfo(req.params.id, userId);
@@ -44299,7 +44313,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   // WHS - JSA Documents & Steps
   // ============================================
 
-  app.get("/api/whs/jsa", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/jsa", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.query.jobId as string | undefined;
@@ -44311,7 +44325,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.get("/api/whs/jsa/:id", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/jsa/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const doc = await storage.getJsaDocument(req.params.id, userId);
@@ -44324,7 +44338,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/whs/jsa", requireAuth, async (req: any, res) => {
+  app.post("/api/whs/jsa", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { steps, ...docData } = req.body;
@@ -44342,7 +44356,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.patch("/api/whs/jsa/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/whs/jsa/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { steps, ...docData } = req.body;
@@ -44355,7 +44369,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.delete("/api/whs/jsa/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/whs/jsa/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const deleted = await storage.deleteJsaDocument(req.params.id, userId);
@@ -44367,7 +44381,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/whs/jsa/:id/steps", requireAuth, async (req: any, res) => {
+  app.post("/api/whs/jsa/:id/steps", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const doc = await storage.getJsaDocument(req.params.id, userId);
@@ -44380,7 +44394,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.patch("/api/whs/jsa/steps/:stepId", requireAuth, async (req: any, res) => {
+  app.patch("/api/whs/jsa/steps/:stepId", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const step = await storage.updateJsaStep(req.params.stepId, req.body);
       if (!step) return res.status(404).json({ error: "JSA step not found" });
@@ -44391,7 +44405,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.delete("/api/whs/jsa/steps/:stepId", requireAuth, async (req: any, res) => {
+  app.delete("/api/whs/jsa/steps/:stepId", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const deleted = await storage.deleteJsaStep(req.params.stepId);
       if (!deleted) return res.status(404).json({ error: "JSA step not found" });
@@ -44406,7 +44420,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   // WHS - Hazardous Environments
   // ============================================
 
-  app.get("/api/whs/hazardous-environments", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/hazardous-environments", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.query.jobId as string | undefined;
@@ -44418,7 +44432,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/whs/hazardous-environments", requireAuth, async (req: any, res) => {
+  app.post("/api/whs/hazardous-environments", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const env = await storage.createSiteHazardousEnvironment({ ...req.body, userId });
@@ -44429,7 +44443,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.patch("/api/whs/hazardous-environments/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/whs/hazardous-environments/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const env = await storage.updateSiteHazardousEnvironment(req.params.id, userId, req.body);
@@ -44441,7 +44455,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.delete("/api/whs/hazardous-environments/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/whs/hazardous-environments/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const deleted = await storage.deleteSiteHazardousEnvironment(req.params.id, userId);
@@ -44457,7 +44471,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   // WHS - Safety Signage
   // ============================================
 
-  app.get("/api/whs/safety-signage", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/safety-signage", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.query.jobId as string | undefined;
@@ -44469,7 +44483,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/whs/safety-signage", requireAuth, async (req: any, res) => {
+  app.post("/api/whs/safety-signage", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const sign = await storage.createSiteSafetySignage({ ...req.body, userId });
@@ -44480,7 +44494,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.patch("/api/whs/safety-signage/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/whs/safety-signage/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const sign = await storage.updateSiteSafetySignage(req.params.id, userId, req.body);
@@ -44492,7 +44506,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.delete("/api/whs/safety-signage/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/whs/safety-signage/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const deleted = await storage.deleteSiteSafetySignage(req.params.id, userId);
@@ -44508,7 +44522,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   // WHS - Team Member WHS Roles
   // ============================================
 
-  app.patch("/api/whs/team-members/:id/whs-role", requireAuth, async (req: any, res) => {
+  app.patch("/api/whs/team-members/:id/whs-role", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { whsRole } = req.body;
@@ -44528,7 +44542,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.get("/api/whs/team-roles", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/team-roles", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const members = await db.select().from(teamMembers)
@@ -44551,7 +44565,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   // WHS - Reference Data (Hazardous Environment Types)
   // ============================================
 
-  app.get("/api/whs/reference/environment-types", requireAuth, async (_req: any, res) => {
+  app.get("/api/whs/reference/environment-types", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (_req: any, res) => {
     res.json([
       { type: "asbestos", label: "Asbestos", defaultHazards: ["Airborne fibres", "Disturbance of asbestos containing materials", "Friable asbestos", "Contact with asbestos material"], defaultPpe: ["P2 Respirator", "Disposable Coveralls", "Safety Glasses", "Gloves"], requiredLicenses: ["Asbestos Removal License"] },
       { type: "confined_space", label: "Confined Spaces", defaultHazards: ["Explosive atmospheres", "Engulfment", "Toxic gases", "Oxygen deficiency"], defaultPpe: ["SCBA/Airline Respirator", "Gas Detector", "Safety Harness", "Hard Hat"], requiredLicenses: ["Confined Space Entry Permit"] },
@@ -44569,7 +44583,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     ]);
   });
 
-  app.get("/api/whs/reference/sign-types", requireAuth, async (_req: any, res) => {
+  app.get("/api/whs/reference/sign-types", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (_req: any, res) => {
     res.json([
       { category: "mandatory", label: "Mandatory (Blue)", signs: ["Hard Hat Area", "Safety Glasses Required", "Hearing Protection Required", "Safety Boots Required", "Hi-Vis Required", "Gloves Required", "Full PPE Required"] },
       { category: "prohibition", label: "Prohibition (Red)", signs: ["No Entry", "No Smoking", "No Mobile Phones", "No Photography", "Do Not Operate", "No Unauthorised Access"] },
@@ -44584,7 +44598,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   // WHS - Hazard Reports
   // ============================================
 
-  app.get("/api/whs/hazard-reports", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/hazard-reports", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.query.jobId as string | undefined;
@@ -44596,7 +44610,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/whs/hazard-reports", requireAuth, async (req: any, res) => {
+  app.post("/api/whs/hazard-reports", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const report = await storage.createHazardReport({ ...req.body, userId });
@@ -44607,7 +44621,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.patch("/api/whs/hazard-reports/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/whs/hazard-reports/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const updated = await storage.updateHazardReport(req.params.id, userId, req.body);
@@ -44619,7 +44633,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.delete("/api/whs/hazard-reports/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/whs/hazard-reports/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const deleted = await storage.deleteHazardReport(req.params.id, userId);
@@ -44633,7 +44647,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 
 
   // ── PPE Checklists ──
-  app.get("/api/whs/ppe-checklists", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/ppe-checklists", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const jobId = req.query.jobId as string | undefined;
@@ -44645,7 +44659,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/whs/ppe-checklists", requireAuth, async (req: any, res) => {
+  app.post("/api/whs/ppe-checklists", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const checklist = await storage.createPpeChecklist({ ...req.body, userId });
@@ -44656,7 +44670,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.delete("/api/whs/ppe-checklists/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/whs/ppe-checklists/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const deleted = await storage.deletePpeChecklist(req.params.id, userId);
@@ -44669,7 +44683,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   });
 
   // ── Training Records ──
-  app.get("/api/whs/training-records", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/training-records", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const records = await storage.getTrainingRecords(userId);
@@ -44680,7 +44694,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/whs/training-records", requireAuth, async (req: any, res) => {
+  app.post("/api/whs/training-records", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const record = await storage.createTrainingRecord({ ...req.body, userId });
@@ -44691,7 +44705,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.patch("/api/whs/training-records/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/whs/training-records/:id", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const updated = await storage.updateTrainingRecord(req.params.id, userId, req.body);
@@ -44703,7 +44717,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.delete("/api/whs/training-records/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/whs/training-records/:id", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const deleted = await storage.deleteTrainingRecord(req.params.id, userId);
@@ -44727,7 +44741,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       return /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : '#2563EB';
     }
 
-    app.get("/api/whs/incidents/:id/pdf", requireAuth, async (req: any, res) => {
+    app.get("/api/whs/incidents/:id/pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const incidents = await storage.getIncidentReports(userId);
@@ -44793,7 +44807,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.get("/api/whs/hazard-reports/:id/pdf", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/hazard-reports/:id/pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const reports = await storage.getHazardReports(userId);
@@ -44856,7 +44870,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.get("/api/whs/ppe-checklists/:id/pdf", requireAuth, async (req: any, res) => {
+  app.get("/api/whs/ppe-checklists/:id/pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const checklists = await storage.getPpeChecklists(userId);
@@ -44997,6 +45011,20 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   app.post("/api/ai-receptionist/config", requireAuth, ownerOnly(), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
+      
+      const { IS_BETA } = await import('./freemiumService');
+      if (!IS_BETA) {
+        const configUser = await storage.getUser(userId);
+        const configTier = configUser?.subscriptionTier || 'free';
+        if (configTier === 'free' && !configUser?.betaLifetimeAccess) {
+          return res.status(403).json({
+            error: 'Pro plan or higher required for AI Receptionist',
+            upgradeRequired: true,
+            requiredTier: 'pro',
+          });
+        }
+      }
+
       const existing = await storage.getAiReceptionistConfig(userId);
       if (existing) {
         return res.status(409).json({ error: "Config already exists. Use PATCH to update." });
@@ -45089,6 +45117,20 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   app.post("/api/ai-receptionist/enable", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
+
+      const { IS_BETA: isBetaForEnable } = await import('./freemiumService');
+      if (!isBetaForEnable) {
+        const enableUser = await storage.getUser(userId);
+        const enableTier = enableUser?.subscriptionTier || 'free';
+        if (enableTier === 'free' && !enableUser?.betaLifetimeAccess) {
+          return res.status(403).json({
+            error: 'Pro plan or higher required for AI Receptionist',
+            upgradeRequired: true,
+            requiredTier: 'pro',
+          });
+        }
+      }
+
       const { enableAiReceptionist } = await import('./vapiService');
       const result = await enableAiReceptionist(userId);
 
