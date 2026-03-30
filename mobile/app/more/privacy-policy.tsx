@@ -127,7 +127,7 @@ export default function PrivacyPolicyScreen() {
       >
         <View style={styles.card}>
           <Text style={styles.paragraph}>
-            JobRunner Pty Ltd (ABN to be assigned) ("JobRunner", "we", "us", or "our") is committed to protecting your privacy and handling your personal information in accordance with the Privacy Act 1988 (Cth) and the Australian Privacy Principles (APPs).
+            LinkUp2Care Pty Ltd (ABN 34 692 409 448) trading as JobRunner ("JobRunner", "we", "us", or "our") is committed to protecting your privacy and handling your personal information in accordance with the Privacy Act 1988 (Cth) and the Australian Privacy Principles (APPs).
           </Text>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
             This Privacy Policy explains how we collect, use, store, disclose, and protect your personal information when you use our mobile application and related services designed for Australian tradespeople and service businesses.

@@ -140,7 +140,7 @@ export default function TermsOfServiceScreen() {
       >
         <View style={styles.card}>
           <Text style={styles.paragraph}>
-            Welcome to JobRunner. These Terms of Service ("Terms") constitute a legally binding agreement between you and JobRunner Pty Ltd (ABN to be assigned) ("JobRunner", "we", "us", or "our") governing your access to and use of our mobile application and related services.
+            Welcome to JobRunner. These Terms of Service ("Terms") constitute a legally binding agreement between you and LinkUp2Care Pty Ltd (ABN 34 692 409 448) trading as JobRunner ("JobRunner", "we", "us", or "our") governing your access to and use of our mobile application and related services.
           </Text>
           <Text style={[styles.paragraph, styles.lastParagraph]}>
             These Terms are governed by Australian law and are designed for Australian tradespeople and service businesses.
@@ -294,7 +294,7 @@ export default function TermsOfServiceScreen() {
           
           <Text style={styles.subSectionTitle}>Our Intellectual Property</Text>
           <Text style={styles.paragraph}>
-            JobRunner, including all software, design, trademarks, logos, content, and documentation, is owned by JobRunner Pty Ltd and is protected by Australian and international intellectual property laws.
+            JobRunner, including all software, design, trademarks, logos, content, and documentation, is owned by LinkUp2Care Pty Ltd (ABN 34 692 409 448) and is protected by Australian and international intellectual property laws.
           </Text>
           <View style={styles.bulletList}>
             <BulletItem text="We grant you a limited, non-exclusive, non-transferable licence to use the app" colors={colors} styles={styles} />

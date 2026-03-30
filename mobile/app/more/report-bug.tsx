@@ -258,7 +258,7 @@ export default function ReportBugScreen() {
     platform: Platform.OS,
     deviceName: Device.modelName || Device.deviceName || 'Unknown',
     osVersion: Platform.Version?.toString() || 'Unknown',
-    buildNumber: Constants.expoConfig?.version || '1.0.0',
+    buildNumber: Constants.expoConfig?.version || '1.1.0',
   };
 
   const handleSubmit = async () => {
@@ -283,7 +283,7 @@ export default function ReportBugScreen() {
           errorMessage: prefilledError,
           stackTrace: prefilledStack,
           deviceInfo,
-          appVersion: Constants.expoConfig?.version || '1.0.0',
+          appVersion: Constants.expoConfig?.version || '1.1.0',
           userEmail: user?.email,
           userName: user?.firstName ? `${user.firstName} ${user?.lastName || ''}`.trim() : user?.name,
           userId: user?.id,
