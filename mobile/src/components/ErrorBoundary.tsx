@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, Platform, StyleSheet } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
+import { captureException } from '../lib/sentry';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -37,6 +38,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo });
+    captureException(error, { componentStack: errorInfo.componentStack });
     if (__DEV__) console.error('[ErrorBoundary] Caught error:', error.message);
     if (__DEV__) console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack);
   }

@@ -1,3 +1,7 @@
+import { initSentry, setSentryUser, captureException } from '../src/lib/sentry';
+
+initSentry();
+
 import { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, Alert, InteractionManager, Dimensions, ActivityIndicator, AppState, AppStateStatus, Image, Animated, Easing } from 'react-native';
 import { Stack } from 'expo-router';
@@ -633,10 +637,19 @@ function RootLayoutContent() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const isLoading = useAuthStore((state) => state.isLoading);
   const isInitialized = useAuthStore((state) => state.isInitialized);
+  const user = useAuthStore((state) => state.user);
   const { colors, isDark } = useTheme();
   const [appReady, setAppReady] = useState(false);
   const segments = useSegments();
   const [settled, setSettled] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setSentryUser({ id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName });
+    } else {
+      setSentryUser(null);
+    }
+  }, [user]);
 
   useEffect(() => {
     checkAuth();
