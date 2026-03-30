@@ -23,7 +23,7 @@ import Header from "@/components/Header";
 import FloatingAIChat from "@/components/FloatingAIChat";
 import PaymentToastProvider from "@/components/PaymentToastProvider";
 import RouteGuard from "@/components/RouteGuard";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import ErrorBoundary, { PageErrorBoundary } from "@/components/ErrorBoundary";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { useFeatureAccess } from "@/hooks/use-subscription";
 import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
@@ -1598,6 +1598,7 @@ function AppLayout() {
             <main className="flex-1 relative flex flex-col min-h-0 overflow-hidden z-[10]" data-scroll-container>
               {/* RouteGuard checks permissions before rendering content */}
               <RouteGuard>
+                <PageErrorBoundary key={location}>
                 {/* Map page renders directly in the flex container, other pages get scroll wrapper */}
                 {location.startsWith('/map') ? (
                   <Router 
@@ -1614,6 +1615,7 @@ function AppLayout() {
                     />
                   </div>
                 )}
+                </PageErrorBoundary>
               </RouteGuard>
             </main>
           </div>

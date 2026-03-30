@@ -49,16 +49,19 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
+  errorUrl: string;
 }
 
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  private checkInterval: ReturnType<typeof setInterval> | null = null;
+
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorUrl: '' };
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    return { hasError: true, error, errorUrl: window.location.href };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -74,6 +77,25 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       stack: error.stack,
       componentStack: errorInfo.componentStack || undefined,
     });
+
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+    }
+    this.checkInterval = setInterval(() => {
+      if (window.location.href !== this.state.errorUrl) {
+        this.setState({ hasError: false, error: null, errorUrl: '' });
+        if (this.checkInterval) {
+          clearInterval(this.checkInterval);
+          this.checkInterval = null;
+        }
+      }
+    }, 500);
+  }
+
+  componentWillUnmount() {
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+    }
   }
 
   render() {
@@ -89,15 +111,19 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                 Something went wrong
               </h1>
               <p className="text-muted-foreground text-sm">
-                We hit a snag. Try refreshing the page.
+                We hit a snag. Try again or go back to the dashboard.
               </p>
               <div className="flex flex-wrap gap-3 justify-center mt-2">
-                <Button onClick={() => window.location.reload()}>
-                  Refresh Page
+                <Button onClick={() => {
+                  if (this.checkInterval) { clearInterval(this.checkInterval); this.checkInterval = null; }
+                  this.setState({ hasError: false, error: null, errorUrl: '' });
+                }}>
+                  Try Again
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => {
+                    this.setState({ hasError: false, error: null, errorUrl: '' });
                     window.location.href = "/";
                   }}
                 >
@@ -115,3 +141,49 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 }
 
 export default ErrorBoundary;
+
+interface PageErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export class PageErrorBoundary extends Component<ErrorBoundaryProps, PageErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): PageErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[PageError] Caught error:', error.message);
+    reportErrorToServer({
+      message: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack || undefined,
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center p-8 min-h-[300px]">
+          <div className="text-center space-y-3">
+            <AlertTriangle className="h-8 w-8 text-muted-foreground mx-auto" />
+            <p className="text-sm text-muted-foreground">This page couldn't load properly.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => this.setState({ hasError: false, error: null })}
+            >
+              Try Again
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}

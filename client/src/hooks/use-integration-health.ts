@@ -62,7 +62,7 @@ export interface IntegrationHealth {
 export function useIntegrationHealth() {
   return useQuery<IntegrationHealth>({
     queryKey: ['/api/integrations/health'],
-    staleTime: 60000, // Cache for 1 minute
+    staleTime: 2 * 60 * 1000, // Cache for 2 minutes
     refetchOnWindowFocus: false,
   });
 }
