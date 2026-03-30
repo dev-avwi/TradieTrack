@@ -38,7 +38,7 @@ const LIFECYCLE_EMAILS = [
     subject: (user: UserWithMilestones) => `${getFirstName(user)}, let's add your first client`,
     body: (user: UserWithMilestones) => `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #1a1a1a; font-size: 24px; margin-bottom: 16px;">G'day ${getFirstName(user)} 👋</h2>
+        <h2 style="color: #1a1a1a; font-size: 24px; margin-bottom: 16px;">G'day ${getFirstName(user)},</h2>
         <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
           You signed up for JobRunner a few days ago — nice one! The quickest way to see the value is to add your first client and create a job.
         </p>
@@ -57,7 +57,7 @@ const LIFECYCLE_EMAILS = [
           <a href="https://jobrunner.com.au" style="background-color: #2563eb; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Open JobRunner</a>
         </div>
         <p style="color: #888; font-size: 14px; margin-top: 32px;">
-          Stuck? Reply to this email and I'll personally help you get set up.<br/>
+          Stuck? Email us at admin@avwebinnovation.com and we'll personally help you get set up.<br/>
           — The JobRunner Team
         </p>
       </div>
@@ -88,7 +88,7 @@ const LIFECYCLE_EMAILS = [
           <a href="https://jobrunner.com.au" style="background-color: #2563eb; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Create a Quote</a>
         </div>
         <p style="color: #888; font-size: 14px; margin-top: 32px;">
-          Need a hand? Just reply to this email.<br/>
+          Need a hand? Email us at admin@avwebinnovation.com.<br/>
           — The JobRunner Team
         </p>
       </div>
@@ -107,7 +107,7 @@ const LIFECYCLE_EMAILS = [
           Two weeks in and you haven't sent an invoice yet — that's where the real magic happens.
         </p>
         <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-          JobRunner invoices let your clients pay online with a card. No more chasing bank transfers. The average tradie gets paid 3 days faster with online invoicing.
+          JobRunner invoices let your clients pay online with a card. No more chasing bank transfers. Most tradies tell us they stop chasing bank transfers within the first week.
         </p>
         <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
           <strong>Pro tip:</strong> If you've already got a quote in the system, you can convert it to an invoice with one tap.
@@ -116,7 +116,7 @@ const LIFECYCLE_EMAILS = [
           <a href="https://jobrunner.com.au" style="background-color: #2563eb; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Send Your First Invoice</a>
         </div>
         <p style="color: #888; font-size: 14px; margin-top: 32px;">
-          Questions about getting paid through JobRunner? Reply to this email — happy to walk you through it.<br/>
+          Questions about getting paid through JobRunner? Email us at admin@avwebinnovation.com — happy to walk you through it.<br/>
           — The JobRunner Team
         </p>
       </div>
@@ -139,11 +139,14 @@ const LIFECYCLE_EMAILS = [
         </p>
         <ul style="color: #4a4a4a; font-size: 16px; line-height: 1.8;">
           <li><strong>"I'm too busy right now"</strong> — Fair enough. The app is always here when you're ready. It takes 5 minutes to set up properly.</li>
-          <li><strong>"I'm not sure how to use it"</strong> — Reply to this email and I'll personally walk you through it.</li>
-          <li><strong>"It's missing something I need"</strong> — Tell me what and I'll see what we can do.</li>
+          <li><strong>"I'm not sure how to use it"</strong> — Email us at admin@avwebinnovation.com and we'll personally walk you through it.</li>
+          <li><strong>"It's missing something I need"</strong> — Tell us what and we'll see what we can do.</li>
         </ul>
         <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
           Either way, your account is here whenever you need it. No pressure.
+        </p>
+        <p style="color: #4a4a4a; font-size: 15px; line-height: 1.6; margin-top: 24px;">
+          <strong>P.S.</strong> If you want, I can jump on a quick call and set the whole thing up for you in 10 minutes. Just email admin@avwebinnovation.com and we'll sort a time.
         </p>
         <p style="color: #888; font-size: 14px; margin-top: 32px;">
           — The JobRunner Team
@@ -168,10 +171,11 @@ const LIFECYCLE_EMAILS = [
         </p>
         <ul style="color: #4a4a4a; font-size: 16px; line-height: 1.8;">
           <li>Unlimited jobs, quotes, and invoices</li>
+          <li>SMS notifications to clients</li>
           <li>Custom branding on all documents</li>
-          <li>AI-powered quote assistance</li>
-          <li>Advanced reporting and insights</li>
-          <li>Priority support</li>
+          <li>Xero and MYOB integration</li>
+          <li>AI assistant</li>
+          <li>Reports and insights</li>
         </ul>
         <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
           You can upgrade any time from the app — no lock-in, cancel whenever.
