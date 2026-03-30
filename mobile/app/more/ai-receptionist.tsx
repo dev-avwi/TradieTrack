@@ -14,6 +14,22 @@ interface TransferNumber {
   priority: number;
 }
 
+interface KnowledgeBankContent {
+  faqs?: Array<{ question: string; answer: string }>;
+  serviceDescriptions?: string;
+  pricingInfo?: string;
+  specialInstructions?: string;
+}
+
+interface VoiceChangeRequest {
+  id: string;
+  requestedDescription: string;
+  status: string;
+  adminNotes: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
 interface ReceptionistConfig {
   enabled: boolean;
   mode: string;
@@ -22,6 +38,7 @@ interface ReceptionistConfig {
   transferNumbers: TransferNumber[];
   businessHours: { start: string; end: string; timezone: string; days: number[] } | null;
   dedicatedPhoneNumber: string | null;
+  knowledgeBank: KnowledgeBankContent | null;
 }
 
 const VOICE_OPTIONS: { id: string; name: string; accent: string }[] = [
@@ -96,6 +113,11 @@ export default function AIReceptionistScreen() {
   const [endTime, setEndTime] = useState('17:00');
   const [timezone, setTimezone] = useState('Australia/Sydney');
   const [transferNumbers, setTransferNumbers] = useState<TransferNumber[]>([]);
+  const [knowledgeBank, setKnowledgeBank] = useState<KnowledgeBankContent>({});
+  const [voiceRequests, setVoiceRequests] = useState<VoiceChangeRequest[]>([]);
+  const [voiceRequestText, setVoiceRequestText] = useState('');
+  const [isSavingKB, setIsSavingKB] = useState(false);
+  const [isSubmittingVR, setIsSubmittingVR] = useState(false);
 
   const fetchConfig = useCallback(async () => {
     try {
@@ -113,6 +135,7 @@ export default function AIReceptionistScreen() {
         if (data.businessHours?.start) setStartTime(data.businessHours.start);
         if (data.businessHours?.end) setEndTime(data.businessHours.end);
         if (data.businessHours?.timezone) setTimezone(data.businessHours.timezone);
+        if (data.knowledgeBank) setKnowledgeBank(data.knowledgeBank);
       }
     } catch {
     } finally {
@@ -120,7 +143,14 @@ export default function AIReceptionistScreen() {
     }
   }, []);
 
-  useEffect(() => { fetchConfig(); }, [fetchConfig]);
+  const fetchVoiceRequests = useCallback(async () => {
+    try {
+      const response = await api.get<VoiceChangeRequest[]>('/api/ai-receptionist/voice-requests');
+      setVoiceRequests(response.data || []);
+    } catch {}
+  }, []);
+
+  useEffect(() => { fetchConfig(); fetchVoiceRequests(); }, [fetchConfig, fetchVoiceRequests]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -147,6 +177,54 @@ export default function AIReceptionistScreen() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSaveKnowledgeBank = async () => {
+    setIsSavingKB(true);
+    try {
+      await api.patch('/api/ai-receptionist/config', { knowledgeBank });
+      Alert.alert('Saved', 'Knowledge bank has been synced to the AI.');
+    } catch {
+      Alert.alert('Error', 'Could not save knowledge bank.');
+    } finally {
+      setIsSavingKB(false);
+    }
+  };
+
+  const handleSubmitVoiceRequest = async () => {
+    if (!voiceRequestText.trim() || voiceRequestText.length < 5) return;
+    setIsSubmittingVR(true);
+    try {
+      await api.post('/api/ai-receptionist/voice-requests', { requestedDescription: voiceRequestText });
+      Alert.alert('Submitted', "We'll review your request and get back to you.");
+      setVoiceRequestText('');
+      fetchVoiceRequests();
+    } catch {
+      Alert.alert('Error', 'Could not submit voice request.');
+    } finally {
+      setIsSubmittingVR(false);
+    }
+  };
+
+  const addFaq = () => {
+    setKnowledgeBank(prev => ({
+      ...prev,
+      faqs: [...(prev.faqs || []), { question: '', answer: '' }],
+    }));
+  };
+
+  const removeFaq = (index: number) => {
+    setKnowledgeBank(prev => ({
+      ...prev,
+      faqs: (prev.faqs || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateFaq = (index: number, field: 'question' | 'answer', value: string) => {
+    setKnowledgeBank(prev => ({
+      ...prev,
+      faqs: (prev.faqs || []).map((faq, i) => i === index ? { ...faq, [field]: value } : faq),
+    }));
   };
 
   const toggleDay = (dayIndex: number) => {
@@ -383,6 +461,157 @@ export default function AIReceptionistScreen() {
             <Text style={styles.saveButtonText}>Save Settings</Text>
           )}
         </TouchableOpacity>
+
+        <View style={styles.card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+            <Feather name="book-open" size={18} color={colors.primary} />
+            <Text style={styles.cardTitle}>Knowledge Bank</Text>
+          </View>
+          <Text style={styles.cardSubtitle}>Train your AI with business-specific info so it can answer callers accurately.</Text>
+
+          <Text style={styles.inputLabel}>Service Descriptions</Text>
+          <TextInput
+            style={[styles.textArea, { marginBottom: spacing.md }]}
+            value={knowledgeBank.serviceDescriptions || ''}
+            onChangeText={(v) => setKnowledgeBank(prev => ({ ...prev, serviceDescriptions: v }))}
+            placeholder="Describe your services, specialties..."
+            placeholderTextColor={colors.mutedForeground}
+            multiline
+            maxLength={2000}
+          />
+
+          <Text style={styles.inputLabel}>Pricing Information</Text>
+          <TextInput
+            style={[styles.textArea, { marginBottom: spacing.md }]}
+            value={knowledgeBank.pricingInfo || ''}
+            onChangeText={(v) => setKnowledgeBank(prev => ({ ...prev, pricingInfo: v }))}
+            placeholder="Call-out fees, hourly rates..."
+            placeholderTextColor={colors.mutedForeground}
+            multiline
+            maxLength={2000}
+          />
+
+          <Text style={styles.inputLabel}>Special Instructions</Text>
+          <TextInput
+            style={[styles.textArea, { marginBottom: spacing.md }]}
+            value={knowledgeBank.specialInstructions || ''}
+            onChangeText={(v) => setKnowledgeBank(prev => ({ ...prev, specialInstructions: v }))}
+            placeholder="Areas you service, special handling..."
+            placeholderTextColor={colors.mutedForeground}
+            multiline
+            maxLength={2000}
+          />
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+            <Text style={styles.inputLabel}>FAQs</Text>
+            <TouchableOpacity
+              style={[styles.addButton, { borderColor: colors.primary + '50', paddingVertical: spacing.xs, paddingHorizontal: spacing.md }]}
+              onPress={addFaq}
+              activeOpacity={0.7}
+            >
+              <Feather name="plus" size={14} color={colors.primary} />
+              <Text style={[styles.addButtonText, { color: colors.primary, fontSize: 13 }]}>Add FAQ</Text>
+            </TouchableOpacity>
+          </View>
+          {(knowledgeBank.faqs || []).map((faq, i) => (
+            <View key={i} style={{ borderWidth: 1, borderColor: colors.cardBorder, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <TextInput
+                    style={[styles.input, { marginBottom: spacing.xs }]}
+                    value={faq.question}
+                    onChangeText={(v) => updateFaq(i, 'question', v)}
+                    placeholder="Common question..."
+                    placeholderTextColor={colors.mutedForeground}
+                  />
+                  <TextInput
+                    style={styles.textArea}
+                    value={faq.answer}
+                    onChangeText={(v) => updateFaq(i, 'answer', v)}
+                    placeholder="Answer..."
+                    placeholderTextColor={colors.mutedForeground}
+                    multiline
+                  />
+                </View>
+                <TouchableOpacity onPress={() => removeFaq(i)} activeOpacity={0.7}>
+                  <Feather name="trash-2" size={18} color={colors.destructive || '#ef4444'} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+
+          <TouchableOpacity
+            style={[styles.saveButton, isSavingKB && { opacity: 0.7 }]}
+            onPress={handleSaveKnowledgeBank}
+            disabled={isSavingKB}
+            activeOpacity={0.8}
+          >
+            {isSavingKB ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.saveButtonText}>Save Knowledge Bank</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+            <Feather name="mic" size={18} color={colors.primary} />
+            <Text style={styles.cardTitle}>Request a Voice</Text>
+          </View>
+          <Text style={styles.cardSubtitle}>Want a different voice? Describe what you'd like and we'll set it up.</Text>
+
+          {voiceRequests.length > 0 && (
+            <View style={{ marginBottom: spacing.md }}>
+              <Text style={[styles.inputLabel, { marginBottom: spacing.sm }]}>Your Requests</Text>
+              {voiceRequests.map((req) => (
+                <View key={req.id} style={{ borderWidth: 1, borderColor: colors.cardBorder, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...typography.body, color: colors.foreground }}>{req.requestedDescription}</Text>
+                      {req.adminNotes ? <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 4 }}>Admin: {req.adminNotes}</Text> : null}
+                      <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 4 }}>{new Date(req.createdAt).toLocaleDateString()}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, {
+                      backgroundColor: req.status === 'resolved' ? '#dcfce7' : req.status === 'in_progress' ? '#dbeafe' : req.status === 'rejected' ? '#fee2e2' : '#fef3c7',
+                    }]}>
+                      <Text style={[styles.statusText, {
+                        color: req.status === 'resolved' ? '#15803d' : req.status === 'in_progress' ? '#1d4ed8' : req.status === 'rejected' ? '#b91c1c' : '#92400e',
+                      }]}>
+                        {req.status === 'in_progress' ? 'In Progress' : req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <TextInput
+            style={[styles.textArea, { marginBottom: spacing.md }]}
+            value={voiceRequestText}
+            onChangeText={setVoiceRequestText}
+            placeholder="Describe the voice you'd like (e.g., 'younger female voice', 'British accent')..."
+            placeholderTextColor={colors.mutedForeground}
+            multiline
+            maxLength={500}
+          />
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: colors.cardBorder }, (isSubmittingVR || voiceRequestText.length < 5) && { opacity: 0.5 }]}
+            onPress={handleSubmitVoiceRequest}
+            disabled={isSubmittingVR || voiceRequestText.length < 5}
+            activeOpacity={0.8}
+          >
+            {isSubmittingVR ? (
+              <ActivityIndicator size="small" color={colors.foreground} />
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <Feather name="send" size={16} color={colors.foreground} />
+                <Text style={[styles.saveButtonText, { color: colors.foreground }]}>Submit Request</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );

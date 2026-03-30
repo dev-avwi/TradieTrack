@@ -38,7 +38,29 @@ import {
   PhoneForwarded,
   Play,
   Square,
+  BookOpen,
+  MessageCircle,
+  HelpCircle,
+  DollarSign,
+  FileText,
+  Send,
 } from "lucide-react";
+
+interface KnowledgeBankContent {
+  faqs?: Array<{ question: string; answer: string }>;
+  serviceDescriptions?: string;
+  pricingInfo?: string;
+  specialInstructions?: string;
+}
+
+interface VoiceChangeRequest {
+  id: string;
+  requestedDescription: string;
+  status: string;
+  adminNotes: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+}
 
 interface ReceptionistConfig {
   enabled: boolean;
@@ -53,6 +75,7 @@ interface ReceptionistConfig {
   provisioningError: string | null;
   provisionedAt: string | null;
   approvedAt: string | null;
+  knowledgeBank: KnowledgeBankContent | null;
 }
 
 interface TransferNumber {
@@ -266,6 +289,70 @@ export default function AIReceptionist() {
       setCheckoutReturn(false);
     }
   }, [checkoutReturn, config?.approvalStatus]);
+
+  const { data: voiceRequests = [] } = useQuery<VoiceChangeRequest[]>({
+    queryKey: ["/api/ai-receptionist/voice-requests"],
+    enabled: canManageConfig,
+  });
+
+  const [knowledgeBank, setKnowledgeBank] = useState<KnowledgeBankContent>({});
+  const [kbInitialized, setKbInitialized] = useState(false);
+  const [voiceRequestDescription, setVoiceRequestDescription] = useState("");
+
+  useEffect(() => {
+    if (config?.knowledgeBank && !kbInitialized) {
+      setKnowledgeBank(config.knowledgeBank);
+      setKbInitialized(true);
+    }
+  }, [config?.knowledgeBank, kbInitialized]);
+
+  const saveKnowledgeBankMutation = useMutation({
+    mutationFn: async (data: KnowledgeBankContent) => {
+      return apiRequest("PATCH", "/api/ai-receptionist/config", { knowledgeBank: data });
+    },
+    onSuccess: () => {
+      toast({ title: "Knowledge Bank saved", description: "Your training content has been synced to the AI." });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-receptionist/config"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Save failed", description: error.message || "Failed to save knowledge bank", variant: "destructive" });
+    },
+  });
+
+  const submitVoiceRequestMutation = useMutation({
+    mutationFn: async (description: string) => {
+      return apiRequest("POST", "/api/ai-receptionist/voice-requests", { requestedDescription: description });
+    },
+    onSuccess: () => {
+      toast({ title: "Voice request submitted", description: "We'll review your request and get back to you." });
+      setVoiceRequestDescription("");
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-receptionist/voice-requests"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Request failed", description: error.message || "Failed to submit voice request", variant: "destructive" });
+    },
+  });
+
+  const addFaq = () => {
+    setKnowledgeBank(prev => ({
+      ...prev,
+      faqs: [...(prev.faqs || []), { question: "", answer: "" }],
+    }));
+  };
+
+  const removeFaq = (index: number) => {
+    setKnowledgeBank(prev => ({
+      ...prev,
+      faqs: (prev.faqs || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateFaq = (index: number, field: "question" | "answer", value: string) => {
+    setKnowledgeBank(prev => ({
+      ...prev,
+      faqs: (prev.faqs || []).map((faq, i) => i === index ? { ...faq, [field]: value } : faq),
+    }));
+  };
 
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<{
@@ -910,6 +997,200 @@ export default function AIReceptionist() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {canManageConfig && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BookOpen className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                Knowledge Bank
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Train your AI receptionist with business-specific information so it can give informed answers to callers.
+              </p>
+
+              <div className="space-y-2">
+                <Label className="text-sm flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5" />
+                  Service Descriptions
+                </Label>
+                <Textarea
+                  value={knowledgeBank.serviceDescriptions || ""}
+                  onChange={(e) => setKnowledgeBank(prev => ({ ...prev, serviceDescriptions: e.target.value }))}
+                  placeholder="Describe your services, specialties, and what sets you apart..."
+                  className="resize-none"
+                  rows={3}
+                  maxLength={2000}
+                  data-testid="input-kb-services"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm flex items-center gap-1.5">
+                  <DollarSign className="h-3.5 w-3.5" />
+                  Pricing Information
+                </Label>
+                <Textarea
+                  value={knowledgeBank.pricingInfo || ""}
+                  onChange={(e) => setKnowledgeBank(prev => ({ ...prev, pricingInfo: e.target.value }))}
+                  placeholder="Call-out fees, hourly rates, common job pricing ranges..."
+                  className="resize-none"
+                  rows={3}
+                  maxLength={2000}
+                  data-testid="input-kb-pricing"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm flex items-center gap-1.5">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  Special Instructions
+                </Label>
+                <Textarea
+                  value={knowledgeBank.specialInstructions || ""}
+                  onChange={(e) => setKnowledgeBank(prev => ({ ...prev, specialInstructions: e.target.value }))}
+                  placeholder="Any special handling instructions, areas you service, things the AI should know..."
+                  className="resize-none"
+                  rows={3}
+                  maxLength={2000}
+                  data-testid="input-kb-instructions"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <Label className="text-sm flex items-center gap-1.5">
+                    <HelpCircle className="h-3.5 w-3.5" />
+                    FAQs
+                  </Label>
+                  <Button variant="outline" size="sm" onClick={addFaq} data-testid="button-add-faq">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add FAQ
+                  </Button>
+                </div>
+                {(knowledgeBank.faqs || []).map((faq, i) => (
+                  <div key={i} className="space-y-2 p-3 rounded-md border">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          value={faq.question}
+                          onChange={(e) => updateFaq(i, "question", e.target.value)}
+                          placeholder="Common question..."
+                          data-testid={`input-faq-question-${i}`}
+                        />
+                        <Textarea
+                          value={faq.answer}
+                          onChange={(e) => updateFaq(i, "answer", e.target.value)}
+                          placeholder="Answer..."
+                          className="resize-none"
+                          rows={2}
+                          data-testid={`input-faq-answer-${i}`}
+                        />
+                      </div>
+                      <Button size="icon" variant="ghost" onClick={() => removeFaq(i)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                onClick={() => saveKnowledgeBankMutation.mutate(knowledgeBank)}
+                disabled={saveKnowledgeBankMutation.isPending}
+                data-testid="button-save-knowledge-bank"
+              >
+                {saveKnowledgeBankMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-1" />
+                    Save Knowledge Bank
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {canManageConfig && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Mic className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                Request a Voice
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Want a different voice for your AI receptionist? Describe what you're looking for and we'll set it up for you.
+              </p>
+
+              {voiceRequests.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Your Requests</Label>
+                  {voiceRequests.map((req) => (
+                    <div key={req.id} className="flex items-start justify-between gap-3 p-3 rounded-md border">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm">{req.requestedDescription}</p>
+                        {req.adminNotes && (
+                          <p className="text-xs text-muted-foreground mt-1">Admin: {req.adminNotes}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(req.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={
+                          req.status === "resolved"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0"
+                            : req.status === "in_progress"
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0"
+                              : req.status === "rejected"
+                                ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-0"
+                                : ""
+                        }
+                      >
+                        {req.status === "in_progress" ? "In Progress" : req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Textarea
+                  value={voiceRequestDescription}
+                  onChange={(e) => setVoiceRequestDescription(e.target.value)}
+                  placeholder="Describe the voice you'd like (e.g., 'younger female voice', 'British accent', 'deeper male voice')..."
+                  className="resize-none"
+                  rows={2}
+                  maxLength={500}
+                  data-testid="input-voice-request"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => submitVoiceRequestMutation.mutate(voiceRequestDescription)}
+                  disabled={!voiceRequestDescription.trim() || voiceRequestDescription.length < 5 || submitVoiceRequestMutation.isPending}
+                  data-testid="button-submit-voice-request"
+                >
+                  {submitVoiceRequestMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-1" />
+                  )}
+                  Submit Request
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}

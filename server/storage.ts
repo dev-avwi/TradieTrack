@@ -383,6 +383,9 @@ import {
   type InsertWebsiteAddon,
   type WebsiteChangeRequest,
   type InsertWebsiteChangeRequest,
+  voiceChangeRequests,
+  type VoiceChangeRequest,
+  type InsertVoiceChangeRequest,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -1000,6 +1003,12 @@ export interface IStorage {
   getAiReceptionistCallByVapiId(vapiCallId: string): Promise<AiReceptionistCall | undefined>;
   createAiReceptionistCall(call: InsertAiReceptionistCall): Promise<AiReceptionistCall>;
   updateAiReceptionistCall(id: string, userId: string, updates: Partial<InsertAiReceptionistCall>): Promise<AiReceptionistCall | undefined>;
+
+  // Voice Change Requests
+  getVoiceChangeRequests(userId: string): Promise<VoiceChangeRequest[]>;
+  getAllVoiceChangeRequests(): Promise<VoiceChangeRequest[]>;
+  createVoiceChangeRequest(request: InsertVoiceChangeRequest): Promise<VoiceChangeRequest>;
+  updateVoiceChangeRequest(id: string, updates: Partial<InsertVoiceChangeRequest>): Promise<VoiceChangeRequest | undefined>;
 
   // Payment Schedules (Installment Plans)
   getPaymentSchedules(userId: string): Promise<PaymentSchedule[]>;
@@ -7199,6 +7208,45 @@ Thank you for your prompt attention to this matter.`,
       .update(aiReceptionistCalls)
       .set({ ...updates, updatedAt: new Date() })
       .where(and(eq(aiReceptionistCalls.id, id), eq(aiReceptionistCalls.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  // Voice Change Requests
+  async getVoiceChangeRequests(userId: string): Promise<VoiceChangeRequest[]> {
+    return db
+      .select()
+      .from(voiceChangeRequests)
+      .where(eq(voiceChangeRequests.userId, userId))
+      .orderBy(desc(voiceChangeRequests.createdAt));
+  }
+
+  async getAllVoiceChangeRequests(): Promise<VoiceChangeRequest[]> {
+    return db
+      .select()
+      .from(voiceChangeRequests)
+      .orderBy(desc(voiceChangeRequests.createdAt));
+  }
+
+  async createVoiceChangeRequest(request: InsertVoiceChangeRequest): Promise<VoiceChangeRequest> {
+    const [created] = await db
+      .insert(voiceChangeRequests)
+      .values({ id: randomUUID(), ...request })
+      .returning();
+    return created;
+  }
+
+  async updateVoiceChangeRequest(id: string, updates: Partial<InsertVoiceChangeRequest>): Promise<VoiceChangeRequest | undefined> {
+    const setPayload: Record<string, unknown> = {};
+    if (updates.status !== undefined) setPayload.status = updates.status;
+    if (updates.adminNotes !== undefined) setPayload.adminNotes = updates.adminNotes;
+    if (updates.status === 'resolved' || updates.status === 'rejected') {
+      setPayload.resolvedAt = new Date();
+    }
+    const [updated] = await db
+      .update(voiceChangeRequests)
+      .set(setPayload)
+      .where(eq(voiceChangeRequests.id, id))
       .returning();
     return updated;
   }

@@ -20,7 +20,7 @@ export interface NavItem {
   showInMore?: boolean;
   showBadge?: boolean;
   badge?: string;
-  category?: 'work' | 'money' | 'team' | 'communication' | 'settings' | 'legal' | 'account' | 'featured' | 'admin';
+  category?: 'work' | 'money' | 'addons' | 'team' | 'communication' | 'settings' | 'legal' | 'account' | 'featured' | 'admin';
 }
 
 export const mainMenuItems: NavItem[] = [
@@ -263,7 +263,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "primary",
     hideForStaff: true,
     showInMore: true,
-    category: "work",
+    category: "addons",
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
@@ -275,7 +275,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "primary",
     hideForStaff: true,
     showInMore: true,
-    category: "work",
+    category: "addons",
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
 ];
@@ -496,6 +496,7 @@ export function getMorePageItemsByCategory(options: FilterOptions): Record<strin
   const categories: Record<string, NavItem[]> = {
     featured: [],
     work: [],
+    addons: [],
     money: [],
     team: [],
     communication: [],
@@ -518,6 +519,7 @@ export function getMorePageItemsByCategory(options: FilterOptions): Record<strin
 export const categoryLabels: Record<string, string> = {
   featured: '',
   work: 'Work',
+  addons: 'Add-ons',
   money: 'Payment Hub',
   team: 'Team',
   communication: 'Communication',
@@ -529,7 +531,8 @@ export const categoryLabels: Record<string, string> = {
 
 export const categoryOrder = [
   'featured',
-  'work', 
+  'work',
+  'addons',
   'money',
   'team',
   'communication',

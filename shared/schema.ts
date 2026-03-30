@@ -4482,12 +4482,13 @@ export const aiReceptionistConfig = pgTable("ai_receptionist_config", {
   businessHours: json("business_hours"),
   enabled: boolean("enabled").notNull().default(false),
   dedicatedPhoneNumber: text("dedicated_phone_number"),
-  approvalStatus: text("approval_status").default('none'), // none, provisioning, pending_approval, approved, rejected, failed
+  approvalStatus: text("approval_status").default('none'),
   provisioningError: text("provisioning_error"),
   stripeSubscriptionItemId: text("stripe_subscription_item_id"),
   twilioNumberSid: text("twilio_number_sid"),
   provisionedAt: timestamp("provisioned_at"),
   approvedAt: timestamp("approved_at"),
+  knowledgeBank: json("knowledge_bank"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -4625,3 +4626,20 @@ export const websiteChangeRequests = pgTable("website_change_requests", {
 export const insertWebsiteChangeRequestSchema = createInsertSchema(websiteChangeRequests).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertWebsiteChangeRequest = z.infer<typeof insertWebsiteChangeRequestSchema>;
 export type WebsiteChangeRequest = typeof websiteChangeRequests.$inferSelect;
+
+export const voiceChangeRequests = pgTable("voice_change_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  requestedDescription: text("requested_description").notNull(),
+  status: text("status").notNull().default('pending'),
+  adminNotes: text("admin_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+}, (table) => [
+  index("idx_vcr_user").on(table.userId),
+  index("idx_vcr_status").on(table.status),
+]);
+
+export const insertVoiceChangeRequestSchema = createInsertSchema(voiceChangeRequests).omit({ id: true, createdAt: true, resolvedAt: true });
+export type InsertVoiceChangeRequest = z.infer<typeof insertVoiceChangeRequestSchema>;
+export type VoiceChangeRequest = typeof voiceChangeRequests.$inferSelect;

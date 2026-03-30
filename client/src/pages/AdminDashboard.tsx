@@ -59,6 +59,7 @@ import {
   ArrowRight,
   Plus,
   Edit,
+  Mic,
 } from "lucide-react";
 import { format } from "date-fns";
 import { 
@@ -1483,10 +1484,153 @@ function AIApprovalView() {
           )}
         </CardContent>
       </Card>
+
+      <VoiceRequestsPanel />
     </div>
   );
 }
 
+interface AdminVoiceRequest {
+  id: string;
+  userId: string;
+  requestedDescription: string;
+  status: string;
+  adminNotes: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+  userName: string;
+  businessName: string | null;
+}
+
+function VoiceRequestsPanel() {
+  const { toast } = useToast();
+  const [editingNotes, setEditingNotes] = useState<string | null>(null);
+  const [notesText, setNotesText] = useState("");
+
+  const { data: requests = [], isLoading } = useQuery<AdminVoiceRequest[]>({
+    queryKey: ['/api/admin/voice-change-requests'],
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, status, adminNotes }: { id: string; status: string; adminNotes?: string }) => {
+      const response = await apiRequest("PATCH", `/api/admin/voice-change-requests/${id}`, { status, adminNotes });
+      if (!response.ok) throw new Error('Failed to update');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/voice-change-requests'] });
+      toast({ title: "Updated", description: "Voice request status updated" });
+      setEditingNotes(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const pending = requests.filter(r => r.status === 'pending' || r.status === 'in_progress');
+
+  const statusColor = (status: string) => {
+    switch (status) {
+      case 'resolved': return "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0";
+      case 'in_progress': return "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0";
+      case 'rejected': return "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-0";
+      default: return "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-0";
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base md:text-lg flex items-center gap-2">
+          <Mic className="h-5 w-5 text-muted-foreground" />
+          Voice Change Requests
+          {pending.length > 0 && (
+            <Badge variant="secondary" className="ml-auto">{pending.length} pending</Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="text-center py-12">
+            <Mic className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+            <p className="text-muted-foreground font-medium">No voice requests</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">Custom voice requests from users will appear here</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {requests.map((req) => (
+              <Card key={req.id} className="hover-elevate" data-testid={`voice-request-${req.id}`}>
+                <CardContent className="p-4">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">{req.businessName || req.userName}</p>
+                        <p className="text-sm text-muted-foreground mt-1">{req.requestedDescription}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{new Date(req.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <Badge variant="outline" className={statusColor(req.status)}>
+                        {req.status === 'in_progress' ? 'In Progress' : req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                      </Badge>
+                    </div>
+
+                    {editingNotes === req.id ? (
+                      <div className="space-y-2">
+                        <Input
+                          value={notesText}
+                          onChange={(e) => setNotesText(e.target.value)}
+                          placeholder="Add admin notes..."
+                          className="text-sm"
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => updateMutation.mutate({ id: req.id, status: req.status, adminNotes: notesText })}>
+                            Save Notes
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingNotes(null)}>Cancel</Button>
+                        </div>
+                      </div>
+                    ) : req.adminNotes ? (
+                      <div className="bg-muted/50 rounded-md p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Admin Notes</p>
+                        <p className="text-sm">{req.adminNotes}</p>
+                      </div>
+                    ) : null}
+
+                    <div className="flex items-center justify-end gap-2 flex-wrap">
+                      <Button variant="ghost" size="sm" onClick={() => { setEditingNotes(req.id); setNotesText(req.adminNotes || ""); }}>
+                        <Edit className="h-3.5 w-3.5 mr-1.5" />
+                        Notes
+                      </Button>
+                      {req.status === 'pending' && (
+                        <Button size="sm" variant="outline" onClick={() => updateMutation.mutate({ id: req.id, status: 'in_progress' })} disabled={updateMutation.isPending}>
+                          In Progress
+                        </Button>
+                      )}
+                      {(req.status === 'pending' || req.status === 'in_progress') && (
+                        <>
+                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => updateMutation.mutate({ id: req.id, status: 'rejected' })} disabled={updateMutation.isPending}>
+                            Reject
+                          </Button>
+                          <Button size="sm" onClick={() => updateMutation.mutate({ id: req.id, status: 'resolved' })} disabled={updateMutation.isPending}>
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                            Resolve
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 interface SystemEventItem {
   id: string;

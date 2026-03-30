@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -3370,10 +3371,10 @@ function BillingTabContent() {
             <CardTitle className="text-base">AI Receptionist</CardTitle>
           </div>
           <Button variant="outline" asChild data-testid="link-ai-receptionist-settings">
-            <a href="/ai-receptionist">
+            <Link href="/ai-receptionist">
               <Settings2 className="h-4 w-4 mr-1.5" />
               Configure
-            </a>
+            </Link>
           </Button>
         </CardHeader>
         <CardContent className="pt-0">

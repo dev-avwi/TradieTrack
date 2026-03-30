@@ -44928,6 +44928,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
           vapiAssistantId: null,
           approvalStatus: 'none',
           provisioningError: null,
+          knowledgeBank: null,
         });
       }
       res.json({
@@ -44943,6 +44944,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         provisioningError: config.provisioningError || null,
         provisionedAt: config.provisionedAt || null,
         approvedAt: config.approvedAt || null,
+        knowledgeBank: config.knowledgeBank || null,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -44964,12 +44966,20 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     days: z.array(z.number().int().min(0).max(6)),
   });
 
+  const knowledgeBankSchema = z.object({
+    faqs: z.array(z.object({ question: z.string(), answer: z.string() })).optional(),
+    serviceDescriptions: z.string().max(2000).optional(),
+    pricingInfo: z.string().max(2000).optional(),
+    specialInstructions: z.string().max(2000).optional(),
+  });
+
   const aiReceptionistConfigSchema = z.object({
     voice: z.string().optional(),
     greeting: z.string().max(500).optional(),
     mode: z.enum(['off', 'after_hours', 'always_on_transfer', 'always_on_message', 'selective']).optional(),
     transferNumbers: z.array(transferNumberSchema).optional(),
     businessHours: businessHoursSchema.nullable().optional(),
+    knowledgeBank: knowledgeBankSchema.nullable().optional(),
   });
 
   app.post("/api/ai-receptionist/config", requireAuth, ownerOnly(), async (req: any, res) => {
@@ -45029,7 +45039,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid config", details: parsed.error.flatten().fieldErrors });
       }
-      const { voice, greeting, mode, transferNumbers, businessHours } = parsed.data;
+      const { voice, greeting, mode, transferNumbers, businessHours, knowledgeBank } = parsed.data;
 
       const { updateReceptionistConfig } = await import('./vapiService');
       const result = await updateReceptionistConfig(userId, {
@@ -45038,6 +45048,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         mode,
         transferNumbers,
         businessHours,
+        knowledgeBank: knowledgeBank === null ? undefined : knowledgeBank,
       });
 
       if (!result.success) {
@@ -45054,6 +45065,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         businessHours: config?.businessHours || null,
         dedicatedPhoneNumber: config?.dedicatedPhoneNumber || null,
         vapiAssistantId: config?.vapiAssistantId || null,
+        knowledgeBank: config?.knowledgeBank || null,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -45393,6 +45405,85 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       }
       console.error("Error creating change request:", error);
       res.status(500).json({ error: "Failed to create change request" });
+    }
+  });
+
+  app.get("/api/ai-receptionist/voice-requests", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.effectiveUserId || req.userId;
+      const requests = await storage.getVoiceChangeRequests(userId);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching voice change requests:", error);
+      res.status(500).json({ error: "Failed to fetch voice change requests" });
+    }
+  });
+
+  app.post("/api/ai-receptionist/voice-requests", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.effectiveUserId || req.userId;
+      const schema = z.object({ requestedDescription: z.string().min(5).max(500) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Please provide a description of the voice you'd like (at least 5 characters)." });
+      }
+      const request = await storage.createVoiceChangeRequest({
+        userId,
+        requestedDescription: parsed.data.requestedDescription,
+        status: 'pending',
+      });
+      res.status(201).json(request);
+    } catch (error) {
+      console.error("Error creating voice change request:", error);
+      res.status(500).json({ error: "Failed to create voice change request" });
+    }
+  });
+
+  app.get("/api/admin/voice-change-requests", requireAuth, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.userId);
+      if (!user?.isPlatformAdmin) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const requests = await storage.getAllVoiceChangeRequests();
+      const enriched = await Promise.all(requests.map(async (r) => {
+        const reqUser = await storage.getUser(r.userId);
+        const settings = await storage.getBusinessSettings(r.userId);
+        return {
+          ...r,
+          userName: reqUser ? `${reqUser.firstName || ''} ${reqUser.lastName || ''}`.trim() || reqUser.email : 'Unknown',
+          businessName: settings?.businessName || null,
+        };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching admin voice change requests:", error);
+      res.status(500).json({ error: "Failed to fetch voice change requests" });
+    }
+  });
+
+  app.patch("/api/admin/voice-change-requests/:id", requireAuth, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.userId);
+      if (!user?.isPlatformAdmin) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const schema = z.object({
+        status: z.enum(['pending', 'in_progress', 'resolved', 'rejected']),
+        adminNotes: z.string().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+      const updated = await storage.updateVoiceChangeRequest(req.params.id, parsed.data);
+      if (!updated) {
+        return res.status(404).json({ error: "Voice change request not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating voice change request:", error);
+      res.status(500).json({ error: "Failed to update voice change request" });
     }
   });
 

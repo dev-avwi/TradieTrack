@@ -37,6 +37,13 @@ export function verifyVapiWebhook(rawBody: Buffer, signature: string | undefined
   }
 }
 
+interface KnowledgeBankContent {
+  faqs?: Array<{ question: string; answer: string }>;
+  serviceDescriptions?: string;
+  pricingInfo?: string;
+  specialInstructions?: string;
+}
+
 interface VapiAssistantConfig {
   businessName: string;
   businessPhone?: string;
@@ -49,6 +56,7 @@ interface VapiAssistantConfig {
   services?: string[];
   teamInfo?: Array<{ name: string; role: string }>;
   knownClientCount?: number;
+  knowledgeBank?: KnowledgeBankContent;
 }
 
 interface VapiResponse {
@@ -108,6 +116,33 @@ function buildSystemPrompt(config: VapiAssistantConfig): string {
     ? `\nThe business has ${config.knownClientCount} existing clients in their system. Use "lookup_client" when a returning caller identifies themselves.`
     : '';
 
+  let knowledgeBankSection = '';
+  if (config.knowledgeBank) {
+    const kb = config.knowledgeBank;
+    const parts: string[] = [];
+    if (kb.serviceDescriptions) {
+      parts.push(`Service descriptions: ${kb.serviceDescriptions}`);
+    }
+    if (kb.pricingInfo) {
+      parts.push(`Pricing information: ${kb.pricingInfo}`);
+    }
+    if (kb.specialInstructions) {
+      parts.push(`Special instructions: ${kb.specialInstructions}`);
+    }
+    if (kb.faqs && kb.faqs.length > 0) {
+      const faqText = kb.faqs
+        .filter(f => f.question && f.answer)
+        .map(f => `Q: ${f.question}\nA: ${f.answer}`)
+        .join('\n\n');
+      if (faqText) {
+        parts.push(`Frequently Asked Questions:\n${faqText}`);
+      }
+    }
+    if (parts.length > 0) {
+      knowledgeBankSection = `\n\nBusiness Knowledge Base:\n${parts.join('\n\n')}`;
+    }
+  }
+
   return `You are a friendly, professional AI receptionist for ${businessName}, an Australian ${tradeType} business.
 ${servicesSection}${teamSection}${clientContextSection}
 
@@ -142,7 +177,7 @@ Workflow:
 4. Use "check_availability" if they ask about scheduling
 5. Use "capture_lead" to save their details
 6. If they want to book, use "create_booking"
-7. If they insist on speaking with someone, use "transfer_call" (if available)`;
+7. If they insist on speaking with someone, use "transfer_call" (if available)${knowledgeBankSection}`;
 }
 
 function buildToolDefinitions(config: VapiAssistantConfig): any[] {
@@ -305,7 +340,7 @@ export async function updateAssistant(assistantId: string, config: Partial<VapiA
     updates.firstMessage = config.greeting;
   }
 
-  if (config.businessName || config.greeting || config.transferNumbers || config.businessHours || config.tradeType || config.services || config.teamInfo || config.knownClientCount) {
+  if (config.businessName || config.greeting || config.transferNumbers || config.businessHours || config.tradeType || config.services || config.teamInfo || config.knownClientCount || config.knowledgeBank) {
     const fullConfig: VapiAssistantConfig = {
       businessName: config.businessName || '',
       tradeType: config.tradeType,
@@ -317,6 +352,7 @@ export async function updateAssistant(assistantId: string, config: Partial<VapiA
       services: config.services,
       teamInfo: config.teamInfo,
       knownClientCount: config.knownClientCount,
+      knowledgeBank: config.knowledgeBank,
     };
     updates.model = {
       provider: 'openai',
@@ -425,6 +461,8 @@ export async function enableAiReceptionist(userId: string): Promise<{
     const catalogItems = await storage.getCatalogItems(userId);
     const services = catalogItems.map(item => item.name).filter(Boolean).slice(0, 20);
 
+    const knowledgeBank = (config?.knowledgeBank || null) as KnowledgeBankContent | null;
+
     const assistant = await createAssistant({
       businessName: settings.businessName,
       businessPhone: settings.phone || undefined,
@@ -437,6 +475,7 @@ export async function enableAiReceptionist(userId: string): Promise<{
       services,
       teamInfo,
       knownClientCount,
+      knowledgeBank: knowledgeBank || undefined,
     });
 
     if (config) {
@@ -521,6 +560,7 @@ export async function updateReceptionistConfig(userId: string, updates: {
   mode?: string;
   transferNumbers?: Array<{ name: string; phone: string; priority: number }>;
   businessHours?: { start: string; end: string; timezone: string; days: number[] };
+  knowledgeBank?: KnowledgeBankContent;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const config = await storage.getAiReceptionistConfig(userId);
@@ -534,10 +574,11 @@ export async function updateReceptionistConfig(userId: string, updates: {
     if (updates.mode) configUpdates.mode = updates.mode;
     if (updates.transferNumbers) configUpdates.transferNumbers = updates.transferNumbers;
     if (updates.businessHours) configUpdates.businessHours = updates.businessHours;
+    if (updates.knowledgeBank !== undefined) configUpdates.knowledgeBank = updates.knowledgeBank;
 
     await storage.updateAiReceptionistConfig(userId, configUpdates);
 
-    if (config.vapiAssistantId && (updates.voice || updates.greeting || updates.transferNumbers || updates.businessHours)) {
+    if (config.vapiAssistantId && (updates.voice || updates.greeting || updates.transferNumbers || updates.businessHours || updates.knowledgeBank)) {
       try {
         const settings = await storage.getBusinessSettings(userId);
         const webhookUrl = getWebhookUrl();
@@ -553,6 +594,8 @@ export async function updateReceptionistConfig(userId: string, updates: {
         const catalogItems = await storage.getCatalogItems(userId);
         const services = catalogItems.map(item => item.name).filter(Boolean).slice(0, 20);
 
+        const resolvedKB = updates.knowledgeBank || (config.knowledgeBank as KnowledgeBankContent | null) || undefined;
+
         await updateAssistant(config.vapiAssistantId, {
           businessName: settings?.businessName || '',
           tradeType: settings?.industry || undefined,
@@ -564,6 +607,7 @@ export async function updateReceptionistConfig(userId: string, updates: {
           services,
           teamInfo,
           knownClientCount,
+          knowledgeBank: resolvedKB,
         });
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'Unknown error';
