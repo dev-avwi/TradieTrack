@@ -845,7 +845,7 @@ export default function StaffTradieDashboard({
           </div>
           
           <div className="space-y-2">
-            {todaysJobs.filter(job => job.id !== nextJob?.id).map((job) => (
+            {todaysJobs.filter(job => job.id !== nextJob?.id).slice(0, 5).map((job) => (
               <Card 
                 key={job.id}
                 className="cursor-pointer hover-elevate"
@@ -889,6 +889,16 @@ export default function StaffTradieDashboard({
                 </CardContent>
               </Card>
             ))}
+            {todaysJobs.filter(job => job.id !== nextJob?.id).length > 5 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground"
+                onClick={() => onViewJob && onViewJob(todaysJobs[0]?.id)}
+              >
+                +{todaysJobs.filter(job => job.id !== nextJob?.id).length - 5} more jobs today
+              </Button>
+            )}
           </div>
         </section>
       )}

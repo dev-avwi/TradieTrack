@@ -175,7 +175,9 @@ export default function OwnerManagerDashboard({
   };
 
   const formatJobTime = (dateStr: string) => {
+    if (!dateStr) return 'TBD';
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'TBD';
     return date.toLocaleTimeString('en-AU', { 
       hour: 'numeric', 
       minute: '2-digit',
@@ -546,7 +548,7 @@ export default function OwnerManagerDashboard({
             </div>
           ) : (
             <div className="space-y-1">
-              {todaysJobs.map((job: any) => (
+              {todaysJobs.slice(0, 5).map((job: any) => (
                 <div 
                   key={job.id}
                   className="flex items-center gap-3 p-2.5 cursor-pointer hover-elevate rounded-md"
@@ -598,6 +600,17 @@ export default function OwnerManagerDashboard({
                   </div>
                 </div>
               ))}
+              {todaysJobs.length > 5 && onViewJobs && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-muted-foreground mt-1"
+                  onClick={onViewJobs}
+                >
+                  +{todaysJobs.length - 5} more jobs today
+                  <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
