@@ -103,13 +103,35 @@ export default function LandingPage() {
   const [showAppPopup, setShowAppPopup] = useState(false);
   const [mockupMode, setMockupMode] = useState<'mobile' | 'web'>('mobile');
   const [betaStatus, setBetaStatus] = useState<{ spotsRemaining: number; maxLifetimeSpots: number } | null>(null);
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/beta/status')
+    fetch('/api/early-access/status')
       .then(res => res.json())
       .then(data => setBetaStatus(data))
       .catch(() => {});
   }, []);
+
+  const handleDemoLogin = async () => {
+    setIsDemoLoading(true);
+    try {
+      const res = await fetch('/api/auth/demo-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.sessionToken) {
+          localStorage.setItem('sessionToken', data.sessionToken);
+        }
+        window.location.href = '/';
+      }
+    } catch {
+    } finally {
+      setIsDemoLoading(false);
+    }
+  };
 
   // Show mobile app popup after a short delay on first visit
   useEffect(() => {
@@ -393,7 +415,7 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
             {/* Left: Content */}
             <div className="text-center lg:text-left animate-fade-in">
-              {/* Beta Badge */}
+              {/* Early Access Badge */}
               <div className="inline-flex items-center gap-2 bg-gradient-to-r from-brand/5 to-brand-accent/5 border border-brand/10 rounded-full px-4 py-2 mb-8">
                 <Sparkles className="w-4 h-4 text-brand-accent" />
                 <span className="text-sm font-semibold text-gray-700">Free for early users</span>
@@ -423,25 +445,39 @@ export default function LandingPage() {
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
-                <a 
-                  href="#how-it-works"
-                  onClick={(e) => scrollToSection(e, "how-it-works")}
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="w-full sm:w-auto h-12 px-7 text-base font-medium rounded-lg border-gray-300 hover:bg-gray-50 hover:scale-[1.02] transition-all" 
+                  data-testid="hero-try-demo"
+                  onClick={() => {
+                    trackEvent('cta_click', { location: 'hero', button: 'try_demo' });
+                    handleDemoLogin();
+                  }}
+                  disabled={isDemoLoading}
                 >
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-7 text-base font-medium rounded-lg border-gray-300 hover:bg-gray-50 hover:scale-[1.02] transition-all" data-testid="hero-watch-demo">
-                    <Play className="mr-2 h-4 w-4" />
-                    See How It Works
-                  </Button>
-                </a>
+                  {isDemoLoading ? (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4 animate-spin" />
+                      Loading Demo...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="mr-2 h-4 w-4" />
+                      Try the Demo
+                    </>
+                  )}
+                </Button>
               </div>
 
-              {/* Beta access note */}
+              {/* Early Access note */}
               <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-full px-4 py-2">
                 <span className="flex h-2 w-2 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-accent"></span>
                 </span>
                 <span className="text-sm font-medium text-orange-700">
-                  {betaStatus && betaStatus.spotsRemaining > 0 ? `Beta: ${betaStatus.spotsRemaining} of ${betaStatus.maxLifetimeSpots} lifetime free spots remaining` : 'Beta: First 10 users get lifetime free access'}
+                  {betaStatus && betaStatus.spotsRemaining > 0 ? `Early Access: ${betaStatus.spotsRemaining} of ${betaStatus.maxLifetimeSpots} founding member spots remaining` : 'Early Access: First 10 users get lifetime free access'}
                 </span>
               </div>
             </div>
@@ -818,7 +854,7 @@ export default function LandingPage() {
                   "Recurring invoices",
                   "Priority support"
                 ]}
-                buttonText="Join Beta Free"
+                buttonText="Get Started Free"
                 buttonVariant="default"
                 popular={true}
                 href="/auth?mode=signup&plan=pro"
@@ -843,7 +879,7 @@ export default function LandingPage() {
                   "Job assignments",
                   "Advanced reporting"
                 ]}
-                buttonText="Join Beta Free"
+                buttonText="Get Started Free"
                 buttonVariant="default"
                 href="/auth?mode=signup&plan=team"
               />
@@ -926,10 +962,10 @@ export default function LandingPage() {
           <AnimatedSection delay={500} className="text-center mt-10">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-full px-5 py-2.5 mb-4">
               <span className="text-sm font-semibold text-green-700">
-                {betaStatus && betaStatus.spotsRemaining > 0 ? `Beta Special: ${betaStatus.spotsRemaining} lifetime free spots remaining in exchange for a testimonial` : 'All features unlocked during beta. Start your free trial today.'}
+                {betaStatus && betaStatus.spotsRemaining > 0 ? `Early Access: ${betaStatus.spotsRemaining} founding member spots remaining — free in exchange for a testimonial` : 'All features included for Early Access members. Get started free today.'}
               </span>
             </div>
-            <p className="text-sm text-gray-500">All features unlocked during beta. No credit card required.</p>
+            <p className="text-sm text-gray-500">All features included during Early Access. No credit card required.</p>
           </AnimatedSection>
         </div>
       </section>
@@ -1035,7 +1071,7 @@ export default function LandingPage() {
             Ready to simplify your business?
           </h2>
           <p className="text-lg lg:text-xl text-blue-100 mb-10 max-w-xl mx-auto">
-            Join our growing community of Australian trade professionals. Free during beta - first 10 users get lifetime access!
+            Join our growing community of Australian trade professionals. Free for Early Access members — founding members get lifetime access!
           </p>
           <Link href="/auth?mode=signup">
             <Button 

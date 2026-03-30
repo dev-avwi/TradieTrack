@@ -3046,7 +3046,7 @@ function BillingTabContent() {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/status'] });
       toast({
         title: "Upgraded to Team!",
-        description: data.message || "Team features are now unlocked - free during beta!",
+        description: data.message || "Team features are now unlocked - free for Early Access members!",
       });
     },
     onError: (error: any) => {
@@ -3125,7 +3125,7 @@ function BillingTabContent() {
                     <p className="text-sm text-muted-foreground">
                       {hasPaidPlan 
                         ? isTrialing 
-                          ? 'Beta access active - all Pro features unlocked' 
+                          ? 'Early Access active - all Pro features unlocked' 
                           : isCanceled 
                             ? 'Cancels at period end' 
                             : isTeam 
@@ -3141,7 +3141,7 @@ function BillingTabContent() {
                       variant="default" 
                       style={{ backgroundColor: isTrialing ? 'hsl(var(--success))' : isCanceled ? 'hsl(var(--muted-foreground))' : 'hsl(var(--success))' }}
                     >
-                      {isTrialing ? 'Beta Access' : isCanceled ? 'Canceling' : 'Active'}
+                      {isTrialing ? 'Early Access' : isCanceled ? 'Canceling' : 'Active'}
                     </Badge>
                   ) : (
                     <Badge variant="secondary">Free</Badge>
@@ -3154,75 +3154,16 @@ function BillingTabContent() {
                 </div>
               </div>
 
-              {/* Plan Selection - Only show when free */}
+              {/* Early Access - All features included free */}
               {!hasPaidPlan && (
-                <div className="space-y-4">
-                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Choose Your Plan</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Pro Plan */}
-                    <div 
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedPlan === 'pro' ? 'border-primary bg-primary/5' : 'border-muted hover:border-primary/50'}`}
-                      onClick={() => setSelectedPlan('pro')}
-                      data-testid="card-plan-pro"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="font-semibold text-lg">Pro</h5>
-                        <Badge variant={selectedPlan === 'pro' ? 'default' : 'outline'}>Solo</Badge>
-                      </div>
-                      <p className="text-2xl font-bold mb-2">${proMonthly}<span className="text-sm font-normal text-muted-foreground">/month</span></p>
-                      <p className="text-sm text-muted-foreground mb-3">Perfect for solo operators</p>
-                      <ul className="text-sm space-y-1">
-                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Unlimited jobs, quotes, invoices</li>
-                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> AI assistant & suggestions</li>
-                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Custom branding</li>
-                        <li className="flex items-center gap-2"><X className="h-3 w-3 text-muted-foreground" /> <span className="text-muted-foreground">Team features</span></li>
-                      </ul>
-                    </div>
-
-                    {/* Team Plan */}
-                    <div 
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedPlan === 'team' ? 'border-primary bg-primary/5' : 'border-muted hover:border-primary/50'}`}
-                      onClick={() => setSelectedPlan('team')}
-                      data-testid="card-plan-team"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="font-semibold text-lg">Team</h5>
-                        <Badge variant={selectedPlan === 'team' ? 'default' : 'outline'}>Crew</Badge>
-                      </div>
-                      <p className="text-2xl font-bold mb-2">
-                        ${teamPrice}<span className="text-sm font-normal text-muted-foreground">/month</span>
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-3">${teamBase} base + ${seatPrice}/extra user</p>
-                      
-                      {/* Seat selector */}
-                      <div className="flex items-center gap-2 mb-3 p-2 bg-muted/50 rounded">
-                        <span className="text-sm">Team size:</span>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="h-7 w-7 p-0"
-                          onClick={(e) => { e.stopPropagation(); setSeatCount(Math.max(0, seatCount - 1)); }}
-                          data-testid="button-decrease-seats"
-                        >-</Button>
-                        <span className="font-semibold w-8 text-center">{seatCount + 1}</span>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="h-7 w-7 p-0"
-                          onClick={(e) => { e.stopPropagation(); setSeatCount(Math.min(49, seatCount + 1)); }}
-                          data-testid="button-increase-seats"
-                        >+</Button>
-                        <span className="text-xs text-muted-foreground">users</span>
-                      </div>
-                      
-                      <ul className="text-sm space-y-1">
-                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Everything in Pro</li>
-                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Team management & roles</li>
-                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Live GPS tracking</li>
-                        <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Team chat</li>
-                      </ul>
-                    </div>
+                <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-700">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-green-600" />
+                    <span className="font-medium text-green-700 dark:text-green-300">Early Access — All Features Included Free</span>
                   </div>
+                  <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                    As a founding member, you have full access to every feature at no cost during Early Access.
+                  </p>
                 </div>
               )}
 
@@ -3251,15 +3192,15 @@ function BillingTabContent() {
                 </div>
               )}
 
-              {/* Beta Access Banner */}
+              {/* Early Access Banner */}
               {isTrialing && (
                 <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-700">
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-green-600" />
-                    <span className="font-medium text-green-700 dark:text-green-300">Beta access active - all Pro features unlocked!</span>
+                    <span className="font-medium text-green-700 dark:text-green-300">Early Access active - all Pro features unlocked!</span>
                   </div>
                   <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                    You're an early adopter. Provide a testimonial to secure lifetime free access.
+                    You're a founding member. Provide a testimonial to secure lifetime free access.
                   </p>
                 </div>
               )}
@@ -3281,7 +3222,7 @@ function BillingTabContent() {
                         ) : (
                           <Users className="h-4 w-4 mr-2" />
                         )}
-                        Upgrade to Team (Free During Beta)
+                        Enable Team Mode (Free)
                       </Button>
                     )}
                     {isTeam && (
@@ -3313,24 +3254,12 @@ function BillingTabContent() {
               <div className="flex flex-wrap gap-3">
                 {!hasPaidPlan ? (
                   <Button
-                    onClick={handleUpgrade}
-                    disabled={isCheckoutPending}
-                    style={{ backgroundColor: 'hsl(var(--trade))', borderColor: 'hsl(var(--trade-border))' }}
+                    disabled
+                    variant="outline"
                     data-testid="button-upgrade"
                   >
-                    {isCheckoutPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        <Crown className="h-4 w-4 mr-2" />
-                        {selectedPlan === 'team' 
-                          ? `Upgrade to Team - $${teamPrice}/month`
-                          : `Upgrade to Pro - $${proMonthly}/month`}
-                      </>
-                    )}
+                    <Crown className="h-4 w-4 mr-2" />
+                    Included Free During Early Access
                   </Button>
                 ) : isCanceled ? (
                   <Button

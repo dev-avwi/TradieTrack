@@ -401,15 +401,15 @@ export default function TermsOfService() {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold mb-3">25. Beta Program & Early Access</h2>
+                <h2 className="text-xl font-semibold mb-3">25. Early Access Program</h2>
                 <p className="text-muted-foreground leading-relaxed mb-3">
-                  JobRunner is currently in beta and features may change, be modified, or be discontinued without notice. Beta users acknowledge that the platform may contain bugs, errors, or incomplete features.
+                  JobRunner is currently in Early Access and features may change, be modified, or be discontinued without notice. Early Access users acknowledge that the platform may contain bugs, errors, or incomplete features.
                 </p>
                 <p className="text-muted-foreground leading-relaxed mb-3">
-                  We appreciate feedback during the beta period and will make reasonable efforts to address issues.
+                  We appreciate feedback during the Early Access period and will make reasonable efforts to address issues.
                 </p>
                 <p className="text-muted-foreground leading-relaxed">
-                  Beta pricing and feature access are subject to change. Early adopters who are granted free or discounted access will be given reasonable notice before any pricing changes affect them.
+                  Pricing and feature access are subject to change. Founding members who are granted free or discounted access will be given reasonable notice before any pricing changes affect them.
                 </p>
               </section>
 

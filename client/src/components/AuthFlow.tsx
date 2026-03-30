@@ -63,7 +63,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
   const [betaStatus, setBetaStatus] = useState<{ spotsRemaining: number; businessSignups: number; maxLifetimeSpots: number } | null>(null);
 
   useEffect(() => {
-    fetch('/api/beta/status')
+    fetch('/api/early-access/status')
       .then(res => res.json())
       .then(data => setBetaStatus(data))
       .catch(() => {});
@@ -380,15 +380,15 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                 transition={{ duration: 0.2 }}
               >
                 <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-                  {authMode === 'login' ? 'Welcome back!' : 'Join the Beta'}
+                  {authMode === 'login' ? 'Welcome back!' : 'Join Early Access'}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400 text-lg">
                   {authMode === 'login' 
                     ? 'Sign in to manage your trade business' 
                     : betaStatus && betaStatus.spotsRemaining > 0
-                      ? `${betaStatus.spotsRemaining} of ${betaStatus.maxLifetimeSpots} lifetime free spots remaining!`
+                      ? `${betaStatus.spotsRemaining} of ${betaStatus.maxLifetimeSpots} founding member spots remaining!`
                       : betaStatus && betaStatus.spotsRemaining <= 0
-                        ? 'Beta spots filled! Sign up for a free trial instead.'
+                        ? 'Founding member spots filled! Sign up for a free trial instead.'
                         : 'First 10 users get lifetime free access!'}
                 </p>
               </motion.div>

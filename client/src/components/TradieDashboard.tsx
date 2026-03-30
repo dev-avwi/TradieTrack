@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useState, useEffect, useRef } from "react";
 import UpgradeToTeamCard from "./UpgradeToTeamCard";
+import { tradeCatalog } from "@shared/tradeCatalog";
 import { 
   Briefcase, 
   MapPin,
@@ -34,7 +35,11 @@ import {
   Flag,
   Receipt,
   DollarSign,
-  CreditCard
+  CreditCard,
+  ArrowRight,
+  Zap,
+  HardHat,
+  FileText
 } from "lucide-react";
 
 interface TradieDashboardProps {
@@ -496,6 +501,33 @@ export default function TradieDashboard({
 
   const completedUninvoicedJobs = (myJobs || []).filter((job: any) => job.status === 'done');
 
+  const [firstJobDismissed, setFirstJobDismissed] = useState(() => 
+    localStorage.getItem('jobrunner_first_job_dismissed') === 'true'
+  );
+  const [quotePromptDismissed, setQuotePromptDismissed] = useState(() =>
+    localStorage.getItem('jobrunner_quote_prompt_dismissed') === 'true'
+  );
+
+  const realJobs = (myJobs || []).filter((job: any) => !job.isDemo);
+  const hasCompletedOnboarding = businessSettings?.onboardingCompleted === true;
+  const hasSeenWalkthrough = businessSettings?.hasSeenWalkthrough === true;
+  const showFirstJobPrompt = hasCompletedOnboarding && hasSeenWalkthrough && realJobs.length === 0 && !firstJobDismissed;
+  const showQuotePrompt = hasCompletedOnboarding && hasSeenWalkthrough && realJobs.length > 0 && !quotePromptDismissed && !firstJobDismissed;
+
+  const tradeType = businessSettings?.tradeType || 'general';
+  const tradeConfig = tradeCatalog[tradeType];
+  const suggestedJobs = tradeConfig?.typicalJobs?.slice(0, 3) || ['Service call', 'Repair job', 'New installation'];
+
+  const dismissFirstJob = () => {
+    setFirstJobDismissed(true);
+    localStorage.setItem('jobrunner_first_job_dismissed', 'true');
+  };
+
+  const dismissQuotePrompt = () => {
+    setQuotePromptDismissed(true);
+    localStorage.setItem('jobrunner_quote_prompt_dismissed', 'true');
+  };
+
   // Get next job (first pending or in-progress job)
   const nextJob = todaysJobs.find((job: any) => 
     job.status === 'pending' || job.status === 'in_progress'
@@ -525,6 +557,96 @@ export default function TradieDashboard({
 
       {/* Usage limit warning banner - only shows when nearing limits */}
       <UsageLimitBanner variant="compact" />
+
+      {/* Create Your First Job - shown when user has no jobs */}
+      {showFirstJobPrompt && (
+        <Card className="border-2 overflow-visible" style={{ borderColor: 'hsl(var(--trade))' }} data-testid="first-job-prompt">
+          <CardContent className="py-5">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}>
+                  <Briefcase className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base">Create Your First Job</h3>
+                  <p className="text-sm text-muted-foreground">Add a job, then send a quote to see JobRunner in action</p>
+                </div>
+              </div>
+              <button
+                onClick={dismissFirstJob}
+                className="text-muted-foreground hover:text-foreground text-xs mt-1"
+                data-testid="button-dismiss-first-job"
+              >
+                Dismiss
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+              {suggestedJobs.map((jobName, idx) => (
+                <Button
+                  key={idx}
+                  variant="outline"
+                  className="justify-start gap-2 text-sm"
+                  onClick={() => onNavigate?.(`/jobs/new?title=${encodeURIComponent(jobName)}`)}
+                  data-testid={`button-suggested-job-${idx}`}
+                >
+                  <Wrench className="h-3.5 w-3.5 shrink-0" style={{ color: 'hsl(var(--trade))' }} />
+                  {jobName}
+                </Button>
+              ))}
+            </div>
+            <Button
+              className="w-full"
+              style={{ backgroundColor: 'hsl(var(--trade))' }}
+              onClick={() => onNavigate?.('/jobs/new')}
+              data-testid="button-create-first-job"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create a Custom Job
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-3">
+              Once created, open the job to generate a quote PDF and send it to your customer
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Next Step: Create a Quote - shown after first job is created */}
+      {showQuotePrompt && realJobs.length > 0 && (
+        <Card className="border-2 overflow-visible" style={{ borderColor: 'hsl(var(--success))' }} data-testid="quote-prompt">
+          <CardContent className="py-5">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-green-100 dark:bg-green-900/30">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base">Job Created — Now Send a Quote</h3>
+                  <p className="text-sm text-muted-foreground">Complete the loop: open your job, create a quote, and preview the PDF</p>
+                </div>
+              </div>
+              <button
+                onClick={dismissQuotePrompt}
+                className="text-muted-foreground hover:text-foreground text-xs mt-1"
+                data-testid="button-dismiss-quote-prompt"
+              >
+                Dismiss
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => onViewJob?.(realJobs[0].id)}
+                data-testid="button-open-first-job"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Open Job & Create Quote
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Time Tracking Widget - Prominent for Tradies */}
       <Card 

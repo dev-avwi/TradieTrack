@@ -84,7 +84,7 @@ export default function UpgradeToTeamCard({ onNavigate }: UpgradeToTeamCardProps
             Ready to grow your business?
           </CardTitle>
           <Badge variant="secondary" className="text-xs">
-            Upgrade
+            Free
           </Badge>
         </div>
       </CardHeader>
@@ -115,7 +115,6 @@ export default function UpgradeToTeamCard({ onNavigate }: UpgradeToTeamCardProps
           ))}
         </div>
 
-        {/* Upgrade button */}
         <Button
           className="w-full h-12 text-white font-semibold rounded-xl"
           style={{ 
@@ -126,17 +125,17 @@ export default function UpgradeToTeamCard({ onNavigate }: UpgradeToTeamCardProps
           data-testid="button-upgrade-to-team"
         >
           {upgradeToTeam.isPending ? (
-            "Upgrading..."
+            "Enabling..."
           ) : (
             <>
-              Upgrade to Team Mode
+              Enable Team Mode
               <ArrowRight className="h-4 w-4 ml-2" />
             </>
           )}
         </Button>
 
         <p className="text-xs text-center text-muted-foreground">
-          Start with a free team member. Add more as your business grows.
+          Included free during Early Access. Add team members and start collaborating.
         </p>
       </CardContent>
     </Card>

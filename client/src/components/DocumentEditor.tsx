@@ -1076,9 +1076,9 @@ export default function DocumentEditor({ type, onSave, onCancel }: DocumentEdito
           </div>
 
           <div className="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-950/50 dark:to-amber-900/50 rounded-lg p-4 text-center">
-            <Badge className="bg-green-600 text-white mb-2">FREE During Beta!</Badge>
+            <Badge className="bg-green-600 text-white mb-2">FREE for Early Access Members!</Badge>
             <p className="text-sm text-muted-foreground">
-              All Pro features are currently free while we're in beta.
+              All Pro features are included free during Early Access.
             </p>
           </div>
 

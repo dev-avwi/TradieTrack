@@ -40,7 +40,7 @@ export function AIFeaturesCard({ onNavigate, className }: AIFeaturesCardProps) {
       icon: <Package className="h-4 w-4" />,
       title: 'Multi-Option Quotes',
       description: 'Give clients pricing choices',
-      status: 'beta'
+      status: 'available'
     },
     {
       id: 'assistant',
@@ -56,7 +56,7 @@ export function AIFeaturesCard({ onNavigate, className }: AIFeaturesCardProps) {
       case 'available':
         return <Badge className="bg-green-500/10 text-green-600 border-green-200 text-xs">Available</Badge>;
       case 'beta':
-        return <Badge className="bg-purple-500/10 text-purple-600 border-purple-200 text-xs">Beta</Badge>;
+        return <Badge className="bg-purple-500/10 text-purple-600 border-purple-200 text-xs">Early Access</Badge>;
       case 'coming_soon':
         return <Badge className="bg-gray-500/10 text-gray-600 border-gray-200 text-xs">Coming Soon</Badge>;
     }

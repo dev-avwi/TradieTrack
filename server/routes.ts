@@ -879,27 +879,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Public beta status endpoint - shows signup count for landing/auth pages
-  app.get("/api/beta/status", async (req: any, res) => {
+  const earlyAccessStatusHandler = async (req: any, res: any) => {
     try {
       const { getBetaBusinessCount, IS_BETA, BETA_CONFIG } = await import('./freemiumService');
       const businessCount = await getBetaBusinessCount();
       const spotsRemaining = Math.max(0, BETA_CONFIG.maxLifetimeUsers - businessCount);
       
       res.json({
+        isEarlyAccess: IS_BETA,
         isBeta: IS_BETA,
         spotsRemaining: spotsRemaining > 0 ? spotsRemaining : 0,
+        maxLifetimeSpots: BETA_CONFIG.maxLifetimeUsers,
+        businessSignups: businessCount,
+        earlyAccessFull: spotsRemaining <= 0,
         betaFull: spotsRemaining <= 0,
       });
     } catch (error: any) {
-      console.error('Error getting beta status:', error);
+      console.error('Error getting early access status:', error);
       res.json({
+        isEarlyAccess: true,
         isBeta: true,
         spotsRemaining: 10,
+        maxLifetimeSpots: 10,
+        businessSignups: 0,
+        earlyAccessFull: false,
         betaFull: false,
       });
     }
-  });
+  };
+
+  app.get("/api/early-access/status", earlyAccessStatusHandler);
+  app.get("/api/beta/status", earlyAccessStatusHandler);
 
   // Public bug report endpoint - allows tradies to report issues even when having problems
   app.post("/api/bug-reports", async (req: any, res) => {
@@ -3531,35 +3541,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Development-only quick login endpoint
-  if (process.env.NODE_ENV === 'development') {
-    app.post("/api/auth/demo-login", async (req: any, res) => {
-      try {
-        const result = await AuthService.login({
-          email: DEMO_USER.email,
-          password: DEMO_USER.password
-        });
-        
-        if (result.success) {
-          req.session.userId = result.user.id;
-          req.session.user = result.user;
-          req.session.save((err: any) => {
-            if (err) {
-              console.error("Session save error:", err);
-              return res.status(500).json({ error: "Failed to create session" });
-            }
-            // Return session token for iOS/Safari fallback where cookies may not work
-            res.json({ success: true, user: result.user, sessionToken: req.sessionID });
-          });
-        } else {
-          res.status(401).json({ error: result.error });
-        }
-      } catch (error) {
-        console.error("Demo login error:", error);
-        res.status(500).json({ error: "Demo login failed" });
+  const demoLoginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+  app.post("/api/auth/demo-login", async (req: any, res) => {
+    try {
+      const clientIp = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+      const now = Date.now();
+      const attempts = demoLoginAttempts.get(clientIp);
+      if (attempts && now - attempts.lastAttempt < 60000 && attempts.count >= 5) {
+        return res.status(429).json({ error: "Too many demo login attempts. Try again in a minute." });
       }
-    });
-  }
+      demoLoginAttempts.set(clientIp, {
+        count: (attempts && now - attempts.lastAttempt < 60000) ? attempts.count + 1 : 1,
+        lastAttempt: now,
+      });
+
+      try {
+        const { refreshDemoDataForScreenshots } = await import('./demoData');
+        await refreshDemoDataForScreenshots();
+      } catch (refreshErr) {
+        console.error("Demo data refresh error (non-blocking):", refreshErr);
+      }
+
+      const result = await AuthService.login({
+        email: DEMO_USER.email,
+        password: DEMO_USER.password
+      });
+      
+      if (result.success) {
+        req.session.userId = result.user.id;
+        req.session.user = result.user;
+        req.session.isDemo = true;
+        req.session.save((err: any) => {
+          if (err) {
+            console.error("Session save error:", err);
+            return res.status(500).json({ error: "Failed to create session" });
+          }
+          res.json({ success: true, user: result.user, sessionToken: req.sessionID });
+        });
+      } else {
+        res.status(401).json({ error: result.error });
+      }
+    } catch (error) {
+      console.error("Demo login error:", error);
+      res.status(500).json({ error: "Demo login failed" });
+    }
+  });
 
   // Email verification routes (public - no auth required)
   // GET endpoint for clicking email link - supports mobile deep linking
@@ -4239,6 +4265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Middleware for user authentication (supports both cookies and Authorization header for iOS/Safari)
   const requireAuth = async (req: any, res: any, next: any) => {
     let userId = req.session?.userId;
+    let isDemoSession = req.session?.isDemo === true;
     
     // Fallback: Check Authorization header for session token (for iOS/Safari where cookies may not work)
     if (!userId) {
@@ -4253,6 +4280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (result.rows && result.rows.length > 0) {
             const sessionData = result.rows[0].sess as any;
             userId = sessionData?.userId;
+            isDemoSession = sessionData?.isDemo === true;
           }
         } catch (err) {
           console.error('Session token lookup error:', err);
@@ -4275,6 +4303,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     req.userId = user.id;
     req.user = user;
+
+    if (isDemoSession) {
+      const method = req.method.toUpperCase();
+      if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
+        const path = req.originalUrl.toLowerCase();
+        const readOnlyExceptions = ['/api/auth/logout', '/api/admin/reset-demo-data'];
+        if (!readOnlyExceptions.some(ex => path.startsWith(ex))) {
+          return res.status(403).json({ error: "Demo account is read-only. Sign up for a free account to make changes." });
+        }
+      }
+    }
+
     next();
   };
 
@@ -7333,6 +7373,39 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error) {
       console.error("Error fetching business settings:", error);
       res.status(500).json({ error: "Failed to fetch business settings" });
+    }
+  });
+
+  app.get("/api/business-settings/booking", requireAuth, async (req: any, res) => {
+    try {
+      const settings = await storage.getBusinessSettings(req.userId);
+      if (!settings) {
+        return res.json({
+          enabled: false,
+          slug: '',
+          title: '',
+          description: '',
+          services: [],
+          autoConfirm: false,
+          requirePhone: true,
+          requireAddress: false,
+          availableDays: [1, 2, 3, 4, 5],
+        });
+      }
+      res.json({
+        enabled: settings.bookingPageEnabled || false,
+        slug: settings.bookingSlug || '',
+        title: settings.businessName || '',
+        description: settings.bookingPageDescription || '',
+        services: settings.bookingPageServices || [],
+        autoConfirm: false,
+        requirePhone: true,
+        requireAddress: false,
+        availableDays: [1, 2, 3, 4, 5],
+      });
+    } catch (error) {
+      console.error("Error fetching booking settings:", error);
+      res.status(500).json({ error: "Failed to fetch booking settings" });
     }
   });
 

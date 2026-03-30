@@ -46,7 +46,7 @@ export default function TrustBanner({ compact = false }: TrustBannerProps) {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
             <Sparkles className="h-3 w-3" />
-            <span>Beta - Free to use</span>
+            <span>Early Access - Free to use</span>
           </div>
           <div className="hidden sm:flex items-center gap-1.5">
             <Shield className="h-3 w-3" />
@@ -101,7 +101,7 @@ export default function TrustBanner({ compact = false }: TrustBannerProps) {
             <Badge 
               className="text-[10px] px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 border-0"
             >
-              Free During Beta
+              Early Access
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">

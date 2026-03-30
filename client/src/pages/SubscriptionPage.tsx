@@ -33,7 +33,8 @@ import {
   PhoneCall,
   UserCheck,
   Mail,
-  MapPin
+  MapPin,
+  CheckCircle
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useLocation } from "wouter";
@@ -99,7 +100,7 @@ const tiers = [
       { text: 'Automated follow-ups', included: true },
       { text: 'Team management', included: false },
     ],
-    cta: 'Free During Beta',
+    cta: 'Included Free',
     popular: true,
   },
   {
@@ -118,7 +119,7 @@ const tiers = [
       { text: 'Team chat', included: true },
       { text: 'Priority support', included: true },
     ],
-    cta: 'Free During Beta',
+    cta: 'Included Free',
     isContactSales: false,
     popular: false,
   },
@@ -146,12 +147,11 @@ export default function SubscriptionPage() {
       return response.json();
     },
     onSuccess: (data: { url?: string; betaAccess?: boolean; message?: string; tier?: string }) => {
-      // Beta mode: access granted without Stripe
       if (data.betaAccess) {
         queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
         toast({
-          title: "Beta Access Granted!",
-          description: data.message || `${data.tier} access unlocked - free during beta!`,
+          title: "Access Granted!",
+          description: data.message || `${data.tier} access unlocked — free for Early Access members!`,
         });
         return;
       }
@@ -227,13 +227,13 @@ export default function SubscriptionPage() {
         <div className="text-center space-y-4 py-6">
           <Badge className="bg-orange-100 text-orange-700 border-0 px-4 py-1.5">
             <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-            Beta Access
+            Early Access
           </Badge>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-            All features free during beta
+            All features included for Early Access members
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            First 10 users get lifetime free access in exchange for a testimonial.
+            First 10 founding members get lifetime free access in exchange for a testimonial.
           </p>
           
           {/* Trust Badges */}
@@ -280,7 +280,7 @@ export default function SubscriptionPage() {
                 {status?.isBeta && (
                   <Badge variant="outline" className="mt-1 border-green-400 text-green-600 bg-green-50 text-xs">
                     <Gift className="w-3 h-3 mr-1" />
-                    Free During Beta
+                    Founding Member
                   </Badge>
                 )}
               </div>
@@ -442,57 +442,20 @@ export default function SubscriptionPage() {
                   </div>
                 )}
 
-                {/* CTA Button */}
-                {tier.id === 'free' ? (
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    disabled={isCurrentTier('free')}
-                    data-testid="button-free-plan"
-                  >
-                    {isCurrentTier('free') ? 'Current Plan' : 'Downgrade to Free'}
-                  </Button>
-                ) : tier.id === 'team' ? (
-                  <Button 
-                    className="w-full"
-                    variant="outline"
-                    onClick={handleContactSales}
-                    data-testid="button-contact-sales"
-                  >
-                    {tier.cta}
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                ) : (
-                  <Button 
-                    className={`w-full ${tier.popular ? 'bg-primary hover:bg-primary/90' : ''}`}
-                    variant={tier.popular ? 'default' : 'outline'}
-                    onClick={() => handleStartTrial(tier.id)}
-                    disabled={
-                      createCheckoutMutation.isPending || 
-                      isCurrentTier(tier.id) ||
-                      (status?.tier === 'pro' && tier.id === 'pro')
-                    }
-                    data-testid={`button-start-trial-${tier.id}`}
-                  >
-                    {createCheckoutMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : null}
-                    {isCurrentTier(tier.id) ? 'Current Plan' : tier.cta}
-                    {!isCurrentTier(tier.id) && <ArrowRight className="w-4 h-4 ml-2" />}
-                  </Button>
-                )}
+                {/* CTA - All plans included during Early Access */}
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  disabled
+                  data-testid={`button-plan-${tier.id}`}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  {isCurrentTier(tier.id) ? 'Current Plan' : 'Included Free'}
+                </Button>
 
-                {/* Price after beta note */}
-                {tier.id === 'pro' && !isCurrentTier(tier.id) && (
+                {tier.id !== 'free' && (
                   <p className="text-xs text-center text-muted-foreground">
-                    ${tier.price} AUD/month after beta ends
-                  </p>
-                )}
-                
-                {/* Contact sales note */}
-                {tier.id === 'team' && (
-                  <p className="text-xs text-center text-muted-foreground">
-                    Custom pricing based on team size
+                    Paid plans coming soon — free for all founding members
                   </p>
                 )}
 
@@ -737,7 +700,7 @@ export default function SubscriptionPage() {
           </CardContent>
         </Card>
 
-        {/* Beta Information Section */}
+        {/* Early Access Information Section */}
         <Card className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">

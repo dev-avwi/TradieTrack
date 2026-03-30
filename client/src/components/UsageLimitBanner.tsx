@@ -37,10 +37,8 @@ export default function UsageLimitBanner({ variant = 'compact', showUpgrade = tr
     return null;
   }
 
-  // Don't show for unlimited (pro/team) users
-  if (usage.isUnlimited) {
-    return null;
-  }
+  // During Early Access, all features are included - don't show usage limits
+  return null;
 
   const getUsagePercent = (used: number, limit: number) => {
     if (limit === -1) return 0; // unlimited

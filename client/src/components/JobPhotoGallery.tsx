@@ -848,7 +848,7 @@ export default function JobPhotoGallery({ jobId, canUpload = true, onPhotoUpload
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               AI Photo Analysis
-              <Badge variant="secondary" className="text-xs">Beta</Badge>
+              <Badge variant="secondary" className="text-xs">Early Access</Badge>
             </DialogTitle>
           </DialogHeader>
 

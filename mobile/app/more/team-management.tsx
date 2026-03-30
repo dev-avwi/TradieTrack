@@ -1209,7 +1209,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
   },
-  betaBanner: {
+  earlyAccessBanner: {
     backgroundColor: colors.successLight,
     borderRadius: radius.xl,
     padding: spacing.lg,
@@ -1219,7 +1219,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
   },
-  betaBannerText: {
+  earlyAccessBannerText: {
     ...typography.body,
     color: colors.success,
     fontWeight: '600',
@@ -2130,9 +2130,9 @@ export default function TeamManagementScreen() {
             }
           >
             {BETA_MODE && (
-              <View style={styles.betaBanner}>
+              <View style={styles.earlyAccessBanner}>
                 <Feather name="gift" size={24} color={colors.success} />
-                <Text style={styles.betaBannerText}>
+                <Text style={styles.earlyAccessBannerText}>
                   Team features included with your plan!
                 </Text>
               </View>

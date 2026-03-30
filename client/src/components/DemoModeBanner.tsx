@@ -47,8 +47,18 @@ export default function DemoModeBanner({ userEmail }: DemoModeBannerProps) {
                 </Badge>
               </div>
               <p className="text-sm text-orange-700 dark:text-orange-300 mt-0.5">
-                Explore the app with sample data. Payments are simulated - no real charges.
+                You're exploring with sample data (read-only). Ready to get started for real?
               </p>
+              <Link href="/auth" className="inline-block mt-2">
+                <Button
+                  size="sm"
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  data-testid="button-demo-signup-cta"
+                >
+                  Create Your Free Account
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -125,11 +135,20 @@ export default function DemoModeBanner({ userEmail }: DemoModeBannerProps) {
               />
             </div>
             
-            <div className="mt-4 p-3 bg-white/50 dark:bg-black/20 rounded-lg">
+            <div className="mt-4 p-3 bg-white/50 dark:bg-black/20 rounded-lg flex items-center justify-between gap-3 flex-wrap">
               <p className="text-xs text-orange-700 dark:text-orange-300">
-                <strong>Note:</strong> Demo data resets periodically. To save your work, 
-                create a free account with your email.
+                <strong>Note:</strong> Demo data resets periodically and changes are read-only.
               </p>
+              <Link href="/auth">
+                <Button
+                  size="sm"
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  data-testid="button-demo-create-account"
+                >
+                  Create Your Free Account
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
             </div>
           </div>
         )}

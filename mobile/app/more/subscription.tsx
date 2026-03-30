@@ -37,13 +37,6 @@ interface SubscriptionStatus {
   } | null;
 }
 
-interface CheckoutResponse {
-  url?: string;
-  sessionUrl?: string;
-  sessionId?: string;
-  error?: string;
-  publishableKey?: string;
-}
 
 interface TierFeature {
   text: string;
@@ -95,7 +88,7 @@ const tiers: Tier[] = [
       { text: 'Team management', included: false },
       { text: 'Team seats', included: false },
     ],
-    cta: 'Start Free Trial',
+    cta: 'Included Free',
     popular: true,
   },
   {
@@ -114,7 +107,7 @@ const tiers: Tier[] = [
       { text: 'Team chat', included: true },
       { text: 'Priority support', included: true },
     ],
-    cta: 'Start Free Trial',
+    cta: 'Included Free',
     popular: false,
   },
 ];
@@ -560,7 +553,6 @@ export default function SubscriptionScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [managingSubscription, setManagingSubscription] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [teamSeats, setTeamSeats] = useState(2);
@@ -591,47 +583,6 @@ export default function SubscriptionScreen() {
     setRefreshing(true);
     fetchSubscriptionStatus();
   }, [fetchSubscriptionStatus]);
-
-  const handleStartTrial = async (tierId: string) => {
-    setCheckoutLoading(tierId);
-    try {
-      const response = await api.post<CheckoutResponse & { success?: boolean; betaAccess?: boolean; message?: string }>('/api/subscription/create-checkout', {
-        tier: tierId,
-        seats: tierId === 'team' ? teamSeats : undefined,
-      });
-
-      // Free trial mode: instant access without Stripe
-      if (response.data?.betaAccess && response.data?.success) {
-        Alert.alert(
-          'Trial Activated!',
-          response.data.message || `You now have ${tierId} access - enjoy your free trial!`,
-          [{ text: 'OK', onPress: () => fetchSubscriptionStatus() }]
-        );
-        return;
-      }
-
-      const checkoutUrl = response.data?.url || response.data?.sessionUrl;
-      
-      if (checkoutUrl) {
-        const canOpen = await Linking.canOpenURL(checkoutUrl);
-        if (canOpen) {
-          await Linking.openURL(checkoutUrl);
-        } else {
-          Alert.alert('Error', 'Unable to open payment page. Please try again.');
-        }
-      } else {
-        Alert.alert(
-          'Error',
-          response.data?.error || response.error || 'Failed to create checkout session. Please try again.'
-        );
-      }
-    } catch (error: any) {
-      console.error('Checkout error:', error);
-      Alert.alert('Error', error.message || 'Failed to start checkout. Please try again.');
-    } finally {
-      setCheckoutLoading(null);
-    }
-  };
 
   const handleManageSubscription = async () => {
     setManagingSubscription(true);
@@ -687,8 +638,7 @@ export default function SubscriptionScreen() {
 
   const getCtaButtonText = (tier: Tier) => {
     if (isCurrentTier(tier.id)) return 'Current Plan';
-    if (tier.id === 'free') return 'Downgrade to Free';
-    return tier.cta;
+    return 'Included Free';
   };
 
   const renderTierCard = (tier: Tier) => {
@@ -766,34 +716,21 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
-        <TouchableOpacity
+        <View
           style={[
             styles.ctaButton,
-            tier.id === 'free' ? styles.ctaButtonOutline : styles.ctaButtonPrimary,
-            (isDisabled || isLoading) && styles.ctaButtonDisabled
+            styles.ctaButtonOutline,
+            styles.ctaButtonDisabled
           ]}
-          onPress={() => tier.id !== 'free' && handleStartTrial(tier.id)}
-          disabled={isDisabled || isLoading}
-          activeOpacity={0.8}
         >
-          {isLoading ? (
-            <ActivityIndicator color={tier.id === 'free' ? colors.foreground : colors.primaryForeground} />
-          ) : (
-            <Text style={[
-              styles.ctaButtonText,
-              tier.id === 'free' ? styles.ctaButtonTextOutline : styles.ctaButtonTextPrimary
-            ]}>
-              {getCtaButtonText(tier)}
-            </Text>
-          )}
-        </TouchableOpacity>
+          <Text style={[styles.ctaButtonText, styles.ctaButtonTextOutline]}>
+            {getCtaButtonText(tier)}
+          </Text>
+        </View>
 
         {tier.id !== 'free' && !isCurrentTier(tier.id) && (
           <Text style={styles.ctaSubtext}>
-            {tier.id === 'team' 
-              ? `$${teamTotal} AUD/month after trial`
-              : `$${tier.price} AUD/month after trial`
-            }
+            Paid plans coming soon — free for all founding members
           </Text>
         )}
 
@@ -846,13 +783,13 @@ export default function SubscriptionScreen() {
               <View style={styles.heroSection}>
                 <View style={styles.trialBadge}>
                   <Feather name="star" size={14} color={colors.primary} />
-                  <Text style={styles.trialBadgeText}>14-Day Free Trial</Text>
+                  <Text style={styles.trialBadgeText}>Early Access</Text>
                 </View>
                 <Text style={styles.heroTitle}>
                   Choose Your Plan
                 </Text>
                 <Text style={styles.heroSubtitle}>
-                  Start with a 14-day free trial. No credit card required.
+                  All features included free during Early Access. No credit card required.
                 </Text>
                 
                 <View style={styles.trustBadges}>
@@ -865,8 +802,8 @@ export default function SubscriptionScreen() {
                     <Text style={styles.trustBadgeText}>All features unlocked</Text>
                   </View>
                   <View style={styles.trustBadge}>
-                    <Feather name="clock" size={14} color={colors.success} />
-                    <Text style={styles.trustBadgeText}>Cancel anytime</Text>
+                    <Feather name="award" size={14} color={colors.success} />
+                    <Text style={styles.trustBadgeText}>Founding member perks</Text>
                   </View>
                 </View>
               </View>
@@ -1029,8 +966,8 @@ export default function SubscriptionScreen() {
 
               <View style={styles.trialInfoCard}>
                 <Text style={styles.trialInfoTitle}>
-                  <Feather name="calendar" size={18} color={colors.foreground} />
-                  {'  '}How the 14-day trial works
+                  <Feather name="gift" size={18} color={colors.foreground} />
+                  {'  '}Early Access — All Features Included
                 </Text>
                 
                 <View style={styles.trialSteps}>
@@ -1039,9 +976,9 @@ export default function SubscriptionScreen() {
                       <Text style={styles.trialStepNumberText}>1</Text>
                     </View>
                     <View style={styles.trialStepContent}>
-                      <Text style={styles.trialStepTitle}>Start your trial</Text>
+                      <Text style={styles.trialStepTitle}>Sign up free</Text>
                       <Text style={styles.trialStepText}>
-                        Enter your card details to begin. You won't be charged today.
+                        No credit card needed. All features are unlocked during Early Access.
                       </Text>
                     </View>
                   </View>
@@ -1051,9 +988,9 @@ export default function SubscriptionScreen() {
                       <Text style={styles.trialStepNumberText}>2</Text>
                     </View>
                     <View style={styles.trialStepContent}>
-                      <Text style={styles.trialStepTitle}>Full access for 14 days</Text>
+                      <Text style={styles.trialStepTitle}>Full access to everything</Text>
                       <Text style={styles.trialStepText}>
-                        Explore all features with no restrictions during your trial period.
+                        Use all Pro and Team features with no restrictions as a founding member.
                       </Text>
                     </View>
                   </View>
@@ -1063,21 +1000,11 @@ export default function SubscriptionScreen() {
                       <Text style={styles.trialStepNumberText}>3</Text>
                     </View>
                     <View style={styles.trialStepContent}>
-                      <Text style={styles.trialStepTitle}>Cancel anytime</Text>
+                      <Text style={styles.trialStepTitle}>Founding member perks</Text>
                       <Text style={styles.trialStepText}>
-                        Cancel before the trial ends and you won't be charged a cent.
+                        Early members who provide a testimonial get lifetime free access.
                       </Text>
                     </View>
-                  </View>
-                </View>
-
-                <View style={styles.cardRequiredNote}>
-                  <Feather name="credit-card" size={18} color={colors.mutedForeground} />
-                  <View style={styles.cardRequiredContent}>
-                    <Text style={styles.cardRequiredTitle}>Card required upfront</Text>
-                    <Text style={styles.cardRequiredText}>
-                      We collect your payment details to start the trial, but you won't be charged until the 14-day period ends. You'll receive an email reminder before your first charge.
-                    </Text>
                   </View>
                 </View>
               </View>

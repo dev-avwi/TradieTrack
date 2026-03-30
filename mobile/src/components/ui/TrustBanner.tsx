@@ -56,7 +56,7 @@ export function TrustBanner({ businessName }: TrustBannerProps) {
           <View style={styles.titleRow}>
             <Text style={styles.title}>JobRunner</Text>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>Free During Beta</Text>
+              <Text style={styles.badgeText}>Early Access</Text>
             </View>
           </View>
           <Text style={styles.subtitle}>Built for Australian tradies</Text>

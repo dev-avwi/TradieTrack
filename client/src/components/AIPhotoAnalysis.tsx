@@ -181,7 +181,7 @@ export function AIPhotoAnalysis({ jobId, photoCount, existingNotes, onNotesUpdat
           <span className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             AI Photo Analysis
-            <Badge variant="secondary" className="text-xs">Beta</Badge>
+            <Badge variant="secondary" className="text-xs">Early Access</Badge>
           </span>
           {photoCount > 0 && !isAnalysing && !analysisText && (
             <Badge variant="outline" className="text-xs">

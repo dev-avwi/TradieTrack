@@ -39,7 +39,7 @@ export default function UpgradePrompt({
         <Sparkles className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
         <AlertDescription style={{ color: 'hsl(var(--trade))' }}>
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <span>All features are free during beta!</span>
+            <span>All features included with Early Access!</span>
             <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
               Free
             </Badge>
@@ -54,10 +54,10 @@ export default function UpgradePrompt({
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center space-x-2">
           <PartyPopper className="h-6 w-6 text-green-600" />
-          <h2 className="text-2xl font-bold">Free During Beta!</h2>
+          <h2 className="text-2xl font-bold">All Features Included!</h2>
         </div>
         <p className="text-muted-foreground max-w-md mx-auto">
-          Enjoy all Pro features at no cost while we're in beta. We'll let you know before any changes.
+          Enjoy all Pro features at no cost as an Early Access member. We'll let you know before any changes.
         </p>
       </div>
 
@@ -65,7 +65,7 @@ export default function UpgradePrompt({
         <Card className="relative border-green-300 dark:border-green-700 shadow-lg">
           <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
             <Badge className="bg-green-600 text-white">
-              Beta Access
+              Early Access
             </Badge>
           </div>
           
@@ -108,7 +108,7 @@ export default function UpgradePrompt({
 
       {!onClose && (
         <p className="text-center text-xs text-muted-foreground">
-          Thank you for trying JobRunner during our beta period.
+          Thank you for trying JobRunner as an Early Access member.
         </p>
       )}
     </div>
