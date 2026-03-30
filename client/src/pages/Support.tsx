@@ -114,13 +114,13 @@ export default function Support() {
               <section>
                 <h2 className="text-xl font-semibold mb-3">Legal</h2>
                 <div className="flex flex-wrap gap-4">
-                  <Link href="/privacy-policy">
+                  <Link href="/privacy">
                     <Button variant="outline" size="sm" className="gap-2">
                       <ExternalLink className="w-3 h-3" />
                       Privacy Policy
                     </Button>
                   </Link>
-                  <Link href="/terms-of-service">
+                  <Link href="/terms">
                     <Button variant="outline" size="sm" className="gap-2">
                       <ExternalLink className="w-3 h-3" />
                       Terms of Service
