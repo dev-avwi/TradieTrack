@@ -39,7 +39,10 @@ import {
   ArrowRight,
   Zap,
   HardHat,
-  FileText
+  FileText,
+  Loader2,
+  Trash2,
+  AlertTriangle
 } from "lucide-react";
 
 interface TradieDashboardProps {
@@ -69,6 +72,13 @@ export default function TradieDashboard({
     queryKey: ["/api/jobs/my-jobs"],
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
+
+  const { data: userData } = useQuery<any>({
+    queryKey: ["/api/auth/me"],
+    staleTime: 30000,
+  });
+  const hasDemoData = userData?.hasDemoData === true;
+  const [isClearingDemo, setIsClearingDemo] = useState(false);
 
   // Fetch active time entry across all jobs
   const { data: activeTimeEntry } = useQuery<any>({
@@ -557,6 +567,54 @@ export default function TradieDashboard({
 
       {/* Usage limit warning banner - only shows when nearing limits */}
       <UsageLimitBanner variant="compact" />
+
+      {/* Demo data banner - shown when user has sample data loaded */}
+      {hasDemoData && (
+        <Card className="border border-amber-200 dark:border-amber-800 overflow-visible" data-testid="demo-data-banner">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                <span className="text-sm text-muted-foreground">
+                  You're viewing sample data. Ready to start fresh?
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isClearingDemo}
+                onClick={async () => {
+                  setIsClearingDemo(true);
+                  try {
+                    await apiRequest('POST', '/api/onboarding/clear-demo-data', {});
+                    await queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+                    await queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+                    await queryClient.invalidateQueries({ queryKey: ['/api/jobs/my-jobs'] });
+                    await queryClient.invalidateQueries({ queryKey: ['/api/jobs/today'] });
+                    await queryClient.invalidateQueries({ queryKey: ['/api/jobs/this-week'] });
+                    await queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+                    await queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+                    await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+                    toast({ title: "Sample data cleared", description: "All demo records have been removed. You're starting fresh!" });
+                  } catch (error) {
+                    toast({ title: "Failed to clear demo data", description: "Please try again", variant: "destructive" });
+                  } finally {
+                    setIsClearingDemo(false);
+                  }
+                }}
+                data-testid="button-clear-demo-data"
+              >
+                {isClearingDemo ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                Start Fresh
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Create Your First Job - shown when user has no jobs */}
       {showFirstJobPrompt && (

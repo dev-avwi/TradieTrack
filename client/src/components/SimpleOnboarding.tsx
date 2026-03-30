@@ -277,6 +277,8 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     setFormData(prev => ({ ...prev, tradeType: tradeId }));
   };
 
+  const userTradeKey = formData.tradeType || 'general';
+
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -390,64 +392,67 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     }
     
     if (stepId === 'done') {
-      setIsSubmitting(true);
-      try {
-        if (teamInviteEmails.length > 0) {
-          for (const email of teamInviteEmails) {
-            try {
-              await apiRequest('POST', '/api/team/invite', {
-                email,
-                role: 'tradie',
-              });
-            } catch (error) {
-              console.log('Failed to send invite to:', email);
-            }
-          }
-        }
-
-        if (seedDemoData) {
-          try {
-            await apiRequest('POST', '/api/onboarding/seed-demo-data', {});
-            await queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-            await queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
-            await queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
-            await queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
-          } catch (error) {
-            console.log('Demo data seeding skipped:', error);
-          }
-        }
-
-        if (isProPlan || isTeamPlan) {
-          try {
-            await apiRequest('POST', '/api/subscription/trial', {});
-            await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
-            await queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
-          } catch (error) {
-            console.error('Failed to start trial:', error);
-            toast({
-              title: "Trial activation pending",
-              description: "You can activate your trial from the subscription settings.",
-            });
-          }
-        }
-
-        try {
-          await apiRequest('PATCH', '/api/business-settings', {
-            onboardingCompleted: true,
-          });
-          await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
-        } catch (e) {
-          // best effort
-        }
-        trackEvent('onboarding_completed');
-      } finally {
-        setIsSubmitting(false);
-      }
-      onComplete();
+      await completeOnboarding();
       return;
     }
     
     setCurrentStep(prev => prev + 1);
+  };
+
+  const completeOnboarding = async (redirectTo?: string) => {
+    setIsSubmitting(true);
+    try {
+      if (teamInviteEmails.length > 0) {
+        for (const email of teamInviteEmails) {
+          try {
+            await apiRequest('POST', '/api/team/invite', { email, role: 'tradie' });
+          } catch (error) {
+            console.log('Failed to send invite to:', email);
+          }
+        }
+      }
+
+      if (seedDemoData) {
+        try {
+          await apiRequest('POST', '/api/onboarding/seed-demo-data', { tradeType: userTradeKey });
+          await queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+        } catch (error) {
+          console.log('Demo data seeding skipped:', error);
+        }
+      }
+
+      if (isProPlan || isTeamPlan) {
+        try {
+          await apiRequest('POST', '/api/subscription/trial', {});
+          await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/subscription/status'] });
+        } catch (error) {
+          console.error('Failed to start trial:', error);
+          toast({
+            title: "Trial activation pending",
+            description: "You can activate your trial from the subscription settings.",
+          });
+        }
+      }
+
+      try {
+        await apiRequest('PATCH', '/api/business-settings', { onboardingCompleted: true });
+        await queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
+      } catch (e) {}
+
+      trackEvent('onboarding_completed');
+      onComplete();
+
+      if (redirectTo) {
+        setTimeout(() => { window.location.href = redirectTo; }, 100);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBack = () => {
@@ -1454,6 +1459,9 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     </div>
   );
 
+  const selectedTradeName = tradeCatalog[userTradeKey]?.name || 'your trade';
+  const selectedTradeJobs = tradeCatalog[userTradeKey]?.typicalJobs?.slice(0, 3) || ['Service call', 'Repair job', 'New installation'];
+
   const renderDoneStep = () => (
     <div className="text-center py-6 space-y-5">
       <div className="relative mx-auto w-24 h-24">
@@ -1472,41 +1480,60 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         </p>
       </div>
 
-      <div className="max-w-sm mx-auto">
+      <div className="max-w-sm mx-auto space-y-3">
         <div className="bg-muted/30 rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Load sample data</p>
-              <p className="text-xs text-muted-foreground">Try JobRunner with a sample job, client, and quote to see how it works</p>
+          <p className="text-sm font-medium text-gray-900 dark:text-white">Your first job journey</p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-bold">1</div>
+              <span>Create a Job</span>
             </div>
-            <Switch checked={seedDemoData} onCheckedChange={setSeedDemoData} />
+            <ArrowRight className="h-3 w-3 shrink-0" />
+            <div className="flex items-center gap-1">
+              <div className="w-5 h-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[10px] font-bold">2</div>
+              <span>Send a Quote</span>
+            </div>
+            <ArrowRight className="h-3 w-3 shrink-0" />
+            <div className="flex items-center gap-1">
+              <div className="w-5 h-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[10px] font-bold">3</div>
+              <span>Invoice</span>
+            </div>
           </div>
-          {seedDemoData && (
-            <div className="border-t border-border/50 pt-3">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-500" />
-                  <span>5 sample clients</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-orange-500" />
-                  <span>6 example jobs</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-purple-500" />
-                  <span>3 draft quotes</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Receipt className="h-4 w-4 text-green-500" />
-                  <span>2 invoices</span>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground text-center mt-3">
-                Click through these to see how everything works!
-              </p>
-            </div>
-          )}
+          <p className="text-xs text-muted-foreground">
+            Step 1 of 3: Create your first {selectedTradeName} job — we'll pre-fill it with a sample client and address so you can see the workflow.
+          </p>
+          <Button
+            type="button"
+            className="w-full gap-2"
+            disabled={isSubmitting}
+            onClick={() => {
+              const firstJob = selectedTradeJobs[0] || 'New Job';
+              const sampleAddress = '15 Sheridan Street, Cairns QLD 4870';
+              const sampleClient = 'Sarah Mitchell';
+              completeOnboarding(`/jobs/new?title=${encodeURIComponent(firstJob)}&address=${encodeURIComponent(sampleAddress)}&clientName=${encodeURIComponent(sampleClient)}`);
+            }}
+            data-testid="button-create-first-demo-job"
+          >
+            {isSubmitting ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Wrench className="h-4 w-4 shrink-0" />}
+            Create My First Demo Job
+          </Button>
         </div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground">Also load sample clients, jobs & invoices to explore</p>
+          </div>
+          <Switch checked={seedDemoData} onCheckedChange={setSeedDemoData} />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={isSubmitting}
+          onClick={() => completeOnboarding()}
+          data-testid="button-go-to-dashboard"
+        >
+          Go to Dashboard
+        </Button>
       </div>
       
       {isTeamPlan ? (
@@ -1578,19 +1605,6 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         </>
       )}
       
-      <Button onClick={handleNext} size="lg" className="px-8" disabled={isSubmitting} data-testid="button-start">
-        {isSubmitting ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            {isProPlan || isTeamPlan ? 'Activating Trial...' : 'Starting...'}
-          </>
-        ) : (
-          <>
-            <Sparkles className="mr-2 h-4 w-4" />
-            {isTeamPlan ? 'Go to Dashboard' : 'Start Using JobRunner'}
-          </>
-        )}
-      </Button>
     </div>
   );
 

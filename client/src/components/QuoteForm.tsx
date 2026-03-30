@@ -234,7 +234,7 @@ export default function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
           <div className="space-y-6">
             <DetailsStep 
               type="quote"
-              userTradeType={userCheck?.user?.tradeType}
+              userTradeType={userCheck?.tradeType}
               onApplyTemplate={handleApplyTemplate}
               showValidUntil={true}
             />
@@ -284,7 +284,7 @@ export default function QuoteForm({ onSubmit, onCancel }: QuoteFormProps) {
               />
             </div>
           ) : (
-            <LineItemsStep tradeType={userCheck?.user?.tradeType} />
+            <LineItemsStep tradeType={userCheck?.tradeType} />
           )}
           
           <ReviewStep type="quote" showNotes={true} />

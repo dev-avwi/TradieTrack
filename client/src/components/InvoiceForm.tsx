@@ -185,12 +185,12 @@ export default function InvoiceForm({ onSubmit, onCancel }: InvoiceFormProps) {
           
           <DetailsStep 
             type="invoice"
-            userTradeType={userCheck?.user?.tradeType}
+            userTradeType={userCheck?.tradeType}
             onApplyTemplate={handleApplyTemplate}
             showDueDate={true}
           />
           
-          <LineItemsStep tradeType={userCheck?.user?.tradeType} />
+          <LineItemsStep tradeType={userCheck?.tradeType} />
           
           <ReviewStep type="invoice" showNotes={true} />
         </WizardLayout>

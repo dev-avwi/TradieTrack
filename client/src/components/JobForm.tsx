@@ -23,6 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import AddressAutocomplete from "@/components/ui/address-autocomplete";
 import { useSearch } from "wouter";
+import { tradeCatalog } from "@shared/tradeCatalog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/StatusBadge";
@@ -79,7 +80,11 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
   const urlParams = new URLSearchParams(searchString);
   const urlClientId = urlParams.get('clientId');
   const urlQuoteId = urlParams.get('quoteId');
+  const urlTitle = urlParams.get('title');
+  const urlAddress = urlParams.get('address');
+  const urlClientName = urlParams.get('clientName');
   const [urlClientApplied, setUrlClientApplied] = useState(false);
+  const [urlPrefillApplied, setUrlPrefillApplied] = useState(false);
 
   // Fetch quote details if creating job from quote
   const { data: sourceQuote } = useQuery({
@@ -201,6 +206,31 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
       });
     }
   }, [sourceQuote, quoteApplied, form, toast]);
+
+  useEffect(() => {
+    if (!urlPrefillApplied && (urlTitle || urlAddress || urlClientName)) {
+      if (urlTitle) {
+        form.setValue("title", urlTitle, { shouldValidate: true });
+      }
+      if (urlAddress) {
+        form.setValue("address", urlAddress);
+        setAddressConfirmed(true);
+      }
+      if (urlClientName && (clients as any[]).length > 0) {
+        const matchingClient = (clients as any[]).find(
+          (c: any) => c.name?.toLowerCase() === urlClientName.toLowerCase()
+        );
+        if (matchingClient) {
+          form.setValue("clientId", matchingClient.id, { shouldValidate: true });
+          setLastAutoFilledClientId(matchingClient.id);
+        } else {
+          setQuickClientData(prev => ({ ...prev, name: urlClientName, address: urlAddress || "" }));
+          setShowQuickAddClient(true);
+        }
+      }
+      setUrlPrefillApplied(true);
+    }
+  }, [urlTitle, urlAddress, urlClientName, urlPrefillApplied, clients, form]);
   
   useEffect(() => {
     if (selectedClientId && selectedClientId !== lastAutoFilledClientId) {
@@ -440,7 +470,7 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
           <TemplateSelector 
             type="job" 
             onApplyTemplate={handleApplyTemplate}
-            userTradeType={userCheck?.user?.tradeType}
+            userTradeType={userCheck?.tradeType}
             data-testid="template-selector-job"
           />
         </div>
@@ -472,6 +502,20 @@ export default function JobForm({ onSubmit, onCancel }: JobFormProps) {
                       />
                     </FormControl>
                     <FormMessage />
+                    {userCheck?.tradeType && tradeCatalog[userCheck.tradeType]?.typicalJobs && !field.value && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {tradeCatalog[userCheck.tradeType].typicalJobs.slice(0, 6).map((job: string) => (
+                          <Badge
+                            key={job}
+                            variant="secondary"
+                            className="cursor-pointer text-xs"
+                            onClick={() => form.setValue("title", job, { shouldValidate: true })}
+                          >
+                            {job}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </FormItem>
                 )}
               />

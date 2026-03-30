@@ -3452,6 +3452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         trialUsedAt: user.trialUsedAt,
         intendedTier: user.intendedTier,
         isPlatformAdmin: user.isPlatformAdmin ?? (user as any).is_platform_admin ?? false,
+        hasDemoData: user.hasDemoData ?? false,
       };
       
       // Debug logging for admin users
@@ -10836,7 +10837,11 @@ Be specific about materials, colors, and features that would be included.`
       const { seedUserDemoData } = await import('./demoData');
       const userId = req.userId!;
       
-      const result = await seedUserDemoData(userId);
+      const user = await storage.getUser(userId);
+      const businessSettings = await storage.getBusinessSettings(userId);
+      const tradeType = req.body?.tradeType || businessSettings?.tradeType || user?.tradeType || 'general';
+      
+      const result = await seedUserDemoData(userId, tradeType);
       
       if (!result.success) {
         return res.status(400).json({ error: result.message });

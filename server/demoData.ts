@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { storage, db } from './storage';
 import { activityLogs } from '@shared/schema';
+import { tradeCatalog } from '../shared/tradeCatalog';
 import { eq, and, sql } from 'drizzle-orm';
 
 // ============================================
@@ -2354,36 +2355,451 @@ export async function refreshDemoDataForScreenshots(): Promise<{ success: boolea
 
 // ============================================
 // SEED DEMO DATA FOR NEW USERS (Onboarding)
-// Creates sample data so new users can explore the app with real examples
+// Creates trade-specific sample data so new users can explore the app with real examples
 // ============================================
-export async function seedUserDemoData(userId: string): Promise<{ success: boolean; message: string }> {
+
+interface TradeSpecificDemoData {
+  clients: Array<{ name: string; email: string; phone: string; address: string }>;
+  jobs: Array<{ client: number; title: string; description: string; status: string; address?: string; scheduledAt?: Date }>;
+  quotes: Array<{ client: number; job: number; title: string; items: Array<{ description: string; quantity: number; unitPrice: number; total: number }>; status: string; subtotal: number; gst: number; total: number }>;
+  invoices: Array<{ client: number; job: number; title: string; items: Array<{ description: string; quantity: number; unitPrice: number; total: number }>; status: string; subtotal: number; gst: number; total: number }>;
+}
+
+function getTradeSpecificDemoData(tradeType: string): TradeSpecificDemoData {
+  const tradeConfig = tradeCatalog[tradeType];
+
+  const australianClients = [
+    { name: 'Sarah Mitchell', email: 'sarah.mitchell@example.com', phone: '+61412345678', address: '15 Sheridan Street, Cairns QLD 4870' },
+    { name: 'David Wilson', email: 'david.wilson@example.com', phone: '+61423456789', address: '28 Lake Street, Cairns QLD 4870' },
+    { name: 'Emma Thompson', email: 'emma.t@example.com', phone: '+61434567890', address: '7 Esplanade, Cairns QLD 4870' },
+    { name: 'James Brown', email: 'james.brown@example.com', phone: '+61445678901', address: '92 Mulgrave Road, Earlville QLD 4870' },
+    { name: 'Lisa Chen', email: 'lisa.chen@example.com', phone: '+61456789012', address: '45 Anderson Street, Manunda QLD 4870' },
+  ];
+
+  if (!tradeConfig) {
+    return getGenericDemoData(australianClients);
+  }
+
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const nextWeek = new Date(today);
+  nextWeek.setDate(nextWeek.getDate() + 7);
+
+  const rateCard = tradeConfig.defaultRateCard || { hourlyRate: 85, calloutFee: 80 };
+
+  const tradeDataMap: Record<string, () => TradeSpecificDemoData> = {
+    electrical: () => ({
+      clients: australianClients,
+      jobs: [
+        { client: 0, title: 'Switchboard Upgrade', description: 'Replace old ceramic fuse board with modern safety switch board. Install RCDs on all circuits.', status: 'scheduled', address: australianClients[0].address, scheduledAt: tomorrow },
+        { client: 1, title: 'LED Downlight Installation', description: 'Supply and install 12x LED downlights in living area and kitchen. Remove existing halogen fittings.', status: 'in_progress', address: australianClients[1].address },
+        { client: 2, title: 'Power Point Installation', description: 'Install 4x double GPOs in home office. Run new circuit from switchboard.', status: 'done', address: australianClients[2].address },
+      ],
+      quotes: [
+        { client: 0, job: 0, title: 'Switchboard Upgrade Quote', items: [
+          { description: 'New switchboard with safety switches (RCDs)', quantity: 1, unitPrice: 1200, total: 1200 },
+          { description: 'Labour - Licensed electrician', quantity: 6, unitPrice: rateCard.hourlyRate, total: 6 * rateCard.hourlyRate },
+          { description: 'Certificate of electrical safety', quantity: 1, unitPrice: 120, total: 120 },
+        ], status: 'sent', subtotal: 1890, gst: 189, total: 2079 },
+        { client: 1, job: 1, title: 'LED Downlight Installation Quote', items: [
+          { description: 'LED Downlight (warm white, dimmable)', quantity: 12, unitPrice: 45, total: 540 },
+          { description: 'Wiring and connection labour', quantity: 4, unitPrice: rateCard.hourlyRate, total: 4 * rateCard.hourlyRate },
+          { description: 'Call-out fee', quantity: 1, unitPrice: rateCard.calloutFee, total: rateCard.calloutFee },
+        ], status: 'accepted', subtotal: 540 + 4 * rateCard.hourlyRate + rateCard.calloutFee, gst: (540 + 4 * rateCard.hourlyRate + rateCard.calloutFee) * 0.1, total: (540 + 4 * rateCard.hourlyRate + rateCard.calloutFee) * 1.1 },
+      ],
+      invoices: [
+        { client: 2, job: 2, title: 'Power Point Installation - Invoice', items: [
+          { description: 'Power Point (Double GPO)', quantity: 4, unitPrice: 35, total: 140 },
+          { description: 'Cable (2.5mm TPS)', quantity: 25, unitPrice: 4.50, total: 112.50 },
+          { description: 'Labour - Licensed electrician', quantity: 3, unitPrice: rateCard.hourlyRate, total: 3 * rateCard.hourlyRate },
+          { description: 'Call-out fee', quantity: 1, unitPrice: rateCard.calloutFee, total: rateCard.calloutFee },
+        ], status: 'sent', subtotal: 140 + 112.50 + 3 * rateCard.hourlyRate + rateCard.calloutFee, gst: (140 + 112.50 + 3 * rateCard.hourlyRate + rateCard.calloutFee) * 0.1, total: (140 + 112.50 + 3 * rateCard.hourlyRate + rateCard.calloutFee) * 1.1 },
+      ],
+    }),
+    plumbing: () => ({
+      clients: australianClients,
+      jobs: [
+        { client: 0, title: 'Hot Water System Replacement', description: 'Remove old electric hot water system and install new 250L Rheem electric unit. Include tempering valve.', status: 'scheduled', address: australianClients[0].address, scheduledAt: tomorrow },
+        { client: 1, title: 'Blocked Drain Clearing', description: 'Kitchen sink draining slowly. Inspect with CCTV camera and clear blockage with high pressure jetter.', status: 'in_progress', address: australianClients[1].address },
+        { client: 2, title: 'Bathroom Tap Replacement', description: 'Replace basin and shower mixer taps. Customer has selected Caroma fixtures.', status: 'done', address: australianClients[2].address },
+      ],
+      quotes: [
+        { client: 0, job: 0, title: 'Hot Water System Replacement Quote', items: [
+          { description: 'Rheem 250L Electric Hot Water System', quantity: 1, unitPrice: 1350, total: 1350 },
+          { description: 'Tempering valve supply and install', quantity: 1, unitPrice: 180, total: 180 },
+          { description: 'Labour - Licensed plumber', quantity: 4, unitPrice: rateCard.hourlyRate, total: 4 * rateCard.hourlyRate },
+          { description: 'Removal and disposal of old unit', quantity: 1, unitPrice: 150, total: 150 },
+        ], status: 'sent', subtotal: 1680 + 4 * rateCard.hourlyRate, gst: (1680 + 4 * rateCard.hourlyRate) * 0.1, total: (1680 + 4 * rateCard.hourlyRate) * 1.1 },
+        { client: 1, job: 1, title: 'Drain Clearing Quote', items: [
+          { description: 'CCTV drain inspection', quantity: 1, unitPrice: 180, total: 180 },
+          { description: 'High pressure drain jetting', quantity: 1, unitPrice: 320, total: 320 },
+          { description: 'Call-out fee', quantity: 1, unitPrice: rateCard.calloutFee, total: rateCard.calloutFee },
+        ], status: 'accepted', subtotal: 500 + rateCard.calloutFee, gst: (500 + rateCard.calloutFee) * 0.1, total: (500 + rateCard.calloutFee) * 1.1 },
+      ],
+      invoices: [
+        { client: 2, job: 2, title: 'Bathroom Tap Replacement - Invoice', items: [
+          { description: 'Mixer Tap (Basin) - Caroma', quantity: 1, unitPrice: 185, total: 185 },
+          { description: 'Mixer Tap (Shower) - Caroma', quantity: 1, unitPrice: 220, total: 220 },
+          { description: 'Flexi hoses and fittings', quantity: 4, unitPrice: 25, total: 100 },
+          { description: 'Labour - Licensed plumber', quantity: 2, unitPrice: rateCard.hourlyRate, total: 2 * rateCard.hourlyRate },
+        ], status: 'paid', subtotal: 505 + 2 * rateCard.hourlyRate, gst: (505 + 2 * rateCard.hourlyRate) * 0.1, total: (505 + 2 * rateCard.hourlyRate) * 1.1 },
+      ],
+    }),
+    building: () => ({
+      clients: australianClients,
+      jobs: [
+        { client: 0, title: 'Timber Deck Construction', description: 'Build 6m x 4m hardwood deck off rear of house. Include stairs, handrails, and council approval.', status: 'scheduled', address: australianClients[0].address, scheduledAt: tomorrow },
+        { client: 1, title: 'Bathroom Renovation', description: 'Strip out and renovate main bathroom. New tiling, vanity, shower screen, and fixtures.', status: 'in_progress', address: australianClients[1].address },
+        { client: 2, title: 'Pergola Installation', description: 'Install 4m x 3m steel frame pergola with polycarbonate roofing in backyard.', status: 'done', address: australianClients[2].address },
+      ],
+      quotes: [
+        { client: 0, job: 0, title: 'Timber Deck Construction Quote', items: [
+          { description: 'Merbau decking (24m²)', quantity: 24, unitPrice: 85, total: 2040 },
+          { description: 'Timber framing and substructure', quantity: 1, unitPrice: 1200, total: 1200 },
+          { description: 'Labour - Builder', quantity: 24, unitPrice: rateCard.hourlyRate, total: 24 * rateCard.hourlyRate },
+          { description: 'Council application fee', quantity: 1, unitPrice: 350, total: 350 },
+        ], status: 'sent', subtotal: 3590 + 24 * rateCard.hourlyRate, gst: (3590 + 24 * rateCard.hourlyRate) * 0.1, total: (3590 + 24 * rateCard.hourlyRate) * 1.1 },
+        { client: 1, job: 1, title: 'Bathroom Renovation Quote', items: [
+          { description: 'Bathroom strip-out and demolition', quantity: 1, unitPrice: 800, total: 800 },
+          { description: 'Tiling - floor and walls', quantity: 18, unitPrice: 75, total: 1350 },
+          { description: 'Vanity, tapware, and fixtures', quantity: 1, unitPrice: 1800, total: 1800 },
+          { description: 'Labour - Builder and trades coordination', quantity: 32, unitPrice: rateCard.hourlyRate, total: 32 * rateCard.hourlyRate },
+        ], status: 'accepted', subtotal: 3950 + 32 * rateCard.hourlyRate, gst: (3950 + 32 * rateCard.hourlyRate) * 0.1, total: (3950 + 32 * rateCard.hourlyRate) * 1.1 },
+      ],
+      invoices: [
+        { client: 2, job: 2, title: 'Pergola Installation - Invoice', items: [
+          { description: 'Steel frame pergola (4m x 3m)', quantity: 1, unitPrice: 2200, total: 2200 },
+          { description: 'Polycarbonate roofing panels', quantity: 12, unitPrice: 65, total: 780 },
+          { description: 'Labour - Builder', quantity: 12, unitPrice: rateCard.hourlyRate, total: 12 * rateCard.hourlyRate },
+        ], status: 'paid', subtotal: 2980 + 12 * rateCard.hourlyRate, gst: (2980 + 12 * rateCard.hourlyRate) * 0.1, total: (2980 + 12 * rateCard.hourlyRate) * 1.1 },
+      ],
+    }),
+    landscaping: () => ({
+      clients: australianClients,
+      jobs: [
+        { client: 0, title: 'Backyard Lawn Installation', description: 'Remove existing grass, level area, install Sir Walter Buffalo turf (80m²) with irrigation.', status: 'scheduled', address: australianClients[0].address, scheduledAt: tomorrow },
+        { client: 1, title: 'Garden Bed Design & Planting', description: 'Design and install 3 garden beds with native tropical plants, mulch, and edging.', status: 'in_progress', address: australianClients[1].address },
+        { client: 2, title: 'Retaining Wall Construction', description: 'Build 8m timber sleeper retaining wall (600mm high) along rear boundary.', status: 'done', address: australianClients[2].address },
+      ],
+      quotes: [
+        { client: 0, job: 0, title: 'Lawn Installation Quote', items: [
+          { description: 'Sir Walter Buffalo Turf', quantity: 80, unitPrice: 15, total: 1200 },
+          { description: 'Site preparation and levelling', quantity: 1, unitPrice: 450, total: 450 },
+          { description: 'Garden soil and underlay', quantity: 4, unitPrice: 85, total: 340 },
+          { description: 'Labour - Landscaper', quantity: 8, unitPrice: rateCard.hourlyRate, total: 8 * rateCard.hourlyRate },
+        ], status: 'sent', subtotal: 1990 + 8 * rateCard.hourlyRate, gst: (1990 + 8 * rateCard.hourlyRate) * 0.1, total: (1990 + 8 * rateCard.hourlyRate) * 1.1 },
+        { client: 1, job: 1, title: 'Garden Bed Installation Quote', items: [
+          { description: 'Tropical plants (mixed native)', quantity: 25, unitPrice: 18, total: 450 },
+          { description: 'Hardwood mulch', quantity: 3, unitPrice: 85, total: 255 },
+          { description: 'Garden edging (steel)', quantity: 12, unitPrice: 22, total: 264 },
+          { description: 'Labour - Landscaper', quantity: 6, unitPrice: rateCard.hourlyRate, total: 6 * rateCard.hourlyRate },
+        ], status: 'accepted', subtotal: 969 + 6 * rateCard.hourlyRate, gst: (969 + 6 * rateCard.hourlyRate) * 0.1, total: (969 + 6 * rateCard.hourlyRate) * 1.1 },
+      ],
+      invoices: [
+        { client: 2, job: 2, title: 'Retaining Wall - Invoice', items: [
+          { description: 'Hardwood sleepers (200x50)', quantity: 24, unitPrice: 35, total: 840 },
+          { description: 'Steel star pickets and brackets', quantity: 8, unitPrice: 28, total: 224 },
+          { description: 'Drainage gravel and ag pipe', quantity: 1, unitPrice: 180, total: 180 },
+          { description: 'Labour - Landscaper', quantity: 10, unitPrice: rateCard.hourlyRate, total: 10 * rateCard.hourlyRate },
+        ], status: 'paid', subtotal: 1244 + 10 * rateCard.hourlyRate, gst: (1244 + 10 * rateCard.hourlyRate) * 0.1, total: (1244 + 10 * rateCard.hourlyRate) * 1.1 },
+      ],
+    }),
+    painting: () => ({
+      clients: australianClients,
+      jobs: [
+        { client: 0, title: 'Interior House Repaint', description: 'Full interior repaint of 3-bedroom home. Walls and ceilings in Dulux Wash & Wear.', status: 'scheduled', address: australianClients[0].address, scheduledAt: tomorrow },
+        { client: 1, title: 'Exterior House Paint', description: 'Prep and paint exterior of weatherboard home. Includes scraping, priming, and 2 coats.', status: 'in_progress', address: australianClients[1].address },
+        { client: 2, title: 'Feature Wall & Trim', description: 'Paint feature wall in living room (dark accent) and repaint all door frames and skirting boards.', status: 'done', address: australianClients[2].address },
+      ],
+      quotes: [
+        { client: 0, job: 0, title: 'Interior House Repaint Quote', items: [
+          { description: 'Dulux Wash & Wear paint (20L)', quantity: 3, unitPrice: 280, total: 840 },
+          { description: 'Dulux ceiling paint (10L)', quantity: 2, unitPrice: 145, total: 290 },
+          { description: 'Primer/sealer (10L)', quantity: 1, unitPrice: 120, total: 120 },
+          { description: 'Labour - Painter', quantity: 32, unitPrice: rateCard.hourlyRate, total: 32 * rateCard.hourlyRate },
+        ], status: 'sent', subtotal: 1250 + 32 * rateCard.hourlyRate, gst: (1250 + 32 * rateCard.hourlyRate) * 0.1, total: (1250 + 32 * rateCard.hourlyRate) * 1.1 },
+        { client: 1, job: 1, title: 'Exterior House Paint Quote', items: [
+          { description: 'Dulux Weathershield (15L)', quantity: 3, unitPrice: 320, total: 960 },
+          { description: 'Surface preparation and scraping', quantity: 1, unitPrice: 650, total: 650 },
+          { description: 'Scaffolding hire', quantity: 1, unitPrice: 800, total: 800 },
+          { description: 'Labour - Painter', quantity: 40, unitPrice: rateCard.hourlyRate, total: 40 * rateCard.hourlyRate },
+        ], status: 'accepted', subtotal: 2410 + 40 * rateCard.hourlyRate, gst: (2410 + 40 * rateCard.hourlyRate) * 0.1, total: (2410 + 40 * rateCard.hourlyRate) * 1.1 },
+      ],
+      invoices: [
+        { client: 2, job: 2, title: 'Feature Wall & Trim - Invoice', items: [
+          { description: 'Dulux Wash & Wear (accent colour)', quantity: 1, unitPrice: 95, total: 95 },
+          { description: 'Trim paint (semi-gloss white)', quantity: 1, unitPrice: 85, total: 85 },
+          { description: 'Labour - Painter', quantity: 6, unitPrice: rateCard.hourlyRate, total: 6 * rateCard.hourlyRate },
+        ], status: 'paid', subtotal: 180 + 6 * rateCard.hourlyRate, gst: (180 + 6 * rateCard.hourlyRate) * 0.1, total: (180 + 6 * rateCard.hourlyRate) * 1.1 },
+      ],
+    }),
+    hvac: () => ({
+      clients: australianClients,
+      jobs: [
+        { client: 0, title: 'Split System AC Installation', description: 'Install Daikin 7.1kW split system in master bedroom. Includes bracket, pipe run, and electrical.', status: 'scheduled', address: australianClients[0].address, scheduledAt: tomorrow },
+        { client: 1, title: 'AC System Service', description: 'Full service on ducted AC system. Clean filters, check refrigerant levels, inspect ductwork.', status: 'in_progress', address: australianClients[1].address },
+        { client: 2, title: 'Ducted AC Repair', description: 'Compressor not engaging on Mitsubishi ducted unit. Diagnose fault and repair.', status: 'done', address: australianClients[2].address },
+      ],
+      quotes: [
+        { client: 0, job: 0, title: 'Split System Installation Quote', items: [
+          { description: 'Daikin 7.1kW Inverter Split System', quantity: 1, unitPrice: 1850, total: 1850 },
+          { description: 'Installation bracket and pipe cover', quantity: 1, unitPrice: 120, total: 120 },
+          { description: 'Electrical connection', quantity: 1, unitPrice: 250, total: 250 },
+          { description: 'Labour - HVAC technician', quantity: 5, unitPrice: rateCard.hourlyRate, total: 5 * rateCard.hourlyRate },
+        ], status: 'sent', subtotal: 2220 + 5 * rateCard.hourlyRate, gst: (2220 + 5 * rateCard.hourlyRate) * 0.1, total: (2220 + 5 * rateCard.hourlyRate) * 1.1 },
+        { client: 1, job: 1, title: 'AC Service Quote', items: [
+          { description: 'Ducted AC full service', quantity: 1, unitPrice: 250, total: 250 },
+          { description: 'Filter replacement', quantity: 1, unitPrice: 65, total: 65 },
+          { description: 'Call-out fee', quantity: 1, unitPrice: rateCard.calloutFee, total: rateCard.calloutFee },
+        ], status: 'accepted', subtotal: 315 + rateCard.calloutFee, gst: (315 + rateCard.calloutFee) * 0.1, total: (315 + rateCard.calloutFee) * 1.1 },
+      ],
+      invoices: [
+        { client: 2, job: 2, title: 'Ducted AC Repair - Invoice', items: [
+          { description: 'Compressor capacitor replacement', quantity: 1, unitPrice: 180, total: 180 },
+          { description: 'Diagnostic and testing', quantity: 1, unitPrice: 150, total: 150 },
+          { description: 'Labour - HVAC technician', quantity: 2, unitPrice: rateCard.hourlyRate, total: 2 * rateCard.hourlyRate },
+          { description: 'Call-out fee', quantity: 1, unitPrice: rateCard.calloutFee, total: rateCard.calloutFee },
+        ], status: 'sent', subtotal: 330 + 2 * rateCard.hourlyRate + rateCard.calloutFee, gst: (330 + 2 * rateCard.hourlyRate + rateCard.calloutFee) * 0.1, total: (330 + 2 * rateCard.hourlyRate + rateCard.calloutFee) * 1.1 },
+      ],
+    }),
+    roofing: () => ({
+      clients: australianClients,
+      jobs: [
+        { client: 0, title: 'Roof Leak Repair', description: 'Locate and repair leak above bedroom. Replace damaged ridge capping and re-bed tiles.', status: 'scheduled', address: australianClients[0].address, scheduledAt: tomorrow },
+        { client: 1, title: 'Gutter & Fascia Replacement', description: 'Replace 30m of guttering and fascia boards on rear of house. Install new Colorbond gutters.', status: 'in_progress', address: australianClients[1].address },
+        { client: 2, title: 'Roof Restoration', description: 'Full roof restoration - pressure clean, re-point ridge caps, apply 2 coats roof membrane.', status: 'done', address: australianClients[2].address },
+      ],
+      quotes: [
+        { client: 0, job: 0, title: 'Roof Leak Repair Quote', items: [
+          { description: 'Ridge capping replacement (3m)', quantity: 3, unitPrice: 45, total: 135 },
+          { description: 'Tile replacement', quantity: 6, unitPrice: 15, total: 90 },
+          { description: 'Bedding and pointing materials', quantity: 1, unitPrice: 85, total: 85 },
+          { description: 'Labour - Roofer', quantity: 4, unitPrice: rateCard.hourlyRate, total: 4 * rateCard.hourlyRate },
+        ], status: 'sent', subtotal: 310 + 4 * rateCard.hourlyRate, gst: (310 + 4 * rateCard.hourlyRate) * 0.1, total: (310 + 4 * rateCard.hourlyRate) * 1.1 },
+        { client: 1, job: 1, title: 'Gutter & Fascia Replacement Quote', items: [
+          { description: 'Colorbond quad gutter (30m)', quantity: 30, unitPrice: 18, total: 540 },
+          { description: 'Fascia boards (treated pine)', quantity: 30, unitPrice: 12, total: 360 },
+          { description: 'Downpipes and fittings', quantity: 4, unitPrice: 45, total: 180 },
+          { description: 'Labour - Roofer', quantity: 12, unitPrice: rateCard.hourlyRate, total: 12 * rateCard.hourlyRate },
+        ], status: 'accepted', subtotal: 1080 + 12 * rateCard.hourlyRate, gst: (1080 + 12 * rateCard.hourlyRate) * 0.1, total: (1080 + 12 * rateCard.hourlyRate) * 1.1 },
+      ],
+      invoices: [
+        { client: 2, job: 2, title: 'Roof Restoration - Invoice', items: [
+          { description: 'Pressure clean entire roof', quantity: 1, unitPrice: 450, total: 450 },
+          { description: 'Ridge cap re-pointing', quantity: 1, unitPrice: 650, total: 650 },
+          { description: 'Roof membrane (2 coats)', quantity: 1, unitPrice: 1200, total: 1200 },
+          { description: 'Labour - Roofer', quantity: 16, unitPrice: rateCard.hourlyRate, total: 16 * rateCard.hourlyRate },
+        ], status: 'paid', subtotal: 2300 + 16 * rateCard.hourlyRate, gst: (2300 + 16 * rateCard.hourlyRate) * 0.1, total: (2300 + 16 * rateCard.hourlyRate) * 1.1 },
+      ],
+    }),
+    tiling: () => ({
+      clients: australianClients,
+      jobs: [
+        { client: 0, title: 'Bathroom Floor Tiling', description: 'Supply and lay 600x600 porcelain tiles on bathroom floor (12m²). Includes waterproofing.', status: 'scheduled', address: australianClients[0].address, scheduledAt: tomorrow },
+        { client: 1, title: 'Kitchen Splashback', description: 'Install subway tile splashback behind kitchen bench and cooktop (8m²).', status: 'in_progress', address: australianClients[1].address },
+        { client: 2, title: 'Outdoor Patio Tiling', description: 'Lay non-slip porcelain tiles on covered patio area (20m²).', status: 'done', address: australianClients[2].address },
+      ],
+      quotes: [
+        { client: 0, job: 0, title: 'Bathroom Floor Tiling Quote', items: [
+          { description: 'Porcelain tiles 600x600 (matt finish)', quantity: 12, unitPrice: 55, total: 660 },
+          { description: 'Waterproofing membrane', quantity: 12, unitPrice: 35, total: 420 },
+          { description: 'Tile adhesive and grout', quantity: 1, unitPrice: 120, total: 120 },
+          { description: 'Labour - Tiler', quantity: 10, unitPrice: rateCard.hourlyRate, total: 10 * rateCard.hourlyRate },
+        ], status: 'sent', subtotal: 1200 + 10 * rateCard.hourlyRate, gst: (1200 + 10 * rateCard.hourlyRate) * 0.1, total: (1200 + 10 * rateCard.hourlyRate) * 1.1 },
+        { client: 1, job: 1, title: 'Kitchen Splashback Quote', items: [
+          { description: 'Subway tiles (white gloss)', quantity: 8, unitPrice: 40, total: 320 },
+          { description: 'Tile adhesive and grout', quantity: 1, unitPrice: 65, total: 65 },
+          { description: 'Tile trim (aluminium)', quantity: 6, unitPrice: 18, total: 108 },
+          { description: 'Labour - Tiler', quantity: 6, unitPrice: rateCard.hourlyRate, total: 6 * rateCard.hourlyRate },
+        ], status: 'accepted', subtotal: 493 + 6 * rateCard.hourlyRate, gst: (493 + 6 * rateCard.hourlyRate) * 0.1, total: (493 + 6 * rateCard.hourlyRate) * 1.1 },
+      ],
+      invoices: [
+        { client: 2, job: 2, title: 'Outdoor Patio Tiling - Invoice', items: [
+          { description: 'Non-slip porcelain tiles (20m²)', quantity: 20, unitPrice: 48, total: 960 },
+          { description: 'Outdoor tile adhesive', quantity: 1, unitPrice: 95, total: 95 },
+          { description: 'Grout (charcoal)', quantity: 1, unitPrice: 45, total: 45 },
+          { description: 'Labour - Tiler', quantity: 12, unitPrice: rateCard.hourlyRate, total: 12 * rateCard.hourlyRate },
+        ], status: 'paid', subtotal: 1100 + 12 * rateCard.hourlyRate, gst: (1100 + 12 * rateCard.hourlyRate) * 0.1, total: (1100 + 12 * rateCard.hourlyRate) * 1.1 },
+      ],
+    }),
+    concreting: () => ({
+      clients: australianClients,
+      jobs: [
+        { client: 0, title: 'Driveway Replacement', description: 'Remove existing cracked driveway and pour new 100mm reinforced concrete driveway (45m²).', status: 'scheduled', address: australianClients[0].address, scheduledAt: tomorrow },
+        { client: 1, title: 'Exposed Aggregate Patio', description: 'Pour exposed aggregate concrete patio (25m²) with control joints and sealer.', status: 'in_progress', address: australianClients[1].address },
+        { client: 2, title: 'Garden Path', description: 'Form and pour 15m concrete garden path with brushed finish and step.', status: 'done', address: australianClients[2].address },
+      ],
+      quotes: [
+        { client: 0, job: 0, title: 'Driveway Replacement Quote', items: [
+          { description: 'Demolition and removal of existing driveway', quantity: 1, unitPrice: 800, total: 800 },
+          { description: 'Concrete (32MPa, 45m² x 100mm)', quantity: 5, unitPrice: 250, total: 1250 },
+          { description: 'Steel mesh reinforcement', quantity: 45, unitPrice: 12, total: 540 },
+          { description: 'Labour - Concreter', quantity: 16, unitPrice: rateCard.hourlyRate, total: 16 * rateCard.hourlyRate },
+        ], status: 'sent', subtotal: 2590 + 16 * rateCard.hourlyRate, gst: (2590 + 16 * rateCard.hourlyRate) * 0.1, total: (2590 + 16 * rateCard.hourlyRate) * 1.1 },
+        { client: 1, job: 1, title: 'Exposed Aggregate Patio Quote', items: [
+          { description: 'Exposed aggregate concrete (25m²)', quantity: 3, unitPrice: 320, total: 960 },
+          { description: 'Formwork and preparation', quantity: 1, unitPrice: 450, total: 450 },
+          { description: 'Sealer (2 coats)', quantity: 1, unitPrice: 280, total: 280 },
+          { description: 'Labour - Concreter', quantity: 12, unitPrice: rateCard.hourlyRate, total: 12 * rateCard.hourlyRate },
+        ], status: 'accepted', subtotal: 1690 + 12 * rateCard.hourlyRate, gst: (1690 + 12 * rateCard.hourlyRate) * 0.1, total: (1690 + 12 * rateCard.hourlyRate) * 1.1 },
+      ],
+      invoices: [
+        { client: 2, job: 2, title: 'Garden Path - Invoice', items: [
+          { description: 'Concrete (25MPa)', quantity: 1, unitPrice: 250, total: 250 },
+          { description: 'Formwork and prep', quantity: 1, unitPrice: 350, total: 350 },
+          { description: 'Labour - Concreter', quantity: 6, unitPrice: rateCard.hourlyRate, total: 6 * rateCard.hourlyRate },
+        ], status: 'paid', subtotal: 600 + 6 * rateCard.hourlyRate, gst: (600 + 6 * rateCard.hourlyRate) * 0.1, total: (600 + 6 * rateCard.hourlyRate) * 1.1 },
+      ],
+    }),
+    cleaning: () => ({
+      clients: australianClients,
+      jobs: [
+        { client: 0, title: 'End of Lease Clean', description: 'Full bond clean for 3-bedroom rental property. Includes oven, carpets, and windows.', status: 'scheduled', address: australianClients[0].address, scheduledAt: tomorrow },
+        { client: 1, title: 'Commercial Office Clean', description: 'Weekly office cleaning - vacuum, mop, bathrooms, kitchen, bins, and desks.', status: 'in_progress', address: australianClients[1].address },
+        { client: 2, title: 'Pressure Washing', description: 'Pressure wash driveway, paths, and patio area. Remove moss and stains.', status: 'done', address: australianClients[2].address },
+      ],
+      quotes: [
+        { client: 0, job: 0, title: 'End of Lease Clean Quote', items: [
+          { description: 'Full bond clean (3-bed house)', quantity: 1, unitPrice: 450, total: 450 },
+          { description: 'Carpet steam cleaning (3 rooms)', quantity: 3, unitPrice: 55, total: 165 },
+          { description: 'Oven deep clean', quantity: 1, unitPrice: 85, total: 85 },
+          { description: 'Window cleaning (interior & exterior)', quantity: 1, unitPrice: 120, total: 120 },
+        ], status: 'sent', subtotal: 820, gst: 82, total: 902 },
+        { client: 1, job: 1, title: 'Commercial Office Clean Quote', items: [
+          { description: 'Weekly office clean (200m²)', quantity: 4, unitPrice: 180, total: 720 },
+          { description: 'Consumables (toilet paper, soap, etc.)', quantity: 1, unitPrice: 65, total: 65 },
+        ], status: 'accepted', subtotal: 785, gst: 78.50, total: 863.50 },
+      ],
+      invoices: [
+        { client: 2, job: 2, title: 'Pressure Washing - Invoice', items: [
+          { description: 'Pressure wash driveway (40m²)', quantity: 1, unitPrice: 280, total: 280 },
+          { description: 'Pressure wash paths and patio', quantity: 1, unitPrice: 180, total: 180 },
+          { description: 'Chemical treatment (moss removal)', quantity: 1, unitPrice: 65, total: 65 },
+        ], status: 'paid', subtotal: 525, gst: 52.50, total: 577.50 },
+      ],
+    }),
+  };
+
+  const dataGenerator = tradeDataMap[tradeType];
+  if (dataGenerator) {
+    return dataGenerator();
+  }
+
+  if (tradeConfig) {
+    return generateFromCatalog(tradeConfig, australianClients, rateCard, tomorrow);
+  }
+
+  return getGenericDemoData(australianClients);
+}
+
+function generateFromCatalog(
+  tradeConfig: any,
+  clients: Array<{ name: string; email: string; phone: string; address: string }>,
+  rateCard: { hourlyRate: number; calloutFee: number },
+  tomorrow: Date
+): TradeSpecificDemoData {
+  const tradeName = tradeConfig.name || 'Tradie';
+  const jobs = (tradeConfig.typicalJobs || ['Service call', 'Repair', 'Installation']).slice(0, 3);
+  const materials = (tradeConfig.defaultMaterials || tradeConfig.commonMaterials || []).slice(0, 3);
+
+  const materialItem = materials.length > 0
+    ? { description: materials[0].name || 'Materials', quantity: materials[0].defaultQty || 1, unitPrice: materials[0].defaultPrice || 100, total: (materials[0].defaultQty || 1) * (materials[0].defaultPrice || 100) }
+    : { description: 'Materials', quantity: 1, unitPrice: 200, total: 200 };
+
+  const q1Items = [
+    { description: `Labour - ${tradeName}`, quantity: 4, unitPrice: rateCard.hourlyRate, total: 4 * rateCard.hourlyRate },
+    materialItem,
+    { description: 'Call-out fee', quantity: 1, unitPrice: rateCard.calloutFee, total: rateCard.calloutFee },
+  ];
+  const q1Subtotal = q1Items.reduce((sum, i) => sum + i.total, 0);
+
+  const q2Items = [
+    { description: `Labour - ${tradeName}`, quantity: 3, unitPrice: rateCard.hourlyRate, total: 3 * rateCard.hourlyRate },
+    { description: 'Materials and supplies', quantity: 1, unitPrice: 150, total: 150 },
+  ];
+  const q2Subtotal = q2Items.reduce((sum, i) => sum + i.total, 0);
+
+  const inv1Items = [
+    { description: `Labour - ${tradeName}`, quantity: 2, unitPrice: rateCard.hourlyRate, total: 2 * rateCard.hourlyRate },
+    { description: 'Parts and materials', quantity: 1, unitPrice: 120, total: 120 },
+    { description: 'Call-out fee', quantity: 1, unitPrice: rateCard.calloutFee, total: rateCard.calloutFee },
+  ];
+  const inv1Subtotal = inv1Items.reduce((sum, i) => sum + i.total, 0);
+
+  return {
+    clients,
+    jobs: [
+      { client: 0, title: jobs[0], description: `${jobs[0]} for residential customer. Inspect site and complete work.`, status: 'scheduled', address: clients[0].address, scheduledAt: tomorrow },
+      { client: 1, title: jobs[1] || 'Repair Work', description: `${jobs[1] || 'Repair work'} as per customer request.`, status: 'in_progress', address: clients[1].address },
+      { client: 2, title: jobs[2] || 'Maintenance', description: `${jobs[2] || 'Maintenance'} work completed.`, status: 'done', address: clients[2].address },
+    ],
+    quotes: [
+      { client: 0, job: 0, title: `${jobs[0]} Quote`, items: q1Items, status: 'sent', subtotal: q1Subtotal, gst: q1Subtotal * 0.1, total: q1Subtotal * 1.1 },
+      { client: 1, job: 1, title: `${jobs[1] || 'Repair Work'} Quote`, items: q2Items, status: 'accepted', subtotal: q2Subtotal, gst: q2Subtotal * 0.1, total: q2Subtotal * 1.1 },
+    ],
+    invoices: [
+      { client: 2, job: 2, title: `${jobs[2] || 'Maintenance'} - Invoice`, items: inv1Items, status: 'paid', subtotal: inv1Subtotal, gst: inv1Subtotal * 0.1, total: inv1Subtotal * 1.1 },
+    ],
+  };
+}
+
+function getGenericDemoData(clients: Array<{ name: string; email: string; phone: string; address: string }>): TradeSpecificDemoData {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const nextWeek = new Date(today);
+  nextWeek.setDate(nextWeek.getDate() + 7);
+
+  return {
+    clients,
+    jobs: [
+      { client: 0, title: 'Service Call - Repair', description: 'Customer requested repair work. Inspect and provide assessment.', status: 'scheduled', address: clients[0].address, scheduledAt: tomorrow },
+      { client: 1, title: 'New Installation', description: 'Install new equipment as per customer specifications.', status: 'in_progress', address: clients[1].address },
+      { client: 2, title: 'Maintenance Visit', description: 'Regular maintenance check and servicing.', status: 'done', address: clients[2].address },
+    ],
+    quotes: [
+      { client: 0, job: 0, title: 'Repair Work Quote', items: [
+        { description: 'Labour', quantity: 3, unitPrice: 85, total: 255 },
+        { description: 'Materials', quantity: 1, unitPrice: 150, total: 150 },
+        { description: 'Call-out fee', quantity: 1, unitPrice: 80, total: 80 },
+      ], status: 'sent', subtotal: 485, gst: 48.50, total: 533.50 },
+      { client: 1, job: 1, title: 'Installation Quote', items: [
+        { description: 'Equipment supply', quantity: 1, unitPrice: 1200, total: 1200 },
+        { description: 'Installation labour', quantity: 4, unitPrice: 85, total: 340 },
+      ], status: 'accepted', subtotal: 1540, gst: 154, total: 1694 },
+    ],
+    invoices: [
+      { client: 2, job: 2, title: 'Maintenance Visit - Invoice', items: [
+        { description: 'Service and inspection', quantity: 1, unitPrice: 180, total: 180 },
+        { description: 'Replacement parts', quantity: 1, unitPrice: 95, total: 95 },
+        { description: 'Call-out fee', quantity: 1, unitPrice: 80, total: 80 },
+      ], status: 'paid', subtotal: 355, gst: 35.50, total: 390.50 },
+    ],
+  };
+}
+
+export async function seedUserDemoData(userId: string, tradeType?: string): Promise<{ success: boolean; message: string }> {
   try {
-    console.log(`[DemoSeed] Seeding demo data for user ${userId}...`);
+    console.log(`[DemoSeed] Seeding demo data for user ${userId} (trade: ${tradeType || 'auto-detect'})...`);
     
     const user = await storage.getUser(userId);
     if (!user) {
       return { success: false, message: 'User not found' };
     }
     
-    // Check if already seeded
     if (user.hasDemoData) {
       console.log(`[DemoSeed] User ${userId} already has demo data, skipping`);
       return { success: true, message: 'Demo data already exists' };
     }
-    
-    // ============================================
-    // CREATE 5 SAMPLE CLIENTS
-    // ============================================
-    const sampleClients = [
-      { name: 'Sarah Mitchell', email: 'sarah.mitchell@example.com', phone: '+61412345678', address: '15 Smith Street, Sydney NSW 2000' },
-      { name: 'David Wilson', email: 'david.wilson@example.com', phone: '+61423456789', address: '28 Park Avenue, Melbourne VIC 3000' },
-      { name: 'Emma Thompson', email: 'emma.t@example.com', phone: '+61434567890', address: '7 Beach Road, Bondi NSW 2026' },
-      { name: 'James Brown', email: 'james.brown@example.com', phone: '+61445678901', address: '92 Main Street, Perth WA 6000' },
-      { name: 'Lisa Chen', email: 'lisa.chen@example.com', phone: '+61456789012', address: '45 River Drive, Adelaide SA 5000' },
-    ];
 
+    const effectiveTradeType = tradeType || user.tradeType || 'general';
+    console.log(`[DemoSeed] Using trade type: ${effectiveTradeType}`);
+
+    const demoData = getTradeSpecificDemoData(effectiveTradeType);
+    
     const createdClients = [];
-    for (const clientData of sampleClients) {
+    for (const clientData of demoData.clients) {
       const client = await storage.createClient({
         userId,
         ...clientData,
@@ -2392,34 +2808,14 @@ export async function seedUserDemoData(userId: string): Promise<{ success: boole
     }
     console.log(`[DemoSeed] Created ${createdClients.length} sample clients`);
 
-    // ============================================
-    // CREATE 6 SAMPLE JOBS (different statuses)
-    // ============================================
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const nextWeek = new Date(today);
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const sampleJobs = [
-      { client: 0, title: 'Kitchen Tap Repair', description: 'Customer reports dripping tap in kitchen. Need to replace washer or entire tap assembly.', status: 'pending', address: sampleClients[0].address },
-      { client: 1, title: 'Hot Water System Service', description: 'Annual service and safety check on electric hot water system.', status: 'scheduled', address: sampleClients[1].address, scheduledAt: tomorrow },
-      { client: 2, title: 'Bathroom Renovation', description: 'Complete bathroom rough-in for renovation. Relocate toilet, vanity and shower.', status: 'in_progress', address: sampleClients[2].address },
-      { client: 3, title: 'Blocked Drain', description: 'Slow draining kitchen sink. May need high pressure jetting.', status: 'done', address: sampleClients[3].address },
-      { client: 4, title: 'Gas Heater Installation', description: 'Install new Rinnai gas heater with flue kit. Need gas compliance certificate.', status: 'invoiced', address: sampleClients[4].address },
-      { client: 0, title: 'Outdoor Tap Installation', description: 'Install new garden tap near shed for irrigation system.', status: 'scheduled', address: sampleClients[0].address, scheduledAt: nextWeek },
-    ];
-
     const createdJobs = [];
-    for (const job of sampleJobs) {
+    for (const job of demoData.jobs) {
       const createdJob = await storage.createJob({
         userId,
         clientId: createdClients[job.client].id,
         title: job.title,
         description: job.description,
-        address: job.address,
+        address: job.address || createdClients[job.client].address,
         status: job.status as any,
         scheduledAt: job.scheduledAt,
         estimatedDuration: 60,
@@ -2428,59 +2824,11 @@ export async function seedUserDemoData(userId: string): Promise<{ success: boole
     }
     console.log(`[DemoSeed] Created ${createdJobs.length} sample jobs`);
 
-    // ============================================
-    // CREATE 3 SAMPLE QUOTES
-    // ============================================
     const validUntil = new Date();
     validUntil.setDate(validUntil.getDate() + 30);
 
-    const sampleQuotes = [
-      { 
-        client: 0, 
-        job: 0, 
-        title: 'Kitchen Tap Replacement Quote',
-        items: [
-          { description: 'Mixer tap - chrome finish', quantity: 1, unitPrice: 185, total: 185 },
-          { description: 'Labour - installation', quantity: 1, unitPrice: 150, total: 150 },
-          { description: 'Callout fee', quantity: 1, unitPrice: 80, total: 80 },
-        ],
-        status: 'sent',
-        subtotal: 415,
-        gst: 41.50,
-        total: 456.50,
-      },
-      { 
-        client: 2, 
-        job: 2, 
-        title: 'Bathroom Renovation Quote',
-        items: [
-          { description: 'Rough-in plumbing - toilet, vanity, shower', quantity: 1, unitPrice: 1800, total: 1800 },
-          { description: 'Materials - pipes, fittings, valves', quantity: 1, unitPrice: 450, total: 450 },
-          { description: 'Hot water connection', quantity: 1, unitPrice: 350, total: 350 },
-        ],
-        status: 'accepted',
-        subtotal: 2600,
-        gst: 260,
-        total: 2860,
-      },
-      { 
-        client: 4, 
-        job: 4, 
-        title: 'Gas Heater Installation Quote',
-        items: [
-          { description: 'Rinnai Energysaver 561FT', quantity: 1, unitPrice: 1450, total: 1450 },
-          { description: 'Flue kit and installation', quantity: 1, unitPrice: 450, total: 450 },
-          { description: 'Gas compliance certificate', quantity: 1, unitPrice: 120, total: 120 },
-        ],
-        status: 'accepted',
-        subtotal: 2020,
-        gst: 202,
-        total: 2222,
-      },
-    ];
-
     const createdQuotes = [];
-    for (const quote of sampleQuotes) {
+    for (const quote of demoData.quotes) {
       const createdQuote = await storage.createQuote({
         userId,
         clientId: createdClients[quote.client].id,
@@ -2488,54 +2836,20 @@ export async function seedUserDemoData(userId: string): Promise<{ success: boole
         title: quote.title,
         items: quote.items,
         status: quote.status as any,
-        subtotal: quote.subtotal.toString(),
-        gst: quote.gst.toString(),
-        total: quote.total.toString(),
+        subtotal: quote.subtotal.toFixed(2),
+        gst: quote.gst.toFixed(2),
+        total: quote.total.toFixed(2),
         validUntil,
       });
       createdQuotes.push(createdQuote);
     }
     console.log(`[DemoSeed] Created ${createdQuotes.length} sample quotes`);
 
-    // ============================================
-    // CREATE 2 SAMPLE INVOICES
-    // ============================================
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 14);
 
-    const sampleInvoices = [
-      { 
-        client: 3, 
-        job: 3, 
-        title: 'Blocked Drain - Completed',
-        items: [
-          { description: 'High pressure drain jetting', quantity: 1, unitPrice: 320, total: 320 },
-          { description: 'CCTV inspection', quantity: 1, unitPrice: 180, total: 180 },
-          { description: 'Callout fee', quantity: 1, unitPrice: 80, total: 80 },
-        ],
-        status: 'sent',
-        subtotal: 580,
-        gst: 58,
-        total: 638,
-      },
-      { 
-        client: 4, 
-        job: 4, 
-        title: 'Gas Heater Installation - Invoice',
-        items: [
-          { description: 'Rinnai Energysaver 561FT', quantity: 1, unitPrice: 1450, total: 1450 },
-          { description: 'Flue kit and installation', quantity: 1, unitPrice: 450, total: 450 },
-          { description: 'Gas compliance certificate', quantity: 1, unitPrice: 120, total: 120 },
-        ],
-        status: 'paid',
-        subtotal: 2020,
-        gst: 202,
-        total: 2222,
-      },
-    ];
-
     const createdInvoices = [];
-    for (const invoice of sampleInvoices) {
+    for (const invoice of demoData.invoices) {
       const createdInvoice = await storage.createInvoice({
         userId,
         clientId: createdClients[invoice.client].id,
@@ -2543,16 +2857,15 @@ export async function seedUserDemoData(userId: string): Promise<{ success: boole
         title: invoice.title,
         items: invoice.items,
         status: invoice.status as any,
-        subtotal: invoice.subtotal.toString(),
-        gst: invoice.gst.toString(),
-        total: invoice.total.toString(),
+        subtotal: invoice.subtotal.toFixed(2),
+        gst: invoice.gst.toFixed(2),
+        total: invoice.total.toFixed(2),
         dueDate,
       });
       createdInvoices.push(createdInvoice);
     }
     console.log(`[DemoSeed] Created ${createdInvoices.length} sample invoices`);
 
-    // Store the IDs of all demo records for safe cleanup later
     const demoDataIds = {
       clients: createdClients.map(c => c.id),
       jobs: createdJobs.map(j => j.id),
@@ -2560,15 +2873,14 @@ export async function seedUserDemoData(userId: string): Promise<{ success: boole
       invoices: createdInvoices.map(i => i.id),
     };
 
-    // Mark user as having demo data and store the demo record IDs
     await storage.updateUser(userId, { 
       hasDemoData: true,
       demoDataIds: demoDataIds as any,
     });
     
-    console.log(`[DemoSeed] Demo data seeding complete for user ${userId}`);
+    console.log(`[DemoSeed] Demo data seeding complete for user ${userId} (trade: ${effectiveTradeType})`);
     console.log(`[DemoSeed] Stored demo IDs: ${JSON.stringify(demoDataIds)}`);
-    return { success: true, message: 'Sample data created successfully! You now have clients, jobs, quotes, and invoices to explore.' };
+    return { success: true, message: `Sample ${effectiveTradeType} data created successfully! You now have clients, jobs, quotes, and invoices to explore.` };
   } catch (error: any) {
     console.error('[DemoSeed] Error seeding demo data:', error);
     return { success: false, message: error.message || 'Failed to seed demo data' };
