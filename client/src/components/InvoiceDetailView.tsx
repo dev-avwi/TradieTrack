@@ -1378,7 +1378,7 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                 <div className="flex-1">
                   <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Bill To</p>
                   <div className="text-gray-800">
-                    <p className="font-semibold">{client?.name || 'Loading...'}</p>
+                    <p className="font-semibold">{client?.name || invoice?.clientName || 'Client'}</p>
                     {client?.address && <p>{client.address}</p>}
                     {client?.email && <p>{client.email}</p>}
                     {client?.phone && <p>{client.phone}</p>}

@@ -689,7 +689,7 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                 <div className="flex-1">
                   <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Quote For</p>
                   <div className="text-gray-800">
-                    <p className="font-semibold">{client?.name || 'Loading...'}</p>
+                    <p className="font-semibold">{client?.name || quote?.clientName || 'Client'}</p>
                     {client?.address && <p>{client.address}</p>}
                     {client?.email && <p>{client.email}</p>}
                     {client?.phone && <p>{client.phone}</p>}
