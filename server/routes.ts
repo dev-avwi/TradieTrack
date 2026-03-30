@@ -4599,6 +4599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paymentMethod = await getPaymentMethodDetails(userId);
       const user = await storage.getUser(userId);
       const businessSettings = await storage.getBusinessSettings(userId);
+      const aiReceptionistConfig = await storage.getAiReceptionistConfig(userId);
       
       // Get actual team member count for billing purposes
       // Count includes team members only (owner is included in base plan)
@@ -4640,6 +4641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           smsMode: businessSettings?.smsMode || 'standard',
           aiReceptionistEnabled: businessSettings?.aiReceptionistEnabled || false,
           aiReceptionistMode: businessSettings?.aiReceptionistMode || 'off',
+          aiReceptionistApprovalStatus: aiReceptionistConfig?.approvalStatus || 'none',
         },
       });
     } catch (error: any) {
@@ -4723,6 +4725,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error creating checkout session:', error);
       res.status(500).json({ error: error.message || 'Failed to create checkout session' });
+    }
+  });
+
+  // POST /api/subscription/ai-receptionist-checkout - Creates Stripe checkout for AI Receptionist add-on
+  app.post("/api/subscription/ai-receptionist-checkout", requireAuth, async (req: any, res) => {
+    try {
+      const { IS_BETA } = await import('./freemiumService');
+      const userId = req.userId!;
+
+      const user = await storage.getUser(userId);
+      if (!user?.email) {
+        return res.status(400).json({ error: 'User email is required for checkout' });
+      }
+
+      const existingConfig = await storage.getAiReceptionistConfig(userId);
+      if (existingConfig?.approvalStatus === 'pending_approval' || existingConfig?.approvalStatus === 'provisioning') {
+        return res.status(400).json({ error: 'AI Receptionist is already being set up or pending approval.' });
+      }
+      if (existingConfig?.approvalStatus === 'approved' && existingConfig?.enabled) {
+        return res.status(400).json({ error: 'AI Receptionist is already active.' });
+      }
+
+      // BETA MODE: Skip Stripe, trigger provisioning directly
+      if (IS_BETA) {
+        console.log(`[BETA] Triggering AI Receptionist provisioning for user ${userId} without payment`);
+
+        // Create or update config to provisioning state
+        if (!existingConfig) {
+          await storage.createAiReceptionistConfig({
+            userId,
+            enabled: false,
+            mode: 'always_on_message',
+            voiceName: 'Jess',
+            approvalStatus: 'provisioning',
+          });
+        } else {
+          await storage.updateAiReceptionistConfig(userId, {
+            approvalStatus: 'provisioning',
+            provisioningError: null,
+          });
+        }
+
+        // Trigger provisioning asynchronously
+        const { provisionAiReceptionist } = await import('./aiReceptionistProvisioning');
+        provisionAiReceptionist(userId).catch(err => {
+          console.error('[BETA AI Receptionist] Provisioning failed:', err);
+        });
+
+        return res.json({
+          success: true,
+          betaAccess: true,
+          provisioning: true,
+          message: 'AI Receptionist setup started - free during beta!'
+        });
+      }
+
+      // PRODUCTION MODE: Use Stripe checkout
+      const { createAiReceptionistCheckout } = await import('./billingService');
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers.host;
+      const baseUrl = `${protocol}://${host}`;
+
+      const businessSettings = await storage.getBusinessSettings(userId);
+      const result = await createAiReceptionistCheckout(
+        userId,
+        user.email,
+        `${baseUrl}/ai-receptionist?provisioning=true`,
+        `${baseUrl}/settings?tab=billing&canceled=true`,
+        businessSettings?.businessName || undefined
+      );
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json({ url: result.sessionUrl });
+    } catch (error: any) {
+      console.error('Error creating AI Receptionist checkout:', error);
+      res.status(500).json({ error: error.message || 'Failed to create checkout session' });
+    }
+  });
+
+  // GET /api/ai-receptionist/provisioning-status - Get current provisioning status
+  app.get("/api/ai-receptionist/provisioning-status", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
+      const config = await storage.getAiReceptionistConfig(userId);
+
+      if (!config) {
+        return res.json({ status: 'none' });
+      }
+
+      res.json({
+        status: config.approvalStatus || 'none',
+        error: config.provisioningError || null,
+        phoneNumber: config.dedicatedPhoneNumber || null,
+        assistantId: config.vapiAssistantId || null,
+        enabled: config.enabled,
+        provisionedAt: config.provisionedAt || null,
+        approvedAt: config.approvedAt || null,
+      });
+    } catch (error: any) {
+      console.error('Error fetching provisioning status:', error);
+      res.status(500).json({ error: 'Failed to fetch provisioning status' });
     }
   });
 
@@ -44817,6 +44923,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
           businessHours: null,
           dedicatedPhoneNumber: null,
           vapiAssistantId: null,
+          approvalStatus: 'none',
+          provisioningError: null,
         });
       }
       res.json({
@@ -44828,6 +44936,10 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         businessHours: config.businessHours || null,
         dedicatedPhoneNumber: config.dedicatedPhoneNumber || null,
         vapiAssistantId: config.vapiAssistantId || null,
+        approvalStatus: config.approvalStatus || 'none',
+        provisioningError: config.provisioningError || null,
+        provisionedAt: config.provisionedAt || null,
+        approvedAt: config.approvedAt || null,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';

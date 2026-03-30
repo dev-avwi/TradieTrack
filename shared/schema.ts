@@ -4482,7 +4482,12 @@ export const aiReceptionistConfig = pgTable("ai_receptionist_config", {
   businessHours: json("business_hours"),
   enabled: boolean("enabled").notNull().default(false),
   dedicatedPhoneNumber: text("dedicated_phone_number"),
-  approvalStatus: text("approval_status").notNull().default('pending_approval'),
+  approvalStatus: text("approval_status").default('none'), // none, provisioning, pending_approval, approved, rejected, failed
+  provisioningError: text("provisioning_error"),
+  stripeSubscriptionItemId: text("stripe_subscription_item_id"),
+  twilioNumberSid: text("twilio_number_sid"),
+  provisionedAt: timestamp("provisioned_at"),
+  approvedAt: timestamp("approved_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

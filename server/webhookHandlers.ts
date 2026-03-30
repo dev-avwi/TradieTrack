@@ -227,6 +227,34 @@ async function handleStripeEvent(event: any, storage: any) {
             }
           }
         }
+
+        // Handle AI Receptionist add-on checkout
+        const checkoutType = session.metadata?.type;
+        if (checkoutType === 'ai_receptionist' && userId) {
+          console.log(`[AI Receptionist] Checkout completed for user ${userId}, triggering provisioning...`);
+
+          // Store the subscription item ID for tracking
+          try {
+            const existingConfig = await storage.getAiReceptionistConfig(userId);
+            if (existingConfig) {
+              await storage.updateAiReceptionistConfig(userId, {
+                stripeSubscriptionItemId: session.subscription as string,
+              });
+            }
+          } catch (e) {
+            console.warn('[AI Receptionist] Failed to store subscription item ID:', e);
+          }
+
+          // Trigger provisioning pipeline asynchronously
+          try {
+            const { provisionAiReceptionist } = await import('./aiReceptionistProvisioning');
+            provisionAiReceptionist(userId).catch(err => {
+              console.error('[AI Receptionist] Async provisioning failed:', err);
+            });
+          } catch (provisionError) {
+            console.error('[AI Receptionist] Failed to start provisioning:', provisionError);
+          }
+        }
         break;
       }
 

@@ -63,6 +63,7 @@ interface SubscriptionStatus {
     smsMode: string;
     aiReceptionistEnabled: boolean;
     aiReceptionistMode: string;
+    aiReceptionistApprovalStatus?: string;
   };
 }
 
@@ -183,6 +184,33 @@ export default function SubscriptionPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to open billing portal.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const aiReceptionistCheckoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/subscription/ai-receptionist-checkout');
+      return response.json();
+    },
+    onSuccess: (data: { url?: string; betaAccess?: boolean; provisioning?: boolean; message?: string }) => {
+      if (data.betaAccess && data.provisioning) {
+        toast({
+          title: "Setting Up AI Receptionist",
+          description: data.message || "Your AI Receptionist is being set up...",
+        });
+        setLocation('/ai-receptionist');
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Checkout Error",
+        description: error.message || "Failed to start AI Receptionist checkout.",
         variant: "destructive",
       });
     },
@@ -608,14 +636,61 @@ export default function SubscriptionPage() {
                 <p className="text-xs text-muted-foreground">Includes dedicated number, AI voice agent, call logs, and lead capture. Requires Pro or Team plan.</p>
               </div>
               {hasPaidPlan ? (
-                <Button 
-                  variant="outline"
-                  onClick={() => setLocation('/settings')}
-                >
-                  <Headphones className="h-4 w-4 mr-1.5" />
-                  {status?.addons?.aiReceptionistEnabled ? 'Manage AI Receptionist' : 'Set Up AI Receptionist'}
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
+                (() => {
+                  const aiStatus = status?.addons?.aiReceptionistApprovalStatus;
+                  if (status?.addons?.aiReceptionistEnabled || aiStatus === 'approved') {
+                    return (
+                      <Button 
+                        variant="outline"
+                        onClick={() => setLocation('/ai-receptionist')}
+                      >
+                        <Headphones className="h-4 w-4 mr-1.5" />
+                        Manage AI Receptionist
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    );
+                  }
+                  if (aiStatus === 'provisioning') {
+                    return (
+                      <Button 
+                        variant="outline"
+                        onClick={() => setLocation('/ai-receptionist')}
+                      >
+                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                        Setting Up...
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    );
+                  }
+                  if (aiStatus === 'pending_approval') {
+                    return (
+                      <Button 
+                        variant="outline"
+                        onClick={() => setLocation('/ai-receptionist')}
+                      >
+                        <Clock className="h-4 w-4 mr-1.5" />
+                        Pending Review
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    );
+                  }
+                  return (
+                    <Button 
+                      variant="default"
+                      onClick={() => aiReceptionistCheckoutMutation.mutate()}
+                      disabled={aiReceptionistCheckoutMutation.isPending}
+                      data-testid="button-add-ai-receptionist"
+                    >
+                      {aiReceptionistCheckoutMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                      ) : (
+                        <Headphones className="h-4 w-4 mr-1.5" />
+                      )}
+                      Add AI Receptionist
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  );
+                })()
               ) : (
                 <Button variant="outline" disabled>
                   <Shield className="h-4 w-4 mr-1.5" />

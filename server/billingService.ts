@@ -1214,3 +1214,109 @@ export async function upgradeProToTeamTrial(
     return { success: false, error: error.message || 'Failed to upgrade subscription' };
   }
 }
+
+export async function createAiReceptionistCheckout(
+  userId: string,
+  email: string,
+  successUrl: string,
+  cancelUrl: string,
+  businessName?: string,
+): Promise<CheckoutSessionResult> {
+  const stripe = await getUncachableStripeClient();
+  if (!stripe) {
+    return { success: false, error: 'Payment system not configured' };
+  }
+
+  try {
+    const customerId = await getOrCreateStripeCustomer(stripe, userId, email, businessName);
+    const priceId = await getOrCreateAiReceptionistPrice(stripe);
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_collection: 'always',
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      billing_address_collection: 'auto',
+      customer_update: {
+        address: 'auto',
+        name: 'auto',
+      },
+      subscription_data: {
+        metadata: {
+          userId,
+          type: 'ai_receptionist',
+          platform: 'jobrunner',
+        },
+      },
+      metadata: {
+        userId,
+        type: 'ai_receptionist',
+      },
+    });
+
+    return {
+      success: true,
+      sessionId: session.id,
+      sessionUrl: session.url || undefined,
+    };
+  } catch (error: any) {
+    console.error('Error creating AI Receptionist checkout:', error);
+    return { success: false, error: error.message || 'Failed to create checkout session' };
+  }
+}
+
+async function getOrCreateAiReceptionistPrice(stripe: Stripe): Promise<string> {
+  const prices = await stripe.prices.list({
+    lookup_keys: ['jobrunner_ai_receptionist_monthly'],
+    active: true,
+    limit: 1,
+  });
+
+  if (prices.data.length > 0) {
+    return prices.data[0].id;
+  }
+
+  const products = await stripe.products.list({
+    active: true,
+    limit: 100,
+  });
+
+  let product = products.data.find(
+    (p) => p.name === PRICING.addons.aiReceptionist.name && p.active
+  );
+
+  if (!product) {
+    product = await stripe.products.create({
+      name: PRICING.addons.aiReceptionist.name,
+      description: PRICING.addons.aiReceptionist.description,
+      metadata: {
+        platform: 'jobrunner',
+        type: 'addon',
+        addon: 'ai_receptionist',
+      },
+    });
+  }
+
+  const price = await stripe.prices.create({
+    product: product.id,
+    unit_amount: PRICING.addons.aiReceptionist.monthly,
+    currency: 'aud',
+    recurring: {
+      interval: 'month',
+    },
+    lookup_key: 'jobrunner_ai_receptionist_monthly',
+    metadata: {
+      type: 'addon',
+      addon: 'ai_receptionist',
+    },
+  });
+
+  return price.id;
+}

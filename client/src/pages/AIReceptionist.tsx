@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +49,10 @@ interface ReceptionistConfig {
   businessHours: BusinessHours | null;
   dedicatedPhoneNumber: string | null;
   vapiAssistantId: string | null;
+  approvalStatus: string;
+  provisioningError: string | null;
+  provisionedAt: string | null;
+  approvedAt: string | null;
 }
 
 interface TransferNumber {
@@ -222,9 +226,20 @@ export default function AIReceptionist() {
   const canManageConfig = isOwner || isManager || isOfficeAdmin;
   const canToggleEnabled = isOwner || isOfficeAdmin;
 
+  const [checkoutReturn, setCheckoutReturn] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('provisioning') === 'true';
+  });
+
   const { data: config, isLoading: configLoading, isError: configError } = useQuery<ReceptionistConfig>({
     queryKey: ["/api/ai-receptionist/config"],
     enabled: canManageConfig,
+    refetchInterval: (query) => {
+      const status = query.state.data?.approvalStatus;
+      if (status === 'provisioning') return 3000;
+      if (checkoutReturn) return 3000;
+      return false;
+    },
   });
 
   const { data: voices = [] } = useQuery<VoiceOption[]>({
@@ -236,6 +251,21 @@ export default function AIReceptionist() {
     queryKey: ["/api/ai-receptionist/team/availability"],
     enabled: isTeam && canManageConfig,
   });
+
+  useEffect(() => {
+    if (checkoutReturn) {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-receptionist/config"] });
+      window.history.replaceState({}, '', window.location.pathname);
+      const timeout = setTimeout(() => setCheckoutReturn(false), 60000);
+      return () => clearTimeout(timeout);
+    }
+  }, [checkoutReturn]);
+
+  useEffect(() => {
+    if (checkoutReturn && config?.approvalStatus && config.approvalStatus !== 'none' && config.approvalStatus !== 'provisioning') {
+      setCheckoutReturn(false);
+    }
+  }, [checkoutReturn, config?.approvalStatus]);
 
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<{
@@ -407,11 +437,103 @@ export default function AIReceptionist() {
   const isEnabled = config?.enabled || false;
   const currentMode = config?.mode || "off";
   const currentVoice = config?.voice || "Jess";
+  const approvalStatus = config?.approvalStatus || "none";
+  const isProvisioning = approvalStatus === "provisioning" || (checkoutReturn && (approvalStatus === "none" || !config));
+  const isPendingApproval = approvalStatus === "pending_approval";
+  const isFailed = approvalStatus === "failed";
+  const isApproved = approvalStatus === "approved";
+
+  // Provisioning loading screen
+  if (isProvisioning) {
+    return (
+      <PageShell>
+        <PageHeader title="AI Receptionist" />
+        <div className="p-4 max-w-3xl mx-auto">
+          <Card>
+            <CardContent className="p-12 text-center space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin mx-auto" style={{ color: "hsl(var(--trade))" }} />
+              <h2 className="text-xl font-semibold">Setting up your AI Receptionist...</h2>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                We're purchasing your dedicated Australian phone number, setting up your AI voice assistant, 
+                and configuring everything for your business. This usually takes about 30 seconds.
+              </p>
+              <div className="flex flex-col gap-2 text-xs text-muted-foreground pt-4">
+                <div className="flex items-center gap-2 justify-center">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Searching for available Australian numbers...</span>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/ai-receptionist/config"] })}
+              >
+                Refresh Status
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </PageShell>
+    );
+  }
+
+  // Failed provisioning state
+  if (isFailed) {
+    return (
+      <PageShell>
+        <PageHeader title="AI Receptionist" />
+        <div className="p-4 max-w-3xl mx-auto space-y-4">
+          <Card>
+            <CardContent className="p-8 text-center space-y-3">
+              <AlertCircle className="h-10 w-10 mx-auto text-destructive" />
+              <h2 className="text-lg font-semibold">Setup Issue</h2>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                There was an issue setting up your AI Receptionist. Our team has been notified and will resolve it shortly.
+              </p>
+              {config?.provisioningError && (
+                <p className="text-xs text-muted-foreground bg-muted rounded-md p-3 max-w-md mx-auto">
+                  {config.provisioningError}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                If this persists, please contact{" "}
+                <a href="mailto:admin@avwebinnovation.com" className="text-primary hover:underline">
+                  support
+                </a>.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell>
       <PageHeader title="AI Receptionist" />
       <div className="p-4 space-y-4 max-w-3xl mx-auto">
+        {/* Pending Approval Banner */}
+        {isPendingApproval && (
+          <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
+            <CardContent className="p-4 flex items-start gap-3">
+              <Clock className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-amber-900 dark:text-amber-100">Pending Admin Review</h3>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  Your AI Receptionist has been set up! Our team will review and activate it within 24 hours.
+                  You can configure your settings below while you wait.
+                </p>
+                {config?.dedicatedPhoneNumber && (
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-2">
+                    Your new number: <span className="font-medium">{config.dedicatedPhoneNumber}</span>
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -420,16 +542,24 @@ export default function AIReceptionist() {
             </CardTitle>
             {canManageConfig && (
               <div className="flex items-center gap-3 flex-wrap">
-                <Badge className={isEnabled ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0" : ""}>
-                  {isEnabled ? "Active" : "Inactive"}
-                </Badge>
-                {canToggleEnabled && (
-                  <Switch
-                    checked={isEnabled}
-                    onCheckedChange={(checked) => toggleEnabledMutation.mutate(checked)}
-                    disabled={toggleEnabledMutation.isPending}
-                    data-testid="switch-ai-receptionist-enabled"
-                  />
+                {isPendingApproval ? (
+                  <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border-0">
+                    Pending Approval
+                  </Badge>
+                ) : (
+                  <>
+                    <Badge className={isEnabled ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0" : ""}>
+                      {isEnabled ? "Active" : "Inactive"}
+                    </Badge>
+                    {canToggleEnabled && isApproved && (
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={(checked) => toggleEnabledMutation.mutate(checked)}
+                        disabled={toggleEnabledMutation.isPending}
+                        data-testid="switch-ai-receptionist-enabled"
+                      />
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -462,7 +592,7 @@ export default function AIReceptionist() {
                   Configure
                 </Button>
               )}
-              {canManageConfig && (
+              {canManageConfig && (isApproved || isEnabled) && (
                 <Button
                   variant="outline"
                   size="sm"
