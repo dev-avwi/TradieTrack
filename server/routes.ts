@@ -660,8 +660,8 @@ async function gatherAIContext(userId: string, storage: any, userContext?: UserC
           id: i.id,
           clientName: client?.name || 'Unknown Client',
           clientId: i.clientId,
-          clientEmail: client?.email,
-          clientPhone: client?.phone,
+          clientEmail: (userContext && hasPermission(userContext, PERMISSIONS.READ_CLIENTS_SENSITIVE)) || isOwner ? client?.email : undefined,
+          clientPhone: (userContext && hasPermission(userContext, PERMISSIONS.READ_CLIENTS_SENSITIVE)) || isOwner ? client?.phone : undefined,
           amount: parseFloat(i.total || '0'),
           daysPastDue,
           invoiceNumber: i.number
@@ -705,7 +705,7 @@ async function gatherAIContext(userId: string, storage: any, userContext?: UserC
           id: q.id,
           clientName: client?.name || 'Unknown Client',
           clientId: q.clientId,
-          clientEmail: client?.email,
+          clientEmail: (userContext && hasPermission(userContext, PERMISSIONS.READ_CLIENTS_SENSITIVE)) || isOwner ? client?.email : undefined,
           total: parseFloat(q.total || '0'),
           createdDaysAgo,
           quoteNumber: q.number
@@ -35904,6 +35904,14 @@ Respond with JSON in this format:
         }
         businessOwnerId = membership.businessOwnerId;
       }
+
+      if (!IS_BETA) {
+        const ownerUser = await storage.getUser(businessOwnerId);
+        if (ownerUser && ownerUser.subscriptionTier === 'free' && !ownerUser.betaLifetimeAccess) {
+          return res.status(403).json({ error: 'Dedicated phone numbers require a Pro or Team plan.', upgradeRequired: true, requiredTier: 'pro' });
+        }
+      }
+
       const { phoneNumber } = req.body;
       
       if (!phoneNumber || !/^\+\d{10,15}$/.test(phoneNumber)) {
@@ -44211,7 +44219,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/whs/incidents", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
+  app.post("/api/whs/incidents", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const report = await storage.createIncidentReport({ ...req.body, userId });

@@ -254,10 +254,17 @@ export default function WebsiteAddon() {
                 <p className="text-sm text-muted-foreground">Included in the Full Bundle, or add standalone</p>
                 <p className="text-2xl font-bold mt-1">Custom quote based on your needs</p>
               </div>
-              <Button onClick={() => setLocation("/settings/subscription")} data-testid="button-upgrade-website">
-                <Sparkles className="h-4 w-4 mr-2" />
-                Get Your Website
-              </Button>
+              {canPurchaseAddons ? (
+                <Button onClick={() => setLocation("/settings/subscription")} data-testid="button-upgrade-website">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Get Your Website
+                </Button>
+              ) : (
+                <Button onClick={() => setLocation("/settings/subscription")} data-testid="button-upgrade-website">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Upgrade to Pro
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
