@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { randomBytes, randomUUID, createHash } from "crypto";
@@ -4330,6 +4331,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     req.userId = user.id;
     req.user = user;
+
+    Sentry.setUser({
+      id: String(user.id),
+      email: user.email,
+      username: user.fullName,
+    });
+    Sentry.setTag("businessName", user.businessName || "unknown");
 
     if (isDemoSession) {
       const method = req.method.toUpperCase();
@@ -42891,6 +42899,10 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const statusCode = err.status || err.statusCode || 500;
     const requestId = req.headers['x-request-id'] || randomUUID().substring(0, 8);
+
+    if (statusCode >= 500) {
+      Sentry.captureException(err);
+    }
 
     const logEntry = {
       level: statusCode >= 500 ? 'error' : 'warn',

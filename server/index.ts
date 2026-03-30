@@ -1,3 +1,5 @@
+import "./instrument";
+import * as Sentry from "@sentry/node";
 import express, { type Request, Response, NextFunction } from "express";
 import { randomUUID } from "crypto";
 import session from "express-session";
@@ -12,6 +14,7 @@ import { storage } from "./storage";
 import { setupWebSocket } from "./websocket";
 
 process.on('uncaughtException', (error: Error) => {
+  Sentry.captureException(error);
   console.error(JSON.stringify({
     level: 'fatal',
     type: 'uncaughtException',
@@ -22,6 +25,7 @@ process.on('uncaughtException', (error: Error) => {
 });
 
 process.on('unhandledRejection', (reason: unknown) => {
+  Sentry.captureException(reason);
   const message = reason instanceof Error ? reason.message : String(reason);
   const stack = reason instanceof Error ? reason.stack : undefined;
   console.error(JSON.stringify({
@@ -266,6 +270,8 @@ if (process.env.DATABASE_URL) {
   
   const server = await registerRoutes(app);
   httpServer = server;
+
+  Sentry.setupExpressErrorHandler(app);
 
   // Set up WebSocket for real-time location tracking with session auth
   setupWebSocket(server, sessionStore);

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { RefreshCw } from "lucide-react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
@@ -980,6 +981,18 @@ function AppLayout() {
     retry: false,
     staleTime: 30000, // 30 seconds
   });
+
+  useEffect(() => {
+    if (userCheck) {
+      Sentry.setUser({
+        id: String(userCheck.id),
+        email: userCheck.email,
+        username: userCheck.businessName || userCheck.fullName,
+      });
+    } else if (!isLoading) {
+      Sentry.setUser(null);
+    }
+  }, [userCheck, isLoading]);
 
   // Check if user needs onboarding (check business settings)
   // IMPORTANT: This must be called before any conditional returns to satisfy Rules of Hooks
