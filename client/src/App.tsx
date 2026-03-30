@@ -478,7 +478,40 @@ function Router({
   }, [onNavigate]);
 
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-full p-8"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+    <Suspense fallback={
+      <div className="w-full px-6 lg:px-8 py-6 space-y-6 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 w-48 bg-muted rounded-md" />
+            <div className="h-4 w-64 bg-muted rounded-md" />
+          </div>
+          <div className="h-9 w-28 bg-muted rounded-md" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-lg border bg-card p-5 space-y-3">
+              <div className="h-4 w-24 bg-muted rounded-md" />
+              <div className="h-8 w-32 bg-muted rounded-md" />
+              <div className="h-3 w-40 bg-muted rounded-md" />
+            </div>
+          ))}
+        </div>
+        <div className="rounded-lg border bg-card p-5 space-y-4">
+          <div className="h-5 w-36 bg-muted rounded-md" />
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-muted rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-40 bg-muted rounded-md" />
+                  <div className="h-3 w-56 bg-muted rounded-md" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    }>
       <Switch location={location}>
       {/* Work page - unified job workflow view */}
       <Route path="/work" component={() => (
@@ -1384,7 +1417,32 @@ function AppLayout() {
         onLogout={handleLogout} 
         onNavigate={(path) => setLocation(path)}
       >
-        <Suspense fallback={<div className="flex items-center justify-center h-full p-8"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+        <Suspense fallback={
+          <div className="w-full px-6 lg:px-8 py-6 space-y-6 animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-7 w-48 bg-muted rounded-md" />
+                <div className="h-4 w-64 bg-muted rounded-md" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="rounded-lg border bg-card p-5 space-y-3">
+                  <div className="h-4 w-20 bg-muted rounded-md" />
+                  <div className="h-8 w-24 bg-muted rounded-md" />
+                </div>
+              ))}
+            </div>
+            <div className="rounded-lg border bg-card p-5 space-y-4">
+              <div className="h-5 w-32 bg-muted rounded-md" />
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-12 w-full bg-muted rounded-md" />
+                ))}
+              </div>
+            </div>
+          </div>
+        }>
         <Switch>
           <Route path="/admin" component={AdminDashboard} />
           <Route path="/admin/comms" component={AdminDashboard} />
@@ -1631,7 +1689,15 @@ function App() {
         <NetworkProvider>
           <JobCollaborationProvider>
           <TooltipProvider>
-            <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-screen">
+                <div className="space-y-4 w-full max-w-sm px-6 animate-pulse">
+                  <div className="h-10 w-10 bg-muted rounded-lg mx-auto" />
+                  <div className="h-5 w-32 bg-muted rounded-md mx-auto" />
+                  <div className="h-3 w-48 bg-muted rounded-md mx-auto" />
+                </div>
+              </div>
+            }>
             <Switch>
               {/* Public routes - no auth required, more specific paths first */}
               <Route path="/q/:token">{(params) => <QuoteShortRedirect token={params.token} />}</Route>

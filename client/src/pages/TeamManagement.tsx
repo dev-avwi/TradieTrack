@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -714,8 +715,27 @@ export default function TeamManagement() {
             <h1 className="text-2xl font-bold">Team Management</h1>
             <p className="text-muted-foreground">Manage your team members and roles</p>
           </div>
+          <Skeleton className="h-9 w-32" />
         </div>
-        <div className="text-center py-8">Loading...</div>
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-20" />
+          <Skeleton className="h-9 w-20" />
+          <Skeleton className="h-9 w-20" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardContent className="flex items-center gap-4 py-4 px-5">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-56" />
+                </div>
+                <Skeleton className="h-6 w-16 rounded-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }

@@ -22,7 +22,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
-  Lock
+  Lock,
+  Mail
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -229,6 +230,41 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
     }
   };
 
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+
+  const handleResendVerification = async () => {
+    setIsResending(true);
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginData.email }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast({
+          title: "Verification email sent",
+          description: `Check your inbox at ${loginData.email}`
+        });
+      } else {
+        toast({
+          title: "Could not resend",
+          description: result.error || "Please try again in a few minutes.",
+          variant: "destructive"
+        });
+      }
+    } catch {
+      toast({
+        title: "Could not resend",
+        description: "Please check your connection and try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -239,6 +275,7 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
 
     setIsLoading(true);
     setError('');
+    setNeedsVerification(false);
 
     try {
       const response = await fetch('/api/auth/login', {
@@ -261,7 +298,13 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
         onLoginSuccess();
         setLocation('/');
       } else {
-        setError(result.error || 'Invalid email or password.');
+        const errorMsg = result.error || 'Invalid email or password.';
+        if (errorMsg.toLowerCase().includes('verify') || errorMsg.toLowerCase().includes('verification')) {
+          setNeedsVerification(true);
+          setError('');
+        } else {
+          setError(errorMsg);
+        }
       }
     } catch (error: any) {
       setError('Unable to sign in. Please check your connection and try again.');
@@ -624,7 +667,42 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                         </div>
                       </div>
 
-                      {error && authMode === 'login' && (
+                      {needsVerification && authMode === 'login' && (
+                        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3">
+                          <div className="flex items-start gap-3">
+                            <Mail className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Email not verified yet</p>
+                              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                We sent a verification link to <span className="font-medium">{loginData.email}</span>. Check your inbox (and spam folder) then click the link to activate your account.
+                              </p>
+                            </div>
+                          </div>
+                          <Button 
+                            type="button"
+                            onClick={handleResendVerification}
+                            disabled={isResending}
+                            size="sm"
+                            variant="outline"
+                            className="w-full"
+                            data-testid="button-resend-verification"
+                          >
+                            {isResending ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                Sending...
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="w-3.5 h-3.5 mr-1.5" />
+                                Resend Verification Email
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+
+                      {error && authMode === 'login' && !needsVerification && (
                         <div className="flex items-center gap-2 p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                           <AlertCircle className="h-4 w-4 flex-shrink-0" />
                           <span>{error}</span>
