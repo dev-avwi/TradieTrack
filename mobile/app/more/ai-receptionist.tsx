@@ -137,7 +137,8 @@ export default function AIReceptionistScreen() {
         if (data.businessHours?.timezone) setTimezone(data.businessHours.timezone);
         if (data.knowledgeBank) setKnowledgeBank(data.knowledgeBank);
       }
-    } catch {
+    } catch (e) {
+      Alert.alert('Error', 'Failed to load AI Receptionist settings. Pull down to retry.');
     } finally {
       setIsLoading(false);
     }
@@ -147,7 +148,8 @@ export default function AIReceptionistScreen() {
     try {
       const response = await api.get<VoiceChangeRequest[]>('/api/ai-receptionist/voice-requests');
       setVoiceRequests(response.data || []);
-    } catch {}
+    } catch (e) {
+    }
   }, []);
 
   useEffect(() => { fetchConfig(); fetchVoiceRequests(); }, [fetchConfig, fetchVoiceRequests]);

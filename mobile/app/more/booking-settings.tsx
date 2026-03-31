@@ -86,7 +86,8 @@ export default function BookingSettingsScreen() {
         setSelectedDays(data.availableDays || [1, 2, 3, 4, 5]);
         setServices(data.services || []);
       }
-    } catch {
+    } catch (e) {
+      Alert.alert('Error', 'Failed to load booking settings. Pull down to retry.');
     } finally {
       setIsLoading(false);
     }
@@ -228,10 +229,11 @@ export default function BookingSettingsScreen() {
         <TextInput
           style={styles.input}
           value={slug}
-          onChangeText={setSlug}
+          onChangeText={(text) => setSlug(text.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/--+/g, '-'))}
           placeholder="e.g. book-now"
           placeholderTextColor={colors.mutedForeground}
           autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <Text style={styles.inputLabel}>Page Title</Text>

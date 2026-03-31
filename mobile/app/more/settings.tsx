@@ -1508,9 +1508,16 @@ export default function SettingsScreen() {
               <Text style={styles.pageTitle}>Settings</Text>
               <Text style={styles.pageSubtitle}>Manage your business profile and preferences</Text>
             </View>
-            <TouchableOpacity style={styles.saveButton} data-testid="button-save-settings">
-              <Text style={styles.saveButtonText}>Save Changes</Text>
-            </TouchableOpacity>
+            {activeTab === 'payment' && (
+              <TouchableOpacity 
+                style={[styles.saveButton, paymentSaving && { opacity: 0.7 }]} 
+                onPress={savePaymentSettings}
+                disabled={paymentSaving}
+                data-testid="button-save-settings"
+              >
+                <Text style={styles.saveButtonText}>{paymentSaving ? 'Saving...' : 'Save Changes'}</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <TouchableOpacity 
@@ -1845,6 +1852,7 @@ export default function SettingsScreen() {
                       try {
                         await api.patch('/api/business-settings', { gstEnabled: value });
                         setBusinessSettings((prev: any) => prev ? { ...prev, gstEnabled: value } : prev);
+                        Alert.alert('Updated', `GST ${value ? 'enabled' : 'disabled'} on documents`);
                       } catch (e) {
                         Alert.alert('Error', 'Failed to update GST setting');
                       }
@@ -1904,6 +1912,7 @@ export default function SettingsScreen() {
                         try {
                           await api.patch('/api/business-settings', { simpleMode: value });
                           setBusinessSettings((prev: any) => prev ? { ...prev, simpleMode: value } : prev);
+                          Alert.alert('Updated', `Solo Operator Mode ${value ? 'enabled' : 'disabled'}`);
                         } catch (e) {
                           Alert.alert('Error', 'Failed to update mode');
                         }
@@ -1930,7 +1939,10 @@ export default function SettingsScreen() {
                   <TextInput
                     style={styles.input}
                     value={paymentData.defaultHourlyRate}
-                    onChangeText={(text) => setPaymentData(prev => ({ ...prev, defaultHourlyRate: text }))}
+                    onChangeText={(text) => {
+                      const cleaned = text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                      setPaymentData(prev => ({ ...prev, defaultHourlyRate: cleaned }));
+                    }}
                     placeholder="100"
                     placeholderTextColor={colors.mutedForeground}
                     keyboardType="decimal-pad"
@@ -1942,7 +1954,10 @@ export default function SettingsScreen() {
                   <TextInput
                     style={styles.input}
                     value={paymentData.calloutFee}
-                    onChangeText={(text) => setPaymentData(prev => ({ ...prev, calloutFee: text }))}
+                    onChangeText={(text) => {
+                      const cleaned = text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                      setPaymentData(prev => ({ ...prev, calloutFee: cleaned }));
+                    }}
                     placeholder="80"
                     placeholderTextColor={colors.mutedForeground}
                     keyboardType="decimal-pad"
