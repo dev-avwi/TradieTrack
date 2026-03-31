@@ -16,6 +16,8 @@ import {
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { API_URL, api } from '../../src/lib/api';
@@ -34,6 +36,8 @@ const PLAN_FEATURES = [
 
 const SETTINGS_TABS = [
   { key: 'account', label: 'Account', icon: 'user' },
+  { key: 'business', label: 'Business', icon: 'briefcase' },
+  { key: 'payment', label: 'Payment', icon: 'credit-card' },
   { key: 'templates', label: 'Templates', icon: 'file-text' },
   { key: 'alerts', label: 'Alerts', icon: 'bell' },
   { key: 'plan', label: 'Plan', icon: 'award' },
@@ -817,6 +821,101 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing['4xl'],
   },
+  usageBarContainer: {
+    marginBottom: spacing.md,
+  },
+  usageBarLabel: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  usageBarLabelText: {
+    ...typography.caption,
+    color: colors.foreground,
+  },
+  usageBarValueText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  usageBarTrack: {
+    height: 8,
+    backgroundColor: colors.muted,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+  usageBarFill: {
+    height: '100%',
+    borderRadius: radius.full,
+  },
+  passwordInput: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md + 2,
+    fontSize: 16,
+    color: colors.foreground,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+  },
+  exportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  exportRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+  },
+  exportIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+  },
+  exportButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  businessInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  businessInfoLabel: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
+  businessInfoValue: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '500',
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: spacing.md,
+  },
 });
 
 export default function SettingsScreen() {
@@ -856,6 +955,47 @@ export default function SettingsScreen() {
     defaultLineItems: []
   });
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+
+  // Business settings state
+  const [businessSettings, setBusinessSettings] = useState<any>(null);
+  const [businessLoading, setBusinessLoading] = useState(false);
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentData, setPaymentData] = useState({
+    defaultHourlyRate: '100',
+    calloutFee: '80',
+    quoteValidityDays: 30,
+    defaultPaymentTermsDays: 14,
+    lateFeeRate: '1.5% per month',
+    warrantyPeriod: '12 months',
+    bankDetails: '',
+    quoteTerms: '',
+    invoiceTerms: '',
+    paymentInstructions: '',
+  });
+
+  // Usage tracking state
+  const [usageInfo, setUsageInfo] = useState<any>(null);
+
+  // AI settings state
+  const AI_SETTINGS_KEY = '@jobrunner/ai_settings';
+  const [aiSettings, setAiSettings] = useState({
+    aiEnabled: true,
+    aiPhotoAnalysis: true,
+    aiAutoCategorizephotos: true,
+    aiSuggestions: true,
+  });
+
+  // Data export state
+  const [exportingKey, setExportingKey] = useState<string | null>(null);
+
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
 
   // Load geofence settings
   const loadGeofenceSettings = useCallback(async () => {
@@ -955,6 +1095,155 @@ export default function SettingsScreen() {
       return updated;
     });
   }, [saveNotificationSettings]);
+
+  // Business settings handlers
+  const loadBusinessSettings = useCallback(async () => {
+    setBusinessLoading(true);
+    try {
+      const response = await api.get('/api/business-settings');
+      if (response.data) {
+        const d = response.data as any;
+        setBusinessSettings(d);
+        setPaymentData({
+          defaultHourlyRate: String(d.defaultHourlyRate || '100'),
+          calloutFee: String(d.calloutFee || '80'),
+          quoteValidityDays: d.quoteValidityDays || 30,
+          defaultPaymentTermsDays: d.defaultPaymentTermsDays || 14,
+          lateFeeRate: d.lateFeeRate || '1.5% per month',
+          warrantyPeriod: d.warrantyPeriod || '12 months',
+          bankDetails: d.bankDetails || '',
+          quoteTerms: d.quoteTerms || '',
+          invoiceTerms: d.invoiceTerms || '',
+          paymentInstructions: d.paymentInstructions || '',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load business settings:', error);
+    }
+    setBusinessLoading(false);
+  }, []);
+
+  const savePaymentSettings = useCallback(async () => {
+    setPaymentSaving(true);
+    try {
+      const response = await api.patch('/api/business-settings', {
+        defaultHourlyRate: paymentData.defaultHourlyRate,
+        calloutFee: paymentData.calloutFee,
+        quoteValidityDays: paymentData.quoteValidityDays,
+        defaultPaymentTermsDays: paymentData.defaultPaymentTermsDays,
+        lateFeeRate: paymentData.lateFeeRate,
+        warrantyPeriod: paymentData.warrantyPeriod,
+        bankDetails: paymentData.bankDetails,
+        quoteTerms: paymentData.quoteTerms,
+        invoiceTerms: paymentData.invoiceTerms,
+        paymentInstructions: paymentData.paymentInstructions,
+      });
+      if (response.error) {
+        Alert.alert('Error', response.error);
+      } else {
+        Alert.alert('Saved', 'Payment settings updated successfully');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to save payment settings');
+    }
+    setPaymentSaving(false);
+  }, [paymentData]);
+
+  // Usage tracking
+  const loadUsageInfo = useCallback(async () => {
+    try {
+      const response = await api.get('/api/subscription/usage');
+      if (response.data) {
+        setUsageInfo(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load usage info:', error);
+    }
+  }, []);
+
+  // AI settings handlers
+  const loadAiSettings = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem('@jobrunner/ai_settings');
+      if (stored) {
+        setAiSettings(JSON.parse(stored));
+      }
+    } catch (error) {
+      console.error('Failed to load AI settings:', error);
+    }
+  }, []);
+
+  const updateAiSetting = useCallback((key: string, value: boolean) => {
+    setAiSettings(prev => {
+      const updated = { ...prev, [key]: value };
+      AsyncStorage.setItem('@jobrunner/ai_settings', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  // Password change
+  const handleChangePassword = useCallback(async () => {
+    if (!passwordData.currentPassword || !passwordData.newPassword) {
+      Alert.alert('Error', 'Please fill in all password fields');
+      return;
+    }
+    if (passwordData.newPassword.length < 6) {
+      Alert.alert('Error', 'New password must be at least 6 characters');
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      Alert.alert('Error', 'New passwords do not match');
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      const response = await api.post('/api/auth/change-password', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      if (response.error) {
+        Alert.alert('Error', response.error);
+      } else {
+        Alert.alert('Success', 'Password changed successfully');
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setShowPasswordSection(false);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to change password');
+    }
+    setPasswordSaving(false);
+  }, [passwordData]);
+
+  const handleExport = useCallback(async (key: string) => {
+    setExportingKey(key);
+    try {
+      const authToken = await api.getToken();
+      const filename = `jobrunner-${key}-export.csv`;
+      const fileUri = `${FileSystem.documentDirectory}${filename}`;
+      const downloadResult = await FileSystem.downloadAsync(
+        `${API_URL}/api/export/${key}`,
+        fileUri,
+        { headers: { 'Authorization': `Bearer ${authToken}` } }
+      );
+      if (downloadResult.status === 200) {
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(downloadResult.uri, {
+            mimeType: 'text/csv',
+            dialogTitle: `Export ${key}`,
+            UTI: 'public.comma-separated-values-text',
+          });
+        } else {
+          Alert.alert('Exported', `File saved to ${filename}`);
+        }
+      } else {
+        Alert.alert('Error', 'Failed to download export file');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Could not export data');
+    }
+    setExportingKey(null);
+  }, []);
 
   // Templates handlers
   const loadTemplates = useCallback(async () => {
@@ -1172,9 +1461,12 @@ export default function SettingsScreen() {
       loadGeofenceSettings(), 
       loadNotificationSettings(),
       loadTemplates(),
+      loadBusinessSettings(),
+      loadUsageInfo(),
+      loadAiSettings(),
     ]);
     setIsLoading(false);
-  }, [refreshUser, loadGeofenceSettings, loadNotificationSettings, loadTemplates]);
+  }, [refreshUser, loadGeofenceSettings, loadNotificationSettings, loadTemplates, loadBusinessSettings, loadUsageInfo, loadAiSettings]);
 
   useEffect(() => {
     refreshData();
@@ -1343,21 +1635,6 @@ export default function SettingsScreen() {
 
               <TouchableOpacity 
                 style={styles.settingsCard}
-                onPress={() => router.push('/more/business-settings')}
-                data-testid="button-business-settings"
-              >
-                <View style={styles.settingsCardHeader}>
-                  <Feather name="briefcase" size={20} color={colors.primary} />
-                  <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>Business Details</Text>
-                    <Text style={styles.settingsCardSubtitle}>Update your business information</Text>
-                  </View>
-                </View>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.settingsCard}
                 onPress={() => router.push('/more/profile-edit')}
                 data-testid="button-profile-settings"
               >
@@ -1370,6 +1647,73 @@ export default function SettingsScreen() {
                 </View>
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.settingsCard}
+                onPress={() => router.push('/more/app-settings')}
+                data-testid="button-app-settings"
+              >
+                <View style={styles.settingsCardHeader}>
+                  <Feather name="settings" size={20} color={colors.primary} />
+                  <View style={styles.settingsCardInfo}>
+                    <Text style={styles.settingsCardTitle}>App Settings</Text>
+                    <Text style={styles.settingsCardSubtitle}>Theme, display preferences & more</Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <View style={styles.subscriptionCard}>
+                <TouchableOpacity
+                  style={styles.subscriptionHeader}
+                  onPress={() => setShowPasswordSection(!showPasswordSection)}
+                >
+                  <Feather name="lock" size={20} color={colors.primary} />
+                  <Text style={[styles.subscriptionTitle, { flex: 1 }]}>Security</Text>
+                  <Feather name={showPasswordSection ? 'chevron-up' : 'chevron-down'} size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+
+                {showPasswordSection && (
+                  <View style={{ marginTop: spacing.md }}>
+                    <Text style={[styles.planDescription, { marginBottom: spacing.md }]}>
+                      Change your account password
+                    </Text>
+                    <TextInput
+                      style={styles.passwordInput}
+                      value={passwordData.currentPassword}
+                      onChangeText={(text) => setPasswordData(prev => ({ ...prev, currentPassword: text }))}
+                      placeholder="Current password"
+                      placeholderTextColor={colors.mutedForeground}
+                      secureTextEntry
+                    />
+                    <TextInput
+                      style={styles.passwordInput}
+                      value={passwordData.newPassword}
+                      onChangeText={(text) => setPasswordData(prev => ({ ...prev, newPassword: text }))}
+                      placeholder="New password"
+                      placeholderTextColor={colors.mutedForeground}
+                      secureTextEntry
+                    />
+                    <TextInput
+                      style={styles.passwordInput}
+                      value={passwordData.confirmPassword}
+                      onChangeText={(text) => setPasswordData(prev => ({ ...prev, confirmPassword: text }))}
+                      placeholder="Confirm new password"
+                      placeholderTextColor={colors.mutedForeground}
+                      secureTextEntry
+                    />
+                    <TouchableOpacity
+                      style={[styles.upgradeButton, passwordSaving && { opacity: 0.7 }]}
+                      onPress={handleChangePassword}
+                      disabled={passwordSaving}
+                    >
+                      <Text style={styles.upgradeButtonText}>
+                        {passwordSaving ? 'Changing...' : 'Change Password'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
 
               {user?.hasDemoData && (
                 <View style={[styles.subscriptionCard, { borderColor: colors.mutedForeground }]}>
@@ -1428,6 +1772,295 @@ export default function SettingsScreen() {
                   </TouchableOpacity>
                 </View>
               )}
+            </View>
+          )}
+
+          {activeTab === 'business' && (
+            <View style={styles.tabContentSection}>
+              {businessSettings && (
+                <View style={styles.subscriptionCard}>
+                  <View style={styles.subscriptionHeader}>
+                    <Feather name="briefcase" size={20} color={colors.primary} />
+                    <Text style={styles.subscriptionTitle}>Business Profile</Text>
+                  </View>
+                  <View style={styles.businessInfoRow}>
+                    <Text style={styles.businessInfoLabel}>Business Name</Text>
+                    <Text style={styles.businessInfoValue} numberOfLines={1}>{businessSettings.businessName || 'Not set'}</Text>
+                  </View>
+                  <View style={styles.businessInfoRow}>
+                    <Text style={styles.businessInfoLabel}>ABN</Text>
+                    <Text style={styles.businessInfoValue}>{businessSettings.abn || 'Not set'}</Text>
+                  </View>
+                  <View style={styles.businessInfoRow}>
+                    <Text style={styles.businessInfoLabel}>Phone</Text>
+                    <Text style={styles.businessInfoValue}>{businessSettings.phone || 'Not set'}</Text>
+                  </View>
+                  <View style={styles.businessInfoRow}>
+                    <Text style={styles.businessInfoLabel}>Email</Text>
+                    <Text style={styles.businessInfoValue} numberOfLines={1}>{businessSettings.email || 'Not set'}</Text>
+                  </View>
+                  <View style={[styles.businessInfoRow, { borderBottomWidth: 0 }]}>
+                    <Text style={styles.businessInfoLabel}>Trade Type</Text>
+                    <Text style={[styles.businessInfoValue, { textTransform: 'capitalize' }]}>{businessSettings.tradeType || 'General'}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.upgradeButton, { marginTop: spacing.md }]}
+                    onPress={() => router.push('/more/business-settings')}
+                  >
+                    <Text style={styles.upgradeButtonText}>Edit Business Details</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="toggle-right" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>GST Registration</Text>
+                </View>
+                <View style={[styles.featureRow, { justifyContent: 'space-between' }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.featureText}>Include GST on Documents</Text>
+                      <Text style={[styles.planDescription, { marginTop: 2 }]}>Apply 10% GST to quotes and invoices</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={businessSettings?.gstEnabled || false}
+                    onValueChange={async (value) => {
+                      try {
+                        await api.patch('/api/business-settings', { gstEnabled: value });
+                        setBusinessSettings((prev: any) => prev ? { ...prev, gstEnabled: value } : prev);
+                      } catch (e) {
+                        Alert.alert('Error', 'Failed to update GST setting');
+                      }
+                    }}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={businessSettings?.gstEnabled ? colors.primary : colors.mutedForeground}
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.settingsCard}
+                onPress={() => router.push('/more/branding')}
+                data-testid="button-branding-settings"
+              >
+                <View style={styles.settingsCardHeader}>
+                  <Feather name="droplet" size={20} color={colors.primary} />
+                  <View style={styles.settingsCardInfo}>
+                    <Text style={styles.settingsCardTitle}>Branding & Colours</Text>
+                    <Text style={styles.settingsCardSubtitle}>Logo, theme colour, document prefixes</Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.settingsCard}
+                onPress={() => router.push('/more/booking-settings' as any)}
+                data-testid="button-booking-settings"
+              >
+                <View style={styles.settingsCardHeader}>
+                  <Feather name="calendar" size={20} color={colors.primary} />
+                  <View style={styles.settingsCardInfo}>
+                    <Text style={styles.settingsCardTitle}>Online Booking Page</Text>
+                    <Text style={styles.settingsCardSubtitle}>Configure your client-facing booking form</Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              {businessSettings?.simpleMode !== undefined && (
+                <View style={styles.subscriptionCard}>
+                  <View style={styles.subscriptionHeader}>
+                    <Feather name="sliders" size={20} color={colors.primary} />
+                    <Text style={styles.subscriptionTitle}>Simple Mode</Text>
+                  </View>
+                  <View style={[styles.featureRow, { justifyContent: 'space-between' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.featureText}>Solo Operator Mode</Text>
+                        <Text style={[styles.planDescription, { marginTop: 2 }]}>Hide team management and dispatch for simpler workflow</Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={businessSettings?.simpleMode || false}
+                      onValueChange={async (value) => {
+                        try {
+                          await api.patch('/api/business-settings', { simpleMode: value });
+                          setBusinessSettings((prev: any) => prev ? { ...prev, simpleMode: value } : prev);
+                        } catch (e) {
+                          Alert.alert('Error', 'Failed to update mode');
+                        }
+                      }}
+                      trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                      thumbColor={businessSettings?.simpleMode ? colors.primary : colors.mutedForeground}
+                    />
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+
+          {activeTab === 'payment' && (
+            <View style={styles.tabContentSection}>
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="dollar-sign" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>Rates & Defaults</Text>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Default Hourly Rate ($)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={paymentData.defaultHourlyRate}
+                    onChangeText={(text) => setPaymentData(prev => ({ ...prev, defaultHourlyRate: text }))}
+                    placeholder="100"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Callout Fee ($)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={paymentData.calloutFee}
+                    onChangeText={(text) => setPaymentData(prev => ({ ...prev, calloutFee: text }))}
+                    placeholder="80"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Quote Validity (days)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={String(paymentData.quoteValidityDays)}
+                    onChangeText={(text) => setPaymentData(prev => ({ ...prev, quoteValidityDays: parseInt(text) || 30 }))}
+                    placeholder="30"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="number-pad"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Payment Terms (days)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={String(paymentData.defaultPaymentTermsDays)}
+                    onChangeText={(text) => setPaymentData(prev => ({ ...prev, defaultPaymentTermsDays: parseInt(text) || 14 }))}
+                    placeholder="14"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="number-pad"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Late Fee Rate</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={paymentData.lateFeeRate}
+                    onChangeText={(text) => setPaymentData(prev => ({ ...prev, lateFeeRate: text }))}
+                    placeholder="1.5% per month"
+                    placeholderTextColor={colors.mutedForeground}
+                  />
+                </View>
+
+                <View style={[styles.inputGroup, { marginBottom: 0 }]}>
+                  <Text style={styles.inputLabel}>Warranty Period</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={paymentData.warrantyPeriod}
+                    onChangeText={(text) => setPaymentData(prev => ({ ...prev, warrantyPeriod: text }))}
+                    placeholder="12 months"
+                    placeholderTextColor={colors.mutedForeground}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="credit-card" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>Bank & Payment Details</Text>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Bank Details (BSB, Acc No, Acc Name)</Text>
+                  <TextInput
+                    style={[styles.input, styles.inputMultiline]}
+                    value={paymentData.bankDetails}
+                    onChangeText={(text) => setPaymentData(prev => ({ ...prev, bankDetails: text }))}
+                    placeholder="BSB: 000-000&#10;Account: 12345678&#10;Name: Your Business"
+                    placeholderTextColor={colors.mutedForeground}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                <View style={[styles.inputGroup, { marginBottom: 0 }]}>
+                  <Text style={styles.inputLabel}>Payment Instructions</Text>
+                  <TextInput
+                    style={[styles.input, styles.inputMultiline]}
+                    value={paymentData.paymentInstructions}
+                    onChangeText={(text) => setPaymentData(prev => ({ ...prev, paymentInstructions: text }))}
+                    placeholder="Additional payment instructions for clients..."
+                    placeholderTextColor={colors.mutedForeground}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="file-text" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>Default Terms</Text>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Quote Terms & Conditions</Text>
+                  <TextInput
+                    style={[styles.input, styles.inputMultiline, { minHeight: 100 }]}
+                    value={paymentData.quoteTerms}
+                    onChangeText={(text) => setPaymentData(prev => ({ ...prev, quoteTerms: text }))}
+                    placeholder="Default terms for your quotes..."
+                    placeholderTextColor={colors.mutedForeground}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                <View style={[styles.inputGroup, { marginBottom: 0 }]}>
+                  <Text style={styles.inputLabel}>Invoice Terms & Conditions</Text>
+                  <TextInput
+                    style={[styles.input, styles.inputMultiline, { minHeight: 100 }]}
+                    value={paymentData.invoiceTerms}
+                    onChangeText={(text) => setPaymentData(prev => ({ ...prev, invoiceTerms: text }))}
+                    placeholder="Default terms for your invoices..."
+                    placeholderTextColor={colors.mutedForeground}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.upgradeButton, paymentSaving && { opacity: 0.7 }]}
+                onPress={savePaymentSettings}
+                disabled={paymentSaving}
+                data-testid="button-save-payment"
+              >
+                <Text style={styles.upgradeButtonText}>
+                  {paymentSaving ? 'Saving...' : 'Save Payment Settings'}
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -1812,6 +2445,89 @@ export default function SettingsScreen() {
                 </View>
               </View>
 
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="cpu" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>AI Features</Text>
+                </View>
+
+                <View style={styles.notificationToggleRow}>
+                  <View style={styles.notificationToggleLeft}>
+                    <View style={[styles.notificationToggleIcon, { backgroundColor: '#8b5cf620' }]}>
+                      <Feather name="zap" size={16} color="#8b5cf6" />
+                    </View>
+                    <View style={styles.notificationToggleInfo}>
+                      <Text style={styles.notificationToggleTitle}>AI Features</Text>
+                      <Text style={styles.notificationToggleSubtitle}>Master toggle for all AI capabilities</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={aiSettings.aiEnabled}
+                    onValueChange={(value) => updateAiSetting('aiEnabled', value)}
+                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                    thumbColor={aiSettings.aiEnabled ? colors.primary : colors.mutedForeground}
+                  />
+                </View>
+
+                {aiSettings.aiEnabled && (
+                  <>
+                    <View style={styles.notificationToggleRow}>
+                      <View style={styles.notificationToggleLeft}>
+                        <View style={[styles.notificationToggleIcon, { backgroundColor: '#8b5cf620' }]}>
+                          <Feather name="camera" size={16} color="#8b5cf6" />
+                        </View>
+                        <View style={styles.notificationToggleInfo}>
+                          <Text style={styles.notificationToggleTitle}>AI Photo Analysis</Text>
+                          <Text style={styles.notificationToggleSubtitle}>Analyse job site photos for insights</Text>
+                        </View>
+                      </View>
+                      <Switch
+                        value={aiSettings.aiPhotoAnalysis}
+                        onValueChange={(value) => updateAiSetting('aiPhotoAnalysis', value)}
+                        trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                        thumbColor={aiSettings.aiPhotoAnalysis ? colors.primary : colors.mutedForeground}
+                      />
+                    </View>
+
+                    <View style={styles.notificationToggleRow}>
+                      <View style={styles.notificationToggleLeft}>
+                        <View style={[styles.notificationToggleIcon, { backgroundColor: '#8b5cf620' }]}>
+                          <Feather name="tag" size={16} color="#8b5cf6" />
+                        </View>
+                        <View style={styles.notificationToggleInfo}>
+                          <Text style={styles.notificationToggleTitle}>Auto-Categorise Photos</Text>
+                          <Text style={styles.notificationToggleSubtitle}>Automatically tag and sort uploaded photos</Text>
+                        </View>
+                      </View>
+                      <Switch
+                        value={aiSettings.aiAutoCategorizephotos}
+                        onValueChange={(value) => updateAiSetting('aiAutoCategorizephotos', value)}
+                        trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                        thumbColor={aiSettings.aiAutoCategorizephotos ? colors.primary : colors.mutedForeground}
+                      />
+                    </View>
+
+                    <View style={[styles.notificationToggleRow, styles.notificationToggleRowLast]}>
+                      <View style={styles.notificationToggleLeft}>
+                        <View style={[styles.notificationToggleIcon, { backgroundColor: '#8b5cf620' }]}>
+                          <Feather name="edit-3" size={16} color="#8b5cf6" />
+                        </View>
+                        <View style={styles.notificationToggleInfo}>
+                          <Text style={styles.notificationToggleTitle}>AI Suggestions</Text>
+                          <Text style={styles.notificationToggleSubtitle}>Smart suggestions for quotes, invoices & follow-ups</Text>
+                        </View>
+                      </View>
+                      <Switch
+                        value={aiSettings.aiSuggestions}
+                        onValueChange={(value) => updateAiSetting('aiSuggestions', value)}
+                        trackColor={{ false: colors.muted, true: colors.primaryLight }}
+                        thumbColor={aiSettings.aiSuggestions ? colors.primary : colors.mutedForeground}
+                      />
+                    </View>
+                  </>
+                )}
+              </View>
+
               <TouchableOpacity 
                 style={styles.settingsCard}
                 onPress={() => router.push('/more/notifications')}
@@ -1918,6 +2634,52 @@ export default function SettingsScreen() {
                   </TouchableOpacity>
                 )}
               </View>
+
+              {usageInfo && (
+                <View style={styles.subscriptionCard}>
+                  <View style={styles.subscriptionHeader}>
+                    <Feather name="bar-chart-2" size={20} color={colors.primary} />
+                    <Text style={styles.subscriptionTitle}>Usage</Text>
+                  </View>
+                  <Text style={[styles.planDescription, { marginBottom: spacing.lg }]}>
+                    {usageInfo.isUnlimited ? 'Unlimited usage with your current plan' : 'Track your usage against plan limits'}
+                  </Text>
+                  {[
+                    { label: 'Jobs', data: usageInfo.jobs },
+                    { label: 'Quotes', data: usageInfo.quotes },
+                    { label: 'Invoices', data: usageInfo.invoices },
+                    { label: 'Clients', data: usageInfo.clients },
+                    { label: 'Templates', data: usageInfo.templates },
+                  ].map((item) => {
+                    if (!item.data) return null;
+                    const isUnlimited = item.data.limit === -1;
+                    const percentage = isUnlimited ? 0 : Math.min((item.data.used / item.data.limit) * 100, 100);
+                    const isNearLimit = !isUnlimited && percentage >= 80;
+                    const isAtLimit = !isUnlimited && item.data.used >= item.data.limit;
+                    return (
+                      <View key={item.label} style={styles.usageBarContainer}>
+                        <View style={styles.usageBarLabel}>
+                          <Text style={styles.usageBarLabelText}>{item.label}</Text>
+                          <Text style={[styles.usageBarValueText, isAtLimit && { color: '#ef4444', fontWeight: '600' }]}>
+                            {item.data.used} / {isUnlimited ? '\u221E' : item.data.limit}
+                          </Text>
+                        </View>
+                        <View style={styles.usageBarTrack}>
+                          <View 
+                            style={[
+                              styles.usageBarFill,
+                              { 
+                                width: isUnlimited ? '0%' : `${percentage}%`,
+                                backgroundColor: isAtLimit ? '#ef4444' : isNearLimit ? '#f59e0b' : '#22c55e',
+                              },
+                            ]} 
+                          />
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           )}
 
@@ -2032,10 +2794,63 @@ export default function SettingsScreen() {
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
 
+              <Text style={styles.sectionLabel}>DATA EXPORT</Text>
+
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="download" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>Export Your Data</Text>
+                </View>
+                <Text style={[styles.planDescription, { marginBottom: spacing.md }]}>
+                  Download your business data as CSV files for accounting or backup purposes.
+                </Text>
+
+                {[
+                  { key: 'clients', label: 'Clients', description: 'Names, contact details, addresses', icon: 'users' },
+                  { key: 'jobs', label: 'Jobs', description: 'Job titles, statuses, addresses, dates', icon: 'briefcase' },
+                  { key: 'quotes', label: 'Quotes', description: 'Quote numbers, amounts, GST, statuses', icon: 'file-text' },
+                  { key: 'invoices', label: 'Invoices', description: 'Invoice numbers, amounts, payment status', icon: 'file' },
+                  { key: 'time-entries', label: 'Time Entries', description: 'Hours, rates, jobs, billing status', icon: 'clock' },
+                ].map((item) => (
+                  <View key={item.key} style={styles.exportRow}>
+                    <View style={styles.exportRowLeft}>
+                      <View style={styles.exportIconContainer}>
+                        <Feather name={item.icon as any} size={16} color={colors.mutedForeground} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.settingsCardTitle}>{item.label}</Text>
+                        <Text style={[styles.settingsCardSubtitle, { marginTop: 1 }]}>{item.description}</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.exportButton}
+                      onPress={() => handleExport(item.key)}
+                      disabled={exportingKey === item.key}
+                    >
+                      {exportingKey === item.key ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <>
+                          <Feather name="download" size={14} color={colors.primary} />
+                          <Text style={styles.exportButtonText}>CSV</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+
               <View style={styles.settingsInfoCard}>
                 <Text style={styles.settingsInfoTitle}>Need Help?</Text>
                 <Text style={styles.settingsInfoText}>
                   Our support team is available Monday to Friday, 9am-5pm AEST. We typically respond within 24 hours.
+                </Text>
+              </View>
+
+              <View style={[styles.settingsInfoCard, { marginTop: spacing.sm }]}>
+                <Text style={styles.settingsInfoTitle}>Data Responsibility</Text>
+                <Text style={styles.settingsInfoText}>
+                  We recommend exporting your data at least monthly as a backup. Exported CSV files can be opened in Excel, Google Sheets, or any spreadsheet application.
                 </Text>
               </View>
             </View>
