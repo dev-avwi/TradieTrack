@@ -1500,7 +1500,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   kpiCard: {
     width: '48%',
     padding: spacing.md,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     ...shadows.sm,
   },
@@ -1589,7 +1589,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   sectionContent: {
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     overflow: 'hidden',
@@ -1597,7 +1597,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   listContainer: {
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     overflow: 'hidden',
@@ -1689,7 +1689,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   stripeCard: {
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     padding: spacing.md,

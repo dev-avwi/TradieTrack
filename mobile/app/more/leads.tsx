@@ -584,7 +584,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   emptySubtitle: { ...typography.body, color: colors.mutedForeground, textAlign: 'center' },
   emptyButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, marginTop: spacing.sm },
   emptyButtonText: { ...typography.label, color: '#FFFFFF' },
-  card: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
+  card: { backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.cardBorder },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.sm },
   cardName: { ...typography.subtitle, color: colors.foreground },
   cardDescription: { ...typography.caption, color: colors.mutedForeground, marginTop: 2 },

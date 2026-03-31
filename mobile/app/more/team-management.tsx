@@ -356,7 +356,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     padding: spacing.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     ...shadows.sm,
   },
   memberHeader: {
