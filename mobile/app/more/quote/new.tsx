@@ -766,10 +766,8 @@ export default function NewQuoteScreen() {
   const total = subtotal + gst;
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD'
-    }).format(amount);
+    const { formatCurrency: fmt } = require('../../../src/lib/format');
+    return fmt(amount);
   };
 
   const handleSelectClient = (client: any) => {

@@ -68,14 +68,8 @@ type SortField = 'client' | 'status' | 'amount';
 type SortDirection = 'asc' | 'desc';
 
 const formatCurrency = (amount: number) => {
-  // Use amount directly - no heuristic normalization
-  const safeAmount = isNaN(amount) ? 0 : amount;
-  return new Intl.NumberFormat('en-AU', {
-    style: 'currency',
-    currency: 'AUD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(safeAmount);
+  const { formatCurrency: fmt } = require('../../src/lib/format');
+  return fmt(amount, { compact: true });
 };
 
 const getQuoteStatusConfig = (status: string) => {

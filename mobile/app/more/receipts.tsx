@@ -49,16 +49,9 @@ const FILTERS: { key: FilterKey; label: string; icon: string }[] = [
 
 const KNOWN_METHODS = ['card', 'bank_transfer', 'cash', 'tap_to_pay'];
 
-// Format currency from dollar amounts (database stores as decimal)
 const formatCurrency = (amount: number | string) => {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  if (isNaN(num)) return '$0';
-  return new Intl.NumberFormat('en-AU', {
-    style: 'currency',
-    currency: 'AUD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(num);
+  const { formatCurrency: fmt } = require('../../src/lib/format');
+  return fmt(amount, { compact: true });
 };
 
 const formatPaymentMethod = (method: string) => {

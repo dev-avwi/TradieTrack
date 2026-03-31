@@ -76,10 +76,8 @@ const getSourceIcon = (source: LeadSource | undefined): keyof typeof Feather.gly
 };
 
 const formatCurrency = (amount: string | number | undefined): string => {
-  if (!amount) return '$0.00';
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  if (isNaN(num)) return '$0.00';
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 2 }).format(num);
+  const { formatCurrency: fmt } = require('../../src/lib/format');
+  return fmt(amount);
 };
 
 const formatDate = (dateString?: string): string => {

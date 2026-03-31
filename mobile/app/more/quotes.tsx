@@ -92,14 +92,9 @@ function QuoteCard({
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  // Format currency from dollar amounts (database stores as decimal)
   const formatCurrency = (amount: number | string) => {
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    if (isNaN(num)) return '$0';
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD'
-    }).format(num);
+    const { formatCurrency: fmt } = require('../../src/lib/format');
+    return fmt(amount);
   };
 
   const formatDate = (dateStr: string) => {

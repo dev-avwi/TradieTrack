@@ -89,14 +89,8 @@ interface PurchaseOrder {
 }
 
 const formatCurrency = (amount: string | number | undefined | null) => {
-  const num = typeof amount === 'string' ? parseFloat(amount) : (amount ?? 0);
-  const safeAmount = isNaN(num) ? 0 : num;
-  return new Intl.NumberFormat('en-AU', {
-    style: 'currency',
-    currency: 'AUD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(safeAmount);
+  const { formatCurrency: fmt } = require('../../src/lib/format');
+  return fmt(amount);
 };
 
 const formatDate = (dateStr?: string) => {

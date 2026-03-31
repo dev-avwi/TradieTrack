@@ -1017,9 +1017,8 @@ export default function CollectScreen() {
   };
 
   const formatCurrency = (amount: number | string) => {
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    if (isNaN(num)) return '$0.00';
-    return `$${num.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const { formatCurrency: fmt } = require('../../src/lib/format');
+    return fmt(amount);
   };
 
   const collectibleJobs = useMemo(() => {

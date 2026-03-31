@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import api, { API_URL } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
+import { validateABN, formatABN } from '../../src/lib/format';
 import { Card, CardContent } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -144,6 +145,14 @@ export default function OnboardingSetupScreen() {
     if (!businessData.teamSize || !businessData.businessName || !businessData.tradeType) {
       Alert.alert('Missing Info', 'Please select team size, business name, and trade type');
       return;
+    }
+
+    if (businessData.abn) {
+      const abnResult = validateABN(businessData.abn);
+      if (!abnResult.valid) {
+        Alert.alert('Invalid ABN', abnResult.error || 'Please enter a valid 11-digit Australian Business Number');
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -371,14 +380,23 @@ export default function OnboardingSetupScreen() {
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>ABN (optional)</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, businessData.abn && !validateABN(businessData.abn).valid ? { borderColor: colors.destructive } : null]}
           placeholder="12 345 678 901"
           placeholderTextColor={colors.mutedForeground}
-          value={businessData.abn}
-          onChangeText={(text) => setBusinessData(prev => ({ ...prev, abn: text }))}
+          value={formatABN(businessData.abn)}
+          onChangeText={(text) => {
+            const digits = text.replace(/\s/g, '').replace(/[^0-9]/g, '').slice(0, 11);
+            setBusinessData(prev => ({ ...prev, abn: digits }));
+          }}
           keyboardType="number-pad"
+          maxLength={14}
           testID="input-abn"
         />
+        {businessData.abn.length > 0 && !validateABN(businessData.abn).valid && (
+          <Text style={{ color: colors.destructive, fontSize: 12, marginTop: 4 }}>
+            {validateABN(businessData.abn).error}
+          </Text>
+        )}
       </View>
 
       <View style={styles.inputGroup}>

@@ -255,12 +255,8 @@ export default function QuoteDetailScreen() {
   };
 
   const formatCurrency = (amount: number) => {
-    // Database stores dollars, not cents - no division needed
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 2,
-    }).format(Number(amount) || 0);
+    const { formatCurrency: fmt } = require('../../../src/lib/format');
+    return fmt(amount);
   };
 
   const formatDate = (dateStr?: string) => {

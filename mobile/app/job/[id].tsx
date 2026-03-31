@@ -4273,11 +4273,8 @@ export default function JobDetailScreen() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 2,
-    }).format(amount);
+    const { formatCurrency: fmt } = require('../../src/lib/format');
+    return fmt(amount);
   };
 
   const getInvoiceStatusColor = (status: string) => {

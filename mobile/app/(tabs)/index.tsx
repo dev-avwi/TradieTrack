@@ -22,6 +22,7 @@ import * as Location from 'expo-location';
 import { useAuthStore, useJobsStore, useDashboardStore, useClientsStore, useTimeTrackingStore } from '../../src/lib/store';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { api } from '../../src/lib/api';
+import { formatCurrency as formatCurrencyUtil } from '../../src/lib/format';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { XeroBadge } from '../../src/components/ui/XeroBadge';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
@@ -2324,8 +2325,7 @@ export default function DashboardScreen() {
   };
 
   const formatCurrency = (amount: number | undefined | null) => {
-    const val = amount ?? 0;
-    return `$${val.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return formatCurrencyUtil(amount, { compact: true });
   };
 
   const handleStartJob = async (jobId: string) => {

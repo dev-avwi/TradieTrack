@@ -57,14 +57,9 @@ function InvoiceCard({
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  // Format currency from dollar amounts (database stores as decimal)
   const formatCurrency = (amount: number | string) => {
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    if (isNaN(num)) return '$0';
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD'
-    }).format(num);
+    const { formatCurrency: fmt } = require('../../src/lib/format');
+    return fmt(amount);
   };
 
   const formatDate = (dateStr: string) => {
@@ -245,12 +240,8 @@ export default function InvoicesScreen() {
   };
 
   const formatCurrency = (amount: number | string, showDecimals = true) => {
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    if (isNaN(num)) return '$0';
-    if (!showDecimals) {
-      return `$${Math.round(num).toLocaleString('en-AU')}`;
-    }
-    return `$${num.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const { formatCurrency: fmt } = require('../../src/lib/format');
+    return fmt(amount, { compact: !showDecimals });
   };
 
   const totalOutstanding = invoices

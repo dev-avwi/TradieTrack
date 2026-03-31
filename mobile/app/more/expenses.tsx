@@ -60,14 +60,8 @@ interface Job {
 type FilterKey = 'all' | string;
 
 const formatCurrency = (amount: number | string) => {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  if (isNaN(num)) return '$0';
-  return new Intl.NumberFormat('en-AU', {
-    style: 'currency',
-    currency: 'AUD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num);
+  const { formatCurrency: fmt } = require('../../src/lib/format');
+  return fmt(amount);
 };
 
 function ExpenseCard({

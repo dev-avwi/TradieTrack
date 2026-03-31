@@ -236,7 +236,8 @@ export function LinkedDocumentsCard({
   };
 
   const formatCurrency = (amount: number) => {
-    return `$${(amount || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const { formatCurrency: fmt } = require('../lib/format');
+    return fmt(amount);
   };
 
   return (
@@ -1047,8 +1048,10 @@ export function PaymentCollectionCard({
   const total = typeof invoice.total === 'number' ? invoice.total : parseFloat(String(invoice.total) || '0');
   const paidAmount = typeof invoice.paidAmount === 'number' ? invoice.paidAmount : parseFloat(String(invoice.paidAmount) || '0');
   const outstanding = total - paidAmount;
-  const formatCurrency = (amount: number) => 
-    new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
+  const formatCurrency = (amount: number) => {
+    const { formatCurrency: fmt } = require('../lib/format');
+    return fmt(amount);
+  };
 
   return (
     <View style={styles.container}>

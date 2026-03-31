@@ -147,10 +147,8 @@ export default function ClientDetailScreen() {
   }, [clientJobs, clientQuotes, clientInvoices]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-    }).format(amount);
+    const { formatCurrency: fmt } = require('../../../src/lib/format');
+    return fmt(amount);
   };
 
   const getTimelineIcon = (type: 'job' | 'quote' | 'invoice') => {

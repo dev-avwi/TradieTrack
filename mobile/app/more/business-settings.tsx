@@ -16,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
+import { validateABN, formatABN } from '../../src/lib/format';
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { TradeTypeSelector } from '../../src/components/TradeTypeSelector';
 
@@ -177,6 +178,14 @@ export default function BusinessSettingsScreen() {
       return;
     }
 
+    if (form.abn) {
+      const abnResult = validateABN(form.abn);
+      if (!abnResult.valid) {
+        Alert.alert('Invalid ABN', abnResult.error || 'Please enter a valid 11-digit Australian Business Number');
+        return;
+      }
+    }
+
     setIsLoading(true);
     const success = await updateBusinessSettings(form);
     setIsLoading(false);
@@ -244,16 +253,26 @@ export default function BusinessSettingsScreen() {
               <Text style={styles.inputLabelText}>ABN</Text>
             </View>
             <TextInput
-              style={styles.input}
-              value={form.abn}
-              onChangeText={(text) => setForm({ ...form, abn: text })}
+              style={[styles.input, form.abn && !validateABN(form.abn).valid ? { borderColor: colors.destructive } : null]}
+              value={formatABN(form.abn)}
+              onChangeText={(text) => {
+                const digits = text.replace(/\s/g, '').replace(/[^0-9]/g, '').slice(0, 11);
+                setForm({ ...form, abn: digits });
+              }}
               placeholder="12 345 678 901"
               placeholderTextColor={colors.mutedForeground}
               keyboardType="number-pad"
+              maxLength={14}
             />
-            <Text style={styles.inputHint}>
-              Australian Business Number (optional)
-            </Text>
+            {form.abn && !validateABN(form.abn).valid ? (
+              <Text style={{ color: colors.destructive, fontSize: 12, marginTop: 4 }}>
+                {validateABN(form.abn).error}
+              </Text>
+            ) : (
+              <Text style={styles.inputHint}>
+                Australian Business Number (optional)
+              </Text>
+            )}
           </View>
 
           <Text style={styles.sectionTitle}>Contact Information</Text>

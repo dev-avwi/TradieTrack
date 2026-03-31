@@ -908,7 +908,8 @@ export default function ReportsScreen() {
   }, []);
 
   const formatCurrency = (amount: number) => {
-    return `$${amount.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    const { formatCurrency: fmt } = require('../../src/lib/format');
+    return fmt(amount, { compact: true });
   };
 
   const formatCurrencyShort = (amount: number) => {

@@ -69,7 +69,8 @@ export function DocumentPreview({
   }, [visible]);
 
   const formatCurrency = (amount: number) => {
-    return `$${(amount / 100).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const { formatCurrency: fmt } = require('../lib/format');
+    return fmt(amount / 100);
   };
 
   const formatDate = (dateStr?: string) => {

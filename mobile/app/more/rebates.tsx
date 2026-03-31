@@ -67,13 +67,8 @@ const REBATE_TYPE_OPTIONS: { value: RebateType; label: string; icon: keyof typeo
 ];
 
 const formatCurrency = (amount: string | number): string => {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  if (isNaN(num)) return '$0.00';
-  return new Intl.NumberFormat('en-AU', {
-    style: 'currency',
-    currency: 'AUD',
-    minimumFractionDigits: 2,
-  }).format(num);
+  const { formatCurrency: fmt } = require('../../src/lib/format');
+  return fmt(amount);
 };
 
 const getStatusConfig = (status: RebateStatus | undefined, colors: ThemeColors) => {
