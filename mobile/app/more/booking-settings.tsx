@@ -162,6 +162,40 @@ export default function BookingSettingsScreen() {
           <Text style={styles.pageTitle}>Booking Page</Text>
         </View>
 
+        {!enabled && (
+          <View style={{ backgroundColor: `${colors.primary}08`, borderRadius: radius['2xl'], padding: spacing.lg, marginBottom: spacing.lg, borderWidth: 1, borderColor: `${colors.primary}20` }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
+                <Feather name="calendar" size={24} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...typography.cardTitle, color: colors.foreground }}>Quick setup</Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>Let customers book online in minutes</Text>
+              </View>
+            </View>
+            <View style={{ gap: spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primaryForeground }}>1</Text>
+                </View>
+                <Text style={{ ...typography.body, color: colors.foreground }}>Add your services and pricing</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primaryForeground }}>2</Text>
+                </View>
+                <Text style={{ ...typography.body, color: colors.foreground }}>Set your available days and hours</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primaryForeground }}>3</Text>
+                </View>
+                <Text style={{ ...typography.body, color: colors.foreground }}>Enable and share your booking link</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         <View style={styles.card}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>

@@ -328,7 +328,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   conversationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.md + 2,
     paddingHorizontal: pageShell.paddingHorizontal,
     backgroundColor: 'transparent',
     borderBottomWidth: StyleSheet.hairlineWidth,

@@ -1786,10 +1786,11 @@ ${businessName}`;
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity 
-                onPress={() => setShowPreview(true)}
+                onPress={handleDownloadPdf}
                 style={styles.headerButton}
+                disabled={isDownloadingPdf}
               >
-                <Feather name="eye" size={22} color={colors.primary} />
+                <Feather name="file-text" size={22} color={colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity 
                 onPress={handleDeleteInvoice}
@@ -1947,20 +1948,13 @@ ${businessName}`;
           <View style={styles.quickActions}>
             <TouchableOpacity 
               style={styles.quickAction}
-              onPress={() => setShowPreview(true)}
-            >
-              <Feather name="eye" size={20} color={colors.primary} />
-              <Text style={styles.quickActionText}>Preview</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.quickAction}
               onPress={handleDownloadPdf}
               disabled={isDownloadingPdf}
             >
               {isDownloadingPdf ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
-                <Feather name="download" size={20} color={colors.primary} />
+                <Feather name="file-text" size={20} color={colors.primary} />
               )}
               <Text style={styles.quickActionText}>{isDownloadingPdf ? 'Generating...' : 'PDF'}</Text>
             </TouchableOpacity>
@@ -3766,7 +3760,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    padding: 16,
+    padding: spacing.lg,
     paddingBottom: 100,
   },
   loadingContainer: {
@@ -3885,8 +3879,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   primaryActionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 14,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   primaryActionButton: {
     flex: 1,
@@ -3894,35 +3888,35 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 50,
+    gap: spacing.xs,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: radius.lg,
   },
   primaryActionText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.white,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   quickActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   quickAction: {
     flexGrow: 1,
     flexBasis: '22%',
-    minWidth: 60,
+    minWidth: 65,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 14,
-    paddingHorizontal: 4,
+    gap: spacing.xs,
+    paddingVertical: 12,
+    paddingHorizontal: spacing.xs,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.cardBorder,
   },

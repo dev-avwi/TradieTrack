@@ -275,6 +275,40 @@ export default function AIReceptionistScreen() {
           <Text style={styles.pageTitle}>AI Receptionist</Text>
         </View>
 
+        {!config?.enabled && mode === 'off' && (
+          <View style={{ backgroundColor: `${colors.primary}08`, borderRadius: radius['2xl'], padding: spacing.lg, marginBottom: spacing.lg, borderWidth: 1, borderColor: `${colors.primary}20` }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
+                <Feather name="phone" size={24} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...typography.cardTitle, color: colors.foreground }}>Get started in 3 steps</Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>Set up your AI receptionist in under 2 minutes</Text>
+              </View>
+            </View>
+            <View style={{ gap: spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primaryForeground }}>1</Text>
+                </View>
+                <Text style={{ ...typography.body, color: colors.foreground }}>Choose a mode (after hours, always on, etc.)</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primaryForeground }}>2</Text>
+                </View>
+                <Text style={{ ...typography.body, color: colors.foreground }}>Pick a voice and customise your greeting</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primaryForeground }}>3</Text>
+                </View>
+                <Text style={{ ...typography.body, color: colors.foreground }}>Enable and save — you're live</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         <View style={styles.card}>
           <View style={styles.enableRow}>
             <View style={{ flex: 1 }}>

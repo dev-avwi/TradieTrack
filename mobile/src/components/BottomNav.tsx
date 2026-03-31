@@ -39,7 +39,7 @@ const navItems: NavItem[] = [
     title: 'More', 
     icon: 'more-horizontal', 
     path: '/profile',
-    matchPaths: ['/profile', '/more', '/money', '/more/invoices', '/more/quotes', '/more/money-hub', '/collect']
+    matchPaths: ['/profile', '/more', '/money', '/more/invoices', '/more/quotes', '/more/payment-hub', '/collect']
   },
 ];
 

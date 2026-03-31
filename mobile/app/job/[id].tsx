@@ -7500,8 +7500,8 @@ export default function JobDetailScreen() {
                       <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '600', flex: 1 }} numberOfLines={1}>
                         {material.name}
                       </Text>
-                      <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '700', marginLeft: spacing.sm }}>
-                        {Number(material.unitCost || 0) > 0 ? `$${Number(material.totalCost || 0).toFixed(2)}` : 'No cost'}
+                      <Text style={{ ...typography.body, color: Number(material.unitCost || 0) > 0 ? colors.foreground : colors.mutedForeground, fontWeight: '600', marginLeft: spacing.sm }}>
+                        {Number(material.unitCost || 0) > 0 ? `$${Number(material.totalCost || 0).toFixed(2)}` : 'Add cost'}
                       </Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 4, flexWrap: 'wrap' }}>
@@ -9528,20 +9528,29 @@ export default function JobDetailScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{editingMaterial ? 'Edit Material' : 'Add Material'}</Text>
-                <TouchableOpacity onPress={() => { setShowAddMaterialModal(false); setEditingMaterial(null); }}>
-                  <Feather name="x" size={24} color={colors.foreground} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather name="package" size={18} color={colors.primary} />
+                  </View>
+                  <Text style={styles.modalTitle}>{editingMaterial ? 'Edit Material' : 'Add Material'}</Text>
+                </View>
+                <TouchableOpacity onPress={() => { setShowAddMaterialModal(false); setEditingMaterial(null); }} style={{ padding: spacing.xs }}>
+                  <Feather name="x" size={22} color={colors.mutedForeground} />
                 </TouchableOpacity>
               </View>
               <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
                 <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Name *</Text>
                 <TextInput
-                  style={[styles.singleLineInput, { marginBottom: spacing.md }]}
+                  style={[styles.singleLineInput, { marginBottom: spacing.lg }]}
                   value={materialForm.name}
                   onChangeText={v => setMaterialForm(f => ({ ...f, name: v }))}
                   placeholder="e.g. Copper pipe 25mm"
                   placeholderTextColor={colors.mutedForeground}
                 />
+
+                <View style={{ height: 1, backgroundColor: colors.border, marginBottom: spacing.md }} />
+                <Text style={{ ...typography.label, color: colors.mutedForeground, marginBottom: spacing.sm }}>PRICING</Text>
+
                 <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Quantity</Text>
@@ -9591,12 +9600,17 @@ export default function JobDetailScreen() {
                   </View>
                 </View>
                 {materialForm.unitCost && materialForm.unitPrice && parseFloat(materialForm.unitPrice) > 0 && (
-                  <View style={{ marginBottom: spacing.md }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md, backgroundColor: parseFloat(materialForm.unitPrice) > parseFloat(materialForm.unitCost) ? `${colors.success}10` : `${colors.destructive}10`, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md }}>
+                    <Feather name={parseFloat(materialForm.unitPrice) > parseFloat(materialForm.unitCost) ? 'trending-up' : 'trending-down'} size={14} color={parseFloat(materialForm.unitPrice) > parseFloat(materialForm.unitCost) ? colors.success : colors.destructive} />
                     <Text style={{ ...typography.caption, fontWeight: '600', color: parseFloat(materialForm.unitPrice) > parseFloat(materialForm.unitCost) ? colors.success : colors.destructive }}>
                       Margin: {(((parseFloat(materialForm.unitPrice) - parseFloat(materialForm.unitCost)) / parseFloat(materialForm.unitPrice)) * 100).toFixed(1)}%
                     </Text>
                   </View>
                 )}
+
+                <View style={{ height: 1, backgroundColor: colors.border, marginBottom: spacing.md }} />
+                <Text style={{ ...typography.label, color: colors.mutedForeground, marginBottom: spacing.sm }}>DETAILS</Text>
+
                 <Text style={[styles.cardLabel, { marginBottom: spacing.xs }]}>Supplier</Text>
                 <TextInput
                   style={[styles.singleLineInput, { marginBottom: spacing.md }]}

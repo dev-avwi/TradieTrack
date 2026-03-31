@@ -1,5 +1,5 @@
-import MoneyHubScreen from '../more/money-hub';
+import PaymentHubScreen from '../more/payment-hub';
 
 export default function MoneyTab() {
-  return <MoneyHubScreen />;
+  return <PaymentHubScreen />;
 }

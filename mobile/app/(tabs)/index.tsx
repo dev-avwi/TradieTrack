@@ -1525,7 +1525,7 @@ function RevenueChart({ isOwner }: { isOwner: boolean }) {
         </View>
         <TouchableOpacity
           style={styles.viewAllButton}
-          onPress={() => router.push('/more/money-hub')}
+          onPress={() => router.push('/more/payment-hub')}
           activeOpacity={0.7}
         >
           <Text style={styles.viewAllText}>Details</Text>
@@ -2351,16 +2351,18 @@ export default function DashboardScreen() {
   };
 
   const handleOnMyWay = async (jobId: string, clientId?: string) => {
-    router.push(`/job/${jobId}`);
-    return;
-    // Legacy code below kept for reference
     Alert.alert(
-      'On My Way?',
-      'Notify the client that you\'re heading to the job site?',
+      'On My Way',
+      'Send the client an SMS notification with your ETA and start location tracking?',
       [
-        { text: 'Just View Job', onPress: () => router.push(`/job/${jobId}`) },
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Just View Job', 
+          onPress: () => router.push(`/job/${jobId}`),
+          style: 'default',
+        },
         {
-          text: 'Send & View Job',
+          text: 'Send SMS & Go',
           onPress: async () => {
             setIsUpdating(true);
             try {
@@ -2384,7 +2386,10 @@ export default function DashboardScreen() {
                     [{ text: 'OK' }]
                   );
                 } else {
-                  Alert.alert('Sent!', 'Client has been notified via SMS.');
+                  const eta = (response.data as any)?.estimatedMinutes;
+                  const dist = (response.data as any)?.distanceKm;
+                  const etaInfo = eta ? `\nETA: ~${eta} min${dist ? ` (${dist} km)` : ''}` : '';
+                  Alert.alert('Sent!', `Client has been notified via SMS.${etaInfo}`);
                 }
               }
               router.push(`/job/${jobId}`);

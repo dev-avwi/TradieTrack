@@ -25,6 +25,7 @@ import { useScrollToTop } from '../../src/contexts/ScrollContext';
 const categoryMeta: Record<string, { icon: keyof typeof Feather.glyphMap; label: string; colorKey: string; description?: string }> = {
   featured: { icon: 'zap', label: 'Featured', colorKey: 'warning', description: 'Smart tools & automation' },
   work: { icon: 'briefcase', label: 'Work', colorKey: 'primary', description: 'Jobs, scheduling & tracking' },
+  addons: { icon: 'cpu', label: 'Add-ons', colorKey: 'primary', description: 'AI & automation extras' },
   money: { icon: 'dollar-sign', label: 'Money', colorKey: 'success', description: 'Quotes, invoices & payments' },
   team: { icon: 'users', label: 'Team', colorKey: 'info', description: 'Manage your crew' },
   communication: { icon: 'message-circle', label: 'Comms', colorKey: 'info', description: 'Chat & messaging' },

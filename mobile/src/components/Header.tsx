@@ -147,7 +147,7 @@ const getPageTitleFromPath = (pathname: string): string => {
   if (pathname.includes('/more/search')) return 'Search';
   if (pathname.includes('/more/ai-assistant')) return 'AI Assistant';
   if (pathname.includes('/more/branding')) return 'Branding';
-  if (pathname.includes('/more/money-hub')) return 'Money Hub';
+  if (pathname.includes('/more/payment-hub')) return 'Payment Hub';
   if (pathname.includes('/more/time-tracking')) return 'Time Tracking';
   if (pathname.includes('/more/subscription')) return 'Subscription';
   return '';

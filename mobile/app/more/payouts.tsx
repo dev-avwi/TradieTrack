@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 
 export default function PayoutsScreen() {
   useEffect(() => {
-    router.replace('/more/money-hub');
+    router.replace('/more/payment-hub');
   }, []);
   
   return null;
