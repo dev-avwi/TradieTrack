@@ -2883,7 +2883,7 @@ export default function DashboardScreen() {
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   pagingEnabled={false}
-                  snapToInterval={260}
+                  snapToInterval={256}
                   decelerationRate="fast"
                   contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.sm }}
                 >
