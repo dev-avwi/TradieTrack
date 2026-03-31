@@ -320,8 +320,9 @@ export default function AIReceptionistScreen() {
             <Switch
               value={enabled}
               onValueChange={setEnabled}
-              trackColor={{ false: colors.muted, true: colors.primary + '40' }}
-              thumbColor={enabled ? colors.primary : colors.mutedForeground}
+              trackColor={{ false: colors.border, true: colors.success }}
+              thumbColor={enabled ? '#FFFFFF' : '#FFFFFF'}
+              ios_backgroundColor={colors.border}
             />
           </View>
 

@@ -206,8 +206,9 @@ export default function BookingSettingsScreen() {
             <Switch
               value={enabled}
               onValueChange={setEnabled}
-              trackColor={{ false: colors.muted, true: colors.primary + '40' }}
-              thumbColor={enabled ? colors.primary : colors.mutedForeground}
+              trackColor={{ false: colors.border, true: colors.success }}
+              thumbColor={'#FFFFFF'}
+              ios_backgroundColor={colors.border}
             />
           </View>
 
@@ -330,8 +331,9 @@ export default function BookingSettingsScreen() {
             <Switch
               value={autoConfirm}
               onValueChange={setAutoConfirm}
-              trackColor={{ false: colors.muted, true: colors.primary + '40' }}
-              thumbColor={autoConfirm ? colors.primary : colors.mutedForeground}
+              trackColor={{ false: colors.border, true: colors.success }}
+              thumbColor={'#FFFFFF'}
+              ios_backgroundColor={colors.border}
             />
           </View>
           <View style={styles.row}>
@@ -342,8 +344,9 @@ export default function BookingSettingsScreen() {
             <Switch
               value={requirePhone}
               onValueChange={setRequirePhone}
-              trackColor={{ false: colors.muted, true: colors.primary + '40' }}
-              thumbColor={requirePhone ? colors.primary : colors.mutedForeground}
+              trackColor={{ false: colors.border, true: colors.success }}
+              thumbColor={'#FFFFFF'}
+              ios_backgroundColor={colors.border}
             />
           </View>
           <View style={styles.row}>
@@ -354,8 +357,9 @@ export default function BookingSettingsScreen() {
             <Switch
               value={requireAddress}
               onValueChange={setRequireAddress}
-              trackColor={{ false: colors.muted, true: colors.primary + '40' }}
-              thumbColor={requireAddress ? colors.primary : colors.mutedForeground}
+              trackColor={{ false: colors.border, true: colors.success }}
+              thumbColor={'#FFFFFF'}
+              ios_backgroundColor={colors.border}
             />
           </View>
         </View>

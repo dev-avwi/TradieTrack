@@ -1006,7 +1006,7 @@ export default function AutopilotScreen() {
                         value={formData.isActive}
                         onValueChange={(val) => setFormData(prev => ({ ...prev, isActive: val }))}
                         trackColor={{ false: colors.border, true: colors.primary + '80' }}
-                        thumbColor={formData.isActive ? colors.primary : colors.mutedForeground}
+                        thumbColor={'#FFFFFF'}
                       />
                     </View>
                   </>
@@ -1359,7 +1359,7 @@ export default function AutopilotScreen() {
             onValueChange={() => handleToggle(automation)}
             disabled={togglingIds.has(automation.id)}
             trackColor={{ false: colors.border, true: colors.primary + '80' }}
-            thumbColor={automation.isActive ? colors.primary : colors.mutedForeground}
+            thumbColor={'#FFFFFF'}
           />
         </View>
 

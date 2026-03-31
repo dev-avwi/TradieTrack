@@ -2038,8 +2038,8 @@ ${businessName}`;
                       }
                     }}
                     disabled={isTogglingPayment || isGeneratingPaymentLink}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={invoice.allowOnlinePayment ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
                   />
                 </View>
                 

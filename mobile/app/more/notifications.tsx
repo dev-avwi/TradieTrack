@@ -252,7 +252,7 @@ export default function NotificationsScreen() {
                 value={pushEnabled}
                 onValueChange={setPushEnabled}
                 trackColor={{ false: colors.border, true: colors.primaryLight }}
-                thumbColor={pushEnabled ? colors.primary : colors.mutedForeground}
+                thumbColor={'#FFFFFF'}
               />
             </View>
             
@@ -270,7 +270,7 @@ export default function NotificationsScreen() {
                 value={emailEnabled}
                 onValueChange={setEmailEnabled}
                 trackColor={{ false: colors.border, true: colors.primaryLight }}
-                thumbColor={emailEnabled ? colors.primary : colors.mutedForeground}
+                thumbColor={'#FFFFFF'}
               />
             </View>
             
@@ -288,7 +288,7 @@ export default function NotificationsScreen() {
                 value={smsEnabled}
                 onValueChange={setSmsEnabled}
                 trackColor={{ false: colors.border, true: colors.primaryLight }}
-                thumbColor={smsEnabled ? colors.primary : colors.mutedForeground}
+                thumbColor={'#FFFFFF'}
               />
             </View>
           </View>
@@ -304,7 +304,7 @@ export default function NotificationsScreen() {
                 value={jobReminders}
                 onValueChange={setJobReminders}
                 trackColor={{ false: colors.border, true: colors.primaryLight }}
-                thumbColor={jobReminders ? colors.primary : colors.mutedForeground}
+                thumbColor={'#FFFFFF'}
               />
             </View>
             
@@ -319,7 +319,7 @@ export default function NotificationsScreen() {
                 value={paymentAlerts}
                 onValueChange={setPaymentAlerts}
                 trackColor={{ false: colors.border, true: colors.primaryLight }}
-                thumbColor={paymentAlerts ? colors.primary : colors.mutedForeground}
+                thumbColor={'#FFFFFF'}
               />
             </View>
             
@@ -334,7 +334,7 @@ export default function NotificationsScreen() {
                 value={quoteUpdates}
                 onValueChange={setQuoteUpdates}
                 trackColor={{ false: colors.border, true: colors.primaryLight }}
-                thumbColor={quoteUpdates ? colors.primary : colors.mutedForeground}
+                thumbColor={'#FFFFFF'}
               />
             </View>
           </View>

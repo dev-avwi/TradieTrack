@@ -5713,7 +5713,7 @@ export default function JobDetailScreen() {
         quoteStatus={(quote as any)?.status}
         invoiceStatus={(invoice as any)?.status}
         scheduledAt={job.scheduledAt}
-        urgencyLabel={getJobUrgency(job.scheduledAt, job.status)?.label}
+        urgencyLabel={undefined}
         isOverdue={getJobUrgency(job.scheduledAt, job.status)?.level === 'overdue'}
         clientPhone={client?.phone}
         clientName={client?.name?.split(' ')[0]}
@@ -10923,7 +10923,7 @@ export default function JobDetailScreen() {
                       value={subcontractorForm.sendViaSms}
                       onValueChange={(v) => setSubcontractorForm(prev => ({ ...prev, sendViaSms: v }))}
                       trackColor={{ false: colors.muted, true: colors.primary + '60' }}
-                      thumbColor={subcontractorForm.sendViaSms ? colors.primary : colors.mutedForeground}
+                      thumbColor={'#FFFFFF'}
                     />
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -10947,7 +10947,7 @@ export default function JobDetailScreen() {
                       value={subcontractorForm.sendViaEmail}
                       onValueChange={(v) => setSubcontractorForm(prev => ({ ...prev, sendViaEmail: v }))}
                       trackColor={{ false: colors.muted, true: colors.primary + '60' }}
-                      thumbColor={subcontractorForm.sendViaEmail ? colors.primary : colors.mutedForeground}
+                      thumbColor={'#FFFFFF'}
                     />
                   </TouchableOpacity>
                 </View>
@@ -10985,7 +10985,7 @@ export default function JobDetailScreen() {
                         value={subcontractorForm.permissions.includes(perm.key)}
                         onValueChange={() => toggleSubcontractorPermission(perm.key)}
                         trackColor={{ false: colors.muted, true: colors.primary + '60' }}
-                        thumbColor={subcontractorForm.permissions.includes(perm.key) ? colors.primary : colors.mutedForeground}
+                        thumbColor={'#FFFFFF'}
                       />
                     </TouchableOpacity>
                   ))}
@@ -11492,7 +11492,7 @@ export default function JobDetailScreen() {
                     value={proofPackSections[key]}
                     onValueChange={(val) => setProofPackSections(prev => ({ ...prev, [key]: val }))}
                     trackColor={{ false: colors.border, true: `${colors.primary}80` }}
-                    thumbColor={proofPackSections[key] ? colors.primary : colors.mutedForeground}
+                    thumbColor={'#FFFFFF'}
                   />
                 </TouchableOpacity>
               ))}

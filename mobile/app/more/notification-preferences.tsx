@@ -381,7 +381,7 @@ export default function NotificationPreferencesScreen() {
                 onValueChange={() => togglePreference(pref.key)}
                 disabled={!masterEnabled}
                 trackColor={{ false: colors.muted, true: colors.primary + '80' }}
-                thumbColor={preferences[pref.key] ? colors.primary : colors.mutedForeground}
+                thumbColor={'#FFFFFF'}
               />
             </View>
           ))}
@@ -422,7 +422,7 @@ export default function NotificationPreferencesScreen() {
             value={masterEnabled}
             onValueChange={toggleMaster}
             trackColor={{ false: colors.muted, true: colors.primary + '80' }}
-            thumbColor={masterEnabled ? colors.primary : colors.mutedForeground}
+            thumbColor={'#FFFFFF'}
           />
         </View>
         

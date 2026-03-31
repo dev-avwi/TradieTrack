@@ -386,7 +386,7 @@ export default function BusinessSettingsScreen() {
                 value={form.includeSignatureOnQuotes}
                 onValueChange={(value) => setForm({ ...form, includeSignatureOnQuotes: value })}
                 trackColor={{ false: colors.border, true: colors.primary + '66' }}
-                thumbColor={form.includeSignatureOnQuotes ? colors.primary : colors.mutedForeground}
+                thumbColor={'#FFFFFF'}
               />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -398,7 +398,7 @@ export default function BusinessSettingsScreen() {
                 value={form.includeSignatureOnInvoices}
                 onValueChange={(value) => setForm({ ...form, includeSignatureOnInvoices: value })}
                 trackColor={{ false: colors.border, true: colors.primary + '66' }}
-                thumbColor={form.includeSignatureOnInvoices ? colors.primary : colors.mutedForeground}
+                thumbColor={'#FFFFFF'}
               />
             </View>
           </View>

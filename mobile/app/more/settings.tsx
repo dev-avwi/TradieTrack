@@ -1582,8 +1582,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={geofenceEnabled}
                     onValueChange={handleGeofenceEnabledChange}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={geofenceEnabled ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                     data-testid="switch-geofence-enabled"
                   />
                 </View>
@@ -1617,8 +1618,9 @@ export default function SettingsScreen() {
                       <Switch
                         value={autoClockIn}
                         onValueChange={handleAutoClockInChange}
-                        trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                        thumbColor={autoClockIn ? colors.primary : colors.mutedForeground}
+                        trackColor={{ false: colors.border, true: colors.success }}
+                        thumbColor={'#FFFFFF'}
+                        ios_backgroundColor={colors.border}
                         data-testid="switch-auto-clock-in"
                       />
                     </View>
@@ -1634,8 +1636,9 @@ export default function SettingsScreen() {
                       <Switch
                         value={autoClockOut}
                         onValueChange={handleAutoClockOutChange}
-                        trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                        thumbColor={autoClockOut ? colors.primary : colors.mutedForeground}
+                        trackColor={{ false: colors.border, true: colors.success }}
+                        thumbColor={'#FFFFFF'}
+                        ios_backgroundColor={colors.border}
                         data-testid="switch-auto-clock-out"
                       />
                     </View>
@@ -1857,8 +1860,9 @@ export default function SettingsScreen() {
                         Alert.alert('Error', 'Failed to update GST setting');
                       }
                     }}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={businessSettings?.gstEnabled ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                   />
                 </View>
               </View>
@@ -1917,8 +1921,9 @@ export default function SettingsScreen() {
                           Alert.alert('Error', 'Failed to update mode');
                         }
                       }}
-                      trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                      thumbColor={businessSettings?.simpleMode ? colors.primary : colors.mutedForeground}
+                      trackColor={{ false: colors.border, true: colors.success }}
+                      thumbColor={'#FFFFFF'}
+                      ios_backgroundColor={colors.border}
                     />
                   </View>
                 </View>
@@ -2264,8 +2269,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={notificationSettings.push.newJobAssignments}
                     onValueChange={(value) => updatePushSetting('newJobAssignments', value)}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={notificationSettings.push.newJobAssignments ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                     data-testid="switch-push-new-job"
                   />
                 </View>
@@ -2283,8 +2289,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={notificationSettings.push.jobStatusChanges}
                     onValueChange={(value) => updatePushSetting('jobStatusChanges', value)}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={notificationSettings.push.jobStatusChanges ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                     data-testid="switch-push-job-status"
                   />
                 </View>
@@ -2302,8 +2309,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={notificationSettings.push.paymentReceived}
                     onValueChange={(value) => updatePushSetting('paymentReceived', value)}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={notificationSettings.push.paymentReceived ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                     data-testid="switch-push-payment"
                   />
                 </View>
@@ -2321,8 +2329,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={notificationSettings.push.quoteAccepted}
                     onValueChange={(value) => updatePushSetting('quoteAccepted', value)}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={notificationSettings.push.quoteAccepted ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                     data-testid="switch-push-quote"
                   />
                 </View>
@@ -2340,8 +2349,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={notificationSettings.push.teamMessages}
                     onValueChange={(value) => updatePushSetting('teamMessages', value)}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={notificationSettings.push.teamMessages ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                     data-testid="switch-push-team"
                   />
                 </View>
@@ -2366,8 +2376,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={notificationSettings.email.dailyDigest}
                     onValueChange={(value) => updateEmailSetting('dailyDigest', value)}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={notificationSettings.email.dailyDigest ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                     data-testid="switch-email-daily"
                   />
                 </View>
@@ -2385,8 +2396,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={notificationSettings.email.weeklySummary}
                     onValueChange={(value) => updateEmailSetting('weeklySummary', value)}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={notificationSettings.email.weeklySummary ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                     data-testid="switch-email-weekly"
                   />
                 </View>
@@ -2404,8 +2416,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={notificationSettings.email.paymentReceipts}
                     onValueChange={(value) => updateEmailSetting('paymentReceipts', value)}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={notificationSettings.email.paymentReceipts ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                     data-testid="switch-email-receipts"
                   />
                 </View>
@@ -2423,8 +2436,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={notificationSettings.email.overdueReminders}
                     onValueChange={(value) => updateEmailSetting('overdueReminders', value)}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={notificationSettings.email.overdueReminders ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                     data-testid="switch-email-overdue"
                   />
                 </View>
@@ -2449,8 +2463,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={notificationSettings.sms.urgentJobAlerts}
                     onValueChange={(value) => updateSmsSetting('urgentJobAlerts', value)}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={notificationSettings.sms.urgentJobAlerts ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                     data-testid="switch-sms-urgent"
                   />
                 </View>
@@ -2468,8 +2483,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={notificationSettings.sms.paymentConfirmations}
                     onValueChange={(value) => updateSmsSetting('paymentConfirmations', value)}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={notificationSettings.sms.paymentConfirmations ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                     data-testid="switch-sms-payment"
                   />
                 </View>
@@ -2494,8 +2510,9 @@ export default function SettingsScreen() {
                   <Switch
                     value={aiSettings.aiEnabled}
                     onValueChange={(value) => updateAiSetting('aiEnabled', value)}
-                    trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                    thumbColor={aiSettings.aiEnabled ? colors.primary : colors.mutedForeground}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
                   />
                 </View>
 
@@ -2514,8 +2531,9 @@ export default function SettingsScreen() {
                       <Switch
                         value={aiSettings.aiPhotoAnalysis}
                         onValueChange={(value) => updateAiSetting('aiPhotoAnalysis', value)}
-                        trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                        thumbColor={aiSettings.aiPhotoAnalysis ? colors.primary : colors.mutedForeground}
+                        trackColor={{ false: colors.border, true: colors.success }}
+                        thumbColor={'#FFFFFF'}
+                        ios_backgroundColor={colors.border}
                       />
                     </View>
 
@@ -2532,8 +2550,9 @@ export default function SettingsScreen() {
                       <Switch
                         value={aiSettings.aiAutoCategorizephotos}
                         onValueChange={(value) => updateAiSetting('aiAutoCategorizephotos', value)}
-                        trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                        thumbColor={aiSettings.aiAutoCategorizephotos ? colors.primary : colors.mutedForeground}
+                        trackColor={{ false: colors.border, true: colors.success }}
+                        thumbColor={'#FFFFFF'}
+                        ios_backgroundColor={colors.border}
                       />
                     </View>
 
@@ -2550,8 +2569,9 @@ export default function SettingsScreen() {
                       <Switch
                         value={aiSettings.aiSuggestions}
                         onValueChange={(value) => updateAiSetting('aiSuggestions', value)}
-                        trackColor={{ false: colors.muted, true: colors.primaryLight }}
-                        thumbColor={aiSettings.aiSuggestions ? colors.primary : colors.mutedForeground}
+                        trackColor={{ false: colors.border, true: colors.success }}
+                        thumbColor={'#FFFFFF'}
+                        ios_backgroundColor={colors.border}
                       />
                     </View>
                   </>

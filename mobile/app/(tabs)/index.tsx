@@ -2383,16 +2383,19 @@ export default function DashboardScreen() {
                   Alert.alert(
                     'SMS Not Configured',
                     'Twilio SMS is not set up. The "On My Way" action was logged but no message was sent to the client.\n\nSet up Twilio in Settings > Integrations to enable real SMS notifications.',
-                    [{ text: 'OK' }]
+                    [{ text: 'OK', onPress: () => router.push(`/job/${jobId}`) }]
                   );
                 } else {
                   const eta = (response.data as any)?.estimatedMinutes;
                   const dist = (response.data as any)?.distanceKm;
                   const etaInfo = eta ? `\nETA: ~${eta} min${dist ? ` (${dist} km)` : ''}` : '';
-                  Alert.alert('Sent!', `Client has been notified via SMS.${etaInfo}`);
+                  Alert.alert('Sent!', `Client has been notified via SMS.${etaInfo}`, [
+                    { text: 'OK', onPress: () => router.push(`/job/${jobId}`) }
+                  ]);
                 }
+              } else {
+                router.push(`/job/${jobId}`);
               }
-              router.push(`/job/${jobId}`);
             } catch (error: any) {
               if (error.message?.includes('Network') && clientId) {
                 await offlineStorage.queueOnMyWayNotification(jobId);
