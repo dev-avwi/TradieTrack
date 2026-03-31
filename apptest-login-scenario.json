@@ -1,0 +1,36 @@
+{
+  "name": "JobRunner Login",
+  "steps": [
+    {
+      "action": "touch",
+      "target": {
+        "text": "Enter your email"
+      },
+      "description": "Tap email field"
+    },
+    {
+      "action": "input",
+      "value": "demo@jobrunner.com.au",
+      "description": "Enter email address"
+    },
+    {
+      "action": "touch",
+      "target": {
+        "text": "Enter your password"
+      },
+      "description": "Tap password field"
+    },
+    {
+      "action": "input",
+      "value": "demo123",
+      "description": "Enter password"
+    },
+    {
+      "action": "touch",
+      "target": {
+        "text": "Sign In"
+      },
+      "description": "Tap Sign In button"
+    }
+  ]
+}

@@ -6,3 +6,9 @@ id = "wfSsr0MFCGGuCHjKXPJUw"
 uri = "file://attached_assets/JobRunner_Full_System_Brief.md"
 type = "text"
 title = "JobRunner Full System Brief (Updated)"
+
+[[outputs]]
+id = "Hvqb29wXqaHUWiaq5xyvO"
+uri = "file://apptest-login-scenario.json"
+type = "unspecified"
+title = "Apptest.ai Login Scenario"
