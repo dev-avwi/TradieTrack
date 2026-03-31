@@ -95,11 +95,11 @@ export default function BookingSettingsScreen() {
 
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
 
-  const handleSave = async () => {
+  const handleSave = async (overrideEnabled?: boolean) => {
     setIsSaving(true);
     try {
       await api.patch('/api/business-settings', {
-        bookingPageEnabled: enabled,
+        bookingPageEnabled: overrideEnabled !== undefined ? overrideEnabled : enabled,
         bookingSlug: slug,
         bookingPageTitle: title,
         bookingPageDescription: description,
@@ -160,70 +160,54 @@ export default function BookingSettingsScreen() {
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchConfig} tintColor={colors.primary} />}
       >
         <View style={styles.header}>
-          <Text style={styles.pageTitle}>Booking Page</Text>
+          <Text style={styles.pageTitle}>Online Booking</Text>
         </View>
 
-        {!enabled && (
+        {enabled ? (
+          <View style={styles.card}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: `${colors.success}15`, alignItems: 'center', justifyContent: 'center' }}>
+                <Feather name="check-circle" size={16} color={colors.success} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Booking Page Live</Text>
+              </View>
+              <Switch
+                value={enabled}
+                onValueChange={setEnabled}
+                trackColor={{ false: colors.border, true: colors.success }}
+                thumbColor={'#FFFFFF'}
+                ios_backgroundColor={colors.border}
+              />
+            </View>
+            {slug ? (
+              <TouchableOpacity
+                style={styles.linkRow}
+                onPress={() => Linking.openURL(`https://${bookingUrl}`).catch(() => {})}
+                activeOpacity={0.7}
+              >
+                <Feather name="external-link" size={16} color={colors.primary} />
+                <Text style={styles.linkText} numberOfLines={1}>{bookingUrl}</Text>
+                <Feather name="copy" size={16} color={colors.primary} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : (
           <View style={{ backgroundColor: `${colors.primary}08`, borderRadius: radius['2xl'], padding: spacing.lg, marginBottom: spacing.lg, borderWidth: 1, borderColor: `${colors.primary}20` }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md }}>
               <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
-                <Feather name="calendar" size={24} color={colors.primary} />
+                <Feather name="globe" size={24} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ ...typography.cardTitle, color: colors.foreground }}>Quick setup</Text>
-                <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>Let customers book online in minutes</Text>
+                <Text style={{ ...typography.cardTitle, color: colors.foreground }}>Set up online booking</Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>Let customers book jobs directly from a link</Text>
               </View>
             </View>
-            <View style={{ gap: spacing.sm }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primaryForeground }}>1</Text>
-                </View>
-                <Text style={{ ...typography.body, color: colors.foreground }}>Add your services and pricing</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primaryForeground }}>2</Text>
-                </View>
-                <Text style={{ ...typography.body, color: colors.foreground }}>Set your available days and hours</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primaryForeground }}>3</Text>
-                </View>
-                <Text style={{ ...typography.body, color: colors.foreground }}>Enable and share your booking link</Text>
-              </View>
-            </View>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, lineHeight: 18 }}>
+              Fill in your details below, then tap "Save & Activate" when ready. Your personalised booking link will go live instantly.
+            </Text>
           </View>
         )}
-
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Enable Booking Page</Text>
-              <Text style={styles.sublabel}>Let customers book jobs directly from your website</Text>
-            </View>
-            <Switch
-              value={enabled}
-              onValueChange={setEnabled}
-              trackColor={{ false: colors.border, true: colors.success }}
-              thumbColor={'#FFFFFF'}
-              ios_backgroundColor={colors.border}
-            />
-          </View>
-
-          {enabled && slug ? (
-            <TouchableOpacity
-              style={styles.linkRow}
-              onPress={() => Linking.openURL(`https://${bookingUrl}`).catch(() => {})}
-              activeOpacity={0.7}
-            >
-              <Feather name="external-link" size={16} color={colors.primary} />
-              <Text style={styles.linkText} numberOfLines={1}>{bookingUrl}</Text>
-              <Feather name="copy" size={16} color={colors.primary} />
-            </TouchableOpacity>
-          ) : null}
-        </View>
 
         <Text style={styles.sectionTitle}>Page Details</Text>
         <Text style={styles.inputLabel}>Page URL Slug</Text>
@@ -366,14 +350,25 @@ export default function BookingSettingsScreen() {
 
         <TouchableOpacity
           style={[styles.saveButton, isSaving && { opacity: 0.7 }]}
-          onPress={handleSave}
+          onPress={() => {
+            if (!enabled) {
+              if (!slug || !title) {
+                Alert.alert('Missing Details', 'Please fill in a URL slug and page title before activating.');
+                return;
+              }
+              setEnabled(true);
+              handleSave(true);
+              return;
+            }
+            handleSave();
+          }}
           disabled={isSaving}
           activeOpacity={0.8}
         >
           {isSaving ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Save Settings</Text>
+            <Text style={styles.saveButtonText}>{enabled ? 'Save Settings' : 'Save & Activate'}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

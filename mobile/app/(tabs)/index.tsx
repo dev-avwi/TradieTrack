@@ -1753,6 +1753,8 @@ export default function DashboardScreen() {
   const [activities, setActivities] = useState<any[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   
+  const [tomorrowActiveIndex, setTomorrowActiveIndex] = useState(0);
+  
   // Day Summary state
   const [dailySummary, setDailySummary] = useState<{
     totalHoursTracked: number;
@@ -2388,8 +2390,9 @@ export default function DashboardScreen() {
                 } else {
                   const eta = (response.data as any)?.estimatedMinutes;
                   const dist = (response.data as any)?.distanceKm;
-                  const etaInfo = eta ? `\nETA: ~${eta} min${dist ? ` (${dist} km)` : ''}` : '';
-                  Alert.alert('Sent!', `Client has been notified via SMS.${etaInfo}`, [
+                  const etaSource = (response.data as any)?.etaSource;
+                  const etaInfo = (eta && etaSource !== 'default') ? `\nETA: ~${eta} min${dist ? ` (${dist.toFixed(1)} km)` : ''}` : '';
+                  Alert.alert('En Route', `Client has been notified you're on your way.${etaInfo}`, [
                     { text: 'OK', onPress: () => router.push(`/job/${jobId}`) }
                   ]);
                 }
@@ -2876,11 +2879,6 @@ export default function DashboardScreen() {
                   <Text style={styles.daySummaryTomorrowLabel}>
                     Tomorrow{(dailySummary.tomorrowJobCount || (dailySummary.tomorrowJobs?.length ?? 0)) > 1 ? ` (${dailySummary.tomorrowJobCount || dailySummary.tomorrowJobs?.length} jobs)` : ''}
                   </Text>
-                  {(dailySummary.tomorrowJobs?.length ?? 0) > 1 && (
-                    <Text style={{ fontSize: 11, color: colors.mutedForeground, marginLeft: 'auto' }}>
-                      Swipe to see more
-                    </Text>
-                  )}
                 </View>
                 <ScrollView
                   horizontal
@@ -2888,6 +2886,11 @@ export default function DashboardScreen() {
                   pagingEnabled={false}
                   snapToInterval={256}
                   decelerationRate="fast"
+                  scrollEventThrottle={16}
+                  onScroll={(e) => {
+                    const idx = Math.round(e.nativeEvent.contentOffset.x / 256);
+                    setTomorrowActiveIndex(idx);
+                  }}
                   contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.sm }}
                 >
                   {(dailySummary.tomorrowJobs || [dailySummary.tomorrowFirstJob]).map((job: any, idx: number) => (
@@ -2933,6 +2936,21 @@ export default function DashboardScreen() {
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
+                {(dailySummary.tomorrowJobs?.length ?? 0) > 1 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: spacing.sm }}>
+                    {dailySummary.tomorrowJobs!.map((_: any, i: number) => (
+                      <View
+                        key={i}
+                        style={{
+                          width: tomorrowActiveIndex === i ? 16 : 6,
+                          height: 6,
+                          borderRadius: 3,
+                          backgroundColor: tomorrowActiveIndex === i ? colors.primary : colors.border,
+                        }}
+                      />
+                    ))}
+                  </View>
+                )}
               </View>
             )}
           </View>

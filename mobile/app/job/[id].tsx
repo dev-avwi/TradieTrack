@@ -4794,8 +4794,10 @@ export default function JobDetailScreen() {
       } else {
         const eta = response.data?.estimatedMinutes;
         const dist = response.data?.distanceKm;
-        const etaInfo = eta ? `\nETA: ~${eta} min${dist ? ` (${dist} km)` : ''}` : '';
-        Alert.alert('Sent!', `Client has been notified via SMS.${etaInfo}`);
+        const etaSource = response.data?.etaSource;
+        const etaInfo = (eta && etaSource !== 'default') ? `\nETA: ~${eta} min${dist ? ` (${dist.toFixed(1)} km)` : ''}` : '';
+        setJob((prev: any) => prev ? { ...prev, workerStatus: 'on_my_way' } : prev);
+        Alert.alert('En Route', `Client has been notified you're on your way.${etaInfo}`);
       }
     } catch (error: any) {
       const message = error.response?.data?.message || error.message || 'Failed to send notification. Please try again.';
@@ -5576,39 +5578,68 @@ export default function JobDetailScreen() {
         {action ? (
           job.status === 'scheduled' && job.clientId ? (
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: spacing.xs,
-                  paddingVertical: spacing.md,
-                  paddingHorizontal: spacing.md,
-                  borderRadius: radius.lg,
-                  borderWidth: 2,
-                  borderColor: colors.info,
-                  backgroundColor: colors.card,
-                  opacity: isSendingOnMyWay ? 0.6 : 1,
-                  minHeight: 52,
-                }}
-                onPress={handleOnMyWay}
-                activeOpacity={0.8}
-                disabled={isSendingOnMyWay}
-                data-testid="button-on-my-way"
-              >
-                <Feather name="navigation" size={18} color={colors.info} />
-                <Text style={{ 
-                  color: colors.info, 
-                  fontWeight: '600', 
-                  fontSize: 14 
-                }}>
-                  On My Way
-                </Text>
-                {isSendingOnMyWay && (
-                  <ActivityIndicator size="small" color={colors.info} style={{ marginLeft: 4 }} />
-                )}
-              </TouchableOpacity>
+              {job.workerStatus === 'on_my_way' ? (
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: spacing.xs,
+                    paddingVertical: spacing.md,
+                    paddingHorizontal: spacing.md,
+                    borderRadius: radius.lg,
+                    backgroundColor: colors.info,
+                    minHeight: 52,
+                  }}
+                  onPress={() => {
+                    const { openMapsWithPreference } = require('../../src/lib/maps-store');
+                    if (job.latitude && job.longitude) {
+                      openMapsWithPreference(job.latitude, job.longitude, job.address);
+                    } else if (job.address) {
+                      const { openMapsWithAddress } = require('../../src/lib/maps-store');
+                      openMapsWithAddress(job.address);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                  data-testid="button-directions"
+                >
+                  <Feather name="map" size={18} color="#FFFFFF" />
+                  <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>
+                    Directions
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: spacing.xs,
+                    paddingVertical: spacing.md,
+                    paddingHorizontal: spacing.md,
+                    borderRadius: radius.lg,
+                    borderWidth: 2,
+                    borderColor: colors.info,
+                    backgroundColor: colors.card,
+                    opacity: isSendingOnMyWay ? 0.6 : 1,
+                    minHeight: 52,
+                  }}
+                  onPress={handleOnMyWay}
+                  activeOpacity={0.8}
+                  disabled={isSendingOnMyWay}
+                  data-testid="button-on-my-way"
+                >
+                  <Feather name="navigation" size={18} color={colors.info} />
+                  <Text style={{ color: colors.info, fontWeight: '600', fontSize: 14 }}>
+                    On My Way
+                  </Text>
+                  {isSendingOnMyWay && (
+                    <ActivityIndicator size="small" color={colors.info} style={{ marginLeft: 4 }} />
+                  )}
+                </TouchableOpacity>
+              )}
               
               <TouchableOpacity
                 style={[styles.mainActionButton, { backgroundColor: statusColor, flex: 1 }]}

@@ -311,35 +311,49 @@ export default function AIReceptionistScreen() {
           </View>
         )}
 
-        <View style={styles.card}>
-          <View style={styles.enableRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.enableLabel}>Enable AI Receptionist</Text>
-              <Text style={styles.enableSublabel}>Answer calls, book jobs, and take messages automatically</Text>
+        {config?.dedicatedPhoneNumber ? (
+          <View style={styles.card}>
+            <View style={styles.enableRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.enableLabel}>AI Receptionist</Text>
+                <Text style={styles.enableSublabel}>Answer calls, book jobs, and take messages automatically</Text>
+              </View>
+              <Switch
+                value={enabled}
+                onValueChange={setEnabled}
+                trackColor={{ false: colors.border, true: colors.success }}
+                thumbColor={'#FFFFFF'}
+                ios_backgroundColor={colors.border}
+              />
             </View>
-            <Switch
-              value={enabled}
-              onValueChange={setEnabled}
-              trackColor={{ false: colors.border, true: colors.success }}
-              thumbColor={enabled ? '#FFFFFF' : '#FFFFFF'}
-              ios_backgroundColor={colors.border}
-            />
-          </View>
 
-          {config?.dedicatedPhoneNumber && (
             <View style={{ marginTop: spacing.md, padding: spacing.md, backgroundColor: colors.primary + '10', borderRadius: radius.lg }}>
               <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: 4 }}>Your AI phone number</Text>
               <Text style={styles.phoneNumber}>{config.dedicatedPhoneNumber}</Text>
             </View>
-          )}
 
-          <View style={[styles.statusBadge, { backgroundColor: enabled ? colors.success + '20' : colors.muted, marginTop: spacing.md }]}>
-            <Feather name={enabled ? 'check-circle' : 'x-circle'} size={14} color={enabled ? colors.success : colors.mutedForeground} />
-            <Text style={[styles.statusText, { color: enabled ? colors.success : colors.mutedForeground }]}>
-              {enabled ? 'Active' : 'Inactive'}
-            </Text>
+            <View style={[styles.statusBadge, { backgroundColor: enabled ? colors.success + '20' : colors.muted, marginTop: spacing.md }]}>
+              <Feather name={enabled ? 'check-circle' : 'x-circle'} size={14} color={enabled ? colors.success : colors.mutedForeground} />
+              <Text style={[styles.statusText, { color: enabled ? colors.success : colors.mutedForeground }]}>
+                {enabled ? 'Active' : 'Inactive'}
+              </Text>
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={styles.card}>
+            <View style={{ alignItems: 'center', paddingVertical: spacing.md }}>
+              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+                <Feather name="phone-incoming" size={28} color={colors.primary} />
+              </View>
+              <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
+                No phone number assigned
+              </Text>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18, marginBottom: spacing.md }}>
+                An AI phone number needs to be provisioned for your business before the receptionist can be activated. Configure your preferences below and request setup.
+              </Text>
+            </View>
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>Mode</Text>
         {MODE_OPTIONS.map(opt => (
@@ -488,14 +502,27 @@ export default function AIReceptionistScreen() {
 
         <TouchableOpacity
           style={[styles.saveButton, isSaving && { opacity: 0.7 }]}
-          onPress={handleSave}
+          onPress={() => {
+            if (!config?.dedicatedPhoneNumber) {
+              handleSave();
+              Alert.alert(
+                'Request Submitted',
+                'Your AI Receptionist preferences have been saved. Our team will provision a dedicated phone number and notify you when it\'s ready.',
+                [{ text: 'OK' }]
+              );
+              return;
+            }
+            handleSave();
+          }}
           disabled={isSaving}
           activeOpacity={0.8}
         >
           {isSaving ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Save Settings</Text>
+            <Text style={styles.saveButtonText}>
+              {config?.dedicatedPhoneNumber ? 'Save Settings' : 'Save & Request Setup'}
+            </Text>
           )}
         </TouchableOpacity>
 
