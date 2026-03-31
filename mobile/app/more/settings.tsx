@@ -11,7 +11,10 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
-  Alert
+  Alert,
+  LayoutAnimation,
+  UIManager,
+  Platform,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -19,7 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useAuthStore } from '../../src/lib/store';
-import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { API_URL, api } from '../../src/lib/api';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import AppTour from '../../src/components/AppTour';
@@ -1665,19 +1668,40 @@ export default function SettingsScreen() {
 
               <View style={styles.subscriptionCard}>
                 <TouchableOpacity
-                  style={styles.subscriptionHeader}
-                  onPress={() => setShowPasswordSection(!showPasswordSection)}
+                  style={[styles.subscriptionHeader, { marginBottom: showPasswordSection ? spacing.md : 0 }]}
+                  onPress={() => {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setShowPasswordSection(!showPasswordSection);
+                  }}
+                  activeOpacity={0.7}
                 >
-                  <Feather name="lock" size={20} color={colors.primary} />
-                  <Text style={[styles.subscriptionTitle, { flex: 1 }]}>Security</Text>
-                  <Feather name={showPasswordSection ? 'chevron-up' : 'chevron-down'} size={18} color={colors.mutedForeground} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+                    <View style={{ 
+                      width: 36, height: 36, borderRadius: 10, 
+                      backgroundColor: colorWithOpacity(colors.primary, 0.1),
+                      alignItems: 'center', justifyContent: 'center' 
+                    }}>
+                      <Feather name="shield" size={18} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.subscriptionTitle}>Security</Text>
+                      <Text style={{ fontSize: 13, color: colors.mutedForeground }}>
+                        Change your account password
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{
+                    width: 28, height: 28, borderRadius: 14,
+                    backgroundColor: colors.muted,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Feather name={showPasswordSection ? 'chevron-up' : 'chevron-down'} size={16} color={colors.mutedForeground} />
+                  </View>
                 </TouchableOpacity>
 
                 {showPasswordSection && (
-                  <View style={{ marginTop: spacing.md }}>
-                    <Text style={[styles.planDescription, { marginBottom: spacing.md }]}>
-                      Change your account password
-                    </Text>
+                  <View>
+                    <View style={{ height: 1, backgroundColor: colors.border, marginBottom: spacing.md }} />
                     <TextInput
                       style={styles.passwordInput}
                       value={passwordData.currentPassword}

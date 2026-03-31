@@ -24026,9 +24026,10 @@ Be specific about materials, colors, and features that would be included.`
         .sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
       let tomorrowFirstJob = null;
+      const tomorrowJobsList: any[] = [];
       if (tomorrowsJobs.length > 0) {
-        const firstJob = tomorrowsJobs[0];
         const allClients = await storage.getClients(effectiveUserId);
+        const firstJob = tomorrowsJobs[0];
         const client = allClients.find((c: any) => c.id === firstJob.clientId);
         tomorrowFirstJob = {
           id: firstJob.id,
@@ -24039,6 +24040,18 @@ Be specific about materials, colors, and features that would be included.`
           latitude: firstJob.latitude || null,
           longitude: firstJob.longitude || null,
         };
+        for (const job of tomorrowsJobs) {
+          const jobClient = allClients.find((c: any) => c.id === job.clientId);
+          tomorrowJobsList.push({
+            id: job.id,
+            title: job.title || 'Untitled Job',
+            address: job.address || job.location || null,
+            scheduledAt: job.scheduledAt,
+            clientName: jobClient?.name || null,
+            latitude: job.latitude || null,
+            longitude: job.longitude || null,
+          });
+        }
       }
 
       const allJobsDone = todaysJobs.length > 0 && todaysJobs.every((j: any) => j.status === 'done' || j.status === 'invoiced' || j.status === 'cancelled');
@@ -24050,6 +24063,7 @@ Be specific about materials, colors, and features that would be included.`
         invoicesCreatedToday,
         moneyCollectedToday,
         tomorrowFirstJob,
+        tomorrowJobs: tomorrowJobsList,
         tomorrowJobCount: tomorrowsJobs.length,
         allJobsDone,
       });

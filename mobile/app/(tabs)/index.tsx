@@ -2866,48 +2866,71 @@ export default function DashboardScreen() {
               </View>
             </View>
 
-            {dailySummary.tomorrowFirstJob && (
-              <TouchableOpacity
-                style={styles.daySummaryTomorrow}
-                onPress={() => router.push(`/job/${dailySummary.tomorrowFirstJob!.id}`)}
-                activeOpacity={0.7}
-              >
+            {((dailySummary.tomorrowJobs && dailySummary.tomorrowJobs.length > 0) || dailySummary.tomorrowFirstJob) && (
+              <View style={{ marginTop: spacing.lg }}>
                 <View style={styles.daySummaryTomorrowHeader}>
                   <Feather name="sunrise" size={14} color={colors.primary} />
                   <Text style={styles.daySummaryTomorrowLabel}>
-                    Tomorrow{dailySummary.tomorrowJobCount > 1 ? ` (${dailySummary.tomorrowJobCount} jobs)` : ''}
+                    Tomorrow{(dailySummary.tomorrowJobCount || (dailySummary.tomorrowJobs?.length ?? 0)) > 1 ? ` (${dailySummary.tomorrowJobCount || dailySummary.tomorrowJobs?.length} jobs)` : ''}
                   </Text>
-                </View>
-                <Text style={styles.daySummaryTomorrowTitle} numberOfLines={1}>
-                  {dailySummary.tomorrowFirstJob.title}
-                </Text>
-                <View style={styles.daySummaryTomorrowMeta}>
-                  {dailySummary.tomorrowFirstJob.scheduledAt && (
-                    <View style={styles.daySummaryTomorrowMetaItem}>
-                      <Feather name="clock" size={12} color={colors.mutedForeground} />
-                      <Text style={styles.daySummaryTomorrowMetaText}>
-                        {new Date(dailySummary.tomorrowFirstJob.scheduledAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                      </Text>
-                    </View>
-                  )}
-                  {dailySummary.tomorrowFirstJob.address && (
-                    <View style={styles.daySummaryTomorrowMetaItem}>
-                      <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-                      <Text style={styles.daySummaryTomorrowMetaText} numberOfLines={1}>
-                        {dailySummary.tomorrowFirstJob.address}
-                      </Text>
-                    </View>
-                  )}
-                  {dailySummary.tomorrowFirstJob.clientName && (
-                    <View style={styles.daySummaryTomorrowMetaItem}>
-                      <Feather name="user" size={12} color={colors.mutedForeground} />
-                      <Text style={styles.daySummaryTomorrowMetaText}>
-                        {dailySummary.tomorrowFirstJob.clientName}
-                      </Text>
-                    </View>
+                  {(dailySummary.tomorrowJobs?.length ?? 0) > 1 && (
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, marginLeft: 'auto' }}>
+                      Swipe to see more
+                    </Text>
                   )}
                 </View>
-              </TouchableOpacity>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  pagingEnabled={false}
+                  snapToInterval={260}
+                  decelerationRate="fast"
+                  contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.sm }}
+                >
+                  {(dailySummary.tomorrowJobs || [dailySummary.tomorrowFirstJob]).map((job: any, idx: number) => (
+                    <TouchableOpacity
+                      key={job.id || idx}
+                      style={[styles.daySummaryTomorrow, { 
+                        marginTop: 0, 
+                        width: (dailySummary.tomorrowJobs?.length ?? 0) > 1 ? 248 : undefined,
+                        minWidth: (dailySummary.tomorrowJobs?.length ?? 0) > 1 ? 248 : undefined,
+                      }]}
+                      onPress={() => router.push(`/job/${job.id}`)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.daySummaryTomorrowTitle} numberOfLines={1}>
+                        {job.title}
+                      </Text>
+                      <View style={styles.daySummaryTomorrowMeta}>
+                        {job.scheduledAt && (
+                          <View style={styles.daySummaryTomorrowMetaItem}>
+                            <Feather name="clock" size={12} color={colors.mutedForeground} />
+                            <Text style={styles.daySummaryTomorrowMetaText}>
+                              {new Date(job.scheduledAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                            </Text>
+                          </View>
+                        )}
+                        {job.address && (
+                          <View style={styles.daySummaryTomorrowMetaItem}>
+                            <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                            <Text style={styles.daySummaryTomorrowMetaText} numberOfLines={1}>
+                              {job.address}
+                            </Text>
+                          </View>
+                        )}
+                        {job.clientName && (
+                          <View style={styles.daySummaryTomorrowMetaItem}>
+                            <Feather name="user" size={12} color={colors.mutedForeground} />
+                            <Text style={styles.daySummaryTomorrowMetaText}>
+                              {job.clientName}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
             )}
           </View>
         </View>
