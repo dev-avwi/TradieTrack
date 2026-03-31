@@ -1286,10 +1286,10 @@ export default function ChatHubScreen() {
           style={styles.twilioConnectedBanner}
           onPress={() => {
             Alert.alert(
-              'SMS Number',
-              `Your SMS number is ${twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'connected'}.\n\nYou can manage your SMS number, buy additional numbers, or change settings from the Integrations page.`,
+              'Business Number',
+              `Your number is ${twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'connected'}.\n\nThis number is used for SMS messaging here and AI Receptionist calls. You can manage it from Settings.`,
               [
-                { text: 'Manage Number', onPress: () => router.push('/more/settings' as any) },
+                { text: 'Settings', onPress: () => router.push('/more/settings' as any) },
                 { text: 'OK', style: 'cancel' },
               ]
             );
@@ -1300,7 +1300,7 @@ export default function ChatHubScreen() {
             <Feather name="check" size={16} color="#FFFFFF" />
           </View>
           <Text style={styles.twilioConnectedText}>
-            SMS{twilioStatus.phoneNumber ? `: ${formatPhoneDisplay(twilioStatus.phoneNumber)}` : ' connected'}
+            {twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'SMS connected'}
           </Text>
           <Feather name="settings" size={16} color={colors.success} style={{ marginLeft: 'auto' }} />
         </TouchableOpacity>
@@ -1313,9 +1313,9 @@ export default function ChatHubScreen() {
           <Feather name="alert-triangle" size={16} color="#FFFFFF" />
         </View>
         <View style={styles.twilioSetupContent}>
-          <Text style={styles.twilioSetupTitle}>SMS Not Connected</Text>
+          <Text style={styles.twilioSetupTitle}>Business Number Not Set Up</Text>
           <Text style={styles.twilioSetupDescription}>
-            Set up Twilio to send and receive SMS messages
+            Connect a number for SMS and AI Receptionist calls
           </Text>
         </View>
         <TouchableOpacity

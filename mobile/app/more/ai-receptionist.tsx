@@ -328,8 +328,11 @@ export default function AIReceptionistScreen() {
             </View>
 
             <View style={{ marginTop: spacing.md, padding: spacing.md, backgroundColor: colors.primary + '10', borderRadius: radius.lg }}>
-              <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: 4 }}>Your AI phone number</Text>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: 4 }}>Your business number</Text>
               <Text style={styles.phoneNumber}>{config.dedicatedPhoneNumber}</Text>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 4, lineHeight: 16 }}>
+                This number handles AI calls and SMS via Chat Hub.
+              </Text>
             </View>
 
             <View style={[styles.statusBadge, { backgroundColor: enabled ? colors.success + '20' : colors.muted, marginTop: spacing.md }]}>
