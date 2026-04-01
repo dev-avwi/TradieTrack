@@ -25,7 +25,7 @@ export default function DemoModeBanner({ userEmail }: DemoModeBannerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
-  const isDemo = userEmail === 'demo@jobrunner.com.au';
+  const isDemo = userEmail === 'demo@jobrunner.com.au' || userEmail === 'visitor@jobrunner.com.au';
   
   if (!isDemo || isDismissed) return null;
 

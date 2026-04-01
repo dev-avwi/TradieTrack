@@ -16,6 +16,12 @@ export const DEMO_USER = {
   phone: '+61407888123',
 };
 
+export const VISITOR_USER = {
+  email: 'visitor@jobrunner.com.au',
+  password: 'visitor_readonly_' + Date.now(),
+  name: 'Demo Visitor',
+};
+
 export const DEMO_WORKER = {
   email: 'demo.worker@jobrunner.com.au',
   password: 'worker123',
@@ -264,6 +270,35 @@ export async function refreshDemoDates(demoUserId: string) {
     console.log(`[DemoRefresh] Updated ${scheduledCount} scheduled jobs and ${inProgressCount} in-progress jobs`);
   } catch (error) {
     console.error('[DemoRefresh] Error refreshing demo dates:', error);
+  }
+}
+
+// ============================================
+// VISITOR USER CREATION (public demo, read-only)
+// ============================================
+
+export async function createVisitorUser(): Promise<{ id: string } | null> {
+  try {
+    let visitorUser = await storage.getUserByEmail(VISITOR_USER.email);
+    if (!visitorUser) {
+      const hashedPassword = await bcrypt.hash(VISITOR_USER.password, 10);
+      visitorUser = await storage.createUser({
+        email: VISITOR_USER.email,
+        password: hashedPassword,
+        firstName: 'Demo',
+        lastName: 'Visitor',
+      } as any);
+      await storage.updateUser(visitorUser.id, {
+        emailVerified: true,
+      } as any);
+      console.log('✅ Visitor user created:', visitorUser.email);
+    } else {
+      console.log('ℹ️ Visitor user already exists:', visitorUser.email);
+    }
+    return visitorUser;
+  } catch (error) {
+    console.error('Failed to create visitor user:', error);
+    return null;
   }
 }
 

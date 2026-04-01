@@ -7,7 +7,7 @@ import connectPgSimple from "connect-pg-simple";
 import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { createDemoUserAndData, fixTestUserPasswords, seedSmsDataForTestUsers, createDemoTeamMembers, startDemoDataRefreshScheduler } from "./demoData";
+import { createDemoUserAndData, fixTestUserPasswords, seedSmsDataForTestUsers, createDemoTeamMembers, startDemoDataRefreshScheduler, createVisitorUser } from "./demoData";
 import { initializeStripe } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { storage } from "./storage";
@@ -303,6 +303,7 @@ if (process.env.DATABASE_URL) {
   if (enableDemoData) {
     // This creates/updates demo@jobrunner.com.au with password demo123
     await createDemoUserAndData();
+    await createVisitorUser();
     
     // Create demo team members with realistic Australian data and live locations
     await createDemoTeamMembers();

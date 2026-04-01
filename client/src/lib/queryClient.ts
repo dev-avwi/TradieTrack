@@ -139,9 +139,22 @@ async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
     
-    // Handle session expiry (403) with a clearer message
-    if (res.status === 403 || res.status === 401) {
-      // Clear the invalid session token
+    // Handle demo read-only mode (403 with isDemo flag) — don't clear session
+    if (res.status === 403) {
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed.isDemo) {
+          throw new Error(`demo_readonly: ${parsed.error}`);
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message.startsWith('demo_readonly:')) throw e;
+      }
+      clearSessionToken();
+      throw new Error(`session_expired: Your session has expired. Please log in again.`);
+    }
+    
+    // Handle session expiry (401)
+    if (res.status === 401) {
       clearSessionToken();
       throw new Error(`session_expired: Your session has expired. Please log in again.`);
     }

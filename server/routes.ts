@@ -13,7 +13,7 @@ import { setupXeroAuth } from "./xeroAuth";
 import { loginSchema, insertUserSchema, type SafeUser, requestLoginCodeSchema, verifyLoginCodeSchema } from "@shared/schema";
 import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmail, sendPasswordResetEmail, sendTeamInviteEmail, sendJobAssignmentEmail, sendJobCompletionNotificationEmail, sendWelcomeEmail } from "./emailService";
 import { FreemiumService } from "./freemiumService";
-import { DEMO_USER } from "./demoData";
+import { DEMO_USER, VISITOR_USER } from "./demoData";
 import { ownerOnly, ownerOrManagerOnly, requirePermission, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, getWorkerPermissionContext, sanitizeClientData } from "./permissions";
 import { logTeamActivity } from "./activityService";
 import {
@@ -3246,9 +3246,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Set session and explicitly save before responding
+        // Set session and explicitly save before responding — clear any demo flags
         req.session.userId = result.user.id;
         req.session.user = result.user;
+        delete req.session.isDemo;
+        delete req.session.demoDataUserId;
         req.session.save((err: any) => {
           if (err) {
             console.error("Session save error:", err);
@@ -3335,9 +3337,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Failed to seed safety forms for passwordless user:', err);
       });
       
-      // Create session and explicitly save
+      // Create session and explicitly save — clear any demo flags
       req.session.userId = user.id;
       req.session.user = user;
+      delete req.session.isDemo;
+      delete req.session.demoDataUserId;
       req.session.save((err: any) => {
         if (err) {
           console.error("Session save error:", err);
@@ -3392,6 +3396,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth check endpoint (supports both cookies and Authorization header for iOS/Safari)
   app.get("/api/auth/me", async (req: any, res) => {
     let userId = req.session?.userId;
+    let demoDataUserId = req.session?.demoDataUserId;
+    let isDemoSession = req.session?.isDemo === true;
     
     // Fallback: Check Authorization header for session token (for iOS/Safari where cookies may not work)
     if (!userId) {
@@ -3406,6 +3412,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (result.rows && result.rows.length > 0) {
             const sessionData = result.rows[0].sess as any;
             userId = sessionData?.userId;
+            demoDataUserId = sessionData?.demoDataUserId;
+            isDemoSession = sessionData?.isDemo === true;
           }
         } catch (err) {
           console.error('Session token lookup error:', err);
@@ -3417,8 +3425,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
     
+    const effectiveUserId = (isDemoSession && demoDataUserId) ? demoDataUserId : userId;
+    
     try {
-      const user = await AuthService.getUserById(userId);
+      const user = await AuthService.getUserById(effectiveUserId);
       if (!user) {
         if (req.session) {
           req.session.destroy(() => {});
@@ -3465,8 +3475,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const workerPermissionContext = await getWorkerPermissionContext(userId);
-      const userContext = await getUserContext(userId);
+      const workerPermissionContext = await getWorkerPermissionContext(effectiveUserId);
+      const userContext = await getUserContext(effectiveUserId);
       
       const response: any = {
         ...safeUser,
@@ -3577,25 +3587,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Demo data refresh error (non-blocking):", refreshErr);
       }
 
-      const result = await AuthService.login({
-        email: DEMO_USER.email,
-        password: DEMO_USER.password
-      });
+      const demoUser = await storage.getUserByEmail(DEMO_USER.email);
+      const visitorUser = await storage.getUserByEmail(VISITOR_USER.email);
       
-      if (result.success) {
-        req.session.userId = result.user.id;
-        req.session.user = result.user;
-        req.session.isDemo = true;
-        req.session.save((err: any) => {
-          if (err) {
-            console.error("Session save error:", err);
-            return res.status(500).json({ error: "Failed to create session" });
-          }
-          res.json({ success: true, user: result.user, sessionToken: req.sessionID });
-        });
-      } else {
-        res.status(401).json({ error: result.error });
+      if (!demoUser || !visitorUser) {
+        return res.status(500).json({ error: "Demo not available. Please try again later." });
       }
+
+      req.session.userId = visitorUser.id;
+      req.session.user = visitorUser;
+      req.session.isDemo = true;
+      req.session.demoDataUserId = demoUser.id;
+      req.session.save((err: any) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ error: "Failed to create session" });
+        }
+        const visitorResponse = {
+          id: visitorUser.id,
+          email: VISITOR_USER.email,
+          firstName: demoUser.firstName || 'Mike',
+          lastName: demoUser.lastName || 'Thompson',
+          businessName: demoUser.businessName || DEMO_USER.businessName,
+          phone: demoUser.phone || DEMO_USER.phone,
+          tradeType: demoUser.tradeType,
+          subscriptionTier: demoUser.subscriptionTier,
+          isActive: true,
+          emailVerified: true,
+        };
+        res.json({ success: true, user: visitorResponse, sessionToken: req.sessionID });
+      });
     } catch (error) {
       console.error("Demo login error:", error);
       res.status(500).json({ error: "Demo login failed" });
@@ -3697,9 +3718,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Don't fail verification if welcome email fails
         }
         
-        // Set session after successful verification and explicitly save
+        // Set session after successful verification and explicitly save — clear any demo flags
         req.session.userId = result.user.id;
         req.session.user = result.user;
+        delete req.session.isDemo;
+        delete req.session.demoDataUserId;
         req.session.save((err: any) => {
           if (err) {
             console.error("Session save error:", err);
@@ -3862,9 +3885,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Set session and explicitly save before responding
+      // Set session and explicitly save before responding — clear any demo flags
       req.session.userId = user.id;
       req.session.user = user;
+      delete req.session.isDemo;
+      delete req.session.demoDataUserId;
       req.session.save((err: any) => {
         if (err) {
           console.error("Session save error:", err);
@@ -4017,9 +4042,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Set session and explicitly save before responding
+      // Set session and explicitly save before responding — clear any demo flags
       req.session.userId = user.id;
       req.session.user = user;
+      delete req.session.isDemo;
+      delete req.session.demoDataUserId;
       req.session.save((err: any) => {
         if (err) {
           console.error("Session save error:", err);
@@ -4204,6 +4231,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       req.session.userId = user.id;
       req.session.user = user;
+      delete req.session.isDemo;
+      delete req.session.demoDataUserId;
       req.session.save((err: any) => {
         if (err) {
           console.error('Session save error:', err);
@@ -4281,6 +4310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const requireAuth = async (req: any, res: any, next: any) => {
     let userId = req.session?.userId;
     let isDemoSession = req.session?.isDemo === true;
+    let demoDataUserId = req.session?.demoDataUserId;
     
     // Fallback: Check Authorization header for session token (for iOS/Safari where cookies may not work)
     if (!userId) {
@@ -4296,6 +4326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const sessionData = result.rows[0].sess as any;
             userId = sessionData?.userId;
             isDemoSession = sessionData?.isDemo === true;
+            demoDataUserId = sessionData?.demoDataUserId;
           }
         } catch (err) {
           console.error('Session token lookup error:', err);
@@ -4321,8 +4352,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
-    // Get fresh user data
-    const user = await AuthService.getUserById(userId);
+    // Get fresh user data — for demo visitors, fetch the demo owner's data so they see demo content
+    const effectiveUserId = (isDemoSession && demoDataUserId) ? demoDataUserId : userId;
+    const user = await AuthService.getUserById(effectiveUserId);
     if (!user) {
       if (req.session) {
         req.session.destroy(() => {});
@@ -4332,6 +4364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     req.userId = user.id;
     req.user = user;
+    req.isDemo = isDemoSession;
 
     Sentry.setUser({
       id: String(user.id),
@@ -4346,7 +4379,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const path = req.originalUrl.toLowerCase();
         const readOnlyExceptions = ['/api/auth/logout', '/api/admin/reset-demo-data'];
         if (!readOnlyExceptions.some(ex => path.startsWith(ex))) {
-          return res.status(403).json({ error: "Demo account is read-only. Sign up for a free account to make changes." });
+          return res.status(403).json({ 
+            error: "This is a read-only demo. Create your free account to start managing real jobs!",
+            isDemo: true
+          });
         }
       }
     }
