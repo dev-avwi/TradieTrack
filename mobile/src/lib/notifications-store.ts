@@ -62,7 +62,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     try {
       // Use unified endpoint like web - includes system, SMS, and chat notifications
       const response = await api.get<UnifiedNotificationsResponse>('/api/notifications/unified');
-      const data = response.data;
+      const data = response.data!;
       set({ 
         notifications: data.notifications || [], 
         unreadCount: data.unreadCount || 0,

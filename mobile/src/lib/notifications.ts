@@ -296,7 +296,7 @@ class NotificationService {
         data,
         sound: 'default',
       },
-      trigger: triggerSeconds ? { type: 'timeInterval' as const, seconds: triggerSeconds, repeats: false } : null,
+      trigger: triggerSeconds ? { type: 'timeInterval', seconds: triggerSeconds, repeats: false } as any : null,
     });
     
     return id;

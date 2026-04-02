@@ -43,10 +43,10 @@ function getVariantStyle(
       return {
         backgroundColor: colors.card,
         borderWidth: 0,
-        ...Platform.select({
+        ...(Platform.select({
           ios: shadows.md,
           android: { elevation: shadows.md.elevation },
-        }),
+        }) as any),
       };
     case 'outlined':
       return {
@@ -64,10 +64,10 @@ function getVariantStyle(
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: colors.cardBorder,
-        ...Platform.select({
+        ...(Platform.select({
           ios: shadows.sm,
           android: { elevation: shadows.sm.elevation },
-        }),
+        }) as any),
       };
   }
 }

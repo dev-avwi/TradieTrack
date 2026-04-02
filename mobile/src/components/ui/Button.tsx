@@ -158,13 +158,13 @@ export function Button({
           opacity: disabled ? 0.5 : 1,
         };
         
-        // Apply shadow properties if they exist (for brand variant)
-        if (variantStyles.shadowColor) {
-          baseStyles.shadowColor = variantStyles.shadowColor;
-          baseStyles.shadowOffset = variantStyles.shadowOffset;
-          baseStyles.shadowOpacity = variantStyles.shadowOpacity;
-          baseStyles.shadowRadius = variantStyles.shadowRadius;
-          baseStyles.elevation = variantStyles.elevation;
+        if ('shadowColor' in variantStyles) {
+          const vs = variantStyles as any;
+          baseStyles.shadowColor = vs.shadowColor;
+          baseStyles.shadowOffset = vs.shadowOffset;
+          baseStyles.shadowOpacity = vs.shadowOpacity;
+          baseStyles.shadowRadius = vs.shadowRadius;
+          baseStyles.elevation = vs.elevation;
         }
         
         return [

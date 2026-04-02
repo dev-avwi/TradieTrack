@@ -14,6 +14,7 @@ import { JobCollaborationProvider, JobCollaborationCtxRaw } from "@/contexts/Job
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import DemoModeBanner from "@/components/DemoModeBanner";
 import { ThemeProvider, useTheme } from "@/components/ThemeProvider";
 import { getTradeInfo } from "@/data/tradeTypes";
 
@@ -1592,6 +1593,7 @@ function AppLayout() {
               )}
               {/* Payment Overdue Banner */}
               <PaymentOverdueBanner onResolve={() => setLocation('/settings?tab=subscription')} />
+              <DemoModeBanner userEmail={userCheck?.email} />
             </div>
             
             {/* Page Content - flex container for proper height context, z-index below header */}

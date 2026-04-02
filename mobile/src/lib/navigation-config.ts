@@ -552,6 +552,7 @@ export interface SidebarNavItem {
   hideForStaff?: boolean;
   requiresOwnerOrManager?: boolean;
   requiresProPlan?: boolean;
+  requiresTeam?: boolean;
   allowedRoles?: UserRole[];
 }
 

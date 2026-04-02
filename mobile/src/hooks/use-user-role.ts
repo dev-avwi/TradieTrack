@@ -166,22 +166,23 @@ export function useUserRole() {
   // Only fetch when online to avoid repeated network errors
   useEffect(() => {
     if (!userId) return;
+    const uid: string = userId;
     
     // Don't attempt network requests when offline - use cached data
     if (!isOnline) return;
     
     // Check if cache exists and is fresh
-    const existingCache = roleCache.get(userId);
+    const existingCache = roleCache.get(uid);
     if (existingCache && !isCacheStale(existingCache)) return;
     
     // Skip if already fetching
-    if (fetchingUsers.has(userId)) return;
+    if (fetchingUsers.has(uid)) return;
     
     // Start new fetch session and capture the session token
     // This token is used to detect if the fetch becomes stale
     const fetchSessionToken = startNewFetchSession();
     sessionRef.current = fetchSessionToken;
-    fetchingUsers.add(userId);
+    fetchingUsers.add(uid);
     
     async function fetchRoleInfo(sessionToken: number) {
       try {
@@ -189,7 +190,7 @@ export function useUserRole() {
         
         // Check for stale fetch - compare against captured session token
         if (sessionToken !== getSessionCounter() || !mountedRef.current) {
-          fetchingUsers.delete(userId);
+          fetchingUsers.delete(uid);
           return;
         }
         
@@ -198,7 +199,7 @@ export function useUserRole() {
         if (data) {
           const role = getRoleFromTeamInfo(data);
           const permissions = getTeamMemberPermissions(data);
-          roleCache.set(userId, {
+          roleCache.set(uid, {
             role,
             permissions,
             teamMemberInfo: data,
@@ -217,13 +218,13 @@ export function useUserRole() {
           });
         }
         
-        fetchingUsers.delete(userId);
+        fetchingUsers.delete(uid);
         if (mountedRef.current) setFetchVersion(v => v + 1);
         
       } catch (error: any) {
         // Check for stale fetch - compare against captured session token
         if (sessionToken !== getSessionCounter() || !mountedRef.current) {
-          fetchingUsers.delete(userId);
+          fetchingUsers.delete(uid);
           return;
         }
         
@@ -231,7 +232,7 @@ export function useUserRole() {
         if (status === 404) {
           // 404 = not a team member = likely owner
           const settings = businessSettings as any;
-          const ownerCheck = isBusinessOwner(settings, userId);
+          const ownerCheck = isBusinessOwner(settings, uid);
           const teamSize = settings?.teamSize || settings?.team_size || 'solo';
           const role: UserRoleType = ownerCheck 
             ? (teamSize === '1' || teamSize === 'solo' ? 'solo_owner' : 'owner')
@@ -240,7 +241,7 @@ export function useUserRole() {
           const ownerPermissions = role === 'owner' || role === 'solo_owner' 
             ? Object.values(PERMISSION_KEYS) 
             : [];
-          roleCache.set(userId, {
+          roleCache.set(uid, {
             role,
             permissions: ownerPermissions,
             teamMemberInfo: null,
@@ -260,7 +261,7 @@ export function useUserRole() {
           });
         }
         
-        fetchingUsers.delete(userId);
+        fetchingUsers.delete(uid);
         if (mountedRef.current) setFetchVersion(v => v + 1);
       }
     }
@@ -344,8 +345,8 @@ export function useUserRole() {
   const isPaymentOverdue = subscriptionStatus === 'past_due';
   const isSubscriptionPaused = subscriptionStatus === 'paused';
   const isSubscriptionRestricted = isPaymentOverdue || isSubscriptionPaused;
-  const hasTeamSubscription = !isSubscriptionRestricted && (subscriptionTier === 'team' || subscriptionTier === 'beta');
-  const hasProSubscription = !isSubscriptionRestricted && (subscriptionTier === 'pro' || subscriptionTier === 'team' || subscriptionTier === 'beta');
+  const hasTeamSubscription = !isSubscriptionRestricted && (subscriptionTier === 'team' || (subscriptionTier as string) === 'beta');
+  const hasProSubscription = !isSubscriptionRestricted && (subscriptionTier === 'pro' || subscriptionTier === 'team' || (subscriptionTier as string) === 'beta');
   const canUseAIFeatures = hasProSubscription;
   
   // Team access requires both role permission AND team subscription
