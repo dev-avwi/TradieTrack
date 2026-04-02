@@ -1013,7 +1013,7 @@ function AppLayout() {
       return res.json();
     },
     retry: false,
-    staleTime: 30000, // 30 seconds
+    staleTime: 5 * 60 * 1000,
   });
 
   useEffect(() => {
@@ -1023,6 +1023,7 @@ function AppLayout() {
         email: userCheck.email,
         username: userCheck.businessName || userCheck.fullName,
       });
+      import("@/lib/routePrefetch").then(({ warmCoreData }) => warmCoreData());
     } else if (!isLoading) {
       Sentry.setUser(null);
     }

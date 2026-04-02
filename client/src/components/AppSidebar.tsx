@@ -25,6 +25,7 @@ import {
   getSidebarSettingsItems,
   type NavItem 
 } from "@/lib/navigation-config";
+import { prefetchRoute } from "@/lib/routePrefetch";
 import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
 
 interface UnreadCounts {
@@ -122,6 +123,8 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
                       isActive={isActive}
                       data-testid={`sidebar-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                       onClick={() => onNavigate?.(item.url)}
+                      onMouseEnter={() => prefetchRoute(item.url)}
+                      onTouchStart={() => prefetchRoute(item.url)}
                       className={isActive ? 'text-white' : ''}
                       style={isActive ? { 
                         backgroundColor: 'hsl(var(--trade))', 
@@ -162,6 +165,8 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
                         isActive={isActive}
                         data-testid={`sidebar-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
                         onClick={() => onNavigate?.(item.url)}
+                        onMouseEnter={() => prefetchRoute(item.url)}
+                        onTouchStart={() => prefetchRoute(item.url)}
                         className={isActive ? 'text-white' : ''}
                         style={isActive ? { 
                           backgroundColor: 'hsl(var(--trade))', 

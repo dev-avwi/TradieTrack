@@ -10,6 +10,7 @@ import {
   getMorePagesPattern,
   type NavItem 
 } from "@/lib/navigation-config";
+import { prefetchRoute } from "@/lib/routePrefetch";
 
 interface UnreadCountsResponse {
   teamChat: number;
@@ -89,6 +90,7 @@ export default function BottomNav({ onNavigate }: BottomNavProps) {
                 } : {}}
                 data-testid={`bottom-nav-${item.title.toLowerCase()}`}
                 onClick={() => onNavigate?.(item.url)}
+                onTouchStart={() => prefetchRoute(item.url)}
               >
                 {isActive && (
                   <div 
