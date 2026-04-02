@@ -3487,6 +3487,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessOwnerId: workerPermissionContext.businessOwnerId,
       };
 
+      if (isDemoSession && demoDataUserId) {
+        response.isVisitorDemo = true;
+      }
+
       if (req.session?.impersonating) {
         response.isImpersonated = true;
         response.impersonatedBy = req.session.originalAdminUserId;
@@ -7564,15 +7568,20 @@ Be specific about materials, colors, and features that would be included.`
                           userAgent.includes('ReactNative') || 
                           req.headers['x-mobile-app'] === 'true';
       
-      res.json({
+      const responseData: any = {
         ...settings,
         simpleMode,
-        // Ensure logoUrl is accessible - absolute URL for mobile, relative for web
         logoUrl: resolveBrowserLogoUrl(settings.logoUrl, isMobileApp),
         subscriptionTier: user?.subscriptionTier || 'free',
-        // Include tradeType from user table
         tradeType: user?.tradeType || 'general',
-      });
+      };
+
+      if (req.isDemo) {
+        responseData.businessName = "Cairns Pro Plumbing";
+        responseData.companyName = "Cairns Pro Plumbing Pty Ltd";
+      }
+
+      res.json(responseData);
     } catch (error) {
       console.error("Error fetching business settings:", error);
       res.status(500).json({ error: "Failed to fetch business settings" });

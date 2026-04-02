@@ -12,20 +12,19 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
-  CheckCircle2,
   ArrowRight
 } from "lucide-react";
 import { Link } from "wouter";
+import { useBusinessSettings } from "@/hooks/use-business-settings";
 
 interface DemoModeBannerProps {
-  userEmail?: string;
+  isVisitorDemo?: boolean;
 }
 
-export default function DemoModeBanner({ userEmail }: DemoModeBannerProps) {
+export default function DemoModeBanner({ isVisitorDemo }: DemoModeBannerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
-
-  const isDemo = userEmail === 'demo@jobrunner.com.au' || userEmail === 'visitor@jobrunner.com.au';
+  const { data: businessSettings } = useBusinessSettings();
 
   const handleCreateAccount = useCallback(async () => {
     try {
@@ -34,7 +33,9 @@ export default function DemoModeBanner({ userEmail }: DemoModeBannerProps) {
     window.location.href = '/auth';
   }, []);
   
-  if (!isDemo || isDismissed) return null;
+  if (!isVisitorDemo || isDismissed) return null;
+
+  const businessName = businessSettings?.businessName || 'Sample Business';
 
   return (
     <Card className="border-2 border-dashed border-orange-300 dark:border-orange-700 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 mx-4 mt-4">
@@ -50,7 +51,7 @@ export default function DemoModeBanner({ userEmail }: DemoModeBannerProps) {
                   Demo Mode Active
                 </h3>
                 <Badge variant="outline" className="border-orange-400 text-orange-700 dark:text-orange-300 text-xs">
-                  Mike's Plumbing Services
+                  {businessName}
                 </Badge>
               </div>
               <p className="text-sm text-orange-700 dark:text-orange-300 mt-0.5">
@@ -106,14 +107,14 @@ export default function DemoModeBanner({ userEmail }: DemoModeBannerProps) {
               <DemoFeatureCard
                 icon={<Users className="w-4 h-4" />}
                 title="Browse Clients"
-                description="View 3 sample clients with contact details"
+                description="View sample clients with contact details"
                 link="/clients"
               />
               <DemoFeatureCard
                 icon={<Calendar className="w-4 h-4" />}
                 title="Manage Jobs"
                 description="See jobs at different workflow stages"
-                link="/jobs"
+                link="/work"
               />
               <DemoFeatureCard
                 icon={<FileText className="w-4 h-4" />}

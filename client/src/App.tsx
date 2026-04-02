@@ -1594,7 +1594,7 @@ function AppLayout() {
               )}
               {/* Payment Overdue Banner */}
               <PaymentOverdueBanner onResolve={() => setLocation('/settings?tab=subscription')} />
-              <DemoModeBanner userEmail={userCheck?.email} />
+              <DemoModeBanner isVisitorDemo={userCheck?.isVisitorDemo === true} />
             </div>
             
             {/* Page Content - flex container for proper height context, z-index below header */}
