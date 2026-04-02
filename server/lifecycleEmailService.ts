@@ -57,7 +57,7 @@ const LIFECYCLE_EMAILS = [
           <a href="https://jobrunner.com.au" style="background-color: #2563eb; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Open JobRunner</a>
         </div>
         <p style="color: #888; font-size: 14px; margin-top: 32px;">
-          Stuck? Email us at admin@avwebinnovation.com and we'll personally help you get set up.<br/>
+          Stuck? Email us at support@jobrunner.com.au and we'll personally help you get set up.<br/>
           — The JobRunner Team
         </p>
       </div>
@@ -88,7 +88,7 @@ const LIFECYCLE_EMAILS = [
           <a href="https://jobrunner.com.au" style="background-color: #2563eb; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Create a Quote</a>
         </div>
         <p style="color: #888; font-size: 14px; margin-top: 32px;">
-          Need a hand? Email us at admin@avwebinnovation.com.<br/>
+          Need a hand? Email us at support@jobrunner.com.au.<br/>
           — The JobRunner Team
         </p>
       </div>
@@ -116,7 +116,7 @@ const LIFECYCLE_EMAILS = [
           <a href="https://jobrunner.com.au" style="background-color: #2563eb; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">Send Your First Invoice</a>
         </div>
         <p style="color: #888; font-size: 14px; margin-top: 32px;">
-          Questions about getting paid through JobRunner? Email us at admin@avwebinnovation.com — happy to walk you through it.<br/>
+          Questions about getting paid through JobRunner? Email us at support@jobrunner.com.au — happy to walk you through it.<br/>
           — The JobRunner Team
         </p>
       </div>
@@ -139,14 +139,14 @@ const LIFECYCLE_EMAILS = [
         </p>
         <ul style="color: #4a4a4a; font-size: 16px; line-height: 1.8;">
           <li><strong>"I'm too busy right now"</strong> — Fair enough. The app is always here when you're ready. It takes 5 minutes to set up properly.</li>
-          <li><strong>"I'm not sure how to use it"</strong> — Email us at admin@avwebinnovation.com and we'll personally walk you through it.</li>
+          <li><strong>"I'm not sure how to use it"</strong> — Email us at support@jobrunner.com.au and we'll personally walk you through it.</li>
           <li><strong>"It's missing something I need"</strong> — Tell us what and we'll see what we can do.</li>
         </ul>
         <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
           Either way, your account is here whenever you need it. No pressure.
         </p>
         <p style="color: #4a4a4a; font-size: 15px; line-height: 1.6; margin-top: 24px;">
-          <strong>P.S.</strong> If you want, I can jump on a quick call and set the whole thing up for you in 10 minutes. Just email admin@avwebinnovation.com and we'll sort a time.
+          <strong>P.S.</strong> If you want, I can jump on a quick call and set the whole thing up for you in 10 minutes. Just email support@jobrunner.com.au and we'll sort a time.
         </p>
         <p style="color: #888; font-size: 14px; margin-top: 32px;">
           — The JobRunner Team
