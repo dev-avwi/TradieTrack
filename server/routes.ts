@@ -20563,11 +20563,18 @@ Be specific about materials, colors, and features that would be included.`
         const calculatedGst = gstEnabled ? Math.round(subtotalCents * 0.1) / 100 : 0;
         const calculatedTotal = Math.round((calculatedSubtotal + calculatedGst) * 100) / 100;
         
-        await storage.updateQuote(req.params.id, userContext.effectiveUserId, {
+        const updateFields: any = {
           subtotal: calculatedSubtotal.toFixed(2),
           gstAmount: calculatedGst.toFixed(2),
           total: calculatedTotal.toFixed(2),
-        });
+        };
+        
+        if (existingQuote?.status === 'sent') {
+          updateFields.status = 'draft';
+          console.log(`[Quote] Auto-reverting quote ${req.params.id} from 'sent' to 'draft' after line item edit`);
+        }
+        
+        await storage.updateQuote(req.params.id, userContext.effectiveUserId, updateFields);
       }
       
       // Save version snapshot now that update succeeded

@@ -53,6 +53,12 @@ export async function sendViaSendGrid(emailData: any): Promise<void> {
   if (!emailData.from?.email) {
     emailData.from = { email: PLATFORM_FROM_EMAIL, name: PLATFORM_FROM_NAME };
   }
+  if (!emailData.trackingSettings) {
+    emailData.trackingSettings = {
+      clickTracking: { enable: false, enableText: false },
+      subscriptionTracking: { enable: false },
+    };
+  }
   console.log(`[SendGrid] Sending from: ${emailData.from?.email} (name: "${emailData.from?.name}") to: ${emailData.to}`);
   try {
     await sgMail.send(emailData);

@@ -96,8 +96,31 @@ export default function QuoteDetailScreen() {
   const [isSendingQuote, setIsSendingQuote] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendModalDefaultTab, setSendModalDefaultTab] = useState<'email' | 'sms'>('email');
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [versionHistory, setVersionHistory] = useState<any[]>([]);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
+
+  const loadVersionHistory = async () => {
+    if (!id) return;
+    setIsLoadingVersions(true);
+    try {
+      const response = await api.get<any[]>(`/api/quotes/${id}/versions`);
+      if (response.data && Array.isArray(response.data)) {
+        setVersionHistory(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading version history:', error);
+    } finally {
+      setIsLoadingVersions(false);
+    }
+  };
+
+  const handleShowVersionHistory = () => {
+    setShowVersionHistory(true);
+    loadVersionHistory();
+  };
 
   const handleDeleteQuote = () => {
     if (!quote) return;
@@ -1245,6 +1268,40 @@ ${businessName}`;
             </View>
           )}
           
+          {/* Quick Actions Row 2 - Sent status: Resend */}
+          {quote.status === 'sent' && (
+            <View style={[styles.quickActions, { marginTop: 8 }]}>
+              <TouchableOpacity 
+                style={[styles.quickAction, styles.quickActionPrimary, isSendingQuote && { opacity: 0.6 }]}
+                onPress={handleSend}
+                disabled={isSendingQuote}
+              >
+                {isSendingQuote ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Feather name="send" size={20} color={colors.white} />
+                )}
+                <Text style={[styles.quickActionText, { color: colors.white }]}>
+                  {isSendingQuote ? 'Sending...' : 'Resend to Client'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.quickAction, { backgroundColor: colors.success }, isMarkingAccepted && { opacity: 0.6 }]}
+                onPress={handleAccept}
+                disabled={isMarkingAccepted}
+              >
+                {isMarkingAccepted ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Feather name="check-circle" size={20} color={colors.white} />
+                )}
+                <Text style={[styles.quickActionText, { color: colors.white }]}>
+                  {isMarkingAccepted ? 'Updating...' : 'Mark Accepted'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          
           {/* Quick Actions Row 2 - Accepted status: Create Invoice/Job */}
           {quote.status === 'accepted' && !linkedInvoice && !linkedJob && (
             <View style={[styles.quickActions, { marginTop: 8 }]}>
@@ -1370,6 +1427,15 @@ ${businessName}`;
               </View>
             )}
           </View>
+
+          {/* Version History */}
+          <TouchableOpacity 
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}
+            onPress={handleShowVersionHistory}
+          >
+            <Text style={styles.sectionTitle}>Edit History</Text>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
 
           {/* Related Documents */}
           {(linkedInvoice || linkedJob) && (
@@ -1611,20 +1677,36 @@ ${businessName}`;
           )}
           
           {quote.status === 'sent' && (
-            <TouchableOpacity 
-              style={[styles.successButton, isMarkingAccepted && { opacity: 0.6 }]} 
-              onPress={handleAccept}
-              disabled={isMarkingAccepted}
-            >
-              {isMarkingAccepted ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <Feather name="check-circle" size={20} color={colors.white} />
-              )}
-              <Text style={styles.primaryButtonText}>
-                {isMarkingAccepted ? 'Updating...' : 'Mark as Accepted'}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity 
+                style={[styles.primaryButton, isSendingQuote && { opacity: 0.6 }]} 
+                onPress={handleSend}
+                disabled={isSendingQuote}
+              >
+                {isSendingQuote ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Feather name="send" size={20} color={colors.white} />
+                )}
+                <Text style={styles.primaryButtonText}>
+                  {isSendingQuote ? 'Sending...' : 'Resend to Client'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.successButton, { marginTop: 12 }, isMarkingAccepted && { opacity: 0.6 }]} 
+                onPress={handleAccept}
+                disabled={isMarkingAccepted}
+              >
+                {isMarkingAccepted ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Feather name="check-circle" size={20} color={colors.white} />
+                )}
+                <Text style={styles.primaryButtonText}>
+                  {isMarkingAccepted ? 'Updating...' : 'Mark as Accepted'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {quote.status === 'accepted' && !linkedJob && (
@@ -1666,6 +1748,74 @@ ${businessName}`;
           <View style={{ height: 40 }} />
         </View>
       </ScrollView>
+
+      {/* Version History Modal */}
+      <Modal
+        visible={showVersionHistory}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowVersionHistory(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.foreground }}>Edit History</Text>
+            <TouchableOpacity onPress={() => setShowVersionHistory(false)}>
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{ flex: 1, padding: 16 }}>
+            {isLoadingVersions ? (
+              <View style={{ alignItems: 'center', padding: 40 }}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : versionHistory.length === 0 ? (
+              <View style={{ alignItems: 'center', padding: 40 }}>
+                <Feather name="clock" size={40} color={colors.mutedForeground} />
+                <Text style={{ fontSize: 16, color: colors.mutedForeground, marginTop: 12 }}>No edit history yet</Text>
+                <Text style={{ fontSize: 14, color: colors.mutedForeground, marginTop: 4, textAlign: 'center' }}>
+                  Changes will be recorded here when you edit the quote
+                </Text>
+              </View>
+            ) : (
+              versionHistory.map((version: any, index: number) => {
+                const snapshot = version.snapshot || {};
+                return (
+                  <View key={version.id || index} style={{ backgroundColor: colors.card, borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.border }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary + '20', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>v{version.versionNumber}</Text>
+                        </View>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
+                          {version.editedBy || 'Unknown'}
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                        {version.createdAt ? formatDate(version.createdAt) : ''}
+                      </Text>
+                    </View>
+                    {version.changeNote && (
+                      <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: 8, fontStyle: 'italic' }}>
+                        {version.changeNote}
+                      </Text>
+                    )}
+                    <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 }}>
+                      <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: 4 }}>
+                        Total: {formatCurrency(snapshot.total)}
+                      </Text>
+                      {snapshot.lineItems && snapshot.lineItems.length > 0 && (
+                        <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                          {snapshot.lineItems.length} item{snapshot.lineItems.length !== 1 ? 's' : ''}: {snapshot.lineItems.map((li: any) => li.description).join(', ')}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* Document Preview Modal */}
       <Modal
