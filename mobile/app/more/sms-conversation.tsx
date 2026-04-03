@@ -18,7 +18,7 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography, shadows, sizes } from '../../src/lib/design-tokens';
-import { getBottomNavHeight } from '../../src/components/BottomNav';
+
 import api from '../../src/lib/api';
 
 function decodeHtmlEntities(text: string): string {
@@ -287,7 +287,7 @@ export default function SmsConversationScreen() {
   const { id, phone, name } = useLocalSearchParams<{ id: string; phone: string; name: string }>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -495,7 +495,7 @@ export default function SmsConversationScreen() {
         </ScrollView>
 
         {/* Composer */}
-        <View style={[styles.composerWrap, { paddingBottom: bottomNavHeight }]}>
+        <View style={styles.composerWrap}>
           {showQuickReplies && (
             <View style={styles.quickRepliesRow}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRepliesScroll}>
