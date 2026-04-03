@@ -151,12 +151,22 @@ function StepIndicator({ steps, currentStep }: { steps: { id: string; title: str
   );
 }
 
+type OnboardingRole = 'owner' | 'worker' | 'subcontractor' | null;
+
 export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardingProps) {
   const { toast } = useToast();
+  const [selectedRole, setSelectedRole] = useState<OnboardingRole>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stripeConnecting, setStripeConnecting] = useState(false);
   const [resumeChecked, setResumeChecked] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteValidation, setInviteValidation] = useState<{ valid: boolean; businessName?: string; roleType?: string; ownerName?: string; error?: string } | null>(null);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+  const [workerName, setWorkerName] = useState('');
+  const [workerLastName, setWorkerLastName] = useState('');
+  const [workerPhone, setWorkerPhone] = useState('');
+  const validateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const { data: user, isLoading: userLoading } = useQuery<{
     id: string;
@@ -166,6 +176,79 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     queryKey: ['/api/auth/me'],
   });
   
+  useEffect(() => {
+    if (user) {
+      setWorkerName(user.firstName || '');
+      setWorkerLastName(user.lastName || '');
+    }
+  }, [user]);
+
+  const validateInviteCodeWeb = async (code: string) => {
+    if (code.length !== 6) {
+      setInviteValidation(null);
+      return;
+    }
+    setIsValidatingCode(true);
+    try {
+      const res = await fetch(`/api/team/invite-code/validate/${code.toUpperCase()}`, { credentials: 'include' });
+      const data = await res.json();
+      setInviteValidation(data);
+    } catch {
+      setInviteValidation({ valid: false, error: 'Failed to validate code' });
+    } finally {
+      setIsValidatingCode(false);
+    }
+  };
+
+  const handleInviteCodeChange = (text: string) => {
+    const clean = text.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    setInviteCode(clean);
+    if (validateTimerRef.current) clearTimeout(validateTimerRef.current);
+    if (clean.length === 6) {
+      validateTimerRef.current = setTimeout(() => validateInviteCodeWeb(clean), 300);
+    } else {
+      setInviteValidation(null);
+    }
+  };
+
+  const handleWorkerRedeem = async () => {
+    if (!inviteValidation?.valid) {
+      toast({ title: 'Invalid Code', description: 'Please enter a valid 6-character invite code', variant: 'destructive' });
+      return;
+    }
+    if (!workerName.trim()) {
+      toast({ title: 'Missing Info', description: 'Please enter your first name', variant: 'destructive' });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const redeemRes = await apiRequest('POST', '/api/team/invite-code/redeem', {
+        code: inviteCode,
+        phone: workerPhone || undefined,
+      });
+      const redeemData = await redeemRes.json();
+      if (redeemData.error) {
+        toast({ title: 'Error', description: redeemData.error, variant: 'destructive' });
+        return;
+      }
+      if (workerName.trim() || workerLastName.trim()) {
+        await apiRequest('PATCH', '/api/user/profile', {
+          firstName: workerName.trim(),
+          lastName: workerLastName.trim(),
+        });
+      }
+      await apiRequest('POST', '/api/onboarding/complete', {}).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
+      toast({ title: 'Welcome!', description: `You've joined ${redeemData.businessName || 'the team'}` });
+      onComplete();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to join team', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const selectedPlan = user?.intendedTier || 'free';
   const isTeamPlan = selectedPlan === 'team';
   const isProPlan = selectedPlan === 'pro';
@@ -1647,6 +1730,142 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
 
   const currentStepId = STEPS[currentStep]?.id;
   const isDoneStep = currentStepId === 'done';
+
+  if (selectedRole === null) {
+    return (
+      <div className="min-h-screen relative overflow-hidden" data-testid="simple-onboarding-role">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-400" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-orange-400/30 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-700/40 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
+        <div className="relative z-10 max-w-lg mx-auto p-4 md:p-6 min-h-screen flex flex-col justify-center">
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <img src={jobrunnerLogo} alt="JobRunner" className="h-8 w-auto" />
+            <span className="text-xl font-bold text-white">
+              <span className="text-white">Job</span>
+              <span className="text-orange-200">Runner</span>
+            </span>
+          </div>
+          <Card className="shadow-xl bg-white/95 backdrop-blur-sm border-white/50">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-bold text-gray-800 text-center mb-2">How will you use JobRunner?</h2>
+              <p className="text-sm text-gray-500 text-center mb-6">Choose your role to get the right setup</p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => setSelectedRole('owner')}
+                  className="w-full flex items-center gap-4 p-4 rounded-lg border-2 border-gray-200 hover-elevate transition-all text-left"
+                >
+                  <div className="p-2.5 rounded-lg bg-blue-100">
+                    <Briefcase className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800">Business Owner</p>
+                    <p className="text-sm text-gray-500">I run my own trade business</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setSelectedRole('worker')}
+                  className="w-full flex items-center gap-4 p-4 rounded-lg border-2 border-gray-200 hover-elevate transition-all text-left"
+                >
+                  <div className="p-2.5 rounded-lg bg-green-100">
+                    <Users className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800">Team Member</p>
+                    <p className="text-sm text-gray-500">I have an invite code from my employer</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setSelectedRole('subcontractor')}
+                  className="w-full flex items-center gap-4 p-4 rounded-lg border-2 border-gray-200 hover-elevate transition-all text-left"
+                >
+                  <div className="p-2.5 rounded-lg bg-orange-100">
+                    <Wrench className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800">Subcontractor</p>
+                    <p className="text-sm text-gray-500">I have an invite code to join a team</p>
+                  </div>
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedRole === 'worker' || selectedRole === 'subcontractor') {
+    const roleLabel = selectedRole === 'worker' ? 'Team Member' : 'Subcontractor';
+    return (
+      <div className="min-h-screen relative overflow-hidden" data-testid="simple-onboarding-invite">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-400" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-orange-400/30 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-700/40 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
+        <div className="relative z-10 max-w-lg mx-auto p-4 md:p-6 min-h-screen flex flex-col justify-center">
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <img src={jobrunnerLogo} alt="JobRunner" className="h-8 w-auto" />
+            <span className="text-xl font-bold text-white">
+              <span className="text-white">Job</span>
+              <span className="text-orange-200">Runner</span>
+            </span>
+          </div>
+          <Card className="shadow-xl bg-white/95 backdrop-blur-sm border-white/50">
+            <CardContent className="p-6">
+              <button onClick={() => setSelectedRole(null)} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </button>
+              <h2 className="text-xl font-bold text-gray-800 mb-1">Join as {roleLabel}</h2>
+              <p className="text-sm text-gray-500 mb-6">Enter the invite code from your employer to join their team</p>
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-gray-700">Invite Code</Label>
+                  <Input
+                    value={inviteCode}
+                    onChange={(e) => handleInviteCodeChange(e.target.value)}
+                    placeholder="e.g. DEMO02"
+                    className="text-center text-lg tracking-widest font-mono uppercase mt-1"
+                    maxLength={6}
+                  />
+                  {isValidatingCode && <p className="text-sm text-gray-400 mt-1">Checking...</p>}
+                  {inviteValidation?.valid && (
+                    <div className="flex items-center gap-2 mt-2 p-2.5 rounded-md bg-green-50 border border-green-200">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span className="text-sm text-green-700">Joining <strong>{inviteValidation.businessName}</strong> as {inviteValidation.roleType}</span>
+                    </div>
+                  )}
+                  {inviteValidation && !inviteValidation.valid && (
+                    <p className="text-sm text-red-500 mt-1">{inviteValidation.error}</p>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-gray-700">First Name</Label>
+                    <Input value={workerName} onChange={(e) => setWorkerName(e.target.value)} placeholder="First name" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-gray-700">Last Name</Label>
+                    <Input value={workerLastName} onChange={(e) => setWorkerLastName(e.target.value)} placeholder="Last name" className="mt-1" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-gray-700">Phone (optional)</Label>
+                  <Input value={workerPhone} onChange={(e) => setWorkerPhone(e.target.value)} placeholder="+61 4XX XXX XXX" className="mt-1" />
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={handleWorkerRedeem}
+                  disabled={!inviteValidation?.valid || !workerName.trim() || isSubmitting}
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Join Team
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden" data-testid="simple-onboarding">

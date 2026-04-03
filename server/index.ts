@@ -7,7 +7,7 @@ import connectPgSimple from "connect-pg-simple";
 import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { createDemoUserAndData, fixTestUserPasswords, seedSmsDataForTestUsers, createDemoTeamMembers, startDemoDataRefreshScheduler, createVisitorUser } from "./demoData";
+import { createDemoUserAndData, fixTestUserPasswords, seedSmsDataForTestUsers, createDemoTeamMembers, createDemoSubcontractorsAndInviteCodes, startDemoDataRefreshScheduler, createVisitorUser } from "./demoData";
 import { initializeStripe } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { storage } from "./storage";
@@ -307,6 +307,7 @@ if (process.env.DATABASE_URL) {
     
     // Create demo team members with realistic Australian data and live locations
     await createDemoTeamMembers();
+    await createDemoSubcontractorsAndInviteCodes();
     console.log('[Demo] Demo data seeding enabled');
   }
   

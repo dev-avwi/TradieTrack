@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { storage, db } from './storage';
-import { activityLogs } from '@shared/schema';
+import { activityLogs, inviteCodes, userRoles } from '@shared/schema';
 import { tradeCatalog } from '../shared/tradeCatalog';
 import { eq, and, sql } from 'drizzle-orm';
 
@@ -1704,6 +1704,126 @@ export async function createDemoTeamMembers() {
     console.log(`✅ Demo team has ${finalTeam.length} members with location data`);
   } catch (error) {
     console.error('Error creating demo team members:', error);
+  }
+}
+
+export async function createDemoSubcontractorsAndInviteCodes() {
+  try {
+    const demoUser = await storage.getUserByEmail(DEMO_USER.email);
+    if (!demoUser) {
+      console.log('No demo user found for subcontractor creation');
+      return;
+    }
+
+    console.log('🔧 Setting up demo subcontractors and invite codes...');
+
+    let subRole = (await storage.getUserRoles()).find(
+      (r: any) => r.name.toLowerCase() === 'subcontractor'
+    );
+    if (!subRole) {
+      subRole = await storage.createUserRole({
+        name: 'Subcontractor',
+        permissions: ['read_jobs', 'update_job_status', 'create_time_entries'],
+        description: 'External subcontractor with limited access',
+        isActive: true,
+      });
+      console.log('✅ Created Subcontractor role');
+    }
+
+    const subData = [
+      { name: 'Dave Nguyen', email: 'dave.sub@demoplumbing.com.au', phone: '+61412777001', trade: 'electrical' },
+      { name: 'Sarah Chen', email: 'sarah.sub@demoplumbing.com.au', phone: '+61412777002', trade: 'painting' },
+      { name: 'Liam O\'Brien', email: 'liam.sub@demoplumbing.com.au', phone: '+61412777003', trade: 'carpentry' },
+    ];
+
+    const existingTeam = await storage.getTeamMembers(demoUser.id);
+
+    for (const sub of subData) {
+      const nameParts = sub.name.split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ');
+
+      let subUser = await storage.getUserByEmail(sub.email);
+      if (!subUser) {
+        const hashedPassword = await bcrypt.hash('subbie123', 10);
+        subUser = await storage.createUser({
+          email: sub.email,
+          password: hashedPassword,
+          name: sub.name,
+          firstName,
+          lastName,
+          phone: sub.phone,
+          role: 'worker',
+          businessOwnerId: demoUser.id,
+        });
+        console.log(`✅ Created subcontractor user: ${sub.name}`);
+      }
+
+      const existingMember = existingTeam.find(
+        (m: any) => m.memberId === subUser!.id || m.email === sub.email
+      );
+      if (!existingMember) {
+        await storage.createTeamMember({
+          businessOwnerId: demoUser.id,
+          memberId: subUser.id,
+          roleId: subRole.id,
+          email: sub.email,
+          firstName,
+          lastName,
+          phone: sub.phone,
+          inviteStatus: 'accepted',
+          inviteAcceptedAt: new Date(),
+          isActive: true,
+        });
+        console.log(`✅ Added subcontractor to team: ${sub.name}`);
+      }
+    }
+
+    const existingCodes = await db.select().from(inviteCodes)
+      .where(eq(inviteCodes.businessOwnerId, demoUser.id));
+
+    const allRoles = await storage.getUserRoles();
+    const workerRole = allRoles.find((r: any) => r.name.toLowerCase() === 'worker' || r.name.toLowerCase() === 'field worker');
+    let managerRole = allRoles.find((r: any) => r.name.toLowerCase() === 'manager');
+    if (!managerRole) {
+      managerRole = await storage.createUserRole({
+        name: 'Manager',
+        permissions: ['read_jobs', 'write_jobs', 'manage_team', 'read_clients', 'write_clients', 'read_invoices', 'write_invoices'],
+        description: 'Team manager with full access',
+        isActive: true,
+      });
+      console.log('✅ Created Manager role');
+    }
+
+    const demoCodes = [
+      { code: 'DEMO01', roleType: 'worker', maxUses: 50, roleId: workerRole?.id || null },
+      { code: 'DEMO02', roleType: 'subcontractor', maxUses: 50, roleId: subRole.id },
+      { code: 'DEMO03', roleType: 'manager', maxUses: 10, roleId: managerRole?.id || null },
+    ];
+
+    for (const dc of demoCodes) {
+      const existing = existingCodes.find((c: any) => c.code === dc.code);
+      if (!existing) {
+        const expiresAt = new Date();
+        expiresAt.setFullYear(expiresAt.getFullYear() + 2);
+        await db.insert(inviteCodes).values({
+          businessOwnerId: demoUser.id,
+          code: dc.code,
+          roleType: dc.roleType,
+          roleId: dc.roleId,
+          maxUses: dc.maxUses,
+          usedCount: 0,
+          expiresAt,
+          isActive: true,
+        });
+        console.log(`✅ Created invite code: ${dc.code} (${dc.roleType})`);
+      }
+    }
+
+    console.log('✅ Demo subcontractors and invite codes ready');
+    console.log('   Invite codes: DEMO01 (worker), DEMO02 (subcontractor), DEMO03 (manager)');
+  } catch (error) {
+    console.error('Error creating demo subcontractors:', error);
   }
 }
 
