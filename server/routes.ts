@@ -32452,7 +32452,7 @@ Respond with JSON in this format:
 
       if (method === 'sms' && phone) {
         // Format SMS message with receipt details
-        const smsMessage = `Payment Receipt from ${escapeHtml(businessName)}: ${formattedAmount} received. ${invoiceNumber ? `Invoice: ${invoiceNumber}. ` : ''}Thank you for your payment!`;
+        const smsMessage = `Payment Receipt from ${businessName}: ${formattedAmount} received. ${invoiceNumber ? `Invoice: ${invoiceNumber}. ` : ''}Thank you for your payment!`;
         
         // Send via dedicated/shared number (customer-facing)
         const { sendCustomerReply: sendCR3 } = await import('./services/smsService');

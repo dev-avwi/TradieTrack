@@ -1009,6 +1009,47 @@ export default function ChatHub() {
     return user.email?.split('@')[0] || 'User';
   };
 
+  const decodeHtmlEntities = (text: string) => {
+    return text
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#x27;/g, "'")
+      .replace(/&#x2F;/g, '/');
+  };
+
+  const renderSmsBody = (body: string, isOwn: boolean) => {
+    const decoded = decodeHtmlEntities(body);
+    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    const parts = decoded.split(urlRegex);
+    if (parts.length === 1) return decoded;
+
+    return parts.map((part, i) => {
+      if (/^https?:\/\//i.test(part)) {
+        let label = 'Open link';
+        if (part.includes('/p/')) label = 'Track your job';
+        else if (part.includes('/quote')) label = 'View quote';
+        else if (part.includes('/invoice')) label = 'View invoice';
+        else if (part.includes('jobrunner')) label = 'Open in JobRunner';
+
+        return (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`underline font-semibold block mt-1 ${isOwn ? 'text-white/90 hover:text-white' : 'text-primary hover:text-primary/80'}`}
+          >
+            {label} →
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     if (isToday(date)) {
@@ -2346,7 +2387,7 @@ export default function ChatHub() {
                         )}
                         
                         <div className={`rounded-2xl px-3.5 py-2 ${isOwn ? 'bg-green-600 text-white' : 'bg-muted'}`}>
-                          <p className="text-sm whitespace-pre-wrap break-words overflow-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{msg.body}</p>
+                          <p className="text-sm whitespace-pre-wrap break-words overflow-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{renderSmsBody(msg.body, isOwn)}</p>
                           <div className={`flex items-center gap-1 mt-0.5 ${isOwn ? 'justify-end' : ''}`}>
                             <span className={`text-[10px] ${isOwn ? 'text-white/70' : 'text-muted-foreground'}`}>
                               {formatTime(msg.createdAt)}

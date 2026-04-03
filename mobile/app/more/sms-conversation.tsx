@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Linking,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -19,6 +20,19 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography, shadows, sizes } from '../../src/lib/design-tokens';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
 import api from '../../src/lib/api';
+
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/');
+}
+
+const URL_REGEX = /(https?:\/\/[^\s]+)/gi;
 
 interface SmsMessage {
   id: string;
@@ -132,18 +146,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginLeft: spacing.xs,
   },
   messageBubble: {
-    maxWidth: '78%',
+    maxWidth: '75%',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
     borderRadius: 18,
   },
   messageBubbleOutbound: {
     backgroundColor: colors.primary,
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 6,
   },
   messageBubbleInbound: {
     backgroundColor: colors.card,
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: 6,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.cardBorder,
   },
@@ -363,6 +377,37 @@ export default function SmsConversationScreen() {
     }
   };
 
+  const renderMessageBody = useCallback((body: string, isOutbound: boolean) => {
+    const parts = body.split(URL_REGEX);
+    if (parts.length === 1) return body;
+
+    return parts.map((part, i) => {
+      if (URL_REGEX.test(part)) {
+        URL_REGEX.lastIndex = 0;
+        let label = 'Open link';
+        if (part.includes('/p/')) label = 'Track your job';
+        else if (part.includes('/quote')) label = 'View quote';
+        else if (part.includes('/invoice')) label = 'View invoice';
+        else if (part.includes('jobrunner')) label = 'Open in JobRunner';
+
+        return (
+          <Text
+            key={i}
+            style={{
+              textDecorationLine: 'underline',
+              color: isOutbound ? colors.primaryForeground : colors.primary,
+              fontWeight: '600',
+            }}
+            onPress={() => Linking.openURL(part)}
+          >
+            {'\n'}{label} {'→'}
+          </Text>
+        );
+      }
+      return part;
+    });
+  }, [colors]);
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -465,7 +510,7 @@ export default function SmsConversationScreen() {
                         styles.messageText,
                         isOutbound ? styles.messageTextOutbound : styles.messageTextInbound,
                       ]}>
-                        {msg.body}
+                        {renderMessageBody(decodeHtmlEntities(msg.body), isOutbound)}
                       </Text>
                       <Text style={[
                         styles.messageTime,
