@@ -225,7 +225,7 @@ export default function OnboardingSetupScreen() {
         if (__DEV__) console.log('Demo data seeding skipped:', error);
       }
       
-      await api.patch('/api/business-settings', { onboardingCompleted: true });
+      await api.post('/api/onboarding/complete', {});
       await fetchBusinessSettings();
     } catch (error) {
       console.error('Failed to mark onboarding complete:', error);
@@ -269,7 +269,7 @@ export default function OnboardingSetupScreen() {
         });
       }
 
-      await api.patch('/api/business-settings', { onboardingCompleted: true }).catch(() => {});
+      await api.post('/api/onboarding/complete', {}).catch(() => {});
       
       setWorkerStep('complete');
     } catch (error: any) {
@@ -343,7 +343,7 @@ export default function OnboardingSetupScreen() {
 
   const handleSubPrivacyAcknowledge = async () => {
     try {
-      await api.patch('/api/business-settings', { onboardingCompleted: true }).catch(() => {});
+      await api.post('/api/onboarding/complete', {}).catch(() => {});
       setSubStep('complete');
     } catch (error) {
       console.error('Error completing onboarding:', error);

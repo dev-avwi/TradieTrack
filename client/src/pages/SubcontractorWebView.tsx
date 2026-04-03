@@ -828,12 +828,20 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                           </p>
                           <div className="flex gap-2 mt-3">
                             <a
-                              href="https://apps.apple.com"
+                              href="https://apps.apple.com/au/app/jobrunner-for-tradies/id6760283858"
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1.5 bg-[#2563EB] text-white text-xs font-medium px-3 py-1.5 rounded-md"
                             >
-                              Download App
+                              App Store
+                            </a>
+                            <a
+                              href="https://play.google.com/store/apps/details?id=com.avwebinnovation.tradietrack"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 bg-[#34A853] text-white text-xs font-medium px-3 py-1.5 rounded-md"
+                            >
+                              Google Play
                             </a>
                             <button
                               onClick={() => setDismissedAppBanner(true)}

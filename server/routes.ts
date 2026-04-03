@@ -11158,6 +11158,26 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  app.post("/api/onboarding/complete", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      let settings = await storage.getBusinessSettings(userId);
+      if (settings) {
+        settings = await storage.updateBusinessSettings(userId, { onboardingCompleted: true });
+      } else {
+        settings = await storage.createBusinessSettings({
+          userId,
+          businessName: '',
+          onboardingCompleted: true,
+        });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Onboarding Complete] Error:', error);
+      res.status(500).json({ error: 'Failed to complete onboarding' });
+    }
+  });
+
   // Endpoint to seed demo data for new users during onboarding
   // Creates sample clients, jobs, quotes, and invoices to explore
   app.post("/api/onboarding/seed-demo-data", requireAuth, async (req: any, res) => {
@@ -30081,9 +30101,7 @@ Respond with JSON in this format:
 
       const businessSettingsData = await storage.getBusinessSettings(inviteCode.businessOwnerId);
 
-      if (inviteCode.roleType === 'subcontractor') {
-        await storage.updateUser(userId, { activeBusinessId: inviteCode.businessOwnerId } as any);
-      }
+      await storage.updateUser(userId, { activeBusinessId: inviteCode.businessOwnerId } as any);
 
       res.json({
         success: true,
