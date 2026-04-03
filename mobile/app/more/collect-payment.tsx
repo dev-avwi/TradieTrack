@@ -3161,20 +3161,21 @@ export default function CollectScreen() {
                 alignItems: 'center',
                 backgroundColor: colors.isDark ? colors.muted : colors.card,
                 borderRadius: radius['2xl'],
-                paddingHorizontal: spacing.xl,
-                height: 80,
+                paddingHorizontal: spacing.lg,
+                height: 72,
                 borderWidth: 2,
                 borderColor: customAmountValue ? colors.primary : (colors.isDark ? colors.borderLight : colors.border),
                 marginBottom: spacing.xs,
               }}>
-                <Text style={{ fontSize: 40, fontWeight: '700', color: colors.mutedForeground }}>$</Text>
+                <Text style={{ fontSize: 28, fontWeight: '700', color: colors.mutedForeground }}>$</Text>
                 <TextInput
                   style={{
                     flex: 1,
-                    marginLeft: spacing.sm,
-                    fontSize: 40,
+                    marginLeft: spacing.xs,
+                    fontSize: 28,
                     fontWeight: '700',
                     color: colors.foreground,
+                    paddingVertical: 0,
                   }}
                   value={customAmountValue}
                   onChangeText={setCustomAmountValue}
