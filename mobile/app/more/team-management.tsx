@@ -1320,6 +1320,13 @@ export default function TeamManagementScreen() {
   const [isResendingInvite, setIsResendingInvite] = useState<string | null>(null);
   const [isTogglingLocation, setIsTogglingLocation] = useState<string | null>(null);
 
+  // Invite code state
+  const [inviteCodes, setInviteCodes] = useState<any[]>([]);
+  const [showInviteCodeModal, setShowInviteCodeModal] = useState(false);
+  const [inviteCodeRoleType, setInviteCodeRoleType] = useState<'worker' | 'manager' | 'subcontractor'>('worker');
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const [isLoadingCodes, setIsLoadingCodes] = useState(false);
+
   const fetchTeam = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -1394,9 +1401,56 @@ export default function TeamManagementScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchTeam();
+      fetchInviteCodes();
     }, [fetchTeam])
   );
-  
+
+  const fetchInviteCodes = useCallback(async () => {
+    setIsLoadingCodes(true);
+    try {
+      const res = await api.get<any[]>('/api/team/invite-codes');
+      if (res.data) setInviteCodes(res.data);
+    } catch (error) {
+      if (__DEV__) console.log('Error fetching invite codes:', error);
+    }
+    setIsLoadingCodes(false);
+  }, []);
+
+  const handleGenerateInviteCode = async () => {
+    setIsGeneratingCode(true);
+    try {
+      const res = await api.post<any>('/api/team/invite-codes', { roleType: inviteCodeRoleType });
+      if (res.data) {
+        setInviteCodes(prev => [res.data, ...prev]);
+        setShowInviteCodeModal(false);
+        Alert.alert('Code Generated', `Share code ${res.data.code} with your team member.`);
+      } else {
+        Alert.alert('Error', res.error || 'Failed to generate code');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to generate invite code');
+    }
+    setIsGeneratingCode(false);
+  };
+
+  const handleRevokeInviteCode = (codeId: string, code: string) => {
+    Alert.alert('Revoke Code', `Are you sure you want to revoke code ${code}? It will no longer be usable.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Revoke',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete(`/api/team/invite-codes/${codeId}`);
+            setInviteCodes(prev => prev.map(c => c.id === codeId ? { ...c, isActive: false } : c));
+          } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to revoke code');
+          }
+        },
+      },
+    ]);
+  };
+
   const getRolePermissions = useCallback((roleId: string): string[] => {
     const role = roles.find(r => r.id === roleId);
     return (role?.permissions as string[]) || [];
@@ -2198,6 +2252,60 @@ export default function TeamManagementScreen() {
             ))}
           </View>
 
+          {currentUserIsOwner && (
+            <View style={styles.section}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8 }}>
+                <Text style={styles.sectionTitle}>Invite Codes</Text>
+                <TouchableOpacity
+                  testID="button-generate-invite-code"
+                  style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 6 }}
+                  onPress={() => setShowInviteCodeModal(true)}
+                >
+                  <Feather name="plus" size={16} color="#FFFFFF" />
+                  <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>Generate Code</Text>
+                </TouchableOpacity>
+              </View>
+
+              {inviteCodes.filter(c => c.isActive).length > 0 ? (
+                inviteCodes.filter(c => c.isActive).map((ic) => {
+                  const isExpired = new Date() > new Date(ic.expiresAt);
+                  const isExhausted = ic.usedCount >= ic.maxUses;
+                  return (
+                    <View key={ic.id} style={{ backgroundColor: colors.card, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.cardBorder }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                          <Text style={{ fontSize: 20, fontWeight: '700', fontFamily: 'monospace', color: colors.foreground, letterSpacing: 2 }}>{ic.code}</Text>
+                          <View style={{ backgroundColor: ic.roleType === 'manager' ? colors.success + '20' : ic.roleType === 'subcontractor' ? '#22c55e20' : colors.info + '20', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: ic.roleType === 'manager' ? colors.success : ic.roleType === 'subcontractor' ? '#22c55e' : colors.info, textTransform: 'capitalize' }}>{ic.roleType}</Text>
+                          </View>
+                        </View>
+                        <TouchableOpacity onPress={() => handleRevokeInviteCode(ic.id, ic.code)} style={{ padding: 6 }}>
+                          <Feather name="x-circle" size={18} color={colors.destructive} />
+                        </TouchableOpacity>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 }}>
+                        <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                          {ic.usedCount}/{ic.maxUses} uses
+                        </Text>
+                        <Text style={{ fontSize: 12, color: isExpired ? colors.destructive : colors.mutedForeground }}>
+                          {isExpired ? 'Expired' : `Expires ${new Date(ic.expiresAt).toLocaleDateString()}`}
+                        </Text>
+                        {isExhausted && <Text style={{ fontSize: 12, color: colors.warning, fontWeight: '500' }}>Limit reached</Text>}
+                      </View>
+                    </View>
+                  );
+                })
+              ) : !isLoadingCodes && (
+                <View style={{ alignItems: 'center', padding: 20 }}>
+                  <Feather name="key" size={32} color={colors.mutedForeground} />
+                  <Text style={{ color: colors.mutedForeground, fontSize: 13, marginTop: 8, textAlign: 'center' }}>
+                    No active invite codes. Generate one to let workers join your team without email.
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Team Members</Text>
             {teamMembers.length > 0 ? (
@@ -2224,6 +2332,80 @@ export default function TeamManagementScreen() {
           </View>
           </ScrollView>
         )}
+
+        {/* Invite Code Generation Modal */}
+        <Modal visible={showInviteCodeModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Generate Invite Code</Text>
+                <TouchableOpacity onPress={() => setShowInviteCodeModal(false)}>
+                  <Feather name="x" size={24} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalBody}>
+                <Text style={[styles.inputLabel, { marginBottom: 12 }]}>What role should they join as?</Text>
+                {(['worker', 'manager', 'subcontractor'] as const).map((role) => (
+                  <TouchableOpacity
+                    key={role}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: inviteCodeRoleType === role ? colors.primary + '15' : colors.card,
+                      borderWidth: 2,
+                      borderColor: inviteCodeRoleType === role ? colors.primary : colors.cardBorder,
+                      borderRadius: 12,
+                      padding: 14,
+                      marginBottom: 10,
+                      gap: 12,
+                    }}
+                    onPress={() => setInviteCodeRoleType(role)}
+                  >
+                    <Feather
+                      name={role === 'manager' ? 'user-check' : role === 'subcontractor' ? 'tool' : 'user'}
+                      size={20}
+                      color={inviteCodeRoleType === role ? colors.primary : colors.mutedForeground}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground, textTransform: 'capitalize' }}>{role}</Text>
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                        {role === 'worker' ? 'Field worker assigned to jobs' : role === 'manager' ? 'Can manage jobs and team' : 'Independent contractor'}
+                      </Text>
+                    </View>
+                    {inviteCodeRoleType === role && <Feather name="check-circle" size={20} color={colors.primary} />}
+                  </TouchableOpacity>
+                ))}
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 4, marginBottom: 16 }}>
+                  Code expires in 30 days and can be used up to 10 times.
+                </Text>
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: colors.primary,
+                    paddingVertical: 14,
+                    paddingHorizontal: 20,
+                    borderRadius: 10,
+                    gap: 8,
+                    opacity: isGeneratingCode ? 0.5 : 1,
+                  }}
+                  onPress={handleGenerateInviteCode}
+                  disabled={isGeneratingCode}
+                >
+                  {isGeneratingCode ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <Feather name="zap" size={18} color="#FFFFFF" />
+                      <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Generate Code</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* Invite Modal */}
         <Modal visible={showInviteModal} animationType="slide" transparent>

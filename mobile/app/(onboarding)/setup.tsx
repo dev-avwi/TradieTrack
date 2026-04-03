@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -23,35 +23,11 @@ import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Step configuration with colors
-const STEP_CONFIG = {
-  business: { 
-    title: 'Business Setup', 
-    icon: 'business' as const,
-    color: '#2563eb', // blue
-    lightColor: '#dbeafe',
-  },
-  integrations: { 
-    title: 'Payments', 
-    icon: 'card' as const,
-    color: '#8b5cf6', // purple
-    lightColor: '#ede9fe',
-  },
-  team: { 
-    title: 'Team', 
-    icon: 'people' as const,
-    color: '#E8862E', // orange
-    lightColor: '#fed7aa',
-  },
-  complete: { 
-    title: 'Done!', 
-    icon: 'checkmark-circle' as const,
-    color: '#22c55e', // green
-    lightColor: '#dcfce7',
-  },
-};
+type OnboardingRole = 'owner' | 'worker' | 'subcontractor' | null;
 
-type OnboardingStep = 'business' | 'integrations' | 'team' | 'complete';
+type OwnerStep = 'role' | 'business' | 'trade' | 'teamSize' | 'plan' | 'complete';
+type WorkerStep = 'role' | 'inviteCode' | 'workerDetails' | 'complete';
+type SubcontractorStep = 'role' | 'subDetails' | 'subConnect' | 'privacy' | 'complete';
 
 const tradeTypes = [
   { value: 'electrical', label: 'Electrical', icon: 'flash' as const },
@@ -59,20 +35,29 @@ const tradeTypes = [
   { value: 'carpentry', label: 'Carpentry', icon: 'hammer' as const },
   { value: 'hvac', label: 'HVAC', icon: 'snow' as const },
   { value: 'painting', label: 'Painting', icon: 'brush' as const },
-  { value: 'roofing', label: 'Roofing', icon: 'home' as const },
   { value: 'landscaping', label: 'Landscaping', icon: 'leaf' as const },
-  { value: 'other', label: 'Other', icon: 'construct' as const },
+  { value: 'building', label: 'Building', icon: 'home' as const },
+  { value: 'other', label: 'General/Other', icon: 'construct' as const },
 ];
 
 const teamSizes = [
-  { value: 'solo', label: 'Just Me', description: 'Solo tradie', icon: 'person' as const },
-  { value: 'small', label: '2-5', description: 'Small team', icon: 'people' as const },
-  { value: 'medium', label: '6-10', description: 'Growing business', icon: 'business' as const },
-  { value: 'large', label: '10+', description: 'Large operation', icon: 'globe' as const },
+  { value: 'solo', label: 'Just Me', description: 'Solo tradie', icon: 'person' as const, plan: 'pro' },
+  { value: 'small', label: '2-5', description: 'Small team', icon: 'people' as const, plan: 'team' },
+  { value: 'medium', label: '6-10', description: 'Growing', icon: 'business' as const, plan: 'team' },
+  { value: 'large', label: '10+', description: 'Large op', icon: 'globe' as const, plan: 'team' },
+];
+
+const plans = [
+  { id: 'free', name: 'Free', price: 0, description: 'Get started at no cost', features: ['25 jobs/month', '25 invoices/month', 'Unlimited quotes', '50 clients'] },
+  { id: 'pro', name: 'Solo', price: 39, description: 'For solo tradies', features: ['Unlimited jobs', 'Unlimited invoices', 'AI features', 'Custom templates'] },
+  { id: 'team', name: 'Team', price: 49, seatPrice: 29, description: 'For businesses with staff', features: ['Everything in Solo', 'Team management', 'GPS tracking', 'Time tracking'] },
 ];
 
 export default function OnboardingSetupScreen() {
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>('business');
+  const [selectedRole, setSelectedRole] = useState<OnboardingRole>(null);
+  const [ownerStep, setOwnerStep] = useState<OwnerStep>('role');
+  const [workerStep, setWorkerStep] = useState<WorkerStep>('role');
+  const [subStep, setSubStep] = useState<SubcontractorStep>('role');
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSettings, setIsCheckingSettings] = useState(true);
   
@@ -81,16 +66,38 @@ export default function OnboardingSetupScreen() {
   const { user, businessSettings, setBusinessSettings, fetchBusinessSettings } = useAuthStore();
 
   const [businessData, setBusinessData] = useState({
-    teamSize: businessSettings?.teamSize || '',
-    businessName: businessSettings?.businessName || '',
-    tradeType: businessSettings?.tradeType || '',
-    abn: businessSettings?.abn || '',
-    phone: businessSettings?.phone || '',
-    address: businessSettings?.address || '',
-    gstEnabled: businessSettings?.gstEnabled ?? true,
-    defaultHourlyRate: String(businessSettings?.defaultHourlyRate || '120'),
-    calloutFee: String(businessSettings?.calloutFee || '90'),
+    teamSize: '',
+    businessName: '',
+    tradeType: '',
+    abn: '',
+    phone: '',
+    ownerName: '',
+    gstEnabled: true,
+    defaultHourlyRate: '120',
+    calloutFee: '90',
   });
+
+  const [selectedPlan, setSelectedPlan] = useState('free');
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteValidation, setInviteValidation] = useState<{ valid: boolean; businessName?: string; roleType?: string; ownerName?: string; error?: string } | null>(null);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+  const validateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [workerName, setWorkerName] = useState(user?.firstName || '');
+  const [workerLastName, setWorkerLastName] = useState(user?.lastName || '');
+  const [workerPhone, setWorkerPhone] = useState('');
+
+  const [subName, setSubName] = useState(user?.firstName || '');
+  const [subLastName, setSubLastName] = useState(user?.lastName || '');
+  const [subPhone, setSubPhone] = useState('');
+  const [subTradeType, setSubTradeType] = useState('');
+  const [subAbn, setSubAbn] = useState('');
+  const [subInviteCode, setSubInviteCode] = useState('');
+  const [subInviteValidation, setSubInviteValidation] = useState<{ valid: boolean; businessName?: string; roleType?: string; ownerName?: string; error?: string } | null>(null);
+  const [isValidatingSubCode, setIsValidatingSubCode] = useState(false);
+  const subValidateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [demoDataSeeded, setDemoDataSeeded] = useState(false);
 
   useEffect(() => {
     const checkOnboardingStatus = async () => {
@@ -102,7 +109,7 @@ export default function OnboardingSetupScreen() {
           router.replace('/(tabs)');
           return;
         }
-        
+
         if (settings) {
           setBusinessData(prev => ({
             ...prev,
@@ -111,7 +118,6 @@ export default function OnboardingSetupScreen() {
             tradeType: settings.tradeType || '',
             abn: settings.abn || '',
             phone: settings.phone || '',
-            address: settings.address || '',
             gstEnabled: settings.gstEnabled ?? true,
             defaultHourlyRate: String(settings.defaultHourlyRate || '120'),
             calloutFee: String(settings.calloutFee || '90'),
@@ -126,103 +132,97 @@ export default function OnboardingSetupScreen() {
     checkOnboardingStatus();
   }, []);
 
-  const [teamInvites, setTeamInvites] = useState<{ email: string; role: string }[]>([]);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('staff');
-  const [sendingInvites, setSendingInvites] = useState(false);
+  const validateInviteCode = async (code: string, isSub = false) => {
+    const setValidation = isSub ? setSubInviteValidation : setInviteValidation;
+    const setValidating = isSub ? setIsValidatingSubCode : setIsValidatingCode;
 
-  const isTeamMode = businessData.teamSize && businessData.teamSize !== 'solo';
+    if (code.length !== 6) {
+      setValidation(null);
+      return;
+    }
 
-  const getProgress = () => {
-    const steps = isTeamMode 
-      ? ['business', 'integrations', 'team', 'complete']
-      : ['business', 'integrations', 'complete'];
-    const currentIndex = steps.indexOf(currentStep);
-    return ((currentIndex + 1) / steps.length) * 100;
+    setValidating(true);
+    try {
+      const response = await api.get(`/api/team/invite-code/validate/${code.toUpperCase()}`);
+      setValidation(response.data as { valid: boolean; businessName?: string; roleType?: string; ownerName?: string; error?: string });
+    } catch (error) {
+      setValidation({ valid: false, error: 'Failed to validate code' });
+    } finally {
+      setValidating(false);
+    }
   };
 
-  const handleSaveBusinessSettings = async () => {
-    if (!businessData.teamSize || !businessData.businessName || !businessData.tradeType) {
-      Alert.alert('Missing Info', 'Please select team size, business name, and trade type');
-      return;
+  const handleInviteCodeChange = (text: string, isSub = false) => {
+    const clean = text.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    if (isSub) {
+      setSubInviteCode(clean);
+      if (subValidateTimer.current) clearTimeout(subValidateTimer.current);
+      if (clean.length === 6) {
+        subValidateTimer.current = setTimeout(() => validateInviteCode(clean, true), 300);
+      } else {
+        setSubInviteValidation(null);
+      }
+    } else {
+      setInviteCode(clean);
+      if (validateTimer.current) clearTimeout(validateTimer.current);
+      if (clean.length === 6) {
+        validateTimer.current = setTimeout(() => validateInviteCode(clean, false), 300);
+      } else {
+        setInviteValidation(null);
+      }
+    }
+  };
+
+  const handleSaveBusinessSettings = async (): Promise<boolean> => {
+    if (!businessData.businessName || !businessData.tradeType) {
+      Alert.alert('Missing Info', 'Please enter business name and trade type');
+      return false;
     }
 
     if (businessData.abn) {
       const abnResult = validateABN(businessData.abn);
       if (!abnResult.valid) {
-        Alert.alert('Invalid ABN', abnResult.error || 'Please enter a valid 11-digit Australian Business Number');
-        return;
+        Alert.alert('Invalid ABN', abnResult.error || 'Please enter a valid 11-digit ABN');
+        return false;
       }
     }
 
     setIsLoading(true);
     try {
       const settingsPayload = {
-        teamSize: businessData.teamSize,
+        teamSize: businessData.teamSize || 'solo',
         businessName: businessData.businessName,
         tradeType: businessData.tradeType,
         abn: businessData.abn || null,
         phone: businessData.phone || null,
-        address: businessData.address || null,
         gstEnabled: businessData.gstEnabled,
         defaultHourlyRate: Number(businessData.defaultHourlyRate) || 120,
         calloutFee: Number(businessData.calloutFee) || 90,
       };
 
       const existingSettings = useAuthStore.getState().businessSettings;
-      let response;
-      
       if (existingSettings?.id) {
-        response = await api.patch('/api/business-settings', settingsPayload);
+        await api.patch('/api/business-settings', settingsPayload);
       } else {
-        response = await api.post('/api/business-settings', settingsPayload);
+        await api.post('/api/business-settings', settingsPayload);
       }
-
-      if (response.error) {
-        Alert.alert('Error', response.error);
-        return;
-      }
-
       await fetchBusinessSettings();
-      setCurrentStep('integrations');
+      return true;
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to save settings');
+      return false;
     } finally {
       setIsLoading(false);
     }
   };
-
-  const handleConnectStripe = async () => {
-    try {
-      setIsLoading(true);
-      const response = await api.post('/api/stripe-connect/onboard');
-      
-      if (response.error) {
-        Alert.alert('Connection Failed', response.error);
-        return;
-      }
-
-      if ((response.data as any)?.onboardingUrl) {
-        await Linking.openURL((response.data as any).onboardingUrl);
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to connect Stripe');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const [demoDataSeeded, setDemoDataSeeded] = useState(false);
 
   const markOnboardingComplete = async () => {
     try {
-      // Seed demo data so user has something to explore
       try {
         await api.post('/api/onboarding/seed-demo-data', {});
         setDemoDataSeeded(true);
       } catch (error) {
         if (__DEV__) console.log('Demo data seeding skipped:', error);
-        // Don't block onboarding if demo data fails
       }
       
       await api.patch('/api/business-settings', { onboardingCompleted: true });
@@ -232,139 +232,228 @@ export default function OnboardingSetupScreen() {
     }
   };
 
-  const handleSkipIntegrations = async () => {
-    if (isTeamMode) {
-      setCurrentStep('team');
-    } else {
-      await markOnboardingComplete();
-      setCurrentStep('complete');
-    }
+  const handleOwnerComplete = async () => {
+    const saved = await handleSaveBusinessSettings();
+    if (!saved) return;
+    await markOnboardingComplete();
+    setOwnerStep('complete');
   };
 
-  const handleContinueFromIntegrations = async () => {
-    if (isTeamMode) {
-      setCurrentStep('team');
-    } else {
-      await markOnboardingComplete();
-      setCurrentStep('complete');
-    }
-  };
-
-  const handleAddInvite = () => {
-    if (!inviteEmail.trim()) return;
-    if (teamInvites.some(i => i.email === inviteEmail.trim())) {
-      Alert.alert('Already Added', 'This email is already in the invite list');
-      return;
-    }
-    setTeamInvites(prev => [...prev, { email: inviteEmail.trim(), role: inviteRole }]);
-    setInviteEmail('');
-    setInviteRole('staff');
-  };
-
-  const handleRemoveInvite = (email: string) => {
-    setTeamInvites(prev => prev.filter(i => i.email !== email));
-  };
-
-  const handleSendInvites = async () => {
-    if (teamInvites.length === 0) {
-      await markOnboardingComplete();
-      setCurrentStep('complete');
+  const handleWorkerRedeem = async () => {
+    if (!inviteValidation?.valid) {
+      Alert.alert('Invalid Code', 'Please enter a valid invite code');
       return;
     }
 
-    setSendingInvites(true);
+    if (!workerName.trim()) {
+      Alert.alert('Missing Info', 'Please enter your name');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      for (const invite of teamInvites) {
-        await api.post('/api/team/members/invite', {
-          email: invite.email,
-          roleId: invite.role
+      const response = await api.post('/api/team/invite-code/redeem', {
+        code: inviteCode,
+        phone: workerPhone || undefined,
+      });
+
+      if (response.error) {
+        Alert.alert('Error', response.error);
+        return;
+      }
+
+      if (workerName.trim() || workerLastName.trim()) {
+        await api.patch('/api/user/profile', {
+          firstName: workerName.trim(),
+          lastName: workerLastName.trim(),
         });
       }
-      await markOnboardingComplete();
-      Alert.alert('Success', `${teamInvites.length} invite${teamInvites.length > 1 ? 's' : ''} sent!`);
-      setCurrentStep('complete');
+
+      await api.patch('/api/business-settings', { onboardingCompleted: true }).catch(() => {});
+      
+      setWorkerStep('complete');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send some invites');
+      Alert.alert('Error', error.message || 'Failed to join team');
     } finally {
-      setSendingInvites(false);
+      setIsLoading(false);
     }
   };
 
-  const handleSkipTeam = async () => {
-    await markOnboardingComplete();
-    setCurrentStep('complete');
+  const handleSubDetailsNext = async () => {
+    if (!subName.trim()) {
+      Alert.alert('Missing Info', 'Please enter your name');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await api.patch('/api/user/profile', {
+        firstName: subName.trim(),
+        lastName: subLastName.trim(),
+        tradeType: subTradeType || undefined,
+      });
+
+      const existingSettings = useAuthStore.getState().businessSettings;
+      const settingsPayload = {
+        businessName: `${subName.trim()}'s Services`,
+        tradeType: subTradeType || 'other',
+        phone: subPhone || null,
+        abn: subAbn || null,
+        teamSize: 'solo',
+      };
+
+      if (existingSettings?.id) {
+        await api.patch('/api/business-settings', settingsPayload);
+      } else {
+        await api.post('/api/business-settings', settingsPayload);
+      }
+      await fetchBusinessSettings();
+      setSubStep('subConnect');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to save details');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubConnect = async (skip: boolean) => {
+    if (!skip && subInviteValidation?.valid) {
+      setIsLoading(true);
+      try {
+        const response = await api.post('/api/team/invite-code/redeem', {
+          code: subInviteCode,
+          phone: subPhone || undefined,
+        });
+
+        if (response.error) {
+          Alert.alert('Error', response.error);
+          setIsLoading(false);
+          return;
+        }
+      } catch (error: any) {
+        Alert.alert('Error', error.message || 'Failed to connect');
+        setIsLoading(false);
+        return;
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    setSubStep('privacy');
+  };
+
+  const handleSubPrivacyAcknowledge = async () => {
+    try {
+      await api.patch('/api/business-settings', { onboardingCompleted: true }).catch(() => {});
+      setSubStep('complete');
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+    }
   };
 
   const handleComplete = () => {
     router.replace('/(tabs)');
   };
 
-  const renderBusinessStep = () => (
-    <ScrollView 
-      style={styles.stepContainer} 
-      contentContainerStyle={styles.stepContent}
-      showsVerticalScrollIndicator={false}
-    >
+  const getCurrentStep = () => {
+    if (!selectedRole) return 'role';
+    if (selectedRole === 'owner') return ownerStep;
+    if (selectedRole === 'worker') return workerStep;
+    return subStep;
+  };
+
+  const getStepCount = () => {
+    if (!selectedRole) return { current: 1, total: 1 };
+    if (selectedRole === 'owner') {
+      const steps: OwnerStep[] = ['role', 'business', 'trade', 'teamSize', 'plan', 'complete'];
+      return { current: steps.indexOf(ownerStep) + 1, total: steps.length };
+    }
+    if (selectedRole === 'worker') {
+      const steps: WorkerStep[] = ['role', 'inviteCode', 'workerDetails', 'complete'];
+      return { current: steps.indexOf(workerStep) + 1, total: steps.length };
+    }
+    const steps: SubcontractorStep[] = ['role', 'subDetails', 'subConnect', 'privacy', 'complete'];
+    return { current: steps.indexOf(subStep) + 1, total: steps.length };
+  };
+
+  const renderRoleSelection = () => (
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.stepHeader}>
+        <View style={styles.iconCircle}>
+          <Ionicons name="hand-right" size={32} color={colors.primary} />
+        </View>
+        <Text style={styles.stepTitle}>How are you joining?</Text>
+        <Text style={styles.stepSubtitle}>Choose the option that best describes you</Text>
+      </View>
+
+      <TouchableOpacity
+        style={styles.roleCard}
+        onPress={() => {
+          setSelectedRole('owner');
+          setOwnerStep('business');
+        }}
+        activeOpacity={0.7}
+        testID="role-owner"
+      >
+        <View style={[styles.roleIconWrap, { backgroundColor: '#2563eb20' }]}>
+          <Ionicons name="briefcase" size={28} color="#2563eb" />
+        </View>
+        <View style={styles.roleCardContent}>
+          <Text style={styles.roleCardTitle}>I run a business</Text>
+          <Text style={styles.roleCardSubtitle}>Set up your business and start managing jobs</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.roleCard}
+        onPress={() => {
+          setSelectedRole('worker');
+          setWorkerStep('inviteCode');
+        }}
+        activeOpacity={0.7}
+        testID="role-worker"
+      >
+        <View style={[styles.roleIconWrap, { backgroundColor: '#E8862E20' }]}>
+          <Ionicons name="people" size={28} color="#E8862E" />
+        </View>
+        <View style={styles.roleCardContent}>
+          <Text style={styles.roleCardTitle}>I was invited to a team</Text>
+          <Text style={styles.roleCardSubtitle}>Join your employer's business with an invite code</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.roleCard}
+        onPress={() => {
+          setSelectedRole('subcontractor');
+          setSubStep('subDetails');
+        }}
+        activeOpacity={0.7}
+        testID="role-subcontractor"
+      >
+        <View style={[styles.roleIconWrap, { backgroundColor: '#22c55e20' }]}>
+          <Ionicons name="construct" size={28} color="#22c55e" />
+        </View>
+        <View style={styles.roleCardContent}>
+          <Text style={styles.roleCardTitle}>I'm a subcontractor</Text>
+          <Text style={styles.roleCardSubtitle}>Work for multiple businesses independently</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+      </TouchableOpacity>
+    </ScrollView>
+  );
+
+  const renderOwnerBusiness = () => (
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
         <View style={styles.iconCircle}>
           <Ionicons name="business" size={32} color={colors.primary} />
         </View>
-        <Text style={styles.stepTitle}>Your Business</Text>
+        <Text style={styles.stepTitle}>Business Details</Text>
         <Text style={styles.stepSubtitle}>Tell us about your trade business</Text>
       </View>
 
-      <Text style={styles.sectionLabel}>Team Size</Text>
-      <View style={styles.optionsGrid}>
-        {teamSizes.map((size) => (
-          <TouchableOpacity
-            key={size.value}
-            style={[
-              styles.optionCard,
-              businessData.teamSize === size.value && styles.optionCardSelected
-            ]}
-            onPress={() => setBusinessData(prev => ({ ...prev, teamSize: size.value }))}
-            testID={`option-team-${size.value}`}
-          >
-            <Ionicons 
-              name={size.icon} 
-              size={24} 
-              color={businessData.teamSize === size.value ? colors.primary : colors.mutedForeground} 
-            />
-            <Text style={[
-              styles.optionLabel,
-              businessData.teamSize === size.value && styles.optionLabelSelected
-            ]}>{size.label}</Text>
-            <Text style={styles.optionDescription}>{size.description}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.sectionLabel}>Trade Type</Text>
-      <View style={styles.tradeGrid}>
-        {tradeTypes.map((trade) => (
-          <TouchableOpacity
-            key={trade.value}
-            style={[
-              styles.tradeOption,
-              businessData.tradeType === trade.value && styles.tradeOptionSelected
-            ]}
-            onPress={() => setBusinessData(prev => ({ ...prev, tradeType: trade.value }))}
-            testID={`option-trade-${trade.value}`}
-          >
-            <Ionicons 
-              name={trade.icon} 
-              size={18} 
-              color={businessData.tradeType === trade.value ? colors.primary : colors.mutedForeground} 
-            />
-            <Text style={[
-              styles.tradeLabel,
-              businessData.tradeType === trade.value && styles.tradeLabelSelected
-            ]}>{trade.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.sectionLabel}>Business Details</Text>
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Business Name *</Text>
         <TextInput
@@ -374,6 +463,31 @@ export default function OnboardingSetupScreen() {
           value={businessData.businessName}
           onChangeText={(text) => setBusinessData(prev => ({ ...prev, businessName: text }))}
           testID="input-business-name"
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Your Name</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. John Smith"
+          placeholderTextColor={colors.mutedForeground}
+          value={businessData.ownerName}
+          onChangeText={(text) => setBusinessData(prev => ({ ...prev, ownerName: text }))}
+          testID="input-owner-name"
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Phone (optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="0412 345 678"
+          placeholderTextColor={colors.mutedForeground}
+          value={businessData.phone}
+          onChangeText={(text) => setBusinessData(prev => ({ ...prev, phone: text }))}
+          keyboardType="phone-pad"
+          testID="input-phone"
         />
       </View>
 
@@ -399,396 +513,562 @@ export default function OnboardingSetupScreen() {
         )}
       </View>
 
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => {
+          if (!businessData.businessName.trim()) {
+            Alert.alert('Required', 'Please enter your business name');
+            return;
+          }
+          setOwnerStep('trade');
+        }} activeOpacity={0.8}>
+          <Text style={styles.primaryButtonText}>Continue</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+
+  const renderOwnerTrade = () => (
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.stepHeader}>
+        <View style={styles.iconCircle}>
+          <Ionicons name="construct" size={32} color={colors.primary} />
+        </View>
+        <Text style={styles.stepTitle}>Your Trade</Text>
+        <Text style={styles.stepSubtitle}>This personalises your demo data and templates</Text>
+      </View>
+
+      <View style={styles.tradeGrid}>
+        {tradeTypes.map((trade) => (
+          <TouchableOpacity
+            key={trade.value}
+            style={[styles.tradeOption, businessData.tradeType === trade.value && styles.tradeOptionSelected]}
+            onPress={() => setBusinessData(prev => ({ ...prev, tradeType: trade.value }))}
+            testID={`option-trade-${trade.value}`}
+          >
+            <Ionicons 
+              name={trade.icon} 
+              size={22} 
+              color={businessData.tradeType === trade.value ? colors.primary : colors.mutedForeground} 
+            />
+            <Text style={[styles.tradeLabel, businessData.tradeType === trade.value && styles.tradeLabelSelected]}>{trade.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => {
+          if (!businessData.tradeType) {
+            Alert.alert('Required', 'Please select your trade type');
+            return;
+          }
+          setOwnerStep('teamSize');
+        }} activeOpacity={0.8}>
+          <Text style={styles.primaryButtonText}>Continue</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+
+  const renderOwnerTeamSize = () => (
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.stepHeader}>
+        <View style={styles.iconCircle}>
+          <Ionicons name="people" size={32} color={colors.primary} />
+        </View>
+        <Text style={styles.stepTitle}>Team Size</Text>
+        <Text style={styles.stepSubtitle}>How many people work in your business?</Text>
+      </View>
+
+      <View style={styles.optionsGrid}>
+        {teamSizes.map((size) => (
+          <TouchableOpacity
+            key={size.value}
+            style={[styles.optionCard, businessData.teamSize === size.value && styles.optionCardSelected]}
+            onPress={() => {
+              setBusinessData(prev => ({ ...prev, teamSize: size.value }));
+              setSelectedPlan(size.plan);
+            }}
+            testID={`option-team-${size.value}`}
+          >
+            <Ionicons 
+              name={size.icon} 
+              size={24} 
+              color={businessData.teamSize === size.value ? colors.primary : colors.mutedForeground} 
+            />
+            <Text style={[styles.optionLabel, businessData.teamSize === size.value && styles.optionLabelSelected]}>{size.label}</Text>
+            <Text style={styles.optionDescription}>{size.description}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => {
+          if (!businessData.teamSize) {
+            Alert.alert('Required', 'Please select your team size');
+            return;
+          }
+          setOwnerStep('plan');
+        }} activeOpacity={0.8}>
+          <Text style={styles.primaryButtonText}>Continue</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+
+  const renderOwnerPlan = () => (
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.stepHeader}>
+        <View style={styles.iconCircle}>
+          <Ionicons name="star" size={32} color={colors.primary} />
+        </View>
+        <Text style={styles.stepTitle}>Choose Your Plan</Text>
+        <Text style={styles.stepSubtitle}>Start with a 14-day free trial on any plan</Text>
+      </View>
+
+      {plans.map((plan) => (
+        <TouchableOpacity
+          key={plan.id}
+          style={[
+            styles.planCard,
+            selectedPlan === plan.id && styles.planCardSelected,
+          ]}
+          onPress={() => setSelectedPlan(plan.id)}
+          activeOpacity={0.7}
+          testID={`plan-${plan.id}`}
+        >
+          <View style={styles.planHeader}>
+            <Text style={[styles.planName, selectedPlan === plan.id && { color: colors.primary }]}>{plan.name}</Text>
+            <View style={styles.planPriceRow}>
+              <Text style={styles.planPrice}>${plan.price}</Text>
+              {plan.price > 0 && <Text style={styles.planPeriod}>/mo</Text>}
+            </View>
+          </View>
+          {plan.seatPrice && (
+            <Text style={styles.planSeatPrice}>+ ${plan.seatPrice}/mo per team member</Text>
+          )}
+          <Text style={styles.planDescription}>{plan.description}</Text>
+          <View style={styles.planFeatures}>
+            {plan.features.map((f, i) => (
+              <View key={i} style={styles.planFeatureItem}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                <Text style={styles.planFeatureText}>{f}</Text>
+              </View>
+            ))}
+          </View>
+          {selectedPlan === plan.id && plan.price > 0 && (
+            <View style={styles.trialBadge}>
+              <Ionicons name="gift" size={14} color={colors.primary} />
+              <Text style={styles.trialBadgeText}>14-day free trial included</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      ))}
+
+      <TouchableOpacity style={styles.startFreeLink} onPress={() => { setSelectedPlan('free'); }}>
+        <Text style={styles.startFreeLinkText}>Start Free instead</Text>
+      </TouchableOpacity>
+
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={[styles.primaryButton, isLoading && { opacity: 0.5 }]}
+          onPress={handleOwnerComplete}
+          disabled={isLoading}
+          activeOpacity={0.8}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.primaryButtonText}>
+              {selectedPlan === 'free' ? 'Start Free' : 'Start 14-Day Free Trial'}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+
+  const renderWorkerInviteCode = () => (
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.stepHeader}>
+        <View style={[styles.iconCircle, { backgroundColor: '#E8862E20' }]}>
+          <Ionicons name="key" size={32} color="#E8862E" />
+        </View>
+        <Text style={styles.stepTitle}>Enter Invite Code</Text>
+        <Text style={styles.stepSubtitle}>Your employer will have given you a 6-character code</Text>
+      </View>
+
+      <View style={styles.codeInputContainer}>
+        <TextInput
+          style={styles.codeInput}
+          placeholder="e.g. MIKE42"
+          placeholderTextColor={colors.mutedForeground}
+          value={inviteCode}
+          onChangeText={(text) => handleInviteCodeChange(text)}
+          autoCapitalize="characters"
+          maxLength={6}
+          testID="input-invite-code"
+        />
+        {isValidatingCode && (
+          <ActivityIndicator style={styles.codeSpinner} color={colors.primary} />
+        )}
+      </View>
+
+      {inviteValidation?.valid && (
+        <View style={styles.validationSuccess}>
+          <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+          <Text style={styles.validationSuccessText}>
+            You're joining <Text style={{ fontWeight: '700' }}>{inviteValidation.businessName}</Text> as a <Text style={{ fontWeight: '700', textTransform: 'capitalize' }}>{inviteValidation.roleType}</Text>
+          </Text>
+        </View>
+      )}
+
+      {inviteValidation && !inviteValidation.valid && (
+        <View style={styles.validationError}>
+          <Ionicons name="alert-circle" size={20} color={colors.destructive} />
+          <Text style={styles.validationErrorText}>{inviteValidation.error}</Text>
+        </View>
+      )}
+
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={[styles.primaryButton, (!inviteValidation?.valid) && { opacity: 0.5 }]}
+          onPress={() => setWorkerStep('workerDetails')}
+          disabled={!inviteValidation?.valid}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.primaryButtonText}>Continue</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+
+  const renderWorkerDetails = () => (
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.stepHeader}>
+        <View style={[styles.iconCircle, { backgroundColor: '#E8862E20' }]}>
+          <Ionicons name="person" size={32} color="#E8862E" />
+        </View>
+        <Text style={styles.stepTitle}>Your Details</Text>
+        <Text style={styles.stepSubtitle}>Quick info so your team knows who you are</Text>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>First Name *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="John"
+          placeholderTextColor={colors.mutedForeground}
+          value={workerName}
+          onChangeText={setWorkerName}
+          autoCapitalize="words"
+          testID="input-worker-first-name"
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Last Name</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Smith"
+          placeholderTextColor={colors.mutedForeground}
+          value={workerLastName}
+          onChangeText={setWorkerLastName}
+          autoCapitalize="words"
+          testID="input-worker-last-name"
+        />
+      </View>
+
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Phone (optional)</Text>
         <TextInput
           style={styles.input}
           placeholder="0412 345 678"
           placeholderTextColor={colors.mutedForeground}
-          value={businessData.phone}
-          onChangeText={(text) => setBusinessData(prev => ({ ...prev, phone: text }))}
+          value={workerPhone}
+          onChangeText={setWorkerPhone}
           keyboardType="phone-pad"
-          testID="input-phone"
-        />
-      </View>
-
-      <View style={styles.row}>
-        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-          <Text style={styles.inputLabel}>Hourly Rate</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="120"
-            placeholderTextColor={colors.mutedForeground}
-            value={businessData.defaultHourlyRate}
-            onChangeText={(text) => setBusinessData(prev => ({ ...prev, defaultHourlyRate: text }))}
-            keyboardType="number-pad"
-            testID="input-hourly-rate"
-          />
-        </View>
-        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-          <Text style={styles.inputLabel}>Callout Fee</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="90"
-            placeholderTextColor={colors.mutedForeground}
-            value={businessData.calloutFee}
-            onChangeText={(text) => setBusinessData(prev => ({ ...prev, calloutFee: text }))}
-            keyboardType="number-pad"
-            testID="input-callout-fee"
-          />
-        </View>
-      </View>
-
-      <View style={styles.switchRow}>
-        <View style={styles.switchText}>
-          <Text style={styles.inputLabel}>GST Registration</Text>
-          <Text style={styles.switchDescription}>Include 10% GST in quotes and invoices</Text>
-        </View>
-        <Switch
-          value={businessData.gstEnabled}
-          onValueChange={(value) => setBusinessData(prev => ({ ...prev, gstEnabled: value }))}
-          trackColor={{ false: colors.cardBorder, true: colors.primary }}
-          thumbColor={colors.card}
-          testID="switch-gst"
+          testID="input-worker-phone"
         />
       </View>
 
       <View style={styles.buttonRow}>
         <TouchableOpacity
-          style={{
-            backgroundColor: '#1e3a5f',
-            paddingVertical: 14,
-            paddingHorizontal: 20,
-            borderRadius: 10,
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '100%',
-            opacity: (isLoading || !businessData.teamSize || !businessData.businessName || !businessData.tradeType) ? 0.5 : 1,
-          }}
-          onPress={handleSaveBusinessSettings}
-          disabled={isLoading || !businessData.teamSize || !businessData.businessName || !businessData.tradeType}
+          style={[styles.primaryButton, isLoading && { opacity: 0.5 }]}
+          onPress={handleWorkerRedeem}
+          disabled={isLoading}
           activeOpacity={0.8}
         >
           {isLoading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Continue</Text>
+            <Text style={styles.primaryButtonText}>Join Team</Text>
           )}
         </TouchableOpacity>
       </View>
     </ScrollView>
   );
 
-  const renderIntegrationsStep = () => (
-    <ScrollView 
-      style={styles.stepContainer} 
-      contentContainerStyle={styles.stepContent}
-      showsVerticalScrollIndicator={false}
-    >
+  const renderSubDetails = () => (
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
-        <View style={[styles.iconCircle, { backgroundColor: '#8b5cf6' + '20' }]}>
-          <Ionicons name="card" size={32} color="#8b5cf6" />
+        <View style={[styles.iconCircle, { backgroundColor: '#22c55e20' }]}>
+          <Ionicons name="person" size={32} color="#22c55e" />
         </View>
-        <Text style={styles.stepTitle}>Get Paid Faster</Text>
-        <Text style={styles.stepSubtitle}>Connect Stripe to accept card payments directly to your bank</Text>
+        <Text style={styles.stepTitle}>Your Details</Text>
+        <Text style={styles.stepSubtitle}>Tell us about yourself</Text>
       </View>
 
-      <Card style={styles.integrationCard}>
-        <CardContent style={{ paddingTop: 20 }}>
-          <View style={styles.integrationHeader}>
-            <View style={[styles.integrationIcon, { backgroundColor: '#6366f1' + '20' }]}>
-              <Ionicons name="logo-usd" size={24} color="#6366f1" />
-            </View>
-            <View style={styles.integrationInfo}>
-              <Text style={styles.integrationTitle}>Stripe Payments</Text>
-              <Text style={styles.integrationDescription}>
-                Accept credit cards, debit cards, and bank transfers. Get paid in 2-3 business days.
-              </Text>
-            </View>
-          </View>
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>First Name *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="John"
+          placeholderTextColor={colors.mutedForeground}
+          value={subName}
+          onChangeText={setSubName}
+          autoCapitalize="words"
+          testID="input-sub-first-name"
+        />
+      </View>
 
-          <View style={styles.featureList}>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-              <Text style={styles.featureText}>2.9% + 30c per transaction</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-              <Text style={styles.featureText}>Instant setup, no monthly fees</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-              <Text style={styles.featureText}>Accept payments from invoice links</Text>
-            </View>
-          </View>
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Last Name</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Smith"
+          placeholderTextColor={colors.mutedForeground}
+          value={subLastName}
+          onChangeText={setSubLastName}
+          autoCapitalize="words"
+        />
+      </View>
 
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Phone</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="0412 345 678"
+          placeholderTextColor={colors.mutedForeground}
+          value={subPhone}
+          onChangeText={setSubPhone}
+          keyboardType="phone-pad"
+        />
+      </View>
+
+      <Text style={styles.sectionLabel}>Trade Type</Text>
+      <View style={styles.tradeGrid}>
+        {tradeTypes.map((trade) => (
           <TouchableOpacity
-            style={{
-              backgroundColor: '#6366f1',
-              paddingVertical: 14,
-              paddingHorizontal: 20,
-              borderRadius: 10,
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%',
-            }}
-            onPress={handleConnectStripe}
-            disabled={isLoading}
-            activeOpacity={0.8}
+            key={trade.value}
+            style={[styles.tradeOption, subTradeType === trade.value && styles.tradeOptionSelected]}
+            onPress={() => setSubTradeType(trade.value)}
           >
-            {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Connect Stripe Account</Text>
-            )}
-          </TouchableOpacity>
-        </CardContent>
-      </Card>
-
-      <View style={styles.infoBox}>
-        <Ionicons name="information-circle" size={20} color={colors.primary} />
-        <Text style={styles.infoText}>
-          You can always set this up later from Settings → Integrations
-        </Text>
-      </View>
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity 
-          style={styles.skipButton} 
-          onPress={handleSkipIntegrations}
-          testID="button-skip-integrations"
-        >
-          <Text style={styles.skipText}>Skip for now</Text>
-          <Ionicons name="arrow-forward" size={18} color={colors.mutedForeground} />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity
-        style={{
-          backgroundColor: '#1e3a5f',
-          paddingVertical: 14,
-          paddingHorizontal: 20,
-          borderRadius: 10,
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-        }}
-        onPress={handleContinueFromIntegrations}
-        activeOpacity={0.8}
-      >
-        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Continue</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
-
-  const renderTeamStep = () => (
-    <ScrollView 
-      style={styles.stepContainer} 
-      contentContainerStyle={styles.stepContent}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.stepHeader}>
-        <View style={[styles.iconCircle, { backgroundColor: colors.warning + '20' }]}>
-          <Ionicons name="people" size={32} color={colors.warning} />
-        </View>
-        <Text style={styles.stepTitle}>Invite Your Team</Text>
-        <Text style={styles.stepSubtitle}>Add team members so they can start using JobRunner</Text>
-      </View>
-
-      <Card>
-        <CardContent>
-          <View style={styles.inviteInputRow}>
-            <TextInput
-              style={[styles.input, { flex: 1, marginBottom: 0 }]}
-              placeholder="team@example.com"
-              placeholderTextColor={colors.mutedForeground}
-              value={inviteEmail}
-              onChangeText={setInviteEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              testID="input-invite-email"
+            <Ionicons 
+              name={trade.icon} 
+              size={18} 
+              color={subTradeType === trade.value ? colors.primary : colors.mutedForeground} 
             />
-            <TouchableOpacity
-              style={styles.roleSelector}
-              onPress={() => {
-                const roles = ['staff', 'supervisor', 'admin'];
-                const currentIndex = roles.indexOf(inviteRole);
-                setInviteRole(roles[(currentIndex + 1) % roles.length]);
-              }}
-              testID="button-role-toggle"
-            >
-              <Text style={styles.roleText}>{inviteRole}</Text>
-              <Ionicons name="chevron-down" size={14} color={colors.mutedForeground} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={handleAddInvite}
-              testID="button-add-invite"
-            >
-              <Ionicons name="add" size={24} color={colors.card} />
-            </TouchableOpacity>
-          </View>
+            <Text style={[styles.tradeLabel, subTradeType === trade.value && styles.tradeLabelSelected]}>{trade.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-          {teamInvites.length > 0 && (
-            <View style={styles.inviteList}>
-              <Text style={styles.inviteListLabel}>Pending Invites</Text>
-              {teamInvites.map((invite, idx) => (
-                <View key={idx} style={styles.inviteItem}>
-                  <View style={styles.inviteItemInfo}>
-                    <Ionicons name="mail" size={16} color={colors.mutedForeground} />
-                    <Text style={styles.inviteEmail}>{invite.email}</Text>
-                    <View style={styles.roleBadge}>
-                      <Text style={styles.roleBadgeText}>{invite.role}</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => handleRemoveInvite(invite.email)}
-                    testID={`button-remove-invite-${idx}`}
-                  >
-                    <Ionicons name="close" size={20} color={colors.destructive} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          )}
-        </CardContent>
-      </Card>
-
-      <View style={styles.infoBox}>
-        <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-        <Text style={styles.infoText}>
-          Team members will receive an email with instructions to join your business
-        </Text>
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>ABN (optional — for invoicing)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="12 345 678 901"
+          placeholderTextColor={colors.mutedForeground}
+          value={formatABN(subAbn)}
+          onChangeText={(text) => {
+            const digits = text.replace(/\s/g, '').replace(/[^0-9]/g, '').slice(0, 11);
+            setSubAbn(digits);
+          }}
+          keyboardType="number-pad"
+          maxLength={14}
+        />
       </View>
 
       <View style={styles.buttonRow}>
-        <TouchableOpacity 
-          style={styles.skipButton} 
-          onPress={handleSkipTeam}
-          testID="button-skip-team"
+        <TouchableOpacity
+          style={[styles.primaryButton, isLoading && { opacity: 0.5 }]}
+          onPress={handleSubDetailsNext}
+          disabled={isLoading}
+          activeOpacity={0.8}
         >
-          <Text style={styles.skipText}>Skip for now</Text>
-          <Ionicons name="arrow-forward" size={18} color={colors.mutedForeground} />
+          {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Continue</Text>}
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+
+  const renderSubConnect = () => (
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.stepHeader}>
+        <View style={[styles.iconCircle, { backgroundColor: '#22c55e20' }]}>
+          <Ionicons name="link" size={32} color="#22c55e" />
+        </View>
+        <Text style={styles.stepTitle}>Connect to a Business</Text>
+        <Text style={styles.stepSubtitle}>Enter an invite code from a business you work with</Text>
+      </View>
+
+      <View style={styles.codeInputContainer}>
+        <TextInput
+          style={styles.codeInput}
+          placeholder="e.g. MIKE42"
+          placeholderTextColor={colors.mutedForeground}
+          value={subInviteCode}
+          onChangeText={(text) => handleInviteCodeChange(text, true)}
+          autoCapitalize="characters"
+          maxLength={6}
+          testID="input-sub-invite-code"
+        />
+        {isValidatingSubCode && (
+          <ActivityIndicator style={styles.codeSpinner} color={colors.primary} />
+        )}
+      </View>
+
+      {subInviteValidation?.valid && (
+        <View style={styles.validationSuccess}>
+          <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+          <Text style={styles.validationSuccessText}>
+            You'll be connected to <Text style={{ fontWeight: '700' }}>{subInviteValidation.businessName}</Text>
+          </Text>
+        </View>
+      )}
+
+      {subInviteValidation && !subInviteValidation.valid && (
+        <View style={styles.validationError}>
+          <Ionicons name="alert-circle" size={20} color={colors.destructive} />
+          <Text style={styles.validationErrorText}>{subInviteValidation.error}</Text>
+        </View>
+      )}
+
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={[styles.primaryButton, isLoading && { opacity: 0.5 }]}
+          onPress={() => handleSubConnect(false)}
+          disabled={isLoading || (!subInviteValidation?.valid && subInviteCode.length > 0)}
+          activeOpacity={0.8}
+        >
+          {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Connect & Continue</Text>}
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        style={{
-          backgroundColor: '#1e3a5f',
-          paddingVertical: 14,
-          paddingHorizontal: 20,
-          borderRadius: 10,
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-          opacity: sendingInvites ? 0.5 : 1,
-        }}
-        onPress={handleSendInvites}
-        disabled={sendingInvites}
-        activeOpacity={0.8}
-      >
-        {sendingInvites ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
-            {teamInvites.length > 0 
-              ? `Send ${teamInvites.length} Invite${teamInvites.length > 1 ? 's' : ''}`
-              : 'Continue'}
-          </Text>
-        )}
+      <TouchableOpacity style={styles.skipButton} onPress={() => handleSubConnect(true)}>
+        <Text style={styles.skipText}>Skip — I'll wait for an invite</Text>
+        <Ionicons name="arrow-forward" size={18} color={colors.mutedForeground} />
       </TouchableOpacity>
     </ScrollView>
   );
 
-  const renderCompleteStep = () => (
-    <View style={[styles.stepContainer, styles.completeContainer]}>
-      <View style={styles.completeContent}>
-        <View style={[styles.iconCircle, styles.successCircle]}>
-          <Ionicons name="checkmark" size={48} color={colors.card} />
+  const renderSubPrivacy = () => (
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.stepHeader}>
+        <View style={[styles.iconCircle, { backgroundColor: '#22c55e20' }]}>
+          <Ionicons name="shield-checkmark" size={32} color="#22c55e" />
         </View>
-        
-        <Text style={styles.completeTitle}>Welcome to JobRunner!</Text>
-        <Text style={styles.completeSubtitle}>
-          {demoDataSeeded 
-            ? "We've set up sample data so you can explore the app right away."
-            : "Your account is ready. Let's get you some jobs!"}
-        </Text>
-
-        <View style={styles.checkList}>
-          <View style={styles.checkItem}>
-            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-            <Text style={styles.checkText}>Business details configured</Text>
-          </View>
-          {demoDataSeeded && (
-            <>
-              <View style={styles.checkItem}>
-                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                <Text style={styles.checkText}>5 sample clients loaded</Text>
-              </View>
-              <View style={styles.checkItem}>
-                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                <Text style={styles.checkText}>6 sample jobs created</Text>
-              </View>
-              <View style={styles.checkItem}>
-                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                <Text style={styles.checkText}>Sample quotes & invoices ready</Text>
-              </View>
-            </>
-          )}
-          {!demoDataSeeded && (
-            <View style={styles.checkItem}>
-              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-              <Text style={styles.checkText}>Ready to create quotes, jobs & invoices</Text>
-            </View>
-          )}
-          {isTeamMode && teamInvites.length > 0 && (
-            <View style={styles.checkItem}>
-              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-              <Text style={styles.checkText}>{teamInvites.length} team invite{teamInvites.length > 1 ? 's' : ''} sent</Text>
-            </View>
-          )}
-        </View>
-        
-        <View style={styles.freePlanCard}>
-          <Text style={styles.freePlanTitle}>Free Plan Includes:</Text>
-          <View style={styles.freePlanList}>
-            <Text style={styles.freePlanItem}>Unlimited quotes</Text>
-            <Text style={styles.freePlanItem}>25 jobs per month</Text>
-            <Text style={styles.freePlanItem}>25 invoices per month</Text>
-            <Text style={styles.freePlanItem}>50 clients</Text>
-          </View>
-        </View>
-        
-        {demoDataSeeded && (
-          <Text style={[styles.completeSubtitle, { fontSize: 13, marginTop: 12, opacity: 0.8 }]}>
-            You can clear sample data anytime in Settings → Account
-          </Text>
-        )}
+        <Text style={styles.stepTitle}>Your Privacy Matters</Text>
+        <Text style={styles.stepSubtitle}>How location sharing works for subcontractors</Text>
       </View>
 
-      <TouchableOpacity
-        style={{
-          backgroundColor: '#1e3a5f',
-          paddingVertical: 14,
-          paddingHorizontal: 20,
-          borderRadius: 10,
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-        }}
-        onPress={handleComplete}
-        activeOpacity={0.8}
-      >
-        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>Start Using JobRunner</Text>
-      </TouchableOpacity>
-    </View>
+      <View style={styles.privacyCard}>
+        <View style={styles.privacyItem}>
+          <View style={[styles.privacyIcon, { backgroundColor: '#22c55e20' }]}>
+            <Ionicons name="location" size={20} color="#22c55e" />
+          </View>
+          <View style={styles.privacyContent}>
+            <Text style={styles.privacyTitle}>Active jobs only</Text>
+            <Text style={styles.privacyText}>Your location is only shared when you're actively working on a job.</Text>
+          </View>
+        </View>
+
+        <View style={styles.privacyItem}>
+          <View style={[styles.privacyIcon, { backgroundColor: '#2563eb20' }]}>
+            <Ionicons name="stop-circle" size={20} color="#2563eb" />
+          </View>
+          <View style={styles.privacyContent}>
+            <Text style={styles.privacyTitle}>Tracking stops automatically</Text>
+            <Text style={styles.privacyText}>The moment you complete a job, tracking stops. No exceptions.</Text>
+          </View>
+        </View>
+
+        <View style={styles.privacyItem}>
+          <View style={[styles.privacyIcon, { backgroundColor: '#8b5cf620' }]}>
+            <Ionicons name="eye-off" size={20} color="#8b5cf6" />
+          </View>
+          <View style={styles.privacyContent}>
+            <Text style={styles.privacyTitle}>Not tracked between jobs</Text>
+            <Text style={styles.privacyText}>Businesses cannot see your location between jobs. Your personal time is private.</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.primaryButton} onPress={handleSubPrivacyAcknowledge} activeOpacity={0.8}>
+          <Text style={styles.primaryButtonText}>I Understand — Continue</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 
-  const allSteps: OnboardingStep[] = isTeamMode 
-    ? ['business', 'integrations', 'team', 'complete']
-    : ['business', 'integrations', 'complete'];
+  const renderComplete = () => {
+    const isWorkerPath = selectedRole === 'worker';
+    const isSubPath = selectedRole === 'subcontractor';
 
-  const currentStepConfig = STEP_CONFIG[currentStep];
+    return (
+      <View style={[styles.stepContainer, styles.completeContainer]}>
+        <View style={styles.completeContent}>
+          <View style={[styles.iconCircle, styles.successCircle]}>
+            <Ionicons name="checkmark" size={48} color="#FFFFFF" />
+          </View>
+          
+          <Text style={styles.completeTitle}>
+            {isWorkerPath ? 'Welcome to the team!' : isSubPath ? 'You\'re all set!' : 'Welcome to JobRunner!'}
+          </Text>
+          <Text style={styles.completeSubtitle}>
+            {isWorkerPath 
+              ? `You've joined ${inviteValidation?.businessName || 'the team'}. Your assigned jobs will appear on your dashboard.`
+              : isSubPath
+                ? subInviteValidation?.valid 
+                  ? `You're connected to ${subInviteValidation.businessName}. Jobs will appear when they're assigned to you.`
+                  : 'Your account is ready. When a business assigns you jobs, they\'ll appear here.'
+                : demoDataSeeded 
+                  ? "We've set up sample data so you can explore the app right away."
+                  : "Your account is ready. Let's get you some jobs!"
+            }
+          </Text>
+
+          {!isWorkerPath && !isSubPath && (
+            <View style={styles.checkList}>
+              <View style={styles.checkItem}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                <Text style={styles.checkText}>Business details configured</Text>
+              </View>
+              {demoDataSeeded && (
+                <>
+                  <View style={styles.checkItem}>
+                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                    <Text style={styles.checkText}>Sample data loaded</Text>
+                  </View>
+                </>
+              )}
+            </View>
+          )}
+        </View>
+
+        <TouchableOpacity style={styles.primaryButton} onPress={handleComplete} activeOpacity={0.8}>
+          <Text style={styles.primaryButtonText}>
+            {isWorkerPath ? 'View My Jobs' : isSubPath ? 'Get Started' : 'Start Using JobRunner'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const currentStep = getCurrentStep();
+  const { current, total } = getStepCount();
+  const progress = (current / total) * 100;
 
   if (isCheckingSettings) {
     return (
@@ -810,6 +1090,52 @@ export default function OnboardingSetupScreen() {
     );
   }
 
+  const getStepLabel = () => {
+    if (currentStep === 'role') return 'Get Started';
+    if (selectedRole === 'owner') {
+      const labels: Record<OwnerStep, string> = { role: 'Role', business: 'Business', trade: 'Trade', teamSize: 'Team Size', plan: 'Plan', complete: 'Done!' };
+      return labels[ownerStep];
+    }
+    if (selectedRole === 'worker') {
+      const labels: Record<WorkerStep, string> = { role: 'Role', inviteCode: 'Invite Code', workerDetails: 'Details', complete: 'Done!' };
+      return labels[workerStep];
+    }
+    const labels: Record<SubcontractorStep, string> = { role: 'Role', subDetails: 'Details', subConnect: 'Connect', privacy: 'Privacy', complete: 'Done!' };
+    return labels[subStep];
+  };
+
+  const getStepColor = () => {
+    if (!selectedRole || currentStep === 'role') return '#2563eb';
+    if (selectedRole === 'owner') return '#2563eb';
+    if (selectedRole === 'worker') return '#E8862E';
+    return '#22c55e';
+  };
+
+  const canGoBack = () => {
+    if (currentStep === 'role') return false;
+    if (currentStep === 'complete') return false;
+    return true;
+  };
+
+  const handleBack = () => {
+    if (selectedRole === 'owner') {
+      const steps: OwnerStep[] = ['role', 'business', 'trade', 'teamSize', 'plan'];
+      const idx = steps.indexOf(ownerStep);
+      if (idx === 1) { setSelectedRole(null); setOwnerStep('role'); }
+      else if (idx > 1) setOwnerStep(steps[idx - 1]);
+    } else if (selectedRole === 'worker') {
+      const steps: WorkerStep[] = ['role', 'inviteCode', 'workerDetails'];
+      const idx = steps.indexOf(workerStep);
+      if (idx === 1) { setSelectedRole(null); setWorkerStep('role'); }
+      else if (idx > 1) setWorkerStep(steps[idx - 1]);
+    } else if (selectedRole === 'subcontractor') {
+      const steps: SubcontractorStep[] = ['role', 'subDetails', 'subConnect', 'privacy'];
+      const idx = steps.indexOf(subStep);
+      if (idx === 1) { setSelectedRole(null); setSubStep('role'); }
+      else if (idx > 1) setSubStep(steps[idx - 1]);
+    }
+  };
+
   return (
     <LinearGradient
       colors={['#2563eb', '#3b82f6', '#E8862E']}
@@ -818,81 +1144,54 @@ export default function OnboardingSetupScreen() {
       style={styles.gradientContainer}
     >
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        {/* Header with logo and step indicators */}
         <View style={styles.header}>
           <View style={styles.logoRow}>
+            {canGoBack() && (
+              <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
+                <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
             <Text style={styles.logoText}>
-              <Text style={{ color: '#FFFFFF' }}>Tradie</Text>
-              <Text style={{ color: '#fed7aa' }}>Track</Text>
+              <Text style={{ color: '#FFFFFF' }}>Job</Text>
+              <Text style={{ color: '#fed7aa' }}>Runner</Text>
             </Text>
           </View>
-          
-          {/* Step indicators */}
-          <View style={styles.stepIndicators}>
-            {allSteps.map((step, index) => {
-              const stepConfig = STEP_CONFIG[step];
-              const currentIndex = allSteps.indexOf(currentStep);
-              const isActive = step === currentStep;
-              const isCompleted = index < currentIndex;
-              
-              return (
-                <View key={step} style={styles.stepIndicatorWrapper}>
-                  <View style={[
-                    styles.stepDot,
-                    isActive && { backgroundColor: '#FFFFFF', transform: [{ scale: 1.2 }] },
-                    isCompleted && { backgroundColor: '#22c55e' },
-                    !isActive && !isCompleted && { backgroundColor: 'rgba(255,255,255,0.3)' }
-                  ]}>
-                    {isCompleted && (
-                      <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                    )}
-                    {isActive && (
-                      <Ionicons name={stepConfig.icon} size={12} color={stepConfig.color} />
-                    )}
-                  </View>
-                  <Text style={[
-                    styles.stepLabel,
-                    isActive && { color: '#FFFFFF', fontWeight: '600' },
-                    !isActive && { color: 'rgba(255,255,255,0.6)' }
-                  ]}>
-                    {stepConfig.title}
-                  </Text>
-                  {index < allSteps.length - 1 && (
-                    <View style={[
-                      styles.stepConnector,
-                      isCompleted && { backgroundColor: '#22c55e' }
-                    ]} />
-                  )}
-                </View>
-              );
-            })}
-          </View>
         </View>
 
-        {/* Progress bar */}
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBarWhite}>
-            <View style={[styles.progressFillOrange, { width: `${getProgress()}%` }]} />
-          </View>
-          <Text style={styles.progressTextWhite}>{Math.round(getProgress())}%</Text>
-        </View>
-
-        {/* Content card */}
-        <View style={styles.contentCard}>
-          {/* Step header with color */}
-          <View style={[styles.stepHeaderBar, { backgroundColor: currentStepConfig.lightColor }]}>
-            <View style={[styles.stepHeaderIcon, { backgroundColor: currentStepConfig.color }]}>
-              <Ionicons name={currentStepConfig.icon} size={20} color="#FFFFFF" />
+        {currentStep !== 'complete' && (
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBarWhite}>
+              <View style={[styles.progressFillOrange, { width: `${progress}%` }]} />
             </View>
-            <Text style={[styles.stepHeaderTitle, { color: currentStepConfig.color }]}>
-              {currentStepConfig.title}
-            </Text>
+            <Text style={styles.progressTextWhite}>Step {current}/{total}</Text>
           </View>
+        )}
 
-          {currentStep === 'business' && renderBusinessStep()}
-          {currentStep === 'integrations' && renderIntegrationsStep()}
-          {currentStep === 'team' && renderTeamStep()}
-          {currentStep === 'complete' && renderCompleteStep()}
+        <View style={styles.contentCard}>
+          {currentStep !== 'role' && currentStep !== 'complete' && (
+            <View style={[styles.stepHeaderBar, { backgroundColor: getStepColor() + '15' }]}>
+              <View style={[styles.stepHeaderIcon, { backgroundColor: getStepColor() }]}>
+                <Ionicons name={
+                  selectedRole === 'owner' ? 'business' : selectedRole === 'worker' ? 'people' : 'construct'
+                } size={20} color="#FFFFFF" />
+              </View>
+              <Text style={[styles.stepHeaderTitle, { color: getStepColor() }]}>
+                {getStepLabel()}
+              </Text>
+            </View>
+          )}
+
+          {currentStep === 'role' && renderRoleSelection()}
+          {selectedRole === 'owner' && ownerStep === 'business' && renderOwnerBusiness()}
+          {selectedRole === 'owner' && ownerStep === 'trade' && renderOwnerTrade()}
+          {selectedRole === 'owner' && ownerStep === 'teamSize' && renderOwnerTeamSize()}
+          {selectedRole === 'owner' && ownerStep === 'plan' && renderOwnerPlan()}
+          {selectedRole === 'worker' && workerStep === 'inviteCode' && renderWorkerInviteCode()}
+          {selectedRole === 'worker' && workerStep === 'workerDetails' && renderWorkerDetails()}
+          {selectedRole === 'subcontractor' && subStep === 'subDetails' && renderSubDetails()}
+          {selectedRole === 'subcontractor' && subStep === 'subConnect' && renderSubConnect()}
+          {selectedRole === 'subcontractor' && subStep === 'privacy' && renderSubPrivacy()}
+          {currentStep === 'complete' && renderComplete()}
         </View>
       </SafeAreaView>
     </LinearGradient>
@@ -914,42 +1213,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    gap: 12,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoText: {
     fontSize: 22,
     fontWeight: 'bold',
-  },
-  stepIndicators: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  stepIndicatorWrapper: {
-    flex: 1,
-    alignItems: 'center',
-    position: 'relative',
-  },
-  stepDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  stepLabel: {
-    fontSize: 10,
-    textAlign: 'center',
-  },
-  stepConnector: {
-    position: 'absolute',
-    top: 14,
-    left: '60%',
-    right: '-40%',
-    height: 2,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    zIndex: -1,
   },
   loadingContainer: {
     flex: 1,
@@ -993,12 +1269,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 12,
     color: '#FFFFFF',
     fontWeight: '600',
-    minWidth: 35,
+    minWidth: 55,
     textAlign: 'right',
   },
   contentCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     marginTop: 8,
@@ -1054,12 +1330,92 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 20,
   },
+  roleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    gap: 14,
+  },
+  roleIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleCardContent: {
+    flex: 1,
+  },
+  roleCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 2,
+  },
+  roleCardSubtitle: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    lineHeight: 18,
+  },
   sectionLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.foreground,
     marginBottom: 12,
     marginTop: 8,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.foreground,
+    marginBottom: 8,
+  },
+  input: {
+    height: 48,
+    paddingHorizontal: 14,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 10,
+    color: colors.foreground,
+    fontSize: 15,
+  },
+  tradeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  tradeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    gap: 6,
+  },
+  tradeOptionSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+  },
+  tradeLabel: {
+    fontSize: 14,
+    color: colors.foreground,
+  },
+  tradeLabelSelected: {
+    color: colors.primary,
+    fontWeight: '500',
   },
   optionsGrid: {
     flexDirection: 'row',
@@ -1093,221 +1449,210 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 12,
     color: colors.mutedForeground,
   },
-  tradeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 20,
-  },
-  tradeOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    gap: 6,
-  },
-  tradeOptionSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '10',
-  },
-  tradeLabel: {
-    fontSize: 14,
-    color: colors.foreground,
-  },
-  tradeLabelSelected: {
-    color: colors.primary,
-    fontWeight: '500',
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.foreground,
-    marginBottom: 8,
-  },
-  input: {
-    height: 48,
-    paddingHorizontal: 14,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: 10,
-    color: colors.foreground,
-    fontSize: 15,
-  },
-  row: {
-    flexDirection: 'row',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.card,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  switchText: {
-    flex: 1,
-  },
-  switchDescription: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
   buttonRow: {
     marginTop: 8,
     marginBottom: 16,
   },
-  integrationCard: {
-    marginBottom: 16,
-  },
-  integrationHeader: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  integrationIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+  primaryButton: {
+    backgroundColor: '#1e3a5f',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
   },
-  integrationInfo: {
-    flex: 1,
-  },
-  integrationTitle: {
-    fontSize: 18,
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
-    color: colors.foreground,
-    marginBottom: 4,
-  },
-  integrationDescription: {
-    fontSize: 13,
-    color: colors.mutedForeground,
-    lineHeight: 18,
-  },
-  featureList: {
-    marginBottom: 16,
-    gap: 8,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  featureText: {
-    fontSize: 13,
-    color: colors.foreground,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: colors.primary + '10',
-    padding: 12,
-    borderRadius: 10,
-    gap: 10,
-    marginBottom: 16,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    color: colors.foreground,
-    lineHeight: 18,
   },
   skipButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
+    padding: 12,
+    gap: 8,
   },
   skipText: {
     fontSize: 14,
     color: colors.mutedForeground,
-  },
-  inviteInputRow: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  roleSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    height: 48,
-    backgroundColor: colors.background,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    gap: 4,
-  },
-  roleText: {
-    fontSize: 13,
-    color: colors.foreground,
-    textTransform: 'capitalize',
-  },
-  addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inviteList: {
-    marginTop: 16,
-    gap: 8,
-  },
-  inviteListLabel: {
-    fontSize: 12,
     fontWeight: '500',
-    color: colors.mutedForeground,
+  },
+  codeInputContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  codeInput: {
+    height: 64,
+    paddingHorizontal: 20,
+    backgroundColor: colors.card,
+    borderWidth: 2,
+    borderColor: colors.cardBorder,
+    borderRadius: 14,
+    color: colors.foreground,
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: 8,
+    textAlign: 'center',
+  },
+  codeSpinner: {
+    position: 'absolute',
+    right: 16,
+    top: 20,
+  },
+  validationSuccess: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.success + '15',
+    padding: 14,
+    borderRadius: 10,
+    gap: 10,
+    marginBottom: 16,
+  },
+  validationSuccessText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.success,
+    lineHeight: 20,
+  },
+  validationError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.destructive + '15',
+    padding: 14,
+    borderRadius: 10,
+    gap: 10,
+    marginBottom: 16,
+  },
+  validationErrorText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.destructive,
+  },
+  planCard: {
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: colors.cardBorder,
+  },
+  planCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '08',
+  },
+  planHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 4,
   },
-  inviteItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.background,
-    padding: 12,
-    borderRadius: 8,
+  planName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.foreground,
   },
-  inviteItemInfo: {
+  planPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  planPrice: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  planPeriod: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+  },
+  planSeatPrice: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    marginBottom: 6,
+    textAlign: 'right',
+  },
+  planDescription: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginBottom: 12,
+  },
+  planFeatures: {
+    gap: 6,
+  },
+  planFeatureItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flex: 1,
   },
-  inviteEmail: {
-    fontSize: 14,
+  planFeatureText: {
+    fontSize: 13,
     color: colors.foreground,
+  },
+  trialBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary + '15',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+    marginTop: 12,
+  },
+  trialBadgeText: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  startFreeLink: {
+    alignItems: 'center',
+    padding: 8,
+    marginBottom: 4,
+  },
+  startFreeLinkText: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
+  privacyCard: {
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    gap: 20,
+  },
+  privacyItem: {
+    flexDirection: 'row',
+    gap: 14,
+  },
+  privacyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  privacyContent: {
     flex: 1,
   },
-  roleBadge: {
-    backgroundColor: colors.primary + '20',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+  privacyTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 4,
   },
-  roleBadgeText: {
-    fontSize: 11,
-    color: colors.primary,
-    textTransform: 'capitalize',
-    fontWeight: '500',
+  privacyText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    lineHeight: 18,
   },
   completeContainer: {
-    padding: 20,
     justifyContent: 'center',
+    padding: 24,
   },
   completeContent: {
     alignItems: 'center',
@@ -1315,49 +1660,29 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   successCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
     backgroundColor: colors.success,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   completeTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: colors.success,
+    color: colors.foreground,
+    textAlign: 'center',
     marginBottom: 8,
-    marginTop: 24,
   },
   completeSubtitle: {
-    fontSize: 15,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  checkList: {
-    gap: 12,
-    alignSelf: 'stretch',
-    paddingHorizontal: 24,
-  },
-  freePlanCard: {
-    backgroundColor: colors.muted,
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-    alignSelf: 'stretch',
-    marginHorizontal: 24,
-  },
-  freePlanTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.foreground,
-    marginBottom: 8,
-  },
-  freePlanList: {
-    gap: 4,
-  },
-  freePlanItem: {
     fontSize: 14,
     color: colors.mutedForeground,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 20,
+  },
+  checkList: {
+    marginTop: 24,
+    gap: 12,
+    width: '100%',
   },
   checkItem: {
     flexDirection: 'row',
@@ -1365,7 +1690,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 10,
   },
   checkText: {
-    fontSize: 15,
+    fontSize: 14,
     color: colors.foreground,
   },
 });

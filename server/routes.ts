@@ -89,6 +89,9 @@ import {
   // Job Invites schema
   insertJobInviteSchema,
   type JobInvite,
+  // Invite codes
+  inviteCodes,
+  insertInviteCodeSchema,
   // Types
   type InsertTimeEntry,
   // Location tracking tables
@@ -29664,6 +29667,233 @@ Respond with JSON in this format:
     } catch (error) {
       console.error('Error removing team member:', error);
       res.status(500).json({ error: 'Failed to remove team member' });
+    }
+  });
+
+  // ============ INVITE CODE SYSTEM ============
+
+  const INVITE_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  function generateInviteCode(): string {
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += INVITE_CODE_CHARS.charAt(Math.floor(Math.random() * INVITE_CODE_CHARS.length));
+    }
+    return code;
+  }
+
+  app.post("/api/team/invite-codes", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userContext?.effectiveUserId || req.userId!;
+      const { roleType } = req.body;
+
+      if (!roleType || !['worker', 'manager', 'subcontractor'].includes(roleType)) {
+        return res.status(400).json({ error: 'roleType must be worker, manager, or subcontractor' });
+      }
+
+      let code = generateInviteCode();
+      let attempts = 0;
+      while (attempts < 10) {
+        const existing = await db.select().from(inviteCodes).where(eq(inviteCodes.code, code)).limit(1);
+        if (existing.length === 0) break;
+        code = generateInviteCode();
+        attempts++;
+      }
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      const [newCode] = await db.insert(inviteCodes).values({
+        businessOwnerId: userId,
+        code,
+        roleType,
+        maxUses: 10,
+        expiresAt,
+        isActive: true,
+      }).returning();
+
+      res.json(newCode);
+    } catch (error) {
+      console.error('Error generating invite code:', error);
+      res.status(500).json({ error: 'Failed to generate invite code' });
+    }
+  });
+
+  app.get("/api/team/invite-codes", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userContext?.effectiveUserId || req.userId!;
+      const codes = await db.select().from(inviteCodes)
+        .where(eq(inviteCodes.businessOwnerId, userId))
+        .orderBy(desc(inviteCodes.createdAt));
+      res.json(codes);
+    } catch (error) {
+      console.error('Error fetching invite codes:', error);
+      res.status(500).json({ error: 'Failed to fetch invite codes' });
+    }
+  });
+
+  app.delete("/api/team/invite-codes/:id", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userContext?.effectiveUserId || req.userId!;
+      const codeId = req.params.id;
+
+      const [existing] = await db.select().from(inviteCodes)
+        .where(and(eq(inviteCodes.id, codeId), eq(inviteCodes.businessOwnerId, userId)))
+        .limit(1);
+
+      if (!existing) {
+        return res.status(404).json({ error: 'Invite code not found' });
+      }
+
+      await db.update(inviteCodes)
+        .set({ isActive: false })
+        .where(eq(inviteCodes.id, codeId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error revoking invite code:', error);
+      res.status(500).json({ error: 'Failed to revoke invite code' });
+    }
+  });
+
+  app.get("/api/team/invite-code/validate/:code", async (req: any, res) => {
+    try {
+      const code = req.params.code.toUpperCase().trim();
+
+      if (!code || code.length !== 6) {
+        return res.json({ valid: false, error: 'Code must be 6 characters' });
+      }
+
+      const [inviteCode] = await db.select().from(inviteCodes)
+        .where(and(
+          eq(inviteCodes.code, code),
+          eq(inviteCodes.isActive, true)
+        ))
+        .limit(1);
+
+      if (!inviteCode) {
+        return res.json({ valid: false, error: 'Invalid invite code' });
+      }
+
+      if (new Date() > new Date(inviteCode.expiresAt)) {
+        return res.json({ valid: false, error: 'This invite code has expired' });
+      }
+
+      if (inviteCode.usedCount >= inviteCode.maxUses) {
+        return res.json({ valid: false, error: 'This invite code has reached its usage limit' });
+      }
+
+      const owner = await storage.getUser(inviteCode.businessOwnerId);
+      const businessSettingsData = await storage.getBusinessSettings(inviteCode.businessOwnerId);
+
+      res.json({
+        valid: true,
+        businessName: businessSettingsData?.businessName || owner?.firstName + "'s Business",
+        roleType: inviteCode.roleType,
+        ownerName: [owner?.firstName, owner?.lastName].filter(Boolean).join(' ') || 'Business Owner',
+      });
+    } catch (error) {
+      console.error('Error validating invite code:', error);
+      res.status(500).json({ error: 'Failed to validate invite code' });
+    }
+  });
+
+  app.post("/api/team/invite-code/redeem", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { code, phone } = req.body;
+
+      if (!code || typeof code !== 'string') {
+        return res.status(400).json({ error: 'Invite code is required' });
+      }
+
+      const normalizedCode = code.toUpperCase().trim();
+
+      const [inviteCode] = await db.select().from(inviteCodes)
+        .where(and(
+          eq(inviteCodes.code, normalizedCode),
+          eq(inviteCodes.isActive, true)
+        ))
+        .limit(1);
+
+      if (!inviteCode) {
+        return res.status(400).json({ error: 'Invalid invite code' });
+      }
+
+      if (new Date() > new Date(inviteCode.expiresAt)) {
+        return res.status(400).json({ error: 'This invite code has expired' });
+      }
+
+      if (inviteCode.usedCount >= inviteCode.maxUses) {
+        return res.status(400).json({ error: 'This invite code has reached its usage limit' });
+      }
+
+      const existingMembers = await storage.getTeamMembers(inviteCode.businessOwnerId);
+      const alreadyMember = existingMembers.find((m: { memberId?: string; userId?: string }) => m.memberId === userId || m.userId === userId);
+      if (alreadyMember) {
+        return res.status(400).json({ error: 'You are already a member of this team' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let roleId = inviteCode.roleId;
+      if (!roleId) {
+        const roles = await storage.getUserRoles(inviteCode.businessOwnerId);
+        const matchRole = roles.find((r: { id: string; name: string }) => r.name.toLowerCase() === inviteCode.roleType);
+        if (matchRole) {
+          roleId = matchRole.id;
+        } else {
+          const workerRole = roles.find((r: { id: string; name: string }) => r.name.toLowerCase() === 'worker');
+          roleId = workerRole?.id;
+        }
+      }
+
+      if (!roleId) {
+        return res.status(500).json({ error: 'Could not determine role for invite code. The business owner needs to set up roles first.' });
+      }
+
+      const updateResult = await db.update(inviteCodes)
+        .set({ usedCount: sql`used_count + 1` })
+        .where(and(
+          eq(inviteCodes.id, inviteCode.id),
+          sql`used_count < max_uses`,
+          eq(inviteCodes.isActive, true)
+        ))
+        .returning();
+
+      if (updateResult.length === 0) {
+        return res.status(400).json({ error: 'This invite code is no longer available' });
+      }
+
+      await storage.createTeamMember({
+        businessOwnerId: inviteCode.businessOwnerId,
+        memberId: userId,
+        roleId,
+        email: user.email || '',
+        firstName: user.firstName || undefined,
+        lastName: user.lastName || undefined,
+        phone: phone || undefined,
+        inviteStatus: 'accepted',
+        inviteAcceptedAt: new Date(),
+        isActive: true,
+      });
+
+      const businessSettingsData = await storage.getBusinessSettings(inviteCode.businessOwnerId);
+
+      if (inviteCode.roleType === 'subcontractor') {
+        await storage.updateUser(userId, { activeBusinessId: inviteCode.businessOwnerId } as any);
+      }
+
+      res.json({
+        success: true,
+        businessName: businessSettingsData?.businessName || 'Business',
+        roleType: inviteCode.roleType,
+      });
+    } catch (error) {
+      console.error('Error redeeming invite code:', error);
+      res.status(500).json({ error: 'Failed to redeem invite code' });
     }
   });
 

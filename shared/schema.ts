@@ -1628,6 +1628,27 @@ export const teamMembers = pgTable("team_members", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const inviteCodes = pgTable("invite_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  code: varchar("code", { length: 6 }).notNull().unique(),
+  roleType: text("role_type").notNull().default('worker'),
+  roleId: varchar("role_id").references(() => userRoles.id, { onDelete: 'set null' }),
+  maxUses: integer("max_uses").notNull().default(10),
+  usedCount: integer("used_count").notNull().default(0),
+  expiresAt: timestamp("expires_at").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertInviteCodeSchema = createInsertSchema(inviteCodes).omit({
+  id: true,
+  createdAt: true,
+  usedCount: true,
+});
+export type InsertInviteCode = z.infer<typeof insertInviteCodeSchema>;
+export type InviteCode = typeof inviteCodes.$inferSelect;
+
 export const jobAssignments = pgTable("job_assignments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: 'cascade' }),
