@@ -63,8 +63,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.xs,
     gap: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   backButton: {
     width: 36,
@@ -113,8 +115,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   messagesContent: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -215,8 +217,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   composerWrap: {
     backgroundColor: colors.background,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
   },
   quickRepliesRow: {
     paddingVertical: spacing.xs + 2,
@@ -244,8 +244,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: spacing.sm,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.xs,
+    paddingVertical: 6,
     gap: spacing.xs,
   },
   zapButton: {
