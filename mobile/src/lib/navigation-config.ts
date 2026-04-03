@@ -14,6 +14,7 @@ export interface NavItem {
   requiresPlatformAdmin?: boolean;
   hideForTradie?: boolean;
   hideForStaff?: boolean;
+  hideInSimpleMode?: boolean;
   requiresProPlan?: boolean;
   allowedRoles?: UserRole[];
   showInBottomNav?: boolean;
@@ -142,6 +143,7 @@ export const mainMenuItems: NavItem[] = [
     requiresTeam: false,
     requiresOwnerOrManager: false,
     hideForStaff: true,
+    hideInSimpleMode: true,
     showInMore: true,
     category: "team",
     allowedRoles: ['owner', 'solo_owner', 'manager'],
@@ -179,6 +181,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "primary",
     requiresOwnerOrManager: true,
     hideForStaff: true,
+    hideInSimpleMode: true,
     showInMore: true,
     category: "work",
     allowedRoles: ['owner', 'solo_owner', 'manager'],
@@ -271,6 +274,18 @@ export const mainMenuItems: NavItem[] = [
     url: "/more/booking-settings",
     icon: "calendar",
     description: "Online booking page for customers",
+    color: "primary",
+    bgColor: "primary",
+    hideForStaff: true,
+    showInMore: true,
+    category: "addons",
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
+  },
+  {
+    title: "Custom Website",
+    url: "/more/custom-website",
+    icon: "globe",
+    description: "Professional trade business website",
     color: "primary",
     bgColor: "primary",
     hideForStaff: true,
@@ -435,6 +450,7 @@ export interface FilterOptions {
   userRole?: UserRole;
   isPlatformAdmin?: boolean;
   hasProSubscription?: boolean;
+  isSimpleMode?: boolean;
 }
 
 export function filterNavItems(items: NavItem[], options: FilterOptions): NavItem[] {
@@ -457,6 +473,11 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
     
     // Hide from staff tradies (staff who are not owners/managers)
     if (item.hideForStaff && isStaffTradie) {
+      return false;
+    }
+
+    // Hide items when simple/solo operator mode is active
+    if (item.hideInSimpleMode && options.isSimpleMode) {
       return false;
     }
 

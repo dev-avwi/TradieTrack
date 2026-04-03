@@ -10,7 +10,7 @@ import {
   Alert,
   RefreshControl
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useAuthStore } from '../../src/lib/store';
@@ -969,7 +969,7 @@ export default function SubscriptionScreen() {
                 </View>
                 <TouchableOpacity 
                   style={[styles.ctaButton, styles.ctaButtonOutline, { marginTop: spacing.md }]}
-                  onPress={() => Linking.openURL('mailto:admin@avwebinnovation.com?subject=AI%20Receptionist%20Add-On%20Enquiry')}
+                  onPress={() => router.push('/more/ai-receptionist')}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.ctaButtonTextOutline}>
@@ -1004,11 +1004,11 @@ export default function SubscriptionScreen() {
                 </View>
                 <TouchableOpacity 
                   style={[styles.ctaButton, styles.ctaButtonOutline, { marginTop: spacing.md }]}
-                  onPress={() => Linking.openURL('mailto:admin@avwebinnovation.com?subject=Custom%20Website%20Enquiry&body=Hi%20JobRunner%20Team%2C%0A%0AI%27m%20interested%20in%20a%20custom%20website.%0A%0ABusiness%20Name%3A%20%0ATrade%3A%20%0ALocation%3A%20%0A%0AThanks!')}
+                  onPress={() => router.push('/more/custom-website')}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.ctaButtonTextOutline}>
-                    <Feather name="mail" size={14} />{'  '}Request Custom Website
+                    <Feather name="globe" size={14} />{'  '}Learn More
                   </Text>
                 </TouchableOpacity>
               </View>

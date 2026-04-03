@@ -974,6 +974,9 @@ export default function SettingsScreen() {
     quoteTerms: '',
     invoiceTerms: '',
     paymentInstructions: '',
+    workerHourlyRate: '',
+    workerOvertimeRate: '',
+    workerWeekendRate: '',
   });
 
   // Usage tracking state
@@ -1118,6 +1121,9 @@ export default function SettingsScreen() {
           quoteTerms: d.quoteTerms || '',
           invoiceTerms: d.invoiceTerms || '',
           paymentInstructions: d.paymentInstructions || '',
+          workerHourlyRate: String(d.workerHourlyRate || ''),
+          workerOvertimeRate: String(d.workerOvertimeRate || ''),
+          workerWeekendRate: String(d.workerWeekendRate || ''),
         });
       }
     } catch (error) {
@@ -1140,6 +1146,9 @@ export default function SettingsScreen() {
         quoteTerms: paymentData.quoteTerms,
         invoiceTerms: paymentData.invoiceTerms,
         paymentInstructions: paymentData.paymentInstructions,
+        workerHourlyRate: paymentData.workerHourlyRate,
+        workerOvertimeRate: paymentData.workerOvertimeRate,
+        workerWeekendRate: paymentData.workerWeekendRate,
       });
       if (response.error) {
         Alert.alert('Error', response.error);
@@ -2012,6 +2021,58 @@ export default function SettingsScreen() {
                     onChangeText={(text) => setPaymentData(prev => ({ ...prev, warrantyPeriod: text }))}
                     placeholder="12 months"
                     placeholderTextColor={colors.mutedForeground}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="users" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>Worker Pay Rates</Text>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Default Worker Hourly Rate ($)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={paymentData.workerHourlyRate}
+                    onChangeText={(text) => {
+                      const cleaned = text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                      setPaymentData(prev => ({ ...prev, workerHourlyRate: cleaned }));
+                    }}
+                    placeholder="45.00"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Overtime Rate ($)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={paymentData.workerOvertimeRate}
+                    onChangeText={(text) => {
+                      const cleaned = text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                      setPaymentData(prev => ({ ...prev, workerOvertimeRate: cleaned }));
+                    }}
+                    placeholder="67.50"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+
+                <View style={[styles.inputGroup, { marginBottom: 0 }]}>
+                  <Text style={styles.inputLabel}>Weekend / Public Holiday Rate ($)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={paymentData.workerWeekendRate}
+                    onChangeText={(text) => {
+                      const cleaned = text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                      setPaymentData(prev => ({ ...prev, workerWeekendRate: cleaned }));
+                    }}
+                    placeholder="90.00"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="decimal-pad"
                   />
                 </View>
               </View>

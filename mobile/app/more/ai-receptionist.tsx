@@ -118,6 +118,39 @@ export default function AIReceptionistScreen() {
   const [voiceRequestText, setVoiceRequestText] = useState('');
   const [isSavingKB, setIsSavingKB] = useState(false);
   const [isSubmittingVR, setIsSubmittingVR] = useState(false);
+  const [isProvisioning, setIsProvisioning] = useState(false);
+
+  const handleProvisionNumber = async () => {
+    Alert.alert(
+      'Provision Phone Number',
+      'This will set up a dedicated Australian phone number for your AI Receptionist. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Provision Number',
+          onPress: async () => {
+            setIsProvisioning(true);
+            try {
+              await api.patch('/api/ai-receptionist/config', {
+                mode: mode || 'after_hours',
+                voice,
+                greeting: greeting || null,
+                transferNumbers,
+                businessHours: { start: startTime, end: endTime, timezone, days: selectedDays },
+              });
+              const res = await api.post('/api/subscription/ai-receptionist-checkout');
+              await fetchConfig();
+              Alert.alert('Success', 'Your AI phone number is being provisioned. This may take a moment.');
+            } catch (e: any) {
+              Alert.alert('Error', e?.message || 'Could not provision phone number. Please try again.');
+            } finally {
+              setIsProvisioning(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const fetchConfig = useCallback(async () => {
     try {
@@ -352,8 +385,19 @@ export default function AIReceptionistScreen() {
                 No phone number assigned
               </Text>
               <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18, marginBottom: spacing.md }}>
-                An AI phone number needs to be provisioned for your business before the receptionist can be activated. Configure your preferences below and request setup.
+                A dedicated phone number needs to be provisioned for your business before the receptionist can be activated.
               </Text>
+              <TouchableOpacity
+                style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, opacity: isProvisioning ? 0.6 : 1 }}
+                onPress={handleProvisionNumber}
+                disabled={isProvisioning}
+                activeOpacity={0.7}
+              >
+                <Feather name={isProvisioning ? 'loader' : 'phone'} size={16} color={colors.primaryForeground} />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
+                  {isProvisioning ? 'Provisioning...' : 'Get Phone Number'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
