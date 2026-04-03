@@ -8,6 +8,7 @@ import { useTheme, ThemeColors } from '../lib/theme';
 import { useScrollToTop } from '../contexts/ScrollContext';
 import { isIPad } from '../lib/device';
 import { useNotificationsStore } from '../lib/notifications-store';
+import { useAuthStore } from '../lib/store';
 
 interface NavItem {
   title: string;
@@ -16,7 +17,7 @@ interface NavItem {
   matchPaths?: string[];
 }
 
-const navItems: NavItem[] = [
+const defaultNavItems: NavItem[] = [
   { 
     title: 'Dashboard', 
     icon: 'home', 
@@ -28,6 +29,39 @@ const navItems: NavItem[] = [
     icon: 'briefcase', 
     path: '/jobs',
     matchPaths: ['/jobs', '/job']
+  },
+  { 
+    title: 'Chat', 
+    icon: 'message-circle', 
+    path: '/more/chat-hub',
+    matchPaths: ['/more/chat-hub', '/more/team-chat', '/more/direct-messages']
+  },
+  { 
+    title: 'More', 
+    icon: 'more-horizontal', 
+    path: '/profile',
+    matchPaths: ['/profile', '/more', '/money', '/more/invoices', '/more/quotes', '/more/payment-hub', '/collect']
+  },
+];
+
+const subcontractorNavItems: NavItem[] = [
+  { 
+    title: 'Dashboard', 
+    icon: 'home', 
+    path: '/',
+    matchPaths: ['/', '/index']
+  },
+  { 
+    title: 'My Jobs', 
+    icon: 'briefcase', 
+    path: '/jobs',
+    matchPaths: ['/jobs', '/job']
+  },
+  { 
+    title: 'Map', 
+    icon: 'map-pin', 
+    path: '/map',
+    matchPaths: ['/map']
   },
   { 
     title: 'Chat', 
@@ -148,6 +182,10 @@ export function BottomNav() {
   const styles = useMemo(() => createStyles(colors, isPadDevice), [colors, isPadDevice]);
   const { triggerScrollToTop } = useScrollToTop();
   const unreadCount = useNotificationsStore((s) => s.unreadCount);
+  const { roleInfo } = useAuthStore();
+  
+  const isSubcontractorRole = roleInfo?.roleName?.toLowerCase() === 'subcontractor' || roleInfo?.roleName?.toLowerCase() === 'sub_contractor';
+  const navItems = isSubcontractorRole ? subcontractorNavItems : defaultNavItems;
 
   const isActive = (item: NavItem) => {
     const chatRoutes = ['/more/chat-hub', '/more/team-chat', '/more/direct-messages', '/more/sms-conversation', '/more/new-sms-conversation'];

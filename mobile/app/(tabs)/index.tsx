@@ -32,6 +32,7 @@ import { getAvatarColor } from '../../src/lib/avatar-colors';
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import UsageLimitBanner from '../../src/components/UsageLimitBanner';
+import { SubcontractorDashboard } from '../../src/components/SubcontractorDashboard';
 
 interface WeatherData {
   temperature: number;
@@ -1700,6 +1701,18 @@ function EmptyTodayState({ onCreateJob }: { onCreateJob: () => void }) {
 }
 
 export default function DashboardScreen() {
+  const { roleInfo } = useAuthStore();
+  
+  // Detect subcontractor role and render purpose-built dashboard
+  const isSubcontractorRole = roleInfo?.roleName?.toLowerCase() === 'subcontractor' || roleInfo?.roleName?.toLowerCase() === 'sub_contractor';
+  if (isSubcontractorRole) {
+    return <SubcontractorDashboard />;
+  }
+  
+  return <OwnerDashboardScreen />;
+}
+
+function OwnerDashboardScreen() {
   const { colors } = useTheme();
   const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors), [colors]);

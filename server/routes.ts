@@ -117,6 +117,7 @@ import {
   teamMemberMetrics,
   // Job assignment requests
   jobAssignmentRequests,
+  jobAssignments,
   timeEntries,
   userRoles,
   // Saved filters
@@ -45953,6 +45954,356 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     } catch (error) {
       console.error("Error updating voice change request:", error);
       res.status(500).json({ error: "Failed to update voice change request" });
+    }
+  });
+
+  // ============ SUBCONTRACTOR DASHBOARD ROUTES (Authenticated) ============
+
+  // GET /api/subcontractor/dashboard - Aggregated dashboard data for subcontractor
+  app.get("/api/subcontractor/dashboard", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+
+      // Find all team memberships for this user (across all businesses)
+      const memberships = await db
+        .select()
+        .from(teamMembers)
+        .where(and(eq(teamMembers.memberId, userId), eq(teamMembers.isActive, true)));
+
+      if (memberships.length === 0) {
+        return res.json({
+          availabilityStatus: 'available',
+          todaysJobs: [],
+          weekJobs: [],
+          pendingRequests: [],
+          activeJob: null,
+          earningsWeek: 0,
+          earningsMonth: 0,
+          earningsByBusiness: [],
+          businesses: [],
+        });
+      }
+
+      const businessOwnerIds = memberships.map(m => m.businessOwnerId);
+      const businessColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
+
+      // Fetch business info for each connected business
+      const businessInfos = await db
+        .select({ id: businessSettings.id, userId: businessSettings.userId, businessName: businessSettings.businessName, brandColor: businessSettings.brandColor })
+        .from(businessSettings)
+        .where(inArray(businessSettings.userId, businessOwnerIds));
+
+      const businessMap: Record<string, { name: string; color: string }> = {};
+      businessInfos.forEach((b, i) => {
+        businessMap[b.userId] = {
+          name: b.businessName || 'Unknown Business',
+          color: b.brandColor || businessColors[i % businessColors.length],
+        };
+      });
+
+      // Fetch all job assignments for this user
+      const assignments = await db
+        .select()
+        .from(jobAssignments)
+        .where(and(eq(jobAssignments.userId, userId), eq(jobAssignments.isActive, true)));
+
+      const assignedJobIds = assignments.map(a => a.jobId);
+
+      // Get availability status from the first membership
+      const availabilityStatus = memberships[0]?.availabilityStatus || 'available';
+
+      if (assignedJobIds.length === 0) {
+        return res.json({
+          availabilityStatus,
+          todaysJobs: [],
+          weekJobs: [],
+          pendingRequests: [],
+          activeJob: null,
+          earningsWeek: 0,
+          earningsMonth: 0,
+          earningsByBusiness: [],
+          businesses: Object.entries(businessMap).map(([id, b]) => ({ id, ...b })),
+        });
+      }
+
+      // Fetch all assigned jobs
+      const assignedJobs = await db
+        .select()
+        .from(jobs)
+        .where(inArray(jobs.id, assignedJobIds));
+
+      // Enrich jobs with business info and client names
+      const clientIds = [...new Set(assignedJobs.map(j => j.clientId).filter(Boolean))];
+      let clientMap: Record<string, string> = {};
+      if (clientIds.length > 0) {
+        const clientRows = await db
+          .select({ id: clients.id, name: clients.name })
+          .from(clients)
+          .where(inArray(clients.id, clientIds));
+        clientMap = Object.fromEntries(clientRows.map(c => [c.id, c.name]));
+      }
+
+      const enrichedJobs = assignedJobs.map(job => {
+        const biz = businessMap[job.userId] || { name: 'Unknown', color: '#6B7280' };
+        const assignment = assignments.find(a => a.jobId === job.id);
+        return {
+          id: job.id,
+          title: job.title,
+          description: job.description,
+          address: job.address,
+          status: job.status,
+          scheduledAt: job.scheduledAt,
+          scheduledTime: job.scheduledTime,
+          estimatedDuration: job.estimatedDuration,
+          latitude: job.latitude,
+          longitude: job.longitude,
+          clientName: job.clientId ? clientMap[job.clientId] || null : null,
+          businessName: biz.name,
+          businessColor: biz.color,
+          businessOwnerId: job.userId,
+          assignmentStatus: assignment?.assignmentStatus || 'assigned',
+          completedAt: job.completedAt,
+          startedAt: job.startedAt,
+        };
+      });
+
+      // Today's jobs
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+      // Pending statuses: 'assigned' (default) or 'invited' are incoming requests not yet accepted
+      const pendingStatuses = ['assigned', 'invited'];
+
+      const todaysJobsList = enrichedJobs.filter(j => {
+        if (pendingStatuses.includes(j.assignmentStatus)) return false;
+        if (j.assignmentStatus === 'declined') return false;
+        if (!j.scheduledAt) return j.status === 'in_progress';
+        const d = new Date(j.scheduledAt);
+        return d >= todayStart && d < todayEnd;
+      }).sort((a, b) => {
+        const dateA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
+        const dateB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
+        return dateA - dateB;
+      });
+
+      // This week's jobs (only accepted/en_route/in_progress)
+      const weekEnd = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const weekJobs = enrichedJobs.filter(j => {
+        if (pendingStatuses.includes(j.assignmentStatus)) return false;
+        if (j.assignmentStatus === 'declined') return false;
+        if (!j.scheduledAt) return false;
+        const d = new Date(j.scheduledAt);
+        return d >= todayStart && d < weekEnd;
+      }).sort((a, b) => {
+        const dateA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
+        const dateB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
+        return dateA - dateB;
+      });
+
+      // Pending requests (jobs with assignment_status = 'assigned' or 'invited' - not yet accepted)
+      const pendingRequests = enrichedJobs.filter(j => pendingStatuses.includes(j.assignmentStatus));
+
+      // Active job (in_progress)
+      const activeJob = enrichedJobs.find(j => j.status === 'in_progress') || null;
+
+      // Earnings calculations from time entries
+      const weekStart = new Date(todayStart);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of current week (Sunday)
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      let earningsWeek = 0;
+      let earningsMonth = 0;
+      const earningsByBusinessMap: Record<string, number> = {};
+
+      try {
+        const entries = await db
+          .select()
+          .from(timeEntries)
+          .where(and(
+            eq(timeEntries.userId, userId),
+            gte(timeEntries.startTime, monthStart),
+            isNotNull(timeEntries.endTime),
+          ));
+
+        for (const entry of entries) {
+          if (!entry.endTime) continue;
+          const start = new Date(entry.startTime);
+          const end = new Date(entry.endTime);
+          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+
+          // Find the membership for this job's business
+          const jobEntry = entry.jobId ? assignedJobs.find(j => j.id === entry.jobId) : null;
+          const membership = jobEntry
+            ? memberships.find(m => m.businessOwnerId === jobEntry.userId)
+            : memberships[0];
+          const rate = parseFloat(membership?.hourlyRate || '0') || 0;
+          const earned = hours * rate;
+
+          earningsMonth += earned;
+          if (start >= weekStart) {
+            earningsWeek += earned;
+          }
+
+          if (jobEntry) {
+            const bizName = businessMap[jobEntry.userId]?.name || 'Unknown';
+            earningsByBusinessMap[bizName] = (earningsByBusinessMap[bizName] || 0) + earned;
+          }
+        }
+      } catch (e) {
+        console.error('[Subcontractor Dashboard] Earnings calculation error:', e);
+      }
+
+      const earningsByBusiness = Object.entries(earningsByBusinessMap).map(([name, amount]) => ({
+        businessName: name,
+        amount: Math.round(amount * 100) / 100,
+      }));
+
+      res.json({
+        availabilityStatus,
+        todaysJobs: todaysJobsList,
+        weekJobs,
+        pendingRequests,
+        activeJob,
+        earningsWeek: Math.round(earningsWeek * 100) / 100,
+        earningsMonth: Math.round(earningsMonth * 100) / 100,
+        earningsByBusiness,
+        businesses: Object.entries(businessMap).map(([id, b]) => ({ id, ...b })),
+      });
+    } catch (error) {
+      console.error('[Subcontractor Dashboard] Error:', error);
+      res.status(500).json({ error: 'Failed to load dashboard data' });
+    }
+  });
+
+  // PATCH /api/subcontractor/availability-status - Update availability status
+  app.patch("/api/subcontractor/availability-status", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const { status } = req.body;
+
+      if (!['available', 'busy', 'unavailable'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status. Must be: available, busy, or unavailable' });
+      }
+
+      // Update all team memberships for this user
+      await db
+        .update(teamMembers)
+        .set({ availabilityStatus: status, updatedAt: new Date() })
+        .where(and(eq(teamMembers.memberId, userId), eq(teamMembers.isActive, true)));
+
+      res.json({ status });
+    } catch (error) {
+      console.error('[Subcontractor Availability] Error:', error);
+      res.status(500).json({ error: 'Failed to update availability status' });
+    }
+  });
+
+  // POST /api/subcontractor/jobs/:id/accept - Accept a pending job assignment
+  app.post("/api/subcontractor/jobs/:id/accept", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const jobId = req.params.id;
+
+      const assignment = await db
+        .select()
+        .from(jobAssignments)
+        .where(and(
+          eq(jobAssignments.jobId, jobId),
+          eq(jobAssignments.userId, userId),
+          eq(jobAssignments.isActive, true),
+        ))
+        .limit(1);
+
+      if (assignment.length === 0) {
+        return res.status(404).json({ error: 'Job assignment not found' });
+      }
+
+      const acceptablePendingStatuses = ['assigned', 'invited'];
+      if (!acceptablePendingStatuses.includes(assignment[0].assignmentStatus || '')) {
+        return res.status(400).json({ error: 'Job assignment has already been processed' });
+      }
+
+      await db
+        .update(jobAssignments)
+        .set({
+          assignmentStatus: 'accepted',
+          acceptedAt: new Date(),
+        })
+        .where(eq(jobAssignments.id, assignment[0].id));
+
+      // Update the job status to scheduled if it's still pending
+      const job = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+      if (job.length > 0 && job[0].status === 'pending') {
+        await db.update(jobs).set({ status: 'scheduled' }).where(eq(jobs.id, jobId));
+      }
+
+      res.json({ success: true, message: 'Job accepted' });
+    } catch (error) {
+      console.error('[Subcontractor Accept Job] Error:', error);
+      res.status(500).json({ error: 'Failed to accept job' });
+    }
+  });
+
+  // POST /api/subcontractor/jobs/:id/decline - Decline a pending job assignment
+  app.post("/api/subcontractor/jobs/:id/decline", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const jobId = req.params.id;
+      const { reason } = req.body;
+
+      const assignment = await db
+        .select()
+        .from(jobAssignments)
+        .where(and(
+          eq(jobAssignments.jobId, jobId),
+          eq(jobAssignments.userId, userId),
+          eq(jobAssignments.isActive, true),
+        ))
+        .limit(1);
+
+      if (assignment.length === 0) {
+        return res.status(404).json({ error: 'Job assignment not found' });
+      }
+
+      const declinablePendingStatuses = ['assigned', 'invited'];
+      if (!declinablePendingStatuses.includes(assignment[0].assignmentStatus || '')) {
+        return res.status(400).json({ error: 'Job assignment has already been processed' });
+      }
+
+      await db
+        .update(jobAssignments)
+        .set({
+          assignmentStatus: 'declined',
+          isActive: false,
+        })
+        .where(eq(jobAssignments.id, assignment[0].id));
+
+      // Notify the business owner
+      try {
+        const job = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+        if (job.length > 0) {
+          const user = await storage.getUser(userId);
+          const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Subcontractor';
+          const declineMessage = reason ? `${userName} declined job "${job[0].title}": ${reason}` : `${userName} declined job "${job[0].title}"`;
+          
+          await storage.createNotification({
+            userId: job[0].userId,
+            type: 'job_update',
+            title: 'Job Declined',
+            message: declineMessage,
+            entityType: 'job',
+            entityId: jobId,
+          });
+        }
+      } catch (notifError) {
+        console.error('[Subcontractor Decline] Notification error:', notifError);
+      }
+
+      res.json({ success: true, message: 'Job declined' });
+    } catch (error) {
+      console.error('[Subcontractor Decline Job] Error:', error);
+      res.status(500).json({ error: 'Failed to decline job' });
     }
   });
 
