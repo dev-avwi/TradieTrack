@@ -145,6 +145,8 @@ interface TeamMember {
     battery?: number;
   };
   activityStatus?: 'online' | 'driving' | 'working' | 'offline';
+  isSubcontractor?: boolean;
+  activeJobName?: string;
 }
 
 type StatusFilter = 'all' | 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
@@ -808,6 +810,13 @@ export default function MapScreen() {
           const isWithinBounds = newLat >= -50 && newLat <= 0 && newLng >= 100 && newLng <= 180;
           const hasValidNewCoords = Number.isFinite(newLat) && Number.isFinite(newLng) && isWithinBounds;
           
+          // Subcontractors without valid coords from API should never show (privacy)
+          // Do not fall back to cached positions for inactive subbies
+          if (m.isSubcontractor && !hasValidNewCoords) {
+            lastKnownPositionsRef.current.delete(m.id);
+            return null;
+          }
+
           // Get last known position from cache
           const lastKnown = lastKnownPositionsRef.current.get(m.id);
           let useLat: number;
@@ -860,8 +869,9 @@ export default function MapScreen() {
               speed: m.speed != null ? Number(m.speed) : undefined,
               battery: m.batteryLevel != null ? Number(m.batteryLevel) : undefined,
             },
-            // Use activityStatus from API response, fallback to computed value
             activityStatus: m.activityStatus || (m.currentJobId ? 'working' : 'online'),
+            isSubcontractor: m.isSubcontractor || false,
+            activeJobName: m.activeJobName || m.currentJobTitle || undefined,
           };
         })
         .filter((m): m is TeamMember => m !== null);
@@ -1654,12 +1664,14 @@ export default function MapScreen() {
           }
           
           // Use member's theme color as base, fallback to a nice blue
-          const memberColor = member.themeColor || '#3B82F6';
+          const memberColor = member.isSubcontractor ? '#8B5CF6' : (member.themeColor || '#3B82F6');
           const activityColor = getActivityColor(member.activityStatus);
           const initials = `${member.user?.firstName?.[0] || '?'}${member.user?.lastName?.[0] || '?'}`;
           const isSelected = selectedWorker?.id === member.id;
           const fullName = `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim();
-          const shortName = member.user?.firstName || fullName.split(' ')[0] || 'Unknown';
+          const shortName = member.isSubcontractor && member.activeJobName
+            ? `On job: ${member.activeJobName}`
+            : (member.user?.firstName || fullName.split(' ')[0] || 'Unknown');
           
           // Double-check coordinates are valid numbers before creating marker
           const coordLat = Number(member.lastLocation.latitude);
@@ -1699,9 +1711,9 @@ export default function MapScreen() {
                 <View style={[
                   styles.teamMarkerOuter, 
                   { backgroundColor: memberColor },
+                  member.isSubcontractor && { borderColor: '#8B5CF6', borderWidth: 2 },
                 ]}>
                   <Text style={styles.teamMarkerText}>{initials}</Text>
-                  {/* Activity dot - always visible, positioned at bottom-right */}
                   <View style={[styles.activityDot, { backgroundColor: activityColor }]} />
                 </View>
                 {/* Name label - this is where selection is shown */}
@@ -1723,6 +1735,16 @@ export default function MapScreen() {
                   <Text style={styles.calloutTitle}>
                     {member.user?.firstName} {member.user?.lastName}
                   </Text>
+                  {member.isSubcontractor && (
+                    <View style={[styles.calloutBadge, { backgroundColor: '#8B5CF6' }]}>
+                      <Text style={styles.calloutBadgeText}>Subcontractor</Text>
+                    </View>
+                  )}
+                  {member.isSubcontractor && member.activeJobName && (
+                    <Text style={[styles.calloutDetail, { color: colors.foreground, fontWeight: '500' }]}>
+                      On job: {member.activeJobName}
+                    </Text>
+                  )}
                   <View style={styles.activityRow}>
                     <Feather 
                       name={activityConfig[member.activityStatus || 'offline']?.icon || 'circle'} 

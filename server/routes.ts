@@ -35040,17 +35040,16 @@ Respond with JSON in this format:
         effectiveUserId: userContext.effectiveUserId 
       });
       
-      // Only owners and managers can view team locations
       if (!userContext.isOwner && !hasPermission(userContext, PERMISSIONS.VIEW_ALL)) {
         console.log('[TeamLocations] Access denied for user:', req.userId);
         return res.status(403).json({ error: 'Access denied' });
       }
       
       const effectiveUserId = userContext.effectiveUserId;
-      const teamMembers = await storage.getTeamMembers(effectiveUserId);
-      const activeMembers = teamMembers.filter(m => m.inviteStatus === 'accepted' && m.isActive);
+      const allTeamMembers = await storage.getTeamMembers(effectiveUserId);
+      const activeMembers = allTeamMembers.filter(m => m.inviteStatus === 'accepted' && m.isActive);
       
-      console.log('[TeamLocations] Found', teamMembers.length, 'total team members,', activeMembers.length, 'active');
+      console.log('[TeamLocations] Found', allTeamMembers.length, 'total team members,', activeMembers.length, 'active');
       
       const locations = [];
       
@@ -35059,57 +35058,123 @@ Respond with JSON in this format:
         
         const user = await storage.getUser(member.memberId);
         if (!user) continue;
+
+        const role = member.roleId ? await storage.getUserRole(member.roleId) : null;
+        const roleName = role?.name || 'Worker';
+        const rnl = roleName.toLowerCase();
+        const isSubcontractor = rnl.includes('subcontractor') || rnl.includes('sub_contractor');
         
-        // Get most recent location for this team member - check both locationTracking and tradieStatus
         const recentLocation = await storage.getLatestLocationForUser(member.memberId);
         const tradieStatusData = await storage.getTradieStatus(member.memberId);
         
-        // Get current active job if any
         const activeTimeEntry = await storage.getActiveTimeEntry(member.memberId);
         let currentJob = null;
         if (activeTimeEntry?.jobId) {
           currentJob = await storage.getJob(activeTimeEntry.jobId, effectiveUserId);
         }
+
+        if (!currentJob) {
+          const memberJobs = await db.select().from(jobs)
+            .where(and(
+              eq(jobs.userId, effectiveUserId),
+              eq(jobs.assignedTo, member.memberId!),
+              eq(jobs.status, 'in_progress')
+            ))
+            .limit(1);
+          if (memberJobs.length > 0) {
+            currentJob = memberJobs[0];
+          }
+        }
+
+        const hasActiveJob = !!currentJob && currentJob.status === 'in_progress';
+
+        if (isSubcontractor && !hasActiveJob) {
+          const isOnline = tradieStatusData?.activityStatus === 'online' || tradieStatusData?.activityStatus === 'on_job';
+          locations.push({
+            id: member.memberId,
+            name: `${member.firstName || user.firstName || ''} ${member.lastName || user.lastName || ''}`.trim() || user.email,
+            email: user.email,
+            profileImageUrl: user.profileImageUrl || null,
+            themeColor: user.themeColor || null,
+            latitude: null,
+            longitude: null,
+            lastUpdated: null,
+            currentJobId: null,
+            currentJobTitle: null,
+            activityStatus: 'offline',
+            speed: 0,
+            batteryLevel: null,
+            heading: null,
+            isSubcontractor: true,
+            roleName,
+            activeJobName: null,
+            subbieStatus: isOnline ? 'available' : 'unavailable',
+          });
+          continue;
+        }
         
-        // Use locationTracking first, fall back to tradieStatus for demo data
-        // Include all Life360-style fields for mobile parity with web
+        const buildLocationEntry = (lat: number, lng: number, lastUpdated: any, speed: number, batteryLevel: any, heading: any) => ({
+          id: member.memberId,
+          name: `${member.firstName || user.firstName || ''} ${member.lastName || user.lastName || ''}`.trim() || user.email,
+          email: user.email,
+          profileImageUrl: user.profileImageUrl || null,
+          themeColor: user.themeColor || null,
+          latitude: lat,
+          longitude: lng,
+          lastUpdated,
+          currentJobId: currentJob?.id || null,
+          currentJobTitle: currentJob?.title || null,
+          activityStatus: tradieStatusData?.activityStatus || 'online',
+          speed,
+          batteryLevel,
+          heading,
+          isSubcontractor,
+          roleName,
+          activeJobName: isSubcontractor && hasActiveJob ? currentJob?.title : null,
+          subbieStatus: isSubcontractor ? (hasActiveJob ? 'on_job' : 'available') : undefined,
+        });
+
         if (recentLocation) {
           const speed = recentLocation.speed ? parseFloat(recentLocation.speed) : 
                         tradieStatusData?.speed ? parseFloat(tradieStatusData.speed) : 0;
-          locations.push({
-            id: member.memberId,
-            name: `${member.firstName || user.firstName || ''} ${member.lastName || user.lastName || ''}`.trim() || user.email,
-            email: user.email,
-            profileImageUrl: user.profileImageUrl || null,
-            themeColor: user.themeColor || null,
-            latitude: parseFloat(recentLocation.latitude),
-            longitude: parseFloat(recentLocation.longitude),
-            lastUpdated: recentLocation.timestamp,
-            currentJobId: currentJob?.id || null,
-            currentJobTitle: currentJob?.title || null,
-            activityStatus: tradieStatusData?.activityStatus || 'online',
-            speed: speed,
-            batteryLevel: tradieStatusData?.batteryLevel || recentLocation.batteryLevel || null,
-            heading: recentLocation.heading ? parseFloat(recentLocation.heading) : null,
-          });
+          locations.push(buildLocationEntry(
+            parseFloat(recentLocation.latitude),
+            parseFloat(recentLocation.longitude),
+            recentLocation.timestamp,
+            speed,
+            tradieStatusData?.batteryLevel || recentLocation.batteryLevel || null,
+            recentLocation.heading ? parseFloat(recentLocation.heading) : null,
+          ));
         } else if (tradieStatusData?.currentLatitude && tradieStatusData?.currentLongitude) {
-          // Fallback to tradieStatus data (used by demo data)
           const speed = tradieStatusData.speed ? parseFloat(tradieStatusData.speed) : 0;
+          locations.push(buildLocationEntry(
+            parseFloat(tradieStatusData.currentLatitude),
+            parseFloat(tradieStatusData.currentLongitude),
+            tradieStatusData.lastLocationUpdate || tradieStatusData.lastSeenAt,
+            speed,
+            tradieStatusData.batteryLevel || null,
+            tradieStatusData.heading ? parseFloat(tradieStatusData.heading) : null,
+          ));
+        } else if (!isSubcontractor) {
           locations.push({
             id: member.memberId,
             name: `${member.firstName || user.firstName || ''} ${member.lastName || user.lastName || ''}`.trim() || user.email,
             email: user.email,
             profileImageUrl: user.profileImageUrl || null,
             themeColor: user.themeColor || null,
-            latitude: parseFloat(tradieStatusData.currentLatitude),
-            longitude: parseFloat(tradieStatusData.currentLongitude),
-            lastUpdated: tradieStatusData.lastLocationUpdate || tradieStatusData.lastSeenAt,
+            latitude: null,
+            longitude: null,
+            lastUpdated: null,
             currentJobId: currentJob?.id || null,
             currentJobTitle: currentJob?.title || null,
-            activityStatus: tradieStatusData.activityStatus || 'online',
-            speed: speed,
-            batteryLevel: tradieStatusData.batteryLevel || null,
-            heading: tradieStatusData.heading ? parseFloat(tradieStatusData.heading) : null,
+            activityStatus: 'offline',
+            speed: 0,
+            batteryLevel: null,
+            heading: null,
+            isSubcontractor: false,
+            roleName,
+            activeJobName: null,
+            subbieStatus: undefined,
           });
         }
       }
@@ -35292,51 +35357,67 @@ Respond with JSON in this format:
   app.get("/api/map/team-locations", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const teamMembers = await storage.getTeamMembers(userContext.effectiveUserId);
+      const allTeamMembers = await storage.getTeamMembers(userContext.effectiveUserId);
       
-      // Get enhanced status and location for each team member
       const locations = await Promise.all(
-        teamMembers.map(async (member) => {
+        allTeamMembers.map(async (member) => {
           if (!member.memberId) return null;
           
-          // Try to get tradie status first (enhanced Life360-style data)
+          const role = member.roleId ? await storage.getUserRole(member.roleId) : null;
+          const memberRoleName = role?.name || 'Worker';
+          const mrl = memberRoleName.toLowerCase();
+          const isSubcontractor = mrl.includes('subcontractor') || mrl.includes('sub_contractor');
+
           const status = await storage.getTradieStatus(member.memberId);
-          
-          // Fall back to location tracking if no tradie status
           const location = await storage.getLatestLocationForUser(member.memberId);
-          
-          // Get user info for profile picture
           const user = await storage.getUser(member.memberId);
           
-          // Use tradie status if available, otherwise use location tracking
+          let currentJobTitle = undefined;
+          let currentJobId = status?.currentJobId || location?.jobId;
+          let activeJob = null;
+
+          if (currentJobId) {
+            activeJob = await storage.getJob(currentJobId);
+            currentJobTitle = activeJob?.title || 'On Job';
+          }
+
+          if (!activeJob && isSubcontractor) {
+            const memberJobs = await db.select().from(jobs)
+              .where(and(
+                eq(jobs.userId, userContext.effectiveUserId),
+                eq(jobs.assignedTo, member.memberId!),
+                eq(jobs.status, 'in_progress')
+              ))
+              .limit(1);
+            if (memberJobs.length > 0) {
+              activeJob = memberJobs[0];
+              currentJobId = activeJob.id;
+              currentJobTitle = activeJob.title;
+            }
+          }
+
+          const hasActiveJob = !!activeJob && activeJob.status === 'in_progress';
+
+          if (isSubcontractor && !hasActiveJob) {
+            return null;
+          }
+
           const lat = status?.currentLatitude ? parseFloat(status.currentLatitude) : 
                       location?.latitude ? parseFloat(location.latitude) : null;
           const lng = status?.currentLongitude ? parseFloat(status.currentLongitude) :
                       location?.longitude ? parseFloat(location.longitude) : null;
           
-          if (!lat || !lng) return null;
-          
-          // Validate coordinates
+          if (lat == null || lng == null) return null;
           if (!isValidCoordinate(lat, lng)) return null;
           
-          // Get current job title if assigned
-          let currentJobTitle = undefined;
-          const currentJobId = status?.currentJobId || location?.jobId;
-          if (currentJobId) {
-            const job = await storage.getJob(currentJobId);
-            currentJobTitle = job?.title || 'On Job';
-          }
-          
-          // Calculate if tradie is "active" (online in last 15 minutes)
           const lastActivity = status?.lastSeenAt || location?.timestamp;
           const isActive = lastActivity ? 
             (Date.now() - new Date(lastActivity).getTime()) < 15 * 60 * 1000 : false;
           
-          // Determine activity indicator
           const activityStatus = status?.activityStatus || 'offline';
           const speed = status?.speed ? parseFloat(status.speed) : 
                         location?.speed ? parseFloat(location.speed) : 0;
-          const isDriving = speed > 5; // Over 5 km/h = driving
+          const isDriving = speed > 5;
           
           return {
             id: member.memberId,
@@ -35346,7 +35427,6 @@ Respond with JSON in this format:
             themeColor: user?.themeColor || null,
             latitude: lat,
             longitude: lng,
-            // Life360-style enhancements
             lastSeenAt: status?.lastSeenAt || location?.timestamp,
             activityStatus: activityStatus,
             isActive: isActive,
@@ -35359,11 +35439,13 @@ Respond with JSON in this format:
             currentJobId: currentJobId,
             currentJobTitle: currentJobTitle,
             currentAddress: status?.currentAddress || location?.address || null,
+            isSubcontractor,
+            roleName: memberRoleName,
+            activeJobName: isSubcontractor && hasActiveJob ? currentJobTitle : undefined,
           };
         })
       );
       
-      // Filter out null entries (members without valid locations)
       res.json(locations.filter(Boolean));
     } catch (error: any) {
       console.error('Error fetching team locations:', error);

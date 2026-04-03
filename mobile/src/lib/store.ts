@@ -3,6 +3,7 @@ import api from './api';
 import offlineStorage, { useOfflineStore } from './offline-storage';
 import { clearRoleCache } from './role-cache';
 import { useThemeStore, ThemeMode } from './theme-store';
+import locationTracking from './location-tracking';
 
 // ============ TYPES ============
 
@@ -314,6 +315,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await offlineStorage.clearCachedAuthData();
     // Clear all cached data
     await offlineStorage.clearCache();
+    await locationTracking.stopJobTracking();
+    await locationTracking.stopTracking();
+    locationTracking.setSubcontractorMode(false);
     await api.logout();
     set({ 
       user: null, 
@@ -550,6 +554,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isOwner: isOwnerRole,
           }
         });
+        const rnLower = roleName.toLowerCase();
+        locationTracking.setSubcontractorMode(rnLower.includes('subcontractor') || rnLower.includes('sub_contractor'));
       } else {
         set({
           roleInfo: {
@@ -563,6 +569,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     } catch (error) {
       console.warn('[Auth] Failed to fetch role info, defaulting to owner:', error);
+      locationTracking.setSubcontractorMode(false);
       set({
         roleInfo: {
           roleId: 'owner',

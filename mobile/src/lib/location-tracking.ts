@@ -9,6 +9,7 @@
  * - Battery-efficient tracking
  * - Geofence alerts for job site arrivals/departures
  * - Speed and heading tracking
+ * - Privacy-aware job-scoped tracking for subcontractors
  */
 
 import * as Location from 'expo-location';
@@ -52,6 +53,12 @@ export type TrackingStatus =
   | 'paused'
   | 'error';
 
+export interface SubcontractorJobContext {
+  jobId: string;
+  jobTitle: string;
+  businessName: string;
+}
+
 class LocationTrackingService {
   private status: TrackingStatus = 'stopped';
   private currentLocation: LocationUpdate | null = null;
@@ -59,6 +66,9 @@ class LocationTrackingService {
   private onLocationUpdate?: (location: LocationUpdate) => void;
   private onGeofenceEvent?: (event: GeofenceEvent) => void;
   private onStatusChange?: (status: TrackingStatus) => void;
+  private _isSubcontractor: boolean = false;
+  private _activeJobContext: SubcontractorJobContext | null = null;
+  private _onJobContextChange?: (context: SubcontractorJobContext | null) => void;
 
   /**
    * Initialize location tracking
@@ -67,7 +77,6 @@ class LocationTrackingService {
    */
   async initialize(): Promise<boolean> {
     try {
-      // Request foreground permissions first
       const { status: foregroundStatus } = 
         await Location.requestForegroundPermissionsAsync();
       
@@ -84,7 +93,6 @@ class LocationTrackingService {
         return false;
       }
 
-      // Request background permissions for tracking while app is closed
       const { status: backgroundStatus } = 
         await Location.requestBackgroundPermissionsAsync();
       
@@ -103,8 +111,6 @@ class LocationTrackingService {
       if (__DEV__) console.log('[Location] Initialized successfully');
       return true;
     } catch (error: any) {
-      // In Expo Go, location permissions may not be fully available
-      // This is expected - full location tracking requires a native build
       if (error?.message?.includes('NSLocation') || error?.message?.includes('Info.plist')) {
         if (__DEV__) console.log('[Location] Running in Expo Go - location tracking requires native build');
       } else {
@@ -114,14 +120,70 @@ class LocationTrackingService {
     }
   }
 
+  setSubcontractorMode(isSubcontractor: boolean): void {
+    this._isSubcontractor = isSubcontractor;
+    if (isSubcontractor && !this._activeJobContext) {
+      this.stopTracking();
+    }
+    if (__DEV__) console.log(`[Location] Subcontractor mode: ${isSubcontractor}`);
+  }
+
+  getIsSubcontractor(): boolean {
+    return this._isSubcontractor;
+  }
+
+  getActiveJobContext(): SubcontractorJobContext | null {
+    return this._activeJobContext;
+  }
+
+  onJobContextChange(callback: (context: SubcontractorJobContext | null) => void): void {
+    this._onJobContextChange = callback;
+  }
+
+  async startJobTracking(jobId: string, jobTitle: string, businessName: string): Promise<boolean> {
+    this._activeJobContext = { jobId, jobTitle, businessName };
+    if (this._onJobContextChange) {
+      this._onJobContextChange(this._activeJobContext);
+    }
+    if (__DEV__) console.log(`[Location] Subcontractor job tracking started for job ${jobId} (${businessName})`);
+    const result = await this.startTracking();
+    return result;
+  }
+
+  async stopJobTracking(): Promise<void> {
+    const previousContext = this._activeJobContext;
+    this._activeJobContext = null;
+    if (this._onJobContextChange) {
+      this._onJobContextChange(null);
+    }
+    if (previousContext) {
+      await this.stopTracking();
+      if (__DEV__) console.log(`[Location] Subcontractor job tracking stopped for job ${previousContext.jobId}`);
+    }
+  }
+
+  async stopJobTrackingForJob(jobId: string): Promise<void> {
+    if (this._activeJobContext?.jobId === jobId) {
+      await this.stopJobTracking();
+    }
+  }
+
+  isTrackingJob(jobId: string): boolean {
+    return this._activeJobContext?.jobId === jobId;
+  }
+
   /**
    * Start background location tracking
    */
   async startTracking(): Promise<boolean> {
+    if (this._isSubcontractor && !this._activeJobContext) {
+      if (__DEV__) console.log('[Location] Subcontractor cannot start tracking without active job context');
+      return false;
+    }
+
     try {
       this.updateStatus('starting');
 
-      // Check if already tracking
       const isTracking = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
       if (isTracking) {
         if (__DEV__) console.log('[Location] Already tracking');
@@ -129,16 +191,19 @@ class LocationTrackingService {
         return true;
       }
 
-      // Try to start background location updates
       try {
+        const notificationBody = this._isSubcontractor && this._activeJobContext
+          ? `Sharing location with ${this._activeJobContext.businessName} for: ${this._activeJobContext.jobTitle}`
+          : 'Location tracking active for team visibility';
+
         await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
           accuracy: Location.Accuracy.Balanced,
-          timeInterval: 30000, // Update every 30 seconds
-          distanceInterval: 50, // Or when moved 50 meters
+          timeInterval: 30000,
+          distanceInterval: 50,
           showsBackgroundLocationIndicator: true,
           foregroundService: {
             notificationTitle: 'JobRunner',
-            notificationBody: 'Location tracking active for team visibility',
+            notificationBody,
             notificationColor: '#E8862E',
           },
           pausesUpdatesAutomatically: true,
@@ -230,7 +295,6 @@ class LocationTrackingService {
         notifyOnExit: true,
       };
 
-      // Check if geofencing is already started
       const isMonitoring = await Location.hasStartedGeofencingAsync(GEOFENCE_TASK_NAME);
       
       if (isMonitoring) {
@@ -276,6 +340,11 @@ class LocationTrackingService {
    * Send location update to the server
    */
   async sendLocationToServer(location: LocationUpdate): Promise<void> {
+    if (this._isSubcontractor && !this._activeJobContext) {
+      if (__DEV__) console.log('[Location] Subcontractor has no active job - skipping location send');
+      return;
+    }
+
     try {
       await api.post('/api/team-locations', {
         latitude: location.latitude,
@@ -284,6 +353,7 @@ class LocationTrackingService {
         heading: location.heading,
         speed: location.speed,
         timestamp: new Date(location.timestamp).toISOString(),
+        activeJobId: this._activeJobContext?.jobId || undefined,
       });
     } catch (error) {
       if (__DEV__) console.error('[Location] Failed to send location to server:', error);
@@ -335,7 +405,6 @@ class LocationTrackingService {
 
       if (geofenceJobs.length === 0) return;
 
-      // Clear existing geofences and re-register
       this.geofences = [];
       
       for (const job of geofenceJobs) {
@@ -374,13 +443,16 @@ class LocationTrackingService {
    * Handle location update from background task
    */
   handleLocationUpdate(location: LocationUpdate): void {
+    if (this._isSubcontractor && !this._activeJobContext) {
+      return;
+    }
+
     this.currentLocation = location;
     
     if (this.onLocationUpdate) {
       this.onLocationUpdate(location);
     }
     
-    // Send to server
     this.sendLocationToServer(location);
   }
 
@@ -392,7 +464,6 @@ class LocationTrackingService {
       this.onGeofenceEvent(event);
     }
     
-    // Notify server of arrival/departure
     api.post('/api/geofence-events', event);
   }
 }

@@ -2121,6 +2121,10 @@ export default function JobDetailScreen() {
   const isOwnerOrManager = roleInfo 
     ? (roleInfo.isOwner || ['OWNER', 'ADMIN', 'MANAGER'].includes(roleInfo.roleName?.toUpperCase() || ''))
     : (user && businessSettings ? true : false);
+  const _rl = roleInfo?.roleName?.toLowerCase() || '';
+  const isSubcontractor = _rl.includes('subcontractor') || _rl.includes('sub_contractor');
+  const [subbieLocationSharing, setSubbieLocationSharing] = useState(false);
+  const [subbieLocationStopped, setSubbieLocationStopped] = useState(false);
   const isSoloOwner = user && businessSettings && (!roleInfo || roleInfo.isOwner);
   const isSubcontractorUser = roleInfo?.roleName?.toLowerCase() === 'subcontractor' || roleInfo?.roleName?.toLowerCase() === 'sub_contractor';
   const canDeleteJobs = isOwnerOrManager || isSoloOwner;
@@ -2264,6 +2268,30 @@ export default function JobDetailScreen() {
       setSmartActions(actions);
     }
   }, [job?.status, client?.email, client?.phone, quote?.id, invoice?.id]);
+
+  useEffect(() => {
+    if (!isSubcontractor || !job) return;
+
+    const businessName = businessSettings?.businessName || 'Business';
+
+    if (job.status === 'in_progress') {
+      setSubbieLocationStopped(false);
+      locationTracking.setSubcontractorMode(true);
+      locationTracking.startJobTracking(job.id, job.title, businessName).then((started) => {
+        setSubbieLocationSharing(started);
+      });
+    } else if (locationTracking.isTrackingJob(job.id)) {
+      locationTracking.stopJobTrackingForJob(job.id);
+      setSubbieLocationSharing(false);
+      setSubbieLocationStopped(true);
+    }
+  }, [isSubcontractor, job?.status, job?.id]);
+
+  useEffect(() => {
+    if (!isSubcontractor || !job) return;
+    const isTracking = locationTracking.isTrackingJob(job.id);
+    setSubbieLocationSharing(isTracking && job.status === 'in_progress');
+  }, []);
 
   const loadMaterials = useCallback(async () => {
     if (!id) return;
@@ -9627,6 +9655,48 @@ export default function JobDetailScreen() {
           );
         })}
       </View>
+
+      {isSubcontractor && subbieLocationSharing && (
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: '#8B5CF620',
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm + 2,
+          gap: spacing.sm,
+          borderBottomWidth: 1,
+          borderBottomColor: '#8B5CF630',
+        }}>
+          <Feather name="map-pin" size={14} color="#8B5CF6" />
+          <Text style={{ fontSize: 13, color: '#8B5CF6', fontWeight: '500', flex: 1 }}>
+            Your location is visible to {businessSettings?.businessName || 'the business'} while this job is active
+          </Text>
+          <View style={{
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: '#22c55e',
+          }} />
+        </View>
+      )}
+
+      {isSubcontractor && subbieLocationStopped && !subbieLocationSharing && (
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: colors.muted,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm + 2,
+          gap: spacing.sm,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}>
+          <Feather name="shield" size={14} color={colors.mutedForeground} />
+          <Text style={{ fontSize: 13, color: colors.mutedForeground, fontWeight: '500', flex: 1 }}>
+            Location sharing stopped
+          </Text>
+        </View>
+      )}
 
       {/* Tab Content - Scrollable */}
       <ScrollView 

@@ -576,6 +576,62 @@ export default function TeamOperationsScreen() {
     );
   };
 
+  const getSubbieStatus = (member: MemberWithDetails): { label: string; color: string; icon: keyof typeof Feather.glyphMap } => {
+    const hasActiveJob = member.assignedJobs.some(j => j.status === 'in_progress');
+    if (hasActiveJob) {
+      const activeJob = member.assignedJobs.find(j => j.status === 'in_progress');
+      return { label: `On your job: ${activeJob?.title || 'Active'}`, color: '#3b82f6', icon: 'tool' };
+    }
+    const isOnline = member.presence?.status === 'online' || member.presence?.status === 'on_job';
+    if (isOnline) {
+      return { label: 'Available', color: '#22c55e', icon: 'check-circle' };
+    }
+    return { label: 'Unavailable', color: '#6b7280', icon: 'circle' };
+  };
+
+  const renderSubbieCard = (member: MemberWithDetails) => {
+    const subbieStatus = getSubbieStatus(member);
+
+    return (
+      <TouchableOpacity
+        key={member.id}
+        style={styles.memberCard}
+        onPress={() => router.push(`/more/team-management?memberId=${member.id}`)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.avatarContainer}>
+          <View style={[styles.avatar, { backgroundColor: getAvatarColor(`${member.firstName} ${member.lastName}`).bg }]}>
+            <Text style={[styles.avatarText, { color: getAvatarColor(`${member.firstName} ${member.lastName}`).fg }]}>{getInitials(member.firstName, member.lastName, member.email)}</Text>
+          </View>
+          <View style={[styles.statusDot, { backgroundColor: subbieStatus.color }]} />
+        </View>
+        <View style={styles.memberInfo}>
+          <View style={styles.memberNameRow}>
+            <Text style={styles.memberName}>{member.firstName} {member.lastName}</Text>
+            <View style={[styles.roleBadge, { backgroundColor: '#8B5CF615' }]}>
+              <Text style={[styles.roleBadgeText, { color: '#8B5CF6' }]}>Subcontractor</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+            <Feather name={subbieStatus.icon} size={12} color={subbieStatus.color} />
+            <Text style={[styles.memberStatus, { color: subbieStatus.color }]} numberOfLines={1}>
+              {subbieStatus.label}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.memberCardActions}>
+          <TouchableOpacity
+            style={styles.messageButton}
+            onPress={() => router.push(`/more/direct-messages?userId=${member.userId}`)}
+            activeOpacity={0.7}
+          >
+            <Feather name="message-circle" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   const renderActivityItem = (item: ActivityFeedItem) => {
     const config = ACTIVITY_CONFIG[item.activityType] || { icon: 'activity', color: colors.mutedForeground, bgColor: colors.muted };
 
@@ -600,10 +656,15 @@ export default function TeamOperationsScreen() {
 
   const renderLiveOpsTab = () => {
     if (liveViewMode === 'map') {
-      // Calculate region based on team members with locations
-      const membersWithLocations = membersWithDetails.filter(
-        m => m.presence?.lastLocationLat && m.presence?.lastLocationLng
-      );
+      const membersWithLocations = membersWithDetails.filter(m => {
+        if (!m.presence?.lastLocationLat || !m.presence?.lastLocationLng) return false;
+        const rl = (m.roleName || '').toLowerCase();
+        const isSub = rl.includes('subcontractor') || rl.includes('sub_contractor');
+        if (isSub) {
+          return m.assignedJobs.some(j => j.status === 'in_progress');
+        }
+        return true;
+      });
       
       let mapRegion = DEFAULT_REGION;
       if (membersWithLocations.length > 0) {
@@ -641,8 +702,13 @@ export default function TeamOperationsScreen() {
               const firstName = member.firstName || '';
               const lastName = member.lastName || '';
               const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
-              const shortName = firstName || member.email?.split('@')[0] || 'Team';
-              const memberColor = getAvatarColor(`${firstName} ${lastName}`).bg;
+              const rl2 = (member.roleName || '').toLowerCase();
+              const isSub = rl2.includes('subcontractor') || rl2.includes('sub_contractor');
+              const activeJob = isSub ? member.assignedJobs.find(j => j.status === 'in_progress') : null;
+              const shortName = isSub && activeJob
+                ? `On job: ${activeJob.title}`
+                : (firstName || member.email?.split('@')[0] || 'Team');
+              const memberColor = isSub ? '#8B5CF6' : getAvatarColor(`${firstName} ${lastName}`).bg;
               
               return (
                 <Marker
@@ -655,7 +721,7 @@ export default function TeamOperationsScreen() {
                   tracksViewChanges={false}
                 >
                   <View style={{ alignItems: 'center' }}>
-                    <View style={[styles.teamMarkerOuter, { backgroundColor: memberColor }]}>
+                    <View style={[styles.teamMarkerOuter, { backgroundColor: memberColor }, isSub && { borderColor: '#8B5CF6', borderWidth: 2 }]}>
                       <Text style={styles.teamMarkerText}>{initials}</Text>
                       <View style={[styles.activityDot, { backgroundColor: statusConfig?.color || '#9ca3af' }]} />
                     </View>
@@ -723,12 +789,30 @@ export default function TeamOperationsScreen() {
 
         {renderLiveViewToggle()}
 
-        {liveViewMode === 'status' && (
-          <>
-            <Text style={styles.sectionTitle}>Team Status ({membersWithDetails.length})</Text>
-            {membersWithDetails.map(renderMemberCard)}
-          </>
-        )}
+        {liveViewMode === 'status' && (() => {
+          const isSub = (rn?: string) => { const r = (rn || '').toLowerCase(); return r.includes('subcontractor') || r.includes('sub_contractor'); };
+          const employees = membersWithDetails.filter(m => !isSub(m.roleName));
+          const subbies = membersWithDetails.filter(m => isSub(m.roleName));
+          return (
+            <>
+              <Text style={styles.sectionTitle}>Your Team ({employees.length})</Text>
+              {employees.length > 0 ? employees.map(renderMemberCard) : (
+                <View style={{ paddingVertical: spacing.md, alignItems: 'center' }}>
+                  <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>No employees</Text>
+                </View>
+              )}
+
+              {subbies.length > 0 && (
+                <>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg, marginBottom: spacing.sm }}>
+                    <Text style={styles.sectionTitle}>Your Subbies ({subbies.length})</Text>
+                  </View>
+                  {subbies.map(renderSubbieCard)}
+                </>
+              )}
+            </>
+          );
+        })()}
 
         {liveViewMode === 'activity' && (
           <>
