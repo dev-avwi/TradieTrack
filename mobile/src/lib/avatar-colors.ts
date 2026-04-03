@@ -13,13 +13,23 @@ const AVATAR_COLORS = [
   { bg: '#d946ef', fg: '#ffffff' },
 ];
 
-export function getAvatarColor(name: string): { bg: string; fg: string } {
-  if (!name) return AVATAR_COLORS[0];
+function stableHash(input: string): number {
   let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < input.length; i++) {
+    hash = input.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  return Math.abs(hash);
+}
+
+export function getAvatarColor(nameOrId: string): { bg: string; fg: string } {
+  if (!nameOrId) return AVATAR_COLORS[0];
+  return AVATAR_COLORS[stableHash(nameOrId) % AVATAR_COLORS.length];
+}
+
+export function getAvatarColorById(userId: string, fallbackName?: string): { bg: string; fg: string } {
+  if (userId) return AVATAR_COLORS[stableHash(userId) % AVATAR_COLORS.length];
+  if (fallbackName) return getAvatarColor(fallbackName);
+  return AVATAR_COLORS[0];
 }
 
 export function getInitials(firstName?: string, lastName?: string, email?: string): string {

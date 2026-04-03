@@ -21,6 +21,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useInvoicesStore, useClientsStore, useAuthStore, useQuotesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
+import { spacing, radius } from '../../../src/lib/design-tokens';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { MobileSendModal } from '../../../src/components/MobileSendModal';

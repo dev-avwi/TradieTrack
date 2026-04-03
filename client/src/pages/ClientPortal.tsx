@@ -285,10 +285,14 @@ export default function ClientPortal() {
             <>
               <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
               <h2 className="text-lg font-semibold mb-2 text-foreground">Document not found</h2>
-              <p className="text-sm text-muted-foreground mb-4">This document doesn't exist or the link is invalid.</p>
+              <p className="text-sm text-muted-foreground mb-4">This {type || 'document'} link may have expired or is no longer valid.</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-left">
+                <p className="text-sm font-medium text-blue-800 mb-2">Need a new link?</p>
+                <p className="text-xs text-blue-600">Contact the business that sent you this link and ask them to resend it from their JobRunner app.</p>
+              </div>
             </>
           )}
-          <p className="text-xs text-muted-foreground">If you think this is an error, please contact the business that sent this to you.</p>
+          <p className="text-xs text-muted-foreground">If you believe this is an error, please contact the business directly.</p>
         </div>
       </div>
     );

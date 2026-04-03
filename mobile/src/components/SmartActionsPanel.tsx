@@ -40,6 +40,8 @@ interface SmartActionsPanelProps {
   onActionExecute: (actionId: string) => void;
   onExecuteAll: () => void;
   onSkipAll: () => void;
+  onDismissAction?: (actionId: string) => void;
+  onHideAll?: () => void;
   isExecuting?: boolean;
   entityType: 'job' | 'quote' | 'invoice';
 }
@@ -183,75 +185,90 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 function SmartActionItem({
   action,
   onExecute,
+  onDismiss,
   isExecuting,
   colors,
   styles,
 }: {
   action: SmartAction;
   onExecute: () => void;
+  onDismiss?: () => void;
   isExecuting?: boolean;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
 }) {
   const hasMissingRequirements = action.missingRequirements && action.missingRequirements.length > 0;
   const isCompleted = action.status === 'completed';
+  const isSkipped = action.status === 'skipped';
   const isRunning = action.status === 'running';
   const isDisabled = isExecuting || isCompleted || isRunning || hasMissingRequirements;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      style={[
-        styles.actionItem,
-        isCompleted && styles.actionItemCompleted,
-        isRunning && styles.actionItemRunning,
-        (hasMissingRequirements && !isCompleted) && styles.actionItemDisabled,
-      ]}
-      onPress={() => {
-        if (!isDisabled) onExecute();
-      }}
-      disabled={!!isDisabled}
-    >
-      <View style={[
-        styles.actionIcon,
-        isCompleted && styles.actionIconCompleted,
-      ]}>
-        {isRunning ? (
-          <ActivityIndicator size={18} color={colors.warning} />
-        ) : isCompleted ? (
-          <Feather name="check" size={18} color={colors.success} />
-        ) : (
-          <Feather
-            name={getActionIcon(action.icon)}
-            size={18}
-            color={hasMissingRequirements ? colors.mutedForeground : colors.primary}
-          />
-        )}
-      </View>
+    <View style={[
+      styles.actionItem,
+      isCompleted && styles.actionItemCompleted,
+      isRunning && styles.actionItemRunning,
+      (hasMissingRequirements && !isCompleted) && styles.actionItemDisabled,
+    ]}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}
+        onPress={() => {
+          if (!isDisabled) onExecute();
+        }}
+        disabled={!!isDisabled}
+      >
+        <View style={[
+          styles.actionIcon,
+          isCompleted && styles.actionIconCompleted,
+        ]}>
+          {isRunning ? (
+            <ActivityIndicator size={18} color={colors.warning} />
+          ) : isCompleted ? (
+            <Feather name="check" size={18} color={colors.success} />
+          ) : (
+            <Feather
+              name={getActionIcon(action.icon)}
+              size={18}
+              color={hasMissingRequirements ? colors.mutedForeground : colors.primary}
+            />
+          )}
+        </View>
 
-      <View style={styles.actionContent}>
-        <Text style={[styles.actionTitle, isCompleted && { color: colors.success }]}>
-          {isCompleted ? `${action.title} ` : action.title}
-          {isCompleted && <Feather name="check-circle" size={13} color={colors.success} />}
-        </Text>
-        <Text style={styles.actionDescription}>
-          {isRunning ? 'Running...' : action.description}
-        </Text>
-        {hasMissingRequirements && !isCompleted && (
-          <View style={styles.missingRequirements}>
-            <Text style={styles.missingText}>
-              Missing: {action.missingRequirements?.join(', ')}
-            </Text>
+        <View style={styles.actionContent}>
+          <Text style={[styles.actionTitle, isCompleted && { color: colors.success }]}>
+            {isCompleted ? `${action.title} ` : action.title}
+            {isCompleted && <Feather name="check-circle" size={13} color={colors.success} />}
+          </Text>
+          <Text style={styles.actionDescription}>
+            {isRunning ? 'Running...' : action.description}
+          </Text>
+          {hasMissingRequirements && !isCompleted && (
+            <View style={styles.missingRequirements}>
+              <Text style={styles.missingText}>
+                Missing: {action.missingRequirements?.join(', ')}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {!isCompleted && !isRunning && !hasMissingRequirements && (
+          <View style={styles.chevron}>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </View>
         )}
-      </View>
+      </TouchableOpacity>
 
-      {!isCompleted && !isRunning && !hasMissingRequirements && (
-        <View style={styles.chevron}>
-          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-        </View>
+      {onDismiss && !isRunning && (
+        <TouchableOpacity
+          onPress={onDismiss}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{ padding: spacing.xs, marginLeft: spacing.xs }}
+        >
+          <Feather name="x" size={14} color={colors.mutedForeground} />
+        </TouchableOpacity>
       )}
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -263,6 +280,8 @@ export default function SmartActionsPanel({
   onActionExecute,
   onExecuteAll,
   onSkipAll,
+  onDismissAction,
+  onHideAll,
   isExecuting,
   entityType,
 }: SmartActionsPanelProps) {
@@ -272,25 +291,7 @@ export default function SmartActionsPanel({
   const completedActions = actions.filter(a => a.status === 'completed');
 
   if (actions.length === 0) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <View style={styles.headerIcon}>
-              <Feather name="zap" size={16} color={colors.primary} />
-            </View>
-            <View>
-              <Text style={styles.headerTitle}>{title}</Text>
-              {subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}
-            </View>
-          </View>
-        </View>
-        <View style={styles.emptyState}>
-          <Feather name="zap" size={32} color={colors.mutedForeground} style={{ opacity: 0.5 }} />
-          <Text style={styles.emptyText}>No suggested actions for this {entityType}</Text>
-        </View>
-      </View>
-    );
+    return null;
   }
 
   return (
@@ -305,13 +306,24 @@ export default function SmartActionsPanel({
             {subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}
           </View>
         </View>
-        {completedActions.length > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>
-              {completedActions.length}/{actions.length} done
-            </Text>
-          </View>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          {completedActions.length > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {completedActions.length}/{actions.length} done
+              </Text>
+            </View>
+          )}
+          {onHideAll && (
+            <TouchableOpacity
+              onPress={onHideAll}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ padding: spacing.xs }}
+            >
+              <Feather name="eye-off" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -320,6 +332,7 @@ export default function SmartActionsPanel({
             key={action.id}
             action={action}
             onExecute={() => onActionExecute(action.id)}
+            onDismiss={onDismissAction ? () => onDismissAction(action.id) : undefined}
             isExecuting={isExecuting}
             colors={colors}
             styles={styles}

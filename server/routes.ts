@@ -4534,7 +4534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (sendViaSms && contactPhone) {
         try {
-          const smsMessage = `Hi ${recipientName}, ${escapeHtml(businessName)} has invited you to work on a job: "${job.title}". View details and respond here: ${webLink}`;
+          const smsMessage = `Hi ${recipientName}, ${businessName} has invited you to work on a job: "${job.title}". View details and respond here: ${webLink}`;
           const { sendSMS: twilioSend } = await import('./twilioClient');
           const smsResult = await twilioSend({
             to: contactPhone,
@@ -8474,22 +8474,22 @@ Be specific about materials, colors, and features that would be included.`
         {
           type: 'appointment_reminder',
           title: 'Appointment Reminder',
-          message: `Hi [Client Name], reminder: Your appointment with ${escapeHtml(businessName)} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm.`,
+          message: `Hi [Client Name], reminder: Your appointment with ${businessName} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm.`,
         },
         {
           type: 'job_on_the_way',
           title: 'On The Way',
-          message: `Hi [Client Name], ${escapeHtml(businessName)} is on the way! Expected arrival: 15 minutes.`,
+          message: `Hi [Client Name], ${businessName} is on the way! Expected arrival: 15 minutes.`,
         },
         {
           type: 'job_complete',
           title: 'Job Complete',
-          message: `Hi [Client Name], your job is complete! Thank you for choosing ${escapeHtml(businessName)}. Invoice will be sent shortly.`,
+          message: `Hi [Client Name], your job is complete! Thank you for choosing ${businessName}. Invoice will be sent shortly.`,
         },
         {
           type: 'payment_received',
           title: 'Payment Received',
-          message: `Hi [Client Name], thank you! We received your payment of $[Amount]. Receipt sent to your email. - ${escapeHtml(businessName)}`,
+          message: `Hi [Client Name], thank you! We received your payment of $[Amount]. Receipt sent to your email. - ${businessName}`,
         },
       ];
       
@@ -16867,7 +16867,7 @@ Be specific about materials, colors, and features that would be included.`
             name: businessName
           },
           subject: subject || `Your Job from ${escapeHtml(businessName)}`,
-          text: body || `Hi ${client.firstName || 'there'},\n\nHere are the details for your job: ${job.title}\n\nScheduled: ${job.scheduledDate || 'To be confirmed'}\nAddress: ${job.address || 'To be confirmed'}\n\nIf you have any questions, please don't hesitate to reach out.\n\nCheers,\n${escapeHtml(businessName)}`,
+          text: body || `Hi ${client.firstName || 'there'},\n\nHere are the details for your job: ${job.title}\n\nScheduled: ${job.scheduledDate || 'To be confirmed'}\nAddress: ${job.address || 'To be confirmed'}\n\nIf you have any questions, please don't hesitate to reach out.\n\nCheers,\n${businessName}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: ${business.brandColor || '#2563eb'};">${escapeHtml(businessName)}</h2>
@@ -17125,7 +17125,7 @@ Be specific about materials, colors, and features that would be included.`
         : `ETA approximately ${estimatedMinutes} minutes`;
       const distanceText = distanceKm !== null ? ` (${distanceKm} km away)` : '';
 
-      let baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${escapeHtml(businessName)} is on the way to your job at ${job.address || 'your location'}. ${etaText}${distanceText}.`;
+      let baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} is on the way to your job at ${job.address || 'your location'}. ${etaText.charAt(0).toUpperCase() + etaText.slice(1)}${distanceKm && distanceKm > 0 ? ` (${distanceKm} km away)` : ''}.`;
       baseMessage = baseMessage.replace(/\n*Track arrival:.*$/gims, '').replace(/\n*Track your job:.*$/gims, '').replace(/\n*\[link will be added\].*$/gims, '').replace(/\n*Track arrival:\s*$/gim, '').trim();
       const message = `${baseMessage}\n\nTrack your job: ${trackingUrl}`;
       
@@ -18348,7 +18348,7 @@ Be specific about materials, colors, and features that would be included.`
         } catch (e) { console.log('[RunningLate] ETA calc failed:', e); }
       }
 
-      let baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${escapeHtml(businessName)} here. Running a bit late for your job at ${job.address || 'your location'}. Apologies for the delay - ${etaText}.`;
+      let baseMessage = customMessage || `Hi ${client.firstName || 'there'}, ${tradieName} from ${businessName} here. Running a bit late for your job at ${job.address || 'your location'}. Apologies for the delay - ${etaText}.`;
       baseMessage = baseMessage.replace(/\n*Track arrival:.*$/gims, '').replace(/\n*\[link will be added\].*$/gims, '').replace(/\n*Track arrival:\s*$/gim, '').trim();
       const message = baseMessage;
       
@@ -18994,11 +18994,11 @@ Be specific about materials, colors, and features that would be included.`
             if (workerStatus === 'on_my_way') {
               const etaText = workerEta || 'soon';
               const contactInfo = ownerPhone ? `${ownerName} on ${ownerPhone}` : ownerName;
-              smsBody = `JobRunner: ${escapeHtml(businessName)} update — ${workerName} is on the way to your job "${job.title}". ETA: ${etaText}. Track progress + photos here: ${portalUrl}. Need help? Call ${contactInfo}.`;
+              smsBody = `JobRunner: ${businessName} update — ${workerName} is on the way to your job "${job.title}". ETA: ${etaText}. Track progress + photos here: ${portalUrl}. Need help? Call ${contactInfo}.`;
             } else if (workerStatus === 'arrived') {
-              smsBody = `JobRunner: ${escapeHtml(businessName)} update — ${workerName} has arrived at your job "${job.title}". Track progress: ${portalUrl}`;
+              smsBody = `JobRunner: ${businessName} update — ${workerName} has arrived at your job "${job.title}". Track progress: ${portalUrl}`;
             } else if (workerStatus === 'completed') {
-              smsBody = `JobRunner: ${escapeHtml(businessName)} update — "${job.title}" has been completed by ${workerName}. View details + documents: ${portalUrl}`;
+              smsBody = `JobRunner: ${businessName} update — "${job.title}" has been completed by ${workerName}. View details + documents: ${portalUrl}`;
             }
             
             if (smsBody) {
@@ -19246,7 +19246,7 @@ Be specific about materials, colors, and features that would be included.`
       const portalUrl = `${baseUrl}/p/${activeToken.token}`;
 
       const { sendCustomerReply: sendCustReply2 } = await import('./services/smsService');
-      const smsResult = await sendCustReply2(client.phone, `Hi ${client.name}, track your job "${job.title}" live here: ${portalUrl}\n- ${escapeHtml(businessName)}`, effectiveUserId);
+      const smsResult = await sendCustReply2(client.phone, `Hi ${client.name}, track your job "${job.title}" live here: ${portalUrl}\n- ${businessName}`, effectiveUserId);
 
       if (!smsResult.success) {
         return res.status(500).json({ error: smsResult.error || 'Failed to send SMS' });
@@ -24621,7 +24621,7 @@ Be specific about materials, colors, and features that would be included.`
       const amount = `$${parseFloat(request.amount).toFixed(2)}`;
       
       // Build SMS message using consistent pattern
-      const message = `Hi${request.clientName ? ` ${request.clientName.split(' ')[0]}` : ''}, ${escapeHtml(businessName)} has sent you a payment request for ${amount}${request.description ? ` (${request.description})` : ''}. Pay securely here: ${paymentUrl}`;
+      const message = `Hi${request.clientName ? ` ${request.clientName.split(' ')[0]}` : ''}, ${businessName} has sent you a payment request for ${amount}${request.description ? ` (${request.description})` : ''}. Pay securely here: ${paymentUrl}`;
       
       // Import and use SMS service (pass raw phone, service handles formatting)
       const { sendSmsToClient } = await import('./services/smsService');

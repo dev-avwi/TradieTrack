@@ -1893,6 +1893,8 @@ export default function JobDetailScreen() {
   
   const [smartActions, setSmartActions] = useState<SmartAction[]>([]);
   const [isExecutingActions, setIsExecutingActions] = useState(false);
+  const [dismissedActionIds, setDismissedActionIds] = useState<Set<string>>(new Set());
+  const [hideAllActions, setHideAllActions] = useState(false);
   
   const [jobExpenses, setJobExpenses] = useState<JobExpense[]>([]);
   const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
@@ -1966,12 +1968,22 @@ export default function JobDetailScreen() {
 
   const [swmsDocuments, setSwmsDocuments] = useState<SwmsDocument[]>([]);
 
-  const pendingSafetyForms = useMemo(() => {
-    return availableForms.filter(f => {
-      if (!isSafetyForm(f)) return false;
-      return !formSubmissions.some(s => s.formId === f.id && s.status === 'submitted');
-    });
+  const completedSafetyFormCount = useMemo(() => {
+    return formSubmissions.filter(s => {
+      const form = availableForms.find((f: any) => f.id === s.formId);
+      return form && isSafetyForm(form) && s.status === 'submitted';
+    }).length;
   }, [availableForms, formSubmissions]);
+  
+  const hasSafetyFormsAvailable = useMemo(() => {
+    return availableForms.some(isSafetyForm);
+  }, [availableForms]);
+
+  const pendingSafetyForms = useMemo(() => {
+    if (completedSafetyFormCount > 0) return [];
+    if (!hasSafetyFormsAvailable) return [];
+    return [{ pending: true }];
+  }, [completedSafetyFormCount, hasSafetyFormsAvailable]);
 
   const hasIncompleteSwms = useMemo(() => {
     if (swmsDocuments.length === 0) return false;
@@ -3188,9 +3200,8 @@ export default function JobDetailScreen() {
           return true;
 
         case 'collect_payment':
-          // Navigate to Collect Payment screen with invoice pre-selected
           if (invoice?.id) {
-            router.push(`/(tabs)/collect?invoiceId=${invoice.id}`);
+            router.push(`/more/collect-payment?invoiceId=${invoice.id}&jobId=${job?.id}`);
           } else {
             Alert.alert('No Invoice', 'Please create an invoice first to collect payment.');
           }
@@ -4680,7 +4691,7 @@ export default function JobDetailScreen() {
     if (action.next === 'in_progress' && (pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs)) {
       const warnings: string[] = [];
       if (pendingSafetyForms.length > 0) {
-        warnings.push(`${pendingSafetyForms.length} safety form${pendingSafetyForms.length > 1 ? 's' : ''} pending`);
+        warnings.push('Safety forms not completed');
       }
       if (hasIncompleteSwms) {
         const draftCount = swmsDocuments.filter(s => s.status === 'draft').length;
@@ -5489,21 +5500,29 @@ export default function JobDetailScreen() {
   const renderOverviewTab = () => (
     <>
       {/* Smart Actions Panel */}
-      {smartActions.length > 0 && (
-        <View style={{ marginBottom: spacing.md }}>
-          <SmartActionsPanel
-            title="Suggested Actions"
-            subtitle="AI-recommended next steps for this job"
-            actions={smartActions}
-            onActionToggle={handleSmartActionToggle}
-            onActionExecute={handleSmartActionExecute}
-            onExecuteAll={handleExecuteAllActions}
-            onSkipAll={handleSkipAllActions}
-            isExecuting={isExecutingActions}
-            entityType="job"
-          />
-        </View>
-      )}
+      {!hideAllActions && smartActions.length > 0 && (() => {
+        const visibleActions = smartActions.filter(a => !dismissedActionIds.has(a.id));
+        if (visibleActions.length === 0) return null;
+        return (
+          <View style={{ marginBottom: spacing.md }}>
+            <SmartActionsPanel
+              title="Suggested Actions"
+              subtitle="AI-recommended next steps"
+              actions={visibleActions}
+              onActionToggle={handleSmartActionToggle}
+              onActionExecute={handleSmartActionExecute}
+              onExecuteAll={handleExecuteAllActions}
+              onSkipAll={handleSkipAllActions}
+              onDismissAction={(actionId) => {
+                setDismissedActionIds(prev => new Set([...prev, actionId]));
+              }}
+              onHideAll={() => setHideAllActions(true)}
+              isExecuting={isExecutingActions}
+              entityType="job"
+            />
+          </View>
+        );
+      })()}
 
       {/* Job Progress Bar - Visual workflow indicator */}
       <JobProgressBar status={job.status} />
@@ -5576,36 +5595,64 @@ export default function JobDetailScreen() {
           job.status === 'scheduled' && job.clientId ? (
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               {job.workerStatus === 'on_my_way' ? (
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: spacing.xs,
-                    paddingVertical: spacing.md,
-                    paddingHorizontal: spacing.md,
-                    borderRadius: radius.lg,
-                    backgroundColor: colors.info,
-                    minHeight: 52,
-                  }}
-                  onPress={() => {
-                    const { openMapsWithPreference } = require('../../src/lib/maps-store');
-                    if (job.latitude && job.longitude) {
-                      openMapsWithPreference(job.latitude, job.longitude, job.address);
-                    } else if (job.address) {
-                      const { openMapsWithAddress } = require('../../src/lib/maps-store');
-                      openMapsWithAddress(job.address);
-                    }
-                  }}
-                  activeOpacity={0.8}
-                  data-testid="button-directions"
-                >
-                  <Feather name="map" size={18} color="#FFFFFF" />
-                  <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>
-                    Directions
-                  </Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: spacing.xs,
+                      paddingVertical: spacing.md,
+                      paddingHorizontal: spacing.md,
+                      borderRadius: radius.lg,
+                      backgroundColor: colors.info,
+                      minHeight: 52,
+                    }}
+                    onPress={() => {
+                      const { openMapsWithPreference } = require('../../src/lib/maps-store');
+                      if (job.latitude && job.longitude) {
+                        openMapsWithPreference(job.latitude, job.longitude, job.address);
+                      } else if (job.address) {
+                        const { openMapsWithAddress } = require('../../src/lib/maps-store');
+                        openMapsWithAddress(job.address);
+                      }
+                    }}
+                    activeOpacity={0.8}
+                    data-testid="button-directions"
+                  >
+                    <Feather name="map" size={18} color="#FFFFFF" />
+                    <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>
+                      Directions
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: spacing.xs,
+                      paddingVertical: spacing.md,
+                      paddingHorizontal: spacing.sm,
+                      borderRadius: radius.lg,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: colors.card,
+                      opacity: isSendingOnMyWay ? 0.6 : 1,
+                      minHeight: 52,
+                    }}
+                    onPress={handleOnMyWay}
+                    activeOpacity={0.8}
+                    disabled={isSendingOnMyWay}
+                    data-testid="button-resend-on-my-way"
+                  >
+                    {isSendingOnMyWay ? (
+                      <ActivityIndicator size="small" color={colors.info} />
+                    ) : (
+                      <Feather name="navigation" size={16} color={colors.info} />
+                    )}
+                  </TouchableOpacity>
+                </>
               ) : (
                 <TouchableOpacity
                   style={{
@@ -5692,14 +5739,14 @@ export default function JobDetailScreen() {
             </View>
             <Text style={[styles.cardValue, (pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) && { color: colors.warning, fontWeight: '700' }]}>
               {pendingSafetyForms.length > 0 && hasIncompleteSwms
-                ? `${pendingSafetyForms.length} form${pendingSafetyForms.length > 1 ? 's' : ''} + SWMS pending`
+                ? 'Safety forms + SWMS pending'
                 : pendingSafetyForms.length > 0
-                ? `${pendingSafetyForms.length} safety form${pendingSafetyForms.length > 1 ? 's' : ''} pending`
+                ? 'Safety forms not completed'
                 : hasIncompleteSwms
                 ? 'SWMS incomplete or unsigned'
                 : hasNoSafetyDocs
                 ? 'No safety documentation'
-                : 'All safety docs completed'}
+                : `All safety docs completed${completedSafetyFormCount > 0 ? ` (${completedSafetyFormCount})` : ''}`}
             </Text>
           </View>
           <TouchableOpacity 
@@ -5710,6 +5757,92 @@ export default function JobDetailScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Time Tracking Card - prominent for in-progress jobs */}
+      {(job.status === 'in_progress') && (() => {
+        const isBreakActive = isTimerForThisJob && isOnBreak();
+        return (
+          <Animated.View 
+            style={[
+              styles.timerCard, 
+              isTimerForThisJob && (isBreakActive ? styles.timerBreakCard : styles.timerActiveCard),
+              { transform: [{ scale: isTimerForThisJob ? pulseAnim : 1 }] }
+            ]}
+          >
+            <View style={[
+              styles.timerIconContainer, 
+              isTimerForThisJob && (isBreakActive ? styles.timerBreakIcon : styles.timerActiveIcon)
+            ]}>
+              <Feather 
+                name={isBreakActive ? "coffee" : "clock"} 
+                size={iconSizes.xl} 
+                color={isTimerForThisJob ? colors.primaryForeground : colors.primary} 
+              />
+            </View>
+            <View style={styles.timerContent}>
+              <Text style={styles.timerLabel}>
+                {isBreakActive ? 'On Break' : 'Time Tracking'}
+              </Text>
+              {isTimerForThisJob ? (
+                <Text style={[
+                  styles.timerValue, 
+                  isBreakActive ? styles.timerBreakValue : styles.timerActiveValue
+                ]}>
+                  {isBreakActive ? 'Break: ' : 'Running: '}{formatElapsedTime(elapsedTime)}
+                </Text>
+              ) : activeTimer ? (
+                <Text style={styles.timerValue}>Timer on another job</Text>
+              ) : totalTrackedHours > 0 ? (
+                <Text style={styles.timerValue}>Total: {formatTrackedHours(totalTrackedHours)} tracked</Text>
+              ) : (
+                <Text style={styles.timerValue}>Not started</Text>
+              )}
+            </View>
+            
+            <View style={styles.timerButtonGroup}>
+              {isTimerForThisJob ? (
+                <>
+                  <TouchableOpacity
+                    onPress={isBreakActive ? handleResumeWork : handleTakeBreak}
+                    style={[
+                      styles.timerButton,
+                      isBreakActive ? styles.resumeButton : styles.breakButton
+                    ]}
+                    disabled={timerLoading}
+                  >
+                    {timerLoading ? (
+                      <ActivityIndicator size="small" color={colors.primaryForeground} />
+                    ) : isBreakActive ? (
+                      <Feather name="play" size={iconSizes.md} color={colors.primaryForeground} />
+                    ) : (
+                      <Feather name="coffee" size={iconSizes.md} color={colors.foreground} />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleStopTimer}
+                    style={[styles.timerButton, styles.stopButton]}
+                    disabled={timerLoading}
+                  >
+                    <Feather name="square" size={iconSizes.md} color={colors.primaryForeground} />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  onPress={handleStartTimer}
+                  style={[styles.timerButton, styles.startButton]}
+                  disabled={timerLoading}
+                >
+                  {timerLoading ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Feather name="play" size={iconSizes.md} color={colors.primaryForeground} />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </Animated.View>
+        );
+      })()}
 
       {/* Site Update Quick Action - visible during in_progress - positioned prominently */}
       {job.status === 'in_progress' && (
@@ -6110,8 +6243,8 @@ export default function JobDetailScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Time Tracking Card with Pulse Animation */}
-      {(job.status === 'scheduled' || job.status === 'in_progress') && (() => {
+      {/* Time Tracking Card - for scheduled jobs only (in_progress shown at top) */}
+      {(job.status === 'scheduled') && (() => {
         const isBreakActive = isTimerForThisJob && isOnBreak();
         return (
           <Animated.View 
@@ -7999,99 +8132,73 @@ export default function JobDetailScreen() {
         {client && (client.phone || client.email) && (
           <View style={{
             backgroundColor: colors.card,
-            borderRadius: radius.xl,
-            padding: spacing.md,
-            marginBottom: spacing.lg,
+            borderRadius: radius.lg,
+            padding: spacing.sm,
+            marginBottom: spacing.md,
             borderWidth: 1,
             borderColor: colors.cardBorder,
-            ...shadows.sm,
           }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
-              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: `${colors.invoiced}12`, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm }}>
-                <Feather name="user" size={14} color={colors.invoiced} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs }}>
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: `${colors.invoiced}12`, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm }}>
+                <Feather name="user" size={12} color={colors.invoiced} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ ...typography.bodySmall, fontWeight: '700', color: colors.foreground }}>
-                  Contact {client.name?.split(' ')[0] || 'Client'}
-                </Text>
-                <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
-                  Reach out directly or via JobRunner
-                </Text>
-              </View>
+              <Text style={{ ...typography.bodySmall, fontWeight: '600', color: colors.foreground, flex: 1 }}>
+                {client.name || 'Client'}
+              </Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
               {client.phone && (
                 <TouchableOpacity
                   onPress={handleCall}
-                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.lg, backgroundColor: `${colors.success}10` }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 6, borderRadius: radius.md, backgroundColor: `${colors.success}10` }}
                   activeOpacity={0.7}
                 >
-                  <Feather name="phone" size={14} color={colors.success} />
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.success }}>Call</Text>
+                  <Feather name="phone" size={13} color={colors.success} />
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: colors.success }}>Call</Text>
                 </TouchableOpacity>
               )}
               {client.phone && (
                 <TouchableOpacity
                   onPress={handleSMS}
-                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.lg, backgroundColor: `${colors.scheduled}10` }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 6, borderRadius: radius.md, backgroundColor: `${colors.scheduled}10` }}
                   activeOpacity={0.7}
                 >
-                  <Feather name="message-square" size={14} color={colors.scheduled} />
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.scheduled }}>SMS</Text>
+                  <Feather name="message-square" size={13} color={colors.scheduled} />
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: colors.scheduled }}>SMS</Text>
                 </TouchableOpacity>
               )}
               {client.email && (
                 <TouchableOpacity
                   onPress={handleEmail}
-                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.lg, backgroundColor: `${colors.invoiced}10` }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 6, borderRadius: radius.md, backgroundColor: `${colors.invoiced}10` }}
                   activeOpacity={0.7}
                 >
-                  <Feather name="mail" size={14} color={colors.invoiced} />
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.invoiced }}>Email</Text>
+                  <Feather name="mail" size={13} color={colors.invoiced} />
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: colors.invoiced }}>Email</Text>
                 </TouchableOpacity>
               )}
+              <TouchableOpacity
+                onPress={() => {
+                  setSendModalDefaultTab(client?.email ? 'email' : 'sms');
+                  setShowSendModal(true);
+                }}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 6, borderRadius: radius.md, backgroundColor: `${colors.primary}08`, borderWidth: 1, borderColor: `${colors.primary}20` }}
+                activeOpacity={0.7}
+              >
+                <Feather name="zap" size={13} color={colors.primary} />
+                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.primary }}>Send</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              onPress={() => {
-                setSendModalDefaultTab(client?.email ? 'email' : 'sms');
-                setShowSendModal(true);
-              }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: spacing.sm,
-                marginTop: spacing.sm,
-                paddingVertical: spacing.md,
-                paddingHorizontal: spacing.lg,
-                borderRadius: radius.lg,
-                backgroundColor: `${colors.primary}08`,
-                borderWidth: 1,
-                borderColor: `${colors.primary}20`,
-              }}
-              activeOpacity={0.7}
-            >
-              <Feather name="zap" size={13} color={colors.primary} />
-              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>
-                Send via JobRunner
-              </Text>
-              <Text style={{ fontSize: 10, color: colors.mutedForeground }}>
-                +61 485 013 993
-              </Text>
-            </TouchableOpacity>
           </View>
         )}
 
         {/* Team Chat Section */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
-          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15`, marginRight: spacing.sm }]}>
-            <Feather name="users" size={iconSizes.lg} color={colors.primary} />
+          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm }}>
+            <Feather name="users" size={13} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.tabSectionTitle}>TEAM CHAT</Text>
-            <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
-              Internal discussion about this job
-            </Text>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.mutedForeground, letterSpacing: 0.5 }}>TEAM CHAT</Text>
           </View>
           {jobMessages.length > 0 && (
             <View style={{ backgroundColor: `${colors.primary}15`, borderRadius: 10, paddingHorizontal: spacing.sm, paddingVertical: 2 }}>
