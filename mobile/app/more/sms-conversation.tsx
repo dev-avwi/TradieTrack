@@ -59,78 +59,103 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  headerCard: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     paddingBottom: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    zIndex: 10,
+    gap: spacing.xs,
   },
   backButton: {
-    width: sizes.inputHeightSm,
-    height: sizes.inputHeightSm,
-    borderRadius: radius.md,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.sm,
   },
-  headerIconContainer: {
-    width: sizes.avatarMd,
-    height: sizes.avatarMd,
-    borderRadius: sizes.avatarMd / 2,
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.sm,
   },
-  headerContent: {
+  avatarText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primaryForeground,
+  },
+  headerInfo: {
     flex: 1,
+    marginLeft: 2,
   },
-  headerTitle: {
-    ...typography.cardTitle,
+  headerName: {
+    fontSize: 15,
+    fontWeight: '600',
     color: colors.foreground,
   },
-  headerSubtitle: {
-    ...typography.captionSmall,
+  headerPhone: {
+    fontSize: 12,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: 1,
   },
-  messagesContainer: {
+  callButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: `${colors.success}12`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  messagesArea: {
     flex: 1,
   },
   messagesContent: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing['4xl'],
   },
-  emptyIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.successLight,
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: `${colors.primary}10`,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
-  emptyText: {
-    ...typography.cardTitle,
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '600',
     color: colors.foreground,
   },
-  emptySubtext: {
-    ...typography.caption,
+  emptySubtitle: {
+    fontSize: 13,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 4,
+  },
+  dateSeparator: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  dateSeparatorPill: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    backgroundColor: colors.muted,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 3,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   messageRow: {
-    marginBottom: spacing.sm,
+    marginBottom: 3,
   },
   messageRowOutbound: {
     alignItems: 'flex-end',
@@ -138,156 +163,129 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   messageRowInbound: {
     alignItems: 'flex-start',
   },
-  messageLabel: {
-    ...typography.badge,
-    color: colors.mutedForeground,
-    marginBottom: 2,
-    marginLeft: spacing.xs,
+  bubble: {
+    maxWidth: '80%',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
-  messageBubble: {
-    maxWidth: '75%',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: 18,
-  },
-  messageBubbleOutbound: {
+  bubbleOutbound: {
     backgroundColor: colors.primary,
-    borderBottomRightRadius: 6,
+    borderRadius: 18,
+    borderBottomRightRadius: 4,
   },
-  messageBubbleInbound: {
-    backgroundColor: colors.card,
-    borderBottomLeftRadius: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.cardBorder,
+  bubbleInbound: {
+    backgroundColor: colors.isDark ? colors.muted : `${colors.muted}`,
+    borderRadius: 18,
+    borderBottomLeftRadius: 4,
   },
-  messageText: {
-    ...typography.body,
+  bubbleText: {
     fontSize: 15,
     lineHeight: 21,
   },
-  messageTextOutbound: {
+  bubbleTextOutbound: {
     color: colors.primaryForeground,
   },
-  messageTextInbound: {
+  bubbleTextInbound: {
     color: colors.foreground,
   },
-  messageTime: {
-    fontSize: 11,
-    marginTop: 4,
+  bubbleTime: {
+    fontSize: 10,
+    marginTop: 3,
   },
-  messageTimeOutbound: {
-    color: colors.primaryForeground + '70',
+  bubbleTimeOutbound: {
+    color: `${colors.primaryForeground}80`,
     textAlign: 'right',
   },
-  messageTimeInbound: {
+  bubbleTimeInbound: {
     color: colors.mutedForeground,
   },
-  dateSeparator: {
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-  },
-  dateSeparatorText: {
-    ...typography.badge,
-    color: colors.mutedForeground,
-    backgroundColor: colors.muted,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    overflow: 'hidden',
-  },
-  messageStatus: {
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
     marginTop: 2,
-    gap: 4,
+    gap: 3,
   },
-  messageStatusText: {
+  statusText: {
     fontSize: 10,
     color: colors.mutedForeground,
   },
-  messageStatusDelivered: {
+  statusDelivered: {
     color: colors.success,
   },
-  composerContainer: {
-    paddingTop: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.card,
+  composerWrap: {
+    backgroundColor: colors.background,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  composerRow: {
+  quickRepliesRow: {
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.sm,
+  },
+  quickRepliesScroll: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  quickChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: colors.muted,
+    gap: 5,
+  },
+  quickChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  composerInner: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
+    gap: spacing.xs,
   },
-  composerInputWrapper: {
+  zapButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 1,
+  },
+  inputWrap: {
     flex: 1,
     backgroundColor: colors.muted,
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderRadius: 20,
     overflow: 'hidden',
   },
-  composerInput: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
-    ...typography.body,
+  textInput: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: Platform.OS === 'ios' ? 9 : 7,
     fontSize: 15,
     color: colors.foreground,
     maxHeight: 100,
-    minHeight: 42,
+    minHeight: 36,
   },
-  sendButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  sendBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 1,
   },
-  sendButtonDisabled: {
-    backgroundColor: colors.muted,
+  sendBtnDisabled: {
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  quickRepliesToggle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 1,
-  },
-  quickRepliesContainer: {
-    backgroundColor: colors.card,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-  },
-  quickRepliesScroll: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  quickReplyChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.muted,
-    gap: 6,
-  },
-  quickReplyChipText: {
-    ...typography.caption,
-    fontWeight: '500',
-    color: colors.foreground,
   },
 });
 
@@ -363,17 +361,7 @@ export default function SmsConversationScreen() {
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      return date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
-    } else if (diffDays === 1) {
-      return 'Yesterday ' + date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
-    } else {
-      return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) + ' ' +
-        date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
-    }
+    return date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
 
   const renderMessageBody = useCallback((body: string, isOutbound: boolean) => {
@@ -416,7 +404,7 @@ export default function SmsConversationScreen() {
     );
   }
 
-  const isIOS = Platform.OS === 'ios';
+  const initials = (clientName || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <>
@@ -427,54 +415,47 @@ export default function SmsConversationScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View style={[styles.headerCard, { paddingTop: insets.top }]}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Feather name="chevron-left" size={24} color={colors.foreground} />
+        {/* Header */}
+        <View style={[styles.header, { paddingTop: insets.top }]}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Feather name="chevron-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
 
-          <View style={styles.headerIconContainer}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primaryForeground }}>
-              {(clientName || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-            </Text>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
 
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle} numberOfLines={1}>{clientName}</Text>
-            <Text style={styles.headerSubtitle}>{clientPhone}</Text>
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerName} numberOfLines={1}>{clientName}</Text>
+            <Text style={styles.headerPhone}>{clientPhone}</Text>
           </View>
 
           {clientPhone ? (
             <TouchableOpacity
-              onPress={() => {
-                const url = `tel:${clientPhone}`;
-                import('react-native').then(({ Linking }) => Linking.openURL(url));
-              }}
-              style={{ padding: spacing.sm }}
+              onPress={() => Linking.openURL(`tel:${clientPhone}`)}
+              style={styles.callButton}
+              activeOpacity={0.7}
             >
-              <Feather name="phone" size={20} color={colors.primary} />
+              <Feather name="phone" size={16} color={colors.success} />
             </TouchableOpacity>
           ) : null}
         </View>
 
+        {/* Messages */}
         <ScrollView
           ref={scrollRef}
-          style={styles.messagesContainer}
+          style={styles.messagesArea}
           contentContainerStyle={styles.messagesContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           showsVerticalScrollIndicator={false}
         >
           {messages.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconContainer}>
-                <Feather name="message-circle" size={28} color={colors.success} />
+              <View style={styles.emptyIcon}>
+                <Feather name="message-circle" size={24} color={colors.primary} />
               </View>
-              <Text style={styles.emptyText}>No messages yet</Text>
-              <Text style={styles.emptySubtext}>Send an SMS to start the conversation</Text>
+              <Text style={styles.emptyTitle}>No messages yet</Text>
+              <Text style={styles.emptySubtitle}>Send an SMS to start the conversation</Text>
             </View>
           ) : (
             messages.map((msg, index) => {
@@ -487,45 +468,28 @@ export default function SmsConversationScreen() {
                 <View key={msg.id}>
                   {showDateSep && (
                     <View style={styles.dateSeparator}>
-                      <Text style={styles.dateSeparatorText}>
+                      <Text style={styles.dateSeparatorPill}>
                         {new Date(msg.createdAt).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}
                       </Text>
                     </View>
                   )}
-                  <View
-                    style={[
-                      styles.messageRow,
-                      isOutbound ? styles.messageRowOutbound : styles.messageRowInbound,
-                    ]}
-                  >
-                    {!isOutbound && (
-                      <Text style={styles.messageLabel}>{clientName}</Text>
-                    )}
-                    <View style={[
-                      styles.messageBubble,
-                      isOutbound ? styles.messageBubbleOutbound : styles.messageBubbleInbound,
-                    ]}>
-                      <Text style={[
-                        styles.messageText,
-                        isOutbound ? styles.messageTextOutbound : styles.messageTextInbound,
-                      ]}>
+                  <View style={[styles.messageRow, isOutbound ? styles.messageRowOutbound : styles.messageRowInbound]}>
+                    <View style={[styles.bubble, isOutbound ? styles.bubbleOutbound : styles.bubbleInbound]}>
+                      <Text style={[styles.bubbleText, isOutbound ? styles.bubbleTextOutbound : styles.bubbleTextInbound]}>
                         {renderMessageBody(decodeHtmlEntities(msg.body), isOutbound)}
                       </Text>
-                      <Text style={[
-                        styles.messageTime,
-                        isOutbound ? styles.messageTimeOutbound : styles.messageTimeInbound,
-                      ]}>
+                      <Text style={[styles.bubbleTime, isOutbound ? styles.bubbleTimeOutbound : styles.bubbleTimeInbound]}>
                         {formatTime(msg.createdAt)}
                       </Text>
                     </View>
                     {isOutbound && msg.status && (
-                      <View style={styles.messageStatus}>
+                      <View style={styles.statusRow}>
                         <Feather 
                           name={msg.status === 'delivered' ? 'check-circle' : msg.status === 'failed' ? 'alert-circle' : 'check'} 
                           size={10} 
                           color={msg.status === 'delivered' ? colors.success : msg.status === 'failed' ? colors.destructive : colors.mutedForeground} 
                         />
-                        <Text style={[styles.messageStatusText, msg.status === 'delivered' && styles.messageStatusDelivered]}>
+                        <Text style={[styles.statusText, msg.status === 'delivered' && styles.statusDelivered]}>
                           {msg.status === 'sent' ? 'Sent' : msg.status === 'delivered' ? 'Delivered' : msg.status === 'failed' ? 'Failed' : msg.status}
                         </Text>
                       </View>
@@ -537,38 +501,41 @@ export default function SmsConversationScreen() {
           )}
         </ScrollView>
 
-        {showQuickReplies && (
-          <View style={styles.quickRepliesContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRepliesScroll}>
-              {QUICK_REPLY_TEMPLATES.map((template) => (
-                <TouchableOpacity
-                  key={template.id}
-                  style={styles.quickReplyChip}
-                  onPress={() => {
-                    setMessageText(template.message);
-                    setShowQuickReplies(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Feather name={template.icon} size={14} color={colors.primary} />
-                  <Text style={styles.quickReplyChipText}>{template.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+        {/* Composer */}
+        <View style={[styles.composerWrap, { paddingBottom: bottomNavHeight }]}>
+          {showQuickReplies && (
+            <View style={styles.quickRepliesRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRepliesScroll}>
+                {QUICK_REPLY_TEMPLATES.map((template) => (
+                  <TouchableOpacity
+                    key={template.id}
+                    style={styles.quickChip}
+                    onPress={() => {
+                      setMessageText(template.message);
+                      setShowQuickReplies(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name={template.icon} size={12} color={colors.primary} />
+                    <Text style={styles.quickChipText}>{template.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
 
-        <View style={[styles.composerContainer, { paddingBottom: bottomNavHeight }]}>
-          <View style={styles.composerRow}>
+          <View style={styles.composerInner}>
             <TouchableOpacity
-              style={styles.quickRepliesToggle}
+              style={styles.zapButton}
               onPress={() => setShowQuickReplies(!showQuickReplies)}
+              activeOpacity={0.7}
             >
               <Feather name="zap" size={18} color={showQuickReplies ? colors.primary : colors.mutedForeground} />
             </TouchableOpacity>
-            <View style={styles.composerInputWrapper}>
+
+            <View style={styles.inputWrap}>
               <TextInput
-                style={styles.composerInput}
+                style={styles.textInput}
                 placeholder="Type an SMS..."
                 placeholderTextColor={colors.mutedForeground}
                 value={messageText}
@@ -577,11 +544,9 @@ export default function SmsConversationScreen() {
                 returnKeyType="default"
               />
             </View>
+
             <TouchableOpacity
-              style={[
-                styles.sendButton,
-                (!messageText.trim() || isSending) && styles.sendButtonDisabled,
-              ]}
+              style={[styles.sendBtn, (!messageText.trim() || isSending) && styles.sendBtnDisabled]}
               onPress={handleSend}
               disabled={!messageText.trim() || isSending}
               activeOpacity={0.7}
