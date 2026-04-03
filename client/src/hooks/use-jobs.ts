@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries } from "@/lib/queryClient";
-import { useMemo } from "react";
+import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries, queryClient } from "@/lib/queryClient";
+import { useMemo, useCallback, useRef } from "react";
 import { partitionByRecent } from "@shared/dateUtils";
 import { useToast } from "@/hooks/use-toast";
 import { UsageCounts } from "./use-subscription";
@@ -210,4 +210,76 @@ export function useDeleteJob() {
       safeInvalidateQueries({ queryKey: ["/api/jobs/today"] });
     },
   });
+}
+
+const prefetchedJobs = new Set<string>();
+
+export function prefetchJobDetail(jobId: string) {
+  if (prefetchedJobs.has(jobId)) return;
+  prefetchedJobs.add(jobId);
+  
+  setTimeout(() => prefetchedJobs.delete(jobId), 60000);
+  
+  queryClient.prefetchQuery({
+    queryKey: ['/api/jobs', jobId],
+    staleTime: Infinity,
+  });
+  queryClient.prefetchQuery({
+    queryKey: ['/api/jobs', jobId, 'linked-documents'],
+    staleTime: 30000,
+  });
+  queryClient.prefetchQuery({
+    queryKey: ['/api/jobs', jobId, 'materials'],
+    staleTime: Infinity,
+  });
+  queryClient.prefetchQuery({
+    queryKey: ['/api/jobs', jobId, 'photos'],
+    staleTime: Infinity,
+  });
+  queryClient.prefetchQuery({
+    queryKey: ['/api/jobs', jobId, 'notes'],
+    staleTime: Infinity,
+  });
+}
+
+export function seedJobCacheFromList(jobs: any[]) {
+  if (!Array.isArray(jobs)) return;
+  for (const job of jobs) {
+    if (job && job.id) {
+      const existing = queryClient.getQueryData(['/api/jobs', job.id]);
+      if (!existing) {
+        queryClient.setQueryData(['/api/jobs', job.id], job);
+      }
+      if (job.clientId) {
+        const clientData = queryClient.getQueryData(['/api/clients', job.clientId]);
+        if (!clientData && job.clientName) {
+          queryClient.setQueryData(['/api/clients', job.clientId], {
+            id: job.clientId,
+            name: job.clientName,
+            email: job.clientEmail,
+            phone: job.clientPhone,
+            address: job.address,
+          });
+        }
+      }
+    }
+  }
+}
+
+export function usePrefetchJob() {
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  
+  const onHover = useCallback((jobId: string) => {
+    timerRef.current = setTimeout(() => {
+      prefetchJobDetail(jobId);
+    }, 100);
+  }, []);
+  
+  const onLeave = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+  }, []);
+  
+  return { onHover, onLeave };
 }

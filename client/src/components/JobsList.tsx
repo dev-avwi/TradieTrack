@@ -17,7 +17,7 @@ import { PageShell, PageHeader, SectionTitle } from "@/components/ui/page-shell"
 import { EmptyState } from "@/components/ui/compact-card";
 import { FilterChips, SearchBar } from "@/components/ui/filter-chips";
 import { DataTable, ColumnDef, StatusBadge } from "@/components/ui/data-table";
-import { useJobs, useUpdateJob, useRecentJobs, useJobNextActions, type NextAction } from "@/hooks/use-jobs";
+import { useJobs, useUpdateJob, useRecentJobs, useJobNextActions, usePrefetchJob, seedJobCacheFromList, type NextAction } from "@/hooks/use-jobs";
 import { useGenerateQuoteFromJob } from "@/hooks/use-quotes";
 import { useToast } from "@/hooks/use-toast";
 import { useAppMode } from "@/hooks/use-app-mode";
@@ -56,6 +56,13 @@ export default function JobsList({
   const [pasteJobOpen, setPasteJobOpen] = useState(false);
   const { data: jobs = [] } = useJobs() as { data: any[] };
   const { data: nextActions = {}, isLoading: nextActionsLoading } = useJobNextActions();
+  const { onHover: prefetchOnHover, onLeave: prefetchOnLeave } = usePrefetchJob();
+  
+  useEffect(() => {
+    if (jobs.length > 0) {
+      seedJobCacheFromList(jobs);
+    }
+  }, [jobs]);
   
   // Get role-based permissions
   const { actionPermissions, shouldFilterToAssignedJobs } = useAppMode();
@@ -483,6 +490,8 @@ export default function JobsList({
                           key={job.id}
                           className="flex items-center gap-3 p-2.5 rounded-xl hover-elevate cursor-pointer"
                           onClick={() => onViewJob?.(job.id)}
+                          onMouseEnter={() => prefetchOnHover(job.id)}
+                          onMouseLeave={prefetchOnLeave}
                         >
                           <div 
                             className="w-2 h-2 rounded-full flex-shrink-0"
@@ -508,6 +517,8 @@ export default function JobsList({
                           key={job.id}
                           className="flex items-center gap-3 p-2.5 rounded-xl hover-elevate cursor-pointer"
                           onClick={() => onViewJob?.(job.id)}
+                          onMouseEnter={() => prefetchOnHover(job.id)}
+                          onMouseLeave={prefetchOnLeave}
                         >
                           <div 
                             className="w-2 h-2 rounded-full flex-shrink-0 opacity-50"
@@ -640,6 +651,8 @@ export default function JobsList({
                               key={job.id}
                               className="bg-background rounded-lg p-3 border hover-elevate cursor-pointer relative overflow-hidden"
                               onClick={() => onViewJob?.(job.id)}
+                              onMouseEnter={() => prefetchOnHover(job.id)}
+                              onMouseLeave={prefetchOnLeave}
                               data-testid={`kanban-job-${job.id}`}
                             >
                               {job.isXeroImport && <XeroRibbon size="sm" />}
@@ -724,6 +737,8 @@ export default function JobsList({
                   key={job.id} 
                   className="feed-card card-press cursor-pointer relative overflow-hidden"
                   onClick={() => onViewJob?.(job.id)}
+                  onMouseEnter={() => prefetchOnHover(job.id)}
+                  onMouseLeave={prefetchOnLeave}
                   data-testid={`job-item-${job.id}`}
                 >
                   {job.isXeroImport && <XeroRibbon size="sm" />}
