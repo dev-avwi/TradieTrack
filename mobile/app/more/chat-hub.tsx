@@ -1326,7 +1326,7 @@ export default function ChatHubScreen() {
         </View>
         <TouchableOpacity
           style={styles.twilioSetupButton}
-          onPress={() => router.push('/more/settings' as any)}
+          onPress={() => router.push('/more/phone-numbers')}
         >
           <Text style={styles.twilioSetupButtonText}>Set Up</Text>
         </TouchableOpacity>

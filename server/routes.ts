@@ -46054,6 +46054,77 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   // Website Addon Routes
   // ============================================
 
+  app.post("/api/website-request", requireAuth, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.userId);
+      const requestSchema = z.object({
+        businessName: z.string().min(1, "Business name is required"),
+        tradeType: z.string().min(1, "Trade type is required"),
+        location: z.string().optional().default(''),
+        websiteType: z.string().optional().default(''),
+        description: z.string().optional().default(''),
+        features: z.array(z.string()).optional().default([]),
+        hasExistingWebsite: z.boolean().optional().default(false),
+        existingWebsiteUrl: z.string().optional().default(''),
+        budget: z.string().optional().default(''),
+        timeline: z.string().optional().default(''),
+        additionalNotes: z.string().optional().default(''),
+      });
+      const parsed = requestSchema.parse(req.body);
+      const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9;">
+          <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; padding: 24px; border: 1px solid #e0e0e0;">
+            <h2 style="color: #1a73e8; margin-top: 0;">New Custom Website Request</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555; width: 160px;">Business Name:</td><td style="padding: 8px 0;">${esc(parsed.businessName)}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Trade Type:</td><td style="padding: 8px 0;">${esc(parsed.tradeType)}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Location:</td><td style="padding: 8px 0;">${esc(parsed.location || 'Not specified')}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Website Type:</td><td style="padding: 8px 0;">${esc(parsed.websiteType || 'Not specified')}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Description:</td><td style="padding: 8px 0;">${esc(parsed.description || 'Not provided')}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Desired Features:</td><td style="padding: 8px 0;">${parsed.features.length > 0 ? esc(parsed.features.join(', ')) : 'None selected'}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Has Existing Site:</td><td style="padding: 8px 0;">${parsed.hasExistingWebsite ? 'Yes' : 'No'}</td></tr>
+              ${parsed.existingWebsiteUrl ? `<tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Existing URL:</td><td style="padding: 8px 0;">${esc(parsed.existingWebsiteUrl)}</td></tr>` : ''}
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Budget:</td><td style="padding: 8px 0;">${esc(parsed.budget || 'Not specified')}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Timeline:</td><td style="padding: 8px 0;">${esc(parsed.timeline || 'Not specified')}</td></tr>
+              ${parsed.additionalNotes ? `<tr><td style="padding: 8px 0; font-weight: bold; color: #555;">Additional Notes:</td><td style="padding: 8px 0;">${esc(parsed.additionalNotes)}</td></tr>` : ''}
+            </table>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 16px 0;" />
+            <p style="color: #888; font-size: 12px; margin: 0;">From: ${esc(user?.firstName || '')} ${esc(user?.lastName || '')} (${esc(user?.email || 'unknown')})</p>
+            <p style="color: #888; font-size: 12px; margin: 4px 0 0 0;">Submitted: ${new Date().toLocaleString('en-AU', { timeZone: 'Australia/Sydney' })} AEST</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const sgMail = await import('@sendgrid/mail');
+      if (process.env.SENDGRID_API_KEY) {
+        sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
+        await sgMail.default.send({
+          to: 'admin@avwebinnovation.com',
+          from: { email: 'noreply@jobrunner.com.au', name: 'JobRunner Website Requests' },
+          replyTo: user?.email || 'admin@avwebinnovation.com',
+          subject: `[Website Request] ${parsed.businessName} - ${parsed.tradeType}`,
+          html: emailHtml,
+        });
+        console.log(`Website request sent to admin@avwebinnovation.com from ${user?.email || 'unknown'}`);
+      } else {
+        console.log('SendGrid not configured - logging website request to console');
+        console.log('Website Request:', parsed);
+      }
+
+      res.json({ success: true, message: 'Your website request has been submitted! We will be in touch shortly.' });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error('Failed to submit website request:', error);
+      res.status(500).json({ error: 'Failed to submit request. Please try again.' });
+    }
+  });
+
   app.get("/api/website-addon", requireAuth, async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;

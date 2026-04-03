@@ -212,7 +212,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   composerWrap: {
     backgroundColor: colors.background,
-    paddingBottom: 4,
+    paddingBottom: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
   quickRepliesRow: {
     paddingVertical: spacing.xs + 2,

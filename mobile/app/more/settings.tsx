@@ -1876,6 +1876,31 @@ export default function SettingsScreen() {
                 </View>
               </View>
 
+              <View style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHeader}>
+                  <Feather name="phone" size={20} color={colors.primary} />
+                  <Text style={styles.subscriptionTitle}>Business SMS Number</Text>
+                </View>
+                {businessSettings?.dedicatedPhoneNumber ? (
+                  <View style={styles.businessInfoRow}>
+                    <Text style={styles.businessInfoLabel}>Active Number</Text>
+                    <Text style={[styles.businessInfoValue, { color: colors.success, fontWeight: '600' }]}>{businessSettings.dedicatedPhoneNumber}</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.planDescription, { marginBottom: spacing.sm }]}>
+                      Get a dedicated Australian phone number for two-way SMS with clients and AI Receptionist calls.
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.upgradeButton, { marginTop: 0 }]}
+                      onPress={() => router.push('/more/phone-numbers')}
+                    >
+                      <Text style={styles.upgradeButtonText}>Get a Phone Number</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+
               <TouchableOpacity 
                 style={styles.settingsCard}
                 onPress={() => router.push('/more/branding')}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert, TextInput, Linking } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -119,17 +119,48 @@ export default function AIReceptionistScreen() {
   const [isSavingKB, setIsSavingKB] = useState(false);
   const [isSubmittingVR, setIsSubmittingVR] = useState(false);
   const [isProvisioning, setIsProvisioning] = useState(false);
+  const [provisioningStatus, setProvisioningStatus] = useState<string | null>(null);
+  const [provisioningError, setProvisioningError] = useState<string | null>(null);
+
+  const pollProvisioningStatus = useCallback(async (maxAttempts = 15) => {
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      try {
+        const statusRes = await api.get<{ status: string; phoneNumber?: string; error?: string }>('/api/ai-receptionist/provisioning-status');
+        const data = statusRes.data;
+        if (data?.status === 'active' || data?.status === 'approved') {
+          setProvisioningStatus('complete');
+          await fetchConfig();
+          setIsProvisioning(false);
+          return;
+        }
+        if (data?.status === 'failed' || data?.error) {
+          setProvisioningError(data?.error || 'Provisioning failed. Please try again.');
+          setIsProvisioning(false);
+          return;
+        }
+        setProvisioningStatus(i < 5 ? 'Setting up your number...' : 'Almost there...');
+      } catch {
+        // continue polling
+      }
+    }
+    await fetchConfig();
+    setIsProvisioning(false);
+    setProvisioningStatus(null);
+  }, []);
 
   const handleProvisionNumber = async () => {
     Alert.alert(
-      'Provision Phone Number',
-      'This will set up a dedicated Australian phone number for your AI Receptionist. Continue?',
+      'Get Phone Number',
+      'This will set up a dedicated Australian phone number for your AI Receptionist and SMS. Continue?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Provision Number',
+          text: 'Get Number',
           onPress: async () => {
             setIsProvisioning(true);
+            setProvisioningStatus('Saving your preferences...');
+            setProvisioningError(null);
             try {
               await api.patch('/api/ai-receptionist/config', {
                 mode: mode || 'after_hours',
@@ -138,13 +169,20 @@ export default function AIReceptionistScreen() {
                 transferNumbers,
                 businessHours: { start: startTime, end: endTime, timezone, days: selectedDays },
               });
-              const res = await api.post('/api/subscription/ai-receptionist-checkout');
-              await fetchConfig();
-              Alert.alert('Success', 'Your AI phone number is being provisioned. This may take a moment.');
+              setProvisioningStatus('Finding an Australian number...');
+              const checkoutRes = await api.post<{ success?: boolean; provisioning?: boolean; url?: string }>('/api/subscription/ai-receptionist-checkout');
+              if (checkoutRes.data?.url) {
+                setIsProvisioning(false);
+                setProvisioningStatus(null);
+                await Linking.openURL(checkoutRes.data.url);
+                return;
+              }
+              setProvisioningStatus('Provisioning your number...');
+              pollProvisioningStatus();
             } catch (e: any) {
-              Alert.alert('Error', e?.message || 'Could not provision phone number. Please try again.');
-            } finally {
               setIsProvisioning(false);
+              setProvisioningStatus(null);
+              Alert.alert('Error', e?.message || 'Could not provision phone number. Please try again.');
             }
           },
         },
@@ -379,25 +417,56 @@ export default function AIReceptionistScreen() {
           <View style={styles.card}>
             <View style={{ alignItems: 'center', paddingVertical: spacing.md }}>
               <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
-                <Feather name="phone-incoming" size={28} color={colors.primary} />
+                <Feather name={isProvisioning ? 'loader' : 'phone-incoming'} size={28} color={colors.primary} />
               </View>
-              <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
-                No phone number assigned
-              </Text>
-              <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18, marginBottom: spacing.md }}>
-                A dedicated phone number needs to be provisioned for your business before the receptionist can be activated.
-              </Text>
-              <TouchableOpacity
-                style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, opacity: isProvisioning ? 0.6 : 1 }}
-                onPress={handleProvisionNumber}
-                disabled={isProvisioning}
-                activeOpacity={0.7}
-              >
-                <Feather name={isProvisioning ? 'loader' : 'phone'} size={16} color={colors.primaryForeground} />
-                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
-                  {isProvisioning ? 'Provisioning...' : 'Get Phone Number'}
-                </Text>
-              </TouchableOpacity>
+              {isProvisioning ? (
+                <>
+                  <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
+                    Setting Up Your Number
+                  </Text>
+                  <ActivityIndicator size="small" color={colors.primary} style={{ marginBottom: spacing.sm }} />
+                  <Text style={{ ...typography.caption, color: colors.primary, textAlign: 'center', fontWeight: '500', marginBottom: spacing.xs }}>
+                    {provisioningStatus || 'Please wait...'}
+                  </Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18 }}>
+                    This usually takes 10-30 seconds. Please don't close this screen.
+                  </Text>
+                </>
+              ) : provisioningError ? (
+                <>
+                  <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
+                    Provisioning Issue
+                  </Text>
+                  <Text style={{ ...typography.caption, color: colors.destructive || '#ef4444', textAlign: 'center', lineHeight: 18, marginBottom: spacing.md }}>
+                    {provisioningError}
+                  </Text>
+                  <TouchableOpacity
+                    style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}
+                    onPress={handleProvisionNumber}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="refresh-cw" size={16} color={colors.primaryForeground} />
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>Try Again</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
+                    No phone number assigned
+                  </Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18, marginBottom: spacing.md }}>
+                    A dedicated Australian phone number needs to be set up for your business before the receptionist can be activated.
+                  </Text>
+                  <TouchableOpacity
+                    style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}
+                    onPress={handleProvisionNumber}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="phone" size={16} color={colors.primaryForeground} />
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>Get Phone Number</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         )}
