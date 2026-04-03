@@ -79,7 +79,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.primary,
+    backgroundColor: `${colors.primary}30`,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -166,7 +166,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: 9,
   },
   bubbleOutbound: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.isDark ? `${colors.primary}90` : `${colors.primary}CC`,
     borderRadius: 18,
     borderBottomRightRadius: 4,
   },
@@ -212,6 +212,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   composerWrap: {
     backgroundColor: colors.background,
+    paddingBottom: 4,
   },
   quickRepliesRow: {
     paddingVertical: spacing.xs + 2,
@@ -268,7 +269,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.primary,
+    backgroundColor: `${colors.primary}CC`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 1,
@@ -415,7 +416,7 @@ export default function SmsConversationScreen() {
           </TouchableOpacity>
 
           <View style={styles.avatar}>
-            <Feather name="message-circle" size={18} color={colors.primaryForeground} />
+            <Feather name="message-circle" size={18} color={colors.primary} />
           </View>
 
           <View style={styles.headerInfo}>
