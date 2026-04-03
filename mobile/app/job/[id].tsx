@@ -4639,11 +4639,11 @@ export default function JobDetailScreen() {
     );
   };
 
-  const proceedWithTimerStart = async () => {
+  const proceedWithTimerStart = async (skipStatusChange?: boolean) => {
     if (!job) return;
     const success = await startTimer(job.id, `Working on: ${job.title}`);
     if (success) {
-      if (job.status === 'scheduled') {
+      if (!skipStatusChange && job.status === 'scheduled') {
         await updateJobStatus(job.id, 'in_progress');
         setJob({ ...job, status: 'in_progress' });
       }
@@ -4818,6 +4818,7 @@ export default function JobDetailScreen() {
               const success = await updateJobStatus(job.id, action.next as any);
               if (success) {
                 setJob({ ...job, status: action.next as any });
+                await proceedWithTimerStart(true);
               }
             },
             style: 'destructive'
@@ -4828,22 +4829,42 @@ export default function JobDetailScreen() {
       return;
     }
 
-    Alert.alert(
-      action.label,
-      `Are you sure you want to ${action.label.toLowerCase()}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            const success = await updateJobStatus(job.id, action.next as any);
-            if (success) {
-              setJob({ ...job, status: action.next as any });
+    if (action.next === 'in_progress') {
+      Alert.alert(
+        action.label,
+        `Are you sure you want to ${action.label.toLowerCase()}?\n\nThe job timer will start automatically.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Confirm',
+            onPress: async () => {
+              const success = await updateJobStatus(job.id, 'in_progress');
+              if (success) {
+                setJob({ ...job, status: 'in_progress' });
+                await proceedWithTimerStart(true);
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    } else {
+      Alert.alert(
+        action.label,
+        `Are you sure you want to ${action.label.toLowerCase()}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Confirm',
+            onPress: async () => {
+              const success = await updateJobStatus(job.id, action.next as any);
+              if (success) {
+                setJob({ ...job, status: action.next as any });
+              }
+            }
+          }
+        ]
+      );
+    }
   };
 
   const handleOnMyWay = async () => {
@@ -4920,6 +4941,10 @@ export default function JobDetailScreen() {
     if (!job) return;
     setIsCompletingJob(true);
     try {
+      if (isTimerForThisJob) {
+        await stopTimer();
+        await loadTimeEntries();
+      }
       const success = await updateJobStatus(job.id, 'done');
       if (success) {
         setJob({ ...job, status: 'done' });
