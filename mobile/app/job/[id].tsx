@@ -21,7 +21,6 @@ import {
   Easing,
   AppState,
   AppStateStatus,
-  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
