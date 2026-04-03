@@ -83,11 +83,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primaryForeground,
-  },
   headerInfo: {
     flex: 1,
     marginLeft: 2,
@@ -403,7 +398,6 @@ export default function SmsConversationScreen() {
     );
   }
 
-  const initials = (clientName || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <>
@@ -415,13 +409,13 @@ export default function SmsConversationScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Feather name="chevron-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
 
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
+            <Feather name="message-circle" size={18} color={colors.primaryForeground} />
           </View>
 
           <View style={styles.headerInfo}>
