@@ -1,4 +1,4 @@
-export type UserRoleType = 'owner' | 'manager' | 'staff' | 'solo_owner' | 'loading';
+export type UserRoleType = 'owner' | 'manager' | 'staff' | 'subcontractor' | 'solo_owner' | 'loading';
 
 interface TeamMemberInfo {
   roleId: string;
@@ -6,6 +6,7 @@ interface TeamMemberInfo {
   permissions: string[];
   useCustomPermissions?: boolean;
   customPermissions?: string[];
+  teamMemberId?: string;
 }
 
 interface CachedRoleData {

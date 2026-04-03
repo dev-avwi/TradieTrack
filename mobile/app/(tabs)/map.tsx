@@ -644,14 +644,13 @@ export default function MapScreen() {
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
   
   const { user } = useAuthStore();
-  const { isStaff, canAccessMap, isLoading: roleLoading, isSolo, isOwner, isManager } = useUserRole();
+  const { isStaff, isSubcontractor, teamMemberId, canAccessMap, isLoading: roleLoading, isSolo, isOwner, isManager } = useUserRole();
   
   const isAuthenticated = !!user;
   const hasMapAccess = isAuthenticated;
-  // Show Team toggle for owners/managers - they should always be able to view team members
-  const showTeamToggle = isAuthenticated && (isOwner || isManager || canAccessMap);
-  const canViewTeamMode = isAuthenticated && (isOwner || isManager || canAccessMap);
-  const canAssignJobs = isOwner || isManager;
+  const showTeamToggle = isAuthenticated && !isSubcontractor && (isOwner || isManager || canAccessMap);
+  const canViewTeamMode = isAuthenticated && !isSubcontractor && (isOwner || isManager || canAccessMap);
+  const canAssignJobs = !isSubcontractor && (isOwner || isManager);
   
   // Map jobs state - uses /api/map/jobs which geocodes addresses
   const [mapJobs, setMapJobs] = useState<JobWithLocation[]>([]);
@@ -766,9 +765,13 @@ export default function MapScreen() {
   }, []);
 
   const filteredJobs = useMemo(() => {
-    if (statusFilter === 'all') return mapJobs;
-    return mapJobs.filter(job => job.status === statusFilter);
-  }, [mapJobs, statusFilter]);
+    let jobs = mapJobs;
+    if (isSubcontractor && user?.id) {
+      jobs = jobs.filter(job => job.assignedTo === user.id || (teamMemberId && job.assignedTo === teamMemberId));
+    }
+    if (statusFilter === 'all') return jobs;
+    return jobs.filter(job => job.status === statusFilter);
+  }, [mapJobs, statusFilter, isSubcontractor, user?.id, teamMemberId]);
 
   const fetchTeamLocations = useCallback(async () => {
     try {

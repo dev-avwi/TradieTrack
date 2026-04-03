@@ -172,6 +172,7 @@ interface RoleInfo {
   permissions: string[];
   hasCustomPermissions: boolean;
   isOwner: boolean;
+  teamMemberId?: string;
 }
 
 interface TeamMember {

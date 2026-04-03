@@ -18,6 +18,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 import api, { API_URL } from '../../src/lib/api';
+import { useAuthStore } from '../../src/lib/store';
+import { useUserRole } from '../../src/hooks/use-user-role';
 
 interface Client {
   id: string;
@@ -34,6 +36,7 @@ interface Job {
   address?: string;
   clientId?: string;
   client?: Client;
+  assignedTo?: string;
 }
 
 interface SmsMessage {
@@ -599,6 +602,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 export default function ChatHubScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { user } = useAuthStore();
+  const { isSubcontractor, teamMemberId } = useUserRole();
   
   const [activeFilter, setActiveFilter] = useState<FilterType>('jobs');
   const [jobStatusFilter, setJobStatusFilter] = useState('all');
@@ -635,7 +640,8 @@ export default function ChatHubScreen() {
         api.get<TeamMember[]>('/api/team/members').catch(() => ({ data: [] as TeamMember[] })),
         api.get<any[]>('/api/jobs/chat/latest').catch(() => ({ data: [] as any[] })),
       ]);
-      setJobs(Array.isArray(jobsRes.data) ? jobsRes.data : []);
+      const allJobs = Array.isArray(jobsRes.data) ? jobsRes.data : [];
+      setJobs(isSubcontractor && user?.id ? allJobs.filter(j => j.assignedTo === user.id || (teamMemberId && j.assignedTo === teamMemberId)) : allJobs);
       setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
       setSmsConversations(Array.isArray(smsRes.data) ? smsRes.data : []);
       setTwilioStatus(twilioRes.data && !('error' in twilioRes) ? twilioRes.data : null);
@@ -1416,7 +1422,7 @@ export default function ChatHubScreen() {
         </View>
         
         <View style={styles.filterContainer}>
-          {(['jobs', 'team', 'enquiries'] as FilterType[]).map((filter) => {
+          {(isSubcontractor ? ['jobs'] as FilterType[] : ['jobs', 'team', 'enquiries'] as FilterType[]).map((filter) => {
             const count = getFilterUnreadCount(filter);
             const isActive = activeFilter === filter;
             return (

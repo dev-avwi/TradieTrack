@@ -29,6 +29,7 @@ interface TeamMemberInfo {
   permissions: string[];
   useCustomPermissions?: boolean;
   customPermissions?: string[];
+  teamMemberId?: string;
 }
 
 // Permission keys that match the backend
@@ -88,12 +89,14 @@ const getTeamMemberPermissions = (info: TeamMemberInfo): string[] => {
   return info.permissions || [];
 };
 
-// Helper to determine role from team info
 const getRoleFromTeamInfo = (info: TeamMemberInfo): UserRoleType => {
   const roleName = info.roleName.toLowerCase();
   if (roleName.includes('owner')) return 'owner';
   if (roleName.includes('manager') || roleName.includes('admin') || roleName.includes('supervisor')) {
     return 'manager';
+  }
+  if (roleName.includes('subcontractor') || roleName.includes('sub_contractor')) {
+    return 'subcontractor';
   }
   return 'staff';
 };
@@ -213,6 +216,7 @@ export function useUserRole() {
               permissions,
               hasCustomPermissions: data.useCustomPermissions ?? false,
               isOwner: role === 'owner' || role === 'solo_owner',
+              teamMemberId: data.teamMemberId || undefined,
             },
             isWorker: role === 'staff',
           });
@@ -333,11 +337,12 @@ export function useUserRole() {
     return false;
   }, [userId, cache, businessSettings]);
 
-  // Role booleans
   const isOwner = role === 'owner' || role === 'solo_owner';
   const isManager = role === 'manager';
-  const isStaff = role === 'staff';
+  const isStaff = role === 'staff' || role === 'subcontractor';
+  const isSubcontractor = role === 'subcontractor';
   const isSolo = role === 'solo_owner';
+  const teamMemberId = cache?.teamMemberInfo?.teamMemberId;
   
   // Subscription tier checks
   const subscriptionTier = user?.subscriptionTier || 'free';
@@ -361,7 +366,9 @@ export function useUserRole() {
     isOwner,
     isManager,
     isStaff,
+    isSubcontractor,
     isSolo,
+    teamMemberId,
     hasTeamAccess,
     canAccessTeamPages,
     subscriptionTier,

@@ -2060,11 +2060,10 @@ export default function DashboardScreen() {
   // Get display jobs (optimized or original)
   const displayJobs = isRouteOptimized ? optimizedJobs : todaysJobs;
   
-  // Determine if user is staff (team member with limited permissions)
   const roleResolved = roleInfo !== null;
   const isStaffUser = isStaff();
   const isOwnerUser = isOwner();
-  // Match web's canViewMap logic: only owners and managers can see the map
+  const isSubcontractorUser = roleInfo?.roleName?.toLowerCase() === 'subcontractor' || roleInfo?.roleName?.toLowerCase() === 'sub_contractor';
   const isManager = roleInfo?.roleName?.toLowerCase() === 'manager';
   const canViewMap = isOwnerUser || isManager;
   // Use store's hasActiveTeam OR local teamMembers for the check (store may be ready before local fetch)
@@ -2502,7 +2501,7 @@ export default function DashboardScreen() {
               <Text style={styles.headerTitle}>{getGreeting()}, {userName}</Text>
               <View style={[styles.roleBadge, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
                 <Text style={[styles.roleBadgeText, { color: colors.primary }]}>
-                  {isOwner() ? 'Owner' : roleInfo?.roleName === 'OWNER' ? 'Owner' : roleInfo?.roleName || 'Staff'}
+                  {isSubcontractorUser ? 'Subcontractor' : isOwner() ? 'Owner' : roleInfo?.roleName === 'OWNER' ? 'Owner' : roleInfo?.roleName || 'Staff'}
                 </Text>
               </View>
             </View>
@@ -2854,6 +2853,7 @@ export default function DashboardScreen() {
                 </Text>
                 <Text style={styles.daySummaryStatLabel}>Jobs Done</Text>
               </View>
+              {!isSubcontractorUser && (
               <View style={styles.daySummaryStat}>
                 <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.warning, 0.1) }]}>
                   <Feather name="file-text" size={16} color={colors.warning} />
@@ -2861,6 +2861,8 @@ export default function DashboardScreen() {
                 <Text style={styles.daySummaryStatValue}>{dailySummary.invoicesCreatedToday ?? 0}</Text>
                 <Text style={styles.daySummaryStatLabel}>Invoices</Text>
               </View>
+              )}
+              {!isSubcontractorUser && (
               <View style={styles.daySummaryStat}>
                 <View style={[styles.daySummaryStatIcon, { backgroundColor: colorWithOpacity(colors.success, 0.1) }]}>
                   <Feather name="dollar-sign" size={16} color={colors.success} />
@@ -2870,6 +2872,7 @@ export default function DashboardScreen() {
                 </Text>
                 <Text style={styles.daySummaryStatLabel}>Collected</Text>
               </View>
+              )}
             </View>
 
             {((dailySummary.tomorrowJobs && dailySummary.tomorrowJobs.length > 0) || dailySummary.tomorrowFirstJob) && (

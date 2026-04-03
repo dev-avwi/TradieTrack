@@ -12714,7 +12714,7 @@ Be specific about materials, colors, and features that would be included.`
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
       if (!hasViewAll && userContext.teamMemberId) {
         const jobs = await storage.getJobs(userContext.effectiveUserId);
-        const assignedJobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId);
+        const assignedJobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId || job.assignedTo === userContext.userId);
         const assignedClientIds = [...new Set(assignedJobs.map(j => j.clientId).filter(Boolean))];
         clients = clients.filter(c => assignedClientIds.includes(c.id));
       }
@@ -14506,10 +14506,13 @@ Be specific about materials, colors, and features that would be included.`
       const includeArchived = req.query.archived === 'true';
       let jobs = await storage.getJobs(userContext.effectiveUserId, includeArchived);
       
-      // Staff tradies (team members without VIEW_ALL permission) only see their assigned jobs
+      // Staff tradies and subcontractors (team members without VIEW_ALL permission) only see their assigned jobs
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
       if (!hasViewAll && userContext.teamMemberId) {
-        jobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId);
+        jobs = jobs.filter(job => 
+          job.assignedTo === userContext.teamMemberId || 
+          job.assignedTo === userContext.userId
+        );
       }
       
       // Filter for unassigned jobs if requested
@@ -14700,9 +14703,12 @@ Be specific about materials, colors, and features that would be included.`
       const clients = await storage.getClients(userContext.effectiveUserId);
       const canSeeSensitiveData = userContext.isOwner || hasPermission(userContext, PERMISSIONS.READ_CLIENTS_SENSITIVE);
       
-      // Filter to only jobs assigned to this user (use teamMemberId, not userId)
+      // Filter to only jobs assigned to this user (check both teamMemberId and userId)
       const myJobs = jobs
-        .filter(job => job.assignedTo === userContext.teamMemberId)
+        .filter(job => 
+          job.assignedTo === userContext.teamMemberId || 
+          job.assignedTo === userContext.userId
+        )
         .map(job => {
           const client = clients.find((c: any) => c.id === job.clientId);
           return {
@@ -14998,10 +15004,13 @@ Be specific about materials, colors, and features that would be included.`
       let jobs = await storage.getJobs(userContext.effectiveUserId);
       const clients = await storage.getClients(userContext.effectiveUserId);
       
-      // Staff tradies only see their assigned jobs
+      // Staff tradies and subcontractors only see their assigned jobs
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
       if (!hasViewAll && userContext.teamMemberId) {
-        jobs = jobs.filter(job => job.assignedTo === userContext.teamMemberId);
+        jobs = jobs.filter(job => 
+          job.assignedTo === userContext.teamMemberId || 
+          job.assignedTo === userContext.userId
+        );
       }
       
       const today = new Date();
@@ -30090,7 +30099,8 @@ Respond with JSON in this format:
         roleName: role.name,
         permissions: effectivePermissions,
         hasCustomPermissions: myMembership.useCustomPermissions || false,
-        customPermissions: myMembership.customPermissions || null
+        customPermissions: myMembership.customPermissions || null,
+        teamMemberId: myMembership.id || null
       });
     } catch (error) {
       console.error('Error fetching user role:', error);
@@ -34753,8 +34763,15 @@ Respond with JSON in this format:
       const userContext = await getUserContext(req.userId);
       const effectiveUserId = userContext.effectiveUserId;
       
-      const jobs = await storage.getJobs(effectiveUserId);
+      let jobs = await storage.getJobs(effectiveUserId);
       const clients = await storage.getClients(effectiveUserId);
+      
+      if (userContext.isSubcontractor) {
+        jobs = jobs.filter(job => 
+          job.assignedTo === userContext.userId || 
+          (userContext.teamMemberId && job.assignedTo === userContext.teamMemberId)
+        );
+      }
       
       const clientMap = new Map(clients.map(c => [c.id, c]));
       
@@ -34973,7 +34990,14 @@ Respond with JSON in this format:
   app.get("/api/map/jobs", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
-      const jobs = await storage.getJobs(userContext.effectiveUserId);
+      let jobs = await storage.getJobs(userContext.effectiveUserId);
+      
+      if (userContext.isSubcontractor) {
+        jobs = jobs.filter(job => 
+          job.assignedTo === userContext.userId || 
+          (userContext.teamMemberId && job.assignedTo === userContext.teamMemberId)
+        );
+      }
       
       // Batch fetch all clients for efficiency
       const clients = await storage.getClients(userContext.effectiveUserId);

@@ -2122,6 +2122,7 @@ export default function JobDetailScreen() {
     ? (roleInfo.isOwner || ['OWNER', 'ADMIN', 'MANAGER'].includes(roleInfo.roleName?.toUpperCase() || ''))
     : (user && businessSettings ? true : false);
   const isSoloOwner = user && businessSettings && (!roleInfo || roleInfo.isOwner);
+  const isSubcontractorUser = roleInfo?.roleName?.toLowerCase() === 'subcontractor' || roleInfo?.roleName?.toLowerCase() === 'sub_contractor';
   const canDeleteJobs = isOwnerOrManager || isSoloOwner;
   
   // Check if user can collect payments (owners always can, workers need permission)
@@ -5539,7 +5540,8 @@ export default function JobDetailScreen() {
     );
   }
 
-  const action = STATUS_ACTIONS[job.status];
+  const rawAction = STATUS_ACTIONS[job.status];
+  const action = isSubcontractorUser && rawAction?.next === 'invoiced' ? null : rawAction;
   const statusColor = getStatusColor(job.status);
   const clientInitials = client?.name ? client.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
 
@@ -5919,7 +5921,8 @@ export default function JobDetailScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Smart Next Action Card - guides tradie through workflow */}
+      {/* Smart Next Action Card - guides tradie through workflow (hidden for subcontractors) */}
+      {!isSubcontractorUser && (
       <NextActionCard
         jobStatus={job.status}
         hasInvoice={!!invoice}
@@ -5978,6 +5981,7 @@ export default function JobDetailScreen() {
           }
         }}
       />
+      )}
 
       {/* Address Card */}
       {job.address && (
@@ -6385,7 +6389,8 @@ export default function JobDetailScreen() {
         );
       })()}
 
-      {/* Linked Documents Card */}
+      {/* Linked Documents Card - hidden for subcontractors */}
+      {!isSubcontractorUser && (
       <LinkedDocumentsCard
         linkedQuote={quote ? {
           id: quote.id,
@@ -6407,9 +6412,10 @@ export default function JobDetailScreen() {
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
       />
+      )}
 
       {/* Quick Collect Payment - Shows when job has collectible amount (quote or materials) and no paid invoice */}
-      {(job.status === 'done' || job.status === 'in_progress') && !invoice && canCollectPayments && 
+      {!isSubcontractorUser && (job.status === 'done' || job.status === 'in_progress') && !invoice && canCollectPayments && 
        ((quote && quote.status === 'accepted') || materials.length > 0) && getQuickCollectTotal() > 0 && (
         <View style={[styles.quickCollectCard, { borderColor: colors.cardBorder }]}>
           <View style={styles.quickCollectHeader}>
@@ -6499,6 +6505,7 @@ export default function JobDetailScreen() {
       )}
 
       {/* Payment Collection Card - for collecting payment on invoiced jobs */}
+      {!isSubcontractorUser && (
       <PaymentCollectionCard
         invoice={invoice ? {
           id: invoice.id,
@@ -6514,9 +6521,10 @@ export default function JobDetailScreen() {
         onPaymentLink={handlePaymentLink}
         onRecordCash={handleRecordCash}
       />
+      )}
 
       {/* Payment Received Section - shows when there are linked receipts */}
-      {linkedReceipt && (
+      {!isSubcontractorUser && linkedReceipt && (
         <TouchableOpacity 
           style={styles.paymentReceivedCard}
           onPress={() => router.push(`/more/receipt/${linkedReceipt.id}`)}
@@ -7051,8 +7059,8 @@ export default function JobDetailScreen() {
         );
       })()}
 
-      {/* Job Costing Section */}
-      {(estimatedHours > 0 || estimatedCost > 0 || actualHours > 0) && (
+      {/* Job Costing Section - hidden for subcontractors */}
+      {!isSubcontractorUser && (estimatedHours > 0 || estimatedCost > 0 || actualHours > 0) && (
         <View style={styles.costingCard}>
           <View style={styles.costingHeader}>
             <View style={[styles.costingIconContainer, { backgroundColor: `${colors.warning}15` }]}>
@@ -7099,8 +7107,8 @@ export default function JobDetailScreen() {
         </View>
       )}
 
-      {/* Job Expenses Section */}
-      <View style={styles.costingCard}>
+      {/* Job Expenses Section - hidden for subcontractors */}
+      {!isSubcontractorUser && <View style={styles.costingCard}>
         <View style={styles.costingHeader}>
           <View style={[styles.costingIconContainer, { backgroundColor: `${colors.destructive}15` }]}>
             <Feather name="credit-card" size={iconSizes.lg} color={colors.destructive} />
@@ -7190,7 +7198,7 @@ export default function JobDetailScreen() {
             </Text>
           </TouchableOpacity>
         )}
-      </View>
+      </View>}
 
       {/* Team & Operations Section Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, marginTop: spacing.sm, gap: spacing.sm }}>
@@ -8446,7 +8454,8 @@ export default function JobDetailScreen() {
 
   const renderDocumentsTab = () => (
     <>
-      {/* Linked Documents Card */}
+      {/* Linked Documents Card - hidden for subcontractors */}
+      {!isSubcontractorUser && (
       <LinkedDocumentsCard
         linkedQuote={quote ? {
           id: quote.id,
@@ -8468,6 +8477,7 @@ export default function JobDetailScreen() {
         onCreateQuote={() => router.push(`/more/quote/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
         onCreateInvoice={() => router.push(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`)}
       />
+      )}
 
       {/* Job Checklist Section - available for all job statuses */}
       <View style={styles.photosCard}>

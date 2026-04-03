@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 
-export type UserRole = 'owner' | 'solo_owner' | 'manager' | 'office_admin' | 'staff_tradie' | 'staff' | 'team';
+export type UserRole = 'owner' | 'solo_owner' | 'manager' | 'office_admin' | 'staff_tradie' | 'staff' | 'subcontractor' | 'team';
 
 export interface NavItem {
   title: string;
@@ -119,7 +119,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "primary",
     showInMore: true,
     category: "work",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor'],
   },
   {
     title: "Time Tracking",
@@ -130,7 +130,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "primary",
     showInMore: true,
     category: "work",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'subcontractor'],
   },
   {
     title: "Team Operations",
@@ -155,7 +155,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "primary",
     showInMore: true,
     category: "communication",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor'],
   },
   {
     title: "Insights",
@@ -240,7 +240,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "primary",
     showInMore: true,
     category: "work",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor'],
   },
   {
     title: "Leads",
@@ -314,7 +314,7 @@ export const settingsMenuItems: NavItem[] = [
     bgColor: "primary",
     showInMore: true,
     category: "settings",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'subcontractor'],
   },
   {
     title: "Branding",
@@ -325,7 +325,7 @@ export const settingsMenuItems: NavItem[] = [
     bgColor: "primary",
     showInMore: true,
     category: "settings",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'subcontractor'],
   },
   {
     title: "App Settings",
@@ -336,7 +336,7 @@ export const settingsMenuItems: NavItem[] = [
     bgColor: "primary",
     showInMore: true,
     category: "settings",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'subcontractor'],
   },
   {
     title: "Help & Support",
@@ -347,7 +347,7 @@ export const settingsMenuItems: NavItem[] = [
     bgColor: "primary",
     showInMore: true,
     category: "settings",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'subcontractor'],
   },
 ];
 
@@ -361,7 +361,7 @@ export const legalMenuItems: NavItem[] = [
     bgColor: "success",
     showInMore: true,
     category: "legal",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'subcontractor'],
   },
   {
     title: "Terms of Service",
@@ -372,7 +372,7 @@ export const legalMenuItems: NavItem[] = [
     bgColor: "muted",
     showInMore: true,
     category: "legal",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'subcontractor'],
   },
 ];
 
@@ -399,7 +399,7 @@ export const accountMenuItems: NavItem[] = [
     bgColor: "destructive",
     showInMore: true,
     category: "account",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'subcontractor'],
   },
 ];
 
@@ -431,6 +431,7 @@ export interface FilterOptions {
   isOwner: boolean;
   isManager: boolean;
   isSolo: boolean;
+  isSubcontractor?: boolean;
   userRole?: UserRole;
   isPlatformAdmin?: boolean;
   hasProSubscription?: boolean;
@@ -438,7 +439,7 @@ export interface FilterOptions {
 
 export function filterNavItems(items: NavItem[], options: FilterOptions): NavItem[] {
   const isOwnerOrManager = options.isOwner || options.isManager;
-  const isStaffTradie = options.isTradie && !isOwnerOrManager;
+  const isStaffTradie = (options.isTradie || options.isSubcontractor) && !isOwnerOrManager;
   
   return items.filter(item => {
     // Platform admin only items
@@ -564,7 +565,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/',
     matchPaths: ['/', '/index'],
     section: 'main',
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'team'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor', 'team'],
   },
   { 
     id: 'action-center',
@@ -583,7 +584,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/jobs',
     matchPaths: ['/jobs', '/job'],
     section: 'main',
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'team'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor', 'team'],
   },
   { 
     id: 'clients',
@@ -632,7 +633,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/more/calendar',
     matchPaths: ['/more/calendar'],
     section: 'main',
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'team'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor', 'team'],
   },
   { 
     id: 'time-tracking',
@@ -641,7 +642,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/more/time-tracking',
     matchPaths: ['/more/time-tracking'],
     section: 'main',
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'team'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'subcontractor', 'team'],
   },
   { 
     id: 'team-operations',
@@ -662,7 +663,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/more/chat-hub',
     matchPaths: ['/more/chat-hub', '/more/team-chat', '/more/direct-messages'],
     section: 'main',
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'team'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor', 'team'],
   },
   { 
     id: 'insights',
@@ -755,7 +756,7 @@ export const sidebarMainItems: SidebarNavItem[] = [
     path: '/more/whs-hub',
     matchPaths: ['/more/whs-hub'],
     section: 'main',
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor'],
   },
   { 
     id: 'leads',
@@ -795,7 +796,7 @@ export const sidebarSettingsItems: SidebarNavItem[] = [
 
 export function filterSidebarItems(items: SidebarNavItem[], options: FilterOptions): SidebarNavItem[] {
   const isOwnerOrManager = options.isOwner || options.isManager;
-  const isStaffTradie = options.isTradie && !isOwnerOrManager;
+  const isStaffTradie = (options.isTradie || options.isSubcontractor) && !isOwnerOrManager;
   
   return items.filter(item => {
     if (item.allowedRoles && options.userRole) {

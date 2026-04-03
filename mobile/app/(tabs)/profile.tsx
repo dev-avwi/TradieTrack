@@ -386,6 +386,7 @@ function getBadgeColors(colorKey: string | undefined, colors: ThemeColors): { bg
 
 function mapRoleToFilterRole(role: UserRoleType): UserRole {
   if (role === 'staff') return 'staff_tradie';
+  if (role === 'subcontractor') return 'subcontractor';
   if (role === 'loading') return 'staff_tradie';
   return role as UserRole;
 }
@@ -408,6 +409,7 @@ export default function MoreScreen() {
   const { 
     role,
     isStaff, 
+    isSubcontractor,
     isSolo,
     hasTeamAccess,
     canAccessTeamPages,
@@ -424,10 +426,11 @@ export default function MoreScreen() {
     isOwner,
     isManager,
     isSolo,
+    isSubcontractor,
     userRole: mapRoleToFilterRole(role),
     isPlatformAdmin: user?.isPlatformAdmin || false,
     hasProSubscription,
-  }), [canAccessTeamPages, isSolo, isStaff, isOwner, isManager, role, user?.isPlatformAdmin, hasProSubscription]);
+  }), [canAccessTeamPages, isSolo, isStaff, isSubcontractor, isOwner, isManager, role, user?.isPlatformAdmin, hasProSubscription]);
 
   const categorizedItems = useMemo(() => 
     getMorePageItemsByCategory(filterOptions), 
@@ -595,7 +598,7 @@ export default function MoreScreen() {
           {(isOwner || isStaff) && (
             <View style={[styles.businessRow, { marginTop: spacing.xs }]}>
               <View style={{
-                backgroundColor: isOwner ? colors.primaryLight : colors.infoLight,
+                backgroundColor: isSubcontractor ? colors.warningLight : (isOwner ? colors.primaryLight : colors.infoLight),
                 paddingHorizontal: spacing.sm,
                 paddingVertical: 2,
                 borderRadius: radius.full,
@@ -603,8 +606,8 @@ export default function MoreScreen() {
                 <Text style={{
                   ...typography.captionSmall,
                   fontWeight: '600',
-                  color: isOwner ? colors.primary : colors.info,
-                }}>{isOwner ? 'Owner' : 'Team Member'}</Text>
+                  color: isSubcontractor ? colors.warning : (isOwner ? colors.primary : colors.info),
+                }}>{isSubcontractor ? 'Subcontractor' : (isOwner ? 'Owner' : 'Team Member')}</Text>
               </View>
             </View>
           )}
