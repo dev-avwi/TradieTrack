@@ -30,7 +30,6 @@ import { useFeatureAccess } from "@/hooks/use-subscription";
 import GuidedTour, { useGuidedTour } from "@/components/GuidedTour";
 import { KeyboardShortcutsDialog, useKeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import FirstTimeWalkthrough from "@/components/FirstTimeWalkthrough";
-import ImmersiveOnboarding from "@/components/ImmersiveOnboarding";
 import WhatYouMissedModal from "@/components/WhatYouMissedModal";
 import AdminAppShell from "@/components/AdminAppShell";
 
@@ -978,6 +977,8 @@ function AppLayout() {
     closeTour, 
     completeTour 
   } = useGuidedTour();
+  
+  const autoTourTriggered = useRef(false);
 
   // Detect OAuth callback and trigger auth refresh
   useEffect(() => {
@@ -1269,6 +1270,16 @@ function AppLayout() {
     }
     // Note: setBrandTheme and initializeFromServer are stable (useCallback) so they won't cause re-runs
   }, [businessSettings, setBrandTheme, initializeFromServer]);
+
+  useEffect(() => {
+    if (businessSettings && businessSettings.onboardingCompleted && !businessSettings.hasSeenWalkthrough && !autoTourTriggered.current) {
+      autoTourTriggered.current = true;
+      apiRequest('PATCH', '/api/business-settings', { hasSeenWalkthrough: true })
+        .then(() => queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] }))
+        .catch(() => {});
+      startTour();
+    }
+  }, [businessSettings, startTour, queryClient]);
 
   const handleLoginSuccess = () => {
     // Invalidate both auth and business settings queries to refetch fresh data
@@ -1672,16 +1683,6 @@ function AppLayout() {
         onComplete={completeTour}
       />
       
-      {/* Immersive ServiceM8-Style Onboarding - server-side tracking */}
-      {businessSettings && businessSettings.onboardingCompleted && !businessSettings.hasSeenWalkthrough && (
-        <ImmersiveOnboarding
-          businessSettings={businessSettings}
-          onComplete={() => {
-            queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
-            startTour();
-          }}
-        />
-      )}
       
       {/* Keyboard Shortcuts */}
       <KeyboardShortcutsDialog />

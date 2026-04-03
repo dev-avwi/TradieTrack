@@ -14,7 +14,6 @@ import {
   Receipt,
   Settings,
   CheckCircle2,
-  MousePointerClick,
   Plus,
   ArrowRight,
   LogOut,
@@ -100,7 +99,7 @@ const TOUR_STEPS: TourStep[] = [
     route: "/clients",
     icon: Plus,
     waitForClick: true,
-    clickTargetSelector: '[data-testid="button-new-client"], [data-testid="add-client-button"], button:has(svg.lucide-plus)',
+    clickTargetSelector: '[data-testid="button-create-client"]',
     clickTargetLabel: "+ New Client"
   },
   {
@@ -475,13 +474,12 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
       ctx.roundRect(x, y, w, h, radius);
       ctx.fill();
 
-      // Draw glowing border
       ctx.globalCompositeOperation = 'source-over';
-      const borderColor = isInteractive ? '#10b981' : '#3b82f6';
+      const borderColor = isInteractive ? 'rgba(16, 185, 129, 0.6)' : 'rgba(59, 130, 246, 0.5)';
       ctx.strokeStyle = borderColor;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2;
       ctx.shadowColor = borderColor;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 3;
       ctx.beginPath();
       ctx.roundRect(x, y, w, h, radius);
       ctx.stroke();
@@ -578,6 +576,15 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
 
   const handlePrevious = () => {
     if (!isFirstStep) {
+      const prevIdx = safeCurrentStep - 1;
+      const prevStep = filteredSteps[prevIdx];
+      if (prevStep) {
+        const targetRoute = (!isMobileView && prevStep.desktopRoute) ? prevStep.desktopRoute : prevStep.route;
+        const currentPath = window.location.pathname;
+        if (targetRoute !== currentPath) {
+          setLocation(targetRoute);
+        }
+      }
       setCurrentStep(prev => prev - 1);
     }
   };
@@ -701,12 +708,12 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
 
   const renderArrow = () => {
     if (!targetRect || !isReady || cardPosition === 'center') return null;
+    if (!isInteractive) return null;
 
-    const arrowColor = isInteractive ? '#10b981' : '#3b82f6';
-    
+    const arrowColor = 'rgba(16, 185, 129, 0.85)';
     const isLeftSide = targetRect.left < 300;
     
-    if (isLeftSide && isInteractive) {
+    if (isLeftSide) {
       return (
         <div 
           className="fixed pointer-events-none z-[10002]"
@@ -715,16 +722,15 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
             top: targetRect.top + targetRect.height / 2 - 16
           }}
         >
-          <div className="flex items-center animate-bounce">
+          <div className="flex items-center animate-pulse">
             <div 
-              className="w-0 h-0 border-t-8 border-b-8 border-r-8 border-transparent"
+              className="w-0 h-0 border-t-[6px] border-b-[6px] border-r-[6px] border-transparent"
               style={{ borderRightColor: arrowColor }}
             />
             <div 
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-white text-sm font-semibold shadow-lg whitespace-nowrap"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white text-xs font-medium shadow-md whitespace-nowrap"
               style={{ backgroundColor: arrowColor }}
             >
-              <MousePointerClick className="h-4 w-4" />
               Click "{step.clickTargetLabel}"
             </div>
           </div>
@@ -737,24 +743,21 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
         className="fixed pointer-events-none z-[10002]"
         style={{
           left: targetRect.left + targetRect.width / 2 - 20,
-          top: targetRect.top - 45
+          top: targetRect.top - 38
         }}
       >
-        {isInteractive && (
-          <div className="flex flex-col items-center animate-bounce">
-            <div 
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-white text-sm font-semibold shadow-lg whitespace-nowrap"
-              style={{ backgroundColor: arrowColor }}
-            >
-              <MousePointerClick className="h-4 w-4" />
-              Click "{step.clickTargetLabel}"
-            </div>
-            <div 
-              className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent mt-[-1px]"
-              style={{ borderTopColor: arrowColor }}
-            />
+        <div className="flex flex-col items-center animate-pulse">
+          <div 
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white text-xs font-medium shadow-md whitespace-nowrap"
+            style={{ backgroundColor: arrowColor }}
+          >
+            Click "{step.clickTargetLabel}"
           </div>
-        )}
+          <div 
+            className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent mt-[-1px]"
+            style={{ borderTopColor: arrowColor }}
+          />
+        </div>
       </div>
     );
   };
@@ -778,34 +781,24 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
       {/* Tour Card */}
       <Card
         ref={cardRef}
-        className="shadow-2xl border-2 overflow-hidden bg-background"
+        className="shadow-xl border overflow-hidden bg-background"
         style={{
           ...getCardStyle(),
-          borderColor: isInteractive ? '#10b981' : 'hsl(var(--primary))'
+          borderColor: isInteractive ? 'rgba(16, 185, 129, 0.4)' : 'hsl(var(--border))'
         }}
         onClick={(e) => e.stopPropagation()}
         data-testid="tour-tooltip"
       >
         {/* Header */}
         <div 
-          className="px-4 py-3 border-b"
-          style={{ 
-            backgroundColor: isInteractive ? 'rgba(16, 185, 129, 0.1)' : 'hsl(var(--muted))' 
-          }}
+          className="px-4 py-3 border-b bg-muted/50"
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div 
-                className="p-2 rounded-lg flex-shrink-0"
-                style={{ 
-                  backgroundColor: isInteractive ? 'rgba(16, 185, 129, 0.2)' : 'hsl(var(--primary) / 0.1)' 
-                }}
+                className="p-2 rounded-lg flex-shrink-0 bg-muted"
               >
-                {isInteractive ? (
-                  <MousePointerClick className="h-5 w-5 text-emerald-500" />
-                ) : (
-                  <StepIcon className="h-5 w-5 text-primary" />
-                )}
+                <StepIcon className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground font-medium">
@@ -834,16 +827,10 @@ export default function GuidedTour({ isOpen, onClose, onComplete }: GuidedTourPr
 
           {/* Interactive action prompt */}
           {isInteractive && isReady && (
-            <div 
-              className="flex items-center gap-3 p-3 rounded-lg mb-4 border"
-              style={{ 
-                backgroundColor: 'rgba(16, 185, 129, 0.05)',
-                borderColor: 'rgba(16, 185, 129, 0.3)'
-              }}
-            >
-              <ArrowRight className="h-5 w-5 text-emerald-500 flex-shrink-0 animate-pulse" />
-              <span className="text-sm font-medium">
-                Click <strong>"{step.clickTargetLabel}"</strong> to continue
+            <div className="flex items-center gap-2 p-2.5 rounded-md mb-4 bg-muted">
+              <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-sm text-muted-foreground">
+                Click <strong className="text-foreground">"{step.clickTargetLabel}"</strong> to continue
               </span>
             </div>
           )}
