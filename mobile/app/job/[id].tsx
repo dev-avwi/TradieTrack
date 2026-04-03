@@ -5719,66 +5719,41 @@ export default function JobDetailScreen() {
       <View style={styles.actionButtonContainer}>
         {action ? (
           job.status === 'scheduled' && job.clientId ? (
-            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <View style={{ gap: spacing.sm }}>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               {job.workerStatus === 'on_my_way' ? (
-                <>
-                  <TouchableOpacity
-                    style={{
-                      flex: 1,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: spacing.xs,
-                      paddingVertical: spacing.md,
-                      paddingHorizontal: spacing.md,
-                      borderRadius: radius.lg,
-                      backgroundColor: colors.info,
-                      minHeight: 52,
-                    }}
-                    onPress={() => {
-                      const { openMapsWithPreference } = require('../../src/lib/maps-store');
-                      if (job.latitude && job.longitude) {
-                        openMapsWithPreference(job.latitude, job.longitude, job.address);
-                      } else if (job.address) {
-                        const { openMapsWithAddress } = require('../../src/lib/maps-store');
-                        openMapsWithAddress(job.address);
-                      }
-                    }}
-                    activeOpacity={0.8}
-                    data-testid="button-directions"
-                  >
-                    <Feather name="map" size={18} color="#FFFFFF" />
-                    <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>
-                      Directions
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: spacing.xs,
-                      paddingVertical: spacing.md,
-                      paddingHorizontal: spacing.sm,
-                      borderRadius: radius.lg,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      backgroundColor: colors.card,
-                      opacity: isSendingOnMyWay ? 0.6 : 1,
-                      minHeight: 52,
-                    }}
-                    onPress={handleOnMyWay}
-                    activeOpacity={0.8}
-                    disabled={isSendingOnMyWay}
-                    data-testid="button-resend-on-my-way"
-                  >
-                    {isSendingOnMyWay ? (
-                      <ActivityIndicator size="small" color={colors.info} />
-                    ) : (
-                      <Feather name="navigation" size={16} color={colors.info} />
-                    )}
-                  </TouchableOpacity>
-                </>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: spacing.xs,
+                    paddingVertical: spacing.md,
+                    paddingHorizontal: spacing.md,
+                    borderRadius: radius.lg,
+                    borderWidth: 1.5,
+                    borderColor: colors.info,
+                    backgroundColor: colors.card,
+                    minHeight: 52,
+                  }}
+                  onPress={() => {
+                    const { openMapsWithPreference } = require('../../src/lib/maps-store');
+                    if (job.latitude && job.longitude) {
+                      openMapsWithPreference(job.latitude, job.longitude, job.address);
+                    } else if (job.address) {
+                      const { openMapsWithAddress } = require('../../src/lib/maps-store');
+                      openMapsWithAddress(job.address);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                  data-testid="button-directions"
+                >
+                  <Feather name="map" size={18} color={colors.info} />
+                  <Text style={{ color: colors.info, fontWeight: '600', fontSize: 14 }}>
+                    Directions
+                  </Text>
+                </TouchableOpacity>
               ) : (
                 <TouchableOpacity
                   style={{
@@ -5822,6 +5797,32 @@ export default function JobDetailScreen() {
                 </View>
                 <Text style={styles.mainActionText}>{action.label}</Text>
               </TouchableOpacity>
+              </View>
+              {job.workerStatus === 'on_my_way' && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    paddingVertical: 6,
+                    opacity: isSendingOnMyWay ? 0.5 : 1,
+                  }}
+                  onPress={handleOnMyWay}
+                  activeOpacity={0.7}
+                  disabled={isSendingOnMyWay}
+                  data-testid="button-resend-on-my-way"
+                >
+                  {isSendingOnMyWay ? (
+                    <ActivityIndicator size="small" color={colors.mutedForeground} />
+                  ) : (
+                    <>
+                      <Feather name="refresh-cw" size={13} color={colors.mutedForeground} />
+                      <Text style={{ fontSize: 13, color: colors.mutedForeground }}>Resend "On My Way" notification</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <TouchableOpacity

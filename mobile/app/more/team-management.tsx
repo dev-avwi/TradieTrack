@@ -1326,6 +1326,7 @@ export default function TeamManagementScreen() {
   const [inviteCodeRoleType, setInviteCodeRoleType] = useState<'worker' | 'manager' | 'subcontractor'>('worker');
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [isLoadingCodes, setIsLoadingCodes] = useState(false);
+  const [inviteTab, setInviteTab] = useState<'email' | 'code'>('email');
 
   const fetchTeam = useCallback(async () => {
     setIsLoading(true);
@@ -1422,7 +1423,7 @@ export default function TeamManagementScreen() {
       const res = await api.post<any>('/api/team/invite-codes', { roleType: inviteCodeRoleType });
       if (res.data) {
         setInviteCodes(prev => [res.data, ...prev]);
-        setShowInviteCodeModal(false);
+        setShowInviteModal(false);
         Alert.alert('Code Generated', `Share code ${res.data.code} with your team member.`);
       } else {
         Alert.alert('Error', res.error || 'Failed to generate code');
@@ -2252,57 +2253,37 @@ export default function TeamManagementScreen() {
             ))}
           </View>
 
-          {currentUserIsOwner && (
+          {currentUserIsOwner && inviteCodes.filter(c => c.isActive).length > 0 && (
             <View style={styles.section}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8 }}>
-                <Text style={styles.sectionTitle}>Invite Codes</Text>
-                <TouchableOpacity
-                  testID="button-generate-invite-code"
-                  style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 6 }}
-                  onPress={() => setShowInviteCodeModal(true)}
-                >
-                  <Feather name="plus" size={16} color="#FFFFFF" />
-                  <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>Generate Code</Text>
-                </TouchableOpacity>
-              </View>
-
-              {inviteCodes.filter(c => c.isActive).length > 0 ? (
-                inviteCodes.filter(c => c.isActive).map((ic) => {
-                  const isExpired = new Date() > new Date(ic.expiresAt);
-                  const isExhausted = ic.usedCount >= ic.maxUses;
-                  return (
-                    <View key={ic.id} style={{ backgroundColor: colors.card, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.cardBorder }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                          <Text style={{ fontSize: 20, fontWeight: '700', fontFamily: 'monospace', color: colors.foreground, letterSpacing: 2 }}>{ic.code}</Text>
-                          <View style={{ backgroundColor: ic.roleType === 'manager' ? colors.success + '20' : ic.roleType === 'subcontractor' ? '#22c55e20' : colors.info + '20', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: ic.roleType === 'manager' ? colors.success : ic.roleType === 'subcontractor' ? '#22c55e' : colors.info, textTransform: 'capitalize' }}>{ic.roleType}</Text>
-                          </View>
+              <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Active Invite Codes</Text>
+              {inviteCodes.filter(c => c.isActive).map((ic) => {
+                const isExpired = new Date() > new Date(ic.expiresAt);
+                const isExhausted = ic.usedCount >= ic.maxUses;
+                return (
+                  <View key={ic.id} style={{ backgroundColor: colors.card, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.cardBorder }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <Text style={{ fontSize: 20, fontWeight: '700', fontFamily: 'monospace', color: colors.foreground, letterSpacing: 2 }}>{ic.code}</Text>
+                        <View style={{ backgroundColor: ic.roleType === 'manager' ? colors.success + '20' : ic.roleType === 'subcontractor' ? '#22c55e20' : colors.info + '20', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: ic.roleType === 'manager' ? colors.success : ic.roleType === 'subcontractor' ? '#22c55e' : colors.info, textTransform: 'capitalize' }}>{ic.roleType}</Text>
                         </View>
-                        <TouchableOpacity onPress={() => handleRevokeInviteCode(ic.id, ic.code)} style={{ padding: 6 }}>
-                          <Feather name="x-circle" size={18} color={colors.destructive} />
-                        </TouchableOpacity>
                       </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 }}>
-                        <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
-                          {ic.usedCount}/{ic.maxUses} uses
-                        </Text>
-                        <Text style={{ fontSize: 12, color: isExpired ? colors.destructive : colors.mutedForeground }}>
-                          {isExpired ? 'Expired' : `Expires ${new Date(ic.expiresAt).toLocaleDateString()}`}
-                        </Text>
-                        {isExhausted && <Text style={{ fontSize: 12, color: colors.warning, fontWeight: '500' }}>Limit reached</Text>}
-                      </View>
+                      <TouchableOpacity onPress={() => handleRevokeInviteCode(ic.id, ic.code)} style={{ padding: 6 }}>
+                        <Feather name="x-circle" size={18} color={colors.destructive} />
+                      </TouchableOpacity>
                     </View>
-                  );
-                })
-              ) : !isLoadingCodes && (
-                <View style={{ alignItems: 'center', padding: 20 }}>
-                  <Feather name="key" size={32} color={colors.mutedForeground} />
-                  <Text style={{ color: colors.mutedForeground, fontSize: 13, marginTop: 8, textAlign: 'center' }}>
-                    No active invite codes. Generate one to let workers join your team without email.
-                  </Text>
-                </View>
-              )}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 }}>
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                        {ic.usedCount}/{ic.maxUses} uses
+                      </Text>
+                      <Text style={{ fontSize: 12, color: isExpired ? colors.destructive : colors.mutedForeground }}>
+                        {isExpired ? 'Expired' : `Expires ${new Date(ic.expiresAt).toLocaleDateString()}`}
+                      </Text>
+                      {isExhausted && <Text style={{ fontSize: 12, color: colors.warning, fontWeight: '500' }}>Limit reached</Text>}
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           )}
 
@@ -2333,186 +2314,215 @@ export default function TeamManagementScreen() {
           </ScrollView>
         )}
 
-        {/* Invite Code Generation Modal */}
-        <Modal visible={showInviteCodeModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Generate Invite Code</Text>
-                <TouchableOpacity onPress={() => setShowInviteCodeModal(false)}>
-                  <Feather name="x" size={24} color={colors.foreground} />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.modalBody}>
-                <Text style={[styles.inputLabel, { marginBottom: 12 }]}>What role should they join as?</Text>
-                {(['worker', 'manager', 'subcontractor'] as const).map((role) => (
-                  <TouchableOpacity
-                    key={role}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: inviteCodeRoleType === role ? colors.primary + '15' : colors.card,
-                      borderWidth: 2,
-                      borderColor: inviteCodeRoleType === role ? colors.primary : colors.cardBorder,
-                      borderRadius: 12,
-                      padding: 14,
-                      marginBottom: 10,
-                      gap: 12,
-                    }}
-                    onPress={() => setInviteCodeRoleType(role)}
-                  >
-                    <Feather
-                      name={role === 'manager' ? 'user-check' : role === 'subcontractor' ? 'tool' : 'user'}
-                      size={20}
-                      color={inviteCodeRoleType === role ? colors.primary : colors.mutedForeground}
-                    />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground, textTransform: 'capitalize' }}>{role}</Text>
-                      <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
-                        {role === 'worker' ? 'Field worker assigned to jobs' : role === 'manager' ? 'Can manage jobs and team' : 'Independent contractor'}
-                      </Text>
-                    </View>
-                    {inviteCodeRoleType === role && <Feather name="check-circle" size={20} color={colors.primary} />}
-                  </TouchableOpacity>
-                ))}
-                <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 4, marginBottom: 16 }}>
-                  Code expires in 30 days and can be used up to 10 times.
-                </Text>
-                <TouchableOpacity
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: colors.primary,
-                    paddingVertical: 14,
-                    paddingHorizontal: 20,
-                    borderRadius: 10,
-                    gap: 8,
-                    opacity: isGeneratingCode ? 0.5 : 1,
-                  }}
-                  onPress={handleGenerateInviteCode}
-                  disabled={isGeneratingCode}
-                >
-                  {isGeneratingCode ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                  ) : (
-                    <>
-                      <Feather name="zap" size={18} color="#FFFFFF" />
-                      <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Generate Code</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Invite Modal */}
+        {/* Unified Invite Modal */}
         <Modal visible={showInviteModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
             <View testID="modal-invite" style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Invite Team Member</Text>
+                <Text style={styles.modalTitle}>Add Team Member</Text>
                 <TouchableOpacity testID="button-close-invite-modal" onPress={() => setShowInviteModal(false)}>
                   <Feather name="x" size={24} color={colors.foreground} />
                 </TouchableOpacity>
               </View>
-              
-              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                <View style={styles.inputRow}>
-                  <View style={styles.inputHalf}>
-                    <Text style={[styles.inputLabel, styles.inputLabelFirst]}>First Name *</Text>
-                    <TextInput
-                      testID="input-invite-first-name"
-                      style={styles.input}
-                      value={inviteFirstName}
-                      onChangeText={setInviteFirstName}
-                      placeholder="John"
-                      placeholderTextColor={colors.mutedForeground}
-                    />
-                  </View>
-                  <View style={styles.inputHalf}>
-                    <Text style={[styles.inputLabel, styles.inputLabelFirst]}>Last Name *</Text>
-                    <TextInput
-                      testID="input-invite-last-name"
-                      style={styles.input}
-                      value={inviteLastName}
-                      onChangeText={setInviteLastName}
-                      placeholder="Smith"
-                      placeholderTextColor={colors.mutedForeground}
-                    />
-                  </View>
-                </View>
 
-                <Text style={styles.inputLabel}>Email Address *</Text>
-                <TextInput
-                  testID="input-invite-email"
-                  style={styles.input}
-                  value={inviteEmail}
-                  onChangeText={setInviteEmail}
-                  placeholder="team@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  placeholderTextColor={colors.mutedForeground}
-                />
-
-                <Text style={styles.inputLabel}>Phone Number (Optional)</Text>
-                <TextInput
-                  testID="input-invite-phone"
-                  style={styles.input}
-                  value={invitePhone}
-                  onChangeText={setInvitePhone}
-                  placeholder="0412 345 678"
-                  keyboardType="phone-pad"
-                  placeholderTextColor={colors.mutedForeground}
-                />
-                {invitePhone.trim() ? (
-                  <Text style={{ fontSize: 12, color: colors.primary, marginTop: 4, marginBottom: 8 }}>
-                    Invite will also be sent via SMS with a smart link
+              <View style={{ flexDirection: 'row', marginHorizontal: spacing.md, marginTop: spacing.sm, backgroundColor: colors.muted, borderRadius: radius.lg, padding: 3 }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    paddingVertical: 10,
+                    borderRadius: radius.md,
+                    alignItems: 'center',
+                    backgroundColor: inviteTab === 'email' ? colors.card : 'transparent',
+                  }}
+                  onPress={() => setInviteTab('email')}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: inviteTab === 'email' ? '600' : '400', color: inviteTab === 'email' ? colors.foreground : colors.mutedForeground }}>
+                    Email Invite
                   </Text>
-                ) : null}
-
-                <Text style={styles.inputLabel}>Hourly Rate (Optional)</Text>
-                <TextInput
-                  testID="input-invite-hourly-rate"
-                  style={styles.input}
-                  value={inviteHourlyRate}
-                  onChangeText={setInviteHourlyRate}
-                  placeholder="$0.00"
-                  keyboardType="decimal-pad"
-                  placeholderTextColor={colors.mutedForeground}
-                />
-
-                <Text style={styles.inputLabel}>Select Role</Text>
-                <View style={styles.roleOptions}>
-                  {['manager', 'worker'].map(renderRoleOption)}
-                </View>
-              </ScrollView>
-
-              <View style={styles.modalFooter}>
-                <TouchableOpacity 
-                  testID="button-cancel-invite"
-                  style={styles.cancelButton}
-                  onPress={() => setShowInviteModal(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  testID="button-send-invite"
-                  style={styles.saveButton}
-                  onPress={handleInvite}
-                  disabled={isSending}
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    paddingVertical: 10,
+                    borderRadius: radius.md,
+                    alignItems: 'center',
+                    backgroundColor: inviteTab === 'code' ? colors.card : 'transparent',
+                  }}
+                  onPress={() => setInviteTab('code')}
                 >
-                  {isSending ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <Feather name="send" size={16} color="#FFFFFF" />
-                      <Text style={styles.saveButtonText}>Send Invite</Text>
-                    </>
-                  )}
+                  <Text style={{ fontSize: 14, fontWeight: inviteTab === 'code' ? '600' : '400', color: inviteTab === 'code' ? colors.foreground : colors.mutedForeground }}>
+                    Invite Code
+                  </Text>
                 </TouchableOpacity>
               </View>
+
+              {inviteTab === 'email' ? (
+                <>
+                  <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                    <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.md }}>
+                      Send a direct email invite to a specific person.
+                    </Text>
+                    <View style={styles.inputRow}>
+                      <View style={styles.inputHalf}>
+                        <Text style={[styles.inputLabel, styles.inputLabelFirst]}>First Name *</Text>
+                        <TextInput
+                          testID="input-invite-first-name"
+                          style={styles.input}
+                          value={inviteFirstName}
+                          onChangeText={setInviteFirstName}
+                          placeholder="John"
+                          placeholderTextColor={colors.mutedForeground}
+                        />
+                      </View>
+                      <View style={styles.inputHalf}>
+                        <Text style={[styles.inputLabel, styles.inputLabelFirst]}>Last Name *</Text>
+                        <TextInput
+                          testID="input-invite-last-name"
+                          style={styles.input}
+                          value={inviteLastName}
+                          onChangeText={setInviteLastName}
+                          placeholder="Smith"
+                          placeholderTextColor={colors.mutedForeground}
+                        />
+                      </View>
+                    </View>
+
+                    <Text style={styles.inputLabel}>Email Address *</Text>
+                    <TextInput
+                      testID="input-invite-email"
+                      style={styles.input}
+                      value={inviteEmail}
+                      onChangeText={setInviteEmail}
+                      placeholder="team@example.com"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+
+                    <Text style={styles.inputLabel}>Phone Number (Optional)</Text>
+                    <TextInput
+                      testID="input-invite-phone"
+                      style={styles.input}
+                      value={invitePhone}
+                      onChangeText={setInvitePhone}
+                      placeholder="0412 345 678"
+                      keyboardType="phone-pad"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+                    {invitePhone.trim() ? (
+                      <Text style={{ fontSize: 12, color: colors.primary, marginTop: 4, marginBottom: 8 }}>
+                        Invite will also be sent via SMS with a smart link
+                      </Text>
+                    ) : null}
+
+                    <Text style={styles.inputLabel}>Hourly Rate (Optional)</Text>
+                    <TextInput
+                      testID="input-invite-hourly-rate"
+                      style={styles.input}
+                      value={inviteHourlyRate}
+                      onChangeText={setInviteHourlyRate}
+                      placeholder="$0.00"
+                      keyboardType="decimal-pad"
+                      placeholderTextColor={colors.mutedForeground}
+                    />
+
+                    <Text style={styles.inputLabel}>Select Role</Text>
+                    <View style={styles.roleOptions}>
+                      {['manager', 'worker'].map(renderRoleOption)}
+                    </View>
+                  </ScrollView>
+
+                  <View style={styles.modalFooter}>
+                    <TouchableOpacity 
+                      testID="button-cancel-invite"
+                      style={styles.cancelButton}
+                      onPress={() => setShowInviteModal(false)}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      testID="button-send-invite"
+                      style={styles.saveButton}
+                      onPress={handleInvite}
+                      disabled={isSending}
+                    >
+                      {isSending ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Feather name="send" size={16} color="#FFFFFF" />
+                          <Text style={styles.saveButtonText}>Send Invite</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.modalBody}>
+                  <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.md }}>
+                    Generate a code that anyone can use to join your team. Share it however you like.
+                  </Text>
+                  <Text style={[styles.inputLabel, { marginBottom: 12 }]}>What role should they join as?</Text>
+                  {(['worker', 'manager', 'subcontractor'] as const).map((role) => (
+                    <TouchableOpacity
+                      key={role}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: inviteCodeRoleType === role ? colors.primary + '15' : colors.card,
+                        borderWidth: 2,
+                        borderColor: inviteCodeRoleType === role ? colors.primary : colors.cardBorder,
+                        borderRadius: 12,
+                        padding: 14,
+                        marginBottom: 10,
+                        gap: 12,
+                      }}
+                      onPress={() => setInviteCodeRoleType(role)}
+                    >
+                      <Feather
+                        name={role === 'manager' ? 'user-check' : role === 'subcontractor' ? 'tool' : 'user'}
+                        size={20}
+                        color={inviteCodeRoleType === role ? colors.primary : colors.mutedForeground}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground, textTransform: 'capitalize' }}>{role}</Text>
+                        <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                          {role === 'worker' ? 'Field worker assigned to jobs' : role === 'manager' ? 'Can manage jobs and team' : 'Independent contractor'}
+                        </Text>
+                      </View>
+                      {inviteCodeRoleType === role && <Feather name="check-circle" size={20} color={colors.primary} />}
+                    </TouchableOpacity>
+                  ))}
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 4, marginBottom: 16 }}>
+                    Code expires in 30 days and can be used up to 10 times.
+                  </Text>
+                  <TouchableOpacity
+                    testID="button-generate-invite-code"
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: colors.primary,
+                      paddingVertical: 14,
+                      paddingHorizontal: 20,
+                      borderRadius: 10,
+                      gap: 8,
+                      opacity: isGeneratingCode ? 0.5 : 1,
+                    }}
+                    onPress={handleGenerateInviteCode}
+                    disabled={isGeneratingCode}
+                  >
+                    {isGeneratingCode ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <>
+                        <Feather name="zap" size={18} color="#FFFFFF" />
+                        <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Generate Code</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
         </Modal>

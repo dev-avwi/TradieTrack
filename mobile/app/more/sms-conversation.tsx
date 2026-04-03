@@ -62,9 +62,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: colors.background,
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
     zIndex: 10,
@@ -73,7 +73,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: sizes.inputHeightSm,
     height: sizes.inputHeightSm,
     borderRadius: radius.md,
-    backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
@@ -428,7 +427,7 @@ export default function SmsConversationScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View style={[styles.headerCard, { paddingTop: insets.top + spacing.sm }]}>
+        <View style={[styles.headerCard, { paddingTop: insets.top + 4 }]}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}

@@ -75,10 +75,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   headerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: colors.background,
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
     gap: spacing.sm,
   },
@@ -86,7 +86,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -686,7 +685,7 @@ export default function CommunicationsScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       
-      <View style={[styles.headerCard, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.headerCard, { paddingTop: insets.top + 4 }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.canGoBack() ? router.back() : router.push('/(tabs)/more' as any)}
