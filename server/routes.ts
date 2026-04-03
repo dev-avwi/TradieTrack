@@ -153,6 +153,8 @@ import {
   auditLogs,
   systemEvents,
   websiteChangeRequests,
+  subcontractorTokens,
+  subcontractorEvents,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, asc, and, gte, lte, lt, isNotNull, isNull, inArray, or, count, sum, ne } from "drizzle-orm";
@@ -2477,6 +2479,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch { notes = []; }
       }
 
+      let completedJobCount = 0;
+      if (tokenRecord.contactPhone) {
+        try {
+          const completedTokens = await db.selectDistinct({ id: subcontractorTokens.id })
+            .from(subcontractorTokens)
+            .innerJoin(subcontractorEvents, eq(subcontractorEvents.tokenId, subcontractorTokens.id))
+            .where(and(
+              eq(subcontractorTokens.contactPhone, tokenRecord.contactPhone),
+              eq(subcontractorTokens.userId, tokenRecord.userId),
+              eq(subcontractorEvents.eventType, 'SUBBIE_FINISHED')
+            ));
+          completedJobCount = completedTokens.length;
+        } catch {}
+      }
+
       res.json({
         token: {
           id: tokenRecord.id,
@@ -2503,6 +2520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         photos,
         notes,
         events,
+        completedJobCount,
       });
     } catch (error: any) {
       console.error('Error fetching subcontractor data:', error);
@@ -4591,7 +4609,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const job = await storage.getJob(jobId, userId);
       if (!job) return res.status(404).json({ error: 'Job not found' });
       const tokens = await storage.getSubcontractorTokensByJobId(jobId);
-      res.json(tokens);
+      const events = await storage.getSubcontractorEventsByJob(jobId);
+
+      const tokensWithActivity = tokens.map((token: any) => {
+        const tokenEvents = events.filter((e: any) => e.tokenId === token.id);
+        const statusMap: Record<string, string> = {
+          'SUBBIE_FINISHED': 'done',
+          'SUBBIE_STARTED': 'working',
+          'SUBBIE_ARRIVED': 'arrived',
+          'SUBBIE_EN_ROUTE': 'en_route',
+          'SUBBIE_ACCEPTED': 'accepted',
+        };
+        const statusEventTypes = new Set(Object.keys(statusMap));
+        const latestStatusEvent = tokenEvents
+          .filter((e: any) => statusEventTypes.has(e.eventType))
+          .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+        let currentStatus = token.status;
+        if (latestStatusEvent) {
+          currentStatus = statusMap[latestStatusEvent.eventType] || token.status;
+        }
+        const noteEvents = tokenEvents.filter((e: any) => e.eventType === 'SUBBIE_NOTE_ADDED');
+        const photoEvents = tokenEvents.filter((e: any) => e.eventType === 'SUBBIE_PHOTO_UPLOADED');
+        return {
+          ...token,
+          currentStatus,
+          events: tokenEvents,
+          noteCount: noteEvents.length,
+          photoCount: photoEvents.length,
+          notes: noteEvents.map((e: any) => ({ content: (e.eventData as any)?.content, createdAt: e.createdAt })),
+          photos: photoEvents.map((e: any) => ({ url: (e.eventData as any)?.url, caption: (e.eventData as any)?.caption, category: (e.eventData as any)?.category, createdAt: e.createdAt })),
+        };
+      });
+      res.json(tokensWithActivity);
     } catch (error: any) {
       console.error('Error getting subcontractor tokens:', error);
       res.status(500).json({ error: error.message });

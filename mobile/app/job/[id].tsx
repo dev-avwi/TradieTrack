@@ -244,8 +244,13 @@ interface SubcontractorToken {
   contactEmail?: string;
   permissions: string[];
   status: string;
+  currentStatus?: string;
   expiresAt?: string;
   createdAt?: string;
+  noteCount?: number;
+  photoCount?: number;
+  notes?: { content?: string; createdAt?: string }[];
+  photos?: { url?: string; caption?: string; category?: string; createdAt?: string }[];
 }
 
 interface SwmsDocument {
@@ -2041,6 +2046,10 @@ export default function JobDetailScreen() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [showMagicLinkInAssign, setShowMagicLinkInAssign] = useState(false);
+  const [magicLinkName, setMagicLinkName] = useState('');
+  const [magicLinkPhone, setMagicLinkPhone] = useState('');
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
 
   const [jobMessages, setJobMessages] = useState<JobChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -3036,6 +3045,50 @@ export default function JobDetailScreen() {
       Alert.alert('Error', 'Failed to assign worker');
     } finally {
       setIsAssigning(false);
+    }
+  };
+
+  const handleQuickMagicLink = async () => {
+    if (!id) return;
+    if (!magicLinkName.trim()) {
+      Alert.alert('Error', 'Please enter a name');
+      return;
+    }
+    if (!magicLinkPhone.trim()) {
+      Alert.alert('Error', 'Please enter a phone number');
+      return;
+    }
+    setIsSendingMagicLink(true);
+    try {
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const res = await api.post(`/api/jobs/${id}/subcontractor-token`, {
+        contactName: magicLinkName.trim(),
+        contactPhone: magicLinkPhone.trim(),
+        sendViaSms: true,
+        sendViaEmail: false,
+        permissions: ['view_job', 'add_notes', 'add_photos', 'update_status'],
+        expiresAt,
+      });
+      if (res.error) {
+        Alert.alert('Error', res.error);
+      } else {
+        const smsStatus = res.data?.sendResults?.sms;
+        Alert.alert(
+          'Invite Sent',
+          smsStatus !== false
+            ? `Magic link sent to ${magicLinkName.trim()} via SMS`
+            : `Invite created for ${magicLinkName.trim()}. SMS delivery may be pending.`
+        );
+        setShowAssignModal(false);
+        setShowMagicLinkInAssign(false);
+        setMagicLinkName('');
+        setMagicLinkPhone('');
+        loadSubcontractorTokens();
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to send magic link');
+    } finally {
+      setIsSendingMagicLink(false);
     }
   };
 
@@ -7362,56 +7415,98 @@ export default function JobDetailScreen() {
             <>
               {subcontractorTokens.filter(t => t.status !== 'revoked').length > 0 ? (
                 <View style={{ gap: spacing.sm, marginBottom: spacing.md }}>
-                  {subcontractorTokens.filter(t => t.status !== 'revoked').map((token) => (
-                    <View
-                      key={token.id}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: colors.muted,
-                        borderRadius: radius.lg,
-                        padding: spacing.md,
-                        gap: spacing.md,
-                      }}
-                    >
-                      <View style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 18,
-                        backgroundColor: token.status === 'active' ? `${colors.success}20` : `${colors.warning}20`,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                        <Feather
-                          name={token.status === 'active' ? 'check-circle' : 'clock'}
-                          size={16}
-                          color={token.status === 'active' ? colors.success : colors.warning}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
-                          {token.contactName || 'Subcontractor'}
-                        </Text>
-                        <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
-                          {token.contactPhone || token.contactEmail || 'No contact'}
-                          {' \u2022 '}
-                          {token.status === 'active' ? 'Active' : token.status === 'pending' ? 'Pending' : token.status}
-                        </Text>
-                        {token.expiresAt && (
-                          <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
-                            Expires {new Date(token.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </Text>
+                  {subcontractorTokens.filter(t => t.status !== 'revoked').map((token) => {
+                    const statusLabel = token.currentStatus === 'done' ? 'Completed' :
+                      token.currentStatus === 'working' ? 'In Progress' :
+                      token.currentStatus === 'arrived' ? 'Arrived' :
+                      token.currentStatus === 'en_route' ? 'En Route' :
+                      token.currentStatus === 'accepted' ? 'Accepted' :
+                      token.status === 'active' ? 'Active' :
+                      token.status === 'pending' ? 'Pending' : token.status;
+                    const statusColor = token.currentStatus === 'done' ? colors.success :
+                      token.currentStatus === 'working' ? colors.primary :
+                      token.currentStatus === 'en_route' || token.currentStatus === 'arrived' ? colors.warning :
+                      token.currentStatus === 'accepted' ? colors.invoiced :
+                      token.status === 'active' ? colors.success : colors.warning;
+                    const statusIcon = token.currentStatus === 'done' ? 'check-circle' as const :
+                      token.currentStatus === 'working' ? 'play' as const :
+                      token.currentStatus === 'en_route' ? 'navigation' as const :
+                      token.currentStatus === 'arrived' ? 'map-pin' as const :
+                      token.currentStatus === 'accepted' ? 'thumbs-up' as const :
+                      token.status === 'active' ? 'check-circle' as const : 'clock' as const;
+
+                    return (
+                      <View
+                        key={token.id}
+                        style={{
+                          backgroundColor: colors.muted,
+                          borderRadius: radius.lg,
+                          padding: spacing.md,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                          <View style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 18,
+                            backgroundColor: `${statusColor}20`,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}>
+                            <Feather name={statusIcon} size={16} color={statusColor} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
+                              {token.contactName || 'Subcontractor'}
+                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' }}>
+                              <Text style={{ fontSize: 12, color: statusColor, fontWeight: '500' }}>{statusLabel}</Text>
+                              <Text style={{ fontSize: 12, color: colors.mutedForeground }}>{token.contactPhone || token.contactEmail || ''}</Text>
+                            </View>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => handleRevokeSubcontractor(token.id, token.contactName)}
+                            style={{ padding: spacing.sm }}
+                            activeOpacity={0.7}
+                          >
+                            <Feather name="x" size={16} color={colors.destructive} />
+                          </TouchableOpacity>
+                        </View>
+
+                        {((token.noteCount && token.noteCount > 0) || (token.photoCount && token.photoCount > 0)) && (
+                          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm, paddingLeft: 48 }}>
+                            {token.noteCount && token.noteCount > 0 ? (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Feather name="edit-3" size={12} color={colors.mutedForeground} />
+                                <Text style={{ fontSize: 11, color: colors.mutedForeground }}>{token.noteCount} note{token.noteCount > 1 ? 's' : ''}</Text>
+                              </View>
+                            ) : null}
+                            {token.photoCount && token.photoCount > 0 ? (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Feather name="camera" size={12} color={colors.mutedForeground} />
+                                <Text style={{ fontSize: 11, color: colors.mutedForeground }}>{token.photoCount} photo{token.photoCount > 1 ? 's' : ''}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        )}
+
+                        {token.notes && token.notes.length > 0 && (
+                          <View style={{ marginTop: spacing.sm, paddingLeft: 48, gap: spacing.xs }}>
+                            {token.notes.slice(0, 3).map((note, idx) => (
+                              <View key={idx} style={{ backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.sm }}>
+                                <Text style={{ fontSize: 12, color: colors.foreground }} numberOfLines={2}>{note.content}</Text>
+                                {note.createdAt && (
+                                  <Text style={{ fontSize: 10, color: colors.mutedForeground, marginTop: 2 }}>
+                                    {new Date(note.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+                                  </Text>
+                                )}
+                              </View>
+                            ))}
+                          </View>
                         )}
                       </View>
-                      <TouchableOpacity
-                        onPress={() => handleRevokeSubcontractor(token.id, token.contactName)}
-                        style={{ padding: spacing.sm }}
-                        activeOpacity={0.7}
-                      >
-                        <Feather name="x" size={16} color={colors.destructive} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               ) : (
                 <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
@@ -9905,7 +10000,7 @@ export default function JobDetailScreen() {
                   </TouchableOpacity>
                 );
               })}
-              {teamMembers.length === 0 && (
+              {teamMembers.length === 0 && !showMagicLinkInAssign && (
                 <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
                   <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
                     <Feather name="users" size={24} color={colors.mutedForeground} />
@@ -9918,9 +10013,98 @@ export default function JobDetailScreen() {
                   </Text>
                 </View>
               )}
+
+              <View style={{ borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.md, paddingTop: spacing.md }}>
+                {!showMagicLinkInAssign ? (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: spacing.sm,
+                      backgroundColor: `${colors.invoiced}15`,
+                      paddingVertical: spacing.md,
+                      borderRadius: radius.lg,
+                    }}
+                    onPress={() => setShowMagicLinkInAssign(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="send" size={16} color={colors.invoiced} />
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.invoiced }}>
+                      Send Magic Link
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={{ gap: spacing.md }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                      <Feather name="send" size={16} color={colors.invoiced} />
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
+                        Invite by Phone
+                      </Text>
+                    </View>
+                    <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                      Send an SMS with a link to view and update this job. No app download needed.
+                    </Text>
+                    <TextInput
+                      style={[styles.singleLineInput]}
+                      placeholder="Name *"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={magicLinkName}
+                      onChangeText={setMagicLinkName}
+                    />
+                    <TextInput
+                      style={[styles.singleLineInput]}
+                      placeholder="Phone number *"
+                      placeholderTextColor={colors.mutedForeground}
+                      keyboardType="phone-pad"
+                      value={magicLinkPhone}
+                      onChangeText={setMagicLinkPhone}
+                    />
+                    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                      <TouchableOpacity
+                        style={{
+                          flex: 1,
+                          paddingVertical: spacing.md,
+                          borderRadius: radius.lg,
+                          alignItems: 'center',
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                        }}
+                        onPress={() => {
+                          setShowMagicLinkInAssign(false);
+                          setMagicLinkName('');
+                          setMagicLinkPhone('');
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ fontSize: 14, color: colors.foreground }}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{
+                          flex: 1,
+                          paddingVertical: spacing.md,
+                          borderRadius: radius.lg,
+                          alignItems: 'center',
+                          backgroundColor: colors.invoiced,
+                          opacity: isSendingMagicLink ? 0.6 : 1,
+                        }}
+                        onPress={handleQuickMagicLink}
+                        disabled={isSendingMagicLink}
+                        activeOpacity={0.8}
+                      >
+                        {isSendingMagicLink ? (
+                          <ActivityIndicator size="small" color={colors.primaryForeground} />
+                        ) : (
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>Send SMS</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
             </ScrollView>
             <View style={styles.modalFooter}>
-              <Button variant="outline" onPress={() => setShowAssignModal(false)} style={{ flex: 1 }}>
+              <Button variant="outline" onPress={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }} style={{ flex: 1 }}>
                 {isAssigning ? 'Assigning...' : 'Close'}
               </Button>
             </View>

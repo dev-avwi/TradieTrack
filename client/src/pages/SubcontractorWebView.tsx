@@ -102,6 +102,7 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
   const [photoCategory, setPhotoCategory] = useState('general');
   const [photoCaption, setPhotoCaption] = useState('');
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [dismissedAppBanner, setDismissedAppBanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -813,6 +814,38 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                       <p className="text-sm text-green-600 mt-1">Great work! This job has been marked as finished.</p>
                     </div>
                   )}
+
+                  {jobData.completedJobCount >= 3 && !dismissedAppBanner && (
+                    <div className="bg-[#2563EB]/5 border border-[#2563EB]/20 rounded-md p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-md bg-[#2563EB]/10 flex items-center justify-center flex-shrink-0">
+                          <Briefcase className="w-5 h-5 text-[#2563EB]" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-slate-800">You're a regular!</h4>
+                          <p className="text-xs text-slate-500 mt-1">
+                            You've completed {jobData.completedJobCount} jobs. Download the JobRunner app for a faster experience with notifications and GPS tracking.
+                          </p>
+                          <div className="flex gap-2 mt-3">
+                            <a
+                              href="https://apps.apple.com"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 bg-[#2563EB] text-white text-xs font-medium px-3 py-1.5 rounded-md"
+                            >
+                              Download App
+                            </a>
+                            <button
+                              onClick={() => setDismissedAppBanner(true)}
+                              className="text-xs text-slate-400 px-2 py-1.5"
+                            >
+                              Maybe later
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {currentStatus !== 'done' && (
@@ -907,6 +940,41 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
               </>
             )}
 
+            {notes && notes.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-slate-700">Notes</h3>
+                <div className="space-y-2">
+                  {notes.map((note: any, i: number) => (
+                    <div key={note.id || i} className="bg-white border border-slate-200 rounded-md p-3">
+                      <p className="text-sm text-slate-700">{note.content}</p>
+                      <p className="text-xs text-slate-400 mt-1">{formatTime(note.createdAt)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {photos && photos.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-slate-700">Photos</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {photos.map((photo: any, i: number) => (
+                    <div key={photo.id || i} className="relative rounded-md overflow-hidden border border-slate-200">
+                      <img
+                        src={photo.url || photo.fileUrl}
+                        alt={photo.caption || 'Job photo'}
+                        className="w-full h-32 object-cover"
+                        loading="lazy"
+                      />
+                      {photo.caption && (
+                        <p className="text-xs text-slate-500 p-1.5 truncate">{photo.caption}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {events && events.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-slate-700">Activity</h3>
@@ -916,6 +984,9 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                       <div className="w-2 h-2 rounded-full bg-[#2563EB] mt-2 flex-shrink-0" />
                       <div>
                         <p className="text-sm font-medium">{EVENT_LABELS[event.eventType] || event.eventType}</p>
+                        {event.eventType === 'SUBBIE_NOTE_ADDED' && event.eventData?.content && (
+                          <p className="text-xs text-slate-600 mt-0.5">"{event.eventData.content}"</p>
+                        )}
                         <p className="text-xs text-slate-400">{formatTime(event.createdAt)}</p>
                       </div>
                     </div>
