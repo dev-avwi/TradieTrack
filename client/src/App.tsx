@@ -174,6 +174,11 @@ function BusinessPicker({ userId }: { userId: string }) {
                     <div className="font-medium truncate">{b.businessName}</div>
                     <div className="text-xs text-muted-foreground">{b.roleName}</div>
                   </div>
+                  {b.pendingJobCount > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-semibold rounded-full bg-primary text-primary-foreground">
+                      {b.pendingJobCount}
+                    </span>
+                  )}
                   {b.businessOwnerId === businessData.activeBusinessId && (
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
                   )}

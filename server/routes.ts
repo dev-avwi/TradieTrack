@@ -44,6 +44,7 @@ import {
   insertPurchaseOrderItemSchema,
   insertUserRoleSchema,
   insertTeamMemberSchema,
+  type InsertTeamMember,
   insertStaffScheduleSchema,
   insertLocationTrackingSchema,
   insertRouteSchema,
@@ -3542,15 +3543,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const memberships = await storage.getAllTeamMembershipsByMemberId(effectiveUserId);
       
-      const businesses = await Promise.all(memberships.map(async (m: any) => {
+      const businesses = await Promise.all(memberships.map(async (m) => {
         const ownerSettings = await storage.getBusinessSettings(m.businessOwnerId);
         const ownerUser = await storage.getUser(m.businessOwnerId);
         const role = m.roleId ? await storage.getUserRole(m.roleId) : null;
+        
+        let pendingJobCount = 0;
+        try {
+          const ownerJobs = await storage.getJobs(m.businessOwnerId);
+          pendingJobCount = ownerJobs.filter((j) => 
+            (j.assignedTo === effectiveUserId || j.assignedTo === m.id) && 
+            (j.status === 'pending' || j.status === 'scheduled')
+          ).length;
+        } catch (err) {
+          console.error("Error fetching pending job count:", err);
+        }
+        
         return {
           businessOwnerId: m.businessOwnerId,
           businessName: ownerSettings?.businessName || `${ownerUser?.firstName || ''} ${ownerUser?.lastName || ''}`.trim() || 'Unknown Business',
           roleName: role?.name || 'Worker',
           teamMemberId: m.id,
+          logoUrl: ownerSettings?.logoUrl || null,
+          pendingJobCount,
         };
       }));
       
@@ -3589,6 +3604,189 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Switch business error:", error);
       res.status(500).json({ error: "Failed to switch business" });
+    }
+  });
+
+  app.get("/api/auth/pending-invites", async (req: any, res) => {
+    const effectiveUserId = req.userId || req.session?.userId;
+    
+    if (!effectiveUserId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const currentUser = await storage.getUser(effectiveUserId);
+      if (!currentUser?.email) {
+        return res.json({ invites: [] });
+      }
+      
+      const pendingByEmail = await storage.getPendingTeamMembersByEmail(currentUser.email);
+      
+      const invites: Array<{ id: string; businessName: string; roleName: string; inviterName: string }> = [];
+      
+      if (pendingByEmail && Array.isArray(pendingByEmail)) {
+        for (const member of pendingByEmail) {
+          if (member.inviteStatus !== 'pending' && member.inviteStatus !== 'invited') continue;
+          if (member.memberId === effectiveUserId) continue;
+          
+          const ownerSettings = await storage.getBusinessSettings(member.businessOwnerId);
+          const ownerUser = await storage.getUser(member.businessOwnerId);
+          const role = member.roleId ? await storage.getUserRole(member.roleId) : null;
+          
+          invites.push({
+            id: member.id,
+            businessName: ownerSettings?.businessName || `${ownerUser?.firstName || ''} ${ownerUser?.lastName || ''}`.trim() || 'Unknown Business',
+            roleName: role?.name || 'Worker',
+            inviterName: `${ownerUser?.firstName || ''} ${ownerUser?.lastName || ''}`.trim() || 'Unknown',
+          });
+        }
+      }
+      
+      res.json({ invites });
+    } catch (error) {
+      console.error("Get pending invites error:", error);
+      res.json({ invites: [] });
+    }
+  });
+
+  app.post("/api/auth/accept-invite", async (req: any, res) => {
+    const effectiveUserId = req.userId || req.session?.userId;
+    
+    if (!effectiveUserId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    const bodySchema = z.object({ teamMemberId: z.string().min(1) });
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "teamMemberId is required" });
+    }
+    const { teamMemberId } = parsed.data;
+    
+    try {
+      const currentUser = await storage.getUser(effectiveUserId);
+      if (!currentUser?.email) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const pendingByEmail = await storage.getPendingTeamMembersByEmail(currentUser.email);
+      const targetMember = pendingByEmail.find((m) => 
+        m.id === teamMemberId && 
+        (m.inviteStatus === 'pending' || m.inviteStatus === 'invited')
+      );
+      
+      if (!targetMember) {
+        return res.status(404).json({ error: "Invite not found or already processed" });
+      }
+      
+      await storage.updateTeamMember(teamMemberId, targetMember.businessOwnerId, {
+        memberId: effectiveUserId,
+        inviteStatus: 'accepted',
+        inviteAcceptedAt: new Date(),
+      } as Partial<InsertTeamMember>);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Accept invite error:", error);
+      res.status(500).json({ error: "Failed to accept invite" });
+    }
+  });
+
+  app.get("/api/auth/job-conflicts", async (req: any, res) => {
+    const effectiveUserId = req.userId || req.session?.userId;
+    
+    if (!effectiveUserId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const memberships = await storage.getAllTeamMembershipsByMemberId(effectiveUserId);
+      
+      if (memberships.length <= 1) {
+        return res.json({ conflicts: [] });
+      }
+      
+      interface ScheduledJobEntry {
+        id: string;
+        title: string;
+        businessName: string;
+        businessOwnerId: string;
+        scheduledAt: string;
+        estimatedDuration: number;
+      }
+      const allScheduledJobs: ScheduledJobEntry[] = [];
+      
+      for (const m of memberships) {
+        const ownerSettings = await storage.getBusinessSettings(m.businessOwnerId);
+        const businessName = ownerSettings?.businessName || 'Unknown Business';
+        
+        try {
+          const ownerJobs = await storage.getJobs(m.businessOwnerId);
+          const assignedJobs = ownerJobs.filter((j) => 
+            (j.assignedTo === effectiveUserId || j.assignedTo === m.id) &&
+            j.scheduledAt &&
+            (j.status === 'pending' || j.status === 'scheduled' || j.status === 'in_progress')
+          );
+          
+          for (const job of assignedJobs) {
+            allScheduledJobs.push({
+              id: job.id,
+              title: job.title,
+              businessName,
+              businessOwnerId: m.businessOwnerId,
+              scheduledAt: String(job.scheduledAt),
+              estimatedDuration: job.estimatedDuration || 60,
+            });
+          }
+        } catch (err) {
+          console.error("Error fetching jobs for conflict check:", err);
+        }
+      }
+      
+      const conflicts: Array<{ job1: ScheduledJobEntry; job2: ScheduledJobEntry; overlapMinutes: number }> = [];
+      
+      for (let i = 0; i < allScheduledJobs.length; i++) {
+        for (let j = i + 1; j < allScheduledJobs.length; j++) {
+          const job1 = allScheduledJobs[i];
+          const job2 = allScheduledJobs[j];
+          
+          if (job1.businessOwnerId === job2.businessOwnerId) continue;
+          
+          const start1 = new Date(job1.scheduledAt).getTime();
+          const end1 = start1 + (job1.estimatedDuration * 60 * 1000);
+          const start2 = new Date(job2.scheduledAt).getTime();
+          const end2 = start2 + (job2.estimatedDuration * 60 * 1000);
+          
+          if (start1 < end2 && start2 < end1) {
+            const overlapStart = Math.max(start1, start2);
+            const overlapEnd = Math.min(end1, end2);
+            const overlapMinutes = Math.round((overlapEnd - overlapStart) / 60000);
+            
+            conflicts.push({
+              job1: {
+                id: job1.id,
+                title: job1.title,
+                businessName: job1.businessName,
+                scheduledAt: job1.scheduledAt,
+                estimatedDuration: job1.estimatedDuration,
+              },
+              job2: {
+                id: job2.id,
+                title: job2.title,
+                businessName: job2.businessName,
+                scheduledAt: job2.scheduledAt,
+                estimatedDuration: job2.estimatedDuration,
+              },
+              overlapMinutes,
+            });
+          }
+        }
+      }
+      
+      res.json({ conflicts });
+    } catch (error) {
+      console.error("Job conflicts error:", error);
+      res.status(500).json({ error: "Failed to check job conflicts" });
     }
   });
 

@@ -1912,6 +1912,8 @@ export default function JobDetailScreen() {
     requirePhotoAfterComplete: boolean;
   } | null>(null);
 
+  const [jobConflictWarning, setJobConflictWarning] = useState<{ otherJobTitle: string; otherBusinessName: string; overlapMinutes: number } | null>(null);
+
   const [subcontractorTokens, setSubcontractorTokens] = useState<SubcontractorToken[]>([]);
   const [showSubcontractorModal, setShowSubcontractorModal] = useState(false);
   const [isLoadingSubcontractors, setIsLoadingSubcontractors] = useState(false);
@@ -3408,6 +3410,23 @@ export default function JobDetailScreen() {
           }
           loadLinkedJobs(response.data.clientId);
         }
+        api.getJobConflicts().then(conflictRes => {
+          if (conflictRes.data?.conflicts) {
+            const match = conflictRes.data.conflicts.find(
+              (c: { job1: { id: string }; job2: { id: string } }) => c.job1.id === id || c.job2.id === id
+            );
+            if (match) {
+              const isJob1 = match.job1.id === id;
+              setJobConflictWarning({
+                otherJobTitle: isJob1 ? match.job2.title : match.job1.title,
+                otherBusinessName: isJob1 ? match.job2.businessName : match.job1.businessName,
+                overlapMinutes: match.overlapMinutes,
+              });
+            }
+          }
+        }).catch((err) => {
+          if (__DEV__) console.log('[JobDetail] Could not check job conflicts:', err);
+        });
       }
     } catch (error) {
       console.error('Failed to load job:', error);
@@ -5582,6 +5601,30 @@ export default function JobDetailScreen() {
 
   const renderOverviewTab = () => (
     <>
+      {jobConflictWarning && (
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: colors.destructiveLight,
+          borderRadius: radius.md,
+          padding: spacing.md,
+          marginBottom: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.destructive,
+          gap: spacing.sm,
+        }}>
+          <Feather name="alert-triangle" size={18} color={colors.destructive} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ ...typography.caption, fontWeight: '600', color: colors.destructive }}>
+              Schedule Conflict ({jobConflictWarning.overlapMinutes}min overlap)
+            </Text>
+            <Text style={{ ...typography.captionSmall, color: colors.mutedForeground, marginTop: 2 }}>
+              Overlaps with "{jobConflictWarning.otherJobTitle}" at {jobConflictWarning.otherBusinessName}
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Smart Actions Panel */}
       {!hideAllActions && smartActions.length > 0 && (() => {
         const visibleActions = smartActions.filter(a => !dismissedActionIds.has(a.id));

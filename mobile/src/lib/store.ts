@@ -211,6 +211,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  forceRefreshAuth: () => Promise<void>;
   fetchRoleInfo: () => Promise<void>;
   fetchTeamState: (forceRefresh?: boolean) => Promise<void>;
   getTeamMembers: () => TeamMember[];
@@ -509,6 +510,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Update cached auth data
     const currentState = get();
     await offlineStorage.cacheAuthData(currentState.user, currentState.businessSettings, currentState.roleInfo);
+  },
+
+  forceRefreshAuth: async () => {
+    set({ isInitialized: false, isAuthenticated: false });
+    await get().checkAuth();
   },
 
   fetchRoleInfo: async () => {

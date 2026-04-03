@@ -21,6 +21,8 @@ import {
   type UserRole,
 } from '../../src/lib/navigation-config';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
+import { WorkspaceSwitcher } from '../../src/components/WorkspaceSwitcher';
+import { api } from '../../src/lib/api';
 
 const categoryMeta: Record<string, { icon: keyof typeof Feather.glyphMap; label: string; colorKey: string; description?: string }> = {
   featured: { icon: 'zap', label: 'Featured', colorKey: 'warning', description: 'Smart tools & automation' },
@@ -399,6 +401,25 @@ export default function MoreScreen() {
   const scrollRef = useRef<ScrollView | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [showWorkspaceSwitcher, setShowWorkspaceSwitcher] = useState(false);
+  const [multiBusinessCount, setMultiBusinessCount] = useState(0);
+  const [pendingInviteCount, setPendingInviteCount] = useState(0);
+  
+  useEffect(() => {
+    const fetchWorkspaceInfo = async () => {
+      try {
+        const [bizRes, invRes] = await Promise.all([
+          api.getMyBusinesses(),
+          api.getPendingInvites(),
+        ]);
+        if (bizRes.data) setMultiBusinessCount(bizRes.data.businesses?.length || 0);
+        if (invRes.data) setPendingInviteCount(invRes.data.invites?.length || 0);
+      } catch (err) {
+        if (__DEV__) console.log('[Profile] Could not fetch workspace info:', err);
+      }
+    };
+    fetchWorkspaceInfo();
+  }, []);
   
   useEffect(() => {
     if (scrollToTopTrigger > 0) {
@@ -614,6 +635,66 @@ export default function MoreScreen() {
         </View>
         <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
       </TouchableOpacity>
+
+      {(multiBusinessCount > 1 || pendingInviteCount > 0) && (
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: pendingInviteCount > 0 ? colors.warningLight : colors.primaryLight,
+            borderRadius: radius.xl,
+            padding: spacing.lg,
+            marginBottom: spacing.lg,
+            borderWidth: 1,
+            borderColor: pendingInviteCount > 0 ? colors.warning : colors.primary,
+            gap: spacing.md,
+          }}
+          activeOpacity={0.7}
+          onPress={() => setShowWorkspaceSwitcher(true)}
+        >
+          <View style={{
+            width: 40,
+            height: 40,
+            borderRadius: radius.lg,
+            backgroundColor: pendingInviteCount > 0 ? colors.warning : colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Feather name={pendingInviteCount > 0 ? 'mail' : 'repeat'} size={18} color={pendingInviteCount > 0 ? '#fff' : colors.primaryForeground} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ ...typography.body, fontWeight: '600', color: colors.foreground }}>
+              {pendingInviteCount > 0 ? 'Pending Invitations' : 'Switch Workspace'}
+            </Text>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>
+              {pendingInviteCount > 0 
+                ? `${pendingInviteCount} invitation${pendingInviteCount > 1 ? 's' : ''} waiting` 
+                : `${multiBusinessCount} connected businesses`}
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={iconSizes.lg} color={pendingInviteCount > 0 ? colors.warning : colors.primary} />
+        </TouchableOpacity>
+      )}
+
+      <WorkspaceSwitcher
+        visible={showWorkspaceSwitcher}
+        onClose={() => setShowWorkspaceSwitcher(false)}
+        onSwitch={() => {
+          const refetch = async () => {
+            try {
+              const [bizRes, invRes] = await Promise.all([
+                api.getMyBusinesses(),
+                api.getPendingInvites(),
+              ]);
+              if (bizRes.data) setMultiBusinessCount(bizRes.data.businesses?.length || 0);
+              if (invRes.data) setPendingInviteCount(invRes.data.invites?.length || 0);
+            } catch (err) {
+              if (__DEV__) console.log('[Profile] Could not refresh workspace info:', err);
+            }
+          };
+          refetch();
+        }}
+      />
 
       {quickActions.length > 0 && (
         <View style={styles.quickActionsContainer}>

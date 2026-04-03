@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet, Image, Animated, Easing, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
@@ -8,8 +8,10 @@ import { useTheme, ThemeColors } from '../lib/theme';
 import { useAdvancedThemeStore } from '../lib/advanced-theme-store';
 import { useNotificationsStore } from '../lib/notifications-store';
 import { useUserRole } from '../hooks/use-user-role';
-import { HEADER_HEIGHT, shadows } from '../lib/design-tokens';
+import { HEADER_HEIGHT, shadows, spacing, radius, typography } from '../lib/design-tokens';
 import { BackgroundLocationIndicator } from './BackgroundLocationIndicator';
+import { WorkspaceSwitcher } from './WorkspaceSwitcher';
+import { api } from '../lib/api';
 
 const isIOS = Platform.OS === 'ios';
 
@@ -161,7 +163,7 @@ export function Header({
   showAvatar = true,
   onBackPress,
 }: HeaderProps) {
-  const { user, isOwner: isOwnerFromStore, roleInfo } = useAuthStore();
+  const { user, isOwner: isOwnerFromStore, roleInfo, businessSettings } = useAuthStore();
   const { colors, isDark, setThemeMode, themeMode } = useTheme();
   const advancedSetMode = useAdvancedThemeStore(state => state.setMode);
   const advancedMode = useAdvancedThemeStore(state => state.mode);
@@ -169,17 +171,38 @@ export function Header({
   const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const { unreadCount } = useNotificationsStore();
   const pathname = usePathname();
-  // Use useUserRole hook for consistent owner/manager detection (matches web behavior)
-  // The hook has optimistic loading - returns 'owner'/'solo_owner' during loading if user is business owner
   const { canAccessMap, isLoading: roleLoading } = useUserRole();
-  // Show map for users with VIEW_MAP permission (owners/managers have this by default)
-  // Fallback: During loading only, also check cached auth store data
   const isManagerFromStore = roleInfo?.roleName === 'MANAGER' || roleInfo?.roleName === 'manager';
   const cachedCanViewMap = isOwnerFromStore() || isManagerFromStore;
-  // Once role hook settles, use its result; during loading, allow cached fallback
   const canViewMap = canAccessMap || (roleLoading && cachedCanViewMap);
   
   const displayTitle = title || (!showMenuButton ? getPageTitleFromPath(pathname) : '');
+  
+  const [showSwitcher, setShowSwitcher] = useState(false);
+  const [multiBusinessCount, setMultiBusinessCount] = useState(0);
+  const [pendingInviteCount, setPendingInviteCount] = useState(0);
+  
+  useEffect(() => {
+    const fetchWorkspaceInfo = async () => {
+      try {
+        const [bizRes, invRes] = await Promise.all([
+          api.getMyBusinesses(),
+          api.getPendingInvites(),
+        ]);
+        if (bizRes.data) {
+          setMultiBusinessCount(bizRes.data.businesses?.length || 0);
+        }
+        if (invRes.data) {
+          setPendingInviteCount(invRes.data.invites?.length || 0);
+        }
+      } catch (err) {
+        if (__DEV__) console.log('[Header] Could not fetch workspace info:', err);
+      }
+    };
+    fetchWorkspaceInfo();
+  }, []);
+  
+  const showWorkspaceIndicator = multiBusinessCount > 1 || pendingInviteCount > 0;
   
   const avatarScale = useRef(new Animated.Value(1)).current;
   
@@ -255,7 +278,20 @@ export function Header({
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <Text style={styles.brandName} numberOfLines={1}>JobRunner</Text>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.brandName} numberOfLines={1}>JobRunner</Text>
+                {showWorkspaceIndicator && (
+                  <Pressable 
+                    onPress={() => setShowSwitcher(true)} 
+                    style={styles.businessBadge}
+                  >
+                    <Feather name={pendingInviteCount > 0 ? 'mail' : 'repeat'} size={10} color={pendingInviteCount > 0 ? colors.warning : colors.primary} />
+                    <Text style={[styles.businessBadgeText, pendingInviteCount > 0 && { color: colors.warning }]} numberOfLines={1}>
+                      {pendingInviteCount > 0 ? `${pendingInviteCount} invite${pendingInviteCount > 1 ? 's' : ''}` : (businessSettings?.businessName || 'Switch')}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
           ) : null}
           
@@ -320,6 +356,25 @@ export function Header({
           )}
         </View>
       </View>
+      <WorkspaceSwitcher
+        visible={showSwitcher}
+        onClose={() => setShowSwitcher(false)}
+        onSwitch={() => {
+          const refetch = async () => {
+            try {
+              const [bizRes, invRes] = await Promise.all([
+                api.getMyBusinesses(),
+                api.getPendingInvites(),
+              ]);
+              if (bizRes.data) setMultiBusinessCount(bizRes.data.businesses?.length || 0);
+              if (invRes.data) setPendingInviteCount(invRes.data.invites?.length || 0);
+            } catch (err) {
+              if (__DEV__) console.log('[Header] Could not refresh workspace info:', err);
+            }
+          };
+          refetch();
+        }}
+      />
     </View>
   );
 }
@@ -376,6 +431,18 @@ const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.creat
     color: colors.foreground,
     letterSpacing: -0.3,
     flex: 1,
+  },
+  businessBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 1,
+  },
+  businessBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.primary,
+    maxWidth: 120,
   },
   avatarButton: {
     marginLeft: 2,

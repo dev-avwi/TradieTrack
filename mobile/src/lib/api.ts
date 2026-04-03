@@ -457,6 +457,49 @@ class ApiClient {
     return this.post('/api/integrations/xero/push-invoice', { invoiceId });
   }
 
+  async getMyBusinesses(): Promise<ApiResponse<{
+    businesses: Array<{
+      businessOwnerId: string;
+      businessName: string;
+      roleName: string;
+      teamMemberId: string;
+      logoUrl?: string;
+      pendingJobCount?: number;
+    }>;
+    activeBusinessId: string | null;
+  }>> {
+    return this.get('/api/auth/my-businesses');
+  }
+
+  async switchBusiness(businessId: string): Promise<ApiResponse<{ success: boolean; activeBusinessId: string }>> {
+    return this.post('/api/auth/switch-business', { businessId });
+  }
+
+  async getPendingInvites(): Promise<ApiResponse<{
+    invites: Array<{
+      id: string;
+      businessName: string;
+      roleName: string;
+      inviterName: string;
+    }>;
+  }>> {
+    return this.get('/api/auth/pending-invites');
+  }
+
+  async acceptInviteById(teamMemberId: string): Promise<ApiResponse<{ success: boolean }>> {
+    return this.post('/api/auth/accept-invite', { teamMemberId });
+  }
+
+  async getJobConflicts(): Promise<ApiResponse<{
+    conflicts: Array<{
+      job1: { id: string; title: string; businessName: string; scheduledAt: string; estimatedDuration: number };
+      job2: { id: string; title: string; businessName: string; scheduledAt: string; estimatedDuration: number };
+      overlapMinutes: number;
+    }>;
+  }>> {
+    return this.get('/api/auth/job-conflicts');
+  }
+
   // All integrations status (unified endpoint for mobile)
   async getAllIntegrationsStatus(): Promise<ApiResponse<{
     googleCalendar: {

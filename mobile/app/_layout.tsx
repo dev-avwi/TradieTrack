@@ -63,6 +63,46 @@ async function checkForOTAUpdate() {
   }
 }
 
+function InviteAutoPrompt() {
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const [prompted, setPrompted] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user || prompted) return;
+    
+    const checkInvites = async () => {
+      try {
+        const res = await api.getPendingInvites();
+        if (res.data?.invites && res.data.invites.length > 0) {
+          setPrompted(true);
+          const invite = res.data.invites[0];
+          Alert.alert(
+            'New Invitation',
+            `${invite.businessName} wants to add you as ${invite.roleName}. Open workspaces to review?`,
+            [
+              { text: 'Later', style: 'cancel' },
+              {
+                text: 'View',
+                onPress: () => {
+                  router.push('/(tabs)/profile');
+                },
+              },
+            ],
+          );
+        }
+      } catch (err) {
+        if (__DEV__) console.log('[InviteAutoPrompt] Could not check invites:', err);
+      }
+    };
+    
+    const timer = setTimeout(checkInvites, 3000);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, user, prompted]);
+
+  return null;
+}
+
 // Deep link handler for email flows (verify-email, accept-invite, reset-password)
 function DeepLinkHandler() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
@@ -673,6 +713,7 @@ function RootLayoutContent() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <DeepLinkHandler />
+      <InviteAutoPrompt />
       <ServicesInitializer />
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <MapPreferenceModal />
