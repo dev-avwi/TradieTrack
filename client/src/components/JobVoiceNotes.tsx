@@ -195,18 +195,11 @@ export function JobVoiceNotes({ jobId, canUpload = true, existingNotes, onNotesU
     
     setAddingNoteId(noteId);
     try {
-      // Fetch latest job data to get current notes (avoid overwriting concurrent changes)
-      // Use apiRequest for proper auth headers (Safari/iOS token-based auth)
-      const response = await apiRequest('GET', `/api/jobs/${jobId}`);
-      const currentJob = await response.json();
-      const latestNotes = currentJob.notes || '';
+      await apiRequest("POST", `/api/jobs/${jobId}/notes`, { 
+        content: transcription.trim() 
+      });
       
-      const newNotes = latestNotes 
-        ? `${latestNotes}\n\n--- Voice Note Transcription ---\n${transcription}`
-        : `--- Voice Note Transcription ---\n${transcription}`;
-      
-      await apiRequest("PATCH", `/api/jobs/${jobId}`, { notes: newNotes });
-      
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'notes'] });
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId] });
       
       toast({

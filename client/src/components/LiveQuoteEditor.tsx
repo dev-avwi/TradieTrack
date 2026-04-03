@@ -63,6 +63,7 @@ const quoteFormSchema = z.object({
   description: z.string().optional(),
   validUntil: z.string().min(1, "Valid until date is required"),
   notes: z.string().optional(),
+  gstEnabled: z.boolean().default(true),
   depositRequired: z.boolean().default(false),
   depositPercent: z.number().min(0).max(100).default(50),
   lineItems: z.array(lineItemSchema).min(1, "At least one line item required"),
@@ -196,6 +197,7 @@ export default function LiveQuoteEditor({ quoteId: editQuoteId, onSave, onCancel
       description: "",
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       notes: "",
+      gstEnabled: true,
       depositRequired: false,
       depositPercent: 50,
       lineItems: [],
@@ -219,6 +221,7 @@ export default function LiveQuoteEditor({ quoteId: editQuoteId, onSave, onCancel
       description: q.description || "",
       validUntil: q.validUntil ? new Date(q.validUntil).toISOString().split('T')[0] : "",
       notes: q.notes || "",
+      gstEnabled: q.gstEnabled !== undefined ? q.gstEnabled : (businessSettings?.gstEnabled ?? true),
       depositRequired: q.depositRequired || false,
       depositPercent: q.depositPercent ? Number(q.depositPercent) : 50,
       lineItems: (q.lineItems || []).map((li: any) => ({
@@ -255,8 +258,12 @@ export default function LiveQuoteEditor({ quoteId: editQuoteId, onSave, onCancel
   const replaceLineItems = (items: Array<{ description: string; quantity: string; unitPrice: string; cost?: string }>) => {
     setLineItems(items);
   };
-  
 
+  useEffect(() => {
+    if (!isEditMode && businessSettings && businessSettings.gstEnabled !== undefined) {
+      form.setValue("gstEnabled", businessSettings.gstEnabled);
+    }
+  }, [businessSettings?.gstEnabled, isEditMode]);
 
   // Auto-fill form when job is loaded from URL parameter
   useEffect(() => {
@@ -523,7 +530,8 @@ export default function LiveQuoteEditor({ quoteId: editQuoteId, onSave, onCancel
     (sum, item) => sum + calculateTotal(item.quantity, item.unitPrice), 
     0
   );
-  const gst = subtotal * 0.1;
+  const quoteGstEnabled = watchedValues.gstEnabled ?? true;
+  const gst = quoteGstEnabled ? subtotal * 0.1 : 0;
   const total = subtotal + gst;
   
   // Profit margin calculations
@@ -545,6 +553,7 @@ export default function LiveQuoteEditor({ quoteId: editQuoteId, onSave, onCancel
         validUntil: new Date(data.validUntil),
         notes: data.notes,
         subtotal: subtotal.toFixed(2),
+        gstEnabled: data.gstEnabled,
         gstAmount: gst.toFixed(2),
         total: total.toFixed(2),
         depositRequired: data.depositRequired,
@@ -1106,12 +1115,20 @@ export default function LiveQuoteEditor({ quoteId: editQuoteId, onSave, onCancel
                       <span className="text-muted-foreground">Subtotal</span>
                       <span>{formatCurrency(subtotal)}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">GST (10%)</span>
-                      <span>{formatCurrency(gst)}</span>
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">GST (10%)</span>
+                        <Switch
+                          checked={quoteGstEnabled}
+                          onCheckedChange={(checked) => form.setValue("gstEnabled", checked)}
+                          data-testid="switch-gst-enabled"
+                          className="scale-75"
+                        />
+                      </div>
+                      <span className={!quoteGstEnabled ? "line-through text-muted-foreground/50" : ""}>{formatCurrency(gst)}</span>
                     </div>
                     <div className="flex justify-between text-base font-bold pt-2 border-t">
-                      <span>Total (inc. GST)</span>
+                      <span>{quoteGstEnabled ? "Total (inc. GST)" : "Total (no GST)"}</span>
                       <span style={{ color: 'hsl(var(--trade))' }}>{formatCurrency(total)}</span>
                     </div>
                     
@@ -1193,18 +1210,37 @@ export default function LiveQuoteEditor({ quoteId: editQuoteId, onSave, onCancel
                   <div className="space-y-3 pt-2">
                     <div>
                       <Label className="text-xs text-muted-foreground">Deposit Percentage</Label>
-                      <div className="flex items-center gap-3 mt-1">
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {[10, 20, 25, 30, 50, 75, 100].map((pct) => (
+                          <Button
+                            key={pct}
+                            type="button"
+                            variant={watchedValues.depositPercent === pct ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => form.setValue("depositPercent", pct)}
+                            data-testid={`button-deposit-${pct}`}
+                          >
+                            {pct}%
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-3 mt-3">
+                        <Label className="text-xs text-muted-foreground shrink-0">Custom</Label>
                         <Input
                           type="number"
-                          min="0"
+                          min="1"
                           max="100"
+                          step="5"
                           value={watchedValues.depositPercent}
-                          onChange={(e) => form.setValue("depositPercent", parseInt(e.target.value) || 0)}
-                          className="h-12 rounded-xl w-24"
+                          onChange={(e) => {
+                            const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
+                            form.setValue("depositPercent", val);
+                          }}
+                          className="h-9 rounded-lg w-20"
                           data-testid="input-deposit-percent"
                         />
                         <span className="text-sm text-muted-foreground">%</span>
-                        <span className="text-sm font-medium ml-auto">
+                        <span className="text-sm font-semibold ml-auto" style={{ color: 'hsl(var(--trade))' }}>
                           {formatCurrency(total * (watchedValues.depositPercent / 100))}
                         </span>
                       </div>
@@ -1284,7 +1320,7 @@ export default function LiveQuoteEditor({ quoteId: editQuoteId, onSave, onCancel
               client={clientInfo}
               showDepositSection={watchedValues.depositRequired}
               depositPercent={watchedValues.depositPercent}
-              gstEnabled={gstEnabled}
+              gstEnabled={quoteGstEnabled}
               templateId={(() => {
                 // Primary source: businessSettings.documentTemplate (set in Templates Hub)
                 const savedTemplate = (businessSettings as any)?.documentTemplate as TemplateId | undefined;

@@ -20559,7 +20559,7 @@ Be specific about materials, colors, and features that would be included.`
         const calculatedSubtotal = subtotalCents / 100;
         const business = await storage.getBusinessSettings(userContext.effectiveUserId);
         const existingQuote = await storage.getQuote(req.params.id, userContext.effectiveUserId);
-        const gstEnabled = business?.gstEnabled ?? (existingQuote?.gstAmount && parseFloat(String(existingQuote.gstAmount)) > 0);
+        const gstEnabled = existingQuote?.gstEnabled ?? business?.gstEnabled ?? true;
         const calculatedGst = gstEnabled ? Math.round(subtotalCents * 0.1) / 100 : 0;
         const calculatedTotal = Math.round((calculatedSubtotal + calculatedGst) * 100) / 100;
         

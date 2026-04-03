@@ -1446,24 +1446,36 @@ export default function MapScreen() {
   const handleStartRoute = () => {
     if (routeJobs.length === 0) return;
     
-    // Build waypoints for multi-stop navigation
-    const waypoints = routeJobs
-      .filter(j => j.latitude && j.longitude)
-      .map(j => `${j.latitude},${j.longitude}`);
-    
-    if (waypoints.length === 0) return;
-    
-    const destination = waypoints[waypoints.length - 1];
-    const waypointsParam = waypoints.slice(0, -1).join('|');
-    
-    // Platform-specific multi-stop navigation
+    const jobsWithCoords = routeJobs.filter(j => j.latitude && j.longitude);
+    if (jobsWithCoords.length === 0) return;
+
     if (Platform.OS === 'ios') {
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&waypoints=${encodeURIComponent(waypointsParam)}&travelmode=driving`;
-      Linking.openURL(url).catch(err => {
-        if (__DEV__) console.warn('[Map] Failed to open navigation URL:', err);
-        Alert.alert('Navigation Error', 'Unable to open maps for navigation.');
-      });
+      const jobsWithAddress = jobsWithCoords.filter(j => j.address);
+      if (jobsWithAddress.length > 0) {
+        const addresses = jobsWithAddress.map(j => encodeURIComponent(j.address!));
+        let url: string;
+        if (addresses.length === 1) {
+          url = `maps://maps.apple.com/?daddr=${addresses[0]}&dirflg=d`;
+        } else {
+          url = `https://maps.apple.com/?dirflg=d&saddr=Current+Location&daddr=${addresses.join('+to:')}`;
+        }
+        Linking.openURL(url).catch(() => {
+          const fallback = `https://www.google.com/maps/dir/?api=1&destination=${jobsWithCoords[jobsWithCoords.length - 1].latitude},${jobsWithCoords[jobsWithCoords.length - 1].longitude}&waypoints=${encodeURIComponent(jobsWithCoords.slice(0, -1).map(j => `${j.latitude},${j.longitude}`).join('|'))}&travelmode=driving`;
+          Linking.openURL(fallback).catch(() => {
+            Alert.alert('Navigation Error', 'Unable to open maps for navigation.');
+          });
+        });
+      } else {
+        const coords = jobsWithCoords.map(j => `${j.latitude},${j.longitude}`);
+        const url = `https://maps.apple.com/?dirflg=d&saddr=Current+Location&daddr=${coords.join('+to:')}`;
+        Linking.openURL(url).catch(() => {
+          Alert.alert('Navigation Error', 'Unable to open maps for navigation.');
+        });
+      }
     } else {
+      const waypoints = jobsWithCoords.map(j => `${j.latitude},${j.longitude}`);
+      const destination = waypoints[waypoints.length - 1];
+      const waypointsParam = waypoints.slice(0, -1).join('|');
       const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&waypoints=${encodeURIComponent(waypointsParam)}&travelmode=driving`;
       Linking.openURL(url).catch(err => {
         if (__DEV__) console.warn('[Map] Failed to open navigation URL:', err);

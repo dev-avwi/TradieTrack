@@ -1007,40 +1007,53 @@ function FullScreenMap({ isTeam, isOwner, isManager }: { isTeam: boolean; isOwne
     }
   };
 
+  const isAppleDevice = /iPhone|iPad|iPod|Mac/i.test(navigator.userAgent);
+
   const navigateTo = (lat: number, lng: number) => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-    window.open(url, '_blank');
-  };
-  
-  // Open Google Maps with multi-stop route
-  const openMultiStopRoute = () => {
-    if (enrichedRouteJobs.length === 0) return;
-    
-    // Build addresses for waypoints from enriched data
-    const addresses = enrichedRouteJobs
-      .filter(job => job.address)
-      .map(job => encodeURIComponent(job.address!));
-    
-    if (addresses.length === 0) {
-      // No addresses available
-      return;
-    }
-    
-    // Google Maps multi-stop URL format
-    // First address is origin, last is destination, middle are waypoints
-    if (addresses.length === 1) {
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${addresses[0]}`;
+    if (isAppleDevice) {
+      const url = `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
       window.open(url, '_blank');
     } else {
-      const origin = addresses[0];
-      const destination = addresses[addresses.length - 1];
-      const waypoints = addresses.slice(1, -1).join('|');
-      
-      let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
-      if (waypoints) {
-        url += `&waypoints=${waypoints}`;
-      }
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
       window.open(url, '_blank');
+    }
+  };
+
+  const openMultiStopRoute = () => {
+    if (enrichedRouteJobs.length === 0) return;
+
+    const jobsWithAddress = enrichedRouteJobs.filter(job => job.address);
+    if (jobsWithAddress.length === 0) return;
+
+    if (isAppleDevice) {
+      const addresses = jobsWithAddress.map(job => encodeURIComponent(job.address!));
+      const appleMapsUrl = `https://maps.apple.com/?` + addresses.map((addr, i) => {
+        if (i === 0) return `saddr=${addr}`;
+        if (i === addresses.length - 1) return `daddr=${addr}`;
+        return `daddr=${addr}`;
+      }).join('&');
+
+      if (addresses.length <= 2) {
+        window.open(appleMapsUrl, '_blank');
+      } else {
+        const url = `https://maps.apple.com/?dirflg=d&saddr=${addresses[0]}&daddr=${addresses.slice(1).join('+to:')}`;
+        window.open(url, '_blank');
+      }
+    } else {
+      const addresses = jobsWithAddress.map(job => encodeURIComponent(job.address!));
+      if (addresses.length === 1) {
+        const url = `https://www.google.com/maps/dir/?api=1&destination=${addresses[0]}`;
+        window.open(url, '_blank');
+      } else {
+        const origin = addresses[0];
+        const destination = addresses[addresses.length - 1];
+        const waypoints = addresses.slice(1, -1).join('|');
+        let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+        if (waypoints) {
+          url += `&waypoints=${waypoints}`;
+        }
+        window.open(url, '_blank');
+      }
     }
   };
   

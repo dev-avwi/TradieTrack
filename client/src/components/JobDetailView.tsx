@@ -2968,14 +2968,48 @@ export default function JobDetailView({
                         </Button>
                       </div>
                     </div>
+                    <div 
+                      className="flex items-center gap-1.5 p-2 rounded-md bg-muted/50 border border-border cursor-pointer group"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(portalUrl);
+                          toast({ title: "Copied", description: "Portal link copied to clipboard" });
+                        } catch {
+                          const textArea = document.createElement('textarea');
+                          textArea.value = portalUrl;
+                          textArea.style.position = 'fixed';
+                          textArea.style.opacity = '0';
+                          document.body.appendChild(textArea);
+                          textArea.select();
+                          document.execCommand('copy');
+                          document.body.removeChild(textArea);
+                          toast({ title: "Copied", description: "Portal link copied to clipboard" });
+                        }
+                      }}
+                    >
+                      <span className="text-xs text-muted-foreground truncate flex-1 select-all">{portalUrl}</span>
+                      <Copy className="h-3 w-3 text-muted-foreground shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
+                    </div>
                     <div className="grid grid-cols-3 gap-1.5">
                       <Button
                         variant="outline"
                         size="sm"
                         className="gap-1 text-xs"
                         onClick={async () => {
-                          await navigator.clipboard.writeText(portalUrl);
-                          toast({ title: "Copied", description: "Portal link copied to clipboard" });
+                          try {
+                            await navigator.clipboard.writeText(portalUrl);
+                            toast({ title: "Copied", description: "Portal link copied to clipboard" });
+                          } catch {
+                            const textArea = document.createElement('textarea');
+                            textArea.value = portalUrl;
+                            textArea.style.position = 'fixed';
+                            textArea.style.opacity = '0';
+                            document.body.appendChild(textArea);
+                            textArea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textArea);
+                            toast({ title: "Copied", description: "Portal link copied to clipboard" });
+                          }
                         }}
                       >
                         <Copy className="h-3 w-3" />
