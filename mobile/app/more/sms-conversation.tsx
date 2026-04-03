@@ -166,7 +166,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: 9,
   },
   bubbleOutbound: {
-    backgroundColor: colors.isDark ? `${colors.primary}90` : `${colors.primary}CC`,
+    backgroundColor: colors.isDark ? `${colors.primary}80` : `${colors.primary}22`,
     borderRadius: 18,
     borderBottomRightRadius: 4,
   },
@@ -180,7 +180,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     lineHeight: 21,
   },
   bubbleTextOutbound: {
-    color: colors.primaryForeground,
+    color: colors.isDark ? colors.primaryForeground : colors.foreground,
   },
   bubbleTextInbound: {
     color: colors.foreground,
@@ -190,7 +190,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: 3,
   },
   bubbleTimeOutbound: {
-    color: `${colors.primaryForeground}80`,
+    color: colors.isDark ? `${colors.primaryForeground}80` : colors.mutedForeground,
     textAlign: 'right',
   },
   bubbleTimeInbound: {
@@ -269,7 +269,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: `${colors.primary}CC`,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 1,
