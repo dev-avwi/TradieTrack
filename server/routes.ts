@@ -19691,24 +19691,66 @@ Be specific about materials, colors, and features that would be included.`
       };
       
       const lead = await storage.createLead(leadData);
-      
+
+      let existingClient = null;
+      if (phone) {
+        existingClient = await storage.getClientByPhone(business.userId, phone);
+      }
+      if (!existingClient) {
+        existingClient = await storage.createClient({
+          userId: business.userId,
+          name,
+          email: email || undefined,
+          phone: phone || undefined,
+          referralSource: 'Booking Page',
+          notes: 'Auto-created from online booking page',
+        });
+      }
+
+      const jobTitle = service ? `${service} - ${name}` : `Booking request - ${name}`;
+      const jobDesc = [
+        service ? `Service: ${service}` : null,
+        address ? `Address: ${address}` : null,
+        preferredDate ? `Preferred date: ${preferredDate}` : null,
+        description || null,
+        'Submitted via online booking page',
+      ].filter(Boolean).join('\n');
+
+      const job = await storage.createJob({
+        userId: business.userId,
+        clientId: existingClient.id,
+        title: jobTitle,
+        description: jobDesc,
+        address: address || undefined,
+        status: 'pending',
+        scheduledAt: preferredDate ? new Date(preferredDate) : undefined,
+        leadSource: 'booking_page',
+        leadId: lead.id,
+      });
+
+      await storage.updateLead(lead.id, business.userId, {
+        clientId: existingClient.id,
+        status: 'won',
+        wonLostReason: 'Auto-converted to job from booking page',
+      });
+
       try {
         await storage.createNotification({
           userId: business.userId,
           type: 'new_lead',
           title: 'New Booking Request',
-          message: `${name} submitted a booking request${service ? ` for ${service}` : ''} via your online booking page`,
-          relatedId: lead.id,
-          relatedType: 'lead',
+          message: `${name} submitted a booking request${service ? ` for ${service}` : ''}. Job created automatically.`,
+          relatedId: job.id,
+          relatedType: 'job',
           priority: 'important',
-          actionUrl: '/leads',
-          actionLabel: 'View Lead',
+          actionUrl: `/jobs/${job.id}`,
+          actionLabel: 'View Job',
         });
       } catch (e) {
         console.error('[BookingPage] Failed to create notification:', e);
       }
       
-      console.log(`[BookingPage] New booking request from ${name} for business ${business.businessName}`);
+      console.log(`[BookingPage] New booking + job from ${name} for business ${business.businessName}`);
       res.json({ success: true, message: 'Booking request submitted successfully' });
     } catch (error: any) {
       console.error('[BookingPage] Error submitting booking:', error);
@@ -42781,6 +42823,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
           description: lead.notes || '',
           status: 'pending',
           requiresInspection: true,
+          leadSource: (lead.source as string) || 'other',
+          leadId: lead.id,
         });
       }
       // Optionally create a job
@@ -42791,6 +42835,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
           title: lead.description || `Job for ${lead.name}`,
           description: lead.notes || '',
           status: 'pending',
+          leadSource: (lead.source as string) || 'other',
+          leadId: lead.id,
         });
       }
       

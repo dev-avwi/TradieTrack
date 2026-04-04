@@ -34,7 +34,10 @@ import {
   Filter,
   Download,
   ExternalLink,
-  FileText
+  FileText,
+  Bot,
+  Globe,
+  Phone
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -128,6 +131,26 @@ interface WorkPageProps {
   onCreateJob?: () => void;
   onShowQuoteModal?: (quoteId: string) => void;
   onShowInvoiceModal?: (invoiceId: string) => void;
+}
+
+function getLeadSourceBadge(source: string | null | undefined) {
+  if (!source) return null;
+  const config: Record<string, { label: string; icon: typeof Bot; className: string }> = {
+    ai_receptionist: { label: 'AI Call', icon: Bot, className: 'bg-violet-500/10 text-violet-600 border-violet-500/20 dark:text-violet-400' },
+    booking_page: { label: 'Booking', icon: Globe, className: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400' },
+    website: { label: 'Website', icon: Globe, className: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20 dark:text-cyan-400' },
+    phone: { label: 'Phone', icon: Phone, className: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400' },
+    referral: { label: 'Referral', icon: User, className: 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400' },
+  };
+  const c = config[source];
+  if (!c) return null;
+  const Icon = c.icon;
+  return (
+    <Badge className={cn("text-[10px] font-medium px-1.5 py-0 rounded-full gap-1", c.className)}>
+      <Icon className="h-2.5 w-2.5" />
+      {c.label}
+    </Badge>
+  );
 }
 
 export default function WorkPage({ 
@@ -566,7 +589,10 @@ export default function WorkPage({
       sortable: true,
       cell: (row) => (
         <div className="min-w-0">
-          <span className="font-medium block truncate">{row.title || 'Untitled Job'}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium truncate">{row.title || 'Untitled Job'}</span>
+            {getLeadSourceBadge(row.leadSource)}
+          </div>
           {row.clientName && (
             <span className="text-xs text-muted-foreground truncate block">{row.clientName}</span>
           )}
@@ -682,8 +708,9 @@ export default function WorkPage({
               <h4 className="font-semibold text-sm leading-tight line-clamp-2 flex-1">
                 {job.title || 'Untitled Job'}
               </h4>
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-1 shrink-0 flex-wrap">
                 <StatusBadge status={job.status} />
+                {job.leadSource && getLeadSourceBadge(job.leadSource)}
                 {job.requiresInspection && (
                   <Badge variant="outline" className="text-xs gap-1">
                     <Search className="w-3 h-3" />

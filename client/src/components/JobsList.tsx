@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Briefcase, User, Clock, MapPin, MoreVertical, Edit, FileText, CheckCircle, AlertCircle, LayoutGrid, List, ChevronRight, Play, ArrowRight, Clipboard, Lightbulb, Columns3, Calendar, Receipt, Timer, AlertTriangle } from "lucide-react";
+import { Plus, Briefcase, User, Clock, MapPin, MoreVertical, Edit, FileText, CheckCircle, AlertCircle, LayoutGrid, List, ChevronRight, Play, ArrowRight, Clipboard, Lightbulb, Columns3, Calendar, Receipt, Timer, AlertTriangle, Bot, Globe, Phone } from "lucide-react";
 import { getJobUrgency } from "@/lib/jobUrgency";
 import PasteJobModal from "./PasteJobModal";
 import XeroRibbon from "./XeroRibbon";
@@ -319,6 +319,26 @@ export default function JobsList({
       return <Badge className="bg-slate-500/10 text-slate-600 border-slate-500/20 dark:text-slate-400 text-[11px] font-medium px-2 py-0.5 rounded-full">Scheduled</Badge>;
     }
     return <Badge variant="outline" className="text-[11px] font-medium px-2 py-0.5 rounded-full">New</Badge>;
+  };
+
+  const getLeadSourceBadge = (source: string | null | undefined) => {
+    if (!source) return null;
+    const config: Record<string, { label: string; icon: typeof Bot; className: string }> = {
+      ai_receptionist: { label: 'AI Call', icon: Bot, className: 'bg-violet-500/10 text-violet-600 border-violet-500/20 dark:text-violet-400' },
+      booking_page: { label: 'Booking', icon: Globe, className: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400' },
+      website: { label: 'Website', icon: Globe, className: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20 dark:text-cyan-400' },
+      phone: { label: 'Phone', icon: Phone, className: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400' },
+      referral: { label: 'Referral', icon: User, className: 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400' },
+    };
+    const c = config[source];
+    if (!c) return null;
+    const Icon = c.icon;
+    return (
+      <Badge className={cn("text-[11px] font-medium px-2 py-0.5 rounded-full gap-1", c.className)}>
+        <Icon className="h-3 w-3" />
+        {c.label}
+      </Badge>
+    );
   };
 
   const filterChips = [
@@ -745,9 +765,10 @@ export default function JobsList({
                   <div className="card-padding">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="ios-card-title truncate">{job.title || 'Untitled Job'}</h3>
                           {getStatusBadge(job.status)}
+                          {getLeadSourceBadge(job.leadSource)}
                         </div>
                         {job.clientName && (
                           <div className="flex items-center gap-2 ios-body mb-2">

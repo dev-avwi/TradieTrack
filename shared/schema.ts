@@ -764,6 +764,8 @@ export const jobs = pgTable("jobs", {
   requiresInspection: boolean("requires_inspection").default(false),
   inspectionCompletedAt: timestamp("inspection_completed_at"),
   inspectionNotes: text("inspection_notes"),
+  leadSource: text("lead_source"),
+  leadId: varchar("lead_id"),
   version: integer("version").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -3813,7 +3815,7 @@ export type TapToPayTermsAcceptance = typeof tapToPayTermsAcceptance.$inferSelec
 // CRM / Lead Pipeline
 // ========================
 
-export const LEAD_SOURCES = ['phone', 'email', 'website', 'referral', 'booking_page', 'other'] as const;
+export const LEAD_SOURCES = ['phone', 'email', 'website', 'referral', 'booking_page', 'ai_receptionist', 'other'] as const;
 export type LeadSource = typeof LEAD_SOURCES[number];
 
 export const LEAD_STATUSES = ['new', 'contacted', 'quoted', 'won', 'lost'] as const;

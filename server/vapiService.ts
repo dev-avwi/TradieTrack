@@ -699,44 +699,120 @@ export async function handleToolCall(
 
 async function handleCaptureLead(args: any, userId: string, callId: string): Promise<any> {
   try {
+    const existingCall = await storage.getAiReceptionistCall(callId, userId);
+    if (existingCall?.leadId) {
+      console.log(`[Vapi] Lead already captured for call ${callId}, skipping duplicate`);
+      return { result: `Details already recorded. Reference number: ${existingCall.leadId.slice(0, 8)}` };
+    }
+
+    const callerName = args.caller_name || 'Unknown Caller';
+    const callerPhone = args.caller_phone || null;
+    const callerEmail = args.caller_email || null;
+    const jobType = args.job_type || args.intent || 'General enquiry';
+    const address = args.address || null;
+    const urgency = args.urgency || null;
+    const notes = args.notes || '';
+
     const lead = await storage.createLead({
       userId,
-      name: args.caller_name || 'Unknown Caller',
-      phone: args.caller_phone || null,
-      email: args.caller_email || null,
-      source: 'phone',
+      name: callerName,
+      phone: callerPhone,
+      email: callerEmail,
+      source: 'ai_receptionist',
       status: 'new',
-      description: args.notes || `${args.intent || 'General enquiry'} - ${args.job_type || 'Not specified'}`,
+      description: notes || `${jobType} - via AI Receptionist`,
       estimatedValue: null,
       notes: [
-        args.job_type ? `Work type: ${args.job_type}` : null,
-        args.address ? `Location: ${args.address}` : null,
-        args.urgency ? `Urgency: ${args.urgency}` : null,
+        jobType ? `Work type: ${jobType}` : null,
+        address ? `Location: ${address}` : null,
+        urgency ? `Urgency: ${urgency}` : null,
         `Source: AI Receptionist call (${callId})`,
       ].filter(Boolean).join('\n'),
       followUpDate: null,
       wonLostReason: null,
     });
 
+    let client = null;
+    if (callerPhone) {
+      client = await storage.getClientByPhone(userId, callerPhone);
+    }
+    if (!client) {
+      client = await storage.createClient({
+        userId,
+        name: callerName,
+        email: callerEmail || undefined,
+        phone: callerPhone || undefined,
+        referralSource: 'AI Receptionist',
+        notes: `Auto-created from AI Receptionist call`,
+      });
+      console.log(`[Vapi] Auto-created client: ${client.id} for ${callerName}`);
+    }
+
+    const jobTitle = jobType !== 'General enquiry'
+      ? `${jobType} - ${callerName}`
+      : `New enquiry - ${callerName}`;
+
+    const jobDescription = [
+      notes,
+      address ? `Address: ${address}` : null,
+      urgency ? `Urgency: ${urgency}` : null,
+      `Received via AI Receptionist`,
+    ].filter(Boolean).join('\n');
+
+    const job = await storage.createJob({
+      userId,
+      clientId: client.id,
+      title: jobTitle,
+      description: jobDescription,
+      address: address || undefined,
+      status: 'pending',
+      leadSource: 'ai_receptionist',
+      leadId: lead.id,
+    });
+
+    await storage.updateLead(lead.id, userId, {
+      clientId: client.id,
+      status: 'won',
+      wonLostReason: 'Auto-converted to job from AI Receptionist',
+    });
+
     await storage.updateAiReceptionistCall(callId, userId, {
       leadId: lead.id,
-      callerName: args.caller_name || null,
-      callerIntent: args.intent || null,
+      callerName: callerName,
+      callerIntent: args.intent || jobType,
       extractedInfo: {
-        name: args.caller_name,
-        email: args.caller_email,
-        phone: args.caller_phone,
-        address: args.address,
-        jobType: args.job_type,
-        urgency: args.urgency,
-        notes: args.notes,
+        name: callerName,
+        email: callerEmail,
+        phone: callerPhone,
+        address,
+        jobType,
+        urgency,
+        notes,
+        autoCreatedJobId: job.id,
+        autoCreatedClientId: client.id,
       },
     });
 
-    console.log(`[Vapi] Lead created: ${lead.id} for call ${callId}`);
-    return { result: `Lead captured successfully. Reference number: ${lead.id.slice(0, 8)}` };
+    try {
+      await storage.createNotification({
+        userId,
+        type: 'new_lead',
+        title: 'New Job from AI Receptionist',
+        message: `${callerName} called about "${jobType}". Job created automatically.`,
+        relatedId: job.id,
+        relatedType: 'job',
+        priority: 'important',
+        actionUrl: `/jobs/${job.id}`,
+        actionLabel: 'View Job',
+      });
+    } catch (e) {
+      console.error('[Vapi] Failed to create notification:', e);
+    }
+
+    console.log(`[Vapi] Lead ${lead.id} + Job ${job.id} created for call ${callId}`);
+    return { result: `Job request created successfully. Reference number: ${job.id.slice(0, 8)}` };
   } catch (error: any) {
-    console.error('[Vapi] Failed to capture lead:', error);
+    console.error('[Vapi] Failed to capture lead and create job:', error);
     return { result: 'I\'ve noted down the details. Someone will follow up shortly.' };
   }
 }
