@@ -84,6 +84,11 @@ export const PRICING = {
       name: 'AI Receptionist',
       description: 'AI-powered phone answering with dedicated Australian number',
     },
+    dedicatedNumber: {
+      monthly: 500, // $5/month
+      name: 'Dedicated Phone Number',
+      description: 'Dedicated Australian SMS & voice number for your business',
+    },
     customWebsite: {
       name: 'Custom Website',
       description: 'Professional website built for your trade business',

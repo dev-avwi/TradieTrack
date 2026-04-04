@@ -531,18 +531,21 @@ export async function createOrFindTwilioAddress(businessOwnerId: string, busines
   }
 }
 
-export async function purchasePhoneNumber(phoneNumber: string, webhookUrl: string, addressSid?: string): Promise<{ success: boolean; sid?: string; phoneNumber?: string; error?: string }> {
+export async function purchasePhoneNumber(phoneNumber: string, webhookUrl: string, addressSid?: string, businessName?: string): Promise<{ success: boolean; sid?: string; phoneNumber?: string; error?: string }> {
   const client = await getTwilioClient();
   if (!client) {
     return { success: false, error: 'Twilio not configured' };
   }
 
   try {
+    const friendlyLabel = businessName 
+      ? `${businessName} — JobRunner` 
+      : `JobRunner Business Number`;
     const createParams: Record<string, string> = {
       phoneNumber: phoneNumber,
       smsUrl: webhookUrl,
       smsMethod: 'POST',
-      friendlyName: `JobRunner Business Number`,
+      friendlyName: friendlyLabel,
     };
     
     if (addressSid) {
@@ -570,6 +573,23 @@ export async function purchasePhoneNumber(phoneNumber: string, webhookUrl: strin
     };
   } catch (error: any) {
     console.error('[SMS] Error purchasing phone number:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateNumberFriendlyName(phoneNumber: string, friendlyName: string): Promise<{ success: boolean; error?: string }> {
+  const client = await getTwilioClient();
+  if (!client) return { success: false, error: 'Twilio not configured' };
+
+  try {
+    const numbers = await client.incomingPhoneNumbers.list({ phoneNumber, limit: 1 });
+    if (numbers.length === 0) return { success: false, error: 'Number not found in Twilio' };
+    
+    await client.incomingPhoneNumbers(numbers[0].sid).update({ friendlyName });
+    console.log(`[SMS] Updated friendly name for ${phoneNumber} to "${friendlyName}"`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('[SMS] Error updating friendly name:', error.message);
     return { success: false, error: error.message };
   }
 }

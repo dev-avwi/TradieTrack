@@ -36611,12 +36611,6 @@ Respond with JSON in this format:
       }
 
       const { IS_BETA } = await import('./freemiumService');
-      if (!IS_BETA) {
-        const ownerUser = await storage.getUser(businessOwnerId);
-        if (ownerUser && ownerUser.subscriptionTier === 'free' && !ownerUser.betaLifetimeAccess) {
-          return res.status(403).json({ error: 'Dedicated phone numbers require a Pro or Team plan.', upgradeRequired: true, requiredTier: 'pro' });
-        }
-      }
 
       const { phoneNumber } = req.body;
       
@@ -36633,19 +36627,13 @@ Respond with JSON in this format:
       // Check number isn't already assigned to another business
       const allSettings = await storage.getAllBusinessSettings();
       const conflict = allSettings.find(
-        (s: any) => s.dedicatedPhoneNumber === phoneNumber && s.userId !== userId
+        (s: any) => s.dedicatedPhoneNumber === phoneNumber && s.userId !== businessOwnerId
       );
       if (conflict) {
         return res.status(409).json({ error: 'This number is already assigned to another business.' });
       }
 
-      // Build webhook URL
-      const baseUrl = process.env.CUSTOM_DOMAIN 
-        ? `https://${process.env.CUSTOM_DOMAIN}`
-        : `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000'}`;
-      const webhookUrl = `${baseUrl}/api/sms/webhook/incoming`;
-
-      // Australian numbers require a registered address — validate and create/find one via Twilio
+      // Validate address before anything else
       const { purchasePhoneNumber, createOrFindTwilioAddress, parseAustralianAddress } = await import('./twilioClient');
       
       if (!settings?.address) {
@@ -36663,6 +36651,38 @@ Respond with JSON in this format:
         });
       }
 
+      // PRODUCTION: Charge the tradie via Stripe checkout before purchasing
+      if (!IS_BETA) {
+        const user = await storage.getUser(businessOwnerId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const { createDedicatedNumberCheckout } = await import('./billingService');
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const host = req.headers.host;
+        const baseUrl = `${protocol}://${host}`;
+
+        const checkoutResult = await createDedicatedNumberCheckout(
+          businessOwnerId,
+          user.email,
+          phoneNumber,
+          `${baseUrl}/phone-numbers?purchased=true&phone=${encodeURIComponent(phoneNumber)}`,
+          `${baseUrl}/phone-numbers?canceled=true`,
+          settings.businessName || undefined,
+        );
+
+        if (!checkoutResult.success) {
+          return res.status(400).json({ error: checkoutResult.error || 'Failed to create payment session' });
+        }
+
+        return res.json({
+          success: true,
+          requiresPayment: true,
+          checkoutUrl: checkoutResult.sessionUrl,
+          message: 'Payment required. Redirecting to checkout...',
+        });
+      }
+
+      // BETA: Purchase directly (free during beta)
       const addressResult = await createOrFindTwilioAddress(businessOwnerId, {
         businessName: settings.businessName || 'JobRunner Business',
         address: settings.address,
@@ -36678,8 +36698,14 @@ Respond with JSON in this format:
 
       console.log(`[SMS] Using Twilio address ${addressResult.addressSid} for number purchase`);
 
+      // Build webhook URL
+      const baseUrl = process.env.CUSTOM_DOMAIN 
+        ? `https://${process.env.CUSTOM_DOMAIN}`
+        : `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000'}`;
+      const webhookUrl = `${baseUrl}/api/sms/webhook/incoming`;
+
       // Purchase the number via Twilio API
-      const result = await purchasePhoneNumber(phoneNumber, webhookUrl, addressResult.addressSid);
+      const result = await purchasePhoneNumber(phoneNumber, webhookUrl, addressResult.addressSid, settings.businessName);
 
       if (!result.success) {
         const errorMsg = result.error || 'Failed to purchase number from Twilio';
@@ -36698,7 +36724,7 @@ Respond with JSON in this format:
         smsMode: 'ai_receptionist',
       });
 
-      console.log(`[SMS] Business ${businessOwnerId} purchased dedicated number: ${result.phoneNumber} (by user ${userId})`);
+      console.log(`[SMS] Business ${businessOwnerId} purchased dedicated number: ${result.phoneNumber} (by user ${userId}) [BETA - free]`);
       
       res.json({
         success: true,
@@ -36712,6 +36738,38 @@ Respond with JSON in this format:
   });
 
   // Release a dedicated phone number
+  app.post("/api/sms/rename-twilio-numbers", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const user = await storage.getUser(userId);
+      if (!user || user.email !== 'admin@avwebinnovation.com') {
+        return res.status(403).json({ error: 'Admin only' });
+      }
+
+      const { updateNumberFriendlyName } = await import('./twilioClient');
+      const allSettings = await storage.getAllBusinessSettings();
+      const results: { phone: string; business: string; result: string }[] = [];
+
+      for (const settings of allSettings) {
+        if (settings.dedicatedPhoneNumber && settings.businessName) {
+          const friendlyName = `${settings.businessName} — JobRunner`;
+          const result = await updateNumberFriendlyName(settings.dedicatedPhoneNumber, friendlyName);
+          results.push({
+            phone: settings.dedicatedPhoneNumber,
+            business: settings.businessName,
+            result: result.success ? 'Updated' : (result.error || 'Failed'),
+          });
+        }
+      }
+
+      console.log(`[Admin] Renamed ${results.filter(r => r.result === 'Updated').length}/${results.length} Twilio numbers`);
+      res.json({ success: true, results });
+    } catch (error: any) {
+      console.error('Error renaming Twilio numbers:', error);
+      res.status(500).json({ error: 'Failed to rename numbers' });
+    }
+  });
+
   app.post("/api/sms/release-number", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;

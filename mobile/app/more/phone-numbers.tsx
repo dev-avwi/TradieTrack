@@ -8,6 +8,7 @@ import {
   Alert,
   TextInput,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -146,6 +147,20 @@ export default function PhoneNumbersPage() {
                 } else {
                   Alert.alert('Error', response.error);
                 }
+              } else if (response.data && (response.data as any).requiresPayment) {
+                const checkoutUrl = (response.data as any).checkoutUrl;
+                if (checkoutUrl) {
+                  Alert.alert(
+                    'Payment Required',
+                    `A dedicated phone number costs $5/month. You'll be redirected to complete payment.`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Pay $5/month', onPress: () => Linking.openURL(checkoutUrl) },
+                    ]
+                  );
+                } else {
+                  Alert.alert('Error', 'Failed to create payment session');
+                }
               } else {
                 await fetchBusinessSettings();
                 Alert.alert(
@@ -183,7 +198,7 @@ export default function PhoneNumbersPage() {
       <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.pageTitle}>Phone Numbers</Text>
         <Text style={styles.pageSubtitle}>
-          Your dedicated Australian phone number for two-way SMS with clients and AI Receptionist calls.
+          Your dedicated Australian phone number for two-way SMS with clients and AI Receptionist calls. $5/month per number.
         </Text>
 
         {currentNumber ? (
