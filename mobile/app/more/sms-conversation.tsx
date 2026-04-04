@@ -295,7 +295,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 });
 
 export default function SmsConversationScreen() {
-  const { id, phone, name } = useLocalSearchParams<{ id: string; phone: string; name: string }>();
+  const { id, phone, name, jobId: jobIdParam } = useLocalSearchParams<{ id: string; phone: string; name: string; jobId: string }>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { user, businessSettings } = useAuthStore();
@@ -433,10 +433,19 @@ export default function SmsConversationScreen() {
             <Feather name="message-circle" size={18} color={colors.primary} />
           </View>
 
-          <View style={styles.headerInfo}>
+          <TouchableOpacity 
+            style={styles.headerInfo} 
+            onPress={() => {
+              const jid = jobIdParam || (messages[0] as any)?.jobId;
+              if (jid) {
+                router.push(`/job/${jid}` as any);
+              }
+            }}
+            activeOpacity={jobIdParam ? 0.6 : 1}
+          >
             <Text style={styles.headerName} numberOfLines={1}>{clientName}</Text>
             <Text style={styles.headerPhone}>{clientPhone}</Text>
-          </View>
+          </TouchableOpacity>
 
           {clientPhone ? (
             <TouchableOpacity
@@ -569,7 +578,7 @@ export default function SmsConversationScreen() {
                     { text: 'Photo from Camera', onPress: () => Alert.alert('Coming Soon', 'Photo attachments via MMS will be available in a future update.') },
                     { text: 'Photo from Gallery', onPress: () => Alert.alert('Coming Soon', 'Photo attachments via MMS will be available in a future update.') },
                     ...(id ? [{ text: 'View Job Notes', onPress: () => {
-                      const jobId = (messages[0] as any)?.jobId;
+                      const jobId = jobIdParam || (messages[0] as any)?.jobId;
                       if (jobId) router.push(`/job/${jobId}` as any);
                       else Alert.alert('No Job Linked', 'This conversation is not linked to a specific job.');
                     }}] : []),

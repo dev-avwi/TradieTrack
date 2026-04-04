@@ -36340,13 +36340,20 @@ Respond with JSON in this format:
       const basicStatus = getTwilioStatus();
       const availability = await checkTwilioAvailability();
       
+      const userId = req.userId!;
+      const businessOwnerId = req.businessOwnerId || userId;
+      const settings = await storage.getBusinessSettings(businessOwnerId);
+      const dedicatedNumber = settings?.dedicatedPhoneNumber || null;
+      
       // Return comprehensive status for UI
       res.json({
         configured: availability.configured,
         connected: availability.connected,
-        hasPhoneNumber: availability.hasPhoneNumber,
+        hasPhoneNumber: availability.hasPhoneNumber || !!dedicatedNumber,
         enabled: basicStatus.enabled,
-        phoneNumber: basicStatus.phoneNumber,
+        phoneNumber: dedicatedNumber || basicStatus.phoneNumber,
+        dedicatedPhoneNumber: dedicatedNumber,
+        hasDedicatedNumber: !!dedicatedNumber,
         // Provide setup instructions when not configured
         setupRequired: !availability.connected,
         setupInstructions: !availability.connected ? {
