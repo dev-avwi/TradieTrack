@@ -310,11 +310,22 @@ export default function SmsConversationScreen() {
   const [isSending, setIsSending] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
 
-  const clientName = name ? decodeURIComponent(name) : 'Unknown';
   const clientPhone = phone ? decodeURIComponent(phone) : '';
+  const [resolvedClientName, setResolvedClientName] = useState<string | null>(null);
+  const clientName = resolvedClientName || (name ? decodeURIComponent(name) : 'Unknown');
   const clientFirstName = clientName.split(' ')[0] !== 'Unknown' ? clientName.split(' ')[0] : '';
   const senderName = user?.firstName || businessSettings?.businessName || '';
   const quickReplies = useMemo(() => buildQuickReplies(clientFirstName, senderName), [clientFirstName, senderName]);
+
+  useEffect(() => {
+    if (id) {
+      api.get<any>(`/api/sms/conversations/${id}`).then(res => {
+        if (res.data?.clientName) {
+          setResolvedClientName(res.data.clientName);
+        }
+      }).catch(() => {});
+    }
+  }, [id]);
 
   useEffect(() => {
     loadMessages();

@@ -36893,6 +36893,20 @@ Respond with JSON in this format:
     }
   });
   
+  app.get("/api/sms/conversations/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const conversation = await storage.getSmsConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      res.json(conversation);
+    } catch (error: any) {
+      console.error('Error fetching SMS conversation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get messages for a specific conversation
   app.get("/api/sms/conversations/:id/messages", requireAuth, async (req: any, res) => {
     try {

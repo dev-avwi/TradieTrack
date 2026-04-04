@@ -1071,8 +1071,8 @@ export default function ChatHubScreen() {
     } else if (item.type === 'job') {
       const linkedSms = item.data?.linkedSms;
       if (linkedSms) {
-        const clientName = item.subtitle || item.title;
-        router.push(`/more/sms-conversation?id=${linkedSms.id}&phone=${encodeURIComponent(linkedSms.clientPhone || '')}&name=${encodeURIComponent(clientName)}&jobId=${item.data.id}` as any);
+        const smsClientName = linkedSms.clientName || getClientName(item.data?.clientId) || getClientName(linkedSms.clientId) || item.subtitle || item.title;
+        router.push(`/more/sms-conversation?id=${linkedSms.id}&phone=${encodeURIComponent(linkedSms.clientPhone || '')}&name=${encodeURIComponent(smsClientName)}&jobId=${item.data.id}` as any);
       } else {
         router.push(`/job/chat?jobId=${item.data.id}` as any);
       }

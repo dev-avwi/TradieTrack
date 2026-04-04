@@ -187,10 +187,15 @@ export async function sendSmsToClient(options: SendSmsOptions): Promise<SmsMessa
     const settings = await storage.getBusinessSettings(options.businessOwnerId);
     const businessName = settings?.businessName;
     if (businessName) {
-      if (options.isQuickAction) {
-        brandedMessage = `${options.message} via JobRunner`;
-      } else {
-        brandedMessage = `${businessName} via JobRunner: ${options.message}`;
+      const existingMessages = await storage.getSmsMessages(conversation.id);
+      const hasOutboundMessage = existingMessages.some(m => m.direction === 'outbound');
+      
+      if (!hasOutboundMessage) {
+        if (options.isQuickAction) {
+          brandedMessage = `${businessName} via JobRunner: ${options.message}`;
+        } else {
+          brandedMessage = `${businessName} via JobRunner: ${options.message}`;
+        }
       }
     }
   } catch {

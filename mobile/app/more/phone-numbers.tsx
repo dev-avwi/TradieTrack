@@ -70,12 +70,12 @@ export default function PhoneNumbersPage() {
 
   const handleRelease = () => {
     Alert.alert(
-      'Release Number',
-      `Are you sure you want to release ${formatPhone(currentNumber || '')}?\n\nYou will no longer be able to send or receive SMS from this number. This cannot be undone.`,
+      'Revert to Shared Number',
+      `Are you sure you want to release ${formatPhone(currentNumber || '')}?\n\nYou'll go back to using the shared JobRunner number (+61 485 013 993). Your existing SMS conversations will be kept, but new messages will come from the shared number.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Keep My Number', style: 'cancel' },
         {
-          text: 'Release Number',
+          text: 'Revert to Shared',
           style: 'destructive',
           onPress: async () => {
             setReleasing(true);
@@ -85,7 +85,7 @@ export default function PhoneNumbersPage() {
                 Alert.alert('Error', response.error);
               } else {
                 await fetchBusinessSettings();
-                Alert.alert('Number Released', 'Your business number has been released. You can now select a new number.');
+                Alert.alert('Reverted to Shared', 'Your dedicated number has been released. You\'re now using the shared JobRunner number for SMS.');
               }
             } catch (e: any) {
               Alert.alert('Error', e?.message || 'Failed to release number');
@@ -250,7 +250,7 @@ export default function PhoneNumbersPage() {
                     <Feather name="x-circle" size={14} color={colors.destructive} />
                   )}
                   <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
-                    {releasing ? 'Releasing...' : 'Release Number'}
+                    {releasing ? 'Releasing...' : 'Revert to Shared'}
                   </Text>
                 </TouchableOpacity>
               </View>
