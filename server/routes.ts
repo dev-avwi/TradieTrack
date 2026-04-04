@@ -45830,8 +45830,9 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const config = await storage.getAiReceptionistConfig(userId);
-      const user = await storage.getUser(userId);
-      const userDedicatedNumber = user?.dedicatedPhoneNumber || null;
+      const bizSettings = await storage.getBusinessSettings(userId);
+      const bizDedicatedNumber = bizSettings?.dedicatedPhoneNumber || null;
+      const bizVapiAssistantId = bizSettings?.vapiAssistantId || null;
       if (!config) {
         return res.json({
           enabled: false,
@@ -45840,9 +45841,9 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
           greeting: null,
           transferNumbers: [],
           businessHours: null,
-          dedicatedPhoneNumber: userDedicatedNumber,
-          vapiAssistantId: user?.vapiAssistantId || null,
-          approvalStatus: user?.vapiAssistantId ? 'active' : 'none',
+          dedicatedPhoneNumber: bizDedicatedNumber,
+          vapiAssistantId: bizVapiAssistantId,
+          approvalStatus: bizVapiAssistantId ? 'active' : 'none',
           provisioningError: null,
           knowledgeBank: null,
         });
@@ -45854,9 +45855,9 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         greeting: config.greeting || null,
         transferNumbers: config.transferNumbers || [],
         businessHours: config.businessHours || null,
-        dedicatedPhoneNumber: config.dedicatedPhoneNumber || userDedicatedNumber,
-        vapiAssistantId: config.vapiAssistantId || user?.vapiAssistantId || null,
-        approvalStatus: config.approvalStatus || (user?.vapiAssistantId ? 'active' : 'none'),
+        dedicatedPhoneNumber: config.dedicatedPhoneNumber || bizDedicatedNumber,
+        vapiAssistantId: config.vapiAssistantId || bizVapiAssistantId,
+        approvalStatus: config.approvalStatus || (bizVapiAssistantId ? 'active' : 'none'),
         provisioningError: config.provisioningError || null,
         provisionedAt: config.provisionedAt || null,
         approvedAt: config.approvedAt || null,
