@@ -316,6 +316,39 @@ if (process.env.DATABASE_URL) {
 
   Sentry.setupExpressErrorHandler(app);
 
+  // Validate dedicated phone numbers against Twilio on startup
+  (async () => {
+    try {
+      const { listAllTwilioNumbers } = await import('./twilioClient');
+      const result = await listAllTwilioNumbers();
+      if (!result.success || !result.numbers) return;
+      
+      const twilioNumbers = new Set(result.numbers.map((n: any) => n.phoneNumber));
+      const { db } = await import('./storage');
+      const { businessSettings: bsTable } = await import('../shared/schema');
+      const { isNotNull } = await import('drizzle-orm');
+      
+      const settingsWithNumbers = await db.select({
+        userId: bsTable.userId,
+        businessName: bsTable.businessName,
+        dedicatedPhoneNumber: bsTable.dedicatedPhoneNumber,
+      }).from(bsTable).where(isNotNull(bsTable.dedicatedPhoneNumber));
+      
+      for (const settings of settingsWithNumbers) {
+        if (settings.dedicatedPhoneNumber && !twilioNumbers.has(settings.dedicatedPhoneNumber)) {
+          console.log(`⚠️ [NumberValidation] Business "${settings.businessName}" has dedicated number ${settings.dedicatedPhoneNumber} but it no longer exists in Twilio. Clearing.`);
+          await storage.updateBusinessSettings(settings.userId, {
+            dedicatedPhoneNumber: null,
+            smsMode: 'standard',
+          });
+        }
+      }
+      console.log(`✅ [NumberValidation] Validated ${settingsWithNumbers.length} dedicated number(s) against Twilio`);
+    } catch (err) {
+      console.error('[NumberValidation] Error validating dedicated numbers:', err);
+    }
+  })();
+
   // Set up WebSocket for real-time location tracking with session auth
   setupWebSocket(server, sessionStore);
 

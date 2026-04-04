@@ -148,9 +148,15 @@ async function sendSmsPlatform(
       const settings = await storage.getBusinessSettings(businessOwnerId);
       if (settings?.dedicatedPhoneNumber) {
         fromNumber = settings.dedicatedPhoneNumber;
+        console.log(`[SMS] Using dedicated number ${fromNumber} for business owner ${businessOwnerId}`);
+      } else {
+        console.log(`[SMS] No dedicated number for business owner ${businessOwnerId}, using shared platform number`);
       }
-    } catch {
+    } catch (err) {
+      console.error(`[SMS] Error fetching business settings for ${businessOwnerId}:`, err);
     }
+  } else {
+    console.log(`[SMS] No businessOwnerId provided, using shared platform number`);
   }
 
   return sendSMS({
