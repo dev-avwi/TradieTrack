@@ -6,7 +6,7 @@ export const IS_BETA = true;
 
 // Beta configuration
 export const BETA_CONFIG = {
-  maxLifetimeUsers: 10,         // First 10 users get lifetime free
+  maxLifetimeUsers: 15,         // First 15 users get lifetime free (expanded for early bird signups)
   requiresTestimonialConsent: true,
   betaEndDate: null as Date | null, // Set to a date to auto-end beta
 };
@@ -55,6 +55,34 @@ export async function assignBetaCohort(userId: string): Promise<{ cohortNumber: 
 
   console.log(`[Beta] Assigned cohort #${cohortNumber} to user ${userId}. Lifetime access: ${lifetimeAccess}`);
   return { cohortNumber, lifetimeAccess };
+}
+
+/**
+ * Reconcile beta lifetime access on startup.
+ * Grants lifetime access to any beta user whose cohort number is within the limit
+ * but doesn't yet have the flag set (e.g. if maxLifetimeUsers was increased).
+ */
+export async function reconcileBetaLifetimeAccess(): Promise<void> {
+  try {
+    const result = await db.execute(sql`
+      UPDATE users 
+      SET beta_lifetime_access = true 
+      WHERE beta_user = true 
+      AND beta_cohort_number IS NOT NULL 
+      AND beta_cohort_number <= ${BETA_CONFIG.maxLifetimeUsers}
+      AND (beta_lifetime_access IS NULL OR beta_lifetime_access = false)
+      RETURNING email, beta_cohort_number
+    `);
+    const rows = (result.rows || result) as any[];
+    if (rows.length > 0) {
+      rows.forEach((r: any) => {
+        console.log(`[Beta] Granted lifetime access to ${r.email} (cohort #${r.beta_cohort_number})`);
+      });
+      console.log(`[Beta] Reconciled ${rows.length} user(s) with lifetime access`);
+    }
+  } catch (error) {
+    console.error('[Beta] Error reconciling lifetime access:', error);
+  }
 }
 
 /**

@@ -347,6 +347,9 @@ if (process.env.DATABASE_URL) {
     } catch (err) {
       console.error('[NumberValidation] Error validating dedicated numbers:', err);
     }
+
+    const { reconcileBetaLifetimeAccess } = await import("./freemiumService");
+    await reconcileBetaLifetimeAccess();
   })();
 
   // Set up WebSocket for real-time location tracking with session auth

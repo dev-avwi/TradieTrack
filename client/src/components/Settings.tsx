@@ -717,6 +717,46 @@ export default function Settings({
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchAddresses = async (query: string) => {
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+      return;
+    }
+    try {
+      const encoded = encodeURIComponent(query);
+      const res = await fetch(`/api/address-search?q=${encoded}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.length > 0) {
+          setAddressSuggestions(data);
+          setShowAddressSuggestions(true);
+        } else {
+          setAddressSuggestions([]);
+          setShowAddressSuggestions(false);
+        }
+      }
+    } catch {
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+    }
+  };
+
+  const handleAddressInputChange = (value: string) => {
+    setBusinessData(prev => ({ ...prev, address: value }));
+    if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+    addressDebounceRef.current = setTimeout(() => searchAddresses(value), 400);
+  };
+
+  const handleAddressSelect = (suggestion: any) => {
+    setBusinessData(prev => ({ ...prev, address: suggestion.description }));
+    setShowAddressSuggestions(false);
+    setAddressSuggestions([]);
+  };
 
   const changePasswordMutation = useMutation({
     mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
@@ -1950,14 +1990,31 @@ export default function Settings({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2 relative">
                   <Label htmlFor="address">Address</Label>
                   <Input
                     id="address"
                     value={businessData.address}
-                    onChange={(e) => setBusinessData(prev => ({ ...prev, address: e.target.value }))}
+                    onChange={(e) => handleAddressInputChange(e.target.value)}
+                    onBlur={() => setTimeout(() => setShowAddressSuggestions(false), 200)}
+                    placeholder="Start typing to search..."
                     data-testid="input-address"
                   />
+                  {showAddressSuggestions && addressSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {addressSuggestions.slice(0, 5).map((suggestion: any, index: number) => (
+                        <button
+                          key={index}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover-elevate flex items-center gap-2 border-b border-border last:border-b-0"
+                          onMouseDown={(e) => { e.preventDefault(); handleAddressSelect(suggestion); }}
+                        >
+                          <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="truncate">{suggestion.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="trade-type">Trade Type</Label>

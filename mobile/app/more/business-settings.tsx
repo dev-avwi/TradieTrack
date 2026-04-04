@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -19,6 +19,7 @@ import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import { validateABN, formatABN } from '../../src/lib/format';
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { TradeTypeSelector } from '../../src/components/TradeTypeSelector';
+import { api } from '../../src/lib/api';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -154,6 +155,44 @@ export default function BusinessSettingsScreen() {
     includeSignatureOnInvoices: (businessSettings as any)?.includeSignatureOnInvoices || false,
   });
   const [showSignaturePad, setShowSignaturePad] = useState(false);
+
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchAddresses = useCallback(async (query: string) => {
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+      return;
+    }
+    try {
+      const encoded = encodeURIComponent(query);
+      const response = await api.get<any[]>(`/api/address-search?q=${encoded}`);
+      if (response.data && response.data.length > 0) {
+        setAddressSuggestions(response.data);
+        setShowAddressSuggestions(true);
+      } else {
+        setAddressSuggestions([]);
+        setShowAddressSuggestions(false);
+      }
+    } catch {
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+    }
+  }, []);
+
+  const handleAddressChange = useCallback((text: string) => {
+    setForm(prev => ({ ...prev, address: text }));
+    if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+    addressDebounceRef.current = setTimeout(() => searchAddresses(text), 400);
+  }, [searchAddresses]);
+
+  const handleAddressSelect = useCallback((suggestion: any) => {
+    setForm(prev => ({ ...prev, address: suggestion.description }));
+    setShowAddressSuggestions(false);
+    setAddressSuggestions([]);
+  }, []);
 
   useEffect(() => {
     if (businessSettings) {
@@ -316,13 +355,28 @@ export default function BusinessSettingsScreen() {
             <TextInput
               style={[styles.input, styles.inputMultiline]}
               value={form.address}
-              onChangeText={(text) => setForm({ ...form, address: text })}
-              placeholder="Enter your business address"
+              onChangeText={handleAddressChange}
+              placeholder="Start typing to search..."
               placeholderTextColor={colors.mutedForeground}
               multiline
               numberOfLines={3}
               textAlignVertical="top"
             />
+            {showAddressSuggestions && addressSuggestions.length > 0 && (
+              <View style={{ backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, marginTop: 4, overflow: 'hidden' }}>
+                {addressSuggestions.slice(0, 5).map((suggestion, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderBottomWidth: index < Math.min(addressSuggestions.length, 5) - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border }}
+                    onPress={() => handleAddressSelect(suggestion)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="map-pin" size={14} color={colors.mutedForeground} style={{ marginRight: spacing.sm }} />
+                    <Text style={{ flex: 1, fontSize: 14, color: colors.foreground }} numberOfLines={2}>{suggestion.description}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
           <Text style={styles.sectionTitle}>Digital Signature</Text>
