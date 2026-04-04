@@ -36841,6 +36841,17 @@ Respond with JSON in this format:
         return res.status(500).json({ error: 'Failed to release number from Twilio. Please try again or contact support.' });
       }
 
+      try {
+        const { disableAiReceptionist } = await import('./vapiService');
+        const aiConfig = await storage.getAiReceptionistConfig(businessOwnerId);
+        if (aiConfig?.enabled || aiConfig?.vapiAssistantId) {
+          await disableAiReceptionist(businessOwnerId);
+          console.log(`[SMS] Disabled AI Receptionist for business ${businessOwnerId} during number release`);
+        }
+      } catch (vapiErr) {
+        console.error(`[SMS] Warning: Failed to clean up AI Receptionist during number release:`, vapiErr);
+      }
+
       await storage.updateBusinessSettings(businessOwnerId, {
         dedicatedPhoneNumber: null,
         smsMode: 'standard',
@@ -36850,7 +36861,7 @@ Respond with JSON in this format:
       
       res.json({
         success: true,
-        message: 'Phone number released. Two-way texting has been disabled.',
+        message: 'Phone number released. You are now using the shared JobRunner number.',
       });
     } catch (error: any) {
       console.error('Error releasing phone number:', error);
