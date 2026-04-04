@@ -172,6 +172,14 @@ function CallRow({ call, onNavigate }: { call: CallLog; onNavigate: (path: strin
                 )}
               </div>
             )}
+            {call.recordingUrl && (
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Recording</p>
+                <audio controls preload="none" className="w-full h-10" src={call.recordingUrl}>
+                  Your browser does not support audio playback.
+                </audio>
+              </div>
+            )}
             {call.summary && (
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">Summary</p>

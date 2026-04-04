@@ -31,6 +31,20 @@ interface VoiceChangeRequest {
   resolvedAt: string | null;
 }
 
+interface CallLog {
+  id: string;
+  callerPhone: string | null;
+  callerName: string | null;
+  status: string;
+  duration: number | null;
+  summary: string | null;
+  transcript: string | null;
+  recordingUrl: string | null;
+  outcome: string | null;
+  callerIntent: string | null;
+  createdAt: string;
+}
+
 interface ReceptionistConfig {
   enabled: boolean;
   mode: string;
@@ -136,6 +150,8 @@ export default function AIReceptionistScreen() {
   const [isProvisioning, setIsProvisioning] = useState(false);
   const [provisioningStatus, setProvisioningStatus] = useState<string | null>(null);
   const [provisioningError, setProvisioningError] = useState<string | null>(null);
+  const [recentCalls, setRecentCalls] = useState<CallLog[]>([]);
+  const [expandedCallId, setExpandedCallId] = useState<string | null>(null);
 
   const pollProvisioningStatus = useCallback(async (maxAttempts = 15) => {
     for (let i = 0; i < maxAttempts; i++) {
@@ -239,7 +255,15 @@ export default function AIReceptionistScreen() {
     }
   }, []);
 
-  useEffect(() => { fetchConfig(); fetchVoiceRequests(); }, [fetchConfig, fetchVoiceRequests]);
+  const fetchRecentCalls = useCallback(async () => {
+    try {
+      const response = await api.get<CallLog[]>('/api/ai-receptionist/calls?limit=10');
+      setRecentCalls(response.data || []);
+    } catch (e) {
+    }
+  }, []);
+
+  useEffect(() => { fetchConfig(); fetchVoiceRequests(); fetchRecentCalls(); }, [fetchConfig, fetchVoiceRequests, fetchRecentCalls]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -358,7 +382,7 @@ export default function AIReceptionistScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchConfig} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => { fetchConfig(); fetchRecentCalls(); }} tintColor={colors.primary} />}
       >
         <View style={styles.header}>
           <Text style={styles.pageTitle}>AI Receptionist</Text>
@@ -792,6 +816,84 @@ export default function AIReceptionistScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {recentCalls.length > 0 && (
+          <View style={styles.card}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <Feather name="phone-incoming" size={18} color={colors.primary} />
+                <Text style={styles.cardTitle}>Recent Calls</Text>
+              </View>
+              <View style={{ backgroundColor: colors.cardBorder, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2 }}>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground }}>{recentCalls.length} call{recentCalls.length !== 1 ? 's' : ''}</Text>
+              </View>
+            </View>
+            {recentCalls.map((call) => {
+              const isExpanded = expandedCallId === call.id;
+              const outcomeColors: Record<string, { bg: string; text: string; label: string }> = {
+                message_taken: { bg: '#dbeafe', text: '#1d4ed8', label: 'Message' },
+                transferred: { bg: '#dcfce7', text: '#15803d', label: 'Transferred' },
+                booked: { bg: '#f3e8ff', text: '#7c3aed', label: 'Booked' },
+                missed: { bg: '#fee2e2', text: '#b91c1c', label: 'Missed' },
+              };
+              const oc = outcomeColors[call.outcome || ''] || { bg: colors.cardBorder, text: colors.mutedForeground, label: call.outcome || 'Call' };
+              const callDate = new Date(call.createdAt);
+              const durationText = call.duration ? `${Math.floor(call.duration / 60)}m ${call.duration % 60}s` : '';
+
+              return (
+                <TouchableOpacity
+                  key={call.id}
+                  activeOpacity={0.7}
+                  onPress={() => setExpandedCallId(isExpanded ? null : call.id)}
+                  style={{ borderWidth: 1, borderColor: colors.cardBorder, borderRadius: radius.lg, marginBottom: spacing.sm, overflow: 'hidden' }}
+                >
+                  <View style={{ padding: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '600' }} numberOfLines={1}>
+                        {call.callerName || (call.callerPhone ? formatPhoneDisplay(call.callerPhone) : 'Unknown Caller')}
+                      </Text>
+                      <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>
+                        {callDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+                        {durationText ? ` \u00B7 ${durationText}` : ''}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                      <View style={{ backgroundColor: oc.bg, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: oc.text }}>{oc.label}</Text>
+                      </View>
+                      <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.mutedForeground} />
+                    </View>
+                  </View>
+                  {isExpanded && (
+                    <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.md, borderTopWidth: 1, borderTopColor: colors.cardBorder, paddingTop: spacing.md, gap: spacing.sm }}>
+                      {call.summary && (
+                        <View>
+                          <Text style={{ ...typography.caption, color: colors.mutedForeground, fontWeight: '600', marginBottom: 4 }}>Summary</Text>
+                          <Text style={{ ...typography.body, color: colors.foreground, backgroundColor: colors.card, padding: spacing.sm, borderRadius: radius.md, fontSize: 13 }}>{call.summary}</Text>
+                        </View>
+                      )}
+                      {call.transcript && (
+                        <View>
+                          <Text style={{ ...typography.caption, color: colors.mutedForeground, fontWeight: '600', marginBottom: 4 }}>Transcript</Text>
+                          <Text style={{ ...typography.body, color: colors.foreground, backgroundColor: colors.card, padding: spacing.sm, borderRadius: radius.md, fontSize: 13 }} numberOfLines={8}>{call.transcript}</Text>
+                        </View>
+                      )}
+                      {call.callerPhone && (
+                        <TouchableOpacity
+                          onPress={() => Linking.openURL(`tel:${call.callerPhone}`)}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs }}
+                        >
+                          <Feather name="phone" size={14} color={colors.primary} />
+                          <Text style={{ ...typography.body, color: colors.primary, fontSize: 13 }}>{formatPhoneDisplay(call.callerPhone)}</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         <View style={styles.card}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>

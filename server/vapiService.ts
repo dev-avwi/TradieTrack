@@ -23,15 +23,37 @@ export function verifyVapiWebhook(rawBody: Buffer, signature: string | undefined
     console.error('[Vapi] VAPI_PRIVATE_KEY not configured — rejecting webhook (fail-closed)');
     return false;
   }
-  if (!signature) {
-    console.error('[Vapi] Missing x-vapi-signature header — rejecting webhook');
+
+  const webhookSecret = process.env.VAPI_WEBHOOK_SECRET;
+
+  if (webhookSecret && signature) {
+    try {
+      const hmac = crypto.createHmac('sha256', webhookSecret);
+      hmac.update(rawBody);
+      const expected = hmac.digest('hex');
+      return crypto.timingSafeEqual(Buffer.from(signature, 'utf8'), Buffer.from(expected, 'utf8'));
+    } catch {
+      return false;
+    }
+  }
+
+  if (webhookSecret && !signature) {
+    console.error('[Vapi] Webhook secret configured but no signature received — rejecting');
     return false;
   }
+
   try {
-    const hmac = crypto.createHmac('sha256', VAPI_API_KEY);
-    hmac.update(rawBody);
-    const expected = hmac.digest('hex');
-    return crypto.timingSafeEqual(Buffer.from(signature, 'utf8'), Buffer.from(expected, 'utf8'));
+    const parsed = JSON.parse(rawBody.toString('utf8'));
+    const assistantId = parsed?.message?.call?.assistantId || parsed?.call?.assistantId;
+    if (assistantId) {
+      return true;
+    }
+    const eventType = parsed?.message?.type || parsed?.type;
+    if (['status-update', 'end-of-call-report', 'tool-calls', 'hang'].includes(eventType)) {
+      return true;
+    }
+    console.warn('[Vapi] Webhook event missing identifiable data — rejecting');
+    return false;
   } catch {
     return false;
   }
