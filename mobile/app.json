@@ -173,6 +173,7 @@
     "plugins": [
       "expo-router",
       "expo-apple-authentication",
+      "./plugins/fix-folly-coroutines",
       [
         "@stripe/stripe-terminal-react-native",
         {
