@@ -465,7 +465,19 @@ export async function enableAiReceptionist(userId: string): Promise<{
 
     let config = await storage.getAiReceptionistConfig(userId);
     if (config?.vapiAssistantId) {
-      return { success: false, error: 'AI Receptionist is already configured. Disable it first to reconfigure.' };
+      if (!config.enabled) {
+        await storage.updateAiReceptionistConfig(userId, {
+          enabled: true,
+          mode: config.mode === 'off' ? 'always_on_message' : config.mode,
+        });
+        console.log(`[Vapi] AI Receptionist re-enabled for user ${userId} (existing assistant: ${config.vapiAssistantId})`);
+        return {
+          success: true,
+          assistantId: config.vapiAssistantId,
+          phoneNumber: config.dedicatedPhoneNumber || settings.dedicatedPhoneNumber || undefined,
+        };
+      }
+      return { success: true, assistantId: config.vapiAssistantId };
     }
 
     const webhookUrl = getWebhookUrl();
@@ -542,6 +554,26 @@ export async function disableAiReceptionist(userId: string): Promise<{ success: 
       return { success: false, error: 'AI Receptionist config not found' };
     }
 
+    await storage.updateAiReceptionistConfig(userId, {
+      enabled: false,
+    });
+
+    console.log(`[Vapi] AI Receptionist disabled for user ${userId} (assistant preserved: ${config.vapiAssistantId})`);
+    return { success: true };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[Vapi] Failed to disable AI Receptionist for user ${userId}:`, message);
+    return { success: false, error: message };
+  }
+}
+
+export async function destroyAiReceptionist(userId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const config = await storage.getAiReceptionistConfig(userId);
+    if (!config) {
+      return { success: false, error: 'AI Receptionist config not found' };
+    }
+
     if (config.vapiAssistantId) {
       try {
         await deleteAssistant(config.vapiAssistantId);
@@ -567,11 +599,11 @@ export async function disableAiReceptionist(userId: string): Promise<{ success: 
       mode: 'off',
     });
 
-    console.log(`[Vapi] AI Receptionist disabled for user ${userId}`);
+    console.log(`[Vapi] AI Receptionist fully destroyed for user ${userId}`);
     return { success: true };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[Vapi] Failed to disable AI Receptionist for user ${userId}:`, message);
+    console.error(`[Vapi] Failed to destroy AI Receptionist for user ${userId}:`, message);
     return { success: false, error: message };
   }
 }

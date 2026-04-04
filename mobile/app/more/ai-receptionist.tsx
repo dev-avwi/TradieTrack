@@ -152,6 +152,8 @@ export default function AIReceptionistScreen() {
   const [provisioningError, setProvisioningError] = useState<string | null>(null);
   const [recentCalls, setRecentCalls] = useState<CallLog[]>([]);
   const [expandedCallId, setExpandedCallId] = useState<string | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
+  const [userChangedEnabled, setUserChangedEnabled] = useState(false);
 
   const pollProvisioningStatus = useCallback(async (maxAttempts = 15) => {
     for (let i = 0; i < maxAttempts; i++) {
@@ -239,6 +241,8 @@ export default function AIReceptionistScreen() {
         if (data.businessHours?.end) setEndTime(data.businessHours.end);
         if (data.businessHours?.timezone) setTimezone(data.businessHours.timezone);
         if (data.knowledgeBank) setKnowledgeBank(data.knowledgeBank);
+        setConfigLoaded(true);
+        setUserChangedEnabled(false);
       }
     } catch (e) {
       Alert.alert('Error', 'Failed to load AI Receptionist settings. Pull down to retry.');
@@ -266,6 +270,10 @@ export default function AIReceptionistScreen() {
   useEffect(() => { fetchConfig(); fetchVoiceRequests(); fetchRecentCalls(); }, [fetchConfig, fetchVoiceRequests, fetchRecentCalls]);
 
   const handleSave = async () => {
+    if (!configLoaded) {
+      Alert.alert('Not Ready', 'Settings are still loading. Please wait and try again.');
+      return;
+    }
     setIsSaving(true);
     try {
       await api.patch('/api/ai-receptionist/config', {
@@ -276,11 +284,13 @@ export default function AIReceptionistScreen() {
         businessHours: { start: startTime, end: endTime, timezone, days: selectedDays },
       });
 
-      const wasEnabled = config?.enabled || false;
-      if (enabled && !wasEnabled) {
-        await api.post('/api/ai-receptionist/enable');
-      } else if (!enabled && wasEnabled) {
-        await api.post('/api/ai-receptionist/disable');
+      if (userChangedEnabled) {
+        const wasEnabled = config?.enabled || false;
+        if (enabled && !wasEnabled) {
+          await api.post('/api/ai-receptionist/enable');
+        } else if (!enabled && wasEnabled) {
+          await api.post('/api/ai-receptionist/disable');
+        }
       }
 
       await fetchConfig();
@@ -528,7 +538,28 @@ export default function AIReceptionistScreen() {
                   </View>
                   <Switch
                     value={enabled}
-                    onValueChange={setEnabled}
+                    onValueChange={(val) => {
+                      if (!val && config?.enabled) {
+                        Alert.alert(
+                          'Disable AI Receptionist?',
+                          'This will stop the AI from answering calls on your dedicated number. You can re-enable it anytime.',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Disable',
+                              style: 'destructive',
+                              onPress: () => {
+                                setEnabled(false);
+                                setUserChangedEnabled(true);
+                              },
+                            },
+                          ]
+                        );
+                      } else {
+                        setEnabled(val);
+                        setUserChangedEnabled(true);
+                      }
+                    }}
                     trackColor={{ false: colors.border, true: colors.success }}
                     thumbColor={'#FFFFFF'}
                     ios_backgroundColor={colors.border}
@@ -700,8 +731,9 @@ export default function AIReceptionistScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.saveButton, isSaving && { opacity: 0.7 }]}
+          style={[styles.saveButton, (isSaving || !configLoaded) && { opacity: 0.7 }]}
           onPress={() => {
+            if (!configLoaded) return;
             if (!config?.dedicatedPhoneNumber) {
               handleSave();
               Alert.alert(
@@ -713,7 +745,7 @@ export default function AIReceptionistScreen() {
             }
             handleSave();
           }}
-          disabled={isSaving}
+          disabled={isSaving || !configLoaded}
           activeOpacity={0.8}
         >
           {isSaving ? (

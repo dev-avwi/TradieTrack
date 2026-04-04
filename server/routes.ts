@@ -36884,11 +36884,11 @@ Respond with JSON in this format:
       }
 
       try {
-        const { disableAiReceptionist } = await import('./vapiService');
+        const { destroyAiReceptionist } = await import('./vapiService');
         const aiConfig = await storage.getAiReceptionistConfig(businessOwnerId);
         if (aiConfig?.enabled || aiConfig?.vapiAssistantId) {
-          await disableAiReceptionist(businessOwnerId);
-          console.log(`[SMS] Disabled AI Receptionist for business ${businessOwnerId} during number release`);
+          await destroyAiReceptionist(businessOwnerId);
+          console.log(`[SMS] Destroyed AI Receptionist for business ${businessOwnerId} during number release`);
         }
       } catch (vapiErr) {
         console.error(`[SMS] Warning: Failed to clean up AI Receptionist during number release:`, vapiErr);
@@ -41065,8 +41065,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 
       if (approvalStatus === 'disabled' && updated.userId) {
         try {
-          const { disableAiReceptionist } = await import('./vapiService');
-          await disableAiReceptionist(updated.userId);
+          const { destroyAiReceptionist } = await import('./vapiService');
+          await destroyAiReceptionist(updated.userId);
         } catch (vapiErr: any) {
           logSystemEvent('vapi', 'warning', 'ai_receptionist_disable_error', `AI Receptionist Vapi disable error: ${vapiErr.message}`, { configId, userId: updated.userId });
         }
