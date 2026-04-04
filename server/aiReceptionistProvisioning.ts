@@ -41,47 +41,56 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
 
     console.log(`[AI Provisioning] Starting provisioning for user ${userId} (${settings.businessName})`);
 
-    // Step 1: Search for available AU number
-    console.log(`[AI Provisioning] Step 1: Searching for available AU numbers...`);
-    const searchResult = await searchAvailableNumbers({ limit: 5 });
-    if (!searchResult.success || !searchResult.numbers || searchResult.numbers.length === 0) {
-      throw new Error(`No Australian phone numbers available: ${searchResult.error || 'No numbers found'}`);
-    }
+    const correctDomain = process.env.CUSTOM_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+    const baseUrl = `https://${correctDomain}`;
+    const smsWebhookUrl = `${baseUrl}/api/sms/webhook/incoming`;
 
-    const selectedNumber = searchResult.numbers[0];
-    console.log(`[AI Provisioning] Found number: ${selectedNumber.phoneNumber}`);
+    let purchasedNumber: string;
+    let twilioNumberSid: string | undefined;
 
-    // Step 2: Create/find Twilio address for number purchase
-    console.log(`[AI Provisioning] Step 2: Setting up address for number purchase...`);
-    let addressSid: string | undefined;
-    if (settings.address) {
-      const addressResult = await createOrFindTwilioAddress(userId, {
-        businessName: settings.businessName,
-        address: settings.address,
-        customerName: settings.businessName,
-      });
-      if (addressResult.success && addressResult.addressSid) {
-        addressSid = addressResult.addressSid;
-      } else {
-        console.warn(`[AI Provisioning] Address setup warning: ${addressResult.error} - proceeding without address`);
+    if (settings.dedicatedPhoneNumber) {
+      console.log(`[AI Provisioning] User already has dedicated number: ${settings.dedicatedPhoneNumber} — skipping purchase`);
+      purchasedNumber = settings.dedicatedPhoneNumber;
+    } else {
+      console.log(`[AI Provisioning] Step 1: Searching for available AU numbers...`);
+      const searchResult = await searchAvailableNumbers({ limit: 5 });
+      if (!searchResult.success || !searchResult.numbers || searchResult.numbers.length === 0) {
+        throw new Error(`No Australian phone numbers available: ${searchResult.error || 'No numbers found'}`);
       }
+
+      const selectedNumber = searchResult.numbers[0];
+      console.log(`[AI Provisioning] Found number: ${selectedNumber.phoneNumber}`);
+
+      console.log(`[AI Provisioning] Step 2: Setting up address for number purchase...`);
+      let addressSid: string | undefined;
+      if (settings.address) {
+        const addressResult = await createOrFindTwilioAddress(userId, {
+          businessName: settings.businessName,
+          address: settings.address,
+          customerName: settings.businessName,
+        });
+        if (addressResult.success && addressResult.addressSid) {
+          addressSid = addressResult.addressSid;
+        } else {
+          console.warn(`[AI Provisioning] Address setup warning: ${addressResult.error} - proceeding without address`);
+        }
+      }
+
+      console.log(`[AI Provisioning] Step 3: Purchasing number ${selectedNumber.phoneNumber}...`);
+      const purchaseResult = await purchasePhoneNumber(selectedNumber.phoneNumber, smsWebhookUrl, addressSid, settings.businessName);
+      if (!purchaseResult.success || !purchaseResult.phoneNumber) {
+        throw new Error(`Failed to purchase phone number: ${purchaseResult.error || 'Unknown error'}`);
+      }
+
+      purchasedNumber = purchaseResult.phoneNumber;
+      twilioNumberSid = purchaseResult.sid;
+      console.log(`[AI Provisioning] Purchased: ${purchasedNumber} (SID: ${twilioNumberSid})`);
+
+      await storage.updateBusinessSettings(userId, {
+        dedicatedPhoneNumber: purchasedNumber,
+      });
     }
 
-    // Step 3: Purchase the number
-    console.log(`[AI Provisioning] Step 3: Purchasing number ${selectedNumber.phoneNumber}...`);
-    const domain = process.env.REPLIT_DOMAINS?.split(',')[0] || process.env.REPL_SLUG + '.repl.co';
-    const smsWebhookUrl = `https://${domain}/api/sms/webhook/incoming`;
-
-    const purchaseResult = await purchasePhoneNumber(selectedNumber.phoneNumber, smsWebhookUrl, addressSid);
-    if (!purchaseResult.success || !purchaseResult.phoneNumber) {
-      throw new Error(`Failed to purchase phone number: ${purchaseResult.error || 'Unknown error'}`);
-    }
-
-    const purchasedNumber = purchaseResult.phoneNumber;
-    const twilioNumberSid = purchaseResult.sid;
-    console.log(`[AI Provisioning] Purchased: ${purchasedNumber} (SID: ${twilioNumberSid})`);
-
-    // Step 4: Create Vapi assistant
     console.log(`[AI Provisioning] Step 4: Creating Vapi assistant...`);
     const webhookUrl = getWebhookUrl();
     const updatedConfig = await storage.getAiReceptionistConfig(userId);
@@ -113,7 +122,6 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
 
     console.log(`[AI Provisioning] Created assistant: ${assistant.id}`);
 
-    // Step 5: Import number to Vapi
     console.log(`[AI Provisioning] Step 5: Importing number to Vapi...`);
     const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || '';
     const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || '';
@@ -128,7 +136,6 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
       stepErrors.push(`Phone import to Vapi: ${vapiImportError.message}`);
     }
 
-    // Step 6: Save everything to database with pending_approval
     console.log(`[AI Provisioning] Step 6: Saving to database...`);
     await storage.updateAiReceptionistConfig(userId, {
       vapiAssistantId: assistant.id,
@@ -142,11 +149,6 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
       provisionedAt: new Date(),
     });
 
-    await storage.updateBusinessSettings(userId, {
-      dedicatedPhoneNumber: purchasedNumber,
-    });
-
-    // Notify the user
     await createNotification(storage, {
       userId,
       type: 'ai_receptionist_provisioned',
@@ -155,7 +157,6 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
       relatedType: 'ai_receptionist',
     });
 
-    // Emit activity feed event
     await logTeamActivity({
       businessOwnerId: userId,
       actorUserId: userId,
@@ -180,7 +181,6 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
     const errorMessage = error instanceof Error ? error.message : 'Unknown provisioning error';
     console.error(`[AI Provisioning] Failed for user ${userId}:`, errorMessage);
 
-    // Update config with failure status
     try {
       const config = await storage.getAiReceptionistConfig(userId);
       if (config) {
@@ -193,7 +193,6 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
       console.error('[AI Provisioning] Failed to update config with error:', updateErr);
     }
 
-    // Log error to error_logs
     try {
       const { db } = await import('./storage');
       const { errorLogs } = await import('@shared/schema');
@@ -209,7 +208,6 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
       console.error('[AI Provisioning] Failed to log error:', logErr);
     }
 
-    // Notify user of failure
     try {
       await createNotification(storage, {
         userId,
@@ -222,7 +220,6 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
       console.error('[AI Provisioning] Failed to send failure notification:', notifErr);
     }
 
-    // Emit failure activity feed event
     try {
       const settings = await storage.getBusinessSettings(userId);
       await logTeamActivity({

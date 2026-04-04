@@ -165,8 +165,11 @@ export default function PhoneNumbersPage() {
                 await fetchBusinessSettings();
                 Alert.alert(
                   'Number Activated!',
-                  `${formatPhone(number.phoneNumber)} is now your business number. You can send and receive SMS from the Chat Hub.`,
-                  [{ text: 'Go to Chat Hub', onPress: () => router.replace('/more/chat-hub') }]
+                  `${formatPhone(number.phoneNumber)} is now your dedicated business number.\n\nYou've upgraded from the shared JobRunner number (0485 013 994). Your clients will now see your own number when you send SMS.\n\nYou can also set up an AI Receptionist on this number.`,
+                  [
+                    { text: 'Set Up AI Receptionist', onPress: () => router.replace('/more/ai-receptionist') },
+                    { text: 'Go to Chat Hub', onPress: () => router.replace('/more/chat-hub') },
+                  ]
                 );
               }
             } catch (e: any) {
@@ -202,48 +205,73 @@ export default function PhoneNumbersPage() {
         </Text>
 
         {currentNumber ? (
-          <View style={styles.currentNumberCard}>
-            <View style={styles.currentNumberHeader}>
-              <View style={styles.activeIndicator}>
-                <View style={styles.activeDot} />
-                <Text style={styles.activeLabel}>Active</Text>
+          <>
+            <View style={styles.currentNumberCard}>
+              <View style={styles.currentNumberHeader}>
+                <View style={styles.activeIndicator}>
+                  <View style={styles.activeDot} />
+                  <Text style={styles.activeLabel}>Active — Your Dedicated Number</Text>
+                </View>
+              </View>
+              <View style={styles.currentNumberRow}>
+                <View style={styles.currentNumberIcon}>
+                  <Feather name="phone" size={22} color={colors.success} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.currentNumberText}>{formatPhone(currentNumber)}</Text>
+                  <Text style={styles.currentNumberDesc}>Your business SMS & calling number</Text>
+                </View>
+              </View>
+
+              <View style={{ backgroundColor: `${colors.muted}50`, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md }}>
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 18 }}>
+                  Clients see this number when you send SMS. Replies come straight to your Chat Hub. You've upgraded from the shared JobRunner number (0485 013 994).
+                </Text>
+              </View>
+
+              <View style={styles.currentNumberActions}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => router.push('/more/chat-hub')}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="message-square" size={14} color={colors.primary} />
+                  <Text style={[styles.actionButtonText, { color: colors.primary }]}>Open Chat Hub</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.releaseButton]}
+                  onPress={handleRelease}
+                  disabled={releasing}
+                  activeOpacity={0.7}
+                >
+                  {releasing ? (
+                    <ActivityIndicator size="small" color={colors.destructive} />
+                  ) : (
+                    <Feather name="x-circle" size={14} color={colors.destructive} />
+                  )}
+                  <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
+                    {releasing ? 'Releasing...' : 'Release Number'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
-            <View style={styles.currentNumberRow}>
-              <View style={styles.currentNumberIcon}>
-                <Feather name="phone" size={22} color={colors.success} />
+
+            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.foreground, marginTop: spacing.lg, marginBottom: spacing.sm }}>Next Steps</Text>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.md }}
+              onPress={() => router.push('/more/ai-receptionist')}
+              activeOpacity={0.7}
+            >
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
+                <Feather name="cpu" size={18} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.currentNumberText}>{formatPhone(currentNumber)}</Text>
-                <Text style={styles.currentNumberDesc}>Your business SMS & calling number</Text>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>Set Up AI Receptionist</Text>
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>Let AI answer calls and take messages on this number</Text>
               </View>
-            </View>
-            <View style={styles.currentNumberActions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => router.push('/more/chat-hub')}
-                activeOpacity={0.7}
-              >
-                <Feather name="message-square" size={14} color={colors.primary} />
-                <Text style={[styles.actionButtonText, { color: colors.primary }]}>Open Chat Hub</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.releaseButton]}
-                onPress={handleRelease}
-                disabled={releasing}
-                activeOpacity={0.7}
-              >
-                {releasing ? (
-                  <ActivityIndicator size="small" color={colors.destructive} />
-                ) : (
-                  <Feather name="x-circle" size={14} color={colors.destructive} />
-                )}
-                <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
-                  {releasing ? 'Releasing...' : 'Release Number'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </>
         ) : (
           <>
             <View style={styles.searchCard}>

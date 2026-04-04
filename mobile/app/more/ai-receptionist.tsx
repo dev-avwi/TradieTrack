@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert, TextInput, Linking } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
+import { useAuthStore } from '../../src/lib/store';
 import { spacing, radius, shadows, typography, pageShell } from '../../src/lib/design-tokens';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
@@ -38,7 +39,17 @@ interface ReceptionistConfig {
   transferNumbers: TransferNumber[];
   businessHours: { start: string; end: string; timezone: string; days: number[] } | null;
   dedicatedPhoneNumber: string | null;
+  vapiAssistantId: string | null;
+  approvalStatus: string | null;
   knowledgeBank: KnowledgeBankContent | null;
+}
+
+function formatPhoneDisplay(phone: string): string {
+  if (phone.startsWith('+61')) {
+    const local = phone.replace('+61', '0');
+    return local.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3');
+  }
+  return phone;
 }
 
 const VOICE_OPTIONS: { id: string; name: string; accent: string }[] = [
@@ -98,9 +109,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   addButtonText: { ...typography.body, fontWeight: '600' },
 });
 
+const SHARED_PLATFORM_NUMBER = '0485 013 994';
+
 export default function AIReceptionistScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { businessSettings, fetchBusinessSettings } = useAuthStore();
+  const hasDedicatedNumber = !!businessSettings?.dedicatedPhoneNumber;
   const [config, setConfig] = useState<ReceptionistConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -150,13 +165,14 @@ export default function AIReceptionistScreen() {
   }, []);
 
   const handleProvisionNumber = async () => {
+    const numberDisplay = formatPhoneDisplay(businessSettings?.dedicatedPhoneNumber || '');
     Alert.alert(
-      'Get Phone Number',
-      'This will set up a dedicated Australian phone number for your AI Receptionist and SMS. Continue?',
+      'Activate AI Receptionist',
+      `This will set up your AI assistant on ${numberDisplay || 'your dedicated number'}. It will answer calls, take messages, and book appointments. Continue?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Get Number',
+          text: 'Activate',
           onPress: async () => {
             setIsProvisioning(true);
             setProvisioningStatus('Saving your preferences...');
@@ -169,7 +185,7 @@ export default function AIReceptionistScreen() {
                 transferNumbers,
                 businessHours: { start: startTime, end: endTime, timezone, days: selectedDays },
               });
-              setProvisioningStatus('Finding an Australian number...');
+              setProvisioningStatus('Setting up your AI assistant...');
               const checkoutRes = await api.post<{ success?: boolean; provisioning?: boolean; url?: string }>('/api/subscription/ai-receptionist-checkout');
               if (checkoutRes.data?.url) {
                 setIsProvisioning(false);
@@ -177,12 +193,12 @@ export default function AIReceptionistScreen() {
                 await Linking.openURL(checkoutRes.data.url);
                 return;
               }
-              setProvisioningStatus('Provisioning your number...');
+              setProvisioningStatus('Configuring AI voice and responses...');
               pollProvisioningStatus();
             } catch (e: any) {
               setIsProvisioning(false);
               setProvisioningStatus(null);
-              Alert.alert('Error', e?.message || 'Could not provision phone number. Please try again.');
+              Alert.alert('Error', e?.message || 'Could not set up AI Receptionist. Please try again.');
             }
           },
         },
@@ -382,94 +398,137 @@ export default function AIReceptionistScreen() {
           </View>
         )}
 
-        {config?.dedicatedPhoneNumber ? (
+        {!hasDedicatedNumber && !config?.dedicatedPhoneNumber ? (
           <View style={styles.card}>
-            <View style={styles.enableRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.enableLabel}>AI Receptionist</Text>
-                <Text style={styles.enableSublabel}>Answer calls, book jobs, and take messages automatically</Text>
+            <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.warning}15`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+                <Feather name="phone-off" size={28} color={colors.warning} />
               </View>
-              <Switch
-                value={enabled}
-                onValueChange={setEnabled}
-                trackColor={{ false: colors.border, true: colors.success }}
-                thumbColor={'#FFFFFF'}
-                ios_backgroundColor={colors.border}
-              />
-            </View>
-
-            <View style={{ marginTop: spacing.md, padding: spacing.md, backgroundColor: colors.primary + '10', borderRadius: radius.lg }}>
-              <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: 4 }}>Your business number</Text>
-              <Text style={styles.phoneNumber}>{config.dedicatedPhoneNumber}</Text>
-              <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 4, lineHeight: 16 }}>
-                This number handles AI calls and SMS via Chat Hub.
+              <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
+                Dedicated Number Required
               </Text>
-            </View>
-
-            <View style={[styles.statusBadge, { backgroundColor: enabled ? colors.success + '20' : colors.muted, marginTop: spacing.md }]}>
-              <Feather name={enabled ? 'check-circle' : 'x-circle'} size={14} color={enabled ? colors.success : colors.mutedForeground} />
-              <Text style={[styles.statusText, { color: enabled ? colors.success : colors.mutedForeground }]}>
-                {enabled ? 'Active' : 'Inactive'}
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18, marginBottom: spacing.xs }}>
+                You're currently using the shared JobRunner number ({SHARED_PLATFORM_NUMBER}).
+              </Text>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18, marginBottom: spacing.lg }}>
+                To set up an AI Receptionist, you need your own dedicated phone number first. Your AI will answer calls and take messages on that number.
+              </Text>
+              <TouchableOpacity
+                style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.xl, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}
+                onPress={() => router.push('/more/phone-numbers')}
+                activeOpacity={0.7}
+              >
+                <Feather name="phone" size={16} color={colors.primaryForeground} />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primaryForeground }}>Get a Dedicated Number</Text>
+              </TouchableOpacity>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.sm }}>
+                $5/month — includes SMS + AI calls
               </Text>
             </View>
           </View>
-        ) : (
+        ) : config?.dedicatedPhoneNumber || hasDedicatedNumber ? (
           <View style={styles.card}>
-            <View style={{ alignItems: 'center', paddingVertical: spacing.md }}>
-              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
-                <Feather name={isProvisioning ? 'loader' : 'phone-incoming'} size={28} color={colors.primary} />
+            {isProvisioning ? (
+              <View style={{ alignItems: 'center', paddingVertical: spacing.md }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+                  <Feather name="loader" size={28} color={colors.primary} />
+                </View>
+                <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
+                  Setting Up AI Receptionist
+                </Text>
+                <ActivityIndicator size="small" color={colors.primary} style={{ marginBottom: spacing.sm }} />
+                <Text style={{ ...typography.caption, color: colors.primary, textAlign: 'center', fontWeight: '500', marginBottom: spacing.xs }}>
+                  {provisioningStatus || 'Please wait...'}
+                </Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18 }}>
+                  This usually takes 10-30 seconds. Please don't close this screen.
+                </Text>
               </View>
-              {isProvisioning ? (
-                <>
-                  <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
-                    Setting Up Your Number
+            ) : provisioningError ? (
+              <View style={{ alignItems: 'center', paddingVertical: spacing.md }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.destructive}15`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+                  <Feather name="alert-circle" size={28} color={colors.destructive} />
+                </View>
+                <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
+                  Setup Issue
+                </Text>
+                <Text style={{ ...typography.caption, color: colors.destructive || '#ef4444', textAlign: 'center', lineHeight: 18, marginBottom: spacing.md }}>
+                  {provisioningError}
+                </Text>
+                <TouchableOpacity
+                  style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}
+                  onPress={handleProvisionNumber}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="refresh-cw" size={16} color={colors.primaryForeground} />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>Try Again</Text>
+                </TouchableOpacity>
+              </View>
+            ) : !config?.vapiAssistantId ? (
+              <View style={{ alignItems: 'center', paddingVertical: spacing.md }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+                  <Feather name="cpu" size={28} color={colors.primary} />
+                </View>
+                <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
+                  Ready to Set Up AI Receptionist
+                </Text>
+                <View style={{ padding: spacing.md, backgroundColor: `${colors.success}10`, borderRadius: radius.lg, marginBottom: spacing.md, width: '100%' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                    <Feather name="check-circle" size={16} color={colors.success} />
+                    <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '600' }}>
+                      Number: {formatPhoneDisplay(businessSettings?.dedicatedPhoneNumber || config?.dedicatedPhoneNumber || '')}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18, marginBottom: spacing.md }}>
+                  Your AI assistant will answer calls, take messages, and book appointments on your dedicated number. Configure your preferences below, then activate.
+                </Text>
+                <TouchableOpacity
+                  style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.xl, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}
+                  onPress={handleProvisionNumber}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="zap" size={16} color={colors.primaryForeground} />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primaryForeground }}>Activate AI Receptionist</Text>
+                </TouchableOpacity>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.sm }}>
+                  $49/month add-on
+                </Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.enableRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.enableLabel}>AI Receptionist</Text>
+                    <Text style={styles.enableSublabel}>Answer calls, book jobs, and take messages automatically</Text>
+                  </View>
+                  <Switch
+                    value={enabled}
+                    onValueChange={setEnabled}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
+                  />
+                </View>
+
+                <View style={{ marginTop: spacing.md, padding: spacing.md, backgroundColor: colors.primary + '10', borderRadius: radius.lg }}>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: 4 }}>Your business number</Text>
+                  <Text style={styles.phoneNumber}>{config?.dedicatedPhoneNumber || businessSettings?.dedicatedPhoneNumber}</Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 4, lineHeight: 16 }}>
+                    This number handles AI calls and SMS via Chat Hub.
                   </Text>
-                  <ActivityIndicator size="small" color={colors.primary} style={{ marginBottom: spacing.sm }} />
-                  <Text style={{ ...typography.caption, color: colors.primary, textAlign: 'center', fontWeight: '500', marginBottom: spacing.xs }}>
-                    {provisioningStatus || 'Please wait...'}
+                </View>
+
+                <View style={[styles.statusBadge, { backgroundColor: enabled ? colors.success + '20' : colors.muted, marginTop: spacing.md }]}>
+                  <Feather name={enabled ? 'check-circle' : 'x-circle'} size={14} color={enabled ? colors.success : colors.mutedForeground} />
+                  <Text style={[styles.statusText, { color: enabled ? colors.success : colors.mutedForeground }]}>
+                    {enabled ? 'Active' : 'Inactive'}
                   </Text>
-                  <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18 }}>
-                    This usually takes 10-30 seconds. Please don't close this screen.
-                  </Text>
-                </>
-              ) : provisioningError ? (
-                <>
-                  <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
-                    Provisioning Issue
-                  </Text>
-                  <Text style={{ ...typography.caption, color: colors.destructive || '#ef4444', textAlign: 'center', lineHeight: 18, marginBottom: spacing.md }}>
-                    {provisioningError}
-                  </Text>
-                  <TouchableOpacity
-                    style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}
-                    onPress={handleProvisionNumber}
-                    activeOpacity={0.7}
-                  >
-                    <Feather name="refresh-cw" size={16} color={colors.primaryForeground} />
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>Try Again</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
-                    No phone number assigned
-                  </Text>
-                  <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18, marginBottom: spacing.md }}>
-                    A dedicated Australian phone number needs to be set up for your business before the receptionist can be activated.
-                  </Text>
-                  <TouchableOpacity
-                    style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}
-                    onPress={handleProvisionNumber}
-                    activeOpacity={0.7}
-                  >
-                    <Feather name="phone" size={16} color={colors.primaryForeground} />
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>Get Phone Number</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
+                </View>
+              </>
+            )}
           </View>
-        )}
+        ) : null}
 
         <Text style={styles.sectionTitle}>Mode</Text>
         {MODE_OPTIONS.map(opt => (

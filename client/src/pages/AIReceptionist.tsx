@@ -579,6 +579,52 @@ export default function AIReceptionist() {
   const isPendingApproval = approvalStatus === "pending_approval";
   const isFailed = approvalStatus === "failed";
   const isApproved = approvalStatus === "approved";
+  const hasNoNumber = !config?.dedicatedPhoneNumber && !config?.vapiAssistantId && approvalStatus === "none";
+
+  if (hasNoNumber && !isProvisioning) {
+    return (
+      <PageShell>
+        <PageHeader title="AI Receptionist" />
+        <div className="p-4 max-w-3xl mx-auto">
+          <Card>
+            <CardContent className="flex flex-col items-center text-center py-12 px-6">
+              <div className="rounded-full p-4 mb-5 bg-amber-100 dark:bg-amber-900/30">
+                <Phone className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Dedicated Number Required</h2>
+              <p className="text-muted-foreground mb-2 max-w-sm">
+                You're currently using the shared JobRunner number (0485 013 994).
+              </p>
+              <p className="text-muted-foreground mb-6 max-w-sm">
+                To set up an AI Receptionist, you need your own dedicated phone number first. Your AI will answer calls and take messages on that number.
+              </p>
+              <div className="space-y-2 text-sm text-left w-full max-w-xs mb-6">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                  <span>Clients see YOUR number, not a shared one</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                  <span>Two-way SMS direct to your Chat Hub</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                  <span>Required for AI Receptionist activation</span>
+                </div>
+              </div>
+              <Button onClick={() => setLocation("/settings")} data-testid="button-get-dedicated-number">
+                <Phone className="h-4 w-4 mr-2" />
+                Get a Dedicated Number — $5/month
+              </Button>
+              <p className="text-xs text-muted-foreground mt-3">
+                Go to Settings to purchase your dedicated Australian phone number
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </PageShell>
+    );
+  }
 
   // Provisioning loading screen
   if (isProvisioning) {
