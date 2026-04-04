@@ -268,9 +268,9 @@ export default function LoginScreen() {
       }
       
       if (__DEV__) {
-        console.error('🍎 Apple Sign-In error:', err);
-        console.error('🍎 Error code:', err.code);
-        console.error('🍎 Error message:', err.message);
+        console.error('Apple Sign-In error:', err);
+        console.error('Error code:', err.code);
+        console.error('Error message:', err.message);
       }
       
       // Provide more helpful error messages

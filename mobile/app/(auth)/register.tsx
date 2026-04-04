@@ -241,9 +241,9 @@ export default function RegisterScreen() {
       }
       
       if (__DEV__) {
-        console.error('🍎 Apple Sign-Up error:', err);
-        console.error('🍎 Error code:', err.code);
-        console.error('🍎 Error message:', err.message);
+        console.error('Apple Sign-Up error:', err);
+        console.error('Error code:', err.code);
+        console.error('Error message:', err.message);
       }
       
       // Provide more helpful error messages
