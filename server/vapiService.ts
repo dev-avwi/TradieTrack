@@ -416,7 +416,7 @@ export async function getCallLogs(assistantId: string, limit: number = 50): Prom
 }
 
 export function getWebhookUrl(): string {
-  const domain = process.env.REPLIT_DOMAINS?.split(',')[0] || process.env.REPL_SLUG + '.repl.co';
+  const domain = process.env.CUSTOM_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0] || process.env.REPL_SLUG + '.repl.co';
   return `https://${domain}/api/vapi/webhook`;
 }
 

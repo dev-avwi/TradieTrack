@@ -3441,8 +3441,16 @@ function DedicatedNumberAddon() {
                 <span>Auto-Link to Jobs</span>
               </div>
             </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="outline" size="sm" asChild>
+                <a href="/chat">
+                  <MessageSquare className="h-4 w-4 mr-1.5" />
+                  Open Chat Hub
+                </a>
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
-              Manage your number and conversations in the Chat Hub. SMS billed at ~$0.06/message through Twilio.
+              $5/month for your dedicated number. SMS billed at ~$0.06/message. To release this number, use the Chat Hub or mobile app.
             </p>
           </div>
         ) : (
@@ -3468,11 +3476,11 @@ function DedicatedNumberAddon() {
             <Separator />
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium">~$3 AUD/month + ~$0.06 per SMS</p>
-                <p className="text-xs text-muted-foreground">Billed through Twilio. Cancel anytime.</p>
+                <p className="text-sm font-medium">$5 AUD/month + ~$0.06 per SMS</p>
+                <p className="text-xs text-muted-foreground">Cancel anytime. Replaces the shared JobRunner number with your own.</p>
               </div>
               <Button variant="outline" asChild>
-                <a href="/chat-hub">
+                <a href="/chat">
                   <Phone className="h-4 w-4 mr-1.5" />
                   Set Up in Chat Hub
                 </a>
