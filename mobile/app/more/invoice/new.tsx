@@ -789,6 +789,58 @@ export default function NewInvoiceScreen() {
             }));
           }
         }
+
+        let prefilledFromQuote = false;
+        try {
+          const quotesResponse = await api.get(`/api/quotes`);
+          if (quotesResponse.data && Array.isArray(quotesResponse.data)) {
+            const jobQuotes = quotesResponse.data
+              .filter((q: any) => q.jobId === jId && (q.status === 'accepted' || q.status === 'sent'))
+              .sort((a: any, b: any) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
+            const jobQuote = jobQuotes[0];
+            if (jobQuote && jobQuote.lineItems && Array.isArray(jobQuote.lineItems) && jobQuote.lineItems.length > 0) {
+              const quoteItems: LineItem[] = jobQuote.lineItems.map((item: any, idx: number) => ({
+                id: `quote-${idx}-${Date.now()}`,
+                description: item.description || item.name || '',
+                quantity: String(item.quantity || 1),
+                unitPrice: String(item.unitPrice || item.price || item.rate || 0),
+              }));
+              setLineItems(quoteItems);
+              prefilledFromQuote = true;
+            }
+          }
+        } catch (quoteError) {
+          if (__DEV__) console.log('Error fetching quotes for job:', quoteError);
+        }
+
+        if (!prefilledFromQuote) {
+          try {
+            const timeResponse = await api.get(`/api/time-entries?jobId=${jId}`);
+            if (timeResponse.data && Array.isArray(timeResponse.data)) {
+              const completed = timeResponse.data.filter((e: any) => e.endTime);
+              if (completed.length > 0) {
+                const totalMs = completed.reduce((sum: number, e: any) => {
+                  return sum + (new Date(e.endTime).getTime() - new Date(e.startTime).getTime());
+                }, 0);
+                const totalHrs = Math.round(totalMs / (1000 * 60 * 60) * 10) / 10;
+                if (totalHrs > 0) {
+                  const avgRate = completed.reduce((sum: number, e: any) => sum + (parseFloat(e.hourlyRate) || 0), 0) / completed.length;
+                  const rate = Math.round(avgRate * 100) / 100;
+                  if (rate > 0) {
+                    setLineItems([{
+                      id: `labour-${Date.now()}`,
+                      description: `Labour - ${job.title || 'Job work'} (${totalHrs}hrs)`,
+                      quantity: String(totalHrs),
+                      unitPrice: String(rate),
+                    }]);
+                  }
+                }
+              }
+            }
+          } catch (timeError) {
+            if (__DEV__) console.log('Error fetching time entries:', timeError);
+          }
+        }
       }
     } catch (error) {
       if (__DEV__) console.log('Error fetching job data:', error);

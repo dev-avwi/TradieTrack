@@ -21,7 +21,7 @@ import { spacing, radius, typography, iconSizes, sizes } from '../../src/lib/des
 
 type LeadSource = 'phone' | 'email' | 'website' | 'referral' | 'other';
 type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
-type FilterType = 'all' | LeadStatus;
+type FilterType = 'all' | 'active' | LeadStatus;
 
 interface Lead {
   id: string;
@@ -93,7 +93,7 @@ export default function LeadsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('active');
   const [showForm, setShowForm] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [showConvertModal, setShowConvertModal] = useState(false);
@@ -144,16 +144,22 @@ export default function LeadsScreen() {
         lead.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         lead.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         lead.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesFilter = activeFilter === 'all' || (lead.status || 'new') === activeFilter;
+      const leadStatus = lead.status || 'new';
+      const matchesFilter = activeFilter === 'all' ||
+        (activeFilter === 'active' && ['new', 'contacted', 'quoted'].includes(leadStatus)) ||
+        leadStatus === activeFilter;
       return matchesSearch && matchesFilter;
     });
   }, [leads, searchQuery, activeFilter]);
 
   const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: leads.length };
+    const counts: Record<string, number> = { all: leads.length, active: 0 };
     leads.forEach(lead => {
       const s = lead.status || 'new';
       counts[s] = (counts[s] || 0) + 1;
+      if (['new', 'contacted', 'quoted'].includes(s)) {
+        counts.active = (counts.active || 0) + 1;
+      }
     });
     return counts;
   }, [leads]);
@@ -256,6 +262,7 @@ export default function LeadsScreen() {
   const styles = createStyles(colors);
 
   const FILTERS: { key: FilterType; label: string }[] = [
+    { key: 'active', label: 'Active' },
     { key: 'all', label: 'All' },
     { key: 'new', label: 'New' },
     { key: 'contacted', label: 'Contacted' },
