@@ -594,6 +594,57 @@ export async function updateNumberFriendlyName(phoneNumber: string, friendlyName
   }
 }
 
+export async function updateNumberWebhooks(phoneNumber: string, smsWebhookUrl: string, voiceWebhookUrl?: string, friendlyName?: string): Promise<{ success: boolean; error?: string }> {
+  const client = await getTwilioClient();
+  if (!client) return { success: false, error: 'Twilio not configured' };
+
+  try {
+    const numbers = await client.incomingPhoneNumbers.list({ phoneNumber, limit: 1 });
+    if (numbers.length === 0) return { success: false, error: 'Number not found in Twilio' };
+    
+    const updateParams: Record<string, string> = {
+      smsUrl: smsWebhookUrl,
+      smsMethod: 'POST',
+    };
+    if (voiceWebhookUrl) {
+      updateParams.voiceUrl = voiceWebhookUrl;
+      updateParams.voiceMethod = 'POST';
+    }
+    if (friendlyName) {
+      updateParams.friendlyName = friendlyName;
+    }
+
+    await client.incomingPhoneNumbers(numbers[0].sid).update(updateParams);
+    console.log(`[SMS] Updated webhooks for ${phoneNumber}: SMS → ${smsWebhookUrl}${voiceWebhookUrl ? `, Voice → ${voiceWebhookUrl}` : ''}${friendlyName ? `, Name → ${friendlyName}` : ''}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('[SMS] Error updating number webhooks:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function listAllTwilioNumbers(): Promise<{ success: boolean; numbers?: any[]; error?: string }> {
+  const client = await getTwilioClient();
+  if (!client) return { success: false, error: 'Twilio not configured' };
+
+  try {
+    const numbers = await client.incomingPhoneNumbers.list({ limit: 50 });
+    return {
+      success: true,
+      numbers: numbers.map(n => ({
+        sid: n.sid,
+        phoneNumber: n.phoneNumber,
+        friendlyName: n.friendlyName,
+        smsUrl: n.smsUrl,
+        voiceUrl: n.voiceUrl,
+        capabilities: n.capabilities,
+      })),
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 /**
  * Release (delete) a Twilio phone number
  */

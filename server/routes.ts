@@ -36738,7 +36738,7 @@ Respond with JSON in this format:
   });
 
   // Release a dedicated phone number
-  app.post("/api/sms/rename-twilio-numbers", requireAuth, async (req: any, res) => {
+  app.post("/api/sms/fix-twilio-numbers", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const user = await storage.getUser(userId);
@@ -36746,27 +36746,65 @@ Respond with JSON in this format:
         return res.status(403).json({ error: 'Admin only' });
       }
 
-      const { updateNumberFriendlyName } = await import('./twilioClient');
+      const { updateNumberWebhooks, listAllTwilioNumbers } = await import('./twilioClient');
       const allSettings = await storage.getAllBusinessSettings();
-      const results: { phone: string; business: string; result: string }[] = [];
 
-      for (const settings of allSettings) {
-        if (settings.dedicatedPhoneNumber && settings.businessName) {
-          const friendlyName = `${settings.businessName} — JobRunner`;
-          const result = await updateNumberFriendlyName(settings.dedicatedPhoneNumber, friendlyName);
+      const correctDomain = process.env.CUSTOM_DOMAIN || 'jobrunner.com.au';
+      const correctSmsWebhook = `https://${correctDomain}/api/sms/webhook/incoming`;
+      const correctVoiceWebhook = `https://${correctDomain}/api/twilio/voice/shared`;
+
+      const twilioResult = await listAllTwilioNumbers();
+      if (!twilioResult.success || !twilioResult.numbers) {
+        return res.status(502).json({ error: 'Failed to list Twilio numbers' });
+      }
+
+      const platformNumbers = ['+61485013993', '+61485013994'];
+      const results: { phone: string; business: string; changes: string[]; result: string }[] = [];
+
+      for (const num of twilioResult.numbers) {
+        if (platformNumbers.includes(num.phoneNumber)) continue;
+
+        const bizSettings = allSettings.find((s: any) => s.dedicatedPhoneNumber === num.phoneNumber);
+        const businessName = bizSettings?.businessName;
+        const changes: string[] = [];
+
+        const wrongSmsUrl = num.smsUrl && !num.smsUrl.includes(correctDomain);
+        const wrongVoiceUrl = num.voiceUrl && !num.voiceUrl.includes(correctDomain) && !num.voiceUrl.includes('vapi.ai');
+        const wrongName = businessName && !num.friendlyName.includes(businessName);
+
+        if (wrongSmsUrl) changes.push(`SMS webhook: ${num.smsUrl} → ${correctSmsWebhook}`);
+        if (wrongVoiceUrl) changes.push(`Voice webhook: ${num.voiceUrl} → ${correctVoiceWebhook}`);
+        if (wrongName) changes.push(`Name: "${num.friendlyName}" → "${businessName} — JobRunner"`);
+
+        if (changes.length > 0) {
+          const result = await updateNumberWebhooks(
+            num.phoneNumber,
+            correctSmsWebhook,
+            (wrongVoiceUrl || !num.voiceUrl) ? correctVoiceWebhook : undefined,
+            wrongName && businessName ? `${businessName} — JobRunner` : undefined,
+          );
           results.push({
-            phone: settings.dedicatedPhoneNumber,
-            business: settings.businessName,
-            result: result.success ? 'Updated' : (result.error || 'Failed'),
+            phone: num.phoneNumber,
+            business: businessName || 'Unknown',
+            changes,
+            result: result.success ? 'Fixed' : (result.error || 'Failed'),
+          });
+        } else {
+          results.push({
+            phone: num.phoneNumber,
+            business: businessName || 'Unknown',
+            changes: ['Already correct'],
+            result: 'OK',
           });
         }
       }
 
-      console.log(`[Admin] Renamed ${results.filter(r => r.result === 'Updated').length}/${results.length} Twilio numbers`);
-      res.json({ success: true, results });
+      const fixedCount = results.filter(r => r.result === 'Fixed').length;
+      console.log(`[Admin] Fixed ${fixedCount}/${results.length} Twilio numbers (webhooks + names)`);
+      res.json({ success: true, domain: correctDomain, results });
     } catch (error: any) {
-      console.error('Error renaming Twilio numbers:', error);
-      res.status(500).json({ error: 'Failed to rename numbers' });
+      console.error('Error fixing Twilio numbers:', error);
+      res.status(500).json({ error: 'Failed to fix numbers' });
     }
   });
 
