@@ -808,7 +808,56 @@ export default function AIReceptionist() {
             </CardContent>
           </Card>
 
-          <MyAvailabilityToggle />
+          {isTeam && canManageConfig ? (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                  Team Availability
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Toggle which team members are available for call transfers.
+                </p>
+                {teamAvailability.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">No team members found.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {teamAvailability.map((member) => (
+                      <div key={member.memberId} className="flex items-center justify-between gap-3 p-3 rounded-md border">
+                        <div>
+                          <div className="font-medium text-sm">{member.name}</div>
+                          {member.phone && <div className="text-xs text-muted-foreground">{member.phone}</div>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={
+                              member.available
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0"
+                                : ""
+                            }
+                          >
+                            {member.available ? "Available" : "Unavailable"}
+                          </Badge>
+                          <Switch
+                            checked={member.available}
+                            onCheckedChange={(checked) =>
+                              toggleAvailabilityMutation.mutate({ memberId: member.memberId, available: checked })
+                            }
+                            disabled={toggleAvailabilityMutation.isPending}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <MyAvailabilityToggle />
+          )}
         </div>
 
         {editMode && formData && (
@@ -1074,57 +1123,7 @@ export default function AIReceptionist() {
           </>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {isTeam && canManageConfig && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Users className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
-                  Team Availability
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Toggle which team members are available for call transfers.
-                </p>
-                {teamAvailability.length === 0 ? (
-                  <p className="text-sm text-muted-foreground italic">No team members found.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {teamAvailability.map((member) => (
-                      <div key={member.memberId} className="flex items-center justify-between gap-3 p-3 rounded-md border">
-                        <div>
-                          <div className="font-medium text-sm">{member.name}</div>
-                          {member.phone && <div className="text-xs text-muted-foreground">{member.phone}</div>}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className={
-                              member.available
-                                ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0"
-                                : ""
-                            }
-                          >
-                            {member.available ? "Available" : "Unavailable"}
-                          </Badge>
-                          <Switch
-                            checked={member.available}
-                            onCheckedChange={(checked) =>
-                              toggleAvailabilityMutation.mutate({ memberId: member.memberId, available: checked })
-                            }
-                            disabled={toggleAvailabilityMutation.isPending}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {canManageConfig && (
+        {canManageConfig && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -1243,7 +1242,6 @@ export default function AIReceptionist() {
             </CardContent>
           </Card>
         )}
-        </div>
 
         {canManageConfig && (
           <Card>
