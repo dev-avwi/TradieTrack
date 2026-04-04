@@ -11,6 +11,16 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -357,6 +367,7 @@ export default function AIReceptionist() {
     }));
   };
 
+  const [showDisableDialog, setShowDisableDialog] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<{
     mode: string;
@@ -578,7 +589,7 @@ export default function AIReceptionist() {
   const isProvisioning = approvalStatus === "provisioning" || (checkoutReturn && (approvalStatus === "none" || !config));
   const isPendingApproval = approvalStatus === "pending_approval";
   const isFailed = approvalStatus === "failed";
-  const isApproved = approvalStatus === "approved";
+  const isApproved = approvalStatus === "approved" || approvalStatus === "active";
   const hasNoNumber = !config?.dedicatedPhoneNumber && !config?.vapiAssistantId && approvalStatus === "none";
 
   if (hasNoNumber && !isProvisioning) {
@@ -737,7 +748,13 @@ export default function AIReceptionist() {
                     {canToggleEnabled && isApproved && (
                       <Switch
                         checked={isEnabled}
-                        onCheckedChange={(checked) => toggleEnabledMutation.mutate(checked)}
+                        onCheckedChange={(checked) => {
+                          if (!checked) {
+                            setShowDisableDialog(true);
+                          } else {
+                            toggleEnabledMutation.mutate(true);
+                          }
+                        }}
                         disabled={toggleEnabledMutation.isPending}
                         data-testid="switch-ai-receptionist-enabled"
                       />
@@ -1291,6 +1308,28 @@ export default function AIReceptionist() {
           </Card>
         )}
       </div>
+
+      <AlertDialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disable AI Receptionist?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will stop the AI from answering calls on your dedicated number. Your settings, voice, and knowledge bank will be preserved — you can re-enable at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                toggleEnabledMutation.mutate(false);
+                setShowDisableDialog(false);
+              }}
+            >
+              Disable
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageShell>
   );
 }

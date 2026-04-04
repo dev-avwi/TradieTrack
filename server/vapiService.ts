@@ -597,6 +597,8 @@ export async function destroyAiReceptionist(userId: string): Promise<{ success: 
       vapiPhoneNumberId: null,
       enabled: false,
       mode: 'off',
+      approvalStatus: 'none',
+      dedicatedPhoneNumber: null,
     });
 
     console.log(`[Vapi] AI Receptionist fully destroyed for user ${userId}`);
