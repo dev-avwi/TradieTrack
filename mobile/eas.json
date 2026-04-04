@@ -17,7 +17,7 @@
       "ios": {
         "resourceClass": "m-medium",
         "simulator": false,
-        "image": "latest"
+        "image": "macos-sonoma-14.6-xcode-16.1"
       },
       "android": {
         "buildType": "apk"
@@ -34,7 +34,7 @@
       },
       "ios": {
         "resourceClass": "m-medium",
-        "image": "latest"
+        "image": "macos-sonoma-14.6-xcode-16.1"
       },
       "android": {
         "buildType": "apk"
@@ -51,7 +51,7 @@
       },
       "ios": {
         "resourceClass": "m-medium",
-        "image": "latest"
+        "image": "macos-sonoma-14.6-xcode-16.1"
       },
       "android": {
         "buildType": "app-bundle"
