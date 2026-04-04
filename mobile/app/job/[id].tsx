@@ -7114,7 +7114,7 @@ export default function JobDetailScreen() {
               <View style={{ gap: spacing.xs }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ fontSize: 14, color: colors.mutedForeground }}>
-                    Labour{pd.hours.total > 0 ? ` (${pd.hours.total}hrs)` : ''}
+                    Labour{pd.hours.total > 0 ? ` (${Number(pd.hours.total).toFixed(1)}hrs)` : ''}
                   </Text>
                   <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>{formatCurrency(pd.costs.labour)}</Text>
                 </View>

@@ -139,7 +139,7 @@ export default function BookingSettingsScreen() {
     }));
   };
 
-  const bookingUrl = slug ? `${user?.businessName ? user.businessName.toLowerCase().replace(/\s+/g, '-') : 'your-business'}.jobrunner.com.au/book/${slug}` : '';
+  const bookingUrl = slug ? `jobrunner.com.au/book/${slug}` : '';
 
   if (isLoading) {
     return (

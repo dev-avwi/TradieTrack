@@ -90,6 +90,11 @@ export function openMapsDirectly(
 ): void {
   const encodedAddress = address ? encodeURIComponent(address) : '';
   
+  if (address) {
+    openMapsAddressDirectly(address, preference);
+    return;
+  }
+  
   if (preference === 'apple') {
     const url = `maps://app?daddr=${latitude},${longitude}&dirflg=d`;
     Linking.openURL(url).catch(() => {

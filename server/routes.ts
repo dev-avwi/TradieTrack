@@ -29112,7 +29112,7 @@ Respond with JSON in this format:
 
       const totalCosts = nonSubNonMaterialExpenses + totalMaterialsCost + totalLaborCost + totalSubcontractorCost;
       const profit = totalRevenue - totalCosts;
-      const profitMargin = totalRevenue > 0 ? ((profit / totalRevenue) * 100) : 0;
+      const profitMargin = totalRevenue > 0 ? Math.round((profit / totalRevenue) * 1000) / 10 : 0;
 
       res.json({
         jobId,
@@ -29130,21 +29130,21 @@ Respond with JSON in this format:
           received: totalRevenue,
         },
         costs: {
-          labour: totalLaborCost,
-          subcontractor: totalSubcontractorCost,
-          materials: totalMaterialsCost,
-          otherExpenses: nonSubNonMaterialExpenses,
-          total: totalCosts,
+          labour: Math.round(totalLaborCost * 100) / 100,
+          subcontractor: Math.round(totalSubcontractorCost * 100) / 100,
+          materials: Math.round(totalMaterialsCost * 100) / 100,
+          otherExpenses: Math.round(nonSubNonMaterialExpenses * 100) / 100,
+          total: Math.round(totalCosts * 100) / 100,
         },
         profit: {
-          amount: profit,
-          margin: profitMargin,
+          amount: Math.round(profit * 100) / 100,
+          margin: Math.round(profitMargin * 10) / 10,
           vsQuote: quotedAmount !== null ? (quotedAmount - totalCosts) - profit : null,
         },
         hours: {
-          total: totalHours,
-          billable: billableHours,
-          nonBillable: nonBillableHours,
+          total: Math.round(totalHours * 10) / 10,
+          billable: Math.round(billableHours * 10) / 10,
+          nonBillable: Math.round(nonBillableHours * 10) / 10,
         },
         status: profitMargin > 15 ? 'profitable' : profitMargin > 5 ? 'tight' : 'loss',
         expenses: expenses.map(expense => ({
@@ -45834,16 +45834,17 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       const bizDedicatedNumber = bizSettings?.dedicatedPhoneNumber || null;
       const bizVapiAssistantId = bizSettings?.vapiAssistantId || null;
       if (!config) {
+        const hasActiveAssistant = !!bizVapiAssistantId;
         return res.json({
-          enabled: false,
-          mode: 'off',
+          enabled: hasActiveAssistant,
+          mode: hasActiveAssistant ? 'always_on_message' : 'off',
           voice: 'Jess',
           greeting: null,
           transferNumbers: [],
           businessHours: null,
           dedicatedPhoneNumber: bizDedicatedNumber,
           vapiAssistantId: bizVapiAssistantId,
-          approvalStatus: bizVapiAssistantId ? 'active' : 'none',
+          approvalStatus: hasActiveAssistant ? 'active' : 'none',
           provisioningError: null,
           knowledgeBank: null,
         });

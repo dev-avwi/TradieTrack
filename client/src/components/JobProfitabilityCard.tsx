@@ -135,7 +135,7 @@ export default function JobProfitabilityCard({ jobId }: { jobId: string }) {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">
-                Labour{data.hours.total > 0 ? ` (${data.hours.total}hrs)` : ""}
+                Labour{data.hours.total > 0 ? ` (${Number(data.hours.total).toFixed(1)}hrs)` : ""}
               </span>
               <span className="text-sm">{formatCurrency(data.costs.labour)}</span>
             </div>
