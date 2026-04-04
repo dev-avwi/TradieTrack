@@ -2258,13 +2258,13 @@ export default function Settings({
                     <Label>Services Offered</Label>
                     <p className="text-xs text-muted-foreground">Add services customers can select when booking</p>
                     <div className="flex flex-wrap gap-2">
-                      {(businessData.bookingPageServices || []).map((service: string, i: number) => (
+                      {(businessData.bookingPageServices || []).map((service: any, i: number) => (
                         <Badge key={i} variant="secondary" className="gap-1">
-                          {service}
+                          {typeof service === 'string' ? service : service.name}
                           <button
                             onClick={() => setBusinessData(prev => ({
                               ...prev,
-                              bookingPageServices: prev.bookingPageServices.filter((_: string, idx: number) => idx !== i)
+                              bookingPageServices: prev.bookingPageServices.filter((_: any, idx: number) => idx !== i)
                             }))}
                             className="ml-1"
                           >
