@@ -45830,6 +45830,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const config = await storage.getAiReceptionistConfig(userId);
+      const user = await storage.getUser(userId);
+      const userDedicatedNumber = user?.dedicatedPhoneNumber || null;
       if (!config) {
         return res.json({
           enabled: false,
@@ -45838,9 +45840,9 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
           greeting: null,
           transferNumbers: [],
           businessHours: null,
-          dedicatedPhoneNumber: null,
-          vapiAssistantId: null,
-          approvalStatus: 'none',
+          dedicatedPhoneNumber: userDedicatedNumber,
+          vapiAssistantId: user?.vapiAssistantId || null,
+          approvalStatus: user?.vapiAssistantId ? 'active' : 'none',
           provisioningError: null,
           knowledgeBank: null,
         });
@@ -45852,9 +45854,9 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         greeting: config.greeting || null,
         transferNumbers: config.transferNumbers || [],
         businessHours: config.businessHours || null,
-        dedicatedPhoneNumber: config.dedicatedPhoneNumber || null,
-        vapiAssistantId: config.vapiAssistantId || null,
-        approvalStatus: config.approvalStatus || 'none',
+        dedicatedPhoneNumber: config.dedicatedPhoneNumber || userDedicatedNumber,
+        vapiAssistantId: config.vapiAssistantId || user?.vapiAssistantId || null,
+        approvalStatus: config.approvalStatus || (user?.vapiAssistantId ? 'active' : 'none'),
         provisioningError: config.provisioningError || null,
         provisionedAt: config.provisionedAt || null,
         approvedAt: config.approvedAt || null,
