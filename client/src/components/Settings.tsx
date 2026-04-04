@@ -96,6 +96,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // Types for MyAccount tab
 interface ColorOption {
@@ -3445,6 +3456,7 @@ function BillingTabContent() {
 }
 
 function DedicatedNumberAddon() {
+  const { toast } = useToast();
   const { data: smsConfig } = useQuery<{
     smsMode: string;
     dedicatedPhoneNumber: string | null;
@@ -3455,6 +3467,21 @@ function DedicatedNumberAddon() {
   }>({ queryKey: ['/api/sms/config'] });
 
   const hasNumber = smsConfig?.hasDedicatedNumber;
+
+  const releaseNumberMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/sms/release-number');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Number released', description: 'You are now using the shared JobRunner number for notifications.' });
+      queryClient.invalidateQueries({ queryKey: ['/api/sms/config'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/business-settings'] });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Failed to release number', description: err.message || 'Please try again or contact support.', variant: 'destructive' });
+    },
+  });
 
   return (
     <Card>
@@ -3505,9 +3532,43 @@ function DedicatedNumberAddon() {
                   Open Chat Hub
                 </a>
               </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-destructive">
+                    <Phone className="h-4 w-4 mr-1.5" />
+                    Revert to Shared
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Revert to shared number?</AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-2">
+                      <span className="block">This will release your dedicated number ({smsConfig?.dedicatedPhoneNumber}) and revert to the shared JobRunner number.</span>
+                      <span className="block">Your existing conversation history will be preserved, but clients will no longer be able to text you directly on this number.</span>
+                      {smsConfig?.smsMode === 'ai_receptionist' && (
+                        <span className="block font-medium">Your AI Receptionist will also be disabled.</span>
+                      )}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep Number</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => releaseNumberMutation.mutate()}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={releaseNumberMutation.isPending}
+                    >
+                      {releaseNumberMutation.isPending ? (
+                        <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Releasing...</>
+                      ) : (
+                        'Yes, Revert to Shared'
+                      )}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
             <p className="text-xs text-muted-foreground">
-              $5/month for your dedicated number. SMS billed at ~$0.06/message. To release this number, use the Chat Hub or mobile app.
+              $5/month for your dedicated number. SMS billed at ~$0.06/message.
             </p>
           </div>
         ) : (

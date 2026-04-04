@@ -25,6 +25,13 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+interface BookingService {
+  name: string;
+  duration?: number;
+  price?: number;
+  description?: string;
+}
+
 interface BusinessInfo {
   businessName: string;
   phone: string;
@@ -33,7 +40,7 @@ interface BusinessInfo {
   logoUrl: string;
   brandColor: string;
   primaryColor: string;
-  services: string[];
+  services: (string | BookingService)[];
   description: string;
   abn: string;
 }
@@ -278,11 +285,15 @@ export default function BookingPage() {
                       <SelectValue placeholder="Select a service" />
                     </SelectTrigger>
                     <SelectContent>
-                      {business.services.map((s: string) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
+                      {business.services.map((s) => {
+                        const name = typeof s === 'string' ? s : s.name;
+                        const price = typeof s === 'object' && s.price ? ` — $${s.price}` : '';
+                        return (
+                          <SelectItem key={name} value={name}>
+                            {name}{price}
+                          </SelectItem>
+                        );
+                      })}
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>

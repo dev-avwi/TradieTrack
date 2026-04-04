@@ -160,11 +160,35 @@ async function ensureDemoBusinessAndTeam(demoUser: any) {
       gstEnabled: true,
       qbccLicense: 'QBCC 1234567',
       insurancePolicy: 'QBE-PLB-987654',
-    });
+      bookingSlug: 'mike-s-plumbing-services',
+      bookingPageEnabled: true,
+      bookingPageDescription: 'Book a plumbing service with Mike\'s Plumbing Services. We service the Cairns and surrounding areas for all residential and commercial plumbing needs.',
+      bookingPageServices: [
+        { name: 'General Plumbing', duration: 60, price: 120, description: 'Tap repairs, toilet fixes, minor pipe work' },
+        { name: 'Hot Water System', duration: 90, price: 250, description: 'Installation, repair, and servicing of hot water systems' },
+        { name: 'Blocked Drain', duration: 60, price: 150, description: 'Drain unblocking and CCTV inspection' },
+        { name: 'Emergency Call-Out', duration: 30, price: 180, description: '24/7 emergency plumbing service' },
+      ],
+    } as any);
     console.log('✅ Business settings created');
   } else if (!businessSettings.gstEnabled) {
     await storage.updateBusinessSettings(demoUser.id, { gstEnabled: true });
     console.log('✅ Business settings updated: GST enabled');
+  }
+
+  if (businessSettings && !businessSettings.bookingSlug) {
+    await storage.updateBusinessSettings(demoUser.id, {
+      bookingSlug: 'mike-s-plumbing-services',
+      bookingPageEnabled: true,
+      bookingPageDescription: 'Book a plumbing service with Mike\'s Plumbing Services. We service the Cairns and surrounding areas for all residential and commercial plumbing needs.',
+      bookingPageServices: [
+        { name: 'General Plumbing', duration: 60, price: 120, description: 'Tap repairs, toilet fixes, minor pipe work' },
+        { name: 'Hot Water System', duration: 90, price: 250, description: 'Installation, repair, and servicing of hot water systems' },
+        { name: 'Blocked Drain', duration: 60, price: 150, description: 'Drain unblocking and CCTV inspection' },
+        { name: 'Emergency Call-Out', duration: 30, price: 180, description: '24/7 emergency plumbing service' },
+      ],
+    } as any);
+    console.log('✅ Booking page enabled for demo');
   }
 
   // Ensure demo worker exists
