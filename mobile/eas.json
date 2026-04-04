@@ -17,7 +17,7 @@
       "ios": {
         "resourceClass": "m-medium",
         "simulator": false,
-        "image": "macos-sequoia-15.3-xcode-16.2"
+        "image": "macos-sequoia-15.4-xcode-16.3"
       },
       "android": {
         "buildType": "apk"
@@ -34,7 +34,7 @@
       },
       "ios": {
         "resourceClass": "m-medium",
-        "image": "macos-sequoia-15.3-xcode-16.2"
+        "image": "macos-sequoia-15.4-xcode-16.3"
       },
       "android": {
         "buildType": "apk"
@@ -51,7 +51,7 @@
       },
       "ios": {
         "resourceClass": "m-medium",
-        "image": "macos-sequoia-15.3-xcode-16.2"
+        "image": "macos-sequoia-15.4-xcode-16.3"
       },
       "android": {
         "buildType": "app-bundle"
