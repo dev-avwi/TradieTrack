@@ -3,6 +3,7 @@ import { useParams } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import AddressAutocomplete from "@/components/ui/address-autocomplete";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -302,13 +303,13 @@ export default function BookingPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="book-address">Job Address</Label>
-                <Input
-                  id="book-address"
-                  placeholder="123 Main St, Brisbane QLD"
+                <AddressAutocomplete
                   value={form.address}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, address: e.target.value }))
+                  onChange={(value) =>
+                    setForm((p) => ({ ...p, address: value }))
                   }
+                  placeholder="123 Main St, Brisbane QLD"
+                  data-testid="input-book-address"
                 />
               </div>
 

@@ -706,8 +706,7 @@ export default function AIReceptionist() {
   return (
     <PageShell>
       <PageHeader title="AI Receptionist" />
-      <div className="p-4 space-y-4 max-w-3xl mx-auto">
-        {/* Pending Approval Banner */}
+      <div className="p-4 space-y-4 max-w-6xl mx-auto">
         {isPendingApproval && (
           <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
             <CardContent className="p-4 flex items-start gap-3">
@@ -728,154 +727,160 @@ export default function AIReceptionist() {
           </Card>
         )}
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Phone className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
-              AI Receptionist
-            </CardTitle>
-            {canManageConfig && (
-              <div className="flex items-center gap-3 flex-wrap">
-                {isPendingApproval ? (
-                  <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border-0">
-                    Pending Approval
-                  </Badge>
-                ) : (
-                  <>
-                    <Badge className={isEnabled ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0" : ""}>
-                      {isEnabled ? "Active" : "Inactive"}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Phone className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                AI Receptionist
+              </CardTitle>
+              {canManageConfig && (
+                <div className="flex items-center gap-3 flex-wrap">
+                  {isPendingApproval ? (
+                    <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border-0">
+                      Pending Approval
                     </Badge>
-                    {canToggleEnabled && isApproved && (
-                      <Switch
-                        checked={isEnabled}
-                        onCheckedChange={(checked) => {
-                          if (!checked) {
-                            setShowDisableDialog(true);
-                          } else {
-                            toggleEnabledMutation.mutate(true);
-                          }
-                        }}
-                        disabled={toggleEnabledMutation.isPending}
-                        data-testid="switch-ai-receptionist-enabled"
-                      />
-                    )}
-                  </>
+                  ) : (
+                    <>
+                      <Badge className={isEnabled ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0" : ""}>
+                        {isEnabled ? "Active" : "Inactive"}
+                      </Badge>
+                      {canToggleEnabled && isApproved && (
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={(checked) => {
+                            if (!checked) {
+                              setShowDisableDialog(true);
+                            } else {
+                              toggleEnabledMutation.mutate(true);
+                            }
+                          }}
+                          disabled={toggleEnabledMutation.isPending}
+                          data-testid="switch-ai-receptionist-enabled"
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Your AI receptionist answers calls, takes messages, and can transfer callers to your team.
+              </p>
+              {config?.dedicatedPhoneNumber && (
+                <div className="flex items-center gap-2 text-sm">
+                  <PhoneCall className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Phone number:</span>
+                  <span className="font-medium">{config.dedicatedPhoneNumber}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-sm">
+                <Mic className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Voice:</span>
+                <span className="font-medium">{currentVoice}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Settings className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Mode:</span>
+                <span className="font-medium">{MODE_OPTIONS.find((m) => m.value === currentMode)?.label || currentMode}</span>
+              </div>
+              <div className="flex gap-2 pt-2 flex-wrap">
+                {!editMode && canManageConfig && (
+                  <Button variant="outline" size="sm" onClick={initForm} data-testid="button-edit-config">
+                    <Settings className="h-4 w-4 mr-1" />
+                    Configure
+                  </Button>
+                )}
+                {canManageConfig && (isApproved || isEnabled) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLocation("/ai-receptionist/calls")}
+                    data-testid="button-view-call-logs"
+                  >
+                    <PhoneCall className="h-4 w-4 mr-1" />
+                    View Call Logs
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
                 )}
               </div>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Your AI receptionist answers calls, takes messages, and can transfer callers to your team.
-            </p>
-            {config?.dedicatedPhoneNumber && (
-              <div className="flex items-center gap-2 text-sm">
-                <PhoneCall className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Phone number:</span>
-                <span className="font-medium">{config.dedicatedPhoneNumber}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-2 text-sm">
-              <Mic className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Voice:</span>
-              <span className="font-medium">{currentVoice}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Settings className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Mode:</span>
-              <span className="font-medium">{MODE_OPTIONS.find((m) => m.value === currentMode)?.label || currentMode}</span>
-            </div>
-            <div className="flex gap-2 pt-2 flex-wrap">
-              {!editMode && canManageConfig && (
-                <Button variant="outline" size="sm" onClick={initForm} data-testid="button-edit-config">
-                  <Settings className="h-4 w-4 mr-1" />
-                  Configure
-                </Button>
-              )}
-              {canManageConfig && (isApproved || isEnabled) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLocation("/ai-receptionist/calls")}
-                  data-testid="button-view-call-logs"
-                >
-                  <PhoneCall className="h-4 w-4 mr-1" />
-                  View Call Logs
-                  <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <MyAvailabilityToggle />
+        </div>
 
         {editMode && formData && (
           <>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Settings className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
-                  Mode
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Select value={formData.mode} onValueChange={(value) => setFormData({ ...formData, mode: value })}>
-                  <SelectTrigger data-testid="select-mode">
-                    <SelectValue placeholder="Select mode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MODE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        <div>
-                          <div className="font-medium">{opt.label}</div>
-                          <div className="text-xs text-muted-foreground">{opt.description}</div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Settings className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                    Mode
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Select value={formData.mode} onValueChange={(value) => setFormData({ ...formData, mode: value })}>
+                    <SelectTrigger data-testid="select-mode">
+                      <SelectValue placeholder="Select mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MODE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          <div>
+                            <div className="font-medium">{opt.label}</div>
+                            <div className="text-xs text-muted-foreground">{opt.description}</div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Volume2 className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
-                  Voice
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid gap-2">
-                  {voices.map((v) => (
-                    <div
-                      key={v.id}
-                      className={`flex items-center justify-between gap-3 p-3 rounded-md border cursor-pointer transition-colors ${
-                        formData.voice === v.id
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover-elevate"
-                      }`}
-                      onClick={() => setFormData({ ...formData, voice: v.id })}
-                      data-testid={`voice-option-${v.id}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        {formData.voice === v.id ? (
-                          <CheckCircle className="h-5 w-5 text-primary" />
-                        ) : (
-                          <Mic className="h-5 w-5 text-muted-foreground" />
-                        )}
-                        <div>
-                          <div className="font-medium">{v.name}</div>
-                          <div className="text-xs text-muted-foreground">{v.description}</div>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Volume2 className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                    Voice
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid gap-2">
+                    {voices.map((v) => (
+                      <div
+                        key={v.id}
+                        className={`flex items-center justify-between gap-3 p-3 rounded-md border cursor-pointer transition-colors ${
+                          formData.voice === v.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover-elevate"
+                        }`}
+                        onClick={() => setFormData({ ...formData, voice: v.id })}
+                        data-testid={`voice-option-${v.id}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {formData.voice === v.id ? (
+                            <CheckCircle className="h-5 w-5 text-primary" />
+                          ) : (
+                            <Mic className="h-5 w-5 text-muted-foreground" />
+                          )}
+                          <div>
+                            <div className="font-medium">{v.name}</div>
+                            <div className="text-xs text-muted-foreground">{v.description}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <VoicePreviewButton voiceId={v.id} voiceName={v.name} />
+                          <Badge variant="outline">{v.accent}</Badge>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <VoicePreviewButton voiceId={v.id} voiceName={v.name} />
-                        <Badge variant="outline">{v.accent}</Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             <Card>
               <CardHeader className="pb-3">
@@ -902,140 +907,144 @@ export default function AIReceptionist() {
             </Card>
 
             {(formData.mode === "always_on_transfer" || formData.mode === "after_hours") && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <PhoneForwarded className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
-                    Transfer Numbers
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {formData.transferNumbers.map((tn, i) => (
-                    <div key={i} className="flex items-end gap-2 flex-wrap">
-                      <div className="flex-1 min-w-[120px]">
-                        <Label className="text-xs">Name</Label>
-                        <Input
-                          value={tn.name}
-                          onChange={(e) => updateTransferNumber(i, "name", e.target.value)}
-                          placeholder="John"
-                          data-testid={`input-transfer-name-${i}`}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-[140px]">
-                        <Label className="text-xs">Phone</Label>
-                        <Input
-                          value={tn.phone}
-                          onChange={(e) => updateTransferNumber(i, "phone", e.target.value)}
-                          placeholder="+61400000000"
-                          data-testid={`input-transfer-phone-${i}`}
-                        />
-                      </div>
-                      <div className="w-20">
-                        <Label className="text-xs">Priority</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={99}
-                          value={tn.priority}
-                          onChange={(e) => updateTransferNumber(i, "priority", parseInt(e.target.value) || 1)}
-                        />
-                      </div>
-                      <Button size="icon" variant="ghost" onClick={() => removeTransferNumber(i)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button variant="outline" size="sm" onClick={addTransferNumber}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Number
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {formData.mode === "after_hours" && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Clock className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
-                    Business Hours
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    The AI receptionist will answer calls outside these hours.
-                  </p>
-                  <div className="flex gap-3 flex-wrap">
-                    <div>
-                      <Label className="text-xs">Start</Label>
-                      <Input
-                        type="time"
-                        value={formData.businessHours.start}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            businessHours: { ...formData.businessHours, start: e.target.value },
-                          })
-                        }
-                        data-testid="input-hours-start"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">End</Label>
-                      <Input
-                        type="time"
-                        value={formData.businessHours.end}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            businessHours: { ...formData.businessHours, end: e.target.value },
-                          })
-                        }
-                        data-testid="input-hours-end"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-2 block">Timezone</Label>
-                    <Select
-                      value={formData.businessHours.timezone}
-                      onValueChange={(value) =>
-                        setFormData({
-                          ...formData,
-                          businessHours: { ...formData.businessHours, timezone: value },
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TIMEZONE_OPTIONS.map((tz) => (
-                          <SelectItem key={tz} value={tz}>
-                            {tz.replace("Australia/", "")}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-2 block">Working Days</Label>
-                    <div className="flex gap-1 flex-wrap">
-                      {DAY_NAMES.map((name, i) => (
-                        <Button
-                          key={i}
-                          variant={formData.businessHours.days.includes(i) ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => toggleBusinessDay(i)}
-                          className="min-w-[44px]"
-                        >
-                          {name}
-                        </Button>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {(formData.mode === "always_on_transfer" || formData.mode === "after_hours") && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <PhoneForwarded className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                        Transfer Numbers
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {formData.transferNumbers.map((tn, i) => (
+                        <div key={i} className="flex items-end gap-2 flex-wrap">
+                          <div className="flex-1 min-w-[120px]">
+                            <Label className="text-xs">Name</Label>
+                            <Input
+                              value={tn.name}
+                              onChange={(e) => updateTransferNumber(i, "name", e.target.value)}
+                              placeholder="John"
+                              data-testid={`input-transfer-name-${i}`}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-[140px]">
+                            <Label className="text-xs">Phone</Label>
+                            <Input
+                              value={tn.phone}
+                              onChange={(e) => updateTransferNumber(i, "phone", e.target.value)}
+                              placeholder="+61400000000"
+                              data-testid={`input-transfer-phone-${i}`}
+                            />
+                          </div>
+                          <div className="w-20">
+                            <Label className="text-xs">Priority</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={99}
+                              value={tn.priority}
+                              onChange={(e) => updateTransferNumber(i, "priority", parseInt(e.target.value) || 1)}
+                            />
+                          </div>
+                          <Button size="icon" variant="ghost" onClick={() => removeTransferNumber(i)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                      <Button variant="outline" size="sm" onClick={addTransferNumber}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Number
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {formData.mode === "after_hours" && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Clock className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                        Business Hours
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        The AI receptionist will answer calls outside these hours.
+                      </p>
+                      <div className="flex gap-3 flex-wrap">
+                        <div>
+                          <Label className="text-xs">Start</Label>
+                          <Input
+                            type="time"
+                            value={formData.businessHours.start}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                businessHours: { ...formData.businessHours, start: e.target.value },
+                              })
+                            }
+                            data-testid="input-hours-start"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">End</Label>
+                          <Input
+                            type="time"
+                            value={formData.businessHours.end}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                businessHours: { ...formData.businessHours, end: e.target.value },
+                              })
+                            }
+                            data-testid="input-hours-end"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-2 block">Timezone</Label>
+                        <Select
+                          value={formData.businessHours.timezone}
+                          onValueChange={(value) =>
+                            setFormData({
+                              ...formData,
+                              businessHours: { ...formData.businessHours, timezone: value },
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIMEZONE_OPTIONS.map((tz) => (
+                              <SelectItem key={tz} value={tz}>
+                                {tz.replace("Australia/", "")}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-2 block">Working Days</Label>
+                        <div className="flex gap-1 flex-wrap">
+                          {DAY_NAMES.map((name, i) => (
+                            <Button
+                              key={i}
+                              variant={formData.businessHours.days.includes(i) ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => toggleBusinessDay(i)}
+                              className="min-w-[44px]"
+                            >
+                              {name}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             )}
 
             <div className="flex gap-2 justify-end">
@@ -1065,56 +1074,57 @@ export default function AIReceptionist() {
           </>
         )}
 
-        {isTeam && canManageConfig && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Users className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
-                Team Availability
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Toggle which team members are available for call transfers.
-              </p>
-              {teamAvailability.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic">No team members found.</p>
-              ) : (
-                <div className="space-y-2">
-                  {teamAvailability.map((member) => (
-                    <div key={member.memberId} className="flex items-center justify-between gap-3 p-3 rounded-md border">
-                      <div>
-                        <div className="font-medium text-sm">{member.name}</div>
-                        {member.phone && <div className="text-xs text-muted-foreground">{member.phone}</div>}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {isTeam && canManageConfig && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                  Team Availability
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Toggle which team members are available for call transfers.
+                </p>
+                {teamAvailability.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">No team members found.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {teamAvailability.map((member) => (
+                      <div key={member.memberId} className="flex items-center justify-between gap-3 p-3 rounded-md border">
+                        <div>
+                          <div className="font-medium text-sm">{member.name}</div>
+                          {member.phone && <div className="text-xs text-muted-foreground">{member.phone}</div>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={
+                              member.available
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0"
+                                : ""
+                            }
+                          >
+                            {member.available ? "Available" : "Unavailable"}
+                          </Badge>
+                          <Switch
+                            checked={member.available}
+                            onCheckedChange={(checked) =>
+                              toggleAvailabilityMutation.mutate({ memberId: member.memberId, available: checked })
+                            }
+                            disabled={toggleAvailabilityMutation.isPending}
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className={
-                            member.available
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0"
-                              : ""
-                          }
-                        >
-                          {member.available ? "Available" : "Unavailable"}
-                        </Badge>
-                        <Switch
-                          checked={member.available}
-                          onCheckedChange={(checked) =>
-                            toggleAvailabilityMutation.mutate({ memberId: member.memberId, available: checked })
-                          }
-                          disabled={toggleAvailabilityMutation.isPending}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-        {canManageConfig && (
+          {canManageConfig && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -1233,6 +1243,7 @@ export default function AIReceptionist() {
             </CardContent>
           </Card>
         )}
+        </div>
 
         {canManageConfig && (
           <Card>
