@@ -1378,7 +1378,7 @@ export async function syncInventoryFromXero(userId: string): Promise<{
     const xeroItems = response.body.items || [];
 
     // Get existing catalog items
-    const existingItems = await storage.getCatalogItems(userId);
+    const existingItems = await storage.getLineItemCatalog(userId);
     const existingByXeroId = new Map(
       existingItems.filter(item => (item as any).xeroItemId)
         .map(item => [(item as any).xeroItemId, item])

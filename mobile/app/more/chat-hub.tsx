@@ -1293,9 +1293,9 @@ export default function ChatHubScreen() {
           onPress={() => {
             Alert.alert(
               'Business Number',
-              `Your number is ${twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'connected'}.\n\nThis number is used for SMS messaging here and AI Receptionist calls. You can manage it from Settings.`,
+              `Your number is ${twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'connected'}.\n\nThis number is used for SMS messaging here and AI Receptionist calls.`,
               [
-                { text: 'Settings', onPress: () => router.push('/more/settings' as any) },
+                { text: 'Phone Numbers', onPress: () => router.push('/more/phone-numbers') },
                 { text: 'OK', style: 'cancel' },
               ]
             );

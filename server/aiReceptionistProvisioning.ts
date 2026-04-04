@@ -94,7 +94,7 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
       .map(m => ({ name: `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email, role: m.role || 'team member' }));
 
     const clients = await storage.getClients(userId);
-    const catalogItems = await storage.getCatalogItems(userId);
+    const catalogItems = await storage.getLineItemCatalog(userId);
     const services = catalogItems.map(item => item.name).filter(Boolean).slice(0, 20);
 
     const assistant = await createAssistant({

@@ -458,7 +458,7 @@ export async function enableAiReceptionist(userId: string): Promise<{
     const clients = await storage.getClients(userId);
     const knownClientCount = clients.length;
 
-    const catalogItems = await storage.getCatalogItems(userId);
+    const catalogItems = await storage.getLineItemCatalog(userId);
     const services = catalogItems.map(item => item.name).filter(Boolean).slice(0, 20);
 
     const knowledgeBank = (config?.knowledgeBank || null) as KnowledgeBankContent | null;
@@ -591,7 +591,7 @@ export async function updateReceptionistConfig(userId: string, updates: {
         const clients = await storage.getClients(userId);
         const knownClientCount = clients.length;
 
-        const catalogItems = await storage.getCatalogItems(userId);
+        const catalogItems = await storage.getLineItemCatalog(userId);
         const services = catalogItems.map(item => item.name).filter(Boolean).slice(0, 20);
 
         const resolvedKB = updates.knowledgeBank || (config.knowledgeBank as KnowledgeBankContent | null) || undefined;
