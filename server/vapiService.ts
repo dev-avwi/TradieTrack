@@ -492,8 +492,13 @@ export async function enableAiReceptionist(userId: string): Promise<{
     const clients = await storage.getClients(userId);
     const knownClientCount = clients.length;
 
-    const catalogItems = await storage.getLineItemCatalog(userId);
-    const services = catalogItems.map(item => item.name).filter(Boolean).slice(0, 20);
+    let services: string[] = [];
+    try {
+      const catalogItems = await storage.getLineItemCatalog(userId);
+      services = catalogItems.map(item => item.name).filter(Boolean).slice(0, 20);
+    } catch (catalogErr) {
+      console.warn('[Vapi] Failed to fetch catalog items for assistant, continuing without:', catalogErr);
+    }
 
     const knowledgeBank = (config?.knowledgeBank || null) as KnowledgeBankContent | null;
 
@@ -647,8 +652,13 @@ export async function updateReceptionistConfig(userId: string, updates: {
         const clients = await storage.getClients(userId);
         const knownClientCount = clients.length;
 
-        const catalogItems = await storage.getLineItemCatalog(userId);
-        const services = catalogItems.map(item => item.name).filter(Boolean).slice(0, 20);
+        let services: string[] = [];
+        try {
+          const catalogItems = await storage.getLineItemCatalog(userId);
+          services = catalogItems.map(item => item.name).filter(Boolean).slice(0, 20);
+        } catch (catalogErr) {
+          console.warn('[Vapi] Failed to fetch catalog items for update, continuing without:', catalogErr);
+        }
 
         const resolvedKB = updates.knowledgeBank || (config.knowledgeBank as KnowledgeBankContent | null) || undefined;
 

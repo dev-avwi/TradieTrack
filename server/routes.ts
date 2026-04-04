@@ -41662,7 +41662,13 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       const businessOwnerId = teamMembership?.businessOwnerId || userId;
       
       const activities = await storage.getActivityFeed(businessOwnerId, limit, before);
-      res.json(activities);
+      const filtered = activities.filter((a: any) => {
+        if (a.description && typeof a.description === 'string' && a.description.includes('provisioning failed')) {
+          return false;
+        }
+        return true;
+      });
+      res.json(filtered);
     } catch (error: any) {
       console.error('Error getting activity feed:', error);
       res.status(500).json({ error: error.message });
