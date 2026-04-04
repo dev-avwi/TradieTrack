@@ -20,6 +20,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography, shadows, sizes } from '../../src/lib/design-tokens';
 
 import api from '../../src/lib/api';
+import { useAuthStore } from '../../src/lib/store';
 
 function decodeHtmlEntities(text: string): string {
   return text
@@ -45,14 +46,21 @@ interface SmsMessage {
   toNumber?: string;
 }
 
-const QUICK_REPLY_TEMPLATES = [
-  { id: 'omw', label: "On my way", icon: 'navigation' as const, message: "G'day! Just letting you know I'm on my way now. Should be there in about 20 minutes." },
-  { id: 'running-late', label: "Running late", icon: 'clock' as const, message: "Apologies, I'm running a bit behind schedule. Will be there as soon as I can - should only be another 15-20 minutes." },
-  { id: 'job-done', label: "Job done", icon: 'check' as const, message: "All done! The job's been completed. Let me know if you have any questions or need anything else." },
-  { id: 'quote-sent', label: "Quote sent", icon: 'file-text' as const, message: "I've sent through your quote. Have a look and let me know if you've got any questions or want to go ahead." },
-  { id: 'confirm', label: "Confirm", icon: 'calendar' as const, message: "Just confirming our appointment. Please reply to let me know you're still available, or give us a bell if you need to reschedule." },
-  { id: 'thanks', label: "Thanks", icon: 'heart' as const, message: "Thanks for your business mate! Really appreciate it. Don't hesitate to reach out if you need anything." },
-];
+function buildQuickReplies(clientFirstName: string, senderName: string) {
+  const hi = clientFirstName ? `Hi ${clientFirstName}` : "G'day";
+  const from = senderName ? `, ${senderName}` : '';
+  return [
+    { id: 'omw', label: "On my way", icon: 'navigation' as const, message: `${hi}, just letting you know I'm heading to you now${from}. I'll text you when I'm close.` },
+    { id: 'running-late', label: "Running late", icon: 'clock' as const, message: `${hi}, apologies — I'm running a bit behind today. I'll let you know my updated arrival time shortly${from}.` },
+    { id: 'arrived', label: "Arrived", icon: 'map-pin' as const, message: `${hi}, I've arrived at the property. Let me know if there's anything specific you'd like me to look at first.` },
+    { id: 'job-done', label: "Job done", icon: 'check' as const, message: `${hi}, the job's all done. Let me know if you have any questions or need anything else${from}.` },
+    { id: 'quote-sent', label: "Quote sent", icon: 'file-text' as const, message: `${hi}, I've sent through your quote. Have a look and let me know if you've got any questions or want to go ahead.` },
+    { id: 'invoice-sent', label: "Invoice sent", icon: 'dollar-sign' as const, message: `${hi}, your invoice has been sent through. Let me know if you have any questions about it.` },
+    { id: 'confirm', label: "Confirm appt", icon: 'calendar' as const, message: `${hi}, just confirming our upcoming appointment. Please reply to let me know you're still available, or give us a bell if you need to reschedule.` },
+    { id: 'thanks', label: "Thanks", icon: 'thumbs-up' as const, message: `${hi}, thanks for your business — really appreciate it. Don't hesitate to reach out if you need anything in the future.` },
+    { id: 'reschedule', label: "Reschedule", icon: 'refresh-cw' as const, message: `${hi}, unfortunately I need to reschedule our appointment. Could you let me know what other days/times work for you?` },
+  ];
+}
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -290,6 +298,7 @@ export default function SmsConversationScreen() {
   const { id, phone, name } = useLocalSearchParams<{ id: string; phone: string; name: string }>();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { user, businessSettings } = useAuthStore();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollRef = useRef<ScrollView>(null);
@@ -303,6 +312,9 @@ export default function SmsConversationScreen() {
 
   const clientName = name ? decodeURIComponent(name) : 'Unknown';
   const clientPhone = phone ? decodeURIComponent(phone) : '';
+  const clientFirstName = clientName.split(' ')[0] !== 'Unknown' ? clientName.split(' ')[0] : '';
+  const senderName = user?.firstName || businessSettings?.businessName || '';
+  const quickReplies = useMemo(() => buildQuickReplies(clientFirstName, senderName), [clientFirstName, senderName]);
 
   useEffect(() => {
     loadMessages();
@@ -502,13 +514,31 @@ export default function SmsConversationScreen() {
           {showQuickReplies && (
             <View style={styles.quickRepliesRow}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRepliesScroll}>
-                {QUICK_REPLY_TEMPLATES.map((template) => (
+                {quickReplies.map((template) => (
                   <TouchableOpacity
                     key={template.id}
                     style={styles.quickChip}
                     onPress={() => {
                       setMessageText(template.message);
                       setShowQuickReplies(false);
+                    }}
+                    onLongPress={() => {
+                      Alert.alert(template.label, template.message, [
+                        { text: 'Edit first', onPress: () => { setMessageText(template.message); setShowQuickReplies(false); }},
+                        { text: 'Send now', onPress: async () => {
+                          setShowQuickReplies(false);
+                          setMessageText(template.message);
+                          setIsSending(true);
+                          try {
+                            await api.post('/api/sms/send', { clientPhone, message: template.message, conversationId: id });
+                            setMessageText('');
+                            await loadMessages();
+                            scrollRef.current?.scrollToEnd({ animated: true });
+                          } catch { Alert.alert('Error', 'Failed to send SMS.'); }
+                          finally { setIsSending(false); }
+                        }},
+                        { text: 'Cancel', style: 'cancel' },
+                      ]);
                     }}
                     activeOpacity={0.7}
                   >
@@ -533,15 +563,15 @@ export default function SmsConversationScreen() {
               style={styles.zapButton}
               onPress={() => {
                 Alert.alert(
-                  'Attachments',
-                  'Choose what to attach',
+                  'Attach',
+                  'Choose what to send',
                   [
                     { text: 'Photo from Camera', onPress: () => Alert.alert('Coming Soon', 'Photo attachments via MMS will be available in a future update.') },
                     { text: 'Photo from Gallery', onPress: () => Alert.alert('Coming Soon', 'Photo attachments via MMS will be available in a future update.') },
-                    ...(conversationId ? [{ text: 'View Job Notes', onPress: () => {
+                    ...(id ? [{ text: 'View Job Notes', onPress: () => {
                       const jobId = (messages[0] as any)?.jobId;
                       if (jobId) router.push(`/job/${jobId}` as any);
-                      else Alert.alert('No Job Linked', 'This conversation is not linked to a job.');
+                      else Alert.alert('No Job Linked', 'This conversation is not linked to a specific job.');
                     }}] : []),
                     { text: 'Cancel', style: 'cancel' as const },
                   ]
