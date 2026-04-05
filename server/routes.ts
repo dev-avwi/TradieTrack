@@ -3870,7 +3870,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // For iOS, also provide universal link fallback
         const universalLink = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : ''}/mobile/verify-email?token=${encodeURIComponent(token as string)}`;
         
-        // Serve a simple HTML page that attempts deep link with fallback
+        const verifyBaseUrl = process.env.APP_DOMAIN 
+          ? `https://${process.env.APP_DOMAIN}` 
+          : process.env.REPLIT_DOMAINS 
+            ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` 
+            : '';
+        const logoUrl = `${verifyBaseUrl}/logo.png`;
         res.send(`
           <!DOCTYPE html>
           <html>
@@ -3879,35 +3884,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>Verify Email - JobRunner</title>
             <style>
+              * { box-sizing: border-box; margin: 0; padding: 0; }
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
                      display: flex; flex-direction: column; align-items: center; justify-content: center;
-                     min-height: 100vh; margin: 0; padding: 20px; background: linear-gradient(135deg, #f97316 0%, #2563eb 100%); }
-              .card { background: white; border-radius: 16px; padding: 32px; max-width: 400px; text-align: center; box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
-              h1 { color: #1f2937; margin-bottom: 8px; }
-              p { color: #6b7280; margin-bottom: 24px; }
-              .btn { display: inline-block; background: #f97316; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; }
-              .btn:hover { background: #ea580c; }
-              .secondary { margin-top: 16px; font-size: 14px; color: #6b7280; }
-              .secondary a { color: #2563eb; }
+                     min-height: 100vh; padding: 24px; background: linear-gradient(135deg, #f97316 0%, #2563eb 100%); }
+              .logo { width: 80px; height: 80px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+              .title { color: white; font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+              .subtitle { color: rgba(255,255,255,0.8); font-size: 14px; margin-bottom: 32px; }
+              .card { background: white; border-radius: 16px; padding: 28px; width: 100%; max-width: 380px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
+              .card p { color: #6b7280; font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
+              .btn { display: block; background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%); color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px; box-shadow: 0 4px 14px rgba(37,99,235,0.35); }
+              .btn:hover { opacity: 0.9; }
+              .divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
+              .divider span { flex: 1; height: 1px; background: #e5e7eb; }
+              .divider em { font-style: normal; font-size: 12px; color: #9ca3af; text-transform: uppercase; }
+              .btn-outline { display: block; border: 1px solid #d1d5db; color: #374151; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: 500; font-size: 14px; }
+              .btn-outline:hover { background: #f9fafb; }
+              .footer { margin-top: 20px; font-size: 12px; color: rgba(255,255,255,0.6); }
+              .footer a { color: white; font-weight: 500; }
+              .spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+              @keyframes spin { to { transform: rotate(360deg); } }
+              #loading-state { transition: opacity 0.3s; }
+              #fallback-state { display: none; }
             </style>
           </head>
           <body>
-            <div class="card">
-              <h1>Opening JobRunner...</h1>
-              <p>If the app doesn't open automatically, tap the button below.</p>
-              <a href="${deepLink}" class="btn">Open in App</a>
-              <div class="secondary">
-                <p>Don't have the app? <a href="/verify-email?token=${encodeURIComponent(token as string)}">Verify on web instead</a></p>
+            <img src="${logoUrl}" alt="JobRunner" class="logo" />
+            
+            <div id="loading-state">
+              <div class="spinner"></div>
+              <div class="title">Opening JobRunner...</div>
+              <div class="subtitle">If the app doesn't open, please wait a moment.</div>
+            </div>
+
+            <div id="fallback-state">
+              <div class="title" style="margin-bottom: 8px;">Verify Your Email</div>
+              <div class="subtitle">Open in the JobRunner app or continue on web.</div>
+              <div class="card">
+                <p>Tap below to verify your email in the JobRunner app.</p>
+                <a href="${deepLink}" class="btn">Open in App</a>
+                <div class="divider"><span></span><em>or</em><span></span></div>
+                <a href="/verify-email?token=${encodeURIComponent(token as string)}" class="btn-outline">Continue in Browser</a>
+              </div>
+              <div class="footer">
+                Already have the app? <a href="${deepLink}">Try opening again</a>
               </div>
             </div>
+
             <script>
-              // Try to open the app immediately
               window.location.href = "${deepLink}";
-              
-              // Fallback after 2 seconds if app didn't open
               setTimeout(function() {
-                // If we're still here, app didn't open - show the page content
-              }, 2000);
+                document.getElementById('loading-state').style.display = 'none';
+                document.getElementById('fallback-state').style.display = 'block';
+              }, 2500);
             </script>
           </body>
           </html>
