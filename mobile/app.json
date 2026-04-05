@@ -190,10 +190,6 @@
               {
                 "name": "SocketRocket",
                 "modular_headers": true
-              },
-              {
-                "name": "StripeTerminal",
-                "version": "5.1.1"
               }
             ]
           },

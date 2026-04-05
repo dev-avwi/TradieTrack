@@ -10,6 +10,7 @@
     }
   },
   "scripts": {
+    "postinstall": "npx patch-package",
     "start": "expo start",
     "tunnel": "expo start --tunnel",
     "android": "expo run:android",
