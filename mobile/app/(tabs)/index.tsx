@@ -2606,8 +2606,8 @@ function OwnerDashboardScreen() {
         </View>
       )}
 
-      {/* Time Tracking Widget - Staff Only */}
-      {roleResolved && isStaffUser && (
+      {/* Time Tracking Widget - All Users */}
+      {roleResolved && (
         <View style={styles.section}>
           <TimeTrackingWidget />
         </View>
