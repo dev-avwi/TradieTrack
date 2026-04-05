@@ -1,5 +1,5 @@
 diff --git a/node_modules/@stripe/stripe-terminal-react-native/ios/StripeTerminalReactNative.swift b/node_modules/@stripe/stripe-terminal-react-native/ios/StripeTerminalReactNative.swift
-index ce46674..0e7f2f5 100644
+index ce46674..73a1e50 100644
 --- a/node_modules/@stripe/stripe-terminal-react-native/ios/StripeTerminalReactNative.swift
 +++ b/node_modules/@stripe/stripe-terminal-react-native/ios/StripeTerminalReactNative.swift
 @@ -1218,7 +1218,6 @@ class StripeTerminalReactNative: RCTEventEmitter, DiscoveryDelegate, MobileReade
@@ -10,7 +10,7 @@ index ce46674..0e7f2f5 100644
          self.paymentIntents = [:]
          resolve([:])
      }
-@@ -1557,29 +1556,7 @@ class StripeTerminalReactNative: RCTEventEmitter, DiscoveryDelegate, MobileReade
+@@ -1557,30 +1556,7 @@ class StripeTerminalReactNative: RCTEventEmitter, DiscoveryDelegate, MobileReade
  
      @objc(supportsReadersOfType:resolver:rejecter:)
      func supportsReadersOfType(params: NSDictionary, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
@@ -37,7 +37,8 @@ index ce46674..0e7f2f5 100644
 -        case .failure(let error):
 -            resolve(["readerSupportResult": false])
 -            break
+-        }
 +        resolve(["readerSupportResult": true])
-         }
      }
  
+     @objc(getNativeSdkVersion:rejecter:)
