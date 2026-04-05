@@ -713,7 +713,7 @@ function RootLayoutContent() {
   }, [isInitialized, isLoading]);
 
   const firstSegment = segments[0] || '';
-  const navigationDone = firstSegment === '(tabs)' || firstSegment === '(auth)' || firstSegment === 'more' || firstSegment === 'job';
+  const navigationDone = firstSegment !== '';
   const ready = isInitialized && !isLoading && appReady && navigationDone;
 
   useEffect(() => {
