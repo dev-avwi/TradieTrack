@@ -71,7 +71,7 @@ export default function OnboardingSetupScreen() {
     tradeType: '',
     abn: '',
     phone: '',
-    ownerName: '',
+    ownerName: [user?.firstName, user?.lastName].filter(Boolean).join(' ') || '',
     gstEnabled: true,
     defaultHourlyRate: '120',
     calloutFee: '90',
@@ -122,6 +122,18 @@ export default function OnboardingSetupScreen() {
             defaultHourlyRate: String(settings.defaultHourlyRate || '120'),
             calloutFee: String(settings.calloutFee || '90'),
           }));
+
+          if (settings.businessName && settings.tradeType) {
+            setSelectedRole('owner');
+            if (settings.teamSize) {
+              setOwnerStep('plan');
+            } else {
+              setOwnerStep('teamSize');
+            }
+          } else if (settings.businessName) {
+            setSelectedRole('owner');
+            setOwnerStep('trade');
+          }
         }
       } catch (error) {
         console.error('Error checking onboarding status:', error);
@@ -270,6 +282,7 @@ export default function OnboardingSetupScreen() {
       }
 
       await api.post('/api/onboarding/complete', {}).catch(() => {});
+      await fetchBusinessSettings();
       
       setWorkerStep('complete');
     } catch (error: any) {
@@ -344,6 +357,7 @@ export default function OnboardingSetupScreen() {
   const handleSubPrivacyAcknowledge = async () => {
     try {
       await api.post('/api/onboarding/complete', {}).catch(() => {});
+      await fetchBusinessSettings();
       setSubStep('complete');
     } catch (error) {
       console.error('Error completing onboarding:', error);

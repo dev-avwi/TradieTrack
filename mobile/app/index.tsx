@@ -5,7 +5,7 @@ import { useAuthStore } from '../src/lib/store';
 import { useTheme } from '../src/lib/theme';
 
 export default function Index() {
-  const { isAuthenticated, isLoading, isInitialized, user } = useAuthStore();
+  const { isAuthenticated, isLoading, isInitialized, user, businessSettings } = useAuthStore();
   const { colors } = useTheme();
 
   useEffect(() => {
@@ -14,18 +14,15 @@ export default function Index() {
     if (isAuthenticated) {
       if (user?.isPlatformAdmin === true) {
         router.replace('/more/admin');
+      } else if (!businessSettings?.onboardingCompleted) {
+        router.replace('/(onboarding)/setup');
       } else {
-        const { businessSettings } = useAuthStore.getState();
-        if (!businessSettings?.onboardingCompleted) {
-          router.replace('/(onboarding)/setup');
-        } else {
-          router.replace('/(tabs)');
-        }
+        router.replace('/(tabs)');
       }
     } else {
       router.replace('/(auth)/login');
     }
-  }, [isAuthenticated, isLoading, isInitialized, user]);
+  }, [isAuthenticated, isLoading, isInitialized, user, businessSettings]);
 
   return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 }

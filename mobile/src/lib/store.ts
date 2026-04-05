@@ -278,7 +278,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       token: currentToken,
       isAuthenticated: true, 
       isLoading: false,
-      isInitialized: true,
       error: null 
     });
 
@@ -286,23 +285,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (settingsResponse.data) {
       set({ businessSettings: settingsResponse.data });
       
-      // Sync theme mode from server to ensure web and mobile stay in sync
       if (settingsResponse.data.themeMode) {
         useThemeStore.getState().initializeFromServer(settingsResponse.data.themeMode);
       }
     }
     
-    // Fetch role info for permissions
     await get().fetchRoleInfo();
     
-    // Fetch team state for FAB and features
     await get().fetchTeamState();
     
-    // Cache auth data for offline access
+    set({ isInitialized: true });
+    
     const state = get();
     await offlineStorage.cacheAuthData(state.user, state.businessSettings, state.roleInfo);
     
-    // Trigger full data sync for offline access
     await offlineStorage.fullSync();
 
     return true;
@@ -488,26 +484,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isWorker: isWorkerUser,
       isAuthenticated: true, 
       isLoading: false,
-      isInitialized: true 
     });
 
     const settingsResponse = await api.get<BusinessSettings>('/api/business-settings');
     if (settingsResponse.data) {
       set({ businessSettings: settingsResponse.data });
       
-      // Sync theme mode from server to ensure web and mobile stay in sync
       if (settingsResponse.data.themeMode) {
         useThemeStore.getState().initializeFromServer(settingsResponse.data.themeMode);
       }
     }
     
-    // Fetch role info for permissions
     await get().fetchRoleInfo();
     
-    // Fetch team state for FAB and features
     await get().fetchTeamState();
     
-    // Update cached auth data
+    set({ isInitialized: true });
+    
     const currentState = get();
     await offlineStorage.cacheAuthData(currentState.user, currentState.businessSettings, currentState.roleInfo);
   },
