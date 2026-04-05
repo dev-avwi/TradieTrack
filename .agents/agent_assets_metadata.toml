@@ -12,3 +12,9 @@ id = "Hvqb29wXqaHUWiaq5xyvO"
 uri = "file://apptest-login-scenario.json"
 type = "unspecified"
 title = "Apptest.ai Login Scenario"
+
+[[outputs]]
+id = "WU1EBw2ENihi05uOZeMGe"
+uri = "file://JobRunner-Mobile-UI-UX-Audit-Document.md"
+type = "text"
+title = "JobRunner Mobile App — Complete UI/UX Design Document"
