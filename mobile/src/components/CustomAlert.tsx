@@ -37,32 +37,24 @@ export function useCustomAlert() {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 48, 340);
 
-const BUTTON_COLORS = {
-  default: '#1c1c1e',
-  cancel: '#8e8e93',
-  destructive: '#ff3b30',
-  primary: '#2563eb',
-  success: '#22c55e',
-};
-
-function getButtonStyle(btn: AlertButton, index: number, total: number, isDark: boolean) {
+function getButtonStyle(btn: AlertButton, isDark: boolean) {
   const isCancel = btn.style === 'cancel';
   const isDestructive = btn.style === 'destructive';
 
   if (isCancel) {
     return {
-      bg: isDark ? '#3a3a3c' : '#f2f2f7',
+      bg: isDark ? 'rgba(120,120,128,0.32)' : 'rgba(120,120,128,0.16)',
       text: isDark ? '#ffffff' : '#1c1c1e',
     };
   }
   if (isDestructive) {
     return {
-      bg: isDark ? '#ff453a' : BUTTON_COLORS.destructive,
+      bg: isDark ? 'rgba(255,59,48,0.85)' : 'rgba(255,59,48,0.9)',
       text: '#ffffff',
     };
   }
   return {
-    bg: isDark ? '#ffffff' : BUTTON_COLORS.default,
+    bg: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(28,28,30,0.85)',
     text: isDark ? '#000000' : '#ffffff',
   };
 }
@@ -77,13 +69,13 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 180,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 9,
-        tension: 120,
+        friction: 8,
+        tension: 100,
         useNativeDriver: true,
       }),
     ]).start();
@@ -93,12 +85,12 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 120,
+        duration: 140,
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 0.95,
-        duration: 120,
+        duration: 140,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -120,10 +112,41 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
 
   const showButtonsInRow = orderedButtons.length <= 2;
 
-  const blurTint = isDark ? 'systemThickMaterialDark' as const : 'systemThickMaterialLight' as const;
-  const cardBg = isDark ? 'rgba(44,44,46,0.92)' : 'rgba(255,255,255,0.92)';
   const titleColor = isDark ? '#ffffff' : '#1c1c1e';
-  const messageColor = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(60,60,67,0.85)';
+  const messageColor = isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.75)';
+
+  const renderContent = () => (
+    <>
+      <View style={styles.contentSection}>
+        <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
+        {config.message ? (
+          <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
+        ) : null}
+      </View>
+
+      <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
+        {orderedButtons.map((btn, i) => {
+          const btnStyle = getButtonStyle(btn, isDark);
+          return (
+            <TouchableOpacity
+              key={i}
+              style={[
+                styles.filledButton,
+                showButtonsInRow && styles.filledButtonFlex,
+                { backgroundColor: btnStyle.bg },
+              ]}
+              onPress={() => dismiss(btn.onPress || undefined)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filledButtonText, { color: btnStyle.text }]}>
+                {btn.text || 'OK'}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </>
+  );
 
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent>
@@ -131,7 +154,7 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
         <View style={styles.overlayBackground} />
         <Animated.View
           style={[
-            styles.alertContainer,
+            styles.alertOuter,
             {
               opacity: fadeAnim,
               transform: [{ scale: scaleAnim }],
@@ -139,68 +162,33 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
           ]}
         >
           {Platform.OS === 'ios' ? (
-            <BlurView intensity={80} tint={blurTint} style={styles.blurWrap}>
-              <View style={[styles.cardOverlay, { backgroundColor: cardBg }]}>
-                <View style={styles.contentSection}>
-                  <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
-                  {config.message ? (
-                    <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
-                  ) : null}
-                </View>
-
-                <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
-                  {orderedButtons.map((btn, i) => {
-                    const btnStyle = getButtonStyle(btn, i, orderedButtons.length, isDark);
-                    return (
-                      <TouchableOpacity
-                        key={i}
-                        style={[
-                          styles.filledButton,
-                          showButtonsInRow && styles.filledButtonFlex,
-                          { backgroundColor: btnStyle.bg },
-                        ]}
-                        onPress={() => dismiss(btn.onPress || undefined)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.filledButtonText, { color: btnStyle.text }]}>
-                          {btn.text || 'OK'}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+            <BlurView
+              intensity={60}
+              tint={isDark ? 'dark' as const : 'light' as const}
+              style={styles.glassCard}
+            >
+              <View style={[
+                styles.glassOverlay,
+                {
+                  backgroundColor: isDark
+                    ? 'rgba(44,44,46,0.45)'
+                    : 'rgba(255,255,255,0.55)',
+                  borderColor: isDark
+                    ? 'rgba(255,255,255,0.08)'
+                    : 'rgba(255,255,255,0.6)',
+                },
+              ]}>
+                {renderContent()}
               </View>
             </BlurView>
           ) : (
-            <View style={[styles.cardOverlay, { backgroundColor: isDark ? '#2c2c2e' : '#ffffff' }]}>
-              <View style={styles.contentSection}>
-                <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
-                {config.message ? (
-                  <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
-                ) : null}
-              </View>
-
-              <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
-                {orderedButtons.map((btn, i) => {
-                  const btnStyle = getButtonStyle(btn, i, orderedButtons.length, isDark);
-                  return (
-                    <TouchableOpacity
-                      key={i}
-                      style={[
-                        styles.filledButton,
-                        showButtonsInRow && styles.filledButtonFlex,
-                        { backgroundColor: btnStyle.bg },
-                      ]}
-                      onPress={() => dismiss(btn.onPress || undefined)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.filledButtonText, { color: btnStyle.text }]}>
-                        {btn.text || 'OK'}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+            <View style={[
+              styles.androidCard,
+              {
+                backgroundColor: isDark ? '#2c2c2e' : '#ffffff',
+              },
+            ]}>
+              {renderContent()}
             </View>
           )}
         </Animated.View>
@@ -262,36 +250,41 @@ const styles = StyleSheet.create({
   },
   overlayBackground: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
-  alertContainer: {
+  alertOuter: {
     width: ALERT_WIDTH,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
-        shadowRadius: 30,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.25,
+        shadowRadius: 40,
       },
       android: {
         elevation: 24,
       },
     }),
   },
-  blurWrap: {
+  glassCard: {
+    borderRadius: 20,
     overflow: 'hidden',
-    borderRadius: 16,
   },
-  cardOverlay: {
-    borderRadius: 16,
+  glassOverlay: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  androidCard: {
+    borderRadius: 20,
     overflow: 'hidden',
   },
   contentSection: {
     paddingHorizontal: 22,
     paddingTop: 22,
-    paddingBottom: 20,
+    paddingBottom: 18,
   },
   title: {
     fontSize: 18,
@@ -300,9 +293,9 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   message: {
-    fontSize: 15,
-    marginTop: 6,
-    lineHeight: 21,
+    fontSize: 14.5,
+    marginTop: 8,
+    lineHeight: 20,
     letterSpacing: -0.1,
   },
   buttonsRow: {
