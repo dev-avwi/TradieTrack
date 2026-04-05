@@ -5614,7 +5614,8 @@ export default function JobDetailScreen() {
   }
 
   const rawAction = STATUS_ACTIONS[job.status];
-  const action = isSubcontractorUser && rawAction?.next === 'invoiced' ? null : rawAction;
+  const canCreateInvoices = isOwnerOrManager || isSoloOwner || (typeof hasPermission === 'function' && hasPermission('create_invoices'));
+  const action = (!canCreateInvoices && rawAction?.next === 'invoiced') ? null : rawAction;
   const statusColor = getStatusColor(job.status);
   const clientInitials = client?.name ? client.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
 
@@ -5622,7 +5623,7 @@ export default function JobDetailScreen() {
     { id: 'overview' as const, label: 'Info', icon: 'briefcase' as const },
     { id: 'documents' as const, label: 'Docs', icon: 'file-text' as const },
     { id: 'chat' as const, label: 'Chat', icon: 'message-circle' as const },
-    { id: 'manage' as const, label: 'More', icon: 'settings' as const },
+    ...((isOwnerOrManager || isSoloOwner) ? [{ id: 'manage' as const, label: 'More', icon: 'settings' as const }] : []),
   ];
 
   const renderOverviewTab = () => (

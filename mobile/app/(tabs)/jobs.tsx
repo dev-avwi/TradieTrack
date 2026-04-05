@@ -20,7 +20,7 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useContentWidth, isTablet } from '../../src/lib/device';
 import { Feather } from '@expo/vector-icons';
-import { useJobsStore, useClientsStore } from '../../src/lib/store';
+import { useJobsStore, useClientsStore, useAuthStore } from '../../src/lib/store';
 import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { XeroBadge } from '../../src/components/ui/XeroBadge';
@@ -307,7 +307,16 @@ export default function JobsScreen() {
   
   const { jobs, fetchJobs, isLoading, updateJobStatus } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
+  const { roleInfo, hasPermission, businessSettings, user } = useAuthStore();
   const params = useLocalSearchParams<{ filter?: string }>();
+
+  const isOwnerOrManager = roleInfo
+    ? (roleInfo.isOwner || roleInfo.roleName?.toLowerCase() === 'manager' || roleInfo.roleName?.toLowerCase() === 'admin')
+    : false;
+  const isSoloOwner = user && businessSettings && (!roleInfo || roleInfo.isOwner);
+  const canWriteJobs = isOwnerOrManager || isSoloOwner;
+  const canCreateQuotes = isOwnerOrManager || isSoloOwner || (typeof hasPermission === 'function' && hasPermission('create_quotes'));
+  const canCreateInvoices = isOwnerOrManager || isSoloOwner || (typeof hasPermission === 'function' && hasPermission('create_invoices'));
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState(params.filter || 'all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -575,27 +584,29 @@ export default function JobsScreen() {
     if (job.status === 'in_progress') {
       acts.push({ icon: 'check-circle', label: 'Complete Job', onPress: () => handleQuickAction('complete', job.id) });
     }
-    if (job.status !== 'invoiced') {
+    if (canCreateQuotes && job.status !== 'invoiced') {
       acts.push({ icon: 'file-text', label: 'Create Quote', onPress: () => router.push(`/more/quote/new?jobId=${job.id}`) });
     }
-    if (job.status === 'done') {
+    if (canCreateInvoices && job.status === 'done') {
       acts.push({ icon: 'file', label: 'Create Invoice', onPress: () => router.push(`/more/invoice/new?jobId=${job.id}`) });
     }
-    acts.push({
-      icon: 'trash-2',
-      label: 'Delete Job',
-      destructive: true,
-      onPress: () => Alert.alert(
-        'Delete Job',
-        `Delete "${job.title || 'Untitled Job'}"? This cannot be undone.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: () => handleDeleteJob(job.id) },
-        ]
-      ),
-    });
+    if (canWriteJobs) {
+      acts.push({
+        icon: 'trash-2',
+        label: 'Delete Job',
+        destructive: true,
+        onPress: () => Alert.alert(
+          'Delete Job',
+          `Delete "${job.title || 'Untitled Job'}"? This cannot be undone.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: () => handleDeleteJob(job.id) },
+          ]
+        ),
+      });
+    }
     return acts;
-  }, [handleQuickAction, handleDeleteJob]);
+  }, [handleQuickAction, handleDeleteJob, canCreateQuotes, canCreateInvoices, canWriteJobs]);
 
   useEffect(() => {
     refreshData();
@@ -792,13 +803,15 @@ export default function JobsScreen() {
               <Feather name="list" size={iconSizes.md} color={viewMode === 'list' ? colors.primary : colors.mutedForeground} />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.newJobButton}
-            onPress={navigateToCreateJob}
-          >
-            <Feather name="plus" size={iconSizes.lg} color={colors.white} />
-          </TouchableOpacity>
+          {canWriteJobs && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.newJobButton}
+              onPress={navigateToCreateJob}
+            >
+              <Feather name="plus" size={iconSizes.lg} color={colors.white} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
