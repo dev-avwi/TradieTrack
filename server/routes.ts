@@ -3541,9 +3541,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
+      const user = await storage.getUser(effectiveUserId);
+      const ownSettings = await storage.getBusinessSettings(effectiveUserId);
+
+      const businesses: any[] = [];
+
+      if (ownSettings?.businessName) {
+        let ownJobCount = 0;
+        try {
+          const ownJobs = await storage.getJobs(effectiveUserId);
+          ownJobCount = ownJobs.filter((j) =>
+            j.status === 'pending' || j.status === 'scheduled'
+          ).length;
+        } catch (err) {}
+
+        businesses.push({
+          businessOwnerId: effectiveUserId,
+          businessName: ownSettings.businessName,
+          roleName: 'Owner',
+          teamMemberId: null,
+          logoUrl: ownSettings.logoUrl || null,
+          pendingJobCount: ownJobCount,
+          isOwnBusiness: true,
+        });
+      }
+
       const memberships = await storage.getAllTeamMembershipsByMemberId(effectiveUserId);
       
-      const businesses = await Promise.all(memberships.map(async (m) => {
+      const teamBusinesses = await Promise.all(memberships.map(async (m) => {
         const ownerSettings = await storage.getBusinessSettings(m.businessOwnerId);
         const ownerUser = await storage.getUser(m.businessOwnerId);
         const role = m.roleId ? await storage.getUserRole(m.roleId) : null;
@@ -3566,13 +3591,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           teamMemberId: m.id,
           logoUrl: ownerSettings?.logoUrl || null,
           pendingJobCount,
+          isOwnBusiness: false,
         };
       }));
+
+      businesses.push(...teamBusinesses);
       
-      const user = await storage.getUser(effectiveUserId);
       res.json({
         businesses,
-        activeBusinessId: user?.activeBusinessId || (businesses.length > 0 ? businesses[0].businessOwnerId : null),
+        activeBusinessId: user?.activeBusinessId || effectiveUserId,
       });
     } catch (error) {
       console.error("Get businesses error:", error);
@@ -3593,6 +3620,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
+      if (businessId === effectiveUserId) {
+        await storage.updateUser(effectiveUserId, { activeBusinessId: null } as any);
+        return res.json({ success: true, activeBusinessId: effectiveUserId });
+      }
+
       const membership = await storage.getTeamMemberByUserIdAndBusiness(effectiveUserId, businessId);
       if (!membership || membership.inviteStatus !== 'accepted') {
         return res.status(403).json({ error: "You are not an active member of this business" });

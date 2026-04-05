@@ -24,9 +24,10 @@ interface Business {
   businessOwnerId: string;
   businessName: string;
   roleName: string;
-  teamMemberId: string;
+  teamMemberId: string | null;
   logoUrl?: string;
   pendingJobCount?: number;
+  isOwnBusiness?: boolean;
 }
 
 interface PendingInvite {
@@ -265,7 +266,7 @@ export function WorkspaceSwitcher({ visible, onClose, onSwitch }: WorkspaceSwitc
                         <Image source={{ uri: biz.logoUrl }} style={styles.logoImage} />
                       ) : (
                         <Feather
-                          name="briefcase"
+                          name={biz.isOwnBusiness ? "home" : "briefcase"}
                           size={20}
                           color={isActive ? colors.primaryForeground : colors.primary}
                         />

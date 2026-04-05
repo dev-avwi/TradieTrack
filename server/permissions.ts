@@ -150,9 +150,11 @@ export async function getUserContext(userId: string): Promise<UserContext> {
   let teamMembership;
   if (activeBusinessId) {
     teamMembership = await storage.getTeamMemberByUserIdAndBusiness(userId, activeBusinessId);
-  }
-  if (!teamMembership) {
-    teamMembership = await storage.getTeamMembershipByMemberId(userId);
+  } else {
+    const ownSettings = await storage.getBusinessSettings(userId);
+    if (!ownSettings?.businessName) {
+      teamMembership = await storage.getTeamMembershipByMemberId(userId);
+    }
   }
   
   if (teamMembership && teamMembership.inviteStatus === 'accepted') {
