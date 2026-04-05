@@ -17,6 +17,12 @@ export default function ReceiptLayout() {
         gestureDirection: 'horizontal',
         presentation: 'card',
         freezeOnBlur: true,
+        headerRightContainerStyle: {
+          backgroundColor: 'transparent',
+        },
+        headerLeftContainerStyle: {
+          backgroundColor: 'transparent',
+        },
       }}
     />
   );

@@ -27,6 +27,12 @@ export default function MoreLayout() {
         animationDuration: 220,
         presentation: 'card',
         freezeOnBlur: true,
+        headerRightContainerStyle: {
+          backgroundColor: 'transparent',
+        },
+        headerLeftContainerStyle: {
+          backgroundColor: 'transparent',
+        },
       }}
     >
     </Stack>

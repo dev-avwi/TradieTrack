@@ -20,6 +20,14 @@ export const getNavigationConfig = (colors: any, options?: {
       backgroundColor: colors.background,
     },
     headerTintColor: colors.foreground,
+    headerPressColor: 'transparent' as const,
+    headerPressOpacity: 1,
+    headerRightContainerStyle: {
+      backgroundColor: 'transparent',
+    },
+    headerLeftContainerStyle: {
+      backgroundColor: 'transparent',
+    },
   };
 };
 

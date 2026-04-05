@@ -28,6 +28,12 @@ export default function JobLayout() {
         gestureDirection: 'horizontal',
         presentation: 'card',
         freezeOnBlur: true,
+        headerRightContainerStyle: {
+          backgroundColor: 'transparent',
+        },
+        headerLeftContainerStyle: {
+          backgroundColor: 'transparent',
+        },
       }}
     >
       <Stack.Screen name="[id]" options={{ headerShown: isIOS }} />

@@ -17,6 +17,12 @@ export default function ClientLayout() {
         gestureDirection: 'horizontal',
         presentation: 'card',
         freezeOnBlur: true,
+        headerRightContainerStyle: {
+          backgroundColor: 'transparent',
+        },
+        headerLeftContainerStyle: {
+          backgroundColor: 'transparent',
+        },
       }}
     />
   );
