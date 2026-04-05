@@ -273,6 +273,7 @@ function LiveOpsTab() {
   const [inviteLastName, setInviteLastName] = useState("");
   const [inviteRoleId, setInviteRoleId] = useState("");
   const [invitePhone, setInvitePhone] = useState("");
+  const [inviteHourlyRate, setInviteHourlyRate] = useState("");
 
   const { data: presence = [], isLoading: presenceLoading } = useQuery<TeamPresenceData[]>({
     queryKey: ["/api/team/presence"],
@@ -295,7 +296,7 @@ function LiveOpsTab() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: async (data: { email: string; firstName: string; lastName: string; roleId: string; phone?: string }) => {
+    mutationFn: async (data: { email: string; firstName: string; lastName: string; roleId: string; phone?: string; hourlyRate?: number }) => {
       const response = await apiRequest('POST', '/api/team/members/invite', data);
       return response.json();
     },
@@ -308,6 +309,7 @@ function LiveOpsTab() {
       setInviteLastName("");
       setInviteRoleId("");
       setInvitePhone("");
+      setInviteHourlyRate("");
     },
     onError: (error: any) => {
       toast({ title: "Failed to send invite", description: error.message, variant: "destructive" });
@@ -1117,6 +1119,18 @@ function LiveOpsTab() {
               )}
             </div>
             <div className="space-y-2">
+              <Label htmlFor="hourlyRate">Hourly Rate</Label>
+              <Input
+                id="hourlyRate"
+                type="number"
+                value={inviteHourlyRate}
+                onChange={(e) => setInviteHourlyRate(e.target.value)}
+                placeholder="e.g. 85"
+                data-testid="input-invite-hourlyrate"
+              />
+              <p className="text-xs text-muted-foreground">Used for time tracking and invoice labour calculations</p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <Select value={inviteRoleId} onValueChange={setInviteRoleId}>
                 <SelectTrigger data-testid="select-invite-role">
@@ -1145,6 +1159,7 @@ function LiveOpsTab() {
                     lastName: inviteLastName,
                     roleId: inviteRoleId,
                     phone: invitePhone.trim() || undefined,
+                    hourlyRate: inviteHourlyRate ? parseFloat(inviteHourlyRate) : undefined,
                   });
                 }
               }}
@@ -1833,15 +1848,16 @@ function TeamAdminTab() {
               })()}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="hourlyRate">Hourly Rate (optional)</Label>
+              <Label htmlFor="hourlyRate">Hourly Rate</Label>
               <Input
                 id="hourlyRate"
                 type="number"
                 value={inviteHourlyRate}
                 onChange={(e) => setInviteHourlyRate(e.target.value)}
-                placeholder="45.00"
+                placeholder="e.g. 85"
                 data-testid="input-invite-hourlyrate"
               />
+              <p className="text-xs text-muted-foreground">Used for time tracking and invoice labour calculations</p>
             </div>
           </div>
           <DialogFooter>
