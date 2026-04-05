@@ -292,6 +292,8 @@ interface MenuItemProps {
   badge?: string;
   badgeBg?: string;
   badgeColor?: string;
+  locked?: boolean;
+  lockReason?: string;
 }
 
 function MenuItem({ 
@@ -306,25 +308,43 @@ function MenuItem({
   badge,
   badgeBg,
   badgeColor,
+  locked = false,
+  lockReason,
 }: MenuItemProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const effectiveIconBg = iconBg || colors.primaryLight;
-  const effectiveIconColor = iconColor || colors.primary;
-  const effectiveBadgeBg = badgeBg || colors.successLight;
-  const effectiveBadgeColor = badgeColor || colors.success;
+  const effectiveIconBg = locked ? (colors.muted || '#f3f4f6') : (iconBg || colors.primaryLight);
+  const effectiveIconColor = locked ? colors.mutedForeground : (iconColor || colors.primary);
+  const effectiveBadgeBg = locked ? colors.warningLight : (badgeBg || colors.successLight);
+  const effectiveBadgeColor = locked ? colors.warning : (badgeColor || colors.success);
+  
+  const handlePress = () => {
+    if (locked) {
+      Alert.alert(
+        'Upgrade Required',
+        lockReason || 'This feature requires a plan upgrade. Start a free trial to unlock it.',
+        [
+          { text: 'Maybe Later', style: 'cancel' },
+          { text: 'View Plans', onPress: () => router.push('/more/subscription' as any) },
+        ]
+      );
+    } else {
+      onPress();
+    }
+  };
   
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={0.7}
       style={[
         styles.menuItem,
-        !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }
+        !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+        locked && { opacity: 0.6 }
       ]}
     >
       <View style={[styles.menuItemIcon, { backgroundColor: effectiveIconBg }]}>
-        <Feather name={icon} size={iconSizes.lg} color={effectiveIconColor} />
+        <Feather name={locked ? 'lock' : icon} size={iconSizes.lg} color={effectiveIconColor} />
       </View>
       <View style={styles.menuItemContent}>
         <View style={styles.menuItemTitleRow}>
@@ -345,9 +365,9 @@ function MenuItem({
         )}
       </View>
       <Feather 
-        name="chevron-right" 
+        name={locked ? 'lock' : 'chevron-right'} 
         size={iconSizes.lg} 
-        color={destructive ? colors.destructive : colors.mutedForeground} 
+        color={locked ? colors.warning : (destructive ? colors.destructive : colors.mutedForeground)} 
       />
     </TouchableOpacity>
   );
@@ -578,6 +598,8 @@ export default function MoreScreen() {
                 badgeColor={badgeColorValues.fg}
                 onPress={() => handleNavItemPress(item)}
                 isLast={isLast}
+                locked={item.locked}
+                lockReason={item.lockReason}
               />
             );
           })}
@@ -804,6 +826,8 @@ export default function MoreScreen() {
                   badgeBg={badgeColorValues.bg}
                   badgeColor={badgeColorValues.fg}
                   onPress={() => handleNavItemPress(item)}
+                  locked={item.locked}
+                  lockReason={item.lockReason}
                 />
               );
             })}

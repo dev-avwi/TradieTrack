@@ -15,7 +15,12 @@ export default function Index() {
       if (user?.isPlatformAdmin === true) {
         router.replace('/more/admin');
       } else {
-        router.replace('/(tabs)');
+        const { businessSettings } = useAuthStore.getState();
+        if (!businessSettings?.onboardingCompleted) {
+          router.replace('/(onboarding)/setup');
+        } else {
+          router.replace('/(tabs)');
+        }
       }
     } else {
       router.replace('/(auth)/login');

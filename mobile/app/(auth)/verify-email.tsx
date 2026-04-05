@@ -50,7 +50,12 @@ export default function VerifyEmailScreen() {
         await checkAuth();
         
         setTimeout(() => {
-          router.replace('/(tabs)' as const);
+          const { businessSettings } = useAuthStore.getState();
+          if (!businessSettings?.onboardingCompleted) {
+            router.replace('/(onboarding)/setup' as const);
+          } else {
+            router.replace('/(tabs)' as const);
+          }
         }, 2000);
       }
     } catch (err: any) {

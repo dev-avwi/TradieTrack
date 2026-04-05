@@ -16,6 +16,9 @@ export interface NavItem {
   hideForStaff?: boolean;
   hideInSimpleMode?: boolean;
   requiresProPlan?: boolean;
+  showLockedIfNoAccess?: boolean;
+  locked?: boolean;
+  lockReason?: string;
   allowedRoles?: UserRole[];
   showInBottomNav?: boolean;
   showInMore?: boolean;
@@ -46,6 +49,7 @@ export const mainMenuItems: NavItem[] = [
     bgColor: "primary",
     requiresOwnerOrManager: true,
     requiresProPlan: true,
+    showLockedIfNoAccess: true,
     hideForStaff: true,
     showInMore: true,
     category: "featured",
@@ -143,10 +147,10 @@ export const mainMenuItems: NavItem[] = [
     requiresTeam: false,
     requiresOwnerOrManager: false,
     hideForStaff: true,
-    hideInSimpleMode: true,
     showInMore: true,
     category: "team",
     allowedRoles: ['owner', 'solo_owner', 'manager'],
+    showLockedIfNoAccess: true,
   },
   {
     title: "Chat",
@@ -303,10 +307,9 @@ export const settingsMenuItems: NavItem[] = [
     description: "Business details and preferences",
     color: "primary",
     bgColor: "primary",
-    hideForStaff: true,
     showInMore: true,
     category: "settings",
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor'],
   },
   {
     title: "Integrations",
@@ -396,14 +399,13 @@ export const accountMenuItems: NavItem[] = [
     title: "Subscription",
     url: "/more/subscription",
     icon: "star",
-    description: "All features included",
+    description: "Manage plan, upgrade, or start free trial",
     color: "warning",
     bgColor: "warning",
     badge: "Free",
-    hideForStaff: true,
     showInMore: true,
     category: "account",
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor'],
   },
   {
     title: "Delete Account",
@@ -457,48 +459,65 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
   const isOwnerOrManager = options.isOwner || options.isManager;
   const isStaffTradie = (options.isTradie || options.isSubcontractor) && !isOwnerOrManager;
   
-  return items.filter(item => {
-    // Platform admin only items
+  const results: NavItem[] = [];
+  
+  for (const rawItem of items) {
+    const item = { ...rawItem };
+    
     if (item.requiresPlatformAdmin && !options.isPlatformAdmin) {
-      return false;
+      continue;
     }
     
-    // Use allowedRoles if specified (new permission system)
-    // Match web's filtering logic from client/src/lib/navigation-config.ts
     if (item.allowedRoles && options.userRole) {
       if (!item.allowedRoles.includes(options.userRole)) {
-        return false;
+        continue;
       }
     }
     
-    // Hide from staff tradies (staff who are not owners/managers)
     if (item.hideForStaff && isStaffTradie) {
-      return false;
+      continue;
     }
 
-    // Hide items when simple/solo operator mode is active
     if (item.hideInSimpleMode && options.isSimpleMode) {
-      return false;
+      if (item.showLockedIfNoAccess) {
+        item.locked = true;
+        item.lockReason = 'Upgrade to Team plan to unlock this feature.';
+        item.badge = 'Team';
+      } else {
+        continue;
+      }
     }
 
-    // Hide items that require Pro plan
     if (item.requiresProPlan && options.hasProSubscription === false) {
-      return false;
+      if (item.showLockedIfNoAccess) {
+        item.locked = true;
+        item.lockReason = 'Upgrade to Pro to unlock this feature. Start a free trial today.';
+        item.badge = 'Pro';
+      } else {
+        continue;
+      }
     }
     
-    // Legacy checks for backwards compatibility
     if (item.requiresTeam && !options.isTeam) {
-      return false;
+      if (item.showLockedIfNoAccess) {
+        item.locked = true;
+        item.lockReason = 'Upgrade to Team plan to unlock this feature.';
+        item.badge = 'Team';
+      } else {
+        continue;
+      }
     }
     if (item.requiresOwnerOrManager && !isOwnerOrManager) {
-      return false;
+      continue;
     }
     if (item.hideForTradie && isStaffTradie) {
-      return false;
+      continue;
     }
     
-    return true;
-  });
+    results.push(item);
+  }
+  
+  return results;
 }
 
 export function getBottomNavItems(options: FilterOptions): NavItem[] {
@@ -810,8 +829,7 @@ export const sidebarSettingsItems: SidebarNavItem[] = [
     path: '/more/settings',
     matchPaths: ['/more/settings', '/more/business-settings', '/more/app-settings', '/more/subscription', '/more/notifications', '/more/notification-preferences', '/more/ai-assistant', '/more/profile-edit'],
     section: 'settings',
-    hideForStaff: true,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
+    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor'],
   },
 ];
 
