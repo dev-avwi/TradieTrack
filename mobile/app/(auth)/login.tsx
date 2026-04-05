@@ -12,6 +12,7 @@ import {
   Image,
   ActivityIndicator
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useAuthStore } from '../../src/lib/store';
@@ -32,6 +33,7 @@ try {
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [resendingVerification, setResendingVerification] = useState(false);
@@ -347,27 +349,39 @@ export default function LoginScreen() {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your password"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    clearError();
-                  }}
-                  secureTextEntry={true}
-                  textContentType="oneTimeCode"
-                  autoComplete="off"
-                  autoCorrect={false}
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  returnKeyType="done"
-                  blurOnSubmit={true}
-                  enablesReturnKeyAutomatically={false}
-                  onSubmitEditing={handleLogin}
-                  testID="input-password"
-                />
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="Enter your password"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={password}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      clearError();
+                    }}
+                    secureTextEntry={!showPassword}
+                    textContentType="oneTimeCode"
+                    autoComplete="off"
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    returnKeyType="done"
+                    blurOnSubmit={true}
+                    enablesReturnKeyAutomatically={false}
+                    onSubmitEditing={handleLogin}
+                    testID="input-password"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeButton}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color={colors.mutedForeground}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {error ? (
@@ -574,6 +588,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: 12,
     color: colors.foreground,
     fontSize: 16,
+  },
+  passwordContainer: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    height: 52,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: colors.foreground,
+  },
+  eyeButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   errorContainer: {
     padding: 12,
