@@ -7782,8 +7782,9 @@ Be specific about materials, colors, and features that would be included.`
       
       const materialsCost = materialsCostFromExpenses + materialsCostFromMaterials;
       
-      // Get time entries for labour cost using actual rates
-      const timeEntries = await storage.getTimeEntries(userContext.effectiveUserId, job.id);
+      // Get time entries for labour cost using actual rates (all team members)
+      const completedEntries = await storage.getTimeEntriesForJob(job.id);
+      const timeEntries = completedEntries;
       const totalMinutes = timeEntries.reduce((sum, t) => {
         if (t.startTime && t.endTime) {
           return sum + Math.floor((new Date(t.endTime).getTime() - new Date(t.startTime).getTime()) / 60000);
@@ -27441,12 +27442,27 @@ Respond with JSON in this format:
     try {
       const userId = req.userId!;
       const jobId = req.query.jobId as string | undefined;
+      const teamView = req.query.teamView === 'true';
       
-      const timeEntries = await storage.getTimeEntries(userId, jobId);
+      let timeEntriesList: any[];
+      if (jobId && teamView) {
+        const userContext = await getUserContext(userId);
+        const job = await storage.getJob(jobId, userContext.effectiveUserId);
+        if (!job) {
+          return res.status(404).json({ error: 'Job not found' });
+        }
+        const completed = await storage.getTimeEntriesForJob(jobId);
+        const active = await storage.getActiveTimeEntriesForJob(jobId);
+        timeEntriesList = [...completed, ...active].sort((a, b) => 
+          new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+        );
+      } else {
+        timeEntriesList = await storage.getTimeEntries(userId, jobId);
+      }
       
       const userCache = new Map<string, any>();
       const jobCache = new Map<string, any>();
-      const enriched = await Promise.all(timeEntries.map(async (entry: any) => {
+      const enriched = await Promise.all(timeEntriesList.map(async (entry: any) => {
         let userName = null;
         if (entry.userId) {
           if (!userCache.has(entry.userId)) {
@@ -27481,6 +27497,100 @@ Respond with JSON in this format:
     } catch (error) {
       console.error('Error fetching time entries:', error);
       res.status(500).json({ error: 'Failed to fetch time entries' });
+    }
+  });
+
+  // Get all active team timers for a specific job (shows who's on-site, their elapsed time, break status)
+  app.get("/api/time-entries/job-team-timers/:jobId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const activeEntries = await storage.getActiveTimeEntriesForJob(jobId);
+      
+      const enriched = await Promise.all(activeEntries.map(async (entry: any) => {
+        let workerName = 'Unknown';
+        let workerAvatar = null;
+        if (entry.userId) {
+          const u = await storage.getUser(entry.userId);
+          if (u) {
+            workerName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.name || u.email;
+            workerAvatar = u.avatar || u.profileImageUrl || null;
+          }
+        }
+        const now = new Date().getTime();
+        const startMs = entry.startTime ? new Date(entry.startTime).getTime() : now;
+        const elapsedMs = now - startMs;
+        const pausedMs = entry.pausedDuration ? Number(entry.pausedDuration) * 60 * 1000 : 0;
+        let currentPauseMs = 0;
+        if (entry.isPaused && entry.pausedAt) {
+          currentPauseMs = now - new Date(entry.pausedAt).getTime();
+        }
+        const effectiveMs = Math.max(0, elapsedMs - pausedMs - currentPauseMs);
+        return {
+          id: entry.id,
+          userId: entry.userId,
+          workerName,
+          workerAvatar,
+          startTime: entry.startTime,
+          isPaused: entry.isPaused || false,
+          pausedDuration: entry.pausedDuration,
+          isBreak: entry.isBreak || false,
+          elapsedMinutes: Math.floor(effectiveMs / (1000 * 60)),
+          hourlyRate: entry.hourlyRate,
+          isCurrentUser: entry.userId === userId,
+        };
+      }));
+      
+      res.json(enriched);
+    } catch (error) {
+      console.error('Error fetching job team timers:', error);
+      res.status(500).json({ error: 'Failed to fetch team timers' });
+    }
+  });
+
+  // Get all time entries for a job across all team members (owner/manager view)
+  app.get("/api/time-entries/job-all/:jobId", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { jobId } = req.params;
+      
+      const userContext = await getUserContext(userId);
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      const entries = await storage.getTimeEntriesForJob(jobId);
+      const activeEntries = await storage.getActiveTimeEntriesForJob(jobId);
+      const allEntries = [...entries, ...activeEntries];
+      
+      const userCache = new Map<string, any>();
+      const enriched = await Promise.all(allEntries.map(async (entry: any) => {
+        let userName = null;
+        if (entry.userId) {
+          if (!userCache.has(entry.userId)) {
+            const u = await storage.getUser(entry.userId);
+            userCache.set(entry.userId, u);
+          }
+          const u = userCache.get(entry.userId);
+          if (u) {
+            userName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.name || u.email;
+          }
+        }
+        return { ...entry, userName };
+      }));
+      
+      res.json(enriched);
+    } catch (error) {
+      console.error('Error fetching all job time entries:', error);
+      res.status(500).json({ error: 'Failed to fetch job time entries' });
     }
   });
 
@@ -27724,21 +27834,8 @@ Respond with JSON in this format:
         });
       }
 
-      // For team-based businesses, check if job already has active timer from any team member
-      if (data.jobId) {
-        const activeJobTimer = await storage.getActiveTimeEntryForJob(data.jobId);
-        if (activeJobTimer && activeJobTimer.userId !== userId) {
-          return res.status(409).json({
-            error: 'Job already has active timer from another team member',
-            activeJobTimer: {
-              id: activeJobTimer.id,
-              description: activeJobTimer.description,
-              startTime: activeJobTimer.startTime,
-              userId: activeJobTimer.userId
-            }
-          });
-        }
-      }
+      // Multiple workers can now track time on the same job simultaneously
+      // Each worker's timer is independent and tracked with their userId
       
       const timeEntry = await storage.createTimeEntry({
         ...data,

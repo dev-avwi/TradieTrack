@@ -808,6 +808,7 @@ export interface IStorage {
 
   // Team-level time tracking methods
   getActiveTimeEntryForJob(jobId: string): Promise<TimeEntry | undefined>;
+  getActiveTimeEntriesForJob(jobId: string): Promise<TimeEntry[]>;
   getAllActiveTimeEntries(): Promise<TimeEntry[]>;
 
   // Digital Signatures
@@ -3409,6 +3410,15 @@ export class PostgresStorage implements IStorage {
       ))
       .limit(1);
     return result[0];
+  }
+
+  async getActiveTimeEntriesForJob(jobId: string): Promise<TimeEntry[]> {
+    return await db.select().from(timeEntries)
+      .where(and(
+        eq(timeEntries.jobId, jobId),
+        sql`${timeEntries.endTime} IS NULL`
+      ))
+      .orderBy(timeEntries.startTime);
   }
 
   async createTimeEntryEdit(edit: InsertTimeEntryEdit): Promise<TimeEntryEdit> {

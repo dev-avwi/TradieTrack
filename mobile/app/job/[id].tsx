@@ -180,6 +180,10 @@ interface CompletedTimeEntry {
   startTime: string;
   endTime?: string;
   notes?: string;
+  userName?: string;
+  hourlyRate?: string;
+  isBreak?: boolean;
+  isPaused?: boolean;
 }
 
 interface ActivityItem {
@@ -2059,6 +2063,20 @@ export default function JobDetailScreen() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   
+  const [teamTimers, setTeamTimers] = useState<Array<{
+    id: string;
+    userId: string;
+    workerName: string;
+    workerAvatar: string | null;
+    startTime: string;
+    isPaused: boolean;
+    pausedDuration: string | null;
+    isBreak: boolean;
+    elapsedMinutes: number;
+    hourlyRate: string;
+    isCurrentUser: boolean;
+  }>>([]);
+  
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [showNextJobModal, setShowNextJobModal] = useState(false);
   const [nextJob, setNextJob] = useState<any>(null);
@@ -2214,6 +2232,7 @@ export default function JobDetailScreen() {
     loadSignatures();
     loadRelatedDocuments();
     loadTimeEntries();
+    loadTeamTimers();
     loadActivityLog();
     loadJobExpenses();
     loadAutomationSettings();
@@ -2232,6 +2251,7 @@ export default function JobDetailScreen() {
         loadJob();
         fetchActiveTimer();
         loadTimeEntries();
+        loadTeamTimers();
       }
       appStateRef.current = nextAppState;
     });
@@ -2263,6 +2283,15 @@ export default function JobDetailScreen() {
       if (interval) clearInterval(interval);
     };
   }, [isTimerForThisJob, activeTimer?.id, activeTimer?.startTime]);
+
+  useEffect(() => {
+    if (job?.status === 'in_progress') {
+      const teamTimerInterval = setInterval(() => {
+        loadTeamTimers();
+      }, 30000);
+      return () => clearInterval(teamTimerInterval);
+    }
+  }, [job?.status, id]);
 
   // Generate smart actions when job/client/quote/invoice change
   useEffect(() => {
@@ -3806,13 +3835,25 @@ export default function JobDetailScreen() {
 
   const loadTimeEntries = async () => {
     try {
-      const response = await api.get<CompletedTimeEntry[]>(`/api/time-entries?jobId=${id}`);
+      const response = await api.get<CompletedTimeEntry[]>(`/api/time-entries?jobId=${id}&teamView=true`);
       if (response.data) {
         setTimeEntries(response.data);
       }
     } catch (error) {
       if (__DEV__) console.log('Error loading time entries:', error);
       setTimeEntries([]);
+    }
+  };
+  
+  const loadTeamTimers = async () => {
+    try {
+      const response = await api.get(`/api/time-entries/job-team-timers/${id}`);
+      if (response.data && Array.isArray(response.data)) {
+        setTeamTimers(response.data);
+      }
+    } catch (error) {
+      if (__DEV__) console.log('Error loading team timers:', error);
+      setTeamTimers([]);
     }
   };
   
@@ -3903,6 +3944,7 @@ export default function JobDetailScreen() {
       loadSignatures(),
       loadRelatedDocuments(),
       loadTimeEntries(),
+      loadTeamTimers(),
       loadActivityLog(),
       loadJobExpenses(),
       loadSubcontractorTokens(),
@@ -4648,6 +4690,7 @@ export default function JobDetailScreen() {
         await updateJobStatus(job.id, 'in_progress');
         setJob({ ...job, status: 'in_progress' });
       }
+      loadTeamTimers();
     } else {
       Alert.alert('Error', 'Failed to start timer. Please try again.');
     }
@@ -4706,8 +4749,8 @@ export default function JobDetailScreen() {
           onPress: async () => {
             const success = await stopTimer();
             if (success) {
-              // Reload time entries to show updated total - await to ensure state updates
               await loadTimeEntries();
+              await loadTeamTimers();
             } else {
               Alert.alert('Error', 'Failed to stop timer. Please try again.');
             }
@@ -5997,6 +6040,101 @@ export default function JobDetailScreen() {
           </Animated.View>
         );
       })()}
+
+      {/* Team on Job - shows all workers currently tracked on this job */}
+      {teamTimers.length > 0 && (
+        <View style={[styles.card, { flexDirection: 'column', alignItems: 'stretch', paddingVertical: spacing.md }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+            <View style={[styles.cardIconContainer, { backgroundColor: colorWithOpacity(colors.info, 0.12) }]}>
+              <Feather name="users" size={iconSizes.xl} color={colors.info} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardLabel, { marginBottom: 0 }]}>Team on Job</Text>
+              <Text style={{ fontSize: fontSizes.sm, color: colors.mutedForeground }}>
+                {teamTimers.length} worker{teamTimers.length !== 1 ? 's' : ''} clocked in
+              </Text>
+            </View>
+          </View>
+          {teamTimers.map((timer, idx) => {
+            const hrs = Math.floor(timer.elapsedMinutes / 60);
+            const mins = timer.elapsedMinutes % 60;
+            const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+            return (
+              <View 
+                key={timer.id} 
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: spacing.sm,
+                  borderTopWidth: idx === 0 ? 1 : 0,
+                  borderBottomWidth: idx < teamTimers.length - 1 ? 1 : 0,
+                  borderColor: colors.border,
+                  gap: spacing.sm,
+                }}
+              >
+                <View style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: timer.isPaused || timer.isBreak 
+                    ? colorWithOpacity(colors.warning, 0.15) 
+                    : colorWithOpacity(colors.success, 0.15),
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}>
+                  <Text style={{ fontSize: fontSizes.sm, fontWeight: '700', color: timer.isPaused || timer.isBreak ? colors.warning : colors.success }}>
+                    {timer.workerName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: fontSizes.md, fontWeight: '600', color: colors.foreground }}>
+                    {timer.workerName}{timer.isCurrentUser ? ' (You)' : ''}
+                  </Text>
+                  <Text style={{ fontSize: fontSizes.sm, color: colors.mutedForeground }}>
+                    ${timer.hourlyRate}/hr
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ 
+                    fontSize: fontSizes.md, 
+                    fontWeight: '700',
+                    color: timer.isPaused || timer.isBreak ? colors.warning : colors.success,
+                    fontVariant: ['tabular-nums'],
+                  }}>
+                    {timeStr}
+                  </Text>
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    gap: 4,
+                    backgroundColor: timer.isPaused || timer.isBreak 
+                      ? colorWithOpacity(colors.warning, 0.12)
+                      : colorWithOpacity(colors.success, 0.12),
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    borderRadius: 4,
+                    marginTop: 2,
+                  }}>
+                    <View style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: timer.isPaused || timer.isBreak ? colors.warning : colors.success,
+                    }} />
+                    <Text style={{ 
+                      fontSize: fontSizes.xs, 
+                      fontWeight: '600',
+                      color: timer.isPaused || timer.isBreak ? colors.warning : colors.success,
+                    }}>
+                      {timer.isPaused ? 'Paused' : timer.isBreak ? 'On Break' : 'Working'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {/* Site Update Quick Action - visible during in_progress - positioned prominently */}
       {job.status === 'in_progress' && (
@@ -10858,7 +10996,7 @@ export default function JobDetailScreen() {
                 )}
               </View>
 
-              {/* Time Tracked Section */}
+              {/* Time Tracked Section - per worker breakdown */}
               <View style={styles.completionSection}>
                 <View style={styles.completionSectionHeader}>
                   <View style={[styles.completionSectionIcon, { backgroundColor: timeEntries.length > 0 ? colors.success + '15' : colors.destructive + '15' }]}>
@@ -10884,6 +11022,37 @@ export default function JobDetailScreen() {
                     </Text>
                   </View>
                 </View>
+                {timeEntries.length > 0 && (() => {
+                  const byWorker = timeEntries.reduce((acc: Record<string, { name: string; totalMs: number; rate: string; entries: number }>, entry) => {
+                    const key = entry.userId || 'unknown';
+                    if (!acc[key]) {
+                      acc[key] = { name: entry.userName || 'You', totalMs: 0, rate: entry.hourlyRate || '85.00', entries: 0 };
+                    }
+                    if (entry.startTime && entry.endTime) {
+                      acc[key].totalMs += new Date(entry.endTime).getTime() - new Date(entry.startTime).getTime();
+                    }
+                    acc[key].entries++;
+                    return acc;
+                  }, {});
+                  const workers = Object.values(byWorker);
+                  if (workers.length <= 1) return null;
+                  return (
+                    <View style={{ marginTop: spacing.xs, gap: spacing.xs }}>
+                      {workers.map((w, i) => {
+                        const hrs = Math.floor(w.totalMs / (1000 * 60 * 60));
+                        const mins = Math.floor((w.totalMs % (1000 * 60 * 60)) / (1000 * 60));
+                        return (
+                          <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingLeft: 36 }}>
+                            <Text style={{ fontSize: fontSizes.sm, color: colors.mutedForeground }}>{w.name}</Text>
+                            <Text style={{ fontSize: fontSizes.sm, color: colors.foreground, fontWeight: '600' }}>
+                              {hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`} @ ${w.rate}/hr
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  );
+                })()}
               </View>
 
               {/* Signatures Section */}
