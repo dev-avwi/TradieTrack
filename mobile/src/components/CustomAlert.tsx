@@ -38,12 +38,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 48, 340);
 
 function getButtonColors(btn: AlertButton, isDark: boolean) {
-  if (btn.style === 'cancel') {
-    return {
-      bg: isDark ? '#3a3a3c' : '#e5e5ea',
-      text: isDark ? '#ffffff' : '#1c1c1e',
-    };
-  }
   if (btn.style === 'destructive') {
     return {
       bg: isDark ? '#ff453a' : '#ff3b30',
@@ -51,7 +45,7 @@ function getButtonColors(btn: AlertButton, isDark: boolean) {
     };
   }
   return {
-    bg: isDark ? '#ffffff' : '#1c1c1e',
+    bg: isDark ? '#ffffff' : '#2c2c2e',
     text: isDark ? '#000000' : '#ffffff',
   };
 }
@@ -118,7 +112,7 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
       <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
         {Platform.OS === 'ios' ? (
           <BlurView
-            intensity={30}
+            intensity={50}
             tint={isDark ? 'dark' as const : 'default' as const}
             style={StyleSheet.absoluteFill}
           />
@@ -222,7 +216,7 @@ const styles = StyleSheet.create({
   },
   overlayDim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   card: {
     width: ALERT_WIDTH,
