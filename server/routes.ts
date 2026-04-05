@@ -4788,7 +4788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       const { jobId } = req.params;
-      const { contactPhone, contactName, contactEmail, permissions, expiresAt, sendViaSms, sendViaEmail } = req.body;
+      const { contactPhone, contactName, contactEmail, permissions, expiresAt, sendViaSms, sendViaEmail, hourlyRate } = req.body;
 
       const job = await storage.getJob(jobId, userId);
       if (!job) return res.status(404).json({ error: 'Job not found' });
@@ -4806,6 +4806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contactEmail: contactEmail || null,
         permissions: permissions || ['view_job', 'add_notes', 'add_photos', 'update_status'],
         status: 'pending',
+        hourlyRate: hourlyRate !== undefined && hourlyRate !== null ? String(hourlyRate) : null,
         expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
       };
 

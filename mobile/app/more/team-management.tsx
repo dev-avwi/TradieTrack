@@ -2413,16 +2413,19 @@ export default function TeamManagementScreen() {
                       </Text>
                     ) : null}
 
-                    <Text style={styles.inputLabel}>Hourly Rate (Optional)</Text>
+                    <Text style={styles.inputLabel}>Hourly Rate</Text>
                     <TextInput
                       testID="input-invite-hourly-rate"
                       style={styles.input}
                       value={inviteHourlyRate}
                       onChangeText={setInviteHourlyRate}
-                      placeholder="$0.00"
+                      placeholder="e.g. 85"
                       keyboardType="decimal-pad"
                       placeholderTextColor={colors.mutedForeground}
                     />
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: -4, marginBottom: 8 }}>
+                      Used for time tracking and invoice labour calculations
+                    </Text>
 
                     <Text style={styles.inputLabel}>Select Role</Text>
                     <View style={styles.roleOptions}>

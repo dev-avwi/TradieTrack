@@ -815,25 +815,43 @@ export default function NewInvoiceScreen() {
 
         if (!prefilledFromQuote) {
           try {
-            const timeResponse = await api.get(`/api/time-entries?jobId=${jId}`);
+            const timeResponse = await api.get(`/api/time-entries?jobId=${jId}&teamView=true`);
             if (timeResponse.data && Array.isArray(timeResponse.data)) {
               const completed = timeResponse.data.filter((e: any) => e.endTime);
               if (completed.length > 0) {
-                const totalMs = completed.reduce((sum: number, e: any) => {
-                  return sum + (new Date(e.endTime).getTime() - new Date(e.startTime).getTime());
-                }, 0);
-                const totalHrs = Math.round(totalMs / (1000 * 60 * 60) * 10) / 10;
-                if (totalHrs > 0) {
-                  const avgRate = completed.reduce((sum: number, e: any) => sum + (parseFloat(e.hourlyRate) || 0), 0) / completed.length;
-                  const rate = Math.round(avgRate * 100) / 100;
-                  if (rate > 0) {
-                    setLineItems([{
-                      id: `labour-${Date.now()}`,
-                      description: `Labour - ${job.title || 'Job work'} (${totalHrs}hrs)`,
-                      quantity: String(totalHrs),
-                      unitPrice: String(rate),
-                    }]);
+                const byWorker: Record<string, { name: string; totalMs: number; rate: number; entries: number }> = {};
+                completed.forEach((e: any) => {
+                  const key = e.userId || 'unknown';
+                  if (!byWorker[key]) {
+                    byWorker[key] = {
+                      name: e.userName || 'Labour',
+                      totalMs: 0,
+                      rate: parseFloat(e.hourlyRate) || 0,
+                      entries: 0,
+                    };
                   }
+                  byWorker[key].totalMs += new Date(e.endTime).getTime() - new Date(e.startTime).getTime();
+                  byWorker[key].entries++;
+                  if (parseFloat(e.hourlyRate) > 0) {
+                    byWorker[key].rate = parseFloat(e.hourlyRate);
+                  }
+                });
+                const workerLines: LineItem[] = [];
+                Object.entries(byWorker).forEach(([, worker]) => {
+                  const hrs = Math.round(worker.totalMs / (1000 * 60 * 60) * 10) / 10;
+                  if (hrs > 0) {
+                    const rate = Math.round(worker.rate * 100) / 100;
+                    const rateNote = rate > 0 ? '' : ' (rate not set)';
+                    workerLines.push({
+                      id: `labour-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                      description: `Labour \u2014 ${worker.name} \u2014 ${hrs}hrs${rateNote}`,
+                      quantity: String(hrs),
+                      unitPrice: String(rate),
+                    });
+                  }
+                });
+                if (workerLines.length > 0) {
+                  setLineItems(workerLines);
                 }
               }
             }
@@ -1464,17 +1482,20 @@ export default function NewInvoiceScreen() {
 
                 {lineItems.map((item, index) => {
                   const itemTotal = calculateTotal(item.quantity, item.unitPrice);
+                  const isZeroRate = (parseFloat(item.unitPrice) || 0) === 0 && item.description.toLowerCase().includes('labour');
                   return (
                     <View key={item.id} style={styles.lineItemRow}>
                       <View style={styles.lineItemInfo}>
                         <Text style={styles.lineItemDescription} numberOfLines={1}>
                           {item.description}
                         </Text>
-                        <Text style={styles.lineItemMeta}>
-                          {item.quantity} × {formatCurrency(parseFloat(item.unitPrice) || 0)}
+                        <Text style={[styles.lineItemMeta, isZeroRate && { color: colors.warning }]}>
+                          {isZeroRate ? 'Rate not set \u2014 tap to edit' : `${item.quantity} \u00d7 ${formatCurrency(parseFloat(item.unitPrice) || 0)}`}
                         </Text>
                       </View>
-                      <Text style={styles.lineItemTotal}>{formatCurrency(itemTotal)}</Text>
+                      <Text style={[styles.lineItemTotal, isZeroRate && { color: colors.warning }]}>
+                        {isZeroRate ? '$0.00' : formatCurrency(itemTotal)}
+                      </Text>
                       <View style={styles.lineItemActions}>
                         <TouchableOpacity 
                           style={styles.iconButton}

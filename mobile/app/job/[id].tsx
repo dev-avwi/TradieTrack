@@ -2056,6 +2056,7 @@ export default function JobDetailScreen() {
   const [showMagicLinkInAssign, setShowMagicLinkInAssign] = useState(false);
   const [magicLinkName, setMagicLinkName] = useState('');
   const [magicLinkPhone, setMagicLinkPhone] = useState('');
+  const [magicLinkRate, setMagicLinkRate] = useState('');
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
 
   const [jobMessages, setJobMessages] = useState<JobChatMessage[]>([]);
@@ -3125,6 +3126,7 @@ export default function JobDetailScreen() {
       const res = await api.post(`/api/jobs/${id}/subcontractor-token`, {
         contactName: magicLinkName.trim(),
         contactPhone: magicLinkPhone.trim(),
+        hourlyRate: magicLinkRate.trim() ? parseFloat(magicLinkRate) : undefined,
         sendViaSms: true,
         sendViaEmail: false,
         permissions: ['view_job', 'add_notes', 'add_photos', 'update_status'],
@@ -3144,6 +3146,7 @@ export default function JobDetailScreen() {
         setShowMagicLinkInAssign(false);
         setMagicLinkName('');
         setMagicLinkPhone('');
+        setMagicLinkRate('');
         loadSubcontractorTokens();
       }
     } catch (e) {
@@ -10355,6 +10358,14 @@ export default function JobDetailScreen() {
                       value={magicLinkPhone}
                       onChangeText={setMagicLinkPhone}
                     />
+                    <TextInput
+                      style={[styles.singleLineInput]}
+                      placeholder="Hourly rate (e.g. 85)"
+                      placeholderTextColor={colors.mutedForeground}
+                      keyboardType="decimal-pad"
+                      value={magicLinkRate}
+                      onChangeText={setMagicLinkRate}
+                    />
                     <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                       <TouchableOpacity
                         style={{
@@ -10369,6 +10380,7 @@ export default function JobDetailScreen() {
                           setShowMagicLinkInAssign(false);
                           setMagicLinkName('');
                           setMagicLinkPhone('');
+                          setMagicLinkRate('');
                         }}
                         activeOpacity={0.7}
                       >

@@ -4068,6 +4068,7 @@ export const subcontractorTokens = pgTable("subcontractor_tokens", {
   revokedAt: timestamp("revoked_at"),
   lastAccessedAt: timestamp("last_accessed_at"),
   etaMinutes: integer("eta_minutes"),
+  hourlyRate: varchar("hourly_rate", { length: 20 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
