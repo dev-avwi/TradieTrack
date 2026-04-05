@@ -233,8 +233,20 @@ export default function AddressAutocomplete({
         </div>
       </div>
 
-      {showUnconfirmedWarning && !isOpen && (
-        <p className="text-xs text-orange-500 mt-1">Select an address from the suggestions above</p>
+      {showUnconfirmedWarning && !isOpen && !isLoading && (
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-xs text-orange-500">Select an address from suggestions or</p>
+          <button
+            type="button"
+            className="text-xs text-primary hover:underline font-medium"
+            onClick={() => {
+              updateConfirmed(true, value);
+              onAddressSelect?.(value);
+            }}
+          >
+            use as entered
+          </button>
+        </div>
       )}
 
       {isOpen && suggestions.length > 0 && (
