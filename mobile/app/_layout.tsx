@@ -33,6 +33,7 @@ import { isTablet, useShouldUseSidebar, isIPad, useOrientation } from '../src/li
 import { MapPreferenceModal } from '../src/components/MapPreferenceModal';
 import { WhatYouMissedPopup } from '../src/components/WhatYouMissedPopup';
 import ErrorBoundary from '../src/components/ErrorBoundary';
+import { CustomAlertProvider } from '../src/components/CustomAlert';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -752,11 +753,13 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
           <ThemeProvider>
-            <ScrollProvider>
-              <TerminalProvider>
-                <RootLayoutContent />
-              </TerminalProvider>
-            </ScrollProvider>
+            <CustomAlertProvider>
+              <ScrollProvider>
+                <TerminalProvider>
+                  <RootLayoutContent />
+                </TerminalProvider>
+              </ScrollProvider>
+            </CustomAlertProvider>
           </ThemeProvider>
         </SafeAreaProvider>
       </QueryClientProvider>
