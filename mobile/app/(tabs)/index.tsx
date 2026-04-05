@@ -29,6 +29,7 @@ import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell, usePageShell } from '../../src/lib/design-tokens';
 import { NotificationBell, NotificationsPanel } from '../../src/components/NotificationsPanel';
 import { getAvatarColor } from '../../src/lib/avatar-colors';
+import { TeamAvatar } from '../../src/components/TeamAvatar';
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import UsageLimitBanner from '../../src/components/UsageLimitBanner';
@@ -3103,15 +3104,13 @@ function OwnerDashboardScreen() {
                   disabled={!isClickable}
                 >
                   <View style={styles.teamMemberHeader}>
-                    {(() => {
-                      const memberName = getMemberName(member);
-                      const avatarColor = getAvatarColor(memberName);
-                      return (
-                        <View style={[styles.teamMemberAvatar, { backgroundColor: avatarColor.bg }]}>
-                          <Text style={[styles.teamMemberAvatarText, { color: avatarColor.fg }]}>{getMemberInitials(member)}</Text>
-                        </View>
-                      );
-                    })()}
+                    <TeamAvatar
+                      firstName={member.firstName}
+                      lastName={member.lastName}
+                      email={member.email}
+                      userId={String(member.userId || member.id)}
+                      size={36}
+                    />
                     <View style={styles.teamMemberInfo}>
                       <Text style={styles.teamMemberName}>{getMemberName(member)}</Text>
                       <Text style={styles.teamMemberJobCount}>

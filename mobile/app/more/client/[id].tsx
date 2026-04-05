@@ -16,6 +16,7 @@ import { useClientsStore, useJobsStore, useQuotesStore, useInvoicesStore } from 
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../../src/lib/design-tokens';
 import api from '../../../src/lib/api';
+import { TeamAvatar } from '../../../src/components/TeamAvatar';
 
 type TabKey = 'overview' | 'jobs' | 'quotes' | 'invoices';
 
@@ -686,9 +687,11 @@ export default function ClientDetailScreen() {
         <View style={styles.content}>
           {/* Profile Header Card */}
           <View style={styles.profileCard}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials(client.name)}</Text>
-            </View>
+            <TeamAvatar
+              name={client.name}
+              userId={String(client.id)}
+              size={52}
+            />
             <Text style={styles.clientName}>{client.name}</Text>
             {(client.email || client.phone) && (
               <Text style={styles.clientSubtitle}>

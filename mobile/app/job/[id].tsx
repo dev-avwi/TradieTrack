@@ -44,6 +44,7 @@ import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { MobileSendModal } from '../../src/components/MobileSendModal';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
 import { getAvatarColor } from '../../src/lib/avatar-colors';
+import { TeamAvatar } from '../../src/components/TeamAvatar';
 import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecorder';
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
@@ -6142,9 +6143,11 @@ export default function JobDetailScreen() {
             onPress={handleViewClient}
             activeOpacity={0.7}
           >
-            <View style={[styles.clientAvatar, { backgroundColor: getAvatarColor(client?.name || '').bg }]}>
-              <Text style={[styles.clientAvatarText, { color: getAvatarColor(client?.name || '').fg }]}>{clientInitials}</Text>
-            </View>
+            <TeamAvatar
+              name={client?.name}
+              userId={client?.id ? String(client.id) : undefined}
+              size={40}
+            />
             <View style={styles.clientInfo}>
               <Text style={styles.clientName}>{client.name}</Text>
               {client.email && (
@@ -10139,11 +10142,12 @@ export default function JobDetailScreen() {
                     activeOpacity={0.7}
                     disabled={isAssigning}
                   >
-                    <View style={[styles.clientAvatar, { backgroundColor: colors.primary, width: 36, height: 36, borderRadius: 18 }]}>
-                      <Text style={[styles.clientAvatarText, { fontSize: 14 }]}>
-                        {(member.name || member.email || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                      </Text>
-                    </View>
+                    <TeamAvatar
+                      name={member.name}
+                      email={member.email}
+                      userId={member.userId ? String(member.userId) : String(member.id)}
+                      size={36}
+                    />
                     <View style={styles.cardContent}>
                       <Text style={styles.cardLabel}>{member.name || member.email || 'Team Member'}</Text>
                       {member.role && <Text style={{ ...typography.caption, color: colors.mutedForeground }}>{member.role}</Text>}

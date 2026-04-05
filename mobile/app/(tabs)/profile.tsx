@@ -23,6 +23,7 @@ import {
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { WorkspaceSwitcher } from '../../src/components/WorkspaceSwitcher';
 import { api } from '../../src/lib/api';
+import { TeamAvatar } from '../../src/components/TeamAvatar';
 
 const categoryMeta: Record<string, { icon: keyof typeof Feather.glyphMap; label: string; colorKey: string; description?: string }> = {
   featured: { icon: 'zap', label: 'Featured', colorKey: 'warning', description: 'Smart tools & automation' },
@@ -603,9 +604,14 @@ export default function MoreScreen() {
         activeOpacity={0.8}
         onPress={() => router.push('/more/profile-edit')}
       >
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{getInitials()}</Text>
-        </View>
+        <TeamAvatar
+          firstName={user?.firstName || undefined}
+          lastName={user?.lastName || undefined}
+          email={user?.email || undefined}
+          userId={user?.id ? String(user.id) : undefined}
+          profileImageUrl={(user as any)?.profileImageUrl}
+          size={52}
+        />
         <View style={styles.profileInfo}>
           <Text style={styles.userName}>
             {user?.firstName} {user?.lastName}

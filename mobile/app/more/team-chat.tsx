@@ -17,6 +17,7 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
+import { TeamAvatar } from '../../src/components/TeamAvatar';
 
 interface TeamChatMessage {
   id: string;
@@ -496,9 +497,11 @@ export default function TeamChatScreen() {
                   ]}
                 >
                   {!isCurrentUser && (
-                    <View style={styles.avatarSmall}>
-                      <Text style={styles.avatarSmallText}>{getInitials(msg.senderName)}</Text>
-                    </View>
+                    <TeamAvatar
+                      name={msg.senderName}
+                      userId={String(msg.senderId)}
+                      size={28}
+                    />
                   )}
                   
                   <TouchableOpacity

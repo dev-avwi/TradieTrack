@@ -16,6 +16,7 @@ import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
+import { TeamAvatar } from '../../src/components/TeamAvatar';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes } from '../../src/lib/design-tokens';
 
 interface TeamMember {
@@ -901,11 +902,13 @@ export default function TeamGroupsScreen() {
                 ) : (
                   viewingGroup.members.map((membership) => (
                     <View key={membership.id} style={styles.memberRow}>
-                      <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>
-                          {membership.member?.name ? getInitials(membership.member.name) : '?'}
-                        </Text>
-                      </View>
+                      <TeamAvatar
+                        name={membership.member?.name}
+                        email={membership.member?.email}
+                        userId={membership.member ? String(membership.member.id) : undefined}
+                        profileImageUrl={membership.member?.profilePhoto}
+                        size={36}
+                      />
                       <View style={styles.memberInfo}>
                         <Text style={styles.memberName} numberOfLines={1}>
                           {membership.member?.name || 'Unknown'}
@@ -952,11 +955,13 @@ export default function TeamGroupsScreen() {
                     <Text style={[styles.sectionTitle, { marginTop: 0 }]}>Current Members</Text>
                     {viewingGroup.members.map((membership) => (
                       <View key={membership.id} style={styles.memberRow}>
-                        <View style={styles.avatar}>
-                          <Text style={styles.avatarText}>
-                            {membership.member?.name ? getInitials(membership.member.name) : '?'}
-                          </Text>
-                        </View>
+                        <TeamAvatar
+                          name={membership.member?.name}
+                          email={membership.member?.email}
+                          userId={membership.member ? String(membership.member.id) : undefined}
+                          profileImageUrl={membership.member?.profilePhoto}
+                          size={36}
+                        />
                         <View style={styles.memberInfo}>
                           <Text style={styles.memberName} numberOfLines={1}>
                             {membership.member?.name || 'Unknown'}
@@ -984,9 +989,13 @@ export default function TeamGroupsScreen() {
                         onPress={() => handleAddMember(member.id)}
                         activeOpacity={0.7}
                       >
-                        <View style={styles.avatar}>
-                          <Text style={styles.avatarText}>{getInitials(member.name)}</Text>
-                        </View>
+                        <TeamAvatar
+                          name={member.name}
+                          email={member.email}
+                          userId={String(member.id)}
+                          profileImageUrl={member.profilePhoto}
+                          size={36}
+                        />
                         <View style={styles.memberInfo}>
                           <Text style={styles.memberName} numberOfLines={1}>{member.name}</Text>
                           {member.email ? (

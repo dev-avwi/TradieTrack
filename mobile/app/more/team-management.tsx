@@ -18,6 +18,7 @@ import { useTheme } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
+import { TeamAvatar } from '../../src/components/TeamAvatar';
 
 interface SubscriptionStatus {
   tier: 'free' | 'pro' | 'team' | 'trial';
@@ -1828,15 +1829,7 @@ export default function TeamManagementScreen() {
         : 'Unnamed User';
     const memberEmail = member.email || member.user?.email || 'No email';
 
-    const getInitials = () => {
-      if (member.firstName && member.lastName) {
-        return (member.firstName[0] + member.lastName[0]).toUpperCase();
-      }
-      if (!member.user) return '??';
-      const first = member.user.firstName?.[0] || '';
-      const last = member.user.lastName?.[0] || '';
-      return (first + last).toUpperCase();
-    };
+    const _unused_getInitials = null;
 
     return (
       <TouchableOpacity 
@@ -1847,9 +1840,14 @@ export default function TeamManagementScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.memberHeader}>
-          <View style={[styles.avatar, { backgroundColor: roleConfig.color + '20' }]}>
-            <Text style={[styles.avatarText, { color: roleConfig.color }]}>{getInitials()}</Text>
-          </View>
+          <TeamAvatar
+            firstName={member.firstName || member.user?.firstName}
+            lastName={member.lastName || member.user?.lastName}
+            email={memberEmail}
+            userId={member.userId ? String(member.userId) : undefined}
+            profileImageUrl={member.user?.profileImageUrl}
+            size={40}
+          />
           <View style={styles.memberInfo}>
             <Text style={styles.memberName}>{userName}</Text>
             <Text style={styles.memberEmail}>{memberEmail}</Text>

@@ -20,6 +20,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes, pageShell, usePageShell } from '../../src/lib/design-tokens';
 import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
 import api from '../../src/lib/api';
+import { TeamAvatar } from '../../src/components/TeamAvatar';
 
 type FilterKey = 'all' | 'residential' | 'commercial' | 'vip' | 'outstanding' | 'inactive_6mo' | 'with_email' | 'with_phone' | 'with_address';
 
@@ -92,24 +93,17 @@ function ClientCard({
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
-  };
-
   return (
     <AnimatedCardPressable
       onPress={onPress}
       style={styles.clientCardFull}
     >
       <View style={styles.clientCardRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{getInitials(client.name)}</Text>
-        </View>
+        <TeamAvatar
+          name={client.name}
+          userId={String(client.id)}
+          size={40}
+        />
         
         <View style={styles.clientCardInfo}>
           <Text style={styles.clientName} numberOfLines={1}>{client.name}</Text>

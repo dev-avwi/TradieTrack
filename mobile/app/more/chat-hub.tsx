@@ -20,6 +20,7 @@ import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, comp
 import api, { API_URL } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { useUserRole } from '../../src/hooks/use-user-role';
+import { TeamAvatar } from '../../src/components/TeamAvatar';
 
 interface Client {
   id: string;
@@ -128,6 +129,8 @@ interface ConversationItem {
   title: string;
   subtitle?: string;
   avatarFallback: string;
+  avatarImageUrl?: string | null;
+  avatarUserId?: string;
   lastMessage?: string;
   lastMessageTime?: string;
   unreadCount: number;
@@ -856,6 +859,8 @@ export default function ChatHubScreen() {
           title: name,
           subtitle: dm.otherUser.email || undefined,
           avatarFallback: getInitials(name),
+          avatarImageUrl: dm.otherUser.profileImageUrl,
+          avatarUserId: String(dm.otherUser.id),
           lastMessage: dm.lastMessage?.content || 'No messages yet',
           lastMessageTime: dm.lastMessage?.createdAt || undefined,
           unreadCount: dm.unreadCount || 0,
@@ -876,6 +881,8 @@ export default function ChatHubScreen() {
           title: name,
           subtitle: member.email || member.role || undefined,
           avatarFallback: getInitials(name),
+          avatarImageUrl: member.profileImageUrl,
+          avatarUserId: String(member.userId || member.memberId || member.id),
           lastMessage: 'Tap to start a conversation',
           unreadCount: 0,
           data: member,
@@ -1209,10 +1216,13 @@ export default function ChatHubScreen() {
             <Feather name="users" size={20} color={colors.info} />
           ) : item.type === 'sms' ? (
             <Feather name="smartphone" size={20} color={colors.success} />
-          ) : item.type === 'direct' ? (
-            <Feather name="message-square" size={20} color={colors.info} />
-          ) : item.type === 'member' ? (
-            <Feather name="user-plus" size={20} color={colors.mutedForeground} />
+          ) : (item.type === 'direct' || item.type === 'member') ? (
+            <TeamAvatar
+              name={item.title}
+              userId={item.avatarUserId}
+              profileImageUrl={item.avatarImageUrl}
+              size={40}
+            />
           ) : (
             <Text style={[styles.conversationAvatarText, { color: colors.success }]}>
               {item.avatarFallback}

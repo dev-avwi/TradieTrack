@@ -19,6 +19,7 @@ import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { getAvatarColor as getAvatarColorUtil } from '../../src/lib/avatar-colors';
+import { TeamAvatar } from '../../src/components/TeamAvatar';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
@@ -1184,9 +1185,12 @@ export default function JobChatScreen() {
           {!own && (
             showAvatar ? (
               <View style={styles.avatarContainer}>
-                <View style={[styles.avatar, { backgroundColor: getAvatarBg(msg.senderName) }]}>
-                  <Text style={[styles.avatarText, { color: getAvatarFg(msg.senderName) }]}>{getInitials(msg.senderName)}</Text>
-                </View>
+                <TeamAvatar
+                  name={msg.senderName}
+                  userId={String(msg.senderId)}
+                  profileImageUrl={msg.avatar}
+                  size={32}
+                />
               </View>
             ) : (
               <View style={styles.avatarSpacer} />

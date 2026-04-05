@@ -17,6 +17,7 @@ import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import { getAvatarColor as getAvatarColorShared } from '../../src/lib/avatar-colors';
+import { TeamAvatar } from '../../src/components/TeamAvatar';
 
 interface Client {
   id: string;
@@ -630,11 +631,12 @@ export default function NewSmsConversation() {
                   onPress={() => handleClientSelect(client)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.clientAvatar, { backgroundColor: avatarBg }]}>
-                    <Text style={[styles.clientAvatarText, { color: avatarFg }]}>
-                      {getInitials(client.firstName, client.lastName, client.phone)}
-                    </Text>
-                  </View>
+                  <TeamAvatar
+                    firstName={client.firstName}
+                    lastName={client.lastName}
+                    userId={String(client.id)}
+                    size={40}
+                  />
                   <View style={styles.clientInfo}>
                     <Text style={styles.clientName} numberOfLines={1}>
                       {displayName}

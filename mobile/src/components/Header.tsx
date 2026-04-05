@@ -12,6 +12,7 @@ import { HEADER_HEIGHT, shadows, spacing, radius, typography } from '../lib/desi
 import { BackgroundLocationIndicator } from './BackgroundLocationIndicator';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { api } from '../lib/api';
+import { TeamAvatar } from './TeamAvatar';
 
 const isIOS = Platform.OS === 'ios';
 
@@ -348,9 +349,14 @@ export function Header({
                   { transform: [{ scale: avatarScale }] }
                 ]}
               >
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{getUserInitials()}</Text>
-                </View>
+                <TeamAvatar
+                  firstName={user?.firstName || undefined}
+                  lastName={user?.lastName || undefined}
+                  email={user?.email || undefined}
+                  userId={user?.id ? String(user.id) : undefined}
+                  profileImageUrl={(user as any)?.profileImageUrl}
+                  size={32}
+                />
               </Animated.View>
             </Pressable>
           )}

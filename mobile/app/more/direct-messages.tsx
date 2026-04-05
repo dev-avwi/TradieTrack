@@ -16,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
+import { TeamAvatar } from '../../src/components/TeamAvatar';
 
 interface User {
   id: string;
@@ -478,11 +479,14 @@ export default function DirectMessagesScreen() {
                   onPress={() => setSelectedUser(conversation.otherUser)} 
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.avatar, { width: 44, height: 44, borderRadius: 22 }]}>
-                    <Text style={[styles.avatarText, { fontSize: 18 }]}>
-                      {getInitials(conversation.otherUser)}
-                    </Text>
-                  </View>
+                  <TeamAvatar
+                    firstName={conversation.otherUser.firstName}
+                    lastName={conversation.otherUser.lastName}
+                    email={conversation.otherUser.email || undefined}
+                    userId={String(conversation.otherUser.id)}
+                    profileImageUrl={conversation.otherUser.profileImageUrl}
+                    size={44}
+                  />
                   <View style={styles.conversationContent}>
                     <View style={styles.conversationHeader}>
                       <Text style={styles.conversationName} numberOfLines={1}>
@@ -520,11 +524,14 @@ export default function DirectMessagesScreen() {
                       onPress={() => setSelectedUser(member)} 
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.avatar, { width: 44, height: 44, borderRadius: 22 }]}>
-                        <Text style={[styles.avatarText, { fontSize: 18 }]}>
-                          {getInitials(member)}
-                        </Text>
-                      </View>
+                      <TeamAvatar
+                        firstName={member.firstName}
+                        lastName={member.lastName}
+                        email={member.email || undefined}
+                        userId={String(member.id)}
+                        profileImageUrl={member.profileImageUrl}
+                        size={44}
+                      />
                       <View style={styles.conversationContent}>
                         <Text style={styles.conversationName} numberOfLines={1}>
                           {getUserDisplayName(member)}
@@ -639,11 +646,14 @@ function ChatView({
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Feather name="arrow-left" size={24} color={colors.foreground} />
         </TouchableOpacity>
-        <View style={[styles.avatar, { width: 40, height: 40, borderRadius: 20 }]}>
-          <Text style={[styles.avatarText, { fontSize: 16 }]}>
-            {getInitials(selectedUser)}
-          </Text>
-        </View>
+        <TeamAvatar
+          firstName={selectedUser.firstName}
+          lastName={selectedUser.lastName}
+          email={selectedUser.email || undefined}
+          userId={String(selectedUser.id)}
+          profileImageUrl={selectedUser.profileImageUrl}
+          size={40}
+        />
         <View style={styles.chatHeaderInfo}>
           <Text style={styles.chatHeaderName}>{getUserDisplayName(selectedUser)}</Text>
           <Text style={styles.chatHeaderEmail} numberOfLines={1}>{selectedUser.email}</Text>

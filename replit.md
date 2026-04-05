@@ -44,3 +44,8 @@ Core architectural and design decisions include:
 *   **Tap to Pay (Stripe Terminal)**: `@stripe/stripe-terminal-react-native` SDK
 *   **AI Receptionist (Voice)**: Vapi.ai
 *   **Error Tracking**: Sentry
+
+### Mobile App Conventions
+*   **Avatar System**: All avatars (team members, clients, users) use the unified `TeamAvatar` component (`mobile/src/components/TeamAvatar.tsx`) which uses stable color hashing via `getAvatarColor` from `mobile/src/lib/avatar-colors.ts`. Color is determined by `userId` (preferred, most stable) or name. Profile images are shown when `profileImageUrl` is available. Always use `<TeamAvatar>` instead of ad-hoc `View`+`Text` avatar rendering.
+*   **Custom Alerts**: `CustomAlertProvider` in `mobile/src/components/CustomAlert.tsx` monkey-patches `Alert.alert` globally for styled iOS-like alerts (dark mode, spring animation).
+*   **Header Button Fix**: All navigation layouts set `headerRightContainerStyle`/`headerLeftContainerStyle` with `backgroundColor: 'transparent'` and `headerPressColor: 'transparent'` to prevent iOS native colored circles behind header buttons in production builds.
