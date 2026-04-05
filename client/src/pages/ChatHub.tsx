@@ -175,6 +175,7 @@ interface SmsMessage {
   intentType?: 'quote_request' | 'job_request' | 'enquiry' | 'followup' | 'other' | null;
   suggestedJobTitle?: string | null;
   jobCreatedFromSms?: string | null;
+  mediaUrls?: string[] | null;
 }
 
 interface Client {
@@ -2387,7 +2388,22 @@ export default function ChatHub() {
                         )}
                         
                         <div className={`rounded-2xl px-3.5 py-2 ${isOwn ? 'bg-green-600 text-white' : 'bg-muted'}`}>
-                          <p className="text-sm whitespace-pre-wrap break-words overflow-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{renderSmsBody(msg.body, isOwn)}</p>
+                          {msg.mediaUrls && Array.isArray(msg.mediaUrls) && msg.mediaUrls.length > 0 && (
+                            <div className={`flex flex-col gap-1 ${msg.body ? 'mb-1.5' : ''}`}>
+                              {msg.mediaUrls.map((url: string, i: number) => (
+                                <a key={`media-${i}`} href={url} target="_blank" rel="noopener noreferrer">
+                                  <img
+                                    src={url}
+                                    alt="MMS attachment"
+                                    className="rounded-lg max-w-[200px] max-h-[200px] object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                  />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                          {msg.body ? (
+                            <p className="text-sm whitespace-pre-wrap break-words overflow-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{renderSmsBody(msg.body, isOwn)}</p>
+                          ) : null}
                           <div className={`flex items-center gap-1 mt-0.5 ${isOwn ? 'justify-end' : ''}`}>
                             <span className={`text-[10px] ${isOwn ? 'text-white/70' : 'text-muted-foreground'}`}>
                               {formatTime(msg.createdAt)}

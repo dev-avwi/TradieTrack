@@ -12,6 +12,7 @@ import {
   RefreshControl,
   Alert,
   Linking,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -44,6 +45,7 @@ interface SmsMessage {
   createdAt: string;
   fromNumber?: string;
   toNumber?: string;
+  mediaUrls?: string[] | null;
 }
 
 function buildQuickReplies(clientFirstName: string, senderName: string) {
@@ -503,9 +505,28 @@ export default function SmsConversationScreen() {
                   )}
                   <View style={[styles.messageRow, isOutbound ? styles.messageRowOutbound : styles.messageRowInbound]}>
                     <View style={[styles.bubble, isOutbound ? styles.bubbleOutbound : styles.bubbleInbound]}>
-                      <Text style={[styles.bubbleText, isOutbound ? styles.bubbleTextOutbound : styles.bubbleTextInbound]}>
-                        {renderMessageBody(decodeHtmlEntities(msg.body), isOutbound)}
-                      </Text>
+                      {msg.mediaUrls && Array.isArray(msg.mediaUrls) && msg.mediaUrls.length > 0 && (
+                        <View style={{ marginBottom: msg.body ? 6 : 0 }}>
+                          {msg.mediaUrls.map((url: string, i: number) => (
+                            <TouchableOpacity 
+                              key={`media-${i}`} 
+                              onPress={() => Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open image'))}
+                              activeOpacity={0.8}
+                            >
+                              <Image
+                                source={{ uri: url }}
+                                style={{ width: 200, height: 200, borderRadius: 8, marginBottom: i < msg.mediaUrls.length - 1 ? 4 : 0 }}
+                                resizeMode="cover"
+                              />
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                      {msg.body ? (
+                        <Text style={[styles.bubbleText, isOutbound ? styles.bubbleTextOutbound : styles.bubbleTextInbound]}>
+                          {renderMessageBody(decodeHtmlEntities(msg.body), isOutbound)}
+                        </Text>
+                      ) : null}
                       <Text style={[styles.bubbleTime, isOutbound ? styles.bubbleTimeOutbound : styles.bubbleTimeInbound]}>
                         {formatTime(msg.createdAt)}
                       </Text>

@@ -47,6 +47,7 @@ interface SmsMessage {
   createdAt: string;
   clientPhone?: string;
   clientName?: string;
+  mediaUrls?: string[] | null;
 }
 
 interface Participant {
@@ -1042,6 +1043,7 @@ export default function JobChatScreen() {
         id: `sms-${sms.id}`,
         type: 'sms',
         message: sms.body,
+        mediaUrls: sms.mediaUrls || [],
         senderName: sms.direction === 'inbound' ? (smsConversation?.clientName || smsConversation?.clientPhone || 'Client') : 'You (SMS)',
         createdAt: sms.createdAt,
         isOwn: sms.direction === 'outbound',
@@ -1195,9 +1197,28 @@ export default function JobChatScreen() {
               <Text style={styles.messageSender}>{msg.senderName}</Text>
             )}
             <View style={[styles.messageBubble, bubbleStyle]}>
-              <Text style={[styles.messageText, textStyle]}>
-                {isSms ? formatMessageText(msg.message) : msg.message}
-              </Text>
+              {msg.mediaUrls && msg.mediaUrls.length > 0 && (
+                <View style={{ marginBottom: msg.message ? 6 : 0 }}>
+                  {msg.mediaUrls.map((url: string, i: number) => (
+                    <TouchableOpacity 
+                      key={`media-${i}`} 
+                      onPress={() => Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open image'))}
+                      activeOpacity={0.8}
+                    >
+                      <Image
+                        source={{ uri: url }}
+                        style={{ width: 200, height: 200, borderRadius: 8, marginBottom: i < msg.mediaUrls.length - 1 ? 4 : 0 }}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              {msg.message ? (
+                <Text style={[styles.messageText, textStyle]}>
+                  {isSms ? formatMessageText(msg.message) : msg.message}
+                </Text>
+              ) : null}
               {msg.type === 'chat' && renderAttachment(msg.originalMessage)}
               <View style={styles.messageFooter}>
                 <Text style={[styles.messageTime, timeStyle]}>
