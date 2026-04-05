@@ -88,6 +88,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     borderWidth: 1,
     borderColor: colors.border,
+    letterSpacing: 0,
   },
   inputMultiline: {
     minHeight: 80,

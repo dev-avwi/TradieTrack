@@ -39,6 +39,10 @@ export default function UsageLimitBanner({ variant = 'compact' }: UsageLimitBann
     return null;
   }
 
+  if (!usage.jobs || !usage.invoices) {
+    return null;
+  }
+
   const getUsagePercent = (used: number, limit: number) => {
     if (limit === -1) return 0;
     return Math.min(100, Math.round((used / limit) * 100));

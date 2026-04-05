@@ -1033,12 +1033,14 @@ export default function OnboardingSetupScreen() {
     return (
       <View style={[styles.stepContainer, styles.completeContainer]}>
         <View style={styles.completeContent}>
-          <View style={[styles.iconCircle, styles.successCircle]}>
-            <Ionicons name="checkmark" size={48} color="#FFFFFF" />
+          <View style={styles.successBadge}>
+            <View style={styles.successBadgeInner}>
+              <Ionicons name="checkmark" size={36} color="#FFFFFF" />
+            </View>
           </View>
           
           <Text style={styles.completeTitle}>
-            {isWorkerPath ? 'Welcome to the team!' : isSubPath ? 'You\'re all set!' : 'Welcome to JobRunner!'}
+            {isWorkerPath ? 'Welcome to the team!' : isSubPath ? "You're all set!" : "You're good to go!"}
           </Text>
           <Text style={styles.completeSubtitle}>
             {isWorkerPath 
@@ -1048,34 +1050,35 @@ export default function OnboardingSetupScreen() {
                   ? `You're connected to ${subInviteValidation.businessName}. Jobs will appear when they're assigned to you.`
                   : 'Your account is ready. When a business assigns you jobs, they\'ll appear here.'
                 : demoDataSeeded 
-                  ? "We've set up sample data so you can explore the app right away."
-                  : "Your account is ready. Let's get you some jobs!"
+                  ? "We've loaded sample data so you can explore everything right away."
+                  : "Your business is set up and ready to go."
             }
           </Text>
 
           {!isWorkerPath && !isSubPath && (
             <View style={styles.checkList}>
               <View style={styles.checkItem}>
-                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                <View style={styles.checkDot} />
                 <Text style={styles.checkText}>Business details configured</Text>
               </View>
               {demoDataSeeded && (
-                <>
-                  <View style={styles.checkItem}>
-                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                    <Text style={styles.checkText}>Sample data loaded</Text>
-                  </View>
-                </>
+                <View style={styles.checkItem}>
+                  <View style={styles.checkDot} />
+                  <Text style={styles.checkText}>Sample data loaded</Text>
+                </View>
               )}
             </View>
           )}
         </View>
 
-        <TouchableOpacity style={styles.primaryButton} onPress={handleComplete} activeOpacity={0.8}>
-          <Text style={styles.primaryButtonText}>
-            {isWorkerPath ? 'View My Jobs' : isSubPath ? 'Get Started' : 'Start Using JobRunner'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.completeButtonWrap}>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleComplete} activeOpacity={0.8}>
+            <Text style={styles.primaryButtonText}>
+              {isWorkerPath ? 'View My Jobs' : isSubPath ? 'Get Started' : 'Start Using JobRunner'}
+            </Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -1086,21 +1089,12 @@ export default function OnboardingSetupScreen() {
 
   if (isCheckingSettings) {
     return (
-      <LinearGradient
-        colors={['#2563eb', '#3b82f6', '#E8862E']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientContainer}
-      >
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-          <View style={styles.loadingContainer}>
-            <View style={styles.loadingCircle}>
-              <ActivityIndicator size="large" color="#2563eb" />
-            </View>
-            <Text style={styles.loadingTextWhite}>Setting up your account...</Text>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingTextWhite, { color: colors.mutedForeground }]}>Setting up your account...</Text>
+        </View>
+      </View>
     );
   }
 
@@ -1151,95 +1145,85 @@ export default function OnboardingSetupScreen() {
   };
 
   return (
-    <LinearGradient
-      colors={['#2563eb', '#3b82f6', '#E8862E']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.gradientContainer}
-    >
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <View style={styles.header}>
-          <View style={styles.logoRow}>
-            {canGoBack() && (
-              <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-                <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-            <Text style={styles.logoText}>
-              <Text style={{ color: '#FFFFFF' }}>Job</Text>
-              <Text style={{ color: '#fed7aa' }}>Runner</Text>
-            </Text>
-          </View>
-        </View>
-
-        {currentStep !== 'complete' && (
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBarWhite}>
-              <View style={[styles.progressFillOrange, { width: `${progress}%` }]} />
+    <View style={styles.gradientContainer}>
+      <LinearGradient
+        colors={['#1d4ed8', '#2563eb', '#3b82f6']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 0 }}>
+          <View style={styles.header}>
+            <View style={styles.logoRow}>
+              {canGoBack() && (
+                <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
+                  <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+              <View style={{ flex: 1 }} />
+              {currentStep !== 'complete' && (
+                <Text style={styles.stepIndicator}>Step {current} of {total}</Text>
+              )}
             </View>
-            <Text style={styles.progressTextWhite}>Step {current}/{total}</Text>
-          </View>
-        )}
 
-        <View style={styles.contentCard}>
-          {currentStep !== 'role' && currentStep !== 'complete' && (
-            <View style={[styles.stepHeaderBar, { backgroundColor: getStepColor() + '15' }]}>
-              <View style={[styles.stepHeaderIcon, { backgroundColor: getStepColor() }]}>
-                <Ionicons name={
-                  selectedRole === 'owner' ? 'business' : selectedRole === 'worker' ? 'people' : 'construct'
-                } size={20} color="#FFFFFF" />
+            {currentStep !== 'complete' && (
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBarWhite}>
+                  <View style={[styles.progressFillWhite, { width: `${progress}%` }]} />
+                </View>
               </View>
-              <Text style={[styles.stepHeaderTitle, { color: getStepColor() }]}>
-                {getStepLabel()}
-              </Text>
-            </View>
-          )}
+            )}
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-          {currentStep === 'role' && renderRoleSelection()}
-          {selectedRole === 'owner' && ownerStep === 'business' && renderOwnerBusiness()}
-          {selectedRole === 'owner' && ownerStep === 'trade' && renderOwnerTrade()}
-          {selectedRole === 'owner' && ownerStep === 'teamSize' && renderOwnerTeamSize()}
-          {selectedRole === 'owner' && ownerStep === 'plan' && renderOwnerPlan()}
-          {selectedRole === 'worker' && workerStep === 'inviteCode' && renderWorkerInviteCode()}
-          {selectedRole === 'worker' && workerStep === 'workerDetails' && renderWorkerDetails()}
-          {selectedRole === 'subcontractor' && subStep === 'subDetails' && renderSubDetails()}
-          {selectedRole === 'subcontractor' && subStep === 'subConnect' && renderSubConnect()}
-          {selectedRole === 'subcontractor' && subStep === 'privacy' && renderSubPrivacy()}
-          {currentStep === 'complete' && renderComplete()}
-        </View>
-      </SafeAreaView>
-    </LinearGradient>
+      <View style={styles.contentCard}>
+        {currentStep === 'role' && renderRoleSelection()}
+        {selectedRole === 'owner' && ownerStep === 'business' && renderOwnerBusiness()}
+        {selectedRole === 'owner' && ownerStep === 'trade' && renderOwnerTrade()}
+        {selectedRole === 'owner' && ownerStep === 'teamSize' && renderOwnerTeamSize()}
+        {selectedRole === 'owner' && ownerStep === 'plan' && renderOwnerPlan()}
+        {selectedRole === 'worker' && workerStep === 'inviteCode' && renderWorkerInviteCode()}
+        {selectedRole === 'worker' && workerStep === 'workerDetails' && renderWorkerDetails()}
+        {selectedRole === 'subcontractor' && subStep === 'subDetails' && renderSubDetails()}
+        {selectedRole === 'subcontractor' && subStep === 'subConnect' && renderSubConnect()}
+        {selectedRole === 'subcontractor' && subStep === 'privacy' && renderSubPrivacy()}
+        {currentStep === 'complete' && renderComplete()}
+      </View>
+    </View>
   );
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   gradientContainer: {
     flex: 1,
+    backgroundColor: colors.background,
   },
-  container: {
-    flex: 1,
+  headerGradient: {
   },
   header: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 12,
+    paddingBottom: 16,
   },
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    minHeight: 40,
   },
   backBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoText: {
-    fontSize: 22,
-    fontWeight: 'bold',
+  stepIndicator: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,
@@ -1247,76 +1231,37 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  loadingCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   loadingTextWhite: {
     fontSize: 16,
-    color: '#FFFFFF',
     fontWeight: '500',
   },
   progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    gap: 12,
+    paddingTop: 12,
   },
   progressBarWhite: {
-    flex: 1,
-    height: 6,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 3,
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 2,
     overflow: 'hidden',
   },
-  progressFillOrange: {
+  progressFillWhite: {
     height: '100%',
-    backgroundColor: '#E8862E',
-    borderRadius: 3,
-  },
-  progressTextWhite: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    minWidth: 55,
-    textAlign: 'right',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
   },
   contentCard: {
     flex: 1,
     backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: 8,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    marginTop: -12,
     overflow: 'hidden',
-  },
-  stepHeaderBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
-  },
-  stepHeaderIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepHeaderTitle: {
-    fontSize: 16,
-    fontWeight: '600',
   },
   stepContainer: {
     flex: 1,
   },
   stepContent: {
-    padding: 20,
+    padding: 24,
     paddingBottom: 40,
   },
   stepHeader: {
@@ -1324,25 +1269,27 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 24,
   },
   iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.primary + '20',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primary + '12',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
   stepTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.foreground,
-    marginBottom: 4,
+    marginBottom: 6,
+    letterSpacing: -0.3,
   },
   stepSubtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.mutedForeground,
     textAlign: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    lineHeight: 22,
   },
   roleCard: {
     flexDirection: 'row',
@@ -1401,6 +1348,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: 10,
     color: colors.foreground,
     fontSize: 15,
+    letterSpacing: 0,
   },
   tradeGrid: {
     flexDirection: 'row',
@@ -1468,18 +1416,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 16,
   },
   primaryButton: {
-    backgroundColor: '#1e3a5f',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 10,
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
     width: '100%',
   },
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    letterSpacing: 0,
   },
   skipButton: {
     flexDirection: 'row',
@@ -1665,7 +1615,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     lineHeight: 18,
   },
   completeContainer: {
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     padding: 24,
   },
   completeContent: {
@@ -1673,38 +1623,64 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  successCircle: {
-    backgroundColor: colors.success,
+  successBadge: {
     width: 80,
     height: 80,
     borderRadius: 40,
+    backgroundColor: colors.success + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  successBadgeInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   completeTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 26,
+    fontWeight: '700',
     color: colors.foreground,
     textAlign: 'center',
     marginBottom: 8,
+    letterSpacing: -0.5,
   },
   completeSubtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.mutedForeground,
     textAlign: 'center',
     paddingHorizontal: 20,
-    lineHeight: 20,
+    lineHeight: 22,
+  },
+  completeButtonWrap: {
+    paddingBottom: 16,
   },
   checkList: {
-    marginTop: 24,
-    gap: 12,
+    marginTop: 28,
+    gap: 14,
     width: '100%',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
   checkItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+  },
+  checkDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.success,
   },
   checkText: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.foreground,
   },
 });
