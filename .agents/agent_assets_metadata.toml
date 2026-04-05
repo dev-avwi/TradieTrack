@@ -18,3 +18,9 @@ id = "WU1EBw2ENihi05uOZeMGe"
 uri = "file://JobRunner-Mobile-UI-UX-Audit-Document.md"
 type = "text"
 title = "JobRunner Mobile App — Complete UI/UX Design Document"
+
+[[outputs]]
+id = "Jp8Ira3hpR3tBEb-6XqAA"
+uri = "file://.local/APP_STORE_AUDIT_REPORT.md"
+type = "text"
+title = "App Store Submission Readiness Audit Report"

@@ -757,6 +757,16 @@ export default function AIReceptionistScreen() {
           )}
         </TouchableOpacity>
 
+        <View style={{ backgroundColor: `${colors.info}10`, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.lg, borderWidth: 1, borderColor: `${colors.info}20` }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+            <Feather name="info" size={16} color={colors.info} />
+            <Text style={{ ...typography.label, color: colors.foreground }}>AI-Powered Service</Text>
+          </View>
+          <Text style={{ ...typography.caption, color: colors.mutedForeground, lineHeight: 18 }}>
+            The AI Receptionist uses artificial intelligence to answer calls and respond to SMS messages on behalf of your business. Callers will hear an AI-generated voice. You are responsible for reviewing messages and call summaries for accuracy.
+          </Text>
+        </View>
+
         <View style={styles.card}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
             <Feather name="book-open" size={18} color={colors.primary} />

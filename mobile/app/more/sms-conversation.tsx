@@ -600,28 +600,19 @@ export default function SmsConversationScreen() {
               <Feather name="zap" size={18} color={showQuickReplies ? colors.primary : colors.mutedForeground} />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.zapButton}
-              onPress={() => {
-                Alert.alert(
-                  'Attach',
-                  'Choose what to send',
-                  [
-                    { text: 'Photo from Camera', onPress: () => Alert.alert('Coming Soon', 'Photo attachments via MMS will be available in a future update.') },
-                    { text: 'Photo from Gallery', onPress: () => Alert.alert('Coming Soon', 'Photo attachments via MMS will be available in a future update.') },
-                    ...(id ? [{ text: 'View Job Notes', onPress: () => {
-                      const jobId = jobIdParam || (messages[0] as any)?.jobId;
-                      if (jobId) router.push(`/job/${jobId}` as any);
-                      else Alert.alert('No Job Linked', 'This conversation is not linked to a specific job.');
-                    }}] : []),
-                    { text: 'Cancel', style: 'cancel' as const },
-                  ]
-                );
-              }}
-              activeOpacity={0.7}
-            >
-              <Feather name="plus-circle" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            {id ? (
+              <TouchableOpacity
+                style={styles.zapButton}
+                onPress={() => {
+                  const jobId = jobIdParam || (messages[0] as any)?.jobId;
+                  if (jobId) router.push(`/job/${jobId}` as any);
+                  else Alert.alert('No Job Linked', 'This conversation is not linked to a specific job.');
+                }}
+                activeOpacity={0.7}
+              >
+                <Feather name="file-text" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            ) : null}
 
             <View style={styles.inputWrap}>
               <TextInput
