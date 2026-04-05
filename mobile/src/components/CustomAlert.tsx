@@ -35,25 +35,55 @@ export function useCustomAlert() {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 60, 310);
+const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 48, 340);
+
+const BUTTON_COLORS = {
+  default: '#1c1c1e',
+  cancel: '#8e8e93',
+  destructive: '#ff3b30',
+  primary: '#2563eb',
+  success: '#22c55e',
+};
+
+function getButtonStyle(btn: AlertButton, index: number, total: number, isDark: boolean) {
+  const isCancel = btn.style === 'cancel';
+  const isDestructive = btn.style === 'destructive';
+
+  if (isCancel) {
+    return {
+      bg: isDark ? '#3a3a3c' : '#f2f2f7',
+      text: isDark ? '#ffffff' : '#1c1c1e',
+    };
+  }
+  if (isDestructive) {
+    return {
+      bg: isDark ? '#ff453a' : BUTTON_COLORS.destructive,
+      text: '#ffffff',
+    };
+  }
+  return {
+    bg: isDark ? '#ffffff' : BUTTON_COLORS.default,
+    text: isDark ? '#000000' : '#ffffff',
+  };
+}
 
 function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () => void }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1.05)).current;
+  const scaleAnim = useRef(new Animated.Value(1.08)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 200,
+        duration: 180,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 8,
-        tension: 100,
+        friction: 9,
+        tension: 120,
         useNativeDriver: true,
       }),
     ]).start();
@@ -63,12 +93,12 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 150,
+        duration: 120,
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 0.95,
-        duration: 150,
+        duration: 120,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -81,28 +111,19 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
     ? config.buttons
     : [{ text: 'OK', style: 'default' as const }];
 
-  const isVerticalLayout = buttons.length > 2;
   const cancelIndex = buttons.findIndex(b => b.style === 'cancel');
+  const nonCancelButtons = buttons.filter(b => b.style !== 'cancel');
+  const cancelButton = cancelIndex >= 0 ? buttons[cancelIndex] : null;
+  const orderedButtons = cancelButton
+    ? [...nonCancelButtons, cancelButton]
+    : nonCancelButtons;
 
-  const sortedButtons = isVerticalLayout
-    ? [...buttons].sort((a, b) => {
-        if (a.style === 'cancel') return 1;
-        if (b.style === 'cancel') return -1;
-        return 0;
-      })
-    : cancelIndex === -1
-      ? buttons
-      : (() => {
-          const reordered = [...buttons];
-          const [cancelBtn] = reordered.splice(cancelIndex, 1);
-          reordered.unshift(cancelBtn);
-          return reordered;
-        })();
+  const showButtonsInRow = orderedButtons.length <= 2;
 
-  const textColor = isDark ? '#fff' : '#000';
-  const dividerColor = isDark ? 'rgba(84,84,88,0.65)' : 'rgba(60,60,67,0.29)';
   const blurTint = isDark ? 'systemThickMaterialDark' as const : 'systemThickMaterialLight' as const;
-  const androidBg = isDark ? '#2c2c2e' : '#fff';
+  const cardBg = isDark ? 'rgba(44,44,46,0.92)' : 'rgba(255,255,255,0.92)';
+  const titleColor = isDark ? '#ffffff' : '#1c1c1e';
+  const messageColor = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(60,60,67,0.85)';
 
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent>
@@ -118,97 +139,73 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
           ]}
         >
           {Platform.OS === 'ios' ? (
-            <BlurView intensity={95} tint={blurTint} style={styles.blurContainer}>
-              <AlertContent
-                config={config}
-                buttons={sortedButtons}
-                isVerticalLayout={isVerticalLayout}
-                dismiss={dismiss}
-                textColor={textColor}
-                dividerColor={dividerColor}
-              />
+            <BlurView intensity={80} tint={blurTint} style={styles.blurWrap}>
+              <View style={[styles.cardOverlay, { backgroundColor: cardBg }]}>
+                <View style={styles.contentSection}>
+                  <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
+                  {config.message ? (
+                    <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
+                  ) : null}
+                </View>
+
+                <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
+                  {orderedButtons.map((btn, i) => {
+                    const btnStyle = getButtonStyle(btn, i, orderedButtons.length, isDark);
+                    return (
+                      <TouchableOpacity
+                        key={i}
+                        style={[
+                          styles.filledButton,
+                          showButtonsInRow && styles.filledButtonFlex,
+                          { backgroundColor: btnStyle.bg },
+                        ]}
+                        onPress={() => dismiss(btn.onPress || undefined)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.filledButtonText, { color: btnStyle.text }]}>
+                          {btn.text || 'OK'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
             </BlurView>
           ) : (
-            <View style={[styles.androidContainer, { backgroundColor: androidBg }]}>
-              <AlertContent
-                config={config}
-                buttons={sortedButtons}
-                isVerticalLayout={isVerticalLayout}
-                dismiss={dismiss}
-                textColor={textColor}
-                dividerColor={dividerColor}
-              />
+            <View style={[styles.cardOverlay, { backgroundColor: isDark ? '#2c2c2e' : '#ffffff' }]}>
+              <View style={styles.contentSection}>
+                <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
+                {config.message ? (
+                  <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
+                ) : null}
+              </View>
+
+              <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
+                {orderedButtons.map((btn, i) => {
+                  const btnStyle = getButtonStyle(btn, i, orderedButtons.length, isDark);
+                  return (
+                    <TouchableOpacity
+                      key={i}
+                      style={[
+                        styles.filledButton,
+                        showButtonsInRow && styles.filledButtonFlex,
+                        { backgroundColor: btnStyle.bg },
+                      ]}
+                      onPress={() => dismiss(btn.onPress || undefined)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.filledButtonText, { color: btnStyle.text }]}>
+                        {btn.text || 'OK'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           )}
         </Animated.View>
       </Animated.View>
     </Modal>
-  );
-}
-
-function AlertContent({
-  config,
-  buttons,
-  isVerticalLayout,
-  dismiss,
-  textColor,
-  dividerColor,
-}: {
-  config: AlertConfig;
-  buttons: AlertButton[];
-  isVerticalLayout: boolean;
-  dismiss: (callback?: () => void) => void;
-  textColor: string;
-  dividerColor: string;
-}) {
-  return (
-    <>
-      <View style={styles.contentSection}>
-        <Text style={[styles.title, { color: textColor }]}>{config.title}</Text>
-        {config.message ? (
-          <Text style={[styles.message, { color: textColor }]}>{config.message}</Text>
-        ) : null}
-      </View>
-      <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-      <View style={isVerticalLayout ? styles.buttonsVertical : styles.buttonsHorizontal}>
-        {buttons.map((btn, i) => {
-          const isCancel = btn.style === 'cancel';
-          const isDestructive = btn.style === 'destructive';
-          const isLast = i === buttons.length - 1;
-          const showDivider = !isLast;
-
-          return (
-            <View key={i} style={isVerticalLayout ? styles.buttonVerticalWrap : { flex: 1, flexDirection: 'row' as const }}>
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  isVerticalLayout ? styles.buttonVertical : styles.buttonHorizontal,
-                ]}
-                onPress={() => dismiss(btn.onPress || undefined)}
-                activeOpacity={0.6}
-              >
-                <Text
-                  style={[
-                    styles.buttonText,
-                    isCancel && styles.buttonTextCancel,
-                    isDestructive && styles.buttonTextDestructive,
-                    !isCancel && !isDestructive && buttons.length <= 2 && i === buttons.length - 1 && styles.buttonTextBold,
-                  ]}
-                >
-                  {btn.text || 'OK'}
-                </Text>
-              </TouchableOpacity>
-              {showDivider && (
-                <View style={isVerticalLayout
-                  ? [styles.divider, { backgroundColor: dividerColor }]
-                  : [styles.dividerVertical, { backgroundColor: dividerColor }]
-                } />
-              )}
-            </View>
-          );
-        })}
-      </View>
-    </>
   );
 }
 
@@ -224,6 +221,8 @@ function patchedAlert(title: string, message?: string, buttons?: AlertButton[], 
   }
 }
 
+RNAlert.alert = patchedAlert;
+
 export function CustomAlertProvider({ children }: { children: ReactNode }) {
   const [alertQueue, setAlertQueue] = useState<AlertConfig[]>([]);
 
@@ -236,7 +235,6 @@ export function CustomAlertProvider({ children }: { children: ReactNode }) {
     RNAlert.alert = patchedAlert;
     return () => {
       globalShowAlert = null;
-      RNAlert.alert = originalAlert;
     };
   }, [showAlert]);
 
@@ -264,96 +262,75 @@ const styles = StyleSheet.create({
   },
   overlayBackground: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   alertContainer: {
     width: ALERT_WIDTH,
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 30,
       },
       android: {
         elevation: 24,
       },
     }),
   },
-  blurContainer: {
+  blurWrap: {
     overflow: 'hidden',
-    borderRadius: 14,
+    borderRadius: 16,
   },
-  androidContainer: {
-    borderRadius: 14,
+  cardOverlay: {
+    borderRadius: 16,
     overflow: 'hidden',
   },
   contentSection: {
-    paddingHorizontal: 18,
-    paddingTop: 20,
-    paddingBottom: 16,
-    alignItems: 'center',
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 20,
   },
   title: {
-    fontSize: 17,
-    fontWeight: '600',
-    textAlign: 'center',
-    letterSpacing: -0.2,
-    lineHeight: 22,
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    lineHeight: 24,
   },
   message: {
-    fontSize: 13,
-    textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 18,
+    fontSize: 15,
+    marginTop: 6,
+    lineHeight: 21,
     letterSpacing: -0.1,
   },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-  },
-  dividerVertical: {
-    width: StyleSheet.hairlineWidth,
-    alignSelf: 'stretch',
-  },
-  buttonsHorizontal: {
+  buttonsRow: {
     flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 10,
   },
-  buttonsVertical: {
+  buttonsColumn: {
     flexDirection: 'column',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 8,
   },
-  button: {
-    justifyContent: 'center',
+  filledButton: {
+    paddingVertical: 13,
+    paddingHorizontal: 20,
+    borderRadius: 12,
     alignItems: 'center',
-    minHeight: 44,
+    justifyContent: 'center',
+    minHeight: 48,
   },
-  buttonHorizontal: {
+  filledButtonFlex: {
     flex: 1,
-    paddingHorizontal: 8,
   },
-  buttonVertical: {
-    width: '100%',
-    paddingHorizontal: 8,
-  },
-  buttonVerticalWrap: {
-    width: '100%',
-  },
-  buttonText: {
-    fontSize: 17,
-    color: '#007AFF',
-    textAlign: 'center',
+  filledButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
     letterSpacing: -0.2,
-  },
-  buttonTextBold: {
-    fontWeight: '600',
-  },
-  buttonTextCancel: {
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  buttonTextDestructive: {
-    color: '#FF3B30',
-    fontWeight: '400',
   },
 });
