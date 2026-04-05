@@ -2,6 +2,13 @@
   "name": "jobrunner-mobile",
   "version": "1.0.0",
   "main": "expo-router/entry",
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["@stripe/stripe-terminal-react-native"]
+      }
+    }
+  },
   "scripts": {
     "start": "expo start",
     "tunnel": "expo start --tunnel",
