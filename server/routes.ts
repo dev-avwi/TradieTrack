@@ -4648,6 +4648,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (IS_BETA) {
       return next();
     }
+    if (req.user?.betaLifetimeAccess) {
+      return next();
+    }
     const tier = req.user?.subscriptionTier;
     if (tier === 'pro' || tier === 'team' || tier === 'beta') {
       return next();
@@ -40635,6 +40638,22 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     } catch (error) {
       logger.error('api', 'Failed to fetch error logs', { error });
       res.status(500).json({ error: 'Failed to fetch error logs' });
+    }
+  });
+
+  // Grandfather all existing accounts with lifetime free access before ending beta
+  app.post("/api/admin/grandfather-beta-accounts", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { grandfatherAllExistingAccounts } = await import('./freemiumService');
+      const result = await grandfatherAllExistingAccounts();
+      res.json({ 
+        success: true, 
+        message: `Grandfathered ${result.count} account(s) with lifetime free access`,
+        count: result.count
+      });
+    } catch (error) {
+      console.error('Error grandfathering accounts:', error);
+      res.status(500).json({ error: 'Failed to grandfather accounts' });
     }
   });
 

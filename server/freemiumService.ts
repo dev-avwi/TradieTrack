@@ -86,6 +86,38 @@ export async function reconcileBetaLifetimeAccess(): Promise<void> {
 }
 
 /**
+ * Grandfather ALL existing accounts with lifetime free access.
+ * Call this BEFORE flipping IS_BETA to false.
+ * Marks every existing user (except demo/visitor) as a beta user with lifetime access,
+ * and upgrades their subscription tier to 'pro' so all features remain unlocked.
+ */
+export async function grandfatherAllExistingAccounts(): Promise<{ count: number }> {
+  try {
+    const result = await db.execute(sql`
+      UPDATE users 
+      SET beta_user = true,
+          beta_lifetime_access = true,
+          subscription_tier = CASE 
+            WHEN subscription_tier IS NULL OR subscription_tier = 'free' THEN 'pro'
+            ELSE subscription_tier
+          END
+      WHERE email NOT IN ('demo@jobrunner.com.au', 'visitor@jobrunner.com.au')
+      AND (beta_lifetime_access IS NULL OR beta_lifetime_access = false)
+      RETURNING email
+    `);
+    const rows = (result.rows || result) as any[];
+    rows.forEach((r: any) => {
+      console.log(`[Beta] Grandfathered lifetime access for ${r.email}`);
+    });
+    console.log(`[Beta] Grandfathered ${rows.length} account(s) with lifetime free access`);
+    return { count: rows.length };
+  } catch (error) {
+    console.error('[Beta] Error grandfathering accounts:', error);
+    return { count: 0 };
+  }
+}
+
+/**
  * Check if a user has beta lifetime access (survives IS_BETA being turned off).
  */
 export async function hasBetaLifetimeAccess(userId: string): Promise<boolean> {
