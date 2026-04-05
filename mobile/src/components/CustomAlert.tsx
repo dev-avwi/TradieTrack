@@ -37,24 +37,21 @@ export function useCustomAlert() {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 48, 340);
 
-function getButtonStyle(btn: AlertButton, isDark: boolean) {
-  const isCancel = btn.style === 'cancel';
-  const isDestructive = btn.style === 'destructive';
-
-  if (isCancel) {
+function getButtonColors(btn: AlertButton, isDark: boolean) {
+  if (btn.style === 'cancel') {
     return {
-      bg: isDark ? 'rgba(120,120,128,0.32)' : 'rgba(120,120,128,0.16)',
+      bg: isDark ? '#3a3a3c' : '#e5e5ea',
       text: isDark ? '#ffffff' : '#1c1c1e',
     };
   }
-  if (isDestructive) {
+  if (btn.style === 'destructive') {
     return {
-      bg: isDark ? 'rgba(255,59,48,0.85)' : 'rgba(255,59,48,0.9)',
+      bg: isDark ? '#ff453a' : '#ff3b30',
       text: '#ffffff',
     };
   }
   return {
-    bg: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(28,28,30,0.85)',
+    bg: isDark ? '#ffffff' : '#1c1c1e',
     text: isDark ? '#000000' : '#ffffff',
   };
 }
@@ -112,85 +109,60 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
 
   const showButtonsInRow = orderedButtons.length <= 2;
 
-  const titleColor = isDark ? '#ffffff' : '#1c1c1e';
-  const messageColor = isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.75)';
-
-  const renderContent = () => (
-    <>
-      <View style={styles.contentSection}>
-        <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
-        {config.message ? (
-          <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
-        ) : null}
-      </View>
-
-      <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
-        {orderedButtons.map((btn, i) => {
-          const btnStyle = getButtonStyle(btn, isDark);
-          return (
-            <TouchableOpacity
-              key={i}
-              style={[
-                styles.filledButton,
-                showButtonsInRow && styles.filledButtonFlex,
-                { backgroundColor: btnStyle.bg },
-              ]}
-              onPress={() => dismiss(btn.onPress || undefined)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.filledButtonText, { color: btnStyle.text }]}>
-                {btn.text || 'OK'}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </>
-  );
+  const cardBg = isDark ? '#1c1c1e' : '#ffffff';
+  const titleColor = isDark ? '#ffffff' : '#000000';
+  const messageColor = isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.8)';
 
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent>
       <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-        <View style={styles.overlayBackground} />
+        {Platform.OS === 'ios' ? (
+          <BlurView
+            intensity={30}
+            tint={isDark ? 'dark' as const : 'default' as const}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+        <View style={styles.overlayDim} />
+
         <Animated.View
           style={[
-            styles.alertOuter,
+            styles.card,
             {
+              backgroundColor: cardBg,
               opacity: fadeAnim,
               transform: [{ scale: scaleAnim }],
             },
           ]}
         >
-          {Platform.OS === 'ios' ? (
-            <BlurView
-              intensity={60}
-              tint={isDark ? 'dark' as const : 'light' as const}
-              style={styles.glassCard}
-            >
-              <View style={[
-                styles.glassOverlay,
-                {
-                  backgroundColor: isDark
-                    ? 'rgba(44,44,46,0.45)'
-                    : 'rgba(255,255,255,0.55)',
-                  borderColor: isDark
-                    ? 'rgba(255,255,255,0.08)'
-                    : 'rgba(255,255,255,0.6)',
-                },
-              ]}>
-                {renderContent()}
-              </View>
-            </BlurView>
-          ) : (
-            <View style={[
-              styles.androidCard,
-              {
-                backgroundColor: isDark ? '#2c2c2e' : '#ffffff',
-              },
-            ]}>
-              {renderContent()}
-            </View>
-          )}
+          <View style={styles.contentSection}>
+            <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
+            {config.message ? (
+              <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
+            ) : null}
+          </View>
+
+          <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
+            {orderedButtons.map((btn, i) => {
+              const colors = getButtonColors(btn, isDark);
+              return (
+                <TouchableOpacity
+                  key={i}
+                  style={[
+                    styles.btn,
+                    showButtonsInRow && styles.btnFlex,
+                    { backgroundColor: colors.bg },
+                  ]}
+                  onPress={() => dismiss(btn.onPress || undefined)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.btnText, { color: colors.text }]}>
+                    {btn.text || 'OK'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -248,43 +220,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  overlayBackground: {
+  overlayDim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
-  alertOuter: {
+  card: {
     width: ALERT_WIDTH,
     borderRadius: 20,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.25,
-        shadowRadius: 40,
+        shadowOffset: { width: 0, height: 16 },
+        shadowOpacity: 0.2,
+        shadowRadius: 48,
       },
       android: {
         elevation: 24,
       },
     }),
   },
-  glassCard: {
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  glassOverlay: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-  },
-  androidCard: {
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
   contentSection: {
-    paddingHorizontal: 22,
-    paddingTop: 22,
-    paddingBottom: 18,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 20,
   },
   title: {
     fontSize: 18,
@@ -293,9 +252,9 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   message: {
-    fontSize: 14.5,
+    fontSize: 15,
     marginTop: 8,
-    lineHeight: 20,
+    lineHeight: 21,
     letterSpacing: -0.1,
   },
   buttonsRow: {
@@ -310,18 +269,18 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 8,
   },
-  filledButton: {
-    paddingVertical: 13,
+  btn: {
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    minHeight: 50,
   },
-  filledButtonFlex: {
+  btnFlex: {
     flex: 1,
   },
-  filledButtonText: {
+  btnText: {
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: -0.2,
