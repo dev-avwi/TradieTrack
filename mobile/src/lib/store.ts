@@ -1955,9 +1955,8 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
     
     const isOnline = useOfflineStore.getState().isOnline;
     
-    // Check offline FIRST - silently return null when offline
     if (!isOnline) {
-      set({ activeTimer: null, isLoading: false, error: null });
+      set({ isLoading: false, error: null });
       return;
     }
     

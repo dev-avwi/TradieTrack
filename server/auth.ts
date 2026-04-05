@@ -46,6 +46,10 @@ export class AuthService {
         return { success: false, error: 'Email and password are required' };
       }
 
+      if (validatedData.password.length < 8) {
+        return { success: false, error: 'Password must be at least 8 characters' };
+      }
+
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(validatedData.email);
       if (existingUser) {

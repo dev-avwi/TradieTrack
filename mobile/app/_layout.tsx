@@ -139,10 +139,19 @@ function DeepLinkHandler() {
         const token = queryParams?.token as string;
         if (token) {
           try {
-            const response = await api.get<{ success?: boolean }>(`/api/verify-email?token=${token}`);
+            const response = await api.post<{ success?: boolean; sessionToken?: string; isNewUser?: boolean }>('/api/auth/verify-email', { token });
             if (response.data?.success) {
-              Alert.alert('Email Verified', 'Your email has been verified successfully!');
-              checkAuth();
+              if (response.data.sessionToken) {
+                api.setToken(response.data.sessionToken);
+              }
+              await checkAuth();
+              InteractionManager.runAfterInteractions(() => {
+                if (response.data?.isNewUser) {
+                  router.replace('/(onboarding)/setup');
+                } else {
+                  router.replace('/(tabs)');
+                }
+              });
             } else {
               Alert.alert('Verification Failed', response.error || 'Failed to verify email');
             }
