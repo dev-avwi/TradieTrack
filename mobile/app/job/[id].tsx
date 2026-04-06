@@ -2089,6 +2089,7 @@ export default function JobDetailScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [isDeletingJob, setIsDeletingJob] = useState(false);
+  const [isCloningJob, setIsCloningJob] = useState(false);
   const [isSendingOnMyWay, setIsSendingOnMyWay] = useState(false);
   
   const [showSendModal, setShowSendModal] = useState(false);
@@ -3691,6 +3692,49 @@ export default function JobDetailScreen() {
           },
         },
       ]
+    );
+  };
+
+  const handleCloneJob = async () => {
+    if (!job) return;
+    setIsCloningJob(true);
+    try {
+      const response = await api.post(`/api/jobs/${job.id}/clone`);
+      if (response.data) {
+        const newJob = response.data as Job;
+        Alert.alert('Job Duplicated', `"${newJob.title}" has been created`);
+        router.replace(`/job/${newJob.id}`);
+      }
+    } catch (error) {
+      console.error('Error cloning job:', error);
+      Alert.alert('Error', 'Failed to duplicate job');
+    } finally {
+      setIsCloningJob(false);
+    }
+  };
+
+  const showJobActionsMenu = () => {
+    const options: string[] = [];
+    const actions: (() => void)[] = [];
+
+    if (isOwnerOrManager || isSoloOwner) {
+      options.push('Duplicate Job');
+      actions.push(handleCloneJob);
+    }
+    if (canDeleteJobs) {
+      options.push('Delete Job');
+      actions.push(handleDeleteJob);
+    }
+    options.push('Cancel');
+
+    Alert.alert(
+      'Job Actions',
+      undefined,
+      options.map((label, i) => {
+        if (label === 'Cancel') return { text: 'Cancel', style: 'cancel' as const };
+        if (label === 'Delete Job') return { text: label, style: 'destructive' as const, onPress: actions[i] };
+        return { text: label, onPress: actions[i] };
+      })
     );
   };
 
@@ -9760,24 +9804,24 @@ export default function JobDetailScreen() {
                   <Feather name="edit-2" size={16} color={colors.primary} />
                 </TouchableOpacity>
               )}
-              {canDeleteJobs && (
+              {(isOwnerOrManager || isSoloOwner || canDeleteJobs) && (
                 <TouchableOpacity
-                  onPress={handleDeleteJob}
-                  disabled={isDeletingJob}
+                  onPress={showJobActionsMenu}
+                  disabled={isCloningJob || isDeletingJob}
                   style={{ 
                     width: 36,
                     height: 36,
                     borderRadius: 18,
-                    backgroundColor: colorWithOpacity(colors.destructive, 0.08),
+                    backgroundColor: colorWithOpacity(colors.foreground, 0.08),
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
-                  data-testid="button-delete-job"
+                  data-testid="button-job-actions-menu"
                 >
-                  {isDeletingJob ? (
-                    <ActivityIndicator size="small" color={colors.destructive} />
+                  {(isCloningJob || isDeletingJob) ? (
+                    <ActivityIndicator size="small" color={colors.foreground} />
                   ) : (
-                    <Feather name="trash-2" size={16} color={colors.destructive} />
+                    <Feather name="more-vertical" size={16} color={colors.foreground} />
                   )}
                 </TouchableOpacity>
               )}

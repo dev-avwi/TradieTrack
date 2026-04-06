@@ -1701,10 +1701,145 @@ function EmptyTodayState({ onCreateJob }: { onCreateJob: () => void }) {
   );
 }
 
+const CHECKLIST_DISMISS_PREFIX = 'jobrunner_setup_dismissed_';
+
+function GettingStartedChecklist() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { user, businessSettings } = useAuthStore();
+  const { clients } = useClientsStore();
+  const [dismissed, setDismissed] = useState(false);
+  const [quotes, setQuotes] = useState<{ id: string }[]>([]);
+  const [integrationHealth, setIntegrationHealth] = useState<{
+    stripeConnect?: { connected?: boolean; chargesEnabled?: boolean; payoutsEnabled?: boolean };
+  } | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  const dismissKey = `${CHECKLIST_DISMISS_PREFIX}${user?.id || 'default'}`;
+
+  useEffect(() => {
+    checkDismissed();
+    fetchChecklistData();
+  }, [user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchChecklistData();
+    }, [])
+  );
+
+  const checkDismissed = async () => {
+    try {
+      const val = await AsyncStorage.getItem(dismissKey);
+      if (val === 'true') setDismissed(true);
+    } catch {}
+  };
+
+  const handleDismiss = async () => {
+    setDismissed(true);
+    try {
+      await AsyncStorage.setItem(dismissKey, 'true');
+    } catch {}
+  };
+
+  const fetchChecklistData = async () => {
+    try {
+      const [quotesRes, healthRes] = await Promise.all([
+        api.get<{ id: string }[]>('/api/quotes').catch(() => ({ data: [] as { id: string }[] })),
+        api.get<{ stripeConnect?: { connected?: boolean; chargesEnabled?: boolean; payoutsEnabled?: boolean } }>('/api/integrations/health').catch(() => ({ data: null })),
+      ]);
+      setQuotes(quotesRes.data || []);
+      setIntegrationHealth(healthRes.data);
+    } catch {} finally {
+      setDataLoaded(true);
+    }
+  };
+
+  if (dismissed || !dataLoaded) return null;
+
+  const hasBusinessProfile = !!(businessSettings?.businessName && businessSettings?.abn);
+  const stripeConnect = integrationHealth?.stripeConnect;
+  const stripeConnected = stripeConnect?.connected && stripeConnect?.chargesEnabled && stripeConnect?.payoutsEnabled;
+  const hasBranding = !!businessSettings?.logoUrl || !!businessSettings?.primaryColor;
+  const hasClient = Array.isArray(clients) && clients.length > 0;
+  const hasQuote = Array.isArray(quotes) && quotes.length > 0;
+
+  const checklistSteps = [
+    { id: 'business', title: 'Add business details', desc: 'Name, ABN & contact info', completed: hasBusinessProfile, icon: 'briefcase' as const, iconColor: colors.primary, route: '/more/settings' },
+    { id: 'stripe', title: 'Set up online payments', desc: 'Get paid directly to your bank', completed: stripeConnected || false, icon: 'credit-card' as const, iconColor: colors.info, route: '/more/settings' },
+    { id: 'branding', title: 'Add your logo', desc: 'Make quotes look professional', completed: hasBranding, icon: 'edit-3' as const, iconColor: colors.warning, route: '/more/branding' },
+    { id: 'client', title: 'Add your first client', desc: 'Save client details for quoting', completed: hasClient, icon: 'users' as const, iconColor: colors.success, route: '/more/clients' },
+    { id: 'quote', title: 'Send your first quote', desc: 'Win work with professional quotes', completed: hasQuote, icon: 'file-text' as const, iconColor: colors.mutedForeground, route: '/more/quotes' },
+  ];
+
+  const completedCount = checklistSteps.filter(s => s.completed).length;
+  const allComplete = completedCount === checklistSteps.length;
+
+  if (allComplete) return null;
+
+  const progressPercent = (completedCount / checklistSteps.length) * 100;
+
+  return (
+    <View style={styles.section}>
+      <View style={[styles.gettingStartedCard]}>
+        <View style={styles.gettingStartedHeader}>
+          <View style={[styles.gettingStartedIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary }}>{completedCount}/{checklistSteps.length}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.gettingStartedTitle}>Get Set Up</Text>
+            <Text style={styles.gettingStartedSubtitle}>
+              {completedCount === 0 ? 'Complete these steps to get started' : `${checklistSteps.length - completedCount} step${checklistSteps.length - completedCount > 1 ? 's' : ''} left`}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={handleDismiss} style={{ padding: spacing.xs }} activeOpacity={0.7}>
+            <Feather name="x" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+        <View style={{ height: 4, backgroundColor: colorWithOpacity(colors.primary, 0.12), borderRadius: 2, marginBottom: spacing.md }}>
+          <View style={{ height: 4, backgroundColor: colors.primary, borderRadius: 2, width: `${progressPercent}%` }} />
+        </View>
+        <View style={styles.gettingStartedSteps}>
+          {checklistSteps.map((step, idx) => (
+            <TouchableOpacity
+              key={step.id}
+              style={[styles.gettingStartedStep, idx === checklistSteps.length - 1 && { borderBottomWidth: 0 }]}
+              onPress={() => router.push(step.route as `/${string}`)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.gettingStartedStepIcon, {
+                backgroundColor: step.completed
+                  ? colorWithOpacity(colors.success, 0.12)
+                  : colorWithOpacity(step.iconColor, 0.12),
+              }]}>
+                {step.completed ? (
+                  <Feather name="check" size={16} color={colors.success} />
+                ) : (
+                  <Feather name={step.icon} size={16} color={step.iconColor} />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.gettingStartedStepTitle, step.completed && { color: colors.success }]}>{step.title}</Text>
+                <Text style={styles.gettingStartedStepDesc}>{step.desc}</Text>
+              </View>
+              {step.completed ? (
+                <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.sm, backgroundColor: colorWithOpacity(colors.success, 0.12) }}>
+                  <Text style={{ fontSize: 10, fontWeight: '600', color: colors.success }}>Done</Text>
+                </View>
+              ) : (
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function DashboardScreen() {
   const { roleInfo } = useAuthStore();
   
-  // Detect subcontractor role and render purpose-built dashboard
   const isSubcontractorRole = roleInfo?.roleName?.toLowerCase() === 'subcontractor' || roleInfo?.roleName?.toLowerCase() === 'sub_contractor';
   if (isSubcontractorRole) {
     return <SubcontractorDashboard />;
@@ -2545,65 +2680,9 @@ function OwnerDashboardScreen() {
       {/* Usage Limit Warning - Free Plan Users */}
       <UsageLimitBanner />
 
-      {/* Getting Started Guide - Show for new owners who haven't set up their business yet */}
-      {roleResolved && !isStaffUser && !isLoading && !businessSettings?.businessName && (
-        <View style={styles.section}>
-          <View style={[styles.gettingStartedCard]}>
-            <View style={styles.gettingStartedHeader}>
-              <View style={[styles.gettingStartedIcon, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
-                <Feather name="compass" size={22} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.gettingStartedTitle}>Get set up</Text>
-                <Text style={styles.gettingStartedSubtitle}>A few things to get you started</Text>
-              </View>
-            </View>
-            <View style={styles.gettingStartedSteps}>
-              <TouchableOpacity 
-                style={styles.gettingStartedStep}
-                onPress={() => router.push('/more/settings')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.gettingStartedStepIcon, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
-                  <Feather name="briefcase" size={16} color={colors.success} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.gettingStartedStepTitle}>Set up your business</Text>
-                  <Text style={styles.gettingStartedStepDesc}>Name, ABN, logo & trade type</Text>
-                </View>
-                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.gettingStartedStep}
-                onPress={() => router.push('/more/create-job')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.gettingStartedStepIcon, { backgroundColor: colorWithOpacity(colors.info, 0.12) }]}>
-                  <Feather name="plus-circle" size={16} color={colors.info} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.gettingStartedStepTitle}>Create your first job</Text>
-                  <Text style={styles.gettingStartedStepDesc}>Add a client and schedule work</Text>
-                </View>
-                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.gettingStartedStep, { borderBottomWidth: 0 }]}
-                onPress={() => router.push('/more/branding')}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.gettingStartedStepIcon, { backgroundColor: colorWithOpacity(colors.warning, 0.12) }]}>
-                  <Feather name="edit-3" size={16} color={colors.warning} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.gettingStartedStepTitle}>Customise your brand</Text>
-                  <Text style={styles.gettingStartedStepDesc}>Colours, templates & logo</Text>
-                </View>
-                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+      {/* Getting Started Checklist - Show for new owners */}
+      {roleResolved && !isStaffUser && !isLoading && (
+        <GettingStartedChecklist />
       )}
 
       {/* Time Tracking Widget - All Users */}

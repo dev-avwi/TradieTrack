@@ -225,12 +225,39 @@ if (process.env.DATABASE_URL) {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+  const isDev = process.env.NODE_ENV !== 'production';
   app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "https://js.stripe.com",
+          "https://*.googletagmanager.com",
+          "https://cdnjs.cloudflare.com",
+          ...(isDev ? ["'unsafe-inline'", "'unsafe-eval'"] : []),
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        connectSrc: [
+          "'self'",
+          "https://*.sentry.io",
+          "https://maps.googleapis.com",
+          "https://api.stripe.com",
+          "https://*.replit.dev",
+          "wss://*.replit.dev",
+          ...(isDev ? ["'unsafe-inline'", "ws://localhost:*", "ws://127.0.0.1:*"] : []),
+        ],
+        frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https://*.basemaps.cartocdn.com", "https://maps.gstatic.com", "https://*.googleusercontent.com", "https://*.replit.dev"],
+        workerSrc: ["'self'", "blob:"],
+        mediaSrc: ["'self'", "blob:"],
+      },
+    },
     crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: false,
     crossOriginResourcePolicy: false,
-    frameguard: false,
+    frameguard: { action: 'sameorigin' },
   }));
 
   // Serve static public assets (logo, etc.) for emails

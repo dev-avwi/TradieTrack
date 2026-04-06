@@ -14995,6 +14995,57 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  app.post("/api/jobs/:id/clone", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_JOBS), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const sourceJob = await storage.getJob(req.params.id, effectiveUserId);
+      if (!sourceJob) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      const limitCheck = await FreemiumService.canUserCreateJob(effectiveUserId);
+      if (!limitCheck.canCreate) {
+        return res.status(402).json({
+          error: limitCheck.reason,
+          type: 'SUBSCRIPTION_LIMIT',
+          usageInfo: limitCheck.usageInfo
+        });
+      }
+
+      const clonedJob = await storage.createJob({
+        userId: effectiveUserId,
+        title: sourceJob.title,
+        description: sourceJob.description || undefined,
+        clientId: sourceJob.clientId || undefined,
+        address: sourceJob.address || undefined,
+        latitude: sourceJob.latitude || undefined,
+        longitude: sourceJob.longitude || undefined,
+        scheduledAt: sourceJob.scheduledAt ? new Date(sourceJob.scheduledAt) : undefined,
+        estimatedDuration: sourceJob.estimatedDuration || undefined,
+        status: 'pending',
+      });
+
+      await FreemiumService.incrementJobCount(effectiveUserId);
+
+      await logActivity(
+        effectiveUserId,
+        'job_created',
+        `Duplicated job: ${clonedJob.title}`,
+        `Cloned from job ${sourceJob.title}`,
+        'job',
+        clonedJob.id,
+        { source: 'clone', sourceJobId: sourceJob.id },
+        req
+      );
+
+      res.status(201).json(clonedJob);
+    } catch (error) {
+      console.error("Error cloning job:", error);
+      res.status(500).json({ error: "Failed to clone job" });
+    }
+  });
+
   // Jobs assigned to the current user (for staff tradie dashboard)
   app.get("/api/jobs/my-jobs", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
     try {

@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone, Wrench, FileDown, Search, ChevronsUpDown, Eye, Image, ListChecks, Activity } from "lucide-react";
+import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone, Wrench, FileDown, Search, ChevronsUpDown, Eye, Image, ListChecks, Activity, MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { TimerWidget } from "./TimeTracking";
@@ -69,6 +75,7 @@ import { apiRequest, queryClient, getSessionToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { formatHistoryDate } from "@shared/dateUtils";
+import type { Job } from "@shared/schema";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { useIntegrationHealth, isTwilioReady } from "@/hooks/use-integration-health";
 
@@ -1164,6 +1171,29 @@ export default function JobDetailView({
     },
   });
 
+  const cloneJobMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/jobs/${jobId}/clone`);
+      return await res.json();
+    },
+    onSuccess: (newJob: Job) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/kpis'] });
+      toast({
+        title: "Job Duplicated",
+        description: `"${newJob.title}" has been created as a copy`,
+      });
+      navigate(`/jobs/${newJob.id}`);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to duplicate job",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDeleteJob = () => {
     setShowDeleteConfirm(true);
   };
@@ -1704,19 +1734,40 @@ export default function JobDetailView({
             </Button>
           )}
           {!isTradie && (
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleDeleteJob}
-              disabled={deleteJobMutation.isPending}
-              data-testid="button-delete-job"
-            >
-              {deleteJobMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 text-destructive" />
-              )}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" data-testid="button-job-actions-menu">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => cloneJobMutation.mutate()}
+                  disabled={cloneJobMutation.isPending}
+                  data-testid="button-duplicate-job"
+                >
+                  {cloneJobMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Copy className="h-4 w-4 mr-2" />
+                  )}
+                  Duplicate Job
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleDeleteJob}
+                  disabled={deleteJobMutation.isPending}
+                  className="text-destructive focus:text-destructive"
+                  data-testid="button-delete-job"
+                >
+                  {deleteJobMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Delete Job
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>
