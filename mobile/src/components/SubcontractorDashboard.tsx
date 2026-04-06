@@ -84,6 +84,41 @@ export function SubcontractorDashboard() {
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  interface UnbilledWorkItem {
+    jobId: string;
+    jobTitle: string;
+    jobStatus: string;
+    businessOwnerId: string;
+    businessName: string;
+    completedAt: string | null;
+    totalHours: number;
+    hourlyRate: number;
+    materialsCost: number;
+    totalAmount: number;
+    timeEntries: { id: string; startTime: string; endTime: string; hours: number; rate: number; amount: number }[];
+  }
+  interface SubInvoiceSummary {
+    id: string;
+    invoiceNumber: string;
+    status: string;
+    subtotalAmount: string;
+    gstAmount: string;
+    totalAmount: string;
+    dueDate: string | null;
+    createdAt: string | null;
+    subcontractorName: string;
+    businessName: string;
+  }
+  const [showInvoiceCreate, setShowInvoiceCreate] = useState(false);
+  const [unbilledWork, setUnbilledWork] = useState<UnbilledWorkItem[]>([]);
+  const [selectedJobs, setSelectedJobs] = useState<Record<string, boolean>>({});
+  const [lineItemEdits, setLineItemEdits] = useState<Record<string, { description: string; expanded: boolean; includeTimeEntryIds: string[] }>>({});
+  const [isLoadingUnbilled, setIsLoadingUnbilled] = useState(false);
+  const [isSubmittingInvoice, setIsSubmittingInvoice] = useState(false);
+  const [invoiceNotes, setInvoiceNotes] = useState('');
+  const [invoices, setInvoices] = useState<SubInvoiceSummary[]>([]);
+  const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
+  const [showInvoices, setShowInvoices] = useState(false);
 
   useEffect(() => {
     if (scrollToTopTrigger > 0) {
@@ -216,6 +251,115 @@ export function SubcontractorDashboard() {
   const toggleDay = useCallback((day: string) => {
     setExpandedDays(prev => ({ ...prev, [day]: !prev[day] }));
   }, []);
+
+  const loadUnbilledWork = useCallback(async () => {
+    setIsLoadingUnbilled(true);
+    try {
+      const response = await api.get<UnbilledWorkItem[]>('/api/subcontractor/unbilled-work');
+      setUnbilledWork(response.data || []);
+      const selected: Record<string, boolean> = {};
+      const edits: Record<string, { description: string; expanded: boolean; includeTimeEntryIds: string[] }> = {};
+      (response.data || []).forEach((item: UnbilledWorkItem) => {
+        selected[item.jobId] = true;
+        edits[item.jobId] = { description: item.jobTitle, expanded: false, includeTimeEntryIds: item.timeEntries.map(te => te.id) };
+      });
+      setSelectedJobs(selected);
+      setLineItemEdits(edits);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load unbilled work');
+    } finally {
+      setIsLoadingUnbilled(false);
+    }
+  }, []);
+
+  const loadInvoices = useCallback(async () => {
+    setIsLoadingInvoices(true);
+    try {
+      const response = await api.get<SubInvoiceSummary[]>('/api/subcontractor/invoices');
+      setInvoices(response.data || []);
+    } catch (error) {
+      if (__DEV__) console.log('Error loading invoices:', error);
+    } finally {
+      setIsLoadingInvoices(false);
+    }
+  }, []);
+
+  const openCreateInvoice = useCallback(() => {
+    setShowInvoiceCreate(true);
+    setInvoiceNotes('');
+    loadUnbilledWork();
+  }, [loadUnbilledWork]);
+
+  const toggleJobSelection = useCallback((jobId: string) => {
+    setSelectedJobs(prev => ({ ...prev, [jobId]: !prev[jobId] }));
+  }, []);
+
+  const submitInvoice = useCallback(async () => {
+    const selectedItems = unbilledWork.filter(item => selectedJobs[item.jobId]);
+    if (selectedItems.length === 0) {
+      Alert.alert('No items selected', 'Please select at least one job to invoice.');
+      return;
+    }
+
+    const businessOwnerId = selectedItems[0].businessOwnerId;
+    const allSameBusiness = selectedItems.every(item => item.businessOwnerId === businessOwnerId);
+    if (!allSameBusiness) {
+      Alert.alert('Multiple businesses', 'Please select jobs from only one business per invoice.');
+      return;
+    }
+
+    setIsSubmittingInvoice(true);
+    try {
+      const items = selectedItems.map(item => {
+        const includedIds = lineItemEdits[item.jobId]?.includeTimeEntryIds || item.timeEntries.map(te => te.id);
+        const includedEntries = item.timeEntries.filter(te => includedIds.includes(te.id));
+        const hours = includedEntries.reduce((sum, te) => sum + te.hours, 0);
+        return {
+          jobId: item.jobId,
+          description: lineItemEdits[item.jobId]?.description || item.jobTitle,
+          hours: String(hours),
+          rate: String(item.hourlyRate),
+          amount: String(Math.round(hours * item.hourlyRate * 100) / 100),
+          timeEntryIds: includedIds,
+        };
+      });
+
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 14);
+
+      await api.post('/api/subcontractor/invoices', {
+        businessOwnerId,
+        items,
+        notes: invoiceNotes || undefined,
+        dueDate: dueDate.toISOString(),
+      });
+
+      Alert.alert('Invoice Submitted', 'Your invoice has been sent to the business owner for review.');
+      setShowInvoiceCreate(false);
+      loadInvoices();
+      fetchDashboard();
+    } catch (error: unknown) {
+      const errMsg = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to create invoice';
+      Alert.alert('Error', errMsg);
+    } finally {
+      setIsSubmittingInvoice(false);
+    }
+  }, [unbilledWork, selectedJobs, lineItemEdits, invoiceNotes, loadInvoices, fetchDashboard]);
+
+  const openInvoicesList = useCallback(() => {
+    setShowInvoices(true);
+    loadInvoices();
+  }, [loadInvoices]);
+
+  const getInvoiceStatusColor = useCallback((status: string) => {
+    switch (status) {
+      case 'submitted': return colors.warning;
+      case 'approved': return colors.info;
+      case 'paid': return colors.success;
+      case 'draft': return colors.mutedForeground;
+      default: return colors.mutedForeground;
+    }
+  }, [colors]);
 
   const userName = user?.firstName || user?.email?.split('@')[0] || 'there';
 
@@ -620,6 +764,50 @@ export function SubcontractorDashboard() {
           </TouchableOpacity>
         </View>
 
+        {/* Invoicing Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={[styles.sectionIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
+              <Feather name="file-text" size={18} color={colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>Invoicing</Text>
+          </View>
+          <View style={{ gap: spacing.sm }}>
+            <TouchableOpacity
+              style={[styles.earningsCard, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+              onPress={openCreateInvoice}
+              activeOpacity={0.7}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <View style={[styles.sectionIconContainer, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
+                  <Feather name="plus-circle" size={18} color={colors.success} />
+                </View>
+                <View>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>Create Invoice</Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Invoice completed work</Text>
+                </View>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.earningsCard, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+              onPress={openInvoicesList}
+              activeOpacity={0.7}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <View style={[styles.sectionIconContainer, { backgroundColor: colorWithOpacity(colors.info, 0.12) }]}>
+                  <Feather name="list" size={18} color={colors.info} />
+                </View>
+                <View>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>My Invoices</Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground }}>View submitted invoices</Text>
+                </View>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Connected Businesses */}
         {data.businesses.length > 0 && (
           <View style={styles.section}>
@@ -679,6 +867,352 @@ export function SubcontractorDashboard() {
                 <Text style={[styles.modalButtonText, { color: '#fff' }]}>Decline Job</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Create Invoice Modal */}
+      <Modal visible={showInvoiceCreate} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Create Tax Invoice</Text>
+              <TouchableOpacity onPress={() => setShowInvoiceCreate(false)} style={{ padding: spacing.xs }}>
+                <Feather name="x" size={22} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSubtitle}>
+              Select completed jobs to include in your invoice. GST (10%) will be calculated automatically.
+            </Text>
+
+            <View style={{ padding: spacing.sm, backgroundColor: colorWithOpacity(colors.muted, 0.2), borderRadius: radius.md, marginBottom: spacing.sm }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.mutedForeground, marginBottom: 2 }}>FROM</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>
+                {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.email || 'You'}
+              </Text>
+              {user?.email && <Text style={{ fontSize: 11, color: colors.mutedForeground }}>{user.email}</Text>}
+              <Text style={{ fontSize: 10, color: colors.mutedForeground, marginTop: 2 }}>ABN and contact details from your profile will appear on the invoice PDF</Text>
+            </View>
+
+            {isLoadingUnbilled ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.lg }} />
+            ) : unbilledWork.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
+                <Feather name="check-circle" size={32} color={colors.mutedForeground} />
+                <Text style={{ fontSize: 14, color: colors.mutedForeground, marginTop: spacing.sm, textAlign: 'center' }}>
+                  No unbilled work found. Complete some jobs first!
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                {unbilledWork.map((item) => (
+                  <View key={item.jobId} style={{ marginBottom: spacing.sm }}>
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        padding: spacing.md,
+                        borderWidth: 1,
+                        borderColor: selectedJobs[item.jobId] ? colors.primary : colors.border,
+                        borderTopLeftRadius: radius.lg,
+                        borderTopRightRadius: radius.lg,
+                        borderBottomLeftRadius: (selectedJobs[item.jobId] && lineItemEdits[item.jobId]?.expanded) ? 0 : radius.lg,
+                        borderBottomRightRadius: (selectedJobs[item.jobId] && lineItemEdits[item.jobId]?.expanded) ? 0 : radius.lg,
+                        backgroundColor: selectedJobs[item.jobId] ? colorWithOpacity(colors.primary, 0.06) : 'transparent',
+                      }}
+                      onPress={() => toggleJobSelection(item.jobId)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{
+                        width: 22, height: 22, borderRadius: 4,
+                        borderWidth: 2,
+                        borderColor: selectedJobs[item.jobId] ? colors.primary : colors.border,
+                        backgroundColor: selectedJobs[item.jobId] ? colors.primary : 'transparent',
+                        alignItems: 'center', justifyContent: 'center',
+                        marginRight: spacing.sm,
+                      }}>
+                        {selectedJobs[item.jobId] && <Feather name="check" size={14} color="#fff" />}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }} numberOfLines={1}>
+                          {lineItemEdits[item.jobId]?.description || item.jobTitle}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                          {item.businessName} | {item.totalHours?.toFixed(1)}h @ {formatCurrencyUtil(item.hourlyRate)}/hr
+                          {item.materialsCost > 0 ? ` + ${formatCurrencyUtil(item.materialsCost)} materials` : ''}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.foreground }}>
+                          {(() => {
+                            const ids = lineItemEdits[item.jobId]?.includeTimeEntryIds || item.timeEntries.map(te => te.id);
+                            const h = item.timeEntries.filter(te => ids.includes(te.id)).reduce((s, te) => s + te.hours, 0);
+                            return formatCurrencyUtil(Math.round(h * item.hourlyRate * 100) / 100 + (item.materialsCost || 0));
+                          })()}
+                        </Text>
+                        {selectedJobs[item.jobId] && (
+                          <TouchableOpacity
+                            onPress={() => setLineItemEdits(prev => ({
+                              ...prev,
+                              [item.jobId]: { ...prev[item.jobId], expanded: !prev[item.jobId]?.expanded }
+                            }))}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={{ fontSize: 11, color: colors.primary, marginTop: 2 }}>
+                              {lineItemEdits[item.jobId]?.expanded ? 'Hide details' : 'Edit details'}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+
+                    {selectedJobs[item.jobId] && lineItemEdits[item.jobId]?.expanded && (
+                      <View style={{
+                        borderWidth: 1,
+                        borderTopWidth: 0,
+                        borderColor: colors.primary,
+                        borderBottomLeftRadius: radius.lg,
+                        borderBottomRightRadius: radius.lg,
+                        padding: spacing.md,
+                        backgroundColor: colorWithOpacity(colors.primary, 0.03),
+                      }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: colors.mutedForeground, marginBottom: 4 }}>Description</Text>
+                        <TextInput
+                          style={{
+                            fontSize: 13,
+                            color: colors.foreground,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            borderRadius: radius.md,
+                            padding: spacing.sm,
+                            backgroundColor: colors.background,
+                            marginBottom: spacing.sm,
+                          }}
+                          value={lineItemEdits[item.jobId]?.description || ''}
+                          onChangeText={(text) => setLineItemEdits(prev => ({
+                            ...prev,
+                            [item.jobId]: { ...prev[item.jobId], description: text }
+                          }))}
+                          placeholder="Line item description"
+                          placeholderTextColor={colors.mutedForeground}
+                        />
+                        {(() => {
+                          const includedIds = lineItemEdits[item.jobId]?.includeTimeEntryIds || [];
+                          const includedEntries = item.timeEntries.filter(te => includedIds.includes(te.id));
+                          const editedHours = includedEntries.reduce((s, te) => s + te.hours, 0);
+                          return (
+                            <>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ fontSize: 11, color: colors.mutedForeground }}>Hours</Text>
+                                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>{editedHours.toFixed(1)}</Text>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ fontSize: 11, color: colors.mutedForeground }}>Rate</Text>
+                                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>{formatCurrencyUtil(item.hourlyRate)}/hr</Text>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ fontSize: 11, color: colors.mutedForeground }}>Labour</Text>
+                                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>{formatCurrencyUtil(editedHours * item.hourlyRate)}</Text>
+                                </View>
+                                {item.materialsCost > 0 && (
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 11, color: colors.mutedForeground }}>Materials</Text>
+                                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>{formatCurrencyUtil(item.materialsCost)}</Text>
+                                  </View>
+                                )}
+                              </View>
+                              {item.timeEntries.length > 0 && (
+                                <View style={{ marginTop: spacing.sm }}>
+                                  <Text style={{ fontSize: 11, fontWeight: '600', color: colors.mutedForeground, marginBottom: 4 }}>
+                                    Time entries ({includedIds.length}/{item.timeEntries.length} selected)
+                                  </Text>
+                                  {item.timeEntries.map(te => {
+                                    const isIncluded = includedIds.includes(te.id);
+                                    return (
+                                      <TouchableOpacity
+                                        key={te.id}
+                                        style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 3 }}
+                                        onPress={() => {
+                                          setLineItemEdits(prev => {
+                                            const cur = prev[item.jobId]?.includeTimeEntryIds || [];
+                                            const next = isIncluded ? cur.filter(id => id !== te.id) : [...cur, te.id];
+                                            return { ...prev, [item.jobId]: { ...prev[item.jobId], includeTimeEntryIds: next } };
+                                          });
+                                        }}
+                                      >
+                                        <View style={{
+                                          width: 16, height: 16, borderRadius: 3,
+                                          borderWidth: 1.5,
+                                          borderColor: isIncluded ? colors.primary : colors.border,
+                                          backgroundColor: isIncluded ? colors.primary : 'transparent',
+                                          alignItems: 'center', justifyContent: 'center',
+                                          marginRight: 6,
+                                        }}>
+                                          {isIncluded && <Feather name="check" size={10} color="#fff" />}
+                                        </View>
+                                        <Text style={{ fontSize: 11, color: colors.foreground, flex: 1 }}>
+                                          {new Date(te.startTime).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} — {te.hours.toFixed(1)}h ({formatCurrencyUtil(te.amount)})
+                                        </Text>
+                                      </TouchableOpacity>
+                                    );
+                                  })}
+                                </View>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+
+            {unbilledWork.length > 0 && (
+              <>
+                <View style={{ marginTop: spacing.md, padding: spacing.md, backgroundColor: colorWithOpacity(colors.muted, 0.3), borderRadius: radius.lg }}>
+                  {(() => {
+                    const selectedItems = unbilledWork.filter(i => selectedJobs[i.jobId]);
+                    const subtotal = selectedItems.reduce((sum, i) => {
+                      const includedIds = lineItemEdits[i.jobId]?.includeTimeEntryIds || i.timeEntries.map(te => te.id);
+                      const includedEntries = i.timeEntries.filter(te => includedIds.includes(te.id));
+                      const hours = includedEntries.reduce((s, te) => s + te.hours, 0);
+                      return sum + Math.round(hours * i.hourlyRate * 100) / 100 + (i.materialsCost || 0);
+                    }, 0);
+                    const gst = subtotal * 0.1;
+                    const total = subtotal + gst;
+                    return (
+                      <>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Subtotal</Text>
+                          <Text style={{ fontSize: 12, color: colors.foreground }}>{formatCurrencyUtil(subtotal)}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <Text style={{ fontSize: 12, color: colors.mutedForeground }}>GST (10%)</Text>
+                          <Text style={{ fontSize: 12, color: colors.foreground }}>{formatCurrencyUtil(gst)}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 6, marginTop: 4 }}>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.foreground }}>Total (inc. GST)</Text>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary }}>{formatCurrencyUtil(total)}</Text>
+                        </View>
+                      </>
+                    );
+                  })()}
+                </View>
+
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.background, color: colors.foreground, borderColor: colors.border, marginTop: spacing.md }]}
+                  placeholder="Notes (optional)..."
+                  placeholderTextColor={colors.mutedForeground}
+                  value={invoiceNotes}
+                  onChangeText={setInvoiceNotes}
+                  multiline
+                  numberOfLines={2}
+                />
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, { backgroundColor: colors.muted }]}
+                    onPress={() => setShowInvoiceCreate(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.modalButtonText, { color: colors.foreground }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, { backgroundColor: colors.primary, opacity: isSubmittingInvoice ? 0.6 : 1 }]}
+                    onPress={submitInvoice}
+                    disabled={isSubmittingInvoice}
+                    activeOpacity={0.7}
+                  >
+                    {isSubmittingInvoice ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={[styles.modalButtonText, { color: '#fff' }]}>Submit Invoice</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Invoice List Modal */}
+      <Modal visible={showInvoices} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>My Invoices</Text>
+              <TouchableOpacity onPress={() => setShowInvoices(false)} style={{ padding: spacing.xs }}>
+                <Feather name="x" size={22} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+
+            {isLoadingInvoices ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.lg }} />
+            ) : invoices.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
+                <Feather name="file-text" size={32} color={colors.mutedForeground} />
+                <Text style={{ fontSize: 14, color: colors.mutedForeground, marginTop: spacing.sm, textAlign: 'center' }}>
+                  No invoices yet. Create your first invoice from completed work.
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+                {(() => {
+                  const grouped: Record<string, SubInvoiceSummary[]> = {};
+                  invoices.forEach(inv => {
+                    const biz = inv.businessName || 'Business';
+                    if (!grouped[biz]) grouped[biz] = [];
+                    grouped[biz].push(inv);
+                  });
+                  return Object.entries(grouped).map(([bizName, bizInvoices]) => (
+                    <View key={bizName} style={{ marginBottom: spacing.md }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: colors.mutedForeground, marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        {bizName}
+                      </Text>
+                      {bizInvoices.map((inv) => (
+                        <View
+                          key={inv.id}
+                          style={{
+                            padding: spacing.md,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            borderRadius: radius.lg,
+                            marginBottom: spacing.sm,
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.foreground }}>
+                              {inv.invoiceNumber}
+                            </Text>
+                            <View style={{
+                              paddingHorizontal: spacing.sm,
+                              paddingVertical: 2,
+                              borderRadius: radius.pill,
+                              backgroundColor: colorWithOpacity(getInvoiceStatusColor(inv.status), 0.12),
+                            }}>
+                              <Text style={{ fontSize: 11, fontWeight: '600', color: getInvoiceStatusColor(inv.status), textTransform: 'capitalize' }}>
+                                {inv.status}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                              {inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                            </Text>
+                            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.foreground }}>
+                              {formatCurrencyUtil(parseFloat(inv.totalAmount || '0'))}
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ));
+                })()}
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>

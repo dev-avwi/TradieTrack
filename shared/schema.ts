@@ -4722,3 +4722,52 @@ export const voiceChangeRequests = pgTable("voice_change_requests", {
 export const insertVoiceChangeRequestSchema = createInsertSchema(voiceChangeRequests).omit({ id: true, createdAt: true, resolvedAt: true });
 export type InsertVoiceChangeRequest = z.infer<typeof insertVoiceChangeRequestSchema>;
 export type VoiceChangeRequest = typeof voiceChangeRequests.$inferSelect;
+
+// Subcontractor Invoices
+export const subcontractorInvoices = pgTable("subcontractor_invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subcontractorUserId: varchar("subcontractor_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  status: text("status").notNull().default('draft'),
+  invoiceNumber: text("invoice_number").notNull(),
+  subtotalAmount: decimal("subtotal_amount", { precision: 10, scale: 2 }).notNull().default('0'),
+  gstAmount: decimal("gst_amount", { precision: 10, scale: 2 }).notNull().default('0'),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull().default('0'),
+  dueDate: timestamp("due_date"),
+  submittedAt: timestamp("submitted_at"),
+  approvedAt: timestamp("approved_at"),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+  paidAt: timestamp("paid_at"),
+  paidMethod: text("paid_method"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_subinv_subcontractor").on(table.subcontractorUserId),
+  index("idx_subinv_business").on(table.businessOwnerId),
+  index("idx_subinv_status").on(table.status),
+]);
+
+export const insertSubcontractorInvoiceSchema = createInsertSchema(subcontractorInvoices).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSubcontractorInvoice = z.infer<typeof insertSubcontractorInvoiceSchema>;
+export type SubcontractorInvoice = typeof subcontractorInvoices.$inferSelect;
+
+// Subcontractor Invoice Line Items
+export const subcontractorInvoiceItems = pgTable("subcontractor_invoice_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").notNull().references(() => subcontractorInvoices.id, { onDelete: 'cascade' }),
+  description: text("description").notNull(),
+  hours: decimal("hours", { precision: 10, scale: 2 }),
+  rate: decimal("rate", { precision: 10, scale: 2 }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull().default('0'),
+  jobId: varchar("job_id"),
+  timeEntryId: varchar("time_entry_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_subinv_item_invoice").on(table.invoiceId),
+]);
+
+export const insertSubcontractorInvoiceItemSchema = createInsertSchema(subcontractorInvoiceItems).omit({ id: true, createdAt: true });
+export type InsertSubcontractorInvoiceItem = z.infer<typeof insertSubcontractorInvoiceItemSchema>;
+export type SubcontractorInvoiceItem = typeof subcontractorInvoiceItems.$inferSelect;

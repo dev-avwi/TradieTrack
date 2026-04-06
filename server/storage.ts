@@ -386,6 +386,12 @@ import {
   voiceChangeRequests,
   type VoiceChangeRequest,
   type InsertVoiceChangeRequest,
+  subcontractorInvoices,
+  subcontractorInvoiceItems,
+  type SubcontractorInvoice,
+  type InsertSubcontractorInvoice,
+  type SubcontractorInvoiceItem,
+  type InsertSubcontractorInvoiceItem,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -1205,6 +1211,20 @@ export interface IStorage {
   getAllWebsiteChangeRequests(): Promise<WebsiteChangeRequest[]>;
   createWebsiteChangeRequest(data: InsertWebsiteChangeRequest): Promise<WebsiteChangeRequest>;
   updateWebsiteChangeRequestStatus(id: string, status: string): Promise<WebsiteChangeRequest | undefined>;
+
+  // Subcontractor Invoices
+  getSubcontractorInvoices(subcontractorUserId: string, businessOwnerId?: string): Promise<SubcontractorInvoice[]>;
+  getSubcontractorInvoice(id: string): Promise<SubcontractorInvoice | undefined>;
+  getSubcontractorInvoiceWithItems(id: string): Promise<(SubcontractorInvoice & { items: SubcontractorInvoiceItem[] }) | undefined>;
+  createSubcontractorInvoice(invoice: InsertSubcontractorInvoice): Promise<SubcontractorInvoice>;
+  updateSubcontractorInvoice(id: string, updates: Partial<InsertSubcontractorInvoice>): Promise<SubcontractorInvoice | undefined>;
+  getSubcontractorInvoicesByBusiness(businessOwnerId: string): Promise<SubcontractorInvoice[]>;
+  getNextSubcontractorInvoiceNumber(subcontractorUserId: string): Promise<string>;
+
+  // Subcontractor Invoice Items
+  getSubcontractorInvoiceItems(invoiceId: string): Promise<SubcontractorInvoiceItem[]>;
+  createSubcontractorInvoiceItem(item: InsertSubcontractorInvoiceItem): Promise<SubcontractorInvoiceItem>;
+  deleteSubcontractorInvoiceItems(invoiceId: string): Promise<boolean>;
 }
 
 const pool = new pg.Pool({
@@ -8249,6 +8269,67 @@ Thank you for your prompt attention to this matter.`,
   async updateWebsiteChangeRequestStatus(id: string, status: string): Promise<WebsiteChangeRequest | undefined> {
     const [result] = await db.update(websiteChangeRequests).set({ status, updatedAt: new Date() }).where(eq(websiteChangeRequests.id, id)).returning();
     return result;
+  }
+
+  // ============================================
+  // Subcontractor Invoices
+  // ============================================
+  async getSubcontractorInvoices(subcontractorUserId: string, businessOwnerId?: string): Promise<SubcontractorInvoice[]> {
+    const conditions = [eq(subcontractorInvoices.subcontractorUserId, subcontractorUserId)];
+    if (businessOwnerId) {
+      conditions.push(eq(subcontractorInvoices.businessOwnerId, businessOwnerId));
+    }
+    return await db.select().from(subcontractorInvoices).where(and(...conditions)).orderBy(desc(subcontractorInvoices.createdAt));
+  }
+
+  async getSubcontractorInvoice(id: string): Promise<SubcontractorInvoice | undefined> {
+    const [result] = await db.select().from(subcontractorInvoices).where(eq(subcontractorInvoices.id, id)).limit(1);
+    return result;
+  }
+
+  async getSubcontractorInvoiceWithItems(id: string): Promise<(SubcontractorInvoice & { items: SubcontractorInvoiceItem[] }) | undefined> {
+    const invoice = await this.getSubcontractorInvoice(id);
+    if (!invoice) return undefined;
+    const items = await this.getSubcontractorInvoiceItems(id);
+    return { ...invoice, items };
+  }
+
+  async createSubcontractorInvoice(invoice: InsertSubcontractorInvoice): Promise<SubcontractorInvoice> {
+    const [result] = await db.insert(subcontractorInvoices).values(invoice).returning();
+    return result;
+  }
+
+  async updateSubcontractorInvoice(id: string, updates: Partial<InsertSubcontractorInvoice>): Promise<SubcontractorInvoice | undefined> {
+    const [result] = await db.update(subcontractorInvoices).set({ ...updates, updatedAt: new Date() }).where(eq(subcontractorInvoices.id, id)).returning();
+    return result;
+  }
+
+  async getSubcontractorInvoicesByBusiness(businessOwnerId: string): Promise<SubcontractorInvoice[]> {
+    return await db.select().from(subcontractorInvoices).where(eq(subcontractorInvoices.businessOwnerId, businessOwnerId)).orderBy(desc(subcontractorInvoices.createdAt));
+  }
+
+  async getNextSubcontractorInvoiceNumber(subcontractorUserId: string): Promise<string> {
+    const existing = await db.select({ invoiceNumber: subcontractorInvoices.invoiceNumber }).from(subcontractorInvoices).where(eq(subcontractorInvoices.subcontractorUserId, subcontractorUserId));
+    const maxNum = existing.reduce((max, inv) => {
+      const match = inv.invoiceNumber.match(/(\d+)$/);
+      return match ? Math.max(max, parseInt(match[1])) : max;
+    }, 0);
+    return `SUB-${String(maxNum + 1).padStart(4, '0')}`;
+  }
+
+  // Subcontractor Invoice Items
+  async getSubcontractorInvoiceItems(invoiceId: string): Promise<SubcontractorInvoiceItem[]> {
+    return await db.select().from(subcontractorInvoiceItems).where(eq(subcontractorInvoiceItems.invoiceId, invoiceId));
+  }
+
+  async createSubcontractorInvoiceItem(item: InsertSubcontractorInvoiceItem): Promise<SubcontractorInvoiceItem> {
+    const [result] = await db.insert(subcontractorInvoiceItems).values(item).returning();
+    return result;
+  }
+
+  async deleteSubcontractorInvoiceItems(invoiceId: string): Promise<boolean> {
+    const result = await db.delete(subcontractorInvoiceItems).where(eq(subcontractorInvoiceItems.invoiceId, invoiceId)).returning();
+    return result.length > 0;
   }
 }
 

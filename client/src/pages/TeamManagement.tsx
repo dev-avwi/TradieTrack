@@ -428,6 +428,176 @@ function RoleEditCard({ role, onUpdate }: { role: UserRole; onUpdate: () => void
   );
 }
 
+interface SubcontractorInvoice {
+  id: string;
+  invoiceNumber: string;
+  status: string;
+  subtotalAmount: string;
+  gstAmount: string;
+  totalAmount: string;
+  dueDate: string | null;
+  createdAt: string | null;
+  subcontractorName: string;
+  businessName: string;
+}
+
+function SubcontractorInvoicesSection() {
+  const { toast } = useToast();
+
+  const { data: subInvoices, isLoading } = useQuery<SubcontractorInvoice[]>({
+    queryKey: ['/api/business/subcontractor-invoices'],
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ invoiceId, status, paidMethod }: { invoiceId: string; status: string; paidMethod?: string }) => {
+      const response = await apiRequest('PATCH', `/api/business/subcontractor-invoices/${invoiceId}/status`, {
+        status,
+        paidMethod,
+        paidAt: status === 'paid' ? new Date().toISOString() : undefined,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/business/subcontractor-invoices'] });
+      toast({ title: "Invoice updated", description: "The invoice status has been updated." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update invoice.", variant: "destructive" });
+    },
+  });
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'submitted': return 'secondary' as const;
+      case 'approved': return 'default' as const;
+      case 'paid': return 'default' as const;
+      default: return 'outline' as const;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'paid': return 'bg-green-500';
+      case 'approved': return 'bg-blue-500';
+      default: return '';
+    }
+  };
+
+  const formatCurrency = (amount: string | number) => {
+    const val = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(val || 0);
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Subcontractor Invoices</CardTitle>
+          <CardDescription>Loading...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!subInvoices || subInvoices.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Briefcase className="h-5 w-5 text-muted-foreground" />
+          <div>
+            <CardTitle>Subcontractor Invoices</CardTitle>
+            <CardDescription>{subInvoices.length} invoice{subInvoices.length !== 1 ? 's' : ''} received</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {subInvoices.map((inv) => (
+            <div
+              key={inv.id}
+              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border rounded-md"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-sm">{inv.invoiceNumber}</span>
+                  <Badge variant={getStatusVariant(inv.status)} className={getStatusColor(inv.status)}>
+                    {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  From: {inv.subcontractorName || 'Subcontractor'}
+                </p>
+                <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('en-AU') : 'N/A'}
+                  </span>
+                  {inv.dueDate && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Due: {new Date(inv.dueDate).toLocaleDateString('en-AU')}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Subtotal: {formatCurrency(inv.subtotalAmount)}</p>
+                  <p className="text-xs text-muted-foreground">GST: {formatCurrency(inv.gstAmount)}</p>
+                  <p className="text-base font-bold">{formatCurrency(inv.totalAmount)}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {inv.status === 'submitted' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => updateStatusMutation.mutate({ invoiceId: inv.id, status: 'approved' })}
+                      disabled={updateStatusMutation.isPending}
+                    >
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Approve
+                    </Button>
+                  )}
+                  {(inv.status === 'submitted' || inv.status === 'approved') && (
+                    <Button
+                      size="sm"
+                      onClick={() => updateStatusMutation.mutate({ invoiceId: inv.id, status: 'paid', paidMethod: 'bank_transfer' })}
+                      disabled={updateStatusMutation.isPending}
+                    >
+                      Mark Paid
+                    </Button>
+                  )}
+                  <a
+                    href={`/api/subcontractor/invoices/${inv.id}/pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button size="sm" variant="ghost">
+                      <Eye className="h-3 w-3 mr-1" />
+                      PDF
+                    </Button>
+                  </a>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // Job type for assignment
 interface Job {
   id: string;
@@ -1164,6 +1334,9 @@ export default function TeamManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Subcontractor Invoices Section */}
+      <SubcontractorInvoicesSection />
 
       {/* Invite Dialog */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>

@@ -4603,3 +4603,314 @@ export const convertPdfToImage = async (pdfBuffer: Buffer): Promise<Buffer> => {
     releasePdfSlot();
   }
 };
+
+// Subcontractor Invoice PDF Generation
+interface SubcontractorInvoicePdfData {
+  invoice: {
+    id: string;
+    invoiceNumber: string;
+    status: string;
+    subtotalAmount: string;
+    gstAmount: string;
+    totalAmount: string;
+    dueDate: Date | string | null;
+    notes: string | null;
+    createdAt: Date | string | null;
+  };
+  items: Array<{
+    description: string;
+    hours: string | null;
+    rate: string | null;
+    amount: string;
+    jobId: string | null;
+  }>;
+  subcontractor: {
+    name: string;
+    email: string;
+    abn: string | null;
+  };
+  business: {
+    name: string;
+    abn: string | null;
+    address: string | null;
+    email: string | null;
+    phone: string | null;
+  };
+}
+
+function escapeHtml(str: string | null | undefined): string {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+export async function generateSubcontractorInvoicePdf(data: SubcontractorInvoicePdfData): Promise<Buffer> {
+  const { invoice, items, subcontractor, business } = data;
+
+  const subtotal = parseFloat(invoice.subtotalAmount);
+  const gst = parseFloat(invoice.gstAmount);
+  const total = parseFloat(invoice.totalAmount);
+
+  const lineItemRows = items.map(item => {
+    const hours = item.hours ? parseFloat(item.hours).toFixed(2) : '-';
+    const rate = item.rate ? formatCurrency(item.rate) : '-';
+    return `
+      <tr>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(item.description)}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${hours}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">${rate}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatCurrency(item.amount)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      ${generateGoogleFontsLink()}
+      <style>
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          color: #1a1a1a;
+          margin: 0;
+          padding: 40px;
+          font-size: 11px;
+          line-height: 1.5;
+        }
+        .header {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 40px;
+          padding-bottom: 20px;
+          border-bottom: 3px solid #1e3a5f;
+        }
+        .header-left h1 {
+          margin: 0;
+          font-size: 22px;
+          color: #1e3a5f;
+          font-weight: 700;
+        }
+        .header-left p {
+          margin: 4px 0 0;
+          color: #666;
+          font-size: 11px;
+        }
+        .header-right {
+          text-align: right;
+        }
+        .header-right .invoice-label {
+          font-size: 28px;
+          font-weight: 700;
+          color: #1e3a5f;
+          margin: 0;
+        }
+        .header-right .invoice-number {
+          font-size: 14px;
+          color: #666;
+          margin: 4px 0 0;
+        }
+        .parties {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 30px;
+        }
+        .party {
+          width: 48%;
+        }
+        .party h3 {
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: #999;
+          margin: 0 0 8px;
+          font-weight: 600;
+        }
+        .party p {
+          margin: 3px 0;
+          font-size: 11px;
+        }
+        .party .name {
+          font-weight: 600;
+          font-size: 13px;
+          color: #1a1a1a;
+        }
+        .meta-row {
+          display: flex;
+          gap: 40px;
+          margin-bottom: 24px;
+          padding: 12px 16px;
+          background: #f8f9fa;
+          border-radius: 6px;
+        }
+        .meta-item label {
+          font-size: 9px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: #999;
+          display: block;
+          margin-bottom: 2px;
+        }
+        .meta-item span {
+          font-weight: 600;
+          font-size: 12px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 24px;
+        }
+        th {
+          background: #1e3a5f;
+          color: white;
+          padding: 10px 12px;
+          text-align: left;
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          font-weight: 600;
+        }
+        th:nth-child(2), th:nth-child(3), th:nth-child(4) {
+          text-align: right;
+        }
+        th:nth-child(2) { text-align: center; }
+        .totals {
+          display: flex;
+          justify-content: flex-end;
+          margin-bottom: 30px;
+        }
+        .totals-box {
+          width: 280px;
+        }
+        .totals-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 0;
+          font-size: 12px;
+        }
+        .totals-row.total {
+          border-top: 2px solid #1e3a5f;
+          margin-top: 8px;
+          padding-top: 10px;
+          font-size: 16px;
+          font-weight: 700;
+          color: #1e3a5f;
+        }
+        .notes {
+          padding: 12px 16px;
+          background: #f8f9fa;
+          border-radius: 6px;
+          margin-bottom: 24px;
+        }
+        .notes h4 {
+          margin: 0 0 6px;
+          font-size: 11px;
+          font-weight: 600;
+        }
+        .notes p {
+          margin: 0;
+          font-size: 11px;
+          color: #555;
+        }
+        .footer {
+          margin-top: 40px;
+          padding-top: 16px;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+          color: #999;
+          font-size: 9px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="header-left">
+          <h1>${escapeHtml(subcontractor.name)}</h1>
+          ${subcontractor.abn ? `<p>ABN: ${escapeHtml(subcontractor.abn)}</p>` : ''}
+          ${subcontractor.email ? `<p>${escapeHtml(subcontractor.email)}</p>` : ''}
+        </div>
+        <div class="header-right">
+          <p class="invoice-label">TAX INVOICE</p>
+          <p class="invoice-number">${invoice.invoiceNumber}</p>
+        </div>
+      </div>
+
+      <div class="parties">
+        <div class="party">
+          <h3>From</h3>
+          <p class="name">${escapeHtml(subcontractor.name)}</p>
+          ${subcontractor.abn ? `<p>ABN: ${escapeHtml(subcontractor.abn)}</p>` : ''}
+          ${subcontractor.email ? `<p>${escapeHtml(subcontractor.email)}</p>` : ''}
+        </div>
+        <div class="party">
+          <h3>Bill To</h3>
+          <p class="name">${escapeHtml(business.name)}</p>
+          ${business.abn ? `<p>ABN: ${escapeHtml(business.abn)}</p>` : ''}
+          ${business.address ? `<p>${escapeHtml(business.address)}</p>` : ''}
+          ${business.email ? `<p>${escapeHtml(business.email)}</p>` : ''}
+          ${business.phone ? `<p>${escapeHtml(business.phone)}</p>` : ''}
+        </div>
+      </div>
+
+      <div class="meta-row">
+        <div class="meta-item">
+          <label>Invoice Date</label>
+          <span>${formatDate(invoice.createdAt)}</span>
+        </div>
+        <div class="meta-item">
+          <label>Due Date</label>
+          <span>${formatDate(invoice.dueDate)}</span>
+        </div>
+        <div class="meta-item">
+          <label>Status</label>
+          <span>${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Hours</th>
+            <th>Rate</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${lineItemRows}
+        </tbody>
+      </table>
+
+      <div class="totals">
+        <div class="totals-box">
+          <div class="totals-row">
+            <span>Subtotal</span>
+            <span>${formatCurrency(subtotal)}</span>
+          </div>
+          <div class="totals-row">
+            <span>GST (10%)</span>
+            <span>${formatCurrency(gst)}</span>
+          </div>
+          <div class="totals-row total">
+            <span>Total</span>
+            <span>${formatCurrency(total)}</span>
+          </div>
+        </div>
+      </div>
+
+      ${invoice.notes ? `
+      <div class="notes">
+        <h4>Notes</h4>
+        <p>${escapeHtml(invoice.notes)}</p>
+      </div>
+      ` : ''}
+
+      <div class="footer">
+        <p>This is a tax invoice for services rendered. GST calculated at the Australian standard rate of 10%.</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await generatePDFBuffer(html);
+}

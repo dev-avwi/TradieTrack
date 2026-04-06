@@ -225,6 +225,157 @@ const PERMISSION_PRESETS = [
   },
 ];
 
+interface MobileSubInvoice {
+  id: string;
+  invoiceNumber: string;
+  status: string;
+  subtotalAmount: string;
+  gstAmount: string;
+  totalAmount: string;
+  dueDate: string | null;
+  createdAt: string | null;
+  subcontractorName: string;
+  businessName: string;
+}
+
+function SubcontractorInvoicesSection({ colors }: { colors: Record<string, string> }) {
+  const [invoices, setInvoices] = useState<MobileSubInvoice[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const loadInvoices = useCallback(async () => {
+    try {
+      const response = await api.get<MobileSubInvoice[]>('/api/business/subcontractor-invoices');
+      setInvoices(response.data || []);
+    } catch (error) {
+      if (__DEV__) console.log('Error loading subcontractor invoices:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadInvoices(); }, [loadInvoices]);
+
+  const updateStatus = useCallback(async (invoiceId: string, status: string) => {
+    setUpdatingId(invoiceId);
+    try {
+      await api.patch(`/api/business/subcontractor-invoices/${invoiceId}/status`, {
+        status,
+        paidMethod: status === 'paid' ? 'bank_transfer' : undefined,
+        paidAt: status === 'paid' ? new Date().toISOString() : undefined,
+      });
+      Alert.alert('Updated', `Invoice marked as ${status}`);
+      loadInvoices();
+    } catch (error: unknown) {
+      const errMsg = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to update invoice';
+      Alert.alert('Error', errMsg);
+    } finally {
+      setUpdatingId(null);
+    }
+  }, [loadInvoices]);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'submitted': return colors.warning;
+      case 'approved': return colors.info;
+      case 'paid': return colors.success;
+      default: return colors.mutedForeground;
+    }
+  };
+
+  const formatCurrency = (amount: string | number) => {
+    const val = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(val || 0);
+  };
+
+  if (isLoading) return null;
+  if (invoices.length === 0) return null;
+
+  return (
+    <View style={{ marginBottom: spacing.lg }}>
+      <Text style={{ fontSize: 17, fontWeight: '700', color: colors.foreground, marginBottom: spacing.sm }}>
+        Subcontractor Invoices
+      </Text>
+      {invoices.map((inv) => (
+        <View
+          key={inv.id}
+          style={{
+            backgroundColor: colors.card,
+            borderRadius: radius.lg,
+            padding: spacing.md,
+            marginBottom: spacing.sm,
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.foreground }}>{inv.invoiceNumber}</Text>
+            <View style={{
+              paddingHorizontal: spacing.sm,
+              paddingVertical: 2,
+              borderRadius: radius.pill,
+              backgroundColor: getStatusColor(inv.status) + '20',
+            }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: getStatusColor(inv.status), textTransform: 'capitalize' }}>
+                {inv.status}
+              </Text>
+            </View>
+          </View>
+          <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 2 }}>
+            From: {inv.subcontractorName || 'Subcontractor'}
+          </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+            <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+              {inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('en-AU') : ''}
+            </Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.foreground }}>
+              {formatCurrency(inv.totalAmount)}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            {inv.status === 'submitted' && (
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.info + '15',
+                  borderRadius: radius.md,
+                  paddingVertical: spacing.sm,
+                  alignItems: 'center',
+                }}
+                onPress={() => updateStatus(inv.id, 'approved')}
+                disabled={updatingId === inv.id}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.info }}>
+                  {updatingId === inv.id ? 'Updating...' : 'Approve'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {(inv.status === 'submitted' || inv.status === 'approved') && (
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.success + '15',
+                  borderRadius: radius.md,
+                  paddingVertical: spacing.sm,
+                  alignItems: 'center',
+                }}
+                onPress={() => updateStatus(inv.id, 'paid')}
+                disabled={updatingId === inv.id}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.success }}>
+                  {updatingId === inv.id ? 'Updating...' : 'Mark Paid'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
@@ -2284,6 +2435,9 @@ export default function TeamManagementScreen() {
               })}
             </View>
           )}
+
+          {/* Subcontractor Invoices Section - Business Owner Only */}
+          {currentUserIsOwner && <SubcontractorInvoicesSection colors={colors} />}
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Team Members</Text>

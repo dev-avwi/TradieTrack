@@ -162,6 +162,10 @@ import {
   websiteChangeRequests,
   subcontractorTokens,
   subcontractorEvents,
+  subcontractorInvoices,
+  subcontractorInvoiceItems,
+  insertSubcontractorInvoiceSchema,
+  insertSubcontractorInvoiceItemSchema,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, asc, and, gte, lte, lt, isNotNull, isNull, inArray, or, count, sum, ne } from "drizzle-orm";
@@ -47275,6 +47279,621 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     } catch (error) {
       console.error('[Subcontractor Decline Job] Error:', error);
       res.status(500).json({ error: 'Failed to decline job' });
+    }
+  });
+
+  // ============================================
+  // SUBCONTRACTOR INVOICING
+  // ============================================
+
+  // GET /api/subcontractor/unbilled-work - Returns completed jobs with hours/rate not yet invoiced
+  app.get("/api/subcontractor/unbilled-work", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const businessOwnerId = req.query.businessOwnerId as string;
+
+      // Find all team memberships
+      const memberships = await db.select().from(teamMembers)
+        .where(and(eq(teamMembers.memberId, userId), eq(teamMembers.isActive, true)));
+
+      if (memberships.length === 0) {
+        return res.json([]);
+      }
+
+      const memberOwnerIds = memberships.map(m => m.businessOwnerId);
+      if (businessOwnerId && !memberOwnerIds.includes(businessOwnerId)) {
+        return res.status(403).json({ error: 'Not a member of that business' });
+      }
+      const ownerIds = businessOwnerId 
+        ? [businessOwnerId] 
+        : memberOwnerIds;
+
+      // Get job assignments for this user
+      const assignments = await db.select().from(jobAssignments)
+        .where(and(eq(jobAssignments.userId, userId), eq(jobAssignments.isActive, true)));
+
+      const assignedJobIds = assignments.map(a => a.jobId);
+      if (assignedJobIds.length === 0) return res.json([]);
+
+      // Get completed jobs
+      const completedJobs = await db.select().from(jobs)
+        .where(and(
+          inArray(jobs.id, assignedJobIds),
+          inArray(jobs.userId, ownerIds),
+          or(eq(jobs.status, 'done'), eq(jobs.status, 'invoiced'))
+        ));
+
+      // Get time entries for these jobs
+      const allTimeEntries = await db.select().from(timeEntries)
+        .where(and(
+          eq(timeEntries.userId, userId),
+          isNotNull(timeEntries.endTime),
+        ));
+
+      // Get already-invoiced time entry IDs
+      const existingItems = await db.select({ timeEntryId: subcontractorInvoiceItems.timeEntryId })
+        .from(subcontractorInvoiceItems)
+        .innerJoin(subcontractorInvoices, eq(subcontractorInvoiceItems.invoiceId, subcontractorInvoices.id))
+        .where(and(
+          eq(subcontractorInvoices.subcontractorUserId, userId),
+          ne(subcontractorInvoices.status, 'draft')
+        ));
+      const invoicedTimeEntryIds = new Set(existingItems.map(i => i.timeEntryId).filter(Boolean));
+
+      // Also get already-invoiced job IDs (for jobs without time entries)
+      const existingJobItems = await db.select({ jobId: subcontractorInvoiceItems.jobId })
+        .from(subcontractorInvoiceItems)
+        .innerJoin(subcontractorInvoices, eq(subcontractorInvoiceItems.invoiceId, subcontractorInvoices.id))
+        .where(and(
+          eq(subcontractorInvoices.subcontractorUserId, userId),
+          ne(subcontractorInvoices.status, 'draft'),
+          isNull(subcontractorInvoiceItems.timeEntryId)
+        ));
+      const invoicedJobIds = new Set(existingJobItems.map(i => i.jobId).filter(Boolean));
+
+      // Get business info
+      const businessInfos = await db.select({ userId: businessSettings.userId, businessName: businessSettings.businessName })
+        .from(businessSettings).where(inArray(businessSettings.userId, ownerIds));
+      const bizMap: Record<string, string> = {};
+      businessInfos.forEach(b => { bizMap[b.userId] = b.businessName || 'Unknown'; });
+
+      // Build unbilled work (including materials)
+      const unbilledWork = await Promise.all(completedJobs.map(async job => {
+        const jobTimeEntries = allTimeEntries.filter(te => te.jobId === job.id && !invoicedTimeEntryIds.has(te.id));
+        const assignment = assignments.find(a => a.jobId === job.id);
+        const membership = memberships.find(m => m.businessOwnerId === job.userId);
+
+        const hourlyRate = parseFloat(assignment?.hourlyRateOverride || membership?.hourlyRate || '0');
+        
+        let totalHours = 0;
+        const timeEntryDetails = jobTimeEntries.map(te => {
+          if (!te.endTime) return null;
+          const durationMinutes = te.duration || Math.round((new Date(te.endTime).getTime() - new Date(te.startTime).getTime()) / 60000);
+          const hours = Math.round(durationMinutes / 60 * 100) / 100;
+          totalHours += hours;
+          return {
+            id: te.id,
+            startTime: te.startTime,
+            endTime: te.endTime,
+            hours,
+            rate: hourlyRate,
+            amount: Math.round(hours * hourlyRate * 100) / 100,
+          };
+        }).filter(Boolean);
+
+        // Get materials cost for this job
+        const materials = await storage.getJobMaterials(job.id, userId);
+        const materialsCost = materials.reduce((sum: number, m: { totalCost?: string | number | null }) => sum + parseFloat(m.totalCost?.toString() || '0'), 0);
+
+        // Skip if no unbilled time entries and job already invoiced
+        if (timeEntryDetails.length === 0 && invoicedJobIds.has(job.id) && materialsCost === 0) return null;
+        if (timeEntryDetails.length === 0 && totalHours === 0 && materialsCost === 0) return null;
+
+        const labourAmount = Math.round(totalHours * hourlyRate * 100) / 100;
+
+        return {
+          jobId: job.id,
+          jobTitle: job.title,
+          jobStatus: job.status,
+          businessOwnerId: job.userId,
+          businessName: bizMap[job.userId] || 'Unknown',
+          completedAt: job.completedAt,
+          totalHours,
+          hourlyRate,
+          materialsCost: Math.round(materialsCost * 100) / 100,
+          totalAmount: Math.round((labourAmount + materialsCost) * 100) / 100,
+          timeEntries: timeEntryDetails,
+        };
+      }));
+      const filteredWork = unbilledWork.filter(Boolean);
+
+      res.json(filteredWork);
+    } catch (error) {
+      console.error('[Subcontractor Unbilled Work] Error:', error);
+      res.status(500).json({ error: 'Failed to fetch unbilled work' });
+    }
+  });
+
+  // POST /api/subcontractor/invoices - Create invoice from selected jobs
+  app.post("/api/subcontractor/invoices", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const { businessOwnerId, items, notes, dueDate } = req.body;
+
+      if (!businessOwnerId || !items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Business owner and at least one line item required' });
+      }
+
+      // Verify user is a subcontractor for this business
+      const membership = await db.select().from(teamMembers)
+        .where(and(eq(teamMembers.memberId, userId), eq(teamMembers.businessOwnerId, businessOwnerId), eq(teamMembers.isActive, true)))
+        .limit(1);
+      if (membership.length === 0) {
+        return res.status(403).json({ error: 'Not a subcontractor for this business' });
+      }
+
+      // Server-side recalculation of amounts from assignments/memberships
+      let subtotal = 0;
+      const resolvedItems: Array<{ description: string; hours: string; rate: string; amount: string; jobId: string | null; timeEntryIds: string[] }> = [];
+
+      for (const item of items) {
+        const jobId = item.jobId;
+        if (!jobId) {
+          return res.status(400).json({ error: 'Each line item must reference a valid job' });
+        }
+
+        // Verify this job belongs to the target business owner
+        const jobRecord = await db.select().from(jobs)
+          .where(and(eq(jobs.id, jobId), eq(jobs.userId, businessOwnerId)))
+          .limit(1);
+        if (jobRecord.length === 0) {
+          return res.status(400).json({ error: `Job ${jobId} does not belong to the selected business` });
+        }
+
+        // Verify the job is completed (status 'done' or 'invoiced' in this system)
+        if (jobRecord[0].status !== 'done' && jobRecord[0].status !== 'invoiced') {
+          return res.status(400).json({ error: `Job "${jobRecord[0].title}" must be completed before invoicing` });
+        }
+
+        // Verify the subcontractor is assigned to this job
+        const assignment = await db.select().from(jobAssignments)
+          .where(and(eq(jobAssignments.userId, userId), eq(jobAssignments.jobId, jobId)))
+          .limit(1);
+        if (assignment.length === 0) {
+          return res.status(400).json({ error: `You are not assigned to job "${jobRecord[0].title}"` });
+        }
+        const hourlyRate = parseFloat(assignment[0]?.hourlyRateOverride || membership[0]?.hourlyRate || '0');
+
+        // Require time entry IDs for labour line items
+        const timeEntryIds: string[] = item.timeEntryIds || (item.timeEntryId ? [item.timeEntryId] : []);
+        let totalHours = 0;
+
+        if (timeEntryIds.length === 0) {
+          return res.status(400).json({ error: `Time entries required for job "${jobRecord[0].title}". Track your hours before invoicing.` });
+        }
+
+        // Check for already-invoiced time entries (dedup protection)
+        const alreadyInvoiced = await db.select({ timeEntryId: subcontractorInvoiceItems.timeEntryId })
+          .from(subcontractorInvoiceItems)
+          .innerJoin(subcontractorInvoices, eq(subcontractorInvoiceItems.invoiceId, subcontractorInvoices.id))
+          .where(and(
+            inArray(subcontractorInvoiceItems.timeEntryId, timeEntryIds),
+            eq(subcontractorInvoices.subcontractorUserId, userId),
+            ne(subcontractorInvoices.status, 'draft')
+          ));
+        if (alreadyInvoiced.length > 0) {
+          return res.status(400).json({ error: 'Some time entries have already been invoiced' });
+        }
+
+        // Fetch and validate time entries belong to this user and job
+        const entries = await db.select().from(timeEntries)
+          .where(and(
+            eq(timeEntries.userId, userId),
+            eq(timeEntries.jobId, jobId),
+            inArray(timeEntries.id, timeEntryIds),
+            isNotNull(timeEntries.endTime),
+          ));
+        if (entries.length !== timeEntryIds.length) {
+          return res.status(400).json({ error: `Some time entries are invalid or do not belong to you for job "${jobRecord[0].title}"` });
+        }
+        for (const te of entries) {
+          const durationMinutes = te.duration || Math.round((new Date(te.endTime!).getTime() - new Date(te.startTime).getTime()) / 60000);
+          totalHours += Math.round(durationMinutes / 60 * 100) / 100;
+        }
+
+        // Include job materials cost (with dedup check)
+        const existingMaterialItems = await db.select({ id: subcontractorInvoiceItems.id })
+          .from(subcontractorInvoiceItems)
+          .innerJoin(subcontractorInvoices, eq(subcontractorInvoiceItems.invoiceId, subcontractorInvoices.id))
+          .where(and(
+            eq(subcontractorInvoiceItems.jobId, jobId),
+            isNull(subcontractorInvoiceItems.timeEntryId),
+            eq(subcontractorInvoices.subcontractorUserId, userId),
+            ne(subcontractorInvoices.status, 'draft')
+          ));
+        if (existingMaterialItems.length === 0) {
+          const jobMaterialsList = await storage.getJobMaterials(jobId, userId);
+          let materialsCost = 0;
+          for (const mat of jobMaterialsList) {
+            materialsCost += parseFloat(mat.totalCost?.toString() || '0');
+          }
+          if (materialsCost > 0) {
+            resolvedItems.push({
+              description: `Materials for: ${item.description || 'Job'}`,
+              hours: '0',
+              rate: '0',
+              amount: materialsCost.toFixed(2),
+              jobId,
+              timeEntryIds: [],
+            });
+            subtotal += materialsCost;
+          }
+        }
+
+        const lineAmount = Math.round(totalHours * hourlyRate * 100) / 100;
+        subtotal += lineAmount;
+        resolvedItems.push({
+          description: item.description || 'Service',
+          hours: totalHours.toFixed(2),
+          rate: hourlyRate.toFixed(2),
+          amount: lineAmount.toFixed(2),
+          jobId,
+          timeEntryIds,
+        });
+      }
+
+      const gstAmount = Math.round(subtotal * 0.1 * 100) / 100;
+      const totalAmount = Math.round((subtotal + gstAmount) * 100) / 100;
+
+      const invoiceNumber = await storage.getNextSubcontractorInvoiceNumber(userId);
+
+      const invoice = await storage.createSubcontractorInvoice({
+        subcontractorUserId: userId,
+        businessOwnerId,
+        status: 'submitted',
+        invoiceNumber,
+        subtotalAmount: subtotal.toFixed(2),
+        gstAmount: gstAmount.toFixed(2),
+        totalAmount: totalAmount.toFixed(2),
+        dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        submittedAt: new Date(),
+        notes: notes || null,
+      });
+
+      // Create line items — one per resolved item, storing the first timeEntryId for dedup tracking
+      for (const rItem of resolvedItems) {
+        if (rItem.timeEntryIds.length > 0) {
+          for (const teId of rItem.timeEntryIds) {
+            const te = await db.select().from(timeEntries)
+              .where(eq(timeEntries.id, teId))
+              .limit(1);
+            const teDuration = te[0]?.duration || (te[0]?.endTime ? Math.round((new Date(te[0].endTime).getTime() - new Date(te[0].startTime).getTime()) / 60000) : 0);
+            const teHours = Math.round(teDuration / 60 * 100) / 100;
+            const teAmount = Math.round(teHours * parseFloat(rItem.rate) * 100) / 100;
+            await storage.createSubcontractorInvoiceItem({
+              invoiceId: invoice.id,
+              description: rItem.description,
+              hours: teHours.toFixed(2),
+              rate: rItem.rate,
+              amount: teAmount.toFixed(2),
+              jobId: rItem.jobId,
+              timeEntryId: teId,
+            });
+          }
+        } else {
+          await storage.createSubcontractorInvoiceItem({
+            invoiceId: invoice.id,
+            description: rItem.description,
+            hours: rItem.hours,
+            rate: rItem.rate,
+            amount: rItem.amount,
+            jobId: rItem.jobId,
+            timeEntryId: null,
+          });
+        }
+      }
+
+      // Send notification to business owner
+      const subUser = await storage.getUser(userId);
+      const subName = subUser ? `${subUser.firstName || ''} ${subUser.lastName || ''}`.trim() || subUser.email : 'Subcontractor';
+
+      await storage.createNotification({
+        userId: businessOwnerId,
+        type: 'subcontractor_invoice',
+        title: 'New Subcontractor Invoice',
+        message: `${subName} submitted invoice ${invoiceNumber} for $${totalAmount.toFixed(2)}`,
+        relatedType: 'subcontractor_invoice',
+        relatedId: invoice.id,
+        priority: 'important',
+      });
+
+      // Send push notification
+      try {
+        const { sendPushNotification } = await import('./pushNotifications');
+        await sendPushNotification(
+          storage,
+          businessOwnerId,
+          'subcontractor_invoice',
+          'New Subcontractor Invoice',
+          `${subName} submitted invoice ${invoiceNumber} for $${totalAmount.toFixed(2)}`,
+          { invoiceId: invoice.id }
+        );
+      } catch (e) {
+        console.warn('[SubInvoice] Push notification error:', e);
+      }
+
+      // Send email to business owner with PDF attachment
+      try {
+        const ownerUser = await storage.getUser(businessOwnerId);
+        if (ownerUser?.email) {
+          const { sendSystemEmail } = await import('./emailService');
+          const { generateSubcontractorInvoicePdf } = await import('./pdfService');
+
+          const bizSettings = await storage.getBusinessSettings(businessOwnerId);
+          const subBizSettings = await storage.getBusinessSettings(userId);
+          const pdfBuffer = await generateSubcontractorInvoicePdf({
+            invoice: {
+              id: invoice.id,
+              invoiceNumber,
+              status: 'submitted',
+              subtotalAmount: subtotal.toFixed(2),
+              gstAmount: gstAmount.toFixed(2),
+              totalAmount: totalAmount.toFixed(2),
+              dueDate: invoice.dueDate,
+              notes: notes || null,
+              createdAt: invoice.createdAt,
+            },
+            items: resolvedItems.map(ri => ({
+              description: ri.description,
+              hours: ri.hours,
+              rate: ri.rate,
+              amount: ri.amount,
+              jobId: ri.jobId,
+            })),
+            subcontractor: {
+              name: subName,
+              email: subUser?.email || '',
+              abn: subBizSettings?.abn || null,
+            },
+            business: {
+              name: bizSettings?.businessName || 'Unknown',
+              abn: bizSettings?.abn || null,
+              address: bizSettings?.address || null,
+              email: bizSettings?.email || null,
+              phone: bizSettings?.phone || null,
+            },
+          });
+
+          const emailData: Record<string, unknown> = {
+            to: ownerUser.email,
+            subject: `New Invoice from ${subName} — $${totalAmount.toFixed(2)}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>New Subcontractor Invoice</h2>
+                <p>${subName} has submitted invoice <strong>${invoiceNumber}</strong> for <strong>$${totalAmount.toFixed(2)}</strong> (inc. GST).</p>
+                <p>The invoice PDF is attached. Log in to JobRunner to approve or mark as paid.</p>
+              </div>
+            `,
+            attachments: [{
+              content: pdfBuffer.toString('base64'),
+              filename: `${invoiceNumber}.pdf`,
+              type: 'application/pdf',
+              disposition: 'attachment',
+            }],
+          };
+          await sendSystemEmail(emailData);
+        }
+      } catch (e) {
+        console.warn('[SubInvoice] Email notification error:', e);
+      }
+
+      const fullInvoice = await storage.getSubcontractorInvoiceWithItems(invoice.id);
+      res.json(fullInvoice);
+    } catch (error) {
+      console.error('[Subcontractor Create Invoice] Error:', error);
+      res.status(500).json({ error: 'Failed to create invoice' });
+    }
+  });
+
+  // GET /api/subcontractor/invoices - List invoices for subcontractor
+  app.get("/api/subcontractor/invoices", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const businessOwnerId = req.query.businessOwnerId as string | undefined;
+      const status = req.query.status as string | undefined;
+
+      let invoicesList = await storage.getSubcontractorInvoices(userId, businessOwnerId || undefined);
+
+      if (status) {
+        invoicesList = invoicesList.filter(inv => inv.status === status);
+      }
+
+      // Enrich with business names
+      const ownerIds = [...new Set(invoicesList.map(i => i.businessOwnerId))];
+      const bizInfos = ownerIds.length > 0
+        ? await db.select({ userId: businessSettings.userId, businessName: businessSettings.businessName })
+            .from(businessSettings).where(inArray(businessSettings.userId, ownerIds))
+        : [];
+      const bizMap: Record<string, string> = {};
+      bizInfos.forEach(b => { bizMap[b.userId] = b.businessName || 'Unknown'; });
+
+      const enriched = invoicesList.map(inv => ({
+        ...inv,
+        businessName: bizMap[inv.businessOwnerId] || 'Unknown',
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      console.error('[Subcontractor List Invoices] Error:', error);
+      res.status(500).json({ error: 'Failed to fetch invoices' });
+    }
+  });
+
+  // GET /api/subcontractor/invoices/:id - Invoice detail
+  app.get("/api/subcontractor/invoices/:id", requireAuth, async (req: any, res) => {
+    try {
+      const invoice = await storage.getSubcontractorInvoiceWithItems(req.params.id);
+      if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+      // Verify access (subcontractor or business owner)
+      if (invoice.subcontractorUserId !== req.userId && invoice.businessOwnerId !== req.userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Enrich with names
+      const subUser = await storage.getUser(invoice.subcontractorUserId);
+      const bizSettings = await storage.getBusinessSettings(invoice.businessOwnerId);
+
+      res.json({
+        ...invoice,
+        subcontractorName: subUser ? `${subUser.firstName || ''} ${subUser.lastName || ''}`.trim() || subUser.email : 'Unknown',
+        subcontractorEmail: subUser?.email,
+        subcontractorAbn: null,
+        businessName: bizSettings?.businessName || 'Unknown',
+        businessAbn: bizSettings?.abn || null,
+        businessAddress: bizSettings?.address || null,
+        businessEmail: bizSettings?.email || null,
+        businessPhone: bizSettings?.phone || null,
+      });
+    } catch (error) {
+      console.error('[Subcontractor Invoice Detail] Error:', error);
+      res.status(500).json({ error: 'Failed to fetch invoice' });
+    }
+  });
+
+  // GET /api/business/subcontractor-invoices - Business owner views received invoices
+  app.get("/api/business/subcontractor-invoices", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const status = req.query.status as string | undefined;
+
+      let invoicesList = await storage.getSubcontractorInvoicesByBusiness(userId);
+
+      if (status) {
+        invoicesList = invoicesList.filter(inv => inv.status === status);
+      }
+
+      // Enrich with subcontractor names
+      const subIds = [...new Set(invoicesList.map(i => i.subcontractorUserId))];
+      const subUsers = subIds.length > 0
+        ? await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email })
+            .from(users).where(inArray(users.id, subIds))
+        : [];
+      const subMap: Record<string, string> = {};
+      subUsers.forEach(u => {
+        subMap[u.id] = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Unknown';
+      });
+
+      const enriched = invoicesList.map(inv => ({
+        ...inv,
+        subcontractorName: subMap[inv.subcontractorUserId] || 'Unknown',
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      console.error('[Business Subcontractor Invoices] Error:', error);
+      res.status(500).json({ error: 'Failed to fetch subcontractor invoices' });
+    }
+  });
+
+  // PATCH /api/business/subcontractor-invoices/:id/status - Approve or mark paid
+  app.patch("/api/business/subcontractor-invoices/:id/status", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId;
+      const { status, paidMethod, paidAt } = req.body;
+
+      if (!['approved', 'paid'].includes(status)) {
+        return res.status(400).json({ error: 'Status must be approved or paid' });
+      }
+
+      const invoice = await storage.getSubcontractorInvoice(req.params.id);
+      if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+      if (invoice.businessOwnerId !== userId) {
+        return res.status(403).json({ error: 'Not authorized' });
+      }
+
+      const updates: { status: string; paidAt?: Date; paidMethod?: string; approvedAt?: Date; rejectedAt?: Date; rejectionReason?: string } = { status };
+      if (status === 'paid') {
+        updates.paidAt = paidAt ? new Date(paidAt) : new Date();
+        updates.paidMethod = paidMethod || 'bank_transfer';
+      }
+      if (status === 'approved') {
+        updates.approvedAt = new Date();
+      }
+
+      const updated = await storage.updateSubcontractorInvoice(req.params.id, updates);
+
+      // Notify subcontractor
+      const statusLabel = status === 'approved' ? 'Approved' : 'Paid';
+      await storage.createNotification({
+        userId: invoice.subcontractorUserId,
+        type: 'subcontractor_invoice_update',
+        title: `Invoice ${statusLabel}`,
+        message: `Your invoice ${invoice.invoiceNumber} has been marked as ${statusLabel.toLowerCase()}`,
+        relatedType: 'subcontractor_invoice',
+        relatedId: invoice.id,
+        priority: status === 'paid' ? 'urgent' : 'important',
+      });
+
+      try {
+        const { sendPushNotification } = await import('./pushNotifications');
+        await sendPushNotification(
+          storage,
+          invoice.subcontractorUserId,
+          'subcontractor_invoice_update',
+          `Invoice ${statusLabel}`,
+          `Your invoice ${invoice.invoiceNumber} has been marked as ${statusLabel.toLowerCase()}`,
+          { invoiceId: invoice.id }
+        );
+      } catch (e) {
+        console.warn('[SubInvoice] Push notification error:', e);
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error('[Business Update Subcontractor Invoice] Error:', error);
+      res.status(500).json({ error: 'Failed to update invoice status' });
+    }
+  });
+
+  // GET /api/subcontractor/invoices/:id/pdf - Generate PDF for subcontractor invoice
+  app.get("/api/subcontractor/invoices/:id/pdf", requireAuth, async (req: any, res) => {
+    try {
+      const invoice = await storage.getSubcontractorInvoiceWithItems(req.params.id);
+      if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+      if (invoice.subcontractorUserId !== req.userId && invoice.businessOwnerId !== req.userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const subUser = await storage.getUser(invoice.subcontractorUserId);
+      const bizSettings = await storage.getBusinessSettings(invoice.businessOwnerId);
+      const subBizSettings = await storage.getBusinessSettings(invoice.subcontractorUserId);
+
+      const { generateSubcontractorInvoicePdf } = await import('./pdfService');
+      const pdfBuffer = await generateSubcontractorInvoicePdf({
+        invoice,
+        items: invoice.items,
+        subcontractor: {
+          name: subUser ? `${subUser.firstName || ''} ${subUser.lastName || ''}`.trim() || subUser.email || 'Unknown' : 'Unknown',
+          email: subUser?.email || '',
+          abn: subBizSettings?.abn || null,
+        },
+        business: {
+          name: bizSettings?.businessName || 'Unknown',
+          abn: bizSettings?.abn || null,
+          address: bizSettings?.address || null,
+          email: bizSettings?.email || null,
+          phone: bizSettings?.phone || null,
+        },
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${invoice.invoiceNumber}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error('[Subcontractor Invoice PDF] Error:', error);
+      res.status(500).json({ error: 'Failed to generate PDF' });
     }
   });
 
