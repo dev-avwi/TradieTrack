@@ -1724,7 +1724,6 @@ function App() {
               <Route path="/receipt/:token">{(params) => <PublicReceiptRedirect token={params.token} />}</Route>
               <Route path="/privacy" component={PrivacyPolicy} />
               <Route path="/terms" component={TermsOfService} />
-              <Route path="/ipad-screenshots" component={React.lazy(() => import("@/pages/iPadScreenshots"))} />
               {/* All other routes go through AppLayout */}
               <Route>
                 <AppLayout />
