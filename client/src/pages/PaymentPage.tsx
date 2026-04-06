@@ -19,6 +19,10 @@ interface InvoiceData {
   gstAmount: string;
   dueDate?: string;
   allowOnlinePayment: boolean;
+  depositRequired?: boolean;
+  depositAmount?: string;
+  depositPaid?: boolean;
+  amountPaid?: string;
   lineItems: Array<{
     description: string;
     quantity: number;
@@ -190,6 +194,8 @@ function InvoicePaymentView({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
 
+  const paymentType = new URLSearchParams(window.location.search).get('paymentType') || 'full';
+
   const createPaymentIntentMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch(`/api/public/invoice/${token}/pay`, {
@@ -197,6 +203,7 @@ function InvoicePaymentView({
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ paymentType }),
       });
       if (!response.ok) {
         const errorData = await response.json();

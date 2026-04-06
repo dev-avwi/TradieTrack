@@ -476,83 +476,116 @@ async function handleStripeEvent(event: any, storage: any) {
         
         if (invoiceId && tradieUserId) {
           try {
-            // Get the invoice
             const invoice = await storage.getInvoice(invoiceId, tradieUserId);
             if (invoice && invoice.status !== 'paid') {
-              // Mark invoice as paid
-              await storage.updateInvoice(invoiceId, tradieUserId, {
-                status: 'paid',
-                paidAt: new Date().toISOString(),
-                paymentMethod: 'stripe_connect',
-                stripePaymentIntentId: paymentIntent.id,
-                lockedAt: new Date().toISOString(),
-                lockedReason: 'payment_received',
-              });
+              const invoicePaymentType = paymentIntent.metadata?.paymentType || 'full';
+              const confirmedAmount = paymentIntent.amount_received || paymentIntent.amount || 0;
+              const totalCents = Math.round(parseFloat(invoice.total || '0') * 100);
+              const previousAmountPaid = parseFloat(String(invoice.amountPaid || '0'));
+              const newAmountPaid = previousAmountPaid + (confirmedAmount / 100);
+              const isFullyPaid = Math.round(newAmountPaid * 100) >= totalCents;
+              const isDepositPayment = invoicePaymentType === 'deposit' && !isFullyPaid;
               
-              // Create payment receipt record using Stripe-confirmed amount
+              if (isFullyPaid) {
+                await storage.updateInvoice(invoiceId, tradieUserId, {
+                  status: 'paid',
+                  paidAt: new Date(),
+                  paymentMethod: 'stripe_connect',
+                  stripePaymentIntentId: paymentIntent.id,
+                  amountPaid: newAmountPaid.toFixed(2),
+                  lockedAt: new Date(),
+                  lockedReason: 'payment_received',
+                });
+              } else if (isDepositPayment) {
+                await storage.updateInvoice(invoiceId, tradieUserId, {
+                  status: 'deposit_paid',
+                  depositPaid: true,
+                  depositPaidAt: new Date(),
+                  amountPaid: newAmountPaid.toFixed(2),
+                  paymentMethod: 'stripe_connect',
+                  stripePaymentIntentId: paymentIntent.id,
+                });
+              } else {
+                await storage.updateInvoice(invoiceId, tradieUserId, {
+                  amountPaid: newAmountPaid.toFixed(2),
+                  paymentMethod: 'stripe_connect',
+                  stripePaymentIntentId: paymentIntent.id,
+                });
+              }
+              
               try {
-                // Use paymentIntent.amount_received as authoritative source
-                const confirmedAmount = paymentIntent.amount_received || paymentIntent.amount || invoice.total || 0;
                 if (confirmedAmount > 0) {
                   const receiptNumber = await storage.generateReceiptNumber(tradieUserId);
+                  const amountDollars = (confirmedAmount / 100).toFixed(2);
                   await storage.createReceipt({
                     userId: tradieUserId,
                     receiptNumber,
-                    amount: confirmedAmount,
+                    amount: amountDollars,
                     paymentMethod: 'stripe_connect',
                     invoiceId,
                     clientId: invoice.clientId,
                     paidAt: new Date(),
                     paymentReference: paymentIntent.id,
+                    description: isDepositPayment ? `Deposit Payment - Invoice #${invoice.number}` : undefined,
                   });
-                  console.log(`✅ Receipt ${receiptNumber} created for invoice ${invoice.number} - Amount: $${(confirmedAmount / 100).toFixed(2)}`);
-                } else {
-                  console.warn(`⚠️ Skipping receipt creation for invoice ${invoiceId} - zero amount`);
+                  console.log(`✅ Receipt ${receiptNumber} created for invoice ${invoice.number} (${isDepositPayment ? 'deposit' : 'payment'}) - Amount: $${amountDollars}`);
                 }
               } catch (receiptError) {
                 console.error('Failed to create receipt record:', receiptError);
               }
               
-              // Notify the tradie
-              await createNotification(storage, {
-                userId: tradieUserId,
-                type: 'invoice_paid',
-                title: 'Invoice Paid',
-                message: `Invoice #${invoice.number} has been paid online via card payment.`,
-                relatedType: 'invoice',
-                relatedId: invoiceId,
-              });
-
-              // 💰 Broadcast celebratory payment notification via WebSocket
               const connectClient = await storage.getClientById(invoice.clientId);
+              const clientDisplayName = connectClient?.name || connectClient?.firstName || 'Customer';
+              
+              if (isDepositPayment && !isFullyPaid) {
+                await createNotification(storage, {
+                  userId: tradieUserId,
+                  type: 'invoice_deposit_paid',
+                  title: 'Deposit Received',
+                  message: `Deposit received — $${(confirmedAmount / 100).toFixed(2)} of $${parseFloat(invoice.total || '0').toFixed(2)} total for Invoice #${invoice.number} from ${clientDisplayName}.`,
+                  relatedType: 'invoice',
+                  relatedId: invoiceId,
+                });
+              } else {
+                await createNotification(storage, {
+                  userId: tradieUserId,
+                  type: 'invoice_paid',
+                  title: isFullyPaid ? 'Invoice Paid' : 'Payment Received',
+                  message: isFullyPaid 
+                    ? `Invoice #${invoice.number} has been paid in full via card payment.`
+                    : `Payment of $${(confirmedAmount / 100).toFixed(2)} received for Invoice #${invoice.number} from ${clientDisplayName}.`,
+                  relatedType: 'invoice',
+                  relatedId: invoiceId,
+                });
+              }
+
               broadcastPaymentReceived(tradieUserId, {
-                amount: paymentIntent.amount_received || paymentIntent.amount || parseFloat(invoice.total || '0') * 100,
+                amount: confirmedAmount || parseFloat(invoice.total || '0') * 100,
                 invoiceNumber: invoice.number,
-                clientName: connectClient?.name || connectClient?.firstName || 'Customer',
+                clientName: clientDisplayName,
                 paymentMethod: 'stripe_connect',
               });
               
-              console.log(`✅ Invoice ${invoice.number} marked as paid via Stripe Connect`);
+              console.log(`✅ Invoice ${invoice.number} ${isDepositPayment ? 'deposit' : 'payment'} processed via Stripe Connect`);
               
-              // Auto-send receipt email to customer with PDF attachment
-              try {
-                const client = await storage.getClientById(invoice.clientId);
-                const settings = await storage.getBusinessSettingsByUserId(tradieUserId);
-                
-                if (client?.email && settings) {
-                  // Use unified receipt email function that handles PDF generation internally
-                  await sendReceiptEmailWithPdf(
-                    storage,
-                    invoice,
-                    client,
-                    settings,
-                    undefined, // Let it look up or create receipt internally
-                    tradieUserId
-                  );
+              if (isFullyPaid) {
+                try {
+                  const client = await storage.getClientById(invoice.clientId);
+                  const settings = await storage.getBusinessSettingsByUserId(tradieUserId);
+                  
+                  if (client?.email && settings) {
+                    await sendReceiptEmailWithPdf(
+                      storage,
+                      invoice,
+                      client,
+                      settings,
+                      undefined,
+                      tradieUserId
+                    );
+                  }
+                } catch (emailError) {
+                  console.error('Failed to send receipt email:', emailError);
                 }
-              } catch (emailError) {
-                // Don't fail the webhook if email fails
-                console.error('Failed to send receipt email:', emailError);
               }
             }
           } catch (error) {

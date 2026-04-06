@@ -977,6 +977,11 @@ export const invoices = pgTable("invoices", {
   retentionAmount: decimal("retention_amount", { precision: 10, scale: 2 }),
   amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default('0.00'),
   paymentMilestones: jsonb("payment_milestones"),
+  depositRequired: boolean("deposit_required").default(false),
+  depositPercent: decimal("deposit_percent", { precision: 5, scale: 2 }),
+  depositAmount: decimal("deposit_amount", { precision: 10, scale: 2 }),
+  depositPaid: boolean("deposit_paid").default(false),
+  depositPaidAt: timestamp("deposit_paid_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1283,6 +1288,17 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
     (v) => (v === null || v === undefined ? null : v),
     z.coerce.string().nullable()
   ).optional(),
+  depositRequired: z.boolean().optional(),
+  depositPercent: z.preprocess(
+    (v) => (v === null || v === undefined ? null : v),
+    z.coerce.string().nullable()
+  ).optional(),
+  depositAmount: z.preprocess(
+    (v) => (v === null || v === undefined ? null : v),
+    z.coerce.string().nullable()
+  ).optional(),
+  depositPaid: z.boolean().optional(),
+  depositPaidAt: z.coerce.date().optional().nullable(),
 });
 
 export const updateInvoiceSchema = insertInvoiceSchema.partial().extend({

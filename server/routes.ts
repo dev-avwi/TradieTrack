@@ -2899,6 +2899,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paidAt: invoice.paidAt,
           allowOnlinePayment: invoice.allowOnlinePayment,
           stripePaymentLink: invoice.stripePaymentLink,
+          depositRequired: invoice.depositRequired || false,
+          depositPercent: invoice.depositPercent,
+          depositAmount: invoice.depositAmount,
+          depositPaid: invoice.depositPaid || false,
+          depositPaidAt: invoice.depositPaidAt,
+          amountPaid: invoice.amountPaid,
           lineItems: lineItems.map(item => ({
             id: item.id,
             description: item.description,
@@ -23698,8 +23704,8 @@ Be specific about materials, colors, and features that would be included.`
       // Generate invoice number
       const invoiceNumber = await storage.generateInvoiceNumber(req.userId);
 
-      // Create invoice from quote (preserve template settings from the quote)
-      const invoice = await storage.createInvoice({
+      // Create invoice from quote (preserve template settings and deposit settings from the quote)
+      const invoiceCreateData: Record<string, unknown> = {
         userId: req.userId,
         clientId: quote.clientId,
         jobId: quote.jobId,
@@ -23712,10 +23718,19 @@ Be specific about materials, colors, and features that would be included.`
         total: quote.total,
         notes: quote.notes,
         status: 'draft',
-        // Preserve template settings from the original quote
-        documentTemplate: (quote as any).documentTemplate || null,
-        documentTemplateSettings: (quote as any).documentTemplateSettings || null,
-      });
+        documentTemplate: quote.documentTemplate || null,
+        documentTemplateSettings: quote.documentTemplateSettings || null,
+      };
+
+      if (quote.depositRequired) {
+        invoiceCreateData.depositRequired = true;
+        invoiceCreateData.depositPercent = quote.depositPercent;
+        invoiceCreateData.depositAmount = quote.depositAmount;
+        invoiceCreateData.depositPaid = quote.depositPaid || false;
+        invoiceCreateData.depositPaidAt = quote.depositPaidAt || null;
+      }
+
+      const invoice = await storage.createInvoice(invoiceCreateData as Parameters<typeof storage.createInvoice>[0]);
 
       // Copy line items
       for (const item of quote.lineItems) {
@@ -31720,11 +31735,14 @@ Respond with JSON in this format:
         dueDate: invoice.dueDate,
         status: invoice.status,
         allowOnlinePayment: invoice.allowOnlinePayment,
+        depositRequired: invoice.depositRequired || false,
+        depositAmount: invoice.depositAmount,
+        depositPaid: invoice.depositPaid || false,
+        amountPaid: invoice.amountPaid,
         business: {
           name: settings?.businessName,
           logo: settings?.logoUrl,
           abn: settings?.abn,
-          // Bank details for bank transfer payments
           bankBsb: settings?.bankBsb,
           bankAccountNumber: settings?.bankAccountNumber,
           bankAccountName: settings?.bankAccountName,
@@ -31875,9 +31893,11 @@ Respond with JSON in this format:
   });
   
   // Public endpoint: Create payment intent for client (no auth required)
+  // Accepts optional paymentType: 'deposit' | 'balance' | 'full' (default: 'full')
   app.post("/api/public/invoice/:token/pay", async (req, res) => {
     try {
       const { token } = req.params;
+      const { paymentType = 'full' } = req.body || {};
       
       const stripe = await getUncachableStripeClient();
       if (!stripe) {
@@ -31903,9 +31923,37 @@ Respond with JSON in this format:
       }
       
       const client = await storage.getClientById(invoice.clientId);
-      const amountCents = Math.round(parseFloat(invoice.total) * 100);
+      const totalCents = Math.round(parseFloat(invoice.total) * 100);
+      const depositAmountCents = invoice.depositAmount 
+        ? Math.round(parseFloat(String(invoice.depositAmount)) * 100) 
+        : 0;
+      const currentAmountPaid = invoice.amountPaid 
+        ? Math.round(parseFloat(String(invoice.amountPaid)) * 100) 
+        : 0;
       
-      // Platform fee: 2.5% of invoice total (minimum $0.50)
+      let amountCents: number;
+      let paymentDescription: string;
+      let effectivePaymentType: string;
+      
+      if (paymentType === 'deposit' && invoice.depositRequired && !invoice.depositPaid && depositAmountCents > 0) {
+        effectivePaymentType = 'deposit';
+        amountCents = depositAmountCents;
+        paymentDescription = `Deposit for Invoice ${invoice.number} - ${settings.businessName || 'JobRunner'}`;
+      } else if (paymentType === 'balance' && invoice.depositPaid) {
+        effectivePaymentType = 'balance';
+        amountCents = totalCents - currentAmountPaid;
+        paymentDescription = `Balance for Invoice ${invoice.number} - ${settings.businessName || 'JobRunner'}`;
+      } else {
+        effectivePaymentType = 'full';
+        amountCents = totalCents - currentAmountPaid;
+        paymentDescription = `Invoice ${invoice.number} - ${settings.businessName || 'JobRunner'}`;
+      }
+      
+      if (amountCents < 500) {
+        return res.status(400).json({ error: 'Minimum payment amount is $5.00 AUD' });
+      }
+      
+      // Platform fee: 2.5% of payment amount (minimum $0.50)
       const platformFee = Math.max(Math.round(amountCents * 0.025), 50);
       
       const paymentIntent = await stripe.paymentIntents.create({
@@ -31922,8 +31970,9 @@ Respond with JSON in this format:
           clientId: client?.id || '',
           clientName: client?.name || '',
           source: 'public_payment_page',
+          paymentType: effectivePaymentType,
         },
-        description: `Invoice ${invoice.number} - ${settings.businessName || 'JobRunner'}`,
+        description: paymentDescription,
       });
       
       // Update invoice with payment intent

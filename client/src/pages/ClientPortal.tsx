@@ -30,8 +30,11 @@ interface DocumentData {
   acceptedBy?: string;
   acceptanceSignatureData?: string;
   depositRequired?: boolean;
+  depositPercent?: string;
   depositAmount?: string;
   depositPaid?: boolean;
+  depositPaidAt?: string;
+  amountPaid?: string;
   allowOnlinePayment?: boolean;
   stripePaymentLink?: string;
   lineItems: Array<{
@@ -87,6 +90,7 @@ function getStatusColor(status: string, type: string): string {
   if (type === 'invoice') {
     switch (status) {
       case 'paid': return 'bg-green-100 text-green-800';
+      case 'deposit_paid': return 'bg-amber-100 text-amber-800';
       case 'overdue': return 'bg-red-100 text-red-800';
       case 'sent': return 'bg-blue-100 text-blue-800';
       default: return 'bg-slate-100 text-slate-700';
@@ -250,9 +254,10 @@ export default function ClientPortal() {
     }
   };
 
-  const handlePayNow = () => {
+  const handlePayNow = (paymentType: 'deposit' | 'balance' | 'full' = 'full') => {
     if (data?.stripePaymentLink) {
-      window.location.href = data.stripePaymentLink;
+      const separator = data.stripePaymentLink.includes('?') ? '&' : '?';
+      window.location.href = `${data.stripePaymentLink}${separator}paymentType=${paymentType}`;
     }
   };
 
@@ -303,8 +308,11 @@ export default function ClientPortal() {
   const isQuoteDeclined = effectiveStatus === 'declined' && type === 'quote';
   const showAcceptButtons = type === 'quote' && !localDeclined && !declineAnimating && (data.status === 'sent' || data.status === 'draft');
   const showPayButton = type === 'invoice' && effectiveStatus !== 'paid' && data.allowOnlinePayment && data.stripePaymentLink;
+  const hasDepositOption = showPayButton && data.depositRequired && data.depositAmount && !data.depositPaid;
+  const showDepositPaidBalance = type === 'invoice' && data.depositRequired && data.depositPaid && effectiveStatus !== 'paid' && data.allowOnlinePayment && data.stripePaymentLink;
   const isAccepted = effectiveStatus === 'accepted';
   const isPaid = effectiveStatus === 'paid';
+  const isDepositPaid = effectiveStatus === 'deposit_paid' || (data.depositPaid && effectiveStatus !== 'paid');
 
   return (
     <div className="min-h-screen bg-white relative">
@@ -387,7 +395,7 @@ export default function ClientPortal() {
                 </div>
               </div>
               <Badge className={`${getStatusColor(effectiveStatus, type || '')} rounded-full px-3 py-1 text-sm font-medium no-default-hover-elevate no-default-active-elevate`}>
-                {effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1)}
+                {effectiveStatus === 'deposit_paid' ? 'Deposit Paid' : effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1)}
               </Badge>
             </div>
           </div>
@@ -514,12 +522,22 @@ export default function ClientPortal() {
                     <span className="text-brand">{formatCurrency(data.total)}</span>
                   </div>
                   {data.depositRequired && data.depositAmount && (
-                    <div className="flex justify-between text-brand text-sm pt-1">
-                      <span>Deposit Required</span>
-                      <span className="flex items-center gap-1">
-                        {formatCurrency(data.depositAmount)}
-                        {data.depositPaid && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                      </span>
+                    <div className="space-y-1 pt-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Deposit Required{data.depositPercent ? ` (${parseFloat(data.depositPercent)}%)` : ''}</span>
+                        <span className="flex items-center gap-1 font-medium text-foreground">
+                          {formatCurrency(data.depositAmount)}
+                          {data.depositPaid && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                        </span>
+                      </div>
+                      {isDepositPaid && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Remaining Balance</span>
+                          <span className="font-medium text-foreground">
+                            {formatCurrency(parseFloat(data.total) - parseFloat(data.amountPaid || data.depositAmount || '0'))}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -622,6 +640,25 @@ export default function ClientPortal() {
               </Card>
             )}
 
+            {/* Deposit Paid Status */}
+            {isDepositPaid && !isPaid && type === 'invoice' && (
+              <Card className="bg-white rounded-xl shadow-sm border border-amber-200">
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-amber-800">Deposit Paid</p>
+                      <p className="text-sm text-amber-600">
+                        {formatCurrency(data.amountPaid || data.depositAmount || '0')} paid{data.depositPaidAt ? ` on ${formatDate(data.depositPaidAt)}` : ''} — Remaining balance: {formatCurrency(parseFloat(data.total) - parseFloat(data.amountPaid || data.depositAmount || '0'))}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Quote Accept/Decline Card */}
             {showAcceptButtons && (
               <Card className="bg-white rounded-xl shadow-sm border border-brand/20">
@@ -676,8 +713,8 @@ export default function ClientPortal() {
               </Card>
             )}
             
-            {/* Invoice Pay Card */}
-            {showPayButton && (
+            {/* Invoice Pay Card — with deposit options */}
+            {showPayButton && !showDepositPaidBalance && (
               <Card className="bg-white rounded-xl shadow-sm border border-brand/20">
                 <CardContent className="pt-5 pb-5">
                   <div className="space-y-4">
@@ -687,13 +724,63 @@ export default function ClientPortal() {
                       </div>
                       <h3 className="font-semibold text-foreground">Pay securely online</h3>
                     </div>
+                    {hasDepositOption ? (
+                      <div className="space-y-3">
+                        <Button 
+                          onClick={() => handlePayNow('deposit')}
+                          className="w-full bg-brand text-white"
+                          size="lg"
+                        >
+                          <CreditCard className="w-5 h-5 mr-2" />
+                          Pay Deposit {formatCurrency(data.depositAmount!)}
+                        </Button>
+                        <Button 
+                          onClick={() => handlePayNow('full')}
+                          variant="outline"
+                          className="w-full border-brand/30 text-brand"
+                          size="lg"
+                        >
+                          <CreditCard className="w-5 h-5 mr-2" />
+                          Pay Full Amount {formatCurrency(data.total)}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button 
+                        onClick={() => handlePayNow('full')}
+                        className="w-full bg-brand text-white"
+                        size="lg"
+                      >
+                        <CreditCard className="w-5 h-5 mr-2" />
+                        Pay {formatCurrency(data.total)} Now
+                      </Button>
+                    )}
+                    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                      <Lock className="w-3 h-3 text-green-600" />
+                      <span>Encrypted & secure via Stripe</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pay Balance Card — after deposit is paid */}
+            {showDepositPaidBalance && (
+              <Card className="bg-white rounded-xl shadow-sm border border-brand/20">
+                <CardContent className="pt-5 pb-5">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-8 h-8 bg-brand/10 rounded-full flex items-center justify-center">
+                        <CreditCard className="w-4 h-4 text-brand" />
+                      </div>
+                      <h3 className="font-semibold text-foreground">Pay remaining balance</h3>
+                    </div>
                     <Button 
-                      onClick={handlePayNow}
+                      onClick={() => handlePayNow('balance')}
                       className="w-full bg-brand text-white"
                       size="lg"
                     >
                       <CreditCard className="w-5 h-5 mr-2" />
-                      Pay {formatCurrency(data.total)} Now
+                      Pay Balance {formatCurrency(parseFloat(data.total) - parseFloat(data.amountPaid || data.depositAmount || '0'))}
                     </Button>
                     <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                       <Lock className="w-3 h-3 text-green-600" />
