@@ -129,6 +129,8 @@ import {
   insertTimeEntryEditSchema,
   type InsertTimeEntryEdit,
   type TimeEntryEdit,
+  // Dispute audit trail
+  timeEntryDisputeEvents,
   // Invoice edit audit trail
   invoiceEdits,
   type InsertInvoiceEdit,
@@ -178,7 +180,7 @@ import {
 import { getSafetyFormTemplates, getSafetyFormTemplate } from "./safetyTemplates";
 import { generateAISuggestions, chatWithAI, analyzeReceipt, detectHazards, type BusinessContext } from "./ai";
 import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted, notifyJobAssigned as notifyJobAssignedDB, notifyTeamMemberInvited, notifySmsReceived, notifyTimesheetSubmitted, notifyChatMessage, notifyQuoteAccepted as notifyQuoteAcceptedDB, notifyQuoteRejected as notifyQuoteRejectedDB, notifyGeofenceCheckIn, notifyGeofenceCheckOut, notifyRecurringJobCreated, notifyRecurringInvoiceCreated, notifyInvoiceOverdue as notifyInvoiceOverdueDB, notifyQuoteExpiring, notifyPaymentFailed } from "./notifications";
-import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected, notifyTeamMessage, notifyInvoiceOverdue, notifySmsReceived as notifySmsReceivedPush, notifyGeofenceEvent, notifyTimesheetSubmitted as notifyTimesheetSubmittedPush, notifyQuoteExpiring as notifyQuoteExpiringPush, notifyPaymentFailed as notifyPaymentFailedPush, notifyTrialExpiring as notifyTrialExpiringPush } from "./pushNotifications";
+import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected, notifyTeamMessage, notifyInvoiceOverdue, notifySmsReceived as notifySmsReceivedPush, notifyGeofenceEvent, notifyTimesheetSubmitted as notifyTimesheetSubmittedPush, notifyQuoteExpiring as notifyQuoteExpiringPush, notifyPaymentFailed as notifyPaymentFailedPush, notifyTrialExpiring as notifyTrialExpiringPush, notifyTimesheetDisputeFiled, notifyTimesheetDisputeResolved } from "./pushNotifications";
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
 import { checkTwilioAvailability, sendSMS, validateTwilioWebhook } from "./twilioClient";
@@ -27726,6 +27728,74 @@ Respond with JSON in this format:
     }
   });
 
+  app.get("/api/time-entries/disputed", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+
+      if (userContext.role !== 'business_owner' && userContext.role !== 'admin') {
+        return res.status(403).json({ error: 'Only business owners can view disputed entries' });
+      }
+
+      const ownerId = userContext.effectiveUserId;
+      const teamMembersList = await storage.getTeamMembers(ownerId);
+      const teamUserIds = teamMembersList.map((m: any) => m.memberId || m.userId).filter(Boolean);
+      teamUserIds.push(ownerId);
+
+      const disputedEntries = await db.select()
+        .from(timeEntries)
+        .where(
+          and(
+            eq(timeEntries.isDisputed, true),
+            inArray(timeEntries.userId, teamUserIds)
+          )
+        )
+        .orderBy(desc(timeEntries.disputedAt));
+
+      const enrichedEntries = await Promise.all(
+        disputedEntries.map(async (entry) => {
+          const worker = await storage.getUser(entry.userId);
+          const rawEditHistory = await db.select()
+            .from(timeEntryEdits)
+            .where(eq(timeEntryEdits.timeEntryId, entry.id))
+            .orderBy(desc(timeEntryEdits.editedAt));
+
+          const editHistory = await Promise.all(
+            rawEditHistory.map(async (edit) => {
+              const editor = await storage.getUser(edit.editedBy);
+              return {
+                ...edit,
+                editedByName: editor ? `${editor.firstName || ''} ${editor.lastName || ''}`.trim() || editor.email : 'Unknown',
+              };
+            })
+          );
+
+          let job = null;
+          if (entry.jobId) {
+            try {
+              job = await storage.getJob(entry.jobId, ownerId);
+            } catch (err) {
+              console.error(`Failed to fetch job ${entry.jobId} for disputed entry ${entry.id}:`, err);
+            }
+          }
+
+          return {
+            ...entry,
+            workerName: worker ? `${worker.firstName || ''} ${worker.lastName || ''}`.trim() || worker.email : 'Unknown',
+            workerEmail: worker?.email,
+            jobTitle: job?.title || null,
+            editHistory,
+          };
+        })
+      );
+
+      res.json(enrichedEntries);
+    } catch (error) {
+      console.error('Error fetching disputed entries:', error);
+      res.status(500).json({ error: 'Failed to fetch disputed entries' });
+    }
+  });
+
   app.get("/api/time-entries/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
@@ -28267,6 +28337,127 @@ Respond with JSON in this format:
         return res.status(400).json({ error: 'Invalid time entry data', details: error.errors });
       }
       res.status(500).json({ error: 'Failed to update time entry' });
+    }
+  });
+
+  app.post("/api/time-entries/:id/dispute", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { reason } = req.body;
+
+      if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
+        return res.status(400).json({ error: 'Dispute reason is required' });
+      }
+
+      const [entry] = await db.select().from(timeEntries).where(eq(timeEntries.id, id)).limit(1);
+      if (!entry) {
+        return res.status(404).json({ error: 'Time entry not found' });
+      }
+      if (entry.userId !== userId) {
+        return res.status(403).json({ error: 'You can only dispute your own time entries' });
+      }
+      if (entry.isDisputed) {
+        return res.status(400).json({ error: 'This entry is already disputed' });
+      }
+
+      const [updated] = await db.update(timeEntries)
+        .set({
+          isDisputed: true,
+          disputeReason: reason.trim(),
+          disputedAt: new Date(),
+          disputeResolvedAt: null,
+          disputeResolution: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(timeEntries.id, id))
+        .returning();
+
+      await db.insert(timeEntryDisputeEvents).values({
+        timeEntryId: id,
+        action: 'filed',
+        actorId: userId,
+        note: reason.trim(),
+      });
+
+      try {
+        const worker = await storage.getUser(userId);
+        const workerName = worker ? `${worker.firstName || ''} ${worker.lastName || ''}`.trim() || worker.email : 'A worker';
+        const entryDate = entry.startTime ? new Date(entry.startTime).toLocaleDateString('en-AU') : 'unknown date';
+
+        const userContext = await getUserContext(userId);
+        const ownerId = userContext.effectiveUserId;
+        if (ownerId !== userId) {
+          await notifyTimesheetDisputeFiled(ownerId, workerName, entryDate);
+        }
+      } catch (notifErr) {
+        console.error('Failed to send dispute notification:', notifErr);
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error('Error disputing time entry:', error);
+      res.status(500).json({ error: 'Failed to dispute time entry' });
+    }
+  });
+
+  app.patch("/api/time-entries/:id/resolve-dispute", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { id } = req.params;
+      const { resolution } = req.body;
+
+      if (!resolution || typeof resolution !== 'string' || resolution.trim().length === 0) {
+        return res.status(400).json({ error: 'Resolution note is required' });
+      }
+
+      const [entry] = await db.select().from(timeEntries).where(eq(timeEntries.id, id)).limit(1);
+      if (!entry) {
+        return res.status(404).json({ error: 'Time entry not found' });
+      }
+      if (!entry.isDisputed) {
+        return res.status(400).json({ error: 'This entry is not disputed' });
+      }
+
+      const userContext = await getUserContext(userId);
+      if (userContext.role !== 'business_owner' && userContext.role !== 'admin') {
+        return res.status(403).json({ error: 'Only business owners can resolve disputes' });
+      }
+
+      const ownerId = userContext.effectiveUserId;
+      const teamMembersList = await storage.getTeamMembers(ownerId);
+      const teamUserIds = teamMembersList.map((m: any) => m.memberId || m.userId).filter(Boolean);
+      teamUserIds.push(ownerId);
+      if (!teamUserIds.includes(entry.userId)) {
+        return res.status(403).json({ error: 'This entry does not belong to your team' });
+      }
+
+      const [updated] = await db.update(timeEntries)
+        .set({
+          disputeResolvedAt: new Date(),
+          disputeResolution: resolution.trim(),
+          updatedAt: new Date(),
+        })
+        .where(eq(timeEntries.id, id))
+        .returning();
+
+      await db.insert(timeEntryDisputeEvents).values({
+        timeEntryId: id,
+        action: 'resolved',
+        actorId: userId,
+        note: resolution.trim(),
+      });
+
+      try {
+        await notifyTimesheetDisputeResolved(entry.userId, resolution.trim());
+      } catch (notifErr) {
+        console.error('Failed to send dispute resolution notification:', notifErr);
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error('Error resolving time entry dispute:', error);
+      res.status(500).json({ error: 'Failed to resolve dispute' });
     }
   });
 

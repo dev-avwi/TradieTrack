@@ -42,6 +42,11 @@ interface TimeEntry {
   isBillable?: boolean;
   category?: string;
   createdAt?: string;
+  isDisputed?: boolean;
+  disputeReason?: string | null;
+  disputedAt?: string | null;
+  disputeResolvedAt?: string | null;
+  disputeResolution?: string | null;
 }
 
 interface WeeklyStats {
@@ -754,6 +759,10 @@ export default function TimeTrackingScreen() {
   const [weeklyData, setWeeklyData] = useState<WeeklyStats[]>([]);
 
   const [showAddEntryModal, setShowAddEntryModal] = useState(false);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeEntryId, setDisputeEntryId] = useState<string | null>(null);
+  const [disputeReason, setDisputeReason] = useState('');
+  const [isSubmittingDispute, setIsSubmittingDispute] = useState(false);
   const [entryDate, setEntryDate] = useState(new Date());
   const [entryStartTime, setEntryStartTime] = useState(new Date());
   const [entryEndTime, setEntryEndTime] = useState(new Date());
@@ -1004,6 +1013,33 @@ export default function TimeTrackingScreen() {
         }
       ]
     );
+  };
+
+  const handleOpenDispute = (entryId: string) => {
+    setDisputeEntryId(entryId);
+    setDisputeReason('');
+    setShowDisputeModal(true);
+  };
+
+  const handleSubmitDispute = async () => {
+    if (!disputeEntryId || !disputeReason.trim()) {
+      Alert.alert('Required', 'Please provide a reason for the dispute.');
+      return;
+    }
+    setIsSubmittingDispute(true);
+    try {
+      await api.post(`/api/time-entries/${disputeEntryId}/dispute`, { reason: disputeReason.trim() });
+      setShowDisputeModal(false);
+      setDisputeEntryId(null);
+      setDisputeReason('');
+      await fetchTimeEntries();
+      Alert.alert('Dispute Filed', 'Your dispute has been submitted for review.');
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || 'Failed to submit dispute.';
+      Alert.alert('Error', msg);
+    } finally {
+      setIsSubmittingDispute(false);
+    }
   };
 
   const handleOpenAddEntry = () => {
@@ -1358,9 +1394,32 @@ export default function TimeTrackingScreen() {
                         <Text style={[styles.entryBillableText, { color: colors.mutedForeground }]}>Non-billable</Text>
                       </View>
                     )}
+                    {entry.isDisputed && (
+                      <View style={[styles.entryBillableBadge, { backgroundColor: '#ef444418', flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                        <Feather name="alert-triangle" size={10} color="#ef4444" />
+                        <Text style={[styles.entryBillableText, { color: '#ef4444' }]}>
+                          {entry.disputeResolvedAt ? 'Resolved' : 'Disputed'}
+                        </Text>
+                      </View>
+                    )}
                   </View>
+                  {entry.isDisputed && entry.disputeReason && !entry.disputeResolvedAt && (
+                    <Text style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }} numberOfLines={2}>
+                      Reason: {entry.disputeReason}
+                    </Text>
+                  )}
+                  {entry.isDisputed && entry.disputeResolution && (
+                    <Text style={{ fontSize: 11, color: '#22c55e', marginTop: 4 }} numberOfLines={2}>
+                      Resolution: {entry.disputeResolution}
+                    </Text>
+                  )}
                 </View>
-                <View style={styles.entryActions}>
+                <View style={[styles.entryActions, { flexDirection: 'column', gap: spacing.sm }]}>
+                  {!entry.isDisputed && !isBreakEntry && (
+                    <TouchableOpacity onPress={() => handleOpenDispute(entry.id)} activeOpacity={0.7} hitSlop={8}>
+                      <Feather name="flag" size={16} color="#f59e0b" />
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity onPress={() => handleDeleteEntry(entry)} activeOpacity={0.7} hitSlop={8}>
                     <Feather name="trash-2" size={16} color={colors.destructive || '#ef4444'} />
                   </TouchableOpacity>
@@ -1741,6 +1800,59 @@ export default function TimeTrackingScreen() {
                 onChangeText={setEntryDescription}
                 multiline
                 numberOfLines={3}
+              />
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showDisputeModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowDisputeModal(false)}
+      >
+        <View style={[styles.container, { paddingTop: spacing.lg }]}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity 
+              onPress={() => setShowDisputeModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <Feather name="x" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Flag Entry</Text>
+            <TouchableOpacity 
+              onPress={handleSubmitDispute}
+              disabled={isSubmittingDispute || !disputeReason.trim()}
+              style={[styles.modalSaveButton, (!disputeReason.trim() || isSubmittingDispute) && styles.modalSaveButtonDisabled]}
+            >
+              <Text style={[styles.modalSaveText, (!disputeReason.trim() || isSubmittingDispute) && styles.modalSaveTextDisabled]}>
+                {isSubmittingDispute ? 'Submitting...' : 'Submit'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 100 }}>
+            <View style={{ 
+              flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+              backgroundColor: '#f59e0b18', padding: spacing.md, borderRadius: radius.xl, marginBottom: spacing.lg 
+            }}>
+              <Feather name="alert-triangle" size={18} color="#f59e0b" />
+              <Text style={{ flex: 1, color: colors.foreground, fontSize: 13, lineHeight: 18 }}>
+                Flag this entry if you believe it was edited incorrectly. Your employer will be notified to review it.
+              </Text>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Reason for Dispute</Text>
+              <TextInput
+                style={styles.formTextArea}
+                placeholder="e.g., I worked until 5pm not 4pm"
+                placeholderTextColor={colors.mutedForeground}
+                value={disputeReason}
+                onChangeText={setDisputeReason}
+                multiline
+                numberOfLines={4}
               />
             </View>
           </ScrollView>

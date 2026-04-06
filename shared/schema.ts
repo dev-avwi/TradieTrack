@@ -1525,6 +1525,11 @@ export const timeEntries = pgTable("time_entries", {
   clockOutLatitude: decimal("clock_out_latitude", { precision: 10, scale: 7 }),
   clockOutLongitude: decimal("clock_out_longitude", { precision: 10, scale: 7 }),
   clockOutAddress: text("clock_out_address"),
+  isDisputed: boolean("is_disputed").default(false),
+  disputeReason: text("dispute_reason"),
+  disputedAt: timestamp("disputed_at"),
+  disputeResolvedAt: timestamp("dispute_resolved_at"),
+  disputeResolution: text("dispute_resolution"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1574,6 +1579,19 @@ export const invoiceEdits = pgTable("invoice_edits", {
 export const insertTimeEntryEditSchema = createInsertSchema(timeEntryEdits).omit({ id: true, editedAt: true });
 export type InsertTimeEntryEdit = z.infer<typeof insertTimeEntryEditSchema>;
 export type TimeEntryEdit = typeof timeEntryEdits.$inferSelect;
+
+export const timeEntryDisputeEvents = pgTable("time_entry_dispute_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timeEntryId: varchar("time_entry_id").notNull().references(() => timeEntries.id, { onDelete: 'cascade' }),
+  action: text("action").notNull(),
+  actorId: varchar("actor_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertTimeEntryDisputeEventSchema = createInsertSchema(timeEntryDisputeEvents).omit({ id: true, createdAt: true });
+export type InsertTimeEntryDisputeEvent = z.infer<typeof insertTimeEntryDisputeEventSchema>;
+export type TimeEntryDisputeEvent = typeof timeEntryDisputeEvents.$inferSelect;
 
 export const insertInvoiceEditSchema = createInsertSchema(invoiceEdits).omit({ id: true, editedAt: true });
 export type InsertInvoiceEdit = z.infer<typeof insertInvoiceEditSchema>;
@@ -2280,6 +2298,11 @@ export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
   userId: true,
   createdAt: true,
   updatedAt: true,
+  isDisputed: true,
+  disputeReason: true,
+  disputedAt: true,
+  disputeResolvedAt: true,
+  disputeResolution: true,
 }).extend({
   startTime: z.preprocess(
     (val) => val ? new Date(val as string | number | Date) : undefined,

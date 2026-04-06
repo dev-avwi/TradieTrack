@@ -11,9 +11,40 @@ import { Progress } from "@/components/ui/progress";
 import {
   DollarSign, Clock, Users, HardHat, Download, FileText, BarChart3,
   ChevronDown, ChevronRight, TrendingUp, TrendingDown, AlertTriangle,
-  CheckCircle2, XCircle, Briefcase, Award
+  CheckCircle2, XCircle, Briefcase, Award, Flag, MessageSquare
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import WorkerPerformanceSection from "@/components/WorkerPerformanceCard";
+
+interface DisputedTimeEntry {
+  id: string;
+  userId: string;
+  startTime: string;
+  endTime: string | null;
+  duration: number | null;
+  description: string | null;
+  isDisputed: boolean;
+  disputeReason: string | null;
+  disputedAt: string | null;
+  disputeResolvedAt: string | null;
+  disputeResolution: string | null;
+  workerName: string;
+  jobTitle?: string | null;
+  editHistory: EditHistoryEntry[];
+}
+
+interface EditHistoryEntry {
+  id: string;
+  fieldChanged: string;
+  oldValue: string | null;
+  newValue: string | null;
+  editedAt: string;
+  editedByName: string;
+  editReason: string | null;
+}
 
 const fmtAud = (n: number) => `$${n.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`;
 
@@ -65,6 +96,9 @@ export default function PayrollReports() {
   const [utilisationPeriod, setUtilisationPeriod] = useState("last_30");
   const [expandedWorkers, setExpandedWorkers] = useState<Set<string>>(new Set());
   const [expandedBuckets, setExpandedBuckets] = useState<Set<string>>(new Set());
+  const [expandedDisputes, setExpandedDisputes] = useState<Set<string>>(new Set());
+  const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({});
+  const { toast } = useToast();
 
   const payrollDates = useMemo(() => {
     const now = new Date();
@@ -158,6 +192,43 @@ export default function PayrollReports() {
     },
     staleTime: 2 * 60 * 1000,
   });
+
+  const { data: disputedEntries, isLoading: disputesLoading } = useQuery<DisputedTimeEntry[]>({
+    queryKey: ['/api/time-entries/disputed'],
+    queryFn: async () => {
+      const res = await fetch('/api/time-entries/disputed', { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const resolveDisputeMutation = useMutation({
+    mutationFn: async ({ id, resolution }: { id: string; resolution: string }) => {
+      await apiRequest('PATCH', `/api/time-entries/${id}/resolve-dispute`, { resolution });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/disputed'] });
+      toast({ title: 'Dispute resolved', description: 'The worker will be notified.' });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to resolve dispute.', variant: 'destructive' });
+    },
+  });
+
+  const pendingDisputeCount = useMemo(() => {
+    if (!disputedEntries) return 0;
+    return disputedEntries.filter((e) => !e.disputeResolvedAt).length;
+  }, [disputedEntries]);
+
+  const toggleDispute = (id: string) => {
+    setExpandedDisputes(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const exportPayrollCSV = () => {
     if (!payrollData?.workers) return;
@@ -276,10 +347,18 @@ export default function PayrollReports() {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="payroll">Payroll</TabsTrigger>
           <TabsTrigger value="receivables">Receivables</TabsTrigger>
           <TabsTrigger value="utilisation">Utilisation</TabsTrigger>
+          <TabsTrigger value="disputes" className="relative">
+            Disputes
+            {pendingDisputeCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                {pendingDisputeCount}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
         </TabsList>
 
@@ -853,6 +932,180 @@ export default function PayrollReports() {
                 </CardContent>
               </Card>
             </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="disputes" className="space-y-4 mt-4">
+          <div className="flex items-center gap-2">
+            <Flag className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+            <h2 className="text-lg font-semibold">Disputed Entries</h2>
+            {pendingDisputeCount > 0 && (
+              <Badge variant="destructive" className="text-xs">{pendingDisputeCount} pending</Badge>
+            )}
+          </div>
+
+          {disputesLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-32" />)}
+            </div>
+          ) : !disputedEntries || disputedEntries.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-25" />
+                <p className="text-sm text-muted-foreground">No disputed time entries</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {disputedEntries.map((entry) => {
+                const isPending = !entry.disputeResolvedAt;
+                const isExpanded = expandedDisputes.has(entry.id);
+                const startDate = entry.startTime ? new Date(entry.startTime) : null;
+                const endDate = entry.endTime ? new Date(entry.endTime) : null;
+                const durationH = entry.duration ? (entry.duration / 60).toFixed(1) : '--';
+
+                return (
+                  <Card key={entry.id}>
+                    <CardContent className="p-4">
+                      <div
+                        className="flex items-start justify-between gap-3 cursor-pointer"
+                        onClick={() => toggleDispute(entry.id)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="h-8 w-8 flex-shrink-0">
+                            <AvatarFallback className="text-[10px]" style={{ backgroundColor: 'hsl(var(--trade) / 0.15)', color: 'hsl(var(--trade))' }}>
+                              {getInitials(entry.workerName?.split(' ')[0], entry.workerName?.split(' ')[1])}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{entry.workerName || 'Unknown'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {startDate?.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}
+                              {' '}
+                              {startDate?.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                              {endDate ? ` - ${endDate.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}` : ''}
+                              {' '}({durationH}h)
+                            </p>
+                            {entry.jobTitle && (
+                              <p className="text-xs text-muted-foreground truncate">Job: {entry.jobTitle}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {isPending ? (
+                            <Badge variant="destructive" className="text-xs">Pending</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">Resolved</Badge>
+                          )}
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 p-3 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium text-red-700 dark:text-red-400 mb-0.5">Worker's Dispute Reason</p>
+                            <p className="text-sm text-red-600 dark:text-red-300">{entry.disputeReason}</p>
+                            {entry.disputedAt && (
+                              <p className="text-xs text-red-400 dark:text-red-500 mt-1">
+                                Filed {new Date(entry.disputedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {entry.disputeResolution && (
+                        <div className="mt-2 p-3 rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                          <div className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs font-medium text-green-700 dark:text-green-400 mb-0.5">Resolution</p>
+                              <p className="text-sm text-green-600 dark:text-green-300">{entry.disputeResolution}</p>
+                              {entry.disputeResolvedAt && (
+                                <p className="text-xs text-green-400 dark:text-green-500 mt-1">
+                                  Resolved {new Date(entry.disputeResolvedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {isExpanded && (
+                        <div className="mt-3 space-y-3">
+                          {entry.editHistory && entry.editHistory.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                                <Clock className="h-3.5 w-3.5" />
+                                Edit History
+                              </p>
+                              <div className="space-y-1.5">
+                                {entry.editHistory.map((edit: EditHistoryEntry, idx: number) => (
+                                  <div key={edit.id || idx} className="text-xs p-2 rounded bg-muted/50 border">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="font-medium">{edit.fieldChanged}</span>
+                                      <span className="text-muted-foreground">
+                                        {edit.editedAt ? new Date(edit.editedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : ''}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-0.5 text-muted-foreground">
+                                      <span>{edit.oldValue || '(none)'}</span>
+                                      <ChevronRight className="h-3 w-3" />
+                                      <span>{edit.newValue || '(none)'}</span>
+                                    </div>
+                                    {edit.editReason && (
+                                      <p className="mt-0.5 italic text-muted-foreground">Reason: {edit.editReason}</p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {isPending && (
+                            <div className="pt-2 border-t">
+                              <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                                <MessageSquare className="h-3.5 w-3.5" />
+                                Resolve Dispute
+                              </p>
+                              <Textarea
+                                placeholder="Enter resolution note (e.g., 'Adjusted end time to 5pm as requested' or 'Entry is correct per GPS records')"
+                                value={resolutionNotes[entry.id] || ''}
+                                onChange={(e) => setResolutionNotes(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                                className="text-sm mb-2"
+                              />
+                              <Button
+                                size="sm"
+                                disabled={!resolutionNotes[entry.id]?.trim() || resolveDisputeMutation.isPending}
+                                onClick={() => {
+                                  const note = resolutionNotes[entry.id]?.trim();
+                                  if (note) {
+                                    resolveDisputeMutation.mutate({ id: entry.id, resolution: note });
+                                    setResolutionNotes(prev => {
+                                      const next = { ...prev };
+                                      delete next[entry.id];
+                                      return next;
+                                    });
+                                  }
+                                }}
+                              >
+                                {resolveDisputeMutation.isPending ? 'Resolving...' : 'Resolve Dispute'}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </TabsContent>
 

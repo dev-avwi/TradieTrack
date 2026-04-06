@@ -55,6 +55,8 @@ export type NotificationType =
   | 'team_invite'
   | 'team_location'
   | 'timesheet_submitted'
+  | 'timesheet_dispute_filed'
+  | 'timesheet_dispute_resolved'
   | 'geofence_checkin'
   | 'geofence_checkout'
   | 'trial_expiring'
@@ -120,6 +122,8 @@ async function shouldSendNotification(userId: string, type: NotificationType): P
         return settings.notifyTeamLocations !== false;
       case 'team_invite':
       case 'timesheet_submitted':
+      case 'timesheet_dispute_filed':
+      case 'timesheet_dispute_resolved':
         return settings.notifyJobAssigned !== false;
       case 'daily_summary':
         return settings.notifyDailySummary === true;
@@ -272,6 +276,8 @@ function getChannelId(type: NotificationType): string {
     case 'geofence_checkin':
     case 'geofence_checkout':
     case 'timesheet_submitted':
+    case 'timesheet_dispute_filed':
+    case 'timesheet_dispute_resolved':
       return 'jobs';
     case 'payment_received':
     case 'payment_failed':
@@ -431,5 +437,25 @@ export async function notifyTrialExpiring(userId: string, daysLeft: number): Pro
     title: 'Trial Ending Soon',
     body: `Your free trial expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Upgrade to keep all your features.`,
     data: { relatedType: 'subscription' },
+  });
+}
+
+export async function notifyTimesheetDisputeFiled(userId: string, workerName: string, entryDate: string): Promise<void> {
+  await sendPushNotification({
+    userId,
+    type: 'timesheet_dispute_filed',
+    title: 'Timesheet Entry Disputed',
+    body: `${workerName} has flagged a time entry from ${entryDate} for dispute`,
+    data: { relatedType: 'timesheet' },
+  });
+}
+
+export async function notifyTimesheetDisputeResolved(userId: string, resolution: string): Promise<void> {
+  await sendPushNotification({
+    userId,
+    type: 'timesheet_dispute_resolved',
+    title: 'Dispute Resolved',
+    body: `Your timesheet dispute has been resolved: ${resolution}`,
+    data: { relatedType: 'timesheet' },
   });
 }
