@@ -31,37 +31,37 @@ export default function Support() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <a 
-                    href="mailto:support@jobrunner.com.au" 
+                    href="mailto:admin@avwebinnovation.com" 
                     className="flex items-start gap-3 p-4 rounded-md border hover-elevate"
                   >
                     <Mail className="w-5 h-5 text-primary mt-0.5" />
                     <div>
                       <h3 className="font-semibold mb-1">Email Support</h3>
-                      <p className="text-sm text-muted-foreground">support@jobrunner.com.au</p>
+                      <p className="text-sm text-muted-foreground">admin@avwebinnovation.com</p>
                       <p className="text-xs text-muted-foreground mt-1">We aim to respond within 24 hours</p>
                     </div>
                   </a>
 
                   <a 
-                    href="tel:+61485013994" 
+                    href="tel:+61458300051" 
                     className="flex items-start gap-3 p-4 rounded-md border hover-elevate"
                   >
                     <Phone className="w-5 h-5 text-primary mt-0.5" />
                     <div>
                       <h3 className="font-semibold mb-1">Phone Support</h3>
-                      <p className="text-sm text-muted-foreground">+61 485 013 994</p>
-                      <p className="text-xs text-muted-foreground mt-1">AI-powered support line</p>
+                      <p className="text-sm text-muted-foreground">0458 300 051</p>
+                      <p className="text-xs text-muted-foreground mt-1">Give us a call during business hours</p>
                     </div>
                   </a>
 
                   <a 
-                    href="sms:+61485013993" 
+                    href="sms:+61458300051" 
                     className="flex items-start gap-3 p-4 rounded-md border hover-elevate"
                   >
                     <MessageCircle className="w-5 h-5 text-primary mt-0.5" />
                     <div>
                       <h3 className="font-semibold mb-1">SMS Support</h3>
-                      <p className="text-sm text-muted-foreground">+61 485 013 993</p>
+                      <p className="text-sm text-muted-foreground">0458 300 051</p>
                       <p className="text-xs text-muted-foreground mt-1">Text us your question anytime</p>
                     </div>
                   </a>

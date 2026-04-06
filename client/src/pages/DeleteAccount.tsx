@@ -49,11 +49,11 @@ export default function DeleteAccount() {
                       Send an email to our support team requesting account deletion:
                     </p>
                     <a 
-                      href="mailto:support@jobrunner.com.au?subject=Account%20Deletion%20Request" 
+                      href="mailto:admin@avwebinnovation.com?subject=Account%20Deletion%20Request" 
                       className="inline-flex items-center gap-2 text-primary hover:underline"
                     >
                       <Mail className="w-4 h-4" />
-                      support@jobrunner.com.au
+                      admin@avwebinnovation.com
                     </a>
                     <p className="text-sm text-muted-foreground mt-2">
                       Please include the email address associated with your account. We will process your request within 5 business days.
