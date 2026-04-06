@@ -12,7 +12,6 @@ import {
   Platform,
   Alert,
   Linking,
-  ActionSheetIOS,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
@@ -301,32 +300,19 @@ export function EmailComposeModal({
     }
   };
 
-  // Show email app selector
   const showEmailAppOptions = () => {
     if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Gmail', 'Outlook', 'Apple Mail'],
-          cancelButtonIndex: 0,
-          title: 'Choose Email App',
-          message: 'Select which app to compose your email in',
-        },
-        (buttonIndex) => {
-          switch (buttonIndex) {
-            case 1:
-              openEmailInApp('gmail');
-              break;
-            case 2:
-              openEmailInApp('outlook');
-              break;
-            case 3:
-              openEmailInApp('apple');
-              break;
-          }
-        }
+      Alert.alert(
+        'Choose Email App',
+        'Select which app to compose your email in',
+        [
+          { text: 'Gmail', onPress: () => openEmailInApp('gmail') },
+          { text: 'Outlook', onPress: () => openEmailInApp('outlook') },
+          { text: 'Apple Mail', onPress: () => openEmailInApp('apple') },
+          { text: 'Cancel', style: 'cancel' },
+        ]
       );
     } else {
-      // For Android, show a custom modal
       setShowEmailAppSelector(true);
     }
   };
