@@ -24,3 +24,9 @@ id = "Jp8Ira3hpR3tBEb-6XqAA"
 uri = "file://.local/APP_STORE_AUDIT_REPORT.md"
 type = "text"
 title = "App Store Submission Readiness Audit Report"
+
+[[outputs]]
+id = "NpRzfQ08_EALpBkRwfyZl"
+uri = "file://.local/FULL_AUDIT_REPORT.md"
+type = "text"
+title = "JobRunner Full Pre-Launch Audit Report"
