@@ -30,3 +30,9 @@ id = "NpRzfQ08_EALpBkRwfyZl"
 uri = "file://.local/FULL_AUDIT_REPORT.md"
 type = "text"
 title = "JobRunner Full Pre-Launch Audit Report"
+
+[[outputs]]
+id = "pRbKCF294_kp4a0g4VEGT"
+uri = "file://.local/FEATURE_VERIFICATION_REPORT.md"
+type = "text"
+title = "JobRunner Complete Feature Verification (364 Items)"
