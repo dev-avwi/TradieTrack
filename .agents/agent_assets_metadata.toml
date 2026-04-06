@@ -36,3 +36,9 @@ id = "pRbKCF294_kp4a0g4VEGT"
 uri = "file://.local/FEATURE_VERIFICATION_REPORT.md"
 type = "text"
 title = "JobRunner Complete Feature Verification (364 Items)"
+
+[[outputs]]
+id = "-fvYj8xJq7bGkf4zLwsJ4"
+uri = "file://.local/SCENARIO_VERIFICATION_REPORT.md"
+type = "text"
+title = "JobRunner 14-Scenario Verification Report"
