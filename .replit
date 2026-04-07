@@ -75,6 +75,7 @@ VITE_APP_URL = "https://jobrunner.com.au"
 APP_DOMAIN = "jobrunner.com.au"
 SENTRY_DSN = "https://0da220a872a423837919f2539135bae8@o4511132145025024.ingest.us.sentry.io/4511132150595584"
 VITE_SENTRY_DSN = "https://0da220a872a423837919f2539135bae8@o4511132145025024.ingest.us.sentry.io/4511132150595584"
+ADMIN_PHONE = "+61458300051"
 
 [userenv.production]
 ENABLE_DEMO_DATA = "true"
