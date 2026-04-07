@@ -221,10 +221,7 @@ export default function LandingPage() {
                 alt="JobRunner" 
                 className="h-8 w-auto"
               />
-              <span className="text-xl font-bold tracking-tight">
-                <span className="text-brand">Job</span>
-                <span className="text-brand-accent">Runner</span>
-              </span>
+              <span className="text-xl font-bold tracking-tight"><span className="text-brand">Job</span><span className="text-brand-accent">Runner</span></span>
             </button>
 
             {/* Desktop Navigation */}
