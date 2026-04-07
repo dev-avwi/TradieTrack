@@ -16,6 +16,7 @@ import locationTracking, {
 
 interface LocationState {
   isEnabled: boolean;
+  gpsOptOut: boolean;
   status: TrackingStatus;
   lastLocation: LocationUpdate | null;
   lastGeofenceEvent: GeofenceEvent | null;
@@ -28,6 +29,7 @@ interface LocationState {
 interface LocationActions {
   enableTracking: () => Promise<boolean>;
   disableTracking: () => Promise<void>;
+  setGpsOptOut: (optOut: boolean) => Promise<void>;
   updateLocation: (location: LocationUpdate) => void;
   updateGeofenceEvent: (event: GeofenceEvent) => void;
   updateStatus: (status: TrackingStatus) => void;
@@ -44,6 +46,7 @@ export const useLocationStore = create<LocationStore>()(
   persist(
     (set, get) => ({
       isEnabled: false,
+      gpsOptOut: false,
       status: 'stopped',
       lastLocation: null,
       lastGeofenceEvent: null,
@@ -52,8 +55,22 @@ export const useLocationStore = create<LocationStore>()(
       permissionGranted: false,
       errorMessage: null,
 
+      setGpsOptOut: async (optOut: boolean) => {
+        set({ gpsOptOut: optOut });
+        if (optOut) {
+          await locationTracking.stopTracking();
+          await locationTracking.stopAllGeofencing();
+          set({ isEnabled: false, status: 'stopped', permissionGranted: false });
+        }
+      },
+
       initializeTracking: async () => {
         try {
+          if (get().gpsOptOut) {
+            if (__DEV__) console.log('[LocationStore] GPS opted out — skipping init');
+            return;
+          }
+
           const granted = await locationTracking.initialize();
           set({ permissionGranted: granted });
 
@@ -82,10 +99,15 @@ export const useLocationStore = create<LocationStore>()(
       },
 
       enableTracking: async () => {
+        if (get().gpsOptOut) {
+          set({ errorMessage: 'GPS Privacy Mode is enabled. Disable it in Settings to use location features.' });
+          return false;
+        }
+
         const { permissionGranted } = get();
         
         if (!permissionGranted) {
-          const granted = await locationTracking.initialize();
+          const granted = await locationTracking.requestForegroundPermission();
           set({ permissionGranted: granted });
           
           if (!granted) {
@@ -168,6 +190,7 @@ export const useLocationStore = create<LocationStore>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         isEnabled: state.isEnabled,
+        gpsOptOut: state.gpsOptOut,
       }),
     }
   )

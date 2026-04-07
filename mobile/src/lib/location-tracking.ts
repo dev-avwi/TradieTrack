@@ -71,44 +71,82 @@ class LocationTrackingService {
   private _onJobContextChange?: (context: SubcontractorJobContext | null) => void;
 
   /**
-   * Initialize location tracking
-   * Note: In Expo Go, location permissions require NSLocationUsageDescription 
-   * keys in Info.plist which are only set during native build (EAS Build).
+   * Silently check current permission state WITHOUT triggering any OS prompts.
+   * Use this on app startup to resume tracking if already granted.
+   */
+  async checkPermissions(): Promise<{ foreground: boolean; background: boolean }> {
+    try {
+      const fg = await Location.getForegroundPermissionsAsync();
+      const bg = await Location.getBackgroundPermissionsAsync();
+      return {
+        foreground: fg.status === 'granted',
+        background: bg.status === 'granted',
+      };
+    } catch (error: any) {
+      if (__DEV__) console.log('[Location] Permission check failed:', error?.message);
+      return { foreground: false, background: false };
+    }
+  }
+
+  /**
+   * Request foreground permission only. Called when user first needs GPS
+   * (e.g. starting a timer, opening the map). Does NOT request background.
+   */
+  async requestForegroundPermission(): Promise<boolean> {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        if (__DEV__) console.log('[Location] Foreground permission granted');
+        return true;
+      }
+      if (__DEV__) console.log('[Location] Foreground permission denied');
+      return false;
+    } catch (error: any) {
+      if (__DEV__) console.log('[Location] Foreground request failed:', error?.message);
+      return false;
+    }
+  }
+
+  /**
+   * Request background permission. Called only when user explicitly enables
+   * background features like team tracking or geofencing in settings.
+   */
+  async requestBackgroundPermission(): Promise<boolean> {
+    try {
+      const fg = await Location.getForegroundPermissionsAsync();
+      if (fg.status !== 'granted') {
+        const fgResult = await this.requestForegroundPermission();
+        if (!fgResult) return false;
+      }
+      const { status } = await Location.requestBackgroundPermissionsAsync();
+      if (status === 'granted') {
+        if (__DEV__) console.log('[Location] Background permission granted');
+        return true;
+      }
+      if (__DEV__) console.log('[Location] Background permission denied');
+      return false;
+    } catch (error: any) {
+      if (__DEV__) console.log('[Location] Background request failed:', error?.message);
+      return false;
+    }
+  }
+
+  /**
+   * Initialize location tracking.
+   * Now uses a lazy approach: silently checks permissions without prompting.
+   * Only resumes tracking if permissions were previously granted.
+   * Use requestForegroundPermission() / requestBackgroundPermission() to prompt.
    */
   async initialize(): Promise<boolean> {
     try {
-      const { status: foregroundStatus } = 
-        await Location.requestForegroundPermissionsAsync();
-      
-      if (foregroundStatus !== 'granted') {
-        if (__DEV__) console.log('[Location] Foreground permission denied');
-        Alert.alert(
-          'Location Permission Required',
-          'JobRunner needs location access for team tracking, job navigation, and On My Way notifications. Please enable location access in Settings.',
-          [
-            { text: 'Not Now', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() }
-          ]
-        );
+      const perms = await this.checkPermissions();
+
+      if (!perms.foreground) {
+        if (__DEV__) console.log('[Location] No foreground permission — skipping init (will prompt when needed)');
         return false;
       }
 
-      const { status: backgroundStatus } = 
-        await Location.requestBackgroundPermissionsAsync();
-      
-      if (backgroundStatus !== 'granted') {
-        if (__DEV__) console.log('[Location] Background permission denied');
-        Alert.alert(
-          'Background Location',
-          'For best results, allow "Always" location access so your team can see your location even when the app is in the background.',
-          [
-            { text: 'Continue Without', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() }
-          ]
-        );
-      }
-
-      if (__DEV__) console.log('[Location] Initialized successfully');
+      if (__DEV__) console.log('[Location] Initialized successfully (foreground=' + perms.foreground + ', background=' + perms.background + ')');
       return true;
     } catch (error: any) {
       if (error?.message?.includes('NSLocation') || error?.message?.includes('Info.plist')) {
@@ -310,6 +348,23 @@ class LocationTrackingService {
     } catch (error) {
       if (__DEV__) console.error('[Location] Failed to add geofence:', error);
       return false;
+    }
+  }
+
+  /**
+   * Stop all geofencing and clear all registered regions.
+   * Used when GPS Privacy Mode is enabled.
+   */
+  async stopAllGeofencing(): Promise<void> {
+    try {
+      const isMonitoring = await Location.hasStartedGeofencingAsync(GEOFENCE_TASK_NAME);
+      if (isMonitoring) {
+        await Location.stopGeofencingAsync(GEOFENCE_TASK_NAME);
+      }
+      this.geofences = [];
+      if (__DEV__) console.log('[Location] All geofencing stopped');
+    } catch (error) {
+      if (__DEV__) console.log('[Location] Stop all geofencing error:', (error as any)?.message);
     }
   }
 

@@ -25,6 +25,7 @@ import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { API_URL, api } from '../../src/lib/api';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
+import { useLocationStore } from '../../src/lib/location-store';
 import AppTour from '../../src/components/AppTour';
 import { Slider } from '../../src/components/ui/Slider';
 
@@ -921,6 +922,88 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 });
 
+function GpsPrivacyCard() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { gpsOptOut, setGpsOptOut, isEnabled, status } = useLocationStore();
+
+  const handleOptOutChange = useCallback((value: boolean) => {
+    if (value) {
+      Alert.alert(
+        'Disable GPS Tracking',
+        'This will stop all location sharing and geofencing. Your employer won\'t see your location on the team map. You can still track time without GPS.\n\nYou can re-enable this at any time.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Disable GPS', style: 'destructive', onPress: () => setGpsOptOut(true) },
+        ]
+      );
+    } else {
+      setGpsOptOut(false);
+    }
+  }, [setGpsOptOut]);
+
+  const statusText = gpsOptOut 
+    ? 'GPS is off — your location is private'
+    : isEnabled && (status === 'tracking' || status === 'foreground_only')
+      ? 'Location sharing active' 
+      : 'GPS available but not actively sharing';
+
+  const statusColor = gpsOptOut ? colors.mutedForeground : isEnabled ? colors.success : colors.warning;
+
+  return (
+    <View style={[styles.subscriptionCard, { marginBottom: spacing.lg }]}>
+      <View style={styles.subscriptionHeader}>
+        <Feather name="shield" size={20} color={colors.primary} />
+        <Text style={styles.subscriptionTitle}>Location & Privacy</Text>
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: statusColor }} />
+        <Text style={[styles.planDescription, { color: statusColor }]}>{statusText}</Text>
+      </View>
+
+      <View style={[styles.featureRow, { justifyContent: 'space-between' }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}>
+          <Feather name="eye-off" size={16} color={colors.mutedForeground} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.featureText}>GPS Privacy Mode</Text>
+            <Text style={[styles.planDescription, { marginTop: 2 }]}>Disable all location tracking and sharing</Text>
+          </View>
+        </View>
+        <Switch
+          value={gpsOptOut}
+          onValueChange={handleOptOutChange}
+          trackColor={{ false: colors.border, true: colors.destructive }}
+          thumbColor={'#FFFFFF'}
+          ios_backgroundColor={colors.border}
+        />
+      </View>
+
+      {!gpsOptOut && (
+        <View style={{ marginTop: spacing.md }}>
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm }}
+            onPress={() => Linking.openSettings()}
+          >
+            <Feather name="settings" size={14} color={colors.info} />
+            <Text style={[styles.planDescription, { color: colors.info }]}>
+              Manage iOS location permissions
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {gpsOptOut && (
+        <View style={{ marginTop: spacing.md, padding: spacing.md, backgroundColor: colors.muted, borderRadius: radius.md }}>
+          <Text style={[styles.planDescription, { color: colors.mutedForeground }]}>
+            Time tracking still works without GPS. Your location won't appear on the team map and geofencing features will be disabled.
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -1574,6 +1657,8 @@ export default function SettingsScreen() {
 
           {activeTab === 'account' && (
             <View style={styles.tabContentSection}>
+              <GpsPrivacyCard />
+
               <View style={styles.subscriptionCard}>
                 <View style={styles.subscriptionHeader}>
                   <Feather name="map-pin" size={20} color={colors.primary} />

@@ -516,6 +516,18 @@ export function useLocationTracking() {
     return success;
   }, []);
 
+  const checkPermissions = useCallback(async () => {
+    return locationTracking.checkPermissions();
+  }, []);
+
+  const requestForegroundPermission = useCallback(async () => {
+    return locationTracking.requestForegroundPermission();
+  }, []);
+
+  const requestBackgroundPermission = useCallback(async () => {
+    return locationTracking.requestBackgroundPermission();
+  }, []);
+
   useEffect(() => {
     locationTracking.onStatus(setStatus);
     locationTracking.onLocation(setCurrentLocation);
@@ -556,6 +568,9 @@ export function useLocationTracking() {
     isInitialized,
     isTracking: status === 'tracking' || status === 'foreground_only',
     initialize,
+    checkPermissions,
+    requestForegroundPermission,
+    requestBackgroundPermission,
     startTracking,
     stopTracking,
     getCurrentLocation,

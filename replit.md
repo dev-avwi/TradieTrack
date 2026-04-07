@@ -23,7 +23,7 @@ Core architectural and design decisions include:
 *   **Multi-Business Workspace Switching**: Allows subcontractors to switch between different business workspaces, with data isolation and conflict detection.
 *   **Access Control**: Role-Based Access Control (RBAC) with granular permissions, enforcing client data sanitization and site photo filtering.
 *   **Offline Mode & Media Sync**: Comprehensive offline-first support with intelligent synchronization, merge-aware sync queue, idempotent record creation, optimistic UI rollback, field-level conflict merging, and background sync failure notification.
-*   **Smart GPS Features**: Real ETA in "On My Way" SMS, Smart Job Dashboard showing distance and drive time, Photo MMS via Twilio. Mobile GPS & Geofencing features include registration, auto-sync, background tracking, geofence notifications, and running late detection with SMS.
+*   **Smart GPS Features**: Real ETA in "On My Way" SMS, Smart Job Dashboard showing distance and drive time, Photo MMS via Twilio. Mobile GPS & Geofencing features include registration, auto-sync, background tracking, geofence notifications, and running late detection with SMS. **GPS Privacy Mode**: Location permissions are lazy (no iOS prompts on app launch). Users can opt out of all GPS tracking via Settings > Account > "Location & Privacy" toggle. Opt-out stops tracking, clears geofences, and blocks running-late checks. `location-tracking.ts` uses `checkPermissions()` (silent) vs `requestForegroundPermission()` / `requestBackgroundPermission()` (explicit prompts). `location-store.ts` persists `gpsOptOut` preference.
 
 ### External Dependencies
 *   **Database**: PostgreSQL (Neon serverless)

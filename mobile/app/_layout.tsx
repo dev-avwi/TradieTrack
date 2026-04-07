@@ -21,6 +21,7 @@ import { BottomNav, getBottomNavHeight } from '../src/components/BottomNav';
 import { SidebarNav, getSidebarWidth } from '../src/components/SidebarNav';
 import { Header } from '../src/components/Header';
 import { useNotificationsStore } from '../src/lib/notifications-store';
+import { useLocationStore } from '../src/lib/location-store';
 import { TerminalProvider } from '../src/providers/StripeTerminalProvider';
 import { OfflineBanner, OfflineIndicator } from '../src/components/OfflineIndicator';
 import { ConflictResolutionPanel } from '../src/components/ConflictResolutionPanel';
@@ -197,6 +198,7 @@ function ServicesInitializer() {
   const location = useLocationTracking();
   const terminal = useStripeTerminal();
   const { fetchNotifications } = useNotificationsStore();
+  const gpsOptOut = useLocationStore((s) => s.gpsOptOut);
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const terminalInitializedRef = useRef(false);
   const runningLateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -315,21 +317,29 @@ function ServicesInitializer() {
       }
 
       try {
-        await location.initialize();
-        const { locationTracking } = await import('../src/lib/location-tracking');
+        const currentGpsOptOut = useLocationStore.getState().gpsOptOut;
         
-        // Sync geofences for all jobs that have geofencing enabled
-        locationTracking.syncJobGeofences();
+        if (currentGpsOptOut) {
+          if (__DEV__) console.log('[App] GPS Privacy Mode enabled — skipping location init');
+        } else {
+          const locationGranted = await location.initialize();
+          
+          if (locationGranted) {
+            const { locationTracking } = await import('../src/lib/location-tracking');
+            locationTracking.syncJobGeofences();
+          } else {
+            if (__DEV__) console.log('[App] Location not yet granted — will prompt when user needs it');
+          }
+        }
 
-        // Listen for geofence enter/exit events and show notifications (guard against duplicate registration)
         if (!geofenceListenerRef.current) {
         geofenceListenerRef.current = true;
         location.onGeofenceEvent(async (event) => {
+          if (useLocationStore.getState().gpsOptOut) return;
           if (__DEV__) console.log('[App] Geofence event:', event);
           const jobId = event.identifier.replace('job_', '');
           
           try {
-            // Post to server — handles auto clock-in/out and returns result
             const response = await api.post('/api/geofence-events', {
               identifier: event.identifier,
               action: event.action,
@@ -382,15 +392,14 @@ function ServicesInitializer() {
         if (__DEV__) console.log('[App] Location init failed:', error);
       }
 
-      // Smart Running Late Detection — check every 5 minutes
       if (runningLateIntervalRef.current) clearInterval(runningLateIntervalRef.current);
       runningLateIntervalRef.current = setInterval(async () => {
         try {
-          // Get current preference
+          if (useLocationStore.getState().gpsOptOut) return;
+
           const prefsRes = await api.get('/api/notification-preferences');
           if (prefsRes.error || prefsRes.data?.smartRunningLateEnabled === false || prefsRes.data?.pushNotificationsEnabled === false) return;
 
-          // Get GPS
           const loc = await location.getCurrentLocation();
           if (!loc?.latitude) return;
 
