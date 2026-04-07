@@ -240,7 +240,7 @@ Lead → Pending → Scheduled → In Progress → Done → Invoiced → Archive
 - Communication preferences
 
 ### How It Interconnects
-- Clients are referenced by: Jobs, Quotes, Invoices, Leads, SMS Conversations, Booking Requests
+- Clients are referenced by: Jobs, Quotes, Invoices, Leads, SMS Conversations
 - Client address auto-fills into job address
 - Client phone enables two-way SMS via the Chat system
 - Client portal access is token-based (no login required for the client)
@@ -253,7 +253,6 @@ Lead → Pending → Scheduled → In Progress → Done → Invoiced → Archive
 | Source | How Leads Arrive |
 |--------|-----------------|
 | AI Receptionist | Vapi captures caller details during phone calls |
-| Booking Page | Client submits form on public `/book/:slug` page |
 | Phone Call | Manual entry by the tradie |
 | Email | Manual entry |
 | Website | Manual entry |
@@ -301,7 +300,6 @@ New → Contacted → Quoted → Won
 
 ### How It Interconnects
 - AI Receptionist calls auto-create leads
-- Booking page submissions create leads
 - Lead conversion creates Clients, Jobs, and/or Quotes
 - Leads feed into pipeline value metrics in Reports
 - SMS notifications sent to owner when new AI lead arrives
@@ -1038,12 +1036,6 @@ Simplified toggle-based interface for high-impact automations:
 - ETA display
 - Branded with business colors/logo
 
-### Booking Page (`/book/:slug`)
-- Public landing page for lead capture
-- Business info, services description
-- Form: Name, Phone, Email, Service Type, Address (autocomplete), Description
-- Submission creates a Lead in the business's account
-
 ### Subcontractor Web View (`/s/:token`)
 - For external subs without full JobRunner accounts
 - OTP verification (SMS code to sub's phone)
@@ -1055,7 +1047,6 @@ Simplified toggle-based interface for high-impact automations:
 ### How It Interconnects
 - Portals read from: Quotes, Invoices, Jobs, Location data
 - Client actions in portal trigger: Status updates, Notifications, Payment processing
-- Booking page creates: Leads
 - Subcontractor actions trigger: Notifications to owner, Status updates
 
 ---
@@ -1194,7 +1185,6 @@ Simplified toggle-based interface for high-impact automations:
 ```
 LEAD CAPTURE
   AI Receptionist call → Lead created (ai_receptionist source)
-  Booking page form → Lead created (booking_page source)
   Manual entry → Lead created (phone/email/referral source)
       ↓
 LEAD CONVERSION
@@ -1261,7 +1251,7 @@ POST-JOB
               └────┬─────┘
                    │ convert
               ┌────▼─────┐
-              │ CLIENTS  │◄──── Booking Page
+              │ CLIENTS  │
               └────┬─────┘
                    │
               ┌────▼─────┐         ┌──────────┐
@@ -1314,7 +1304,6 @@ POST-JOB
 | Subcontractor Portal (OTP) | Yes | No |
 | Action Center (revenue leaks) | Yes | No |
 | Built-in Team Chat | Yes (WebSocket real-time) | No |
-| Booking Page | Yes | No |
 | Price (Solo) | $39/mo | $49/mo |
 
 ### vs ServiceM8 ($29-$379/mo)
@@ -1337,7 +1326,6 @@ POST-JOB
 | GPS Team Tracking | Life360-style with privacy controls | Basic |
 | AI Features | 5+ AI tools | No |
 | Mobile-First Design | Yes | Desktop-first |
-| Booking Page | Yes | No |
 | Price (Team 5) | $195/mo | $295/mo |
 
 ### Unique to JobRunner

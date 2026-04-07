@@ -97,7 +97,6 @@ const Leads = React.lazy(() => import("@/pages/Leads"));
 const AIVisualizationPage = React.lazy(() => import("@/pages/AIVisualization"));
 const PayrollReports = React.lazy(() => import("@/pages/PayrollReports"));
 const ClientPortal = React.lazy(() => import("@/pages/ClientPortal"));
-const BookingPage = React.lazy(() => import("@/pages/BookingPage"));
 const ClientPortalHub = React.lazy(() => import("@/pages/ClientPortalHub"));
 const JobPortal = React.lazy(() => import("@/pages/JobPortal"));
 const TeamGroups = React.lazy(() => import("@/pages/TeamGroups"));
@@ -1714,7 +1713,6 @@ function App() {
               <Route path="/q/:token">{(params) => <QuoteShortRedirect token={params.token} />}</Route>
               <Route path="/i/:token">{(params) => <InvoiceShortRedirect token={params.token} />}</Route>
               <Route path="/pay/:token" component={PaymentPage} />
-              <Route path="/book/:slug" component={BookingPage} />
               <Route path="/portal/:type/:token" component={ClientPortal} />
               <Route path="/portal" component={ClientPortalHub} />
               <Route path="/job-portal/:token" component={JobPortal} />

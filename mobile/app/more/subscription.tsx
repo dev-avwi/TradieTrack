@@ -958,7 +958,7 @@ export default function SubscriptionScreen() {
                   AI-powered phone answering with a dedicated Australian number. Captures leads and transfers calls to your team.
                 </Text>
                 <View style={styles.featureList}>
-                  {['Dedicated Australian phone number', '24/7 AI answering in your business name', 'Auto lead capture and bookings', 'Live call transfer to team'].map((feat, i) => (
+                  {['Dedicated Australian phone number', '24/7 AI answering in your business name', 'Auto lead capture and caller details', 'Live call transfer to team'].map((feat, i) => (
                     <View key={i} style={styles.featureItem}>
                       <View style={styles.featureIconContainer}>
                         <Feather name="check" size={14} color="#2563eb" />

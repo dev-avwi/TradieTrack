@@ -274,18 +274,6 @@ export const mainMenuItems: NavItem[] = [
     allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
-    title: "Booking Page",
-    url: "/more/booking-settings",
-    icon: "calendar",
-    description: "Online booking page for customers",
-    color: "primary",
-    bgColor: "primary",
-    hideForStaff: true,
-    showInMore: true,
-    category: "addons",
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
-  },
-  {
     title: "Custom Website",
     url: "/more/custom-website",
     icon: "globe",

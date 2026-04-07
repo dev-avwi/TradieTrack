@@ -936,7 +936,7 @@ export default function LandingPage() {
                   {[
                     "Dedicated Australian phone number",
                     "AI answers calls 24/7 in your business name",
-                    "Captures leads and creates bookings automatically",
+                    "Captures leads and caller details automatically",
                     "Live call transfer to your team when available",
                     "Customers see your number, not JobRunner's"
                   ].map((feature, i) => (

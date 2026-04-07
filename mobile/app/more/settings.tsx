@@ -2001,20 +2001,6 @@ export default function SettingsScreen() {
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.settingsCard}
-                onPress={() => router.push('/more/booking-settings' as any)}
-                data-testid="button-booking-settings"
-              >
-                <View style={styles.settingsCardHeader}>
-                  <Feather name="calendar" size={20} color={colors.primary} />
-                  <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>Online Booking Page</Text>
-                    <Text style={styles.settingsCardSubtitle}>Configure your client-facing booking form</Text>
-                  </View>
-                </View>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
 
               {businessSettings?.simpleMode !== undefined && (
                 <View style={styles.subscriptionCard}>

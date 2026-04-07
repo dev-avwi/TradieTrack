@@ -666,10 +666,6 @@ export default function Settings({
     emailSendingMode: "manual" as "manual" | "automatic",
     tradeType: "general",
     googleReviewUrl: "",
-    bookingSlug: "",
-    bookingPageEnabled: false,
-    bookingPageServices: [] as string[],
-    bookingPageDescription: "",
   });
 
   // Default color matches ThemeProvider's default (#2563EB blue)
@@ -929,10 +925,6 @@ export default function Settings({
         emailSendingMode: (businessSettings as any).emailSendingMode || "manual",
         tradeType: (businessSettings as any).tradeType || "general",
         googleReviewUrl: (businessSettings as any).googleReviewUrl || "",
-        bookingSlug: (businessSettings as any).bookingSlug || "",
-        bookingPageEnabled: (businessSettings as any).bookingPageEnabled || false,
-        bookingPageServices: (businessSettings as any).bookingPageServices || [],
-        bookingPageDescription: (businessSettings as any).bookingPageDescription || "",
       });
       
       // Always update payment data
@@ -1115,10 +1107,6 @@ export default function Settings({
       documentTemplateSettings: templateCustomization,
       // Google Reviews & Booking Page
       googleReviewUrl: businessData.googleReviewUrl,
-      bookingSlug: businessData.bookingSlug,
-      bookingPageEnabled: businessData.bookingPageEnabled,
-      bookingPageServices: businessData.bookingPageServices,
-      bookingPageDescription: businessData.bookingPageDescription,
     };
     
     saveSettingsMutation.mutate(updateData);
@@ -2171,156 +2159,6 @@ export default function Settings({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Globe className="w-5 h-5" style={{ color: 'hsl(var(--trade))' }} />
-                <CardTitle>Online Booking Page</CardTitle>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Give potential customers a way to request a booking online. Share the link on social media,
-                business cards, Google Business Profile, or anywhere else.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <Label>Enable Booking Page</Label>
-                  <p className="text-sm text-muted-foreground">Allow new customers to submit booking requests online</p>
-                </div>
-                <Switch
-                  checked={businessData.bookingPageEnabled}
-                  onCheckedChange={(checked) => setBusinessData(prev => ({ ...prev, bookingPageEnabled: checked }))}
-                />
-              </div>
-
-              {businessData.bookingPageEnabled && (
-                <>
-                  <Separator />
-                  <div className="space-y-2">
-                    <Label htmlFor="booking-slug">Your Booking URL</Label>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-0 flex-1">
-                        <span className="text-sm text-muted-foreground whitespace-nowrap bg-muted px-3 py-2 rounded-l-md border border-r-0">
-                          {window.location.origin}/book/
-                        </span>
-                        <Input
-                          id="booking-slug"
-                          placeholder="your-business-name"
-                          value={businessData.bookingSlug}
-                          onChange={(e) => setBusinessData(prev => ({ ...prev, bookingSlug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') }))}
-                          className="rounded-l-none"
-                        />
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/book/${businessData.bookingSlug}`);
-                          toast({ title: "Link copied!", description: "Booking page URL copied to clipboard" });
-                        }}
-                        disabled={!businessData.bookingSlug}
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => window.open(`/book/${businessData.bookingSlug}`, '_blank')}
-                        disabled={!businessData.bookingSlug}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    {!businessData.bookingSlug && businessData.name && (
-                      <Button
-                        variant="link"
-                        className="h-auto p-0 text-xs"
-                        onClick={() => setBusinessData(prev => ({ ...prev, bookingSlug: prev.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') }))}
-                      >
-                        Auto-generate from business name
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="booking-description">Welcome Message (optional)</Label>
-                    <Textarea
-                      id="booking-description"
-                      placeholder="Welcome! Fill in the form below and we'll get back to you shortly."
-                      value={businessData.bookingPageDescription}
-                      onChange={(e) => setBusinessData(prev => ({ ...prev, bookingPageDescription: e.target.value }))}
-                      rows={2}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Services Offered</Label>
-                    <p className="text-xs text-muted-foreground">Add services customers can select when booking</p>
-                    <div className="flex flex-wrap gap-2">
-                      {(businessData.bookingPageServices || []).map((service: any, i: number) => (
-                        <Badge key={i} variant="secondary" className="gap-1">
-                          {typeof service === 'string' ? service : service.name}
-                          <button
-                            onClick={() => setBusinessData(prev => ({
-                              ...prev,
-                              bookingPageServices: prev.bookingPageServices.filter((_: any, idx: number) => idx !== i)
-                            }))}
-                            className="ml-1"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="e.g. Plumbing, Electrical, Maintenance"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const val = (e.target as HTMLInputElement).value.trim();
-                            if (val) {
-                              setBusinessData(prev => ({
-                                ...prev,
-                                bookingPageServices: [...(prev.bookingPageServices || []), val]
-                              }));
-                              (e.target as HTMLInputElement).value = '';
-                            }
-                          }
-                        }}
-                      />
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={(e) => {
-                          const input = (e.currentTarget.previousElementSibling as HTMLInputElement);
-                          const val = input?.value?.trim();
-                          if (val) {
-                            setBusinessData(prev => ({
-                              ...prev,
-                              bookingPageServices: [...(prev.bookingPageServices || []), val]
-                            }));
-                            input.value = '';
-                          }
-                        }}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="p-3 rounded-md bg-muted/50 space-y-1">
-                    <p className="text-sm font-medium">How it works</p>
-                    <p className="text-xs text-muted-foreground">
-                      New customers fill in the booking form and it creates a new lead in your Leads page.
-                      You'll get a notification and can convert it to a quote or job.
-                    </p>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
 
           <DataSafetyBanner />
         </TabsContent>
