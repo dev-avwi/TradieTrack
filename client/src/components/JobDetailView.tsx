@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Briefcase, User, MapPin, Calendar, Clock, Edit, FileText, FileEdit, Receipt, Camera, ExternalLink, Sparkles, Zap, Mic, ClipboardList, Users, Timer, CheckCircle, AlertTriangle, Loader2, PenLine, Trash2, Play, Square, Navigation, History, Mail, MessageSquare, CreditCard, Send, Bell, Plus, CheckCircle2, Smartphone, QrCode, DollarSign, Link2, Check, X, UserPlus, Copy, Circle, Package, Truck, Shield, Lock, Globe, Share2, Phone, Wrench, FileDown, Search, ChevronsUpDown, Eye, Image, ListChecks, Activity, MoreVertical } from "lucide-react";
 import {
@@ -502,10 +502,10 @@ export default function JobDetailView({
     enabled: !!jobId,
   });
 
-  // Time entry interface for calculating actual hours
   interface TimeEntryForCosting {
     id: string;
     userId?: string;
+    userName?: string;
     startTime: string;
     endTime?: string;
     isBreak?: boolean;
@@ -519,22 +519,34 @@ export default function JobDetailView({
     clockOutLatitude?: string;
     clockOutLongitude?: string;
     clockOutAddress?: string;
+    isBillable?: boolean;
+    timeCategory?: string;
   }
 
-  // Fetch time entries for this job - only for active jobs where time tracking applies
   const { data: timeEntries = [] } = useQuery<TimeEntryForCosting[]>({
-    queryKey: ['/api/time-entries', { jobId }],
+    queryKey: ['/api/time-entries', { jobId, teamView: 'true' }],
     queryFn: async () => {
       const token = getSessionToken();
-      const res = await fetch(`/api/time-entries?jobId=${jobId}`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
+      const res = await fetch(`/api/time-entries?jobId=${jobId}&teamView=true`, { credentials: 'include', headers: token ? { 'Authorization': `Bearer ${token}` } : undefined });
       if (!res.ok) return [];
       return res.json();
     },
     enabled: !!jobId,
   });
 
-  // Calculate actual hours from completed time entries (excluding breaks)
-  const actualHoursData = (() => {
+  interface WorkerTimeSummary {
+    userId: string;
+    name: string;
+    totalMinutes: number;
+    totalHours: number;
+    hourlyRate: number;
+    laborCost: number;
+    entries: TimeEntryForCosting[];
+    hasGps: boolean;
+    breakMinutes: number;
+  }
+
+  const { workerSummaries, actualHoursData } = useMemo(() => {
     const completedWorkEntries = timeEntries.filter(
       (entry) => entry.endTime && !entry.isBreak
     );
@@ -547,21 +559,69 @@ export default function JobDetailView({
     
     const actualHours = totalMinutes / 60;
     
-    // Get average hourly rate from entries that have it set
     const entriesWithRate = completedWorkEntries.filter(e => e.hourlyRate && e.hourlyRate > 0);
     const avgHourlyRate = entriesWithRate.length > 0
       ? entriesWithRate.reduce((sum, e) => sum + (e.hourlyRate || 0), 0) / entriesWithRate.length
       : 0;
     
     const laborCost = actualHours * avgHourlyRate;
-    
-    return {
-      actualHours: Math.round(actualHours * 100) / 100,
-      laborCost: Math.round(laborCost * 100) / 100,
-      hasData: completedWorkEntries.length > 0,
-      hourlyRate: avgHourlyRate,
+
+    const byWorker = new Map<string, TimeEntryForCosting[]>();
+    for (const entry of timeEntries) {
+      const key = entry.userId || 'unknown';
+      if (!byWorker.has(key)) byWorker.set(key, []);
+      byWorker.get(key)!.push(entry);
+    }
+
+    const getEntryMinutes = (entry: TimeEntryForCosting) => {
+      if (entry.endTime) {
+        return entry.duration || Math.floor((new Date(entry.endTime).getTime() - new Date(entry.startTime).getTime()) / 60000);
+      }
+      return Math.floor((Date.now() - new Date(entry.startTime).getTime()) / 60000);
     };
-  })();
+
+    const summaries: WorkerTimeSummary[] = [];
+    for (const [userId, entries] of byWorker) {
+      const workEntries = entries.filter(e => !e.isBreak);
+      const breakEntries = entries.filter(e => e.isBreak);
+      
+      const workerMins = workEntries.reduce((total, entry) => total + getEntryMinutes(entry), 0);
+      const breakMins = breakEntries.reduce((total, entry) => total + getEntryMinutes(entry), 0);
+
+      const rateEntries = workEntries.filter(e => e.hourlyRate && e.hourlyRate > 0);
+      const workerRate = rateEntries.length > 0
+        ? rateEntries.reduce((sum, e) => sum + (e.hourlyRate || 0), 0) / rateEntries.length
+        : avgHourlyRate;
+      const workerHours = workerMins / 60;
+
+      summaries.push({
+        userId,
+        name: entries[0]?.userName || 'Worker',
+        totalMinutes: workerMins,
+        totalHours: Math.round(workerHours * 100) / 100,
+        hourlyRate: Math.round(workerRate * 100) / 100,
+        laborCost: Math.round(workerHours * workerRate * 100) / 100,
+        entries: workEntries,
+        hasGps: entries.some(e => e.clockInLatitude || e.origin === 'geofence'),
+        breakMinutes: breakMins,
+      });
+    }
+
+    summaries.sort((a, b) => b.totalMinutes - a.totalMinutes);
+
+    const totalLaborCost = summaries.reduce((sum, w) => sum + w.laborCost, 0);
+    const totalHoursFromWorkers = summaries.reduce((sum, w) => sum + w.totalHours, 0);
+
+    return {
+      workerSummaries: summaries,
+      actualHoursData: {
+        actualHours: totalHoursFromWorkers > 0 ? totalHoursFromWorkers : Math.round(actualHours * 100) / 100,
+        laborCost: totalLaborCost > 0 ? totalLaborCost : Math.round(laborCost * 100) / 100,
+        hasData: completedWorkEntries.length > 0 || summaries.some(s => s.entries.some(e => !e.endTime)),
+        hourlyRate: avgHourlyRate,
+      },
+    };
+  }, [timeEntries]);
 
   // Fetch voice notes - enable for all job statuses to support team sync
   const { data: voiceNotes = [] } = useQuery<{ id: string }[]>({
@@ -3697,104 +3757,99 @@ export default function JobDetailView({
             />
           )}
 
-          {/* Worker Attendance — GPS location evidence */}
-          {timeEntries.length > 0 && (
+          {/* Worker Time Tracking — Per-worker breakdown with hours, rates, costs */}
+          {workerSummaries.length > 0 && (
             <Card data-testid="card-worker-attendance">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <MapPin className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-                  Worker Attendance
+                <CardTitle className="text-base font-semibold flex items-center justify-between gap-2 flex-wrap">
+                  <span className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+                    Time Tracking
+                  </span>
+                  {actualHoursData.hasData && (
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {actualHoursData.actualHours}h total
+                      {actualHoursData.laborCost > 0 && ` · $${actualHoursData.laborCost.toFixed(2)}`}
+                    </span>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {timeEntries.filter(e => !e.isBreak).map((entry) => {
-                    const hasGps = !!(entry.clockInLatitude || entry.clockOutLatitude);
-                    const isGeofence = entry.origin === 'geofence';
-                    const verified = hasGps || isGeofence;
-                    const startDate = new Date(entry.startTime);
-                    const endDate = entry.endTime ? new Date(entry.endTime) : null;
-                    const durationMins = entry.duration || (endDate ? Math.floor((endDate.getTime() - startDate.getTime()) / 60000) : 0);
-                    const hours = Math.round(durationMins / 60 * 10) / 10;
-
-                    return (
-                      <div key={entry.id} className="flex items-start gap-3 p-3 rounded-md bg-muted/30">
-                        <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${verified ? 'bg-green-500' : 'bg-amber-400'}`} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium">
-                              {startDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {startDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
-                              {endDate ? ` — ${endDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}` : ' (active)'}
-                            </span>
-                            {hours > 0 && (
-                              <span className="text-xs text-muted-foreground">({hours}h)</span>
-                            )}
-                            {verified && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded">
-                                <CheckCircle className="h-3 w-3" />
-                                GPS
-                              </span>
-                            )}
+                <div className="space-y-4">
+                  {workerSummaries.map((worker) => (
+                    <div key={worker.userId} className="rounded-md border p-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-md flex items-center justify-center text-xs font-semibold" style={{ background: 'hsl(var(--trade) / 0.1)', color: 'hsl(var(--trade))' }}>
+                            {worker.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                           </div>
-                          {(entry.clockInAddress || entry.clockOutAddress) && (
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {entry.clockInAddress && (
-                                <div className="flex items-center gap-1">
-                                  <span>In:</span>
-                                  {entry.clockInLatitude && entry.clockInLongitude ? (
-                                    <a
-                                      href={`https://www.google.com/maps?q=${entry.clockInLatitude},${entry.clockInLongitude}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="underline hover:text-foreground"
-                                    >
-                                      {entry.clockInAddress}
-                                    </a>
-                                  ) : (
-                                    <span>{entry.clockInAddress}</span>
-                                  )}
-                                </div>
+                          <div>
+                            <span className="text-sm font-semibold">{worker.name}</span>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>{worker.totalHours}h worked</span>
+                              {worker.breakMinutes > 0 && (
+                                <span>· {Math.round(worker.breakMinutes / 6) / 10}h break</span>
                               )}
-                              {entry.clockOutAddress && (
-                                <div className="flex items-center gap-1">
-                                  <span>Out:</span>
-                                  {entry.clockOutLatitude && entry.clockOutLongitude ? (
-                                    <a
-                                      href={`https://www.google.com/maps?q=${entry.clockOutLatitude},${entry.clockOutLongitude}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="underline hover:text-foreground"
-                                    >
-                                      {entry.clockOutAddress}
-                                    </a>
-                                  ) : (
-                                    <span>{entry.clockOutAddress}</span>
-                                  )}
-                                </div>
+                              {worker.entries.length > 1 && (
+                                <span>· {worker.entries.length} sessions</span>
                               )}
                             </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {worker.hourlyRate > 0 && (
+                            <div className="text-xs text-muted-foreground">${worker.hourlyRate}/hr</div>
                           )}
-                          {!entry.clockInAddress && entry.clockInLatitude && entry.clockInLongitude && (
-                            <div className="mt-1">
-                              <a
-                                href={`https://www.google.com/maps?q=${entry.clockInLatitude},${entry.clockInLongitude}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-muted-foreground underline hover:text-foreground inline-flex items-center gap-1"
-                              >
-                                <Navigation className="h-3 w-3" />
-                                {parseFloat(entry.clockInLatitude).toFixed(4)}, {parseFloat(entry.clockInLongitude).toFixed(4)}
-                              </a>
-                            </div>
+                          {worker.laborCost > 0 && (
+                            <div className="text-sm font-semibold">${worker.laborCost.toFixed(2)}</div>
                           )}
                         </div>
                       </div>
-                    );
-                  })}
+                      <div className="space-y-1.5">
+                        {worker.entries.map((entry) => {
+                          const hasGps = !!(entry.clockInLatitude || entry.clockOutLatitude);
+                          const isGeofence = entry.origin === 'geofence';
+                          const verified = hasGps || isGeofence;
+                          const startDate = new Date(entry.startTime);
+                          const endDate = entry.endTime ? new Date(entry.endTime) : null;
+                          const durationMins = endDate
+                            ? (entry.duration || Math.floor((endDate.getTime() - startDate.getTime()) / 60000))
+                            : Math.floor((Date.now() - startDate.getTime()) / 60000);
+                          const hours = Math.round(durationMins / 60 * 10) / 10;
+
+                          return (
+                            <div key={entry.id} className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground py-1.5 px-2 rounded bg-muted/30">
+                              <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${verified ? 'bg-green-500' : 'bg-amber-400'}`} />
+                              <span className="font-medium text-foreground">
+                                {startDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                              </span>
+                              <span>
+                                {startDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                                {endDate ? ` — ${endDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                              </span>
+                              {!endDate && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 animate-pulse">Active</Badge>
+                              )}
+                              {hours > 0 && <span className="font-medium text-foreground">{hours}h</span>}
+                              {verified && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-1 py-0.5 rounded">
+                                  <CheckCircle className="h-2.5 w-2.5" />
+                                  GPS
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
+                {actualHoursData.laborCost > 0 && workerSummaries.length > 1 && (
+                  <div className="mt-3 pt-3 border-t flex items-center justify-between">
+                    <span className="text-sm font-medium">Total Labour Cost</span>
+                    <span className="text-sm font-bold">${actualHoursData.laborCost.toFixed(2)}</span>
+                  </div>
+                )}
                 {timeEntries.some(e => e.clockInLatitude || e.origin === 'geofence') && (
                   <div className="mt-3 pt-2 border-t flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
                     <Shield className="h-3.5 w-3.5" />
