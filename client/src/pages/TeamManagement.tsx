@@ -750,7 +750,29 @@ export default function TeamManagement() {
     },
   });
 
-  // Assign job mutation
+  // Work hours update mutation
+  const workHoursMutation = useMutation({
+    mutationFn: async ({ memberId, ...data }: { memberId: string; workHoursStart?: string; workHoursEnd?: string; workDays?: number[]; afterHoursGhostMode?: boolean }) => {
+      const response = await apiRequest('PATCH', `/api/team/members/${memberId}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/team/members'] });
+      toast({
+        title: "Work hours updated",
+        description: "Work hours and ghost mode settings have been saved.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update work hours",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+    // Assign job mutation
   const assignJobMutation = useMutation({
     mutationFn: async ({ jobId, memberId }: { jobId: string; memberId: string }) => {
       const response = await apiRequest('POST', `/api/jobs/${jobId}/assign`, {
@@ -1256,25 +1278,88 @@ export default function TeamManagement() {
                         </div>
                       )}
 
-                      {/* Location & Controls Row (only for accepted members) */}
+                      {/* Location & Work Hours Controls (only for accepted members) */}
                       {member.inviteStatus === 'accepted' && (
-                        <div className="flex items-center gap-4 mt-3 pt-3 border-t">
-                          {/* Location Toggle */}
-                          <div className="flex items-center gap-2">
-                            <MapPin className={`h-4 w-4 ${member.locationEnabledByOwner !== false ? 'text-green-500' : 'text-muted-foreground'}`} />
-                            <Label htmlFor={`location-${member.id}`} className="text-sm">
-                              Location Access
-                            </Label>
-                            <Switch
-                              id={`location-${member.id}`}
-                              checked={member.locationEnabledByOwner !== false}
-                              onCheckedChange={(checked) => {
-                                locationToggleMutation.mutate({ memberId: member.id, enabled: checked });
-                              }}
-                              disabled={locationToggleMutation.isPending}
-                              data-testid={`switch-location-${member.id}`}
-                            />
+                        <div className="mt-3 pt-3 border-t space-y-3">
+                          <div className="flex items-center flex-wrap gap-4">
+                            <div className="flex items-center gap-2">
+                              <MapPin className={`h-4 w-4 ${member.locationEnabledByOwner !== false ? 'text-green-500' : 'text-muted-foreground'}`} />
+                              <Label htmlFor={`location-${member.id}`} className="text-sm">
+                                Location Access
+                              </Label>
+                              <Switch
+                                id={`location-${member.id}`}
+                                checked={member.locationEnabledByOwner !== false}
+                                onCheckedChange={(checked) => {
+                                  locationToggleMutation.mutate({ memberId: member.id, enabled: checked });
+                                }}
+                                disabled={locationToggleMutation.isPending}
+                                data-testid={`switch-location-${member.id}`}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className={`h-4 w-4 ${member.afterHoursGhostMode ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                              <Label htmlFor={`ghost-${member.id}`} className="text-sm">
+                                After Hours Privacy
+                              </Label>
+                              <Switch
+                                id={`ghost-${member.id}`}
+                                checked={member.afterHoursGhostMode === true}
+                                onCheckedChange={(checked) => {
+                                  workHoursMutation.mutate({ memberId: member.id, afterHoursGhostMode: checked });
+                                }}
+                                disabled={workHoursMutation.isPending}
+                                data-testid={`switch-ghost-${member.id}`}
+                              />
+                            </div>
                           </div>
+                          {member.afterHoursGhostMode && (
+                            <div className="p-3 rounded-md bg-muted/50 space-y-2">
+                              <p className="text-xs text-muted-foreground">Location hidden outside work hours (overridden if worker has an active timer)</p>
+                              <div className="flex items-center flex-wrap gap-3">
+                                <div className="flex items-center gap-1.5">
+                                  <Label className="text-xs whitespace-nowrap">Start</Label>
+                                  <input
+                                    type="time"
+                                    className="text-xs border rounded-md px-2 py-1 bg-background"
+                                    defaultValue={member.workHoursStart || '07:00'}
+                                    onBlur={(e) => workHoursMutation.mutate({ memberId: member.id, workHoursStart: e.target.value })}
+                                    data-testid={`input-work-start-${member.id}`}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <Label className="text-xs whitespace-nowrap">End</Label>
+                                  <input
+                                    type="time"
+                                    className="text-xs border rounded-md px-2 py-1 bg-background"
+                                    defaultValue={member.workHoursEnd || '17:00'}
+                                    onBlur={(e) => workHoursMutation.mutate({ memberId: member.id, workHoursEnd: e.target.value })}
+                                    data-testid={`input-work-end-${member.id}`}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => {
+                                  const workDays: number[] = (member.workDays as number[] | null) || [1, 2, 3, 4, 5];
+                                  const isActive = workDays.includes(idx);
+                                  return (
+                                    <button
+                                      key={day}
+                                      type="button"
+                                      className={`text-xs px-2 py-1 rounded-md border transition-colors ${isActive ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border hover-elevate'}`}
+                                      onClick={() => {
+                                        const newDays = isActive ? workDays.filter((d: number) => d !== idx) : [...workDays, idx].sort();
+                                        workHoursMutation.mutate({ memberId: member.id, workDays: newDays });
+                                      }}
+                                      data-testid={`btn-day-${day.toLowerCase()}-${member.id}`}
+                                    >
+                                      {day}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

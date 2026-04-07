@@ -1656,8 +1656,13 @@ export const teamMembers = pgTable("team_members", {
   customPermissions: json("custom_permissions"), // null = use role defaults, [] = custom list
   useCustomPermissions: boolean("use_custom_permissions").default(false), // Whether to use custom or role permissions
   // Location tracking control
-  allowLocationSharing: boolean("allow_location_sharing").default(true), // Whether this member shares their location with owner
-  locationEnabledByOwner: boolean("location_enabled_by_owner").default(true), // Owner can disable location access for this member
+  allowLocationSharing: boolean("allow_location_sharing").default(true),
+  locationEnabledByOwner: boolean("location_enabled_by_owner").default(true),
+  // Work hours GPS privacy — location only shared during these hours (unless active timer overrides)
+  workHoursStart: text("work_hours_start").default('07:00'),
+  workHoursEnd: text("work_hours_end").default('17:00'),
+  workDays: json("work_days").$type<number[]>().default([1, 2, 3, 4, 5]),
+  afterHoursGhostMode: boolean("after_hours_ghost_mode").default(false),
   whsRole: text("whs_role").default('none'),
   aiReceptionistAvailability: boolean("ai_receptionist_availability").default(true),
   availabilityStatus: text("availability_status").default('available'), // available, busy, unavailable - for subcontractor dashboard

@@ -30298,7 +30298,7 @@ Respond with JSON in this format:
     try {
       const effectiveUserId = req.effectiveUserId || req.userId!;
       const memberId = req.params.id;
-      const { firstName, lastName, phone, hourlyRate, role, roleId } = req.body;
+      const { firstName, lastName, phone, hourlyRate, role, roleId, workHoursStart, workHoursEnd, workDays, afterHoursGhostMode } = req.body;
       
       // getTeamMember already scopes by owner, returning null if not found or not owned
       const member = await storage.getTeamMember(memberId, effectiveUserId);
@@ -30313,6 +30313,10 @@ Respond with JSON in this format:
       if (phone !== undefined) updateData.phone = phone;
       if (hourlyRate !== undefined) updateData.hourlyRate = hourlyRate?.toString();
       if (roleId !== undefined) updateData.roleId = roleId;
+      if (workHoursStart !== undefined) updateData.workHoursStart = workHoursStart;
+      if (workHoursEnd !== undefined) updateData.workHoursEnd = workHoursEnd;
+      if (workDays !== undefined) updateData.workDays = workDays;
+      if (afterHoursGhostMode !== undefined) updateData.afterHoursGhostMode = afterHoursGhostMode;
       
       const updated = await storage.updateTeamMember(memberId, effectiveUserId, updateData);
       try {
@@ -35783,6 +35787,42 @@ Respond with JSON in this format:
         const tradieStatusData = await storage.getTradieStatus(member.memberId);
         
         const activeTimeEntry = await storage.getActiveTimeEntry(member.memberId);
+        
+        // Work Hours Ghost Mode: hide location outside work hours unless active timer
+        if (member.afterHoursGhostMode && !activeTimeEntry) {
+          const now = new Date();
+          const memberWorkDays = (member.workDays as number[] | null) || [1, 2, 3, 4, 5];
+          const currentDay = now.getDay(); // 0=Sun, 1=Mon...6=Sat
+          const timeStr = now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Australia/Sydney' });
+          const startTime = member.workHoursStart || '07:00';
+          const endTime = member.workHoursEnd || '17:00';
+          const isWorkDay = memberWorkDays.includes(currentDay);
+          const isDuringHours = isWorkDay && timeStr >= startTime && timeStr < endTime;
+          
+          if (!isDuringHours) {
+            locations.push({
+              id: member.memberId,
+              name: `${member.firstName || user.firstName || ''} ${member.lastName || user.lastName || ''}`.trim() || user.email,
+              email: user.email,
+              profileImageUrl: user.profileImageUrl || null,
+              themeColor: user.themeColor || null,
+              latitude: null,
+              longitude: null,
+              lastUpdated: null,
+              currentJobId: null,
+              currentJobTitle: null,
+              activityStatus: 'after_hours',
+              speed: 0,
+              batteryLevel: null,
+              heading: null,
+              isSubcontractor,
+              roleName,
+              activeJobName: null,
+            });
+            continue;
+          }
+        }
+
         let currentJob = null;
         if (activeTimeEntry?.jobId) {
           currentJob = await storage.getJob(activeTimeEntry.jobId, effectiveUserId);
