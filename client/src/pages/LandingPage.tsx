@@ -470,6 +470,16 @@ export default function LandingPage() {
                 </Button>
               </div>
 
+              {/* Call Support Line */}
+              <a 
+                href="tel:+61485013994" 
+                className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand transition-colors"
+                onClick={() => trackEvent('cta_click', { location: 'hero', button: 'call_support' })}
+              >
+                <Phone className="w-4 h-4" />
+                <span>Got questions? Call us — <span className="font-medium">0485 013 994</span></span>
+              </a>
+
               {/* Early Access note */}
               <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-full px-4 py-2">
                 <span className="flex h-2 w-2 relative">
