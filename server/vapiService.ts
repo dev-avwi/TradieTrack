@@ -760,6 +760,21 @@ async function handleCaptureLead(args: any, userId: string, callId: string): Pro
     const urgency = args.urgency || null;
     const notes = args.notes || '';
 
+    if (callerPhone) {
+      const recentLeads = await storage.getLeadsByUserAndPhone(userId, callerPhone);
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const recentDuplicate = recentLeads?.find(l => l.createdAt && new Date(l.createdAt) > oneHourAgo);
+      if (recentDuplicate) {
+        console.log(`[Vapi] Spam protection: duplicate lead from ${callerPhone} within 1 hour, skipping`);
+        await storage.updateAiReceptionistCall(callId, userId, {
+          leadId: recentDuplicate.id,
+          callerName: callerName,
+          callerIntent: args.intent || jobType,
+        });
+        return { result: `Your details are already on file. Someone will be in touch shortly. Reference: ${recentDuplicate.id.slice(0, 8)}` };
+      }
+    }
+
     const lead = await storage.createLead({
       userId,
       name: callerName,
@@ -779,50 +794,6 @@ async function handleCaptureLead(args: any, userId: string, callId: string): Pro
       wonLostReason: null,
     });
 
-    let client = null;
-    if (callerPhone) {
-      client = await storage.getClientByPhone(userId, callerPhone);
-    }
-    if (!client) {
-      client = await storage.createClient({
-        userId,
-        name: callerName,
-        email: callerEmail || undefined,
-        phone: callerPhone || undefined,
-        referralSource: 'AI Receptionist',
-        notes: `Auto-created from AI Receptionist call`,
-      });
-      console.log(`[Vapi] Auto-created client: ${client.id} for ${callerName}`);
-    }
-
-    const jobTitle = jobType !== 'General enquiry'
-      ? `${jobType} - ${callerName}`
-      : `New enquiry - ${callerName}`;
-
-    const jobDescription = [
-      notes,
-      address ? `Address: ${address}` : null,
-      urgency ? `Urgency: ${urgency}` : null,
-      `Received via AI Receptionist`,
-    ].filter(Boolean).join('\n');
-
-    const job = await storage.createJob({
-      userId,
-      clientId: client.id,
-      title: jobTitle,
-      description: jobDescription,
-      address: address || undefined,
-      status: 'pending',
-      leadSource: 'ai_receptionist',
-      leadId: lead.id,
-    });
-
-    await storage.updateLead(lead.id, userId, {
-      clientId: client.id,
-      status: 'won',
-      wonLostReason: 'Auto-converted to job from AI Receptionist',
-    });
-
     await storage.updateAiReceptionistCall(callId, userId, {
       leadId: lead.id,
       callerName: callerName,
@@ -835,8 +806,6 @@ async function handleCaptureLead(args: any, userId: string, callId: string): Pro
         jobType,
         urgency,
         notes,
-        autoCreatedJobId: job.id,
-        autoCreatedClientId: client.id,
       },
     });
 
@@ -844,22 +813,22 @@ async function handleCaptureLead(args: any, userId: string, callId: string): Pro
       await storage.createNotification({
         userId,
         type: 'new_lead',
-        title: 'New Job from AI Receptionist',
-        message: `${callerName} called about "${jobType}". Job created automatically.`,
-        relatedId: job.id,
-        relatedType: 'job',
+        title: 'New Lead from AI Receptionist',
+        message: `${callerName} called about "${jobType}". Review and convert in Leads.`,
+        relatedId: lead.id,
+        relatedType: 'lead',
         priority: 'important',
-        actionUrl: `/jobs/${job.id}`,
-        actionLabel: 'View Job',
+        actionUrl: `/leads`,
+        actionLabel: 'View Lead',
       });
     } catch (e) {
       console.error('[Vapi] Failed to create notification:', e);
     }
 
-    console.log(`[Vapi] Lead ${lead.id} + Job ${job.id} created for call ${callId}`);
-    return { result: `Job request created successfully. Reference number: ${job.id.slice(0, 8)}` };
+    console.log(`[Vapi] Lead ${lead.id} created for call ${callId} (no auto-job)`);
+    return { result: `I've got all your details. Someone will review your enquiry and get back to you shortly. Reference: ${lead.id.slice(0, 8)}` };
   } catch (error: any) {
-    console.error('[Vapi] Failed to capture lead and create job:', error);
+    console.error('[Vapi] Failed to capture lead:', error);
     return { result: 'I\'ve noted down the details. Someone will follow up shortly.' };
   }
 }
@@ -1213,12 +1182,23 @@ async function handleEndOfCallReport(event: any): Promise<any> {
   if (!hasLead && call.customer?.number) {
     try {
       const callerPhone = call.customer.number;
+
+      const recentLeads = await storage.getLeadsByUserAndPhone(business.userId, callerPhone);
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const recentDuplicate = recentLeads?.find(l => l.createdAt && new Date(l.createdAt) > oneHourAgo);
+      if (recentDuplicate) {
+        const recordId = existingCall?.id || callRecord?.id;
+        if (recordId) {
+          await storage.updateAiReceptionistCall(recordId, business.userId, { leadId: recentDuplicate.id });
+        }
+        console.log(`[Vapi] End-of-call: linked to existing lead ${recentDuplicate.id} (spam protection)`);
+      } else {
       const lead = await storage.createLead({
         userId: business.userId,
         name: existingCall?.callerName || 'Caller',
         phone: callerPhone,
         email: null,
-        source: 'phone',
+        source: 'ai_receptionist',
         status: 'new',
         description: message.summary || 'AI Receptionist call — no lead was explicitly captured during the call',
         estimatedValue: null,
@@ -1232,6 +1212,7 @@ async function handleEndOfCallReport(event: any): Promise<any> {
         await storage.updateAiReceptionistCall(recordId, business.userId, { leadId: lead.id });
       }
       console.log(`[Vapi] Auto-created lead ${lead.id} for call ${callId}`);
+      }
     } catch (e: any) {
       console.error(`[Vapi] Failed to auto-create lead for call ${callId}:`, e.message);
     }
@@ -1272,9 +1253,7 @@ async function sendCallNotifications(
 
     const config = await storage.getAiReceptionistConfig(userId);
     if (config?.smsNotifications) {
-      const smsBody = callerPhone
-        ? `NEW LEAD via AI Receptionist\nCaller: ${callerDisplay}\nDuration: ${durationText}\n\n${summaryText.slice(0, 200)}\n\nTap to call back: ${callerPhone}`
-        : `AI Receptionist: Missed call (${durationText}). ${summaryText.slice(0, 200)}`;
+      const smsBody = `New AI Receptionist call (${durationText}). ${summaryText.slice(0, 200)}\n\nOpen JobRunner to review the lead.`;
 
       const fromNumber = business.dedicatedPhoneNumber || undefined;
       const notifiedNumbers = new Set<string>();

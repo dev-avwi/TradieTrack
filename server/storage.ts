@@ -1001,6 +1001,7 @@ export interface IStorage {
   createLead(lead: InsertLead & { userId: string }): Promise<Lead>;
   updateLead(id: string, userId: string, lead: Partial<InsertLead>): Promise<Lead | undefined>;
   deleteLead(id: string, userId: string): Promise<boolean>;
+  getLeadsByUserAndPhone(userId: string, phone: string): Promise<Lead[]>;
 
   // AI Receptionist Config
   getAiReceptionistConfig(userId: string): Promise<AiReceptionistConfig | undefined>;
@@ -6937,6 +6938,10 @@ Thank you for your prompt attention to this matter.`,
   }
 
   // Leads / CRM Pipeline
+  async getLeadsByUserAndPhone(userId: string, phone: string): Promise<Lead[]> {
+    return db.select().from(leads).where(and(eq(leads.userId, userId), eq(leads.phone, phone))).orderBy(desc(leads.createdAt));
+  }
+
   async getLeads(userId: string): Promise<Lead[]> {
     return db.select().from(leads).where(eq(leads.userId, userId)).orderBy(desc(leads.createdAt));
   }

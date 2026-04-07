@@ -43197,7 +43197,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   app.post("/api/leads", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const validated = insertLeadSchema.parse(req.body);
+      const validated = insertLeadSchema.omit({ userId: true }).parse(req.body);
       
       const lead = await storage.createLead({
         ...validated,

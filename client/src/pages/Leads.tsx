@@ -30,8 +30,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus,
   MoreVertical,
@@ -47,21 +48,25 @@ import {
   DollarSign,
   ArrowRight,
   Search,
-  Filter,
   CheckCircle,
   XCircle,
   Clock,
   FileText,
   Briefcase,
+  Bot,
+  Sparkles,
+  TrendingUp,
+  PhoneIncoming,
+  Loader2,
 } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import type { Lead, Client } from "@shared/schema";
 
-type LeadSource = 'phone' | 'email' | 'website' | 'referral' | 'booking_page' | 'other';
+type LeadSource = 'phone' | 'email' | 'website' | 'referral' | 'booking_page' | 'ai_receptionist' | 'other';
 type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
 
 const sourceLabels: Record<LeadSource, string> = {
@@ -70,6 +75,7 @@ const sourceLabels: Record<LeadSource, string> = {
   website: 'Website',
   referral: 'Referral',
   booking_page: 'Booking Page',
+  ai_receptionist: 'AI Receptionist',
   other: 'Other',
 };
 
@@ -79,6 +85,7 @@ const sourceIcons: Record<LeadSource, typeof Phone> = {
   website: Globe,
   referral: UserPlus,
   booking_page: CalendarIcon,
+  ai_receptionist: Bot,
   other: MessageSquare,
 };
 
@@ -98,8 +105,6 @@ const statusColors: Record<LeadStatus, string> = {
   lost: 'bg-destructive/10 text-destructive',
 };
 
-const columnOrder: LeadStatus[] = ['new', 'contacted', 'quoted', 'won', 'lost'];
-
 export default function Leads() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -108,7 +113,7 @@ export default function Leads() {
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [leadToConvert, setLeadToConvert] = useState<Lead | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sourceFilter, setSourceFilter] = useState<LeadSource | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -121,17 +126,13 @@ export default function Leads() {
     followUpDate: null as Date | null,
   });
   const [convertOptions, setConvertOptions] = useState({
-    createJob: false,
+    createJob: true,
     createQuote: false,
     createInspection: false,
   });
 
   const { data: leads = [], isLoading } = useQuery<Lead[]>({
     queryKey: ['/api/leads'],
-  });
-
-  const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ['/api/clients'],
   });
 
   const filteredLeads = useMemo(() => {
@@ -141,37 +142,27 @@ export default function Leads() {
         lead.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         lead.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         lead.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
-      
-      return matchesSearch && matchesSource;
-    });
-  }, [leads, searchQuery, sourceFilter]);
 
-  const leadsByStatus = useMemo(() => {
-    const grouped: Record<LeadStatus, Lead[]> = {
-      new: [],
-      contacted: [],
-      quoted: [],
-      won: [],
-      lost: [],
-    };
-    
-    filteredLeads.forEach((lead) => {
-      const status = (lead.status || 'new') as LeadStatus;
-      grouped[status]?.push(lead);
+      const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
     });
-    
-    return grouped;
-  }, [filteredLeads]);
+  }, [leads, searchQuery, statusFilter]);
+
+  const stats = useMemo(() => {
+    const newLeads = leads.filter(l => l.status === 'new').length;
+    const contacted = leads.filter(l => l.status === 'contacted').length;
+    const quoted = leads.filter(l => l.status === 'quoted').length;
+    const won = leads.filter(l => l.status === 'won').length;
+    const total = leads.length;
+    const conversionRate = total > 0 ? Math.round((won / total) * 100) : 0;
+    return { newLeads, contacted, quoted, won, total, conversionRate };
+  }, [leads]);
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest('/api/leads', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const res = await apiRequest('POST', '/api/leads', data);
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
@@ -186,11 +177,8 @@ export default function Leads() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      return apiRequest(`/api/leads/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const res = await apiRequest('PUT', `/api/leads/${id}`, data);
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
@@ -205,7 +193,7 @@ export default function Leads() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/leads/${id}`, { method: 'DELETE' });
+      await apiRequest('DELETE', `/api/leads/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
@@ -218,11 +206,8 @@ export default function Leads() {
 
   const convertMutation = useMutation({
     mutationFn: async ({ id, createJob, createQuote, createInspection }: { id: string; createJob: boolean; createQuote: boolean; createInspection: boolean }) => {
-      return apiRequest(`/api/leads/${id}/convert`, {
-        method: 'POST',
-        body: JSON.stringify({ createJob, createQuote, createInspection }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const res = await apiRequest('POST', `/api/leads/${id}/convert`, { createJob, createQuote, createInspection });
+      return res.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
@@ -231,9 +216,9 @@ export default function Leads() {
       queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
       setConvertDialogOpen(false);
       setLeadToConvert(null);
-      setConvertOptions({ createJob: false, createQuote: false, createInspection: false });
-      toast({ title: 'Lead converted to client successfully' });
-      
+      setConvertOptions({ createJob: true, createQuote: false, createInspection: false });
+      toast({ title: 'Lead converted successfully' });
+
       if (data?.client?.id) {
         navigate(`/clients/${data.client.id}`);
       }
@@ -295,6 +280,7 @@ export default function Leads() {
 
   const handleConvert = (lead: Lead) => {
     setLeadToConvert(lead);
+    setConvertOptions({ createJob: true, createQuote: false, createInspection: false });
     setConvertDialogOpen(true);
   };
 
@@ -318,33 +304,58 @@ export default function Leads() {
     }).format(num);
   };
 
-  const LeadCard = ({ lead }: { lead: Lead }) => {
+  const LeadRow = ({ lead }: { lead: Lead }) => {
     const SourceIcon = sourceIcons[(lead.source || 'other') as LeadSource] || MessageSquare;
     const isOverdue = lead.followUpDate && new Date(lead.followUpDate) < new Date();
-    
+    const timeAgo = lead.createdAt ? formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true }) : '';
+    const status = (lead.status || 'new') as LeadStatus;
+
     return (
-      <Card 
-        className="hover-elevate active-elevate-2 cursor-pointer mb-2"
+      <Card
+        className="hover-elevate active-elevate-2 cursor-pointer"
         data-testid={`card-lead-${lead.id}`}
       >
-        <CardContent className="p-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-medium text-sm truncate">{lead.name}</span>
-                <Badge variant="outline" className="text-xs shrink-0">
-                  <SourceIcon className="w-3 h-3 mr-1" />
-                  {sourceLabels[(lead.source || 'other') as LeadSource]}
-                </Badge>
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <div className="w-9 h-9 rounded-md flex items-center justify-center" style={{ background: 'hsl(var(--trade) / 0.1)' }}>
+                <SourceIcon className="w-4 h-4" style={{ color: 'hsl(var(--trade))' }} />
               </div>
-              
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="font-semibold text-sm">{lead.name}</span>
+                <Badge className={`${statusColors[status]} text-xs`}>
+                  {statusLabels[status]}
+                </Badge>
+                {lead.source === 'ai_receptionist' && (
+                  <Badge variant="outline" className="text-xs gap-1">
+                    <Bot className="w-3 h-3" />
+                    AI
+                  </Badge>
+                )}
+              </div>
+
               {lead.description && (
-                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                <p className="text-sm text-muted-foreground line-clamp-1 mb-1.5">
                   {lead.description}
                 </p>
               )}
-              
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+
+              <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                {lead.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="w-3 h-3" />
+                    {lead.phone}
+                  </span>
+                )}
+                {lead.email && (
+                  <span className="flex items-center gap-1">
+                    <Mail className="w-3 h-3" />
+                    {lead.email}
+                  </span>
+                )}
                 {lead.estimatedValue && (
                   <span className="flex items-center gap-1 text-success font-medium">
                     <DollarSign className="w-3 h-3" />
@@ -352,97 +363,93 @@ export default function Leads() {
                   </span>
                 )}
                 {lead.followUpDate && (
-                  <span className={`flex items-center gap-1 ${isOverdue ? 'text-destructive' : ''}`}>
+                  <span className={`flex items-center gap-1 ${isOverdue ? 'text-destructive font-medium' : ''}`}>
                     <Clock className="w-3 h-3" />
-                    {format(new Date(lead.followUpDate), 'MMM d')}
+                    {isOverdue ? 'Overdue: ' : ''}{format(new Date(lead.followUpDate), 'MMM d')}
                   </span>
                 )}
+                <span className="text-muted-foreground/60">{timeAgo}</span>
               </div>
             </div>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" data-testid={`button-lead-menu-${lead.id}`}>
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleEdit(lead)} data-testid={`menu-edit-lead-${lead.id}`}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                {lead.status !== 'won' && lead.status !== 'lost' && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleConvert(lead)} data-testid={`menu-convert-lead-${lead.id}`}>
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Convert to Client
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                {columnOrder.filter(s => s !== lead.status).map((status) => (
-                  <DropdownMenuItem 
-                    key={status} 
-                    onClick={() => handleStatusChange(lead, status)}
-                    data-testid={`menu-status-${status}-${lead.id}`}
-                  >
-                    <ArrowRight className="w-4 h-4 mr-2" />
-                    Move to {statusLabels[status]}
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  className="text-destructive"
-                  onClick={() => deleteMutation.mutate(lead.id)}
-                  data-testid={`menu-delete-lead-${lead.id}`}
+
+            <div className="flex items-center gap-1 shrink-0">
+              {status !== 'won' && status !== 'lost' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); handleConvert(lead); }}
+                  data-testid={`button-convert-${lead.id}`}
                 >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <Briefcase className="w-3.5 h-3.5 mr-1.5" />
+                  Convert
+                </Button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" data-testid={`button-lead-menu-${lead.id}`}>
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleEdit(lead)} data-testid={`menu-edit-lead-${lead.id}`}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit Details
+                  </DropdownMenuItem>
+                  {status !== 'won' && status !== 'lost' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => handleConvert(lead)}>
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Convert to Client & Job
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
+                  {(['new', 'contacted', 'quoted', 'won', 'lost'] as LeadStatus[]).filter(s => s !== lead.status).map((s) => (
+                    <DropdownMenuItem
+                      key={s}
+                      onClick={() => handleStatusChange(lead, s)}
+                      data-testid={`menu-status-${s}-${lead.id}`}
+                    >
+                      <ArrowRight className="w-4 h-4 mr-2" />
+                      Move to {statusLabels[s]}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => deleteMutation.mutate(lead.id)}
+                    data-testid={`menu-delete-lead-${lead.id}`}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </CardContent>
       </Card>
     );
   };
 
-  const KanbanColumn = ({ status, leads: columnLeads }: { status: LeadStatus; leads: Lead[] }) => {
-    const StatusIcon = status === 'won' ? CheckCircle : status === 'lost' ? XCircle : Clock;
-    
-    return (
-      <div className="flex-shrink-0 w-72 md:w-80">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge className={statusColors[status]}>
-              <StatusIcon className="w-3 h-3 mr-1" />
-              {statusLabels[status]}
-            </Badge>
-            <span className="text-sm text-muted-foreground">({columnLeads.length})</span>
-          </div>
-        </div>
-        
-        <div className="space-y-2 min-h-[200px]">
-          {columnLeads.length === 0 ? (
-            <div className="h-32 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground text-sm">
-              No leads
-            </div>
-          ) : (
-            columnLeads.map((lead) => (
-              <LeadCard key={lead.id} lead={lead} />
-            ))
-          )}
-        </div>
-      </div>
-    );
-  };
-
   if (isLoading) {
     return (
       <PageShell>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+        <PageHeader
+          title="Leads"
+          subtitle="Manage enquiries from calls, website, and referrals"
+          leading={<PhoneIncoming className="w-5 h-5" style={{ color: 'hsl(var(--trade))' }} />}
+        />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}><CardContent className="p-4"><Skeleton className="h-12 w-full" /></CardContent></Card>
+          ))}
+        </div>
+        <div className="space-y-3 mt-6">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
+          ))}
         </div>
       </PageShell>
     );
@@ -452,8 +459,8 @@ export default function Leads() {
     <PageShell>
       <PageHeader
         title="Leads"
-        subtitle="Track enquiries from initial contact to won/lost"
-        leading={<Users className="w-5 h-5" style={{ color: 'hsl(var(--trade))' }} />}
+        subtitle="Manage enquiries from calls, website, and referrals"
+        leading={<PhoneIncoming className="w-5 h-5" style={{ color: 'hsl(var(--trade))' }} />}
         action={
           <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-add-lead">
             <Plus className="w-4 h-4 mr-2" />
@@ -462,7 +469,62 @@ export default function Leads() {
         }
       />
 
-      <div className="mt-6 flex flex-col sm:flex-row gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+        <Card className={statusFilter === 'new' ? 'ring-2 ring-primary' : 'hover-elevate cursor-pointer'} onClick={() => setStatusFilter(statusFilter === 'new' ? 'all' : 'new')}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">New</p>
+                <p className="text-2xl font-bold">{stats.newLeads}</p>
+              </div>
+              <div className="w-9 h-9 rounded-md flex items-center justify-center bg-primary/10">
+                <Sparkles className="w-4 h-4 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={statusFilter === 'contacted' ? 'ring-2 ring-primary' : 'hover-elevate cursor-pointer'} onClick={() => setStatusFilter(statusFilter === 'contacted' ? 'all' : 'contacted')}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Contacted</p>
+                <p className="text-2xl font-bold">{stats.contacted}</p>
+              </div>
+              <div className="w-9 h-9 rounded-md flex items-center justify-center bg-blue-500/10">
+                <Phone className="w-4 h-4 text-blue-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={statusFilter === 'quoted' ? 'ring-2 ring-primary' : 'hover-elevate cursor-pointer'} onClick={() => setStatusFilter(statusFilter === 'quoted' ? 'all' : 'quoted')}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Quoted</p>
+                <p className="text-2xl font-bold">{stats.quoted}</p>
+              </div>
+              <div className="w-9 h-9 rounded-md flex items-center justify-center bg-amber-500/10">
+                <FileText className="w-4 h-4 text-amber-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={statusFilter === 'won' ? 'ring-2 ring-primary' : 'hover-elevate cursor-pointer'} onClick={() => setStatusFilter(statusFilter === 'won' ? 'all' : 'won')}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">Won</p>
+                <p className="text-2xl font-bold">{stats.won}</p>
+              </div>
+              <div className="w-9 h-9 rounded-md flex items-center justify-center bg-success/10">
+                <TrendingUp className="w-4 h-4 text-success" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-4 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -473,26 +535,20 @@ export default function Leads() {
             data-testid="input-search-leads"
           />
         </div>
-        <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as LeadSource | 'all')}>
-          <SelectTrigger className="w-full sm:w-40" data-testid="select-source-filter">
-            <Filter className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Filter by source" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Sources</SelectItem>
-            {Object.entries(sourceLabels).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {statusFilter !== 'all' && (
+          <Button variant="outline" size="sm" onClick={() => setStatusFilter('all')}>
+            <XCircle className="w-3.5 h-3.5 mr-1.5" />
+            Clear Filter
+          </Button>
+        )}
       </div>
 
       {leads.length === 0 ? (
         <div className="mt-8">
           <EmptyState
-            icon={Users}
+            icon={PhoneIncoming}
             title="No leads yet"
-            description="Start tracking your enquiries and convert them to clients"
+            description="Leads from your AI Receptionist, website, and manual entries will appear here. Convert them to jobs when you're ready."
             action={
               <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-add-first-lead">
                 <Plus className="w-4 h-4 mr-2" />
@@ -501,15 +557,20 @@ export default function Leads() {
             }
           />
         </div>
+      ) : filteredLeads.length === 0 ? (
+        <div className="mt-8">
+          <EmptyState
+            icon={Search}
+            title="No matching leads"
+            description="Try adjusting your search or filter"
+          />
+        </div>
       ) : (
-        <ScrollArea className="mt-6 w-full">
-          <div className="flex gap-4 pb-4">
-            {columnOrder.map((status) => (
-              <KanbanColumn key={status} status={status} leads={leadsByStatus[status]} />
-            ))}
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        <div className="mt-4 space-y-2">
+          {filteredLeads.map((lead) => (
+            <LeadRow key={lead.id} lead={lead} />
+          ))}
+        </div>
       )}
 
       <Dialog open={createDialogOpen || !!editingLead} onOpenChange={(open) => {
@@ -523,7 +584,7 @@ export default function Leads() {
           <DialogHeader>
             <DialogTitle>{editingLead ? 'Edit Lead' : 'Add New Lead'}</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="name">Name *</Label>
@@ -535,7 +596,7 @@ export default function Leads() {
                 data-testid="input-lead-name"
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -559,12 +620,12 @@ export default function Leads() {
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Source</Label>
-                <Select 
-                  value={formData.source} 
+                <Select
+                  value={formData.source}
                   onValueChange={(v) => setFormData({ ...formData, source: v as LeadSource })}
                 >
                   <SelectTrigger data-testid="select-lead-source">
@@ -579,8 +640,8 @@ export default function Leads() {
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select 
-                  value={formData.status} 
+                <Select
+                  value={formData.status}
                   onValueChange={(v) => setFormData({ ...formData, status: v as LeadStatus })}
                 >
                   <SelectTrigger data-testid="select-lead-status">
@@ -594,7 +655,7 @@ export default function Leads() {
                 </Select>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
@@ -606,7 +667,7 @@ export default function Leads() {
                 data-testid="textarea-lead-description"
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="estimatedValue">Estimated Value ($)</Label>
@@ -639,7 +700,7 @@ export default function Leads() {
                 </Popover>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
               <Textarea
@@ -652,13 +713,13 @@ export default function Leads() {
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => { setCreateDialogOpen(false); setEditingLead(null); resetForm(); }}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleSubmit} 
+            <Button
+              onClick={handleSubmit}
               disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
               data-testid="button-save-lead"
             >
@@ -671,85 +732,123 @@ export default function Leads() {
       <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Convert Lead to Client</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Briefcase className="w-5 h-5" style={{ color: 'hsl(var(--trade))' }} />
+              Convert Lead to Job
+            </DialogTitle>
           </DialogHeader>
-          
+
           {leadToConvert && (
             <div className="py-4 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Convert <strong>{leadToConvert.name}</strong> to a client. This will mark the lead as won.
-              </p>
-              
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="createInspection"
-                    checked={convertOptions.createInspection}
-                    onCheckedChange={(checked) => setConvertOptions({ 
-                      ...convertOptions, 
-                      createInspection: !!checked,
-                      createJob: !!checked ? false : convertOptions.createJob,
-                      createQuote: !!checked ? false : convertOptions.createQuote
-                    })}
-                    data-testid="checkbox-create-inspection"
-                  />
-                  <Label htmlFor="createInspection" className="flex items-center gap-2 cursor-pointer">
-                    <Search className="w-4 h-4" />
-                    Book an inspection first
-                  </Label>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">{leadToConvert.name}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {sourceLabels[(leadToConvert.source || 'other') as LeadSource]}
+                      </Badge>
+                    </div>
+                    {leadToConvert.phone && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5" /> {leadToConvert.phone}
+                      </p>
+                    )}
+                    {leadToConvert.email && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5" /> {leadToConvert.email}
+                      </p>
+                    )}
+                    {leadToConvert.description && (
+                      <p className="text-sm text-muted-foreground mt-1">{leadToConvert.description}</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div>
+                <p className="text-sm font-medium mb-3">This will create a client and mark the lead as won. What would you also like to create?</p>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="createInspection"
+                      checked={convertOptions.createInspection}
+                      onCheckedChange={(checked) => setConvertOptions({
+                        ...convertOptions,
+                        createInspection: !!checked,
+                        createJob: !!checked ? false : convertOptions.createJob,
+                        createQuote: !!checked ? false : convertOptions.createQuote
+                      })}
+                      data-testid="checkbox-create-inspection"
+                    />
+                    <Label htmlFor="createInspection" className="flex items-center gap-2 cursor-pointer">
+                      <Search className="w-4 h-4" />
+                      Book an inspection first
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="createJob"
+                      checked={convertOptions.createJob}
+                      onCheckedChange={(checked) => setConvertOptions({
+                        ...convertOptions,
+                        createJob: !!checked,
+                        createInspection: !!checked ? false : convertOptions.createInspection
+                      })}
+                      data-testid="checkbox-create-job"
+                      disabled={convertOptions.createInspection}
+                    />
+                    <Label htmlFor="createJob" className="flex items-center gap-2 cursor-pointer">
+                      <Briefcase className="w-4 h-4" />
+                      Create a job
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="createQuote"
+                      checked={convertOptions.createQuote}
+                      onCheckedChange={(checked) => setConvertOptions({ ...convertOptions, createQuote: !!checked })}
+                      data-testid="checkbox-create-quote"
+                      disabled={convertOptions.createInspection}
+                    />
+                    <Label htmlFor="createQuote" className="flex items-center gap-2 cursor-pointer">
+                      <FileText className="w-4 h-4" />
+                      Create a quote
+                    </Label>
+                  </div>
                 </div>
 
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="createJob"
-                    checked={convertOptions.createJob}
-                    onCheckedChange={(checked) => setConvertOptions({ 
-                      ...convertOptions, 
-                      createJob: !!checked,
-                      createInspection: !!checked ? false : convertOptions.createInspection 
-                    })}
-                    data-testid="checkbox-create-job"
-                    disabled={convertOptions.createInspection}
-                  />
-                  <Label htmlFor="createJob" className="flex items-center gap-2 cursor-pointer">
-                    <Briefcase className="w-4 h-4" />
-                    Also create a job
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="createQuote"
-                    checked={convertOptions.createQuote}
-                    onCheckedChange={(checked) => setConvertOptions({ ...convertOptions, createQuote: !!checked })}
-                    data-testid="checkbox-create-quote"
-                    disabled={convertOptions.createInspection}
-                  />
-                  <Label htmlFor="createQuote" className="flex items-center gap-2 cursor-pointer">
-                    <FileText className="w-4 h-4" />
-                    Also create a quote
-                  </Label>
-                </div>
+                {convertOptions.createInspection && (
+                  <p className="text-xs text-muted-foreground mt-3 pl-7">
+                    An inspection job will be created. After completing the inspection, you'll be prompted to create a quote.
+                  </p>
+                )}
               </div>
-
-              {convertOptions.createInspection && (
-                <p className="text-xs text-muted-foreground pl-7">
-                  An inspection job will be created. After completing the inspection, you'll be prompted to create a quote.
-                </p>
-              )}
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => { setConvertDialogOpen(false); setLeadToConvert(null); }}>
               Cancel
             </Button>
-            <Button 
-              onClick={confirmConvert} 
+            <Button
+              onClick={confirmConvert}
               disabled={convertMutation.isPending}
               data-testid="button-confirm-convert"
             >
-              {convertMutation.isPending ? 'Converting...' : 'Convert to Client'}
+              {convertMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Converting...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Convert Lead
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
