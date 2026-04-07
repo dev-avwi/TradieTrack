@@ -1157,7 +1157,15 @@ async function handleEndOfCallReport(event: any): Promise<any> {
   if (!assistantId) return { ok: true };
 
   const business = await findBusinessByVapiAssistant(assistantId);
-  if (!business) return { ok: true };
+  if (!business) {
+    console.log(`[Vapi Webhook] No business found for assistant ${assistantId} — treating as support line call`);
+    await sendSupportLineNotifications(
+      call.customer?.number || null,
+      message.summary || null,
+      message.durationSeconds || call.duration || null,
+    );
+    return { ok: true };
+  }
 
   const callId = call.id;
   const existingCall = await storage.getAiReceptionistCallByVapiId(callId);
@@ -1246,38 +1254,6 @@ async function sendCallNotifications(
     const summaryText = summary || 'No summary available';
     const durationText = duration ? `${Math.ceil(duration / 60)} min` : 'Unknown';
 
-    const smsBody = callerPhone
-      ? `NEW LEAD via AI Receptionist\nCaller: ${callerDisplay}\nDuration: ${durationText}\n\n${summaryText.slice(0, 200)}\n\nTap to call back: ${callerPhone}`
-      : `AI Receptionist: Missed call (${durationText}). ${summaryText.slice(0, 200)}`;
-
-    const fromNumber = business.dedicatedPhoneNumber || undefined;
-    const notifiedNumbers = new Set<string>();
-
-    const configForNotify = await storage.getAiReceptionistConfig(userId);
-    const transferNumbers = (configForNotify?.transferNumbers || []) as TransferNumber[];
-    for (const contact of transferNumbers) {
-      if (contact.phone && !notifiedNumbers.has(contact.phone)) {
-        notifiedNumbers.add(contact.phone);
-        try {
-          await sendSMS({ to: contact.phone, message: smsBody, fromNumber });
-          console.log(`[Vapi] SMS sent to ${contact.name} (${contact.phone})`);
-        } catch (e: any) {
-          console.error(`[Vapi] SMS send failed for ${contact.phone}:`, e.message);
-        }
-      }
-    }
-
-    try {
-      const user = await storage.getUser(userId);
-      if (user?.phone && !notifiedNumbers.has(user.phone)) {
-        notifiedNumbers.add(user.phone);
-        await sendSMS({ to: user.phone, message: smsBody, fromNumber });
-        console.log(`[Vapi] Owner SMS sent to ${userId}`);
-      }
-    } catch (e: any) {
-      console.error(`[Vapi] Owner SMS send failed:`, e.message);
-    }
-
     try {
       const notificationPayload: InsertNotification = {
         userId,
@@ -1287,12 +1263,39 @@ async function sendCallNotifications(
         data: { callId, callerPhone, duration, source: 'ai_receptionist' },
       };
       await storage.createNotification(notificationPayload);
-      console.log(`[Vapi] Push notification created for user ${userId}`);
+      console.log(`[Vapi] In-app notification created for user ${userId}`);
     } catch (e: any) {
-      console.error(`[Vapi] Push notification failed:`, e.message);
+      console.error(`[Vapi] In-app notification failed:`, e.message);
     }
   } catch (e: any) {
     console.error(`[Vapi] sendCallNotifications error:`, e.message);
+  }
+}
+
+async function sendSupportLineNotifications(
+  callerPhone: string | null,
+  summary: string | null,
+  duration: number | null,
+): Promise<void> {
+  const adminPhone = process.env.ADMIN_PHONE;
+  if (!adminPhone) {
+    console.warn('[Vapi] No ADMIN_PHONE configured — skipping support line SMS notification');
+    return;
+  }
+
+  try {
+    const callerDisplay = callerPhone || 'Unknown number';
+    const summaryText = summary || 'No summary available';
+    const durationText = duration ? `${Math.ceil(duration / 60)} min` : 'Unknown';
+
+    const smsBody = callerPhone
+      ? `NEW LEAD - JobRunner Support Line\nCaller: ${callerDisplay}\nDuration: ${durationText}\n\n${summaryText.slice(0, 200)}\n\nTap to call back: ${callerPhone}`
+      : `JobRunner Support Line: Call received (${durationText}). ${summaryText.slice(0, 200)}`;
+
+    await sendSMS({ to: adminPhone, message: smsBody });
+    console.log(`[Vapi] Support line SMS sent to admin ${adminPhone}`);
+  } catch (e: any) {
+    console.error(`[Vapi] Support line SMS failed:`, e.message);
   }
 }
 
