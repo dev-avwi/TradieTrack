@@ -266,8 +266,16 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            {/* Desktop CTA - Get Started and Login grouped together */}
-            <div className="hidden lg:flex items-center">
+            {/* Desktop CTA - Call, Login, Get Started grouped together */}
+            <div className="hidden lg:flex items-center gap-3">
+              <a 
+                href="tel:+61485013994" 
+                className="inline-flex items-center gap-1.5 text-[14px] text-gray-500 hover:text-brand transition-colors"
+                onClick={() => trackEvent('cta_click', { location: 'nav', button: 'call_support' })}
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>0485 013 994</span>
+              </a>
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
                 <Link href="/auth?mode=login">
                   <Button variant="ghost" className="text-[15px] font-medium h-9 px-4 rounded-md hover:bg-white hover:shadow-sm transition-all" data-testid="nav-login">
@@ -404,6 +412,14 @@ export default function LandingPage() {
                   Log In
                 </Button>
               </Link>
+              <a 
+                href="tel:+61485013994" 
+                className="flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-brand transition-colors pt-2"
+                onClick={() => trackEvent('cta_click', { location: 'mobile_menu', button: 'call_support' })}
+              >
+                <Phone className="w-4 h-4" />
+                <span>Call us — 0485 013 994</span>
+              </a>
             </div>
           </div>
         </div>
@@ -469,16 +485,6 @@ export default function LandingPage() {
                   )}
                 </Button>
               </div>
-
-              {/* Call Support Line */}
-              <a 
-                href="tel:+61485013994" 
-                className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand transition-colors"
-                onClick={() => trackEvent('cta_click', { location: 'hero', button: 'call_support' })}
-              >
-                <Phone className="w-4 h-4" />
-                <span>Got questions? Call us — <span className="font-medium">0485 013 994</span></span>
-              </a>
 
               {/* Early Access note */}
               <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-full px-4 py-2">
