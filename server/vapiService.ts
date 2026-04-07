@@ -1,6 +1,7 @@
 import { storage } from './storage';
 import type { BusinessSettings, InsertAiReceptionistCall, InsertAiReceptionistConfig, InsertNotification, AiReceptionistConfig } from '@shared/schema';
 import crypto from 'crypto';
+import { sendSMS } from './twilioClient';
 
 interface TransferNumber {
   name: string;
@@ -966,12 +967,12 @@ async function handleTransferCall(args: { reason: string; caller_phone?: string 
   try {
     const settings = await storage.getBusinessSettings(userId);
     if (!settings) {
-      return { result: 'Unable to transfer at this time. I\'ll make sure someone calls you back.' };
+      return { result: 'No one is available to take the call right now, but don\'t worry — I\'ve got all your details and we\'ll call you back as soon as possible.' };
     }
 
     const target = await getAvailableTransferTarget(userId, settings, callerPhone || args.caller_phone);
     if (!target) {
-      return { result: 'No one is available to take the call right now. I\'ll make sure someone calls you back soon.' };
+      return { result: 'No one is available to take the call right now, but don\'t worry — I\'ve got all your details and we\'ll call you back as soon as possible.' };
     }
 
     return {
@@ -980,7 +981,7 @@ async function handleTransferCall(args: { reason: string; caller_phone?: string 
     };
   } catch (error: any) {
     console.error('[Vapi] Transfer failed:', error);
-    return { result: 'Unable to transfer at this time. I\'ll make sure someone calls you back.' };
+    return { result: 'No one is available to take the call right now, but don\'t worry — I\'ve got all your details and we\'ll call you back as soon as possible.' };
   }
 }
 
@@ -1241,48 +1242,40 @@ async function sendCallNotifications(
 ): Promise<void> {
   try {
     const userId = business.userId;
-    const businessName = business.businessName || 'Your business';
     const callerDisplay = callerPhone || 'Unknown number';
     const summaryText = summary || 'No summary available';
     const durationText = duration ? `${Math.ceil(duration / 60)} min` : 'Unknown';
 
-    const smsBody = `AI Receptionist: New call from ${callerDisplay} (${durationText}). ${summaryText.slice(0, 120)}`;
+    const smsBody = callerPhone
+      ? `NEW LEAD via AI Receptionist\nCaller: ${callerDisplay}\nDuration: ${durationText}\n\n${summaryText.slice(0, 200)}\n\nTap to call back: ${callerPhone}`
+      : `AI Receptionist: Missed call (${durationText}). ${summaryText.slice(0, 200)}`;
+
+    const fromNumber = business.dedicatedPhoneNumber || undefined;
+    const notifiedNumbers = new Set<string>();
 
     const configForNotify = await storage.getAiReceptionistConfig(userId);
     const transferNumbers = (configForNotify?.transferNumbers || []) as TransferNumber[];
     for (const contact of transferNumbers) {
-      if (contact.phone) {
+      if (contact.phone && !notifiedNumbers.has(contact.phone)) {
+        notifiedNumbers.add(contact.phone);
         try {
-          await storage.createSmsMessage({
-            businessOwnerId: userId,
-            to: contact.phone,
-            from: business.dedicatedPhoneNumber || '',
-            body: smsBody,
-            direction: 'outbound',
-            status: 'queued',
-          });
-          console.log(`[Vapi] Notification queued for ${contact.name} (${contact.phone})`);
+          await sendSMS({ to: contact.phone, message: smsBody, fromNumber });
+          console.log(`[Vapi] SMS sent to ${contact.name} (${contact.phone})`);
         } catch (e: any) {
-          console.error(`[Vapi] SMS notification failed for ${contact.phone}:`, e.message);
+          console.error(`[Vapi] SMS send failed for ${contact.phone}:`, e.message);
         }
       }
     }
 
     try {
       const user = await storage.getUser(userId);
-      if (user?.phone && !transferNumbers.some(t => t.phone === user.phone)) {
-        await storage.createSmsMessage({
-          businessOwnerId: userId,
-          to: user.phone,
-          from: business.dedicatedPhoneNumber || '',
-          body: smsBody,
-          direction: 'outbound',
-          status: 'queued',
-        });
-        console.log(`[Vapi] Owner notification queued for ${userId}`);
+      if (user?.phone && !notifiedNumbers.has(user.phone)) {
+        notifiedNumbers.add(user.phone);
+        await sendSMS({ to: user.phone, message: smsBody, fromNumber });
+        console.log(`[Vapi] Owner SMS sent to ${userId}`);
       }
     } catch (e: any) {
-      console.error(`[Vapi] Owner SMS notification failed:`, e.message);
+      console.error(`[Vapi] Owner SMS send failed:`, e.message);
     }
 
     try {
