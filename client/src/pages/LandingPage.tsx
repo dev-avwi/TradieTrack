@@ -271,7 +271,7 @@ export default function LandingPage() {
               <a 
                 href="tel:+61485013994" 
                 title="Call us — 0485 013 994"
-                className="inline-flex items-center justify-center w-9 h-9 rounded-md text-gray-400 hover:text-brand hover:bg-gray-100 transition-colors"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-md text-brand hover:text-brand-accent hover:bg-brand/5 transition-colors"
                 onClick={() => trackEvent('cta_click', { location: 'nav', button: 'call_support' })}
               >
                 <Phone className="w-4 h-4" />
