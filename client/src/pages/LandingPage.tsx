@@ -267,14 +267,14 @@ export default function LandingPage() {
             </div>
 
             {/* Desktop CTA - Call, Login, Get Started grouped together */}
-            <div className="hidden lg:flex items-center gap-3">
+            <div className="hidden lg:flex items-center gap-2">
               <a 
                 href="tel:+61485013994" 
-                className="inline-flex items-center gap-1.5 text-[14px] text-gray-500 hover:text-brand transition-colors"
+                title="Call us — 0485 013 994"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-md text-gray-400 hover:text-brand hover:bg-gray-100 transition-colors"
                 onClick={() => trackEvent('cta_click', { location: 'nav', button: 'call_support' })}
               >
-                <Phone className="w-3.5 h-3.5" />
-                <span>0485 013 994</span>
+                <Phone className="w-4 h-4" />
               </a>
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
                 <Link href="/auth?mode=login">
