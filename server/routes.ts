@@ -37264,7 +37264,7 @@ Respond with JSON in this format:
         return res.status(502).json({ error: 'Failed to list Twilio numbers' });
       }
 
-      const platformNumbers = ['+61485013993', '+61485013994'];
+      const platformNumbers = ['+61485013993'];
       const results: { phone: string; business: string; changes: string[]; result: string }[] = [];
 
       for (const num of twilioResult.numbers) {

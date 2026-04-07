@@ -123,7 +123,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   addButtonText: { ...typography.body, fontWeight: '600' },
 });
 
-const SHARED_PLATFORM_NUMBER = '0485 013 994';
+const SHARED_PLATFORM_NUMBER = '0485 013 993';
 
 export default function AIReceptionistScreen() {
   const { colors } = useTheme();

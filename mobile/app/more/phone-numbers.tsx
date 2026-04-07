@@ -165,7 +165,7 @@ export default function PhoneNumbersPage() {
                 await fetchBusinessSettings();
                 Alert.alert(
                   'Number Activated!',
-                  `${formatPhone(number.phoneNumber)} is now your dedicated business number.\n\nYou've upgraded from the shared JobRunner number (0485 013 994). Your clients will now see your own number when you send SMS.\n\nYou can also set up an AI Receptionist on this number.`,
+                  `${formatPhone(number.phoneNumber)} is now your dedicated business number.\n\nYou've upgraded from the shared JobRunner number (0485 013 993). Your clients will now see your own number when you send SMS.\n\nYou can also set up an AI Receptionist on this number.`,
                   [
                     { text: 'Set Up AI Receptionist', onPress: () => router.replace('/more/ai-receptionist') },
                     { text: 'Go to Chat Hub', onPress: () => router.replace('/more/chat-hub') },
