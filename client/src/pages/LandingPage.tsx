@@ -294,15 +294,25 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 -mr-2 hover:bg-gray-100 rounded-lg transition-colors"
-              data-testid="button-mobile-menu"
-              aria-label="Open menu"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
+            {/* Mobile: phone icon + menu button */}
+            <div className="lg:hidden flex items-center gap-1">
+              <a 
+                href="tel:+61485013994" 
+                title="Call us — 0485 013 994"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-md text-brand hover:text-brand-accent hover:bg-brand/5 transition-colors"
+                onClick={() => trackEvent('cta_click', { location: 'nav_mobile', button: 'call_support' })}
+              >
+                <Phone className="w-5 h-5" />
+              </a>
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="p-2 -mr-2 hover:bg-gray-100 rounded-lg transition-colors"
+                data-testid="button-mobile-menu"
+                aria-label="Open menu"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+            </div>
           </div>
         </div>
       </nav>
