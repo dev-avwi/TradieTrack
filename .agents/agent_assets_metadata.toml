@@ -42,3 +42,9 @@ id = "-fvYj8xJq7bGkf4zLwsJ4"
 uri = "file://.local/SCENARIO_VERIFICATION_REPORT.md"
 type = "text"
 title = "JobRunner 14-Scenario Verification Report"
+
+[[outputs]]
+id = "fYb_NEAU0_g9MYvDda2GO"
+uri = "file://JOBRUNNER_FULL_AUDIT.md"
+type = "text"
+title = "JobRunner Complete Feature Audit"
