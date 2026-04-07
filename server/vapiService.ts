@@ -623,6 +623,7 @@ export async function updateReceptionistConfig(userId: string, updates: {
   transferNumbers?: Array<{ name: string; phone: string; priority: number }>;
   businessHours?: { start: string; end: string; timezone: string; days: number[] };
   knowledgeBank?: KnowledgeBankContent;
+  smsNotifications?: boolean;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const config = await storage.getAiReceptionistConfig(userId);
@@ -637,6 +638,7 @@ export async function updateReceptionistConfig(userId: string, updates: {
     if (updates.transferNumbers) configUpdates.transferNumbers = updates.transferNumbers;
     if (updates.businessHours) configUpdates.businessHours = updates.businessHours;
     if (updates.knowledgeBank !== undefined) configUpdates.knowledgeBank = updates.knowledgeBank;
+    if (updates.smsNotifications !== undefined) configUpdates.smsNotifications = updates.smsNotifications;
 
     await storage.updateAiReceptionistConfig(userId, configUpdates);
 
@@ -1266,6 +1268,39 @@ async function sendCallNotifications(
       console.log(`[Vapi] In-app notification created for user ${userId}`);
     } catch (e: any) {
       console.error(`[Vapi] In-app notification failed:`, e.message);
+    }
+
+    const config = await storage.getAiReceptionistConfig(userId);
+    if (config?.smsNotifications) {
+      const smsBody = callerPhone
+        ? `NEW LEAD via AI Receptionist\nCaller: ${callerDisplay}\nDuration: ${durationText}\n\n${summaryText.slice(0, 200)}\n\nTap to call back: ${callerPhone}`
+        : `AI Receptionist: Missed call (${durationText}). ${summaryText.slice(0, 200)}`;
+
+      const fromNumber = business.dedicatedPhoneNumber || undefined;
+      const notifiedNumbers = new Set<string>();
+
+      const transferNumbers = (config.transferNumbers || []) as TransferNumber[];
+      for (const contact of transferNumbers) {
+        if (contact.phone && !notifiedNumbers.has(contact.phone)) {
+          notifiedNumbers.add(contact.phone);
+          try {
+            await sendSMS({ to: contact.phone, message: smsBody, fromNumber });
+            console.log(`[Vapi] SMS sent to ${contact.name} (${contact.phone})`);
+          } catch (e: any) {
+            console.error(`[Vapi] SMS send failed for ${contact.phone}:`, e.message);
+          }
+        }
+      }
+
+      try {
+        const user = await storage.getUser(userId);
+        if (user?.phone && !notifiedNumbers.has(user.phone)) {
+          await sendSMS({ to: user.phone, message: smsBody, fromNumber });
+          console.log(`[Vapi] SMS sent to owner ${user.phone}`);
+        }
+      } catch (e: any) {
+        console.error(`[Vapi] Owner SMS send failed:`, e.message);
+      }
     }
   } catch (e: any) {
     console.error(`[Vapi] sendCallNotifications error:`, e.message);

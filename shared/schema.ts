@@ -4568,6 +4568,7 @@ export const aiReceptionistConfig = pgTable("ai_receptionist_config", {
   provisionedAt: timestamp("provisioned_at"),
   approvedAt: timestamp("approved_at"),
   knowledgeBank: json("knowledge_bank"),
+  smsNotifications: boolean("sms_notifications").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

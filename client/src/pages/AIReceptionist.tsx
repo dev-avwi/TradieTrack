@@ -56,6 +56,7 @@ import {
   FileText,
   Send,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 
 interface KnowledgeBankContent {
@@ -375,6 +376,7 @@ export default function AIReceptionist() {
     greeting: string;
     transferNumbers: TransferNumber[];
     businessHours: BusinessHours;
+    smsNotifications: boolean;
   } | null>(null);
 
   const initForm = () => {
@@ -389,6 +391,7 @@ export default function AIReceptionist() {
         timezone: "Australia/Brisbane",
         days: [1, 2, 3, 4, 5],
       },
+      smsNotifications: config?.smsNotifications || false,
     });
     setEditMode(true);
   };
@@ -399,6 +402,7 @@ export default function AIReceptionist() {
     mode: string;
     transferNumbers: TransferNumber[];
     businessHours?: BusinessHours;
+    smsNotifications?: boolean;
   }
 
   const hasExistingConfig = !!config;
@@ -453,6 +457,7 @@ export default function AIReceptionist() {
       mode: formData.mode,
       transferNumbers: formData.transferNumbers,
       businessHours: formData.mode === "after_hours" ? formData.businessHours : undefined,
+      smsNotifications: formData.smsNotifications,
     });
   };
 
@@ -1008,6 +1013,27 @@ export default function AIReceptionist() {
                     </CardContent>
                   </Card>
                 )}
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <MessageSquare className="h-5 w-5" style={{ color: "hsl(var(--trade))" }} />
+                        <div>
+                          <Label className="text-sm font-medium">SMS Call Notifications</Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Get a text message when the AI handles a call, with the caller's number so you can call them back
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={formData.smsNotifications}
+                        onCheckedChange={(checked) => setFormData({ ...formData, smsNotifications: checked })}
+                        data-testid="switch-sms-notifications"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
 
                 {formData.mode === "after_hours" && (
                   <Card>

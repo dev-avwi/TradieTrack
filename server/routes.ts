@@ -46326,6 +46326,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
           approvalStatus: hasActiveAssistant ? 'active' : 'none',
           provisioningError: null,
           knowledgeBank: null,
+          smsNotifications: false,
         });
       }
       res.json({
@@ -46342,6 +46343,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         provisionedAt: config.provisionedAt || null,
         approvedAt: config.approvedAt || null,
         knowledgeBank: config.knowledgeBank || null,
+        smsNotifications: config.smsNotifications || false,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -46377,6 +46379,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     transferNumbers: z.array(transferNumberSchema).optional(),
     businessHours: businessHoursSchema.nullable().optional(),
     knowledgeBank: knowledgeBankSchema.nullable().optional(),
+    smsNotifications: z.boolean().optional(),
   });
 
   app.post("/api/ai-receptionist/config", requireAuth, ownerOnly(), async (req: any, res) => {
@@ -46450,7 +46453,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid config", details: parsed.error.flatten().fieldErrors });
       }
-      const { voice, greeting, mode, transferNumbers, businessHours, knowledgeBank } = parsed.data;
+      const { voice, greeting, mode, transferNumbers, businessHours, knowledgeBank, smsNotifications } = parsed.data;
 
       const { updateReceptionistConfig } = await import('./vapiService');
       const result = await updateReceptionistConfig(userId, {
@@ -46460,6 +46463,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         transferNumbers,
         businessHours,
         knowledgeBank: knowledgeBank === null ? undefined : knowledgeBank,
+        smsNotifications,
       });
 
       if (!result.success) {
@@ -46477,6 +46481,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         dedicatedPhoneNumber: config?.dedicatedPhoneNumber || null,
         vapiAssistantId: config?.vapiAssistantId || null,
         knowledgeBank: config?.knowledgeBank || null,
+        smsNotifications: config?.smsNotifications || false,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
