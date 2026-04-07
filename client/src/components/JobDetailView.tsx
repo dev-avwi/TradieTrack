@@ -3024,6 +3024,30 @@ export default function JobDetailView({
                     <p className="text-xs text-muted-foreground">Create and send an invoice to your client</p>
                   </div>
                 </div>
+                {actualHoursData.hasData && (
+                  <div className="mb-3 p-2.5 rounded-md bg-muted/50">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <Clock className="h-3 w-3" />
+                        Time tracked
+                      </span>
+                      <span className="font-semibold">{actualHoursData.actualHours}h</span>
+                    </div>
+                    {actualHoursData.laborCost > 0 && (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Labour cost</span>
+                        <span className="font-semibold">${actualHoursData.laborCost.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {workerSummaries.length > 1 && (
+                      <div className="flex items-center justify-between text-xs mt-0.5">
+                        <span className="text-muted-foreground">Workers</span>
+                        <span className="font-medium">{workerSummaries.map(w => w.name.split(' ')[0]).join(', ')}</span>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground mt-1.5">Labour lines will be added to the invoice automatically</p>
+                  </div>
+                )}
                 <Button
                   className="w-full"
                   style={{ backgroundColor: 'hsl(142.1 76.2% 36.3%)', color: 'white' }}
@@ -3844,10 +3868,28 @@ export default function JobDetailView({
                     </div>
                   ))}
                 </div>
-                {actualHoursData.laborCost > 0 && workerSummaries.length > 1 && (
-                  <div className="mt-3 pt-3 border-t flex items-center justify-between">
-                    <span className="text-sm font-medium">Total Labour Cost</span>
-                    <span className="text-sm font-bold">${actualHoursData.laborCost.toFixed(2)}</span>
+                {actualHoursData.laborCost > 0 && (
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Total Labour Cost</span>
+                      <span className="text-sm font-bold">${actualHoursData.laborCost.toFixed(2)}</span>
+                    </div>
+                    {job.status === 'done' && !linkedInvoice && !isTradie && onCreateInvoice && (
+                      <Button
+                        className="w-full mt-2"
+                        variant="default"
+                        onClick={() => onCreateInvoice(jobId)}
+                        data-testid="button-invoice-from-time"
+                      >
+                        <Receipt className="h-4 w-4 mr-2" />
+                        Create Invoice from Time Tracking
+                      </Button>
+                    )}
+                    {job.status === 'in_progress' && !isTradie && actualHoursData.laborCost > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Labour lines will be added automatically when you create an invoice after the job is completed.
+                      </p>
+                    )}
                   </div>
                 )}
                 {timeEntries.some(e => e.clockInLatitude || e.origin === 'geofence') && (
