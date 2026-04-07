@@ -225,7 +225,7 @@ export default function PhoneNumbersPage() {
 
               <View style={{ backgroundColor: `${colors.muted}50`, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md }}>
                 <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 18 }}>
-                  Clients see this number when you send SMS. Replies come straight to your Chat Hub. You've upgraded from the shared JobRunner number (0485 013 994).
+                  Clients see this number when you send SMS. Replies come straight to your Chat Hub. You've upgraded from the shared JobRunner number (0485 013 993).
                 </Text>
               </View>
 
