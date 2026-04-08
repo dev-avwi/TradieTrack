@@ -2909,50 +2909,20 @@ export default function SettingsScreen() {
 
               <Text style={styles.sectionLabel}>TAP TO PAY ON IPHONE</Text>
 
-              <TouchableOpacity 
-                style={styles.settingsCard}
-                onPress={() => router.push('/more/tap-to-pay-setup?showTutorial=true')}
-                data-testid="button-tap-to-pay-tutorial"
+              <View 
+                style={[styles.settingsCard, { opacity: 0.6 }]}
               >
                 <View style={styles.settingsCardHeader}>
-                  <Feather name="radio" size={20} color={colors.primary} />
+                  <Feather name="radio" size={20} color={colors.mutedForeground} />
                   <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>View Tap to Pay Tutorial</Text>
-                    <Text style={styles.settingsCardSubtitle}>Learn how to accept contactless payments</Text>
+                    <Text style={styles.settingsCardTitle}>Tap to Pay</Text>
+                    <Text style={styles.settingsCardSubtitle}>Accept contactless card payments on your iPhone. Coming soon in a future update.</Text>
                   </View>
                 </View>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.settingsCard}
-                onPress={() => router.push('/more/tap-to-pay-setup')}
-                data-testid="button-tap-to-pay-status"
-              >
-                <View style={styles.settingsCardHeader}>
-                  <Feather name="check-circle" size={20} color={colors.primary} />
-                  <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>Check Tap to Pay Status</Text>
-                    <Text style={styles.settingsCardSubtitle}>View setup and T&C acceptance status</Text>
-                  </View>
+                <View style={{ backgroundColor: colors.primary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                  <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>SOON</Text>
                 </View>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.settingsCard}
-                onPress={() => Linking.openURL('https://support.apple.com/en-au/HT212944')}
-                data-testid="button-tap-to-pay-faq"
-              >
-                <View style={styles.settingsCardHeader}>
-                  <Feather name="help-circle" size={20} color={colors.primary} />
-                  <View style={styles.settingsCardInfo}>
-                    <Text style={styles.settingsCardTitle}>Apple Tap to Pay FAQ</Text>
-                    <Text style={styles.settingsCardSubtitle}>Official support from Apple</Text>
-                  </View>
-                </View>
-                <Feather name="external-link" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </View>
 
               <Text style={styles.sectionLabel}>SUPPORT</Text>
 

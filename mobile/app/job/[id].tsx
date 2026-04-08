@@ -4298,9 +4298,7 @@ export default function JobDetailScreen() {
 
   // Payment collection handlers
   const handleTapToPay = () => {
-    if (invoice?.id) {
-      router.push(`/more/collect-payment?tab=tap&invoiceId=${invoice.id}&jobId=${job?.id}`);
-    }
+    Alert.alert('Coming Soon', 'Tap to Pay will be available in a future update. Use QR Code or Payment Link to collect payments now.');
   };
 
   const handleQRCode = () => {

@@ -3272,17 +3272,13 @@ export default function CollectScreen() {
           <Text style={styles.sectionLabel}>Payment Methods</Text>
 
           <PaymentMethodCard
-            icon={<Feather name="radio" size={24} color={tapToPaySupported ? colors.primary : colors.mutedForeground} />}
+            icon={<Feather name="radio" size={24} color={colors.mutedForeground} />}
             title="Tap to Pay"
-            description={tapToPaySupported ? "Accept contactless payments on this device" : "Requires iPhone XS+ with iOS 17.6+"}
-            badge={tapToPaySupported ? (terminal.isSimulation ? "Simulation" : "Ready") : "Not Available"}
-            badgeVariant={tapToPaySupported ? "success" : "warning"}
+            description="Accept contactless card payments on your iPhone. Coming soon in a future update."
+            badge="Coming Soon"
+            badgeVariant="warning"
             onPress={() => {
-              if (!tapToPaySupported) {
-                Alert.alert('Not Available', 'Tap to Pay requires iPhone XS or later with iOS 17.6+, or Android with NFC support.');
-                return;
-              }
-              handleTapToPay();
+              Alert.alert('Coming Soon', 'Tap to Pay will be available in a future update. Use QR Code or Payment Link to collect payments now.');
             }}
             disabled={false}
             colors={colors}
