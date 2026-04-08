@@ -88,7 +88,7 @@ export default function UsageLimitBanner({ variant = 'compact' }: UsageLimitBann
         onPress={() => router.push('/more/subscription')}
         activeOpacity={0.7}
       >
-        <Text style={styles.upgradeButtonText}>Upgrade</Text>
+        <Text style={styles.upgradeButtonText}>View Plan</Text>
         <Feather name="arrow-right" size={12} color="#fff" />
       </TouchableOpacity>
     </View>

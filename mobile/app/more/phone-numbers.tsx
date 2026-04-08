@@ -148,19 +148,11 @@ export default function PhoneNumbersPage() {
                   Alert.alert('Error', response.error);
                 }
               } else if (response.data && (response.data as any).requiresPayment) {
-                const checkoutUrl = (response.data as any).checkoutUrl;
-                if (checkoutUrl) {
-                  Alert.alert(
-                    'Payment Required',
-                    `A dedicated phone number costs $5/month. You'll be redirected to complete payment.`,
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Pay $5/month', onPress: () => Linking.openURL(checkoutUrl) },
-                    ]
-                  );
-                } else {
-                  Alert.alert('Error', 'Failed to create payment session');
-                }
+                Alert.alert(
+                  'Add-On Required',
+                  'Dedicated phone numbers are available as a business add-on. Please set this up through your account at jobrunner.com.au or contact support@jobrunner.com.au.',
+                  [{ text: 'OK' }]
+                );
               } else {
                 await fetchBusinessSettings();
                 Alert.alert(
@@ -201,7 +193,7 @@ export default function PhoneNumbersPage() {
       <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.pageTitle}>Phone Numbers</Text>
         <Text style={styles.pageSubtitle}>
-          Your dedicated Australian phone number for two-way SMS with clients and AI Receptionist calls. $5/month per number.
+          Your dedicated Australian phone number for two-way SMS with clients and AI Receptionist calls.
         </Text>
 
         {currentNumber ? (

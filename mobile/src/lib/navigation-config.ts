@@ -387,10 +387,10 @@ export const accountMenuItems: NavItem[] = [
     title: "Subscription",
     url: "/more/subscription",
     icon: "star",
-    description: "Manage plan, upgrade, or start free trial",
+    description: "View your business plan details",
     color: "warning",
     bgColor: "warning",
-    badge: "Free",
+    badge: "Plan",
     showInMore: true,
     category: "account",
     allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor'],
@@ -479,7 +479,7 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
     if (item.requiresProPlan && options.hasProSubscription === false) {
       if (item.showLockedIfNoAccess) {
         item.locked = true;
-        item.lockReason = 'Upgrade to Pro to unlock this feature. Start a free trial today.';
+        item.lockReason = 'This feature requires a Pro business plan.';
         item.badge = 'Pro';
       } else {
         continue;

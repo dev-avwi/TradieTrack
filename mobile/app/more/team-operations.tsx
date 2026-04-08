@@ -1165,7 +1165,7 @@ export default function TeamOperationsScreen() {
         {needsUpgrade && (
           <TouchableOpacity 
             style={[styles.upgradeBanner, { backgroundColor: colors.primary + '15' }]}
-            onPress={() => Linking.openURL('https://jobrunner.com.au/settings?tab=billing')}
+            onPress={() => router.push('/more/subscription')}
             activeOpacity={0.8}
           >
             <Feather name="star" size={18} color={colors.primary} />

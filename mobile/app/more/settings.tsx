@@ -1614,17 +1614,17 @@ export default function SettingsScreen() {
 
           <TouchableOpacity 
             style={styles.subscriptionLink}
-            onPress={() => Linking.openURL('https://jobrunner.com.au/settings?tab=billing')}
+            onPress={() => router.push('/more/subscription')}
             data-testid="button-manage-subscription"
           >
             <View style={styles.subscriptionLinkContent}>
               <Feather name="award" size={20} color={colors.primary} />
               <View style={styles.subscriptionLinkText}>
-                <Text style={styles.subscriptionLinkTitle}>Manage Subscription</Text>
-                <Text style={styles.subscriptionLinkSubtitle}>View plan details, usage & billing on web</Text>
+                <Text style={styles.subscriptionLinkTitle}>Business Plan</Text>
+                <Text style={styles.subscriptionLinkSubtitle}>View plan details and usage</Text>
               </View>
             </View>
-            <Feather name="external-link" size={18} color={colors.mutedForeground} />
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </TouchableOpacity>
 
           <ScrollView 
@@ -2778,16 +2778,16 @@ export default function SettingsScreen() {
                     </View>
                     <View>
                       <Text style={styles.planName}>
-                        {currentPlan === 'team' ? 'Team Plan' : currentPlan === 'pro' ? 'Pro Plan' : currentPlan === 'trial' ? 'Pro Trial' : 'Free Plan'}
+                        {currentPlan === 'team' ? 'Team Plan' : currentPlan === 'pro' ? 'Pro Plan' : currentPlan === 'trial' ? 'Pro Trial' : 'Starter Plan'}
                       </Text>
                       <Text style={styles.planDescription}>
-                        {currentPlan === 'team' ? 'Full team management features' : currentPlan === 'pro' || currentPlan === 'trial' ? 'Full access to all features' : 'Basic features'}
+                        {currentPlan === 'team' ? 'Full team management features' : currentPlan === 'pro' || currentPlan === 'trial' ? 'Full access to all features' : 'Core business features'}
                       </Text>
                     </View>
                   </View>
                   <View style={styles.planPriceBadge}>
                     <Text style={styles.planPriceText}>
-                      {currentPlan === 'team' ? '$49/mo' : currentPlan === 'pro' ? '$39/mo' : currentPlan === 'trial' ? 'Trial' : 'Free'}
+                      {currentPlan === 'team' ? 'Team' : currentPlan === 'pro' ? 'Pro' : currentPlan === 'trial' ? 'Trial' : 'Starter'}
                     </Text>
                   </View>
                 </View>
@@ -2821,23 +2821,12 @@ export default function SettingsScreen() {
                   );
                 })}
 
-                {currentPlan === 'free' && (
-                  <TouchableOpacity 
-                    style={styles.upgradeButton}
-                    onPress={() => Linking.openURL('https://jobrunner.com.au/settings?tab=billing')}
-                    data-testid="button-upgrade"
-                  >
-                    <Feather name="external-link" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.upgradeButtonText}>Manage Plan on Web</Text>
-                  </TouchableOpacity>
-                )}
-
                 {(currentPlan === 'pro' || currentPlan === 'team') && (
                   <TouchableOpacity 
                     style={styles.manageBillingButton}
-                    onPress={() => Linking.openURL('https://jobrunner.com.au/settings?tab=billing')}
+                    onPress={() => router.push('/more/subscription')}
                   >
-                    <Feather name="external-link" size={16} color={colors.foreground} />
+                    <Feather name="settings" size={16} color={colors.foreground} />
                     <Text style={styles.manageBillingText}>Manage Billing</Text>
                   </TouchableOpacity>
                 )}

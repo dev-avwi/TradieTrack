@@ -54,9 +54,9 @@ const FEATURE_OPTIONS = [
 ];
 
 const BUDGET_OPTIONS = [
-  'Standard ($499)',
-  'Premium ($799)',
-  'Custom (Let\'s discuss)',
+  'Standard',
+  'Premium',
+  'Custom',
 ];
 
 const TIMELINE_OPTIONS = [
@@ -142,12 +142,12 @@ export default function CustomWebsitePage() {
 
         <View style={styles.pricingCard}>
           <View style={styles.pricingHeader}>
-            <Text style={styles.pricingLabel}>Starting from</Text>
+            <Text style={styles.pricingLabel}>Professional Website</Text>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-              <Text style={styles.pricingAmount}>$499</Text>
-              <Text style={styles.pricingPeriod}>one-time</Text>
+              <Text style={styles.pricingAmount}>Custom</Text>
+              <Text style={styles.pricingPeriod}>quote</Text>
             </View>
-            <Text style={styles.pricingNote}>+ $29/month hosting & support</Text>
+            <Text style={styles.pricingNote}>Contact us for business pricing</Text>
           </View>
         </View>
 

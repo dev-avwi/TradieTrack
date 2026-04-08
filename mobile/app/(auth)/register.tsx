@@ -288,7 +288,7 @@ export default function RegisterScreen() {
               <Text style={styles.appNameBlue}>Job</Text>
               <Text style={styles.appNameOrange}>Runner</Text>
             </View>
-            <Text style={styles.title}>Get Started Free</Text>
+            <Text style={styles.title}>Set Up Your Business</Text>
             <Text style={styles.subtitle}>Manage your trade business from your pocket</Text>
           </View>
 

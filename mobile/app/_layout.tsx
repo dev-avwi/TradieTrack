@@ -294,7 +294,7 @@ function ServicesInitializer() {
               break;
 
             case 'trial_expiring':
-              Linking.openURL('https://jobrunner.com.au/settings?tab=billing');
+              router.push('/more/subscription');
               break;
 
             case 'daily_summary':

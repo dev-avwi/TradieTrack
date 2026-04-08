@@ -1513,30 +1513,11 @@ export default function TeamManagementScreen() {
   }, []);
   
   const handleUpgradeToTeam = async () => {
-    setIsUpgrading(true);
-    try {
-      const response = await api.post<{ success: boolean; sessionUrl?: string; error?: string }>('/api/billing/checkout/team', {
-        seatCount: seatCount,
-        successUrl: 'jobrunner://team-management?success=true',
-        cancelUrl: 'jobrunner://team-management?canceled=true',
-      });
-
-      if (response.data?.success && response.data?.sessionUrl) {
-        const canOpen = await Linking.canOpenURL(response.data.sessionUrl);
-        if (canOpen) {
-          await Linking.openURL(response.data.sessionUrl);
-        } else {
-          Alert.alert('Error', 'Unable to open payment page. Please try again.');
-        }
-      } else {
-        Alert.alert('Error', response.data?.error || response.error || 'Failed to create checkout session');
-      }
-    } catch (error) {
-      console.error('Upgrade error:', error);
-      Alert.alert('Error', 'Failed to start upgrade process. Please try again.');
-    } finally {
-      setIsUpgrading(false);
-    }
+    Alert.alert(
+      'Team Plan',
+      'Team plan subscriptions are managed through your business account at jobrunner.com.au. Contact support@jobrunner.com.au for assistance.',
+      [{ text: 'OK' }]
+    );
   };
   
   // Use auth store tier as source of truth, fall back to API response
@@ -2256,48 +2237,15 @@ export default function TeamManagementScreen() {
           Everything in Pro, plus powerful team features
         </Text>
 
-        <View style={styles.priceRow}>
-          <Text style={styles.priceAmount}>${teamPrice}</Text>
-          <Text style={styles.pricePeriod}>/month</Text>
-        </View>
-        
-        <Text style={styles.priceNote}>
-          Base: ${TEAM_BASE_PRICE} + ${TEAM_SEAT_PRICE} per team member
-        </Text>
-
-        <View style={styles.seatSelector}>
-          <Text style={styles.seatSelectorLabel}>Team members:</Text>
-          <TouchableOpacity 
-            style={styles.seatButton}
-            onPress={() => setSeatCount(Math.max(1, seatCount - 1))}
-            disabled={seatCount <= 1}
-          >
-            <Feather name="minus" size={18} color={seatCount <= 1 ? colors.muted : colors.foreground} />
-          </TouchableOpacity>
-          <Text style={styles.seatCount}>{seatCount}</Text>
-          <TouchableOpacity 
-            style={styles.seatButton}
-            onPress={() => setSeatCount(Math.min(20, seatCount + 1))}
-            disabled={seatCount >= 20}
-          >
-            <Feather name="plus" size={18} color={seatCount >= 20 ? colors.muted : colors.foreground} />
-          </TouchableOpacity>
-        </View>
-
         <TouchableOpacity
-          style={[styles.ctaButton, isUpgrading && styles.ctaButtonDisabled]}
+          style={[styles.ctaButton]}
           onPress={handleUpgradeToTeam}
-          disabled={isUpgrading}
         >
-          {isUpgrading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.ctaButtonText}>Upgrade to Team Plan</Text>
-          )}
+          <Text style={styles.ctaButtonText}>Learn More</Text>
         </TouchableOpacity>
         
         <Text style={styles.ctaSubtext}>
-          Cancel anytime. No lock-in contracts.
+          Manage your business plan at jobrunner.com.au
         </Text>
       </View>
 

@@ -322,11 +322,11 @@ function MenuItem({
   const handlePress = () => {
     if (locked) {
       Alert.alert(
-        'Upgrade Required',
-        lockReason || 'This feature requires a plan upgrade. Visit jobrunner.com.au to upgrade.',
+        'Feature Locked',
+        lockReason || 'This feature requires a higher business plan.',
         [
-          { text: 'Maybe Later', style: 'cancel' },
-          { text: 'View Plans', onPress: () => Linking.openURL('https://jobrunner.com.au/settings?tab=billing') },
+          { text: 'OK', style: 'cancel' },
+          { text: 'View Plan', onPress: () => router.push('/more/subscription') },
         ]
       );
     } else {

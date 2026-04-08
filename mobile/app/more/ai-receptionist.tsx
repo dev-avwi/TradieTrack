@@ -208,7 +208,11 @@ export default function AIReceptionistScreen() {
               if (checkoutRes.data?.url) {
                 setIsProvisioning(false);
                 setProvisioningStatus(null);
-                await Linking.openURL(checkoutRes.data.url);
+                Alert.alert(
+                  'Setup Required',
+                  'AI Receptionist setup requires completing your business account configuration at jobrunner.com.au. Contact support@jobrunner.com.au for assistance.',
+                  [{ text: 'OK' }]
+                );
                 return;
               }
               setProvisioningStatus('Configuring AI voice and responses...');
@@ -456,7 +460,7 @@ export default function AIReceptionistScreen() {
                 <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primaryForeground }}>Get a Dedicated Number</Text>
               </TouchableOpacity>
               <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.sm }}>
-                $5/month — includes SMS + AI calls
+                Includes SMS and AI calls
               </Text>
             </View>
           </View>
@@ -526,7 +530,7 @@ export default function AIReceptionistScreen() {
                   <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primaryForeground }}>Activate AI Receptionist</Text>
                 </TouchableOpacity>
                 <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.sm }}>
-                  $49/month add-on
+                  Business add-on
                 </Text>
               </View>
             ) : (

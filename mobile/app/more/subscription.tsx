@@ -45,7 +45,7 @@ interface UsageData {
 
 const PLAN_DETAILS: Record<string, { name: string; icon: string; color: string; features: string[] }> = {
   free: {
-    name: 'Free',
+    name: 'Starter',
     icon: 'zap',
     color: '#6B7280',
     features: ['25 jobs/month', '25 invoices/month', '50 clients', 'Unlimited quotes'],
@@ -69,8 +69,6 @@ const PLAN_DETAILS: Record<string, { name: string; icon: string; color: string; 
     features: ['Full access to all features', 'Try before you commit'],
   },
 };
-
-const WEB_BILLING_URL = 'https://jobrunner.com.au/settings?tab=billing';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -199,21 +197,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.xl,
   },
-  secondaryButton: {
-    backgroundColor: colors.muted,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  secondaryButtonText: {
-    ...typography.body,
-    color: colors.foreground,
-    fontWeight: '600',
-  },
   trialBanner: {
     backgroundColor: '#FEF3C7',
     borderRadius: radius.lg,
@@ -290,14 +273,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
     flex: 1,
   },
-  addOnPrice: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '700',
-  },
   addOnDescription: {
     ...typography.caption,
     color: colors.mutedForeground,
+  },
+  webNote: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    lineHeight: 18,
   },
 });
 
@@ -348,18 +334,12 @@ export default function SubscriptionPage() {
       const response = await api.post<{ url: string }>('/api/subscription/manage');
       if (response.data?.url) {
         await Linking.openURL(response.data.url);
-      } else {
-        await Linking.openURL(WEB_BILLING_URL);
       }
     } catch {
-      await Linking.openURL(WEB_BILLING_URL);
+      Alert.alert('Unable to open billing', 'Please manage your subscription at jobrunner.com.au');
     } finally {
       setManagingSubscription(false);
     }
-  };
-
-  const handleUpgradeOnWeb = async () => {
-    await Linking.openURL(WEB_BILLING_URL);
   };
 
   const formatDate = (dateString?: string | null) => {
@@ -390,7 +370,7 @@ export default function SubscriptionPage() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Subscription', headerBackTitle: 'Back' }} />
+        <Stack.Screen options={{ title: 'Business Plan', headerBackTitle: 'Back' }} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -400,7 +380,7 @@ export default function SubscriptionPage() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Subscription', headerBackTitle: 'Back' }} />
+      <Stack.Screen options={{ title: 'Business Plan', headerBackTitle: 'Back' }} />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
@@ -416,9 +396,9 @@ export default function SubscriptionPage() {
           <View style={[styles.trialBanner, isDark && styles.trialBannerDark]}>
             <Feather name="clock" size={20} color="#92400E" />
             <View style={styles.trialBannerText}>
-              <Text style={styles.trialBannerTitle}>Free Trial Active</Text>
+              <Text style={styles.trialBannerTitle}>Trial Active</Text>
               <Text style={styles.trialBannerSubtitle}>
-                Ends {formatDate(subscriptionStatus.trialEndsAt)}. Upgrade on the web to keep your features.
+                Your business trial ends {formatDate(subscriptionStatus.trialEndsAt)}.
               </Text>
             </View>
           </View>
@@ -530,37 +510,21 @@ export default function SubscriptionPage() {
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
               <>
-                <Feather name="external-link" size={18} color="#FFFFFF" />
+                <Feather name="settings" size={18} color="#FFFFFF" />
                 <Text style={styles.manageButtonText}>Manage Billing</Text>
               </>
             )}
           </TouchableOpacity>
         )}
 
-        {!hasActiveSubscription && !isBeta && (
-          <>
-            <TouchableOpacity 
-              style={styles.manageButton}
-              onPress={handleUpgradeOnWeb}
-              activeOpacity={0.8}
-            >
-              <Feather name="external-link" size={18} color="#FFFFFF" />
-              <Text style={styles.manageButtonText}>Manage Plan on Web</Text>
-            </TouchableOpacity>
-            <Text style={styles.manageDescription}>
-              Manage your subscription, change plans, and update billing details on the web.
-            </Text>
-          </>
-        )}
-
         {hasActiveSubscription && (
           <Text style={styles.manageDescription}>
-            Change plans, update payment details, and view invoices on the web.
+            View invoices and update payment details for your business subscription.
           </Text>
         )}
 
         <View style={styles.addOnSection}>
-          <Text style={[styles.infoSectionTitle, { marginBottom: spacing.md }]}>Power Add-Ons</Text>
+          <Text style={[styles.infoSectionTitle, { marginBottom: spacing.md }]}>Available Add-Ons</Text>
           
           <View style={styles.addOnCard}>
             <View style={styles.addOnHeader}>
@@ -585,16 +549,11 @@ export default function SubscriptionPage() {
               Your own Australian mobile number for sending SMS. Clients see your number, not JobRunner's.
             </Text>
           </View>
-
-          <TouchableOpacity 
-            style={styles.secondaryButton}
-            onPress={handleUpgradeOnWeb}
-            activeOpacity={0.8}
-          >
-            <Feather name="external-link" size={16} color={colors.foreground} />
-            <Text style={styles.secondaryButtonText}>Manage Add-Ons on Web</Text>
-          </TouchableOpacity>
         </View>
+
+        <Text style={styles.webNote}>
+          Your business subscription is managed at jobrunner.com.au. Contact support@jobrunner.com.au for plan changes.
+        </Text>
       </ScrollView>
     </View>
   );
