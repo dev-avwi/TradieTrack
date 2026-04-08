@@ -285,6 +285,63 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     lineHeight: 18,
   },
+  comparePlansSection: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  comparePlansTitle: {
+    ...typography.title,
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+  comparePlansSubtitle: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginBottom: spacing.md,
+  },
+  comparePlanCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  comparePlanHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  comparePlanIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  comparePlanName: {
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.foreground,
+  },
+  comparePlanDesc: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    marginTop: 2,
+  },
+  comparePlanFeatures: {
+    gap: spacing.sm,
+  },
+  comparePlanFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  comparePlanFeatureText: {
+    ...typography.caption,
+    color: colors.foreground,
+  },
   webNoteCard: {
     flexDirection: 'row',
     backgroundColor: colors.card,
@@ -550,6 +607,53 @@ export default function SubscriptionPage() {
           </Text>
         )}
 
+        {currentTier === 'free' && (
+          <View style={styles.comparePlansSection}>
+            <Text style={styles.comparePlansTitle}>Available Plans</Text>
+            <Text style={styles.comparePlansSubtitle}>See what's included with each plan</Text>
+
+            <View style={styles.comparePlanCard}>
+              <View style={styles.comparePlanHeader}>
+                <View style={[styles.comparePlanIcon, { backgroundColor: '#2563EB15' }]}>  
+                  <Feather name="award" size={20} color="#2563EB" />
+                </View>
+                <View>
+                  <Text style={styles.comparePlanName}>Pro</Text>
+                  <Text style={styles.comparePlanDesc}>For solo tradies ready to grow</Text>
+                </View>
+              </View>
+              <View style={styles.comparePlanFeatures}>
+                {['Unlimited jobs & invoices', 'AI-powered features', 'Custom invoice templates', 'Email integration', 'Priority support'].map((f, i) => (
+                  <View key={i} style={styles.comparePlanFeatureRow}>
+                    <Feather name="check" size={14} color="#2563EB" />
+                    <Text style={styles.comparePlanFeatureText}>{f}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.comparePlanCard}>
+              <View style={styles.comparePlanHeader}>
+                <View style={[styles.comparePlanIcon, { backgroundColor: '#7C3AED15' }]}>
+                  <Feather name="users" size={20} color="#7C3AED" />
+                </View>
+                <View>
+                  <Text style={styles.comparePlanName}>Team</Text>
+                  <Text style={styles.comparePlanDesc}>For businesses with employees</Text>
+                </View>
+              </View>
+              <View style={styles.comparePlanFeatures}>
+                {['Everything in Pro', 'Team member accounts', 'GPS & live tracking', 'Time tracking & timesheets', 'Team chat', 'Role-based permissions'].map((f, i) => (
+                  <View key={i} style={styles.comparePlanFeatureRow}>
+                    <Feather name="check" size={14} color="#7C3AED" />
+                    <Text style={styles.comparePlanFeatureText}>{f}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
+
         <View style={styles.addOnSection}>
           <Text style={[styles.infoSectionTitle, { marginBottom: spacing.md }]}>Available Add-Ons</Text>
           
@@ -583,7 +687,7 @@ export default function SubscriptionPage() {
           <View style={{ flex: 1 }}>
             <Text style={styles.webNoteTitle}>Manage Your Plan</Text>
             <Text style={styles.webNoteText}>
-              View plans, change your subscription, or add features at jobrunner.com.au
+              Visit jobrunner.com.au to change your plan or add features to your business account.
             </Text>
             <Text style={styles.webNoteSupport}>
               Need help? support@jobrunner.com.au
