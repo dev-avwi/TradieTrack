@@ -2827,7 +2827,8 @@ export default function SettingsScreen() {
                     onPress={() => Linking.openURL('https://jobrunner.com.au/settings?tab=billing')}
                     data-testid="button-upgrade"
                   >
-                    <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+                    <Feather name="external-link" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.upgradeButtonText}>Manage Plan on Web</Text>
                   </TouchableOpacity>
                 )}
 

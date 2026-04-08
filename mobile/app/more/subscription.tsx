@@ -545,7 +545,7 @@ export default function SubscriptionPage() {
               activeOpacity={0.8}
             >
               <Feather name="external-link" size={18} color="#FFFFFF" />
-              <Text style={styles.manageButtonText}>View Plans & Upgrade</Text>
+              <Text style={styles.manageButtonText}>Manage Plan on Web</Text>
             </TouchableOpacity>
             <Text style={styles.manageDescription}>
               Manage your subscription, change plans, and update billing details on the web.
