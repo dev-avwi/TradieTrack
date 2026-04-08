@@ -57,6 +57,8 @@ import {
   PhoneIncoming,
   Loader2,
   AlertCircle,
+  Filter,
+  Percent,
 } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
@@ -115,6 +117,7 @@ export default function Leads() {
   const [leadToConvert, setLeadToConvert] = useState<Lead | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
+  const [sourceFilter, setSourceFilter] = useState<LeadSource | 'all'>('all');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -144,7 +147,8 @@ export default function Leads() {
         lead.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         lead.description?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
+      return matchesSearch && matchesStatus && matchesSource;
     });
     result.sort((a, b) => {
       const statusOrder: Record<string, number> = { new: 0, contacted: 1, quoted: 2, won: 3, lost: 4 };
@@ -159,7 +163,7 @@ export default function Leads() {
       return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
     return result;
-  }, [leads, searchQuery, statusFilter]);
+  }, [leads, searchQuery, statusFilter, sourceFilter]);
 
   const stats = useMemo(() => {
     const activeLeads = leads.filter(l => l.status !== 'won' && l.status !== 'lost');
@@ -167,12 +171,30 @@ export default function Leads() {
     const contacted = leads.filter(l => l.status === 'contacted').length;
     const quoted = leads.filter(l => l.status === 'quoted').length;
     const won = leads.filter(l => l.status === 'won').length;
+    const lost = leads.filter(l => l.status === 'lost').length;
     const pipelineValue = activeLeads.reduce((sum, l) => sum + (l.estimatedValue ? parseFloat(l.estimatedValue) : 0), 0);
     const total = leads.length;
-    const conversionRate = total > 0 ? Math.round((won / total) * 100) : 0;
+    const decided = won + lost;
+    const conversionRate = decided > 0 ? Math.round((won / decided) * 100) : 0;
     const today = startOfDay(new Date());
     const overdueCount = activeLeads.filter(l => l.followUpDate && isBefore(new Date(l.followUpDate), today)).length;
-    return { newLeads, contacted, quoted, won, total, conversionRate, pipelineValue, overdueCount };
+
+    const sourceCounts: Record<string, number> = {};
+    leads.forEach(l => {
+      const src = l.source || 'other';
+      sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+    });
+
+    return { newLeads, contacted, quoted, won, total, conversionRate, pipelineValue, overdueCount, sourceCounts };
+  }, [leads]);
+
+  const activeSources = useMemo(() => {
+    const validSources = new Set(Object.keys(sourceLabels));
+    const sources = new Set(leads.map(l => {
+      const src = l.source || 'other';
+      return validSources.has(src) ? src : 'other';
+    }));
+    return Array.from(sources) as LeadSource[];
   }, [leads]);
 
   const createMutation = useMutation({
@@ -312,6 +334,8 @@ export default function Leads() {
     return statusFlow[idx + 1];
   };
 
+  const hasActiveFilters = statusFilter !== 'all' || sourceFilter !== 'all' || searchQuery !== '';
+
   const LeadCard = ({ lead }: { lead: Lead }) => {
     const SourceIcon = sourceIcons[(lead.source || 'other') as LeadSource] || MessageSquare;
     const status = (lead.status || 'new') as LeadStatus;
@@ -387,6 +411,16 @@ export default function Leads() {
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
+                {!isTerminal && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleConvert(lead)}
+                    data-testid={`button-convert-${lead.id}`}
+                  >
+                    <Briefcase className="w-3.5 h-3.5 mr-1.5" />
+                    Convert
+                  </Button>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" data-testid={`button-lead-menu-${lead.id}`}>
@@ -434,7 +468,7 @@ export default function Leads() {
           </div>
 
           <div className="border-t px-4 py-2.5 flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
               {isOverdue && (
                 <span className="flex items-center gap-1 text-destructive font-medium">
                   <AlertCircle className="w-3 h-3" />
@@ -453,6 +487,10 @@ export default function Leads() {
                   Follow up {format(new Date(lead.followUpDate), 'MMM d')}
                 </span>
               )}
+              <span className="flex items-center gap-1">
+                <SourceIcon className="w-3 h-3" />
+                {sourceLabels[(lead.source || 'other') as LeadSource]}
+              </span>
               <span>{timeAgo}</span>
             </div>
 
@@ -462,22 +500,10 @@ export default function Leads() {
                   variant="ghost"
                   size="sm"
                   onClick={() => handleStatusChange(lead, nextStatus)}
-                  className="text-xs h-7 px-2"
                   data-testid={`button-next-status-${lead.id}`}
                 >
-                  <ArrowRight className="w-3 h-3 mr-1" />
+                  <ArrowRight className="w-3.5 h-3.5 mr-1" />
                   {statusLabels[nextStatus]}
-                </Button>
-              )}
-              {!isTerminal && (
-                <Button
-                  size="sm"
-                  onClick={() => handleConvert(lead)}
-                  className="text-xs h-7"
-                  data-testid={`button-convert-${lead.id}`}
-                >
-                  <Briefcase className="w-3 h-3 mr-1" />
-                  Convert
                 </Button>
               )}
               {status === 'lost' && (
@@ -485,7 +511,6 @@ export default function Leads() {
                   variant="ghost"
                   size="sm"
                   onClick={() => handleStatusChange(lead, 'new')}
-                  className="text-xs h-7 px-2"
                 >
                   Reopen
                 </Button>
@@ -613,6 +638,12 @@ export default function Leads() {
                 <DollarSign className="w-4 h-4" style={{ color: 'hsl(var(--trade))' }} />
               </div>
             </div>
+            {stats.conversionRate > 0 && (
+              <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
+                <Percent className="w-3 h-3" />
+                <span>{stats.conversionRate}% win rate</span>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -628,10 +659,33 @@ export default function Leads() {
             data-testid="input-search-leads"
           />
         </div>
-        {statusFilter !== 'all' && (
-          <Button variant="outline" size="sm" onClick={() => setStatusFilter('all')}>
+        {activeSources.length > 1 && (
+          <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as LeadSource | 'all')}>
+            <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-source-filter">
+              <Filter className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="All sources" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              {activeSources.map((src) => {
+                const SrcIcon = sourceIcons[src];
+                return (
+                  <SelectItem key={src} value={src}>
+                    <span className="flex items-center gap-2">
+                      <SrcIcon className="w-3.5 h-3.5" />
+                      {sourceLabels[src]}
+                      {stats.sourceCounts[src] ? ` (${stats.sourceCounts[src]})` : ''}
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        )}
+        {hasActiveFilters && (
+          <Button variant="outline" size="sm" onClick={() => { setStatusFilter('all'); setSourceFilter('all'); setSearchQuery(''); }}>
             <XCircle className="w-3.5 h-3.5 mr-1.5" />
-            Clear Filter
+            Clear
           </Button>
         )}
       </div>
@@ -667,6 +721,10 @@ export default function Leads() {
         </div>
       ) : (
         <div className="mt-4 space-y-2">
+          <p className="text-xs text-muted-foreground mb-1">
+            {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''}
+            {hasActiveFilters ? ' matching filters' : ''}
+          </p>
           {filteredLeads.map((lead) => (
             <LeadCard key={lead.id} lead={lead} />
           ))}

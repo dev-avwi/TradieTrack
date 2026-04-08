@@ -37,80 +37,40 @@ interface SubscriptionStatus {
   } | null;
 }
 
-
-interface TierFeature {
-  text: string;
-  included: boolean;
+interface UsageData {
+  jobs: { used: number; limit: number | null };
+  invoices: { used: number; limit: number | null };
+  clients: { used: number; limit: number | null };
 }
 
-interface Tier {
-  id: 'free' | 'pro' | 'team';
-  name: string;
-  price: number;
-  seatPrice?: number;
-  description: string;
-  features: TierFeature[];
-  cta: string;
-  popular: boolean;
-}
-
-const tiers: Tier[] = [
-  {
-    id: 'free',
+const PLAN_DETAILS: Record<string, { name: string; icon: string; color: string; features: string[] }> = {
+  free: {
     name: 'Free',
-    price: 0,
-    description: 'For solo tradies just getting started',
-    features: [
-      { text: 'Unlimited quotes', included: true },
-      { text: '25 jobs per month', included: true },
-      { text: '25 invoices per month', included: true },
-      { text: '50 clients', included: true },
-      { text: 'Unlimited jobs', included: false },
-      { text: 'AI-powered features', included: false },
-      { text: 'Team management', included: false },
-      { text: 'Priority support', included: false },
-    ],
-    cta: 'Current Plan',
-    popular: false,
+    icon: 'zap',
+    color: '#6B7280',
+    features: ['25 jobs/month', '25 invoices/month', '50 clients', 'Unlimited quotes'],
   },
-  {
-    id: 'pro',
+  pro: {
     name: 'Pro',
-    price: 49,
-    description: 'For growing trade businesses',
-    features: [
-      { text: 'Unlimited jobs', included: true },
-      { text: 'Unlimited quotes & invoices', included: true },
-      { text: 'AI quote generator', included: true },
-      { text: 'AI photo analysis', included: true },
-      { text: 'Custom templates', included: true },
-      { text: 'Email integration', included: true },
-      { text: 'Team management', included: false },
-      { text: 'Team seats', included: false },
-    ],
-    cta: 'Included Free',
-    popular: true,
+    icon: 'award',
+    color: '#2563EB',
+    features: ['Unlimited jobs', 'Unlimited invoices', 'AI features', 'Custom templates', 'Email integration'],
   },
-  {
-    id: 'team',
+  team: {
     name: 'Team',
-    price: 49,
-    seatPrice: 29,
-    description: 'For businesses with employees',
-    features: [
-      { text: 'Everything in Pro', included: true },
-      { text: 'Team management', included: true },
-      { text: 'Role-based permissions', included: true },
-      { text: 'Staff scheduling', included: true },
-      { text: 'Time tracking', included: true },
-      { text: 'GPS job tracking', included: true },
-      { text: 'Team chat', included: true },
-      { text: 'Priority support', included: true },
-    ],
-    cta: 'Included Free',
-    popular: false,
+    icon: 'users',
+    color: '#2563EB',
+    features: ['Everything in Pro', 'Team management', 'GPS tracking', 'Time tracking', 'Team chat', 'Role-based permissions'],
   },
-];
+  trial: {
+    name: 'Trial',
+    icon: 'clock',
+    color: '#F59E0B',
+    features: ['Full access to all features', 'Try before you commit'],
+  },
+};
+
+const WEB_BILLING_URL = 'https://jobrunner.com.au/settings?tab=billing';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
@@ -121,452 +81,249 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: 100,
   },
-  heroSection: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    paddingVertical: spacing.lg,
+  planCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    ...shadows.md,
   },
-  trialBadge: {
+  planIconRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  planIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  planName: {
+    ...typography.title,
+    color: colors.foreground,
+  },
+  planStatus: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  planFeatures: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  planFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  planFeatureText: {
+    ...typography.body,
+    color: colors.mutedForeground,
+  },
+  infoSection: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    ...shadows.sm,
+  },
+  infoSectionTitle: {
+    ...typography.subtitle,
+    color: colors.foreground,
+    marginBottom: spacing.md,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  infoLabel: {
+    ...typography.body,
+    color: colors.mutedForeground,
+  },
+  infoValue: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '600',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.xs,
+  },
+  usageBar: {
+    height: 6,
+    backgroundColor: colors.muted,
+    borderRadius: 3,
+    marginTop: spacing.xs,
+    overflow: 'hidden',
+  },
+  usageFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  usageRow: {
+    paddingVertical: spacing.sm,
+  },
+  usageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  manageButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  manageButtonText: {
+    ...typography.body,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  manageDescription: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  secondaryButton: {
+    backgroundColor: colors.muted,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  secondaryButtonText: {
+    ...typography.body,
+    color: colors.foreground,
+    fontWeight: '600',
+  },
+  trialBanner: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    flexDirection: 'row',
+    gap: spacing.md,
+    alignItems: 'flex-start',
+  },
+  trialBannerDark: {
+    backgroundColor: '#78350F20',
+  },
+  trialBannerText: {
+    flex: 1,
+  },
+  trialBannerTitle: {
+    ...typography.subtitle,
+    color: '#92400E',
+    marginBottom: 4,
+  },
+  trialBannerSubtitle: {
+    ...typography.caption,
+    color: '#A16207',
+  },
+  betaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B98120',
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: radius.full,
+    gap: spacing.xs,
+    alignSelf: 'flex-start',
     marginBottom: spacing.md,
-    gap: spacing.xs,
   },
-  trialBadgeText: {
+  betaBadgeText: {
     ...typography.caption,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  heroTitle: {
-    ...typography.pageTitle,
-    color: colors.foreground,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  heroSubtitle: {
-    ...typography.body,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  trustBadges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: spacing.lg,
-    marginTop: spacing.lg,
-    paddingHorizontal: spacing.md,
-  },
-  trustBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  trustBadgeText: {
-    ...typography.caption,
-    color: colors.mutedForeground,
+    color: '#10B981',
+    fontWeight: '700',
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: spacing.xl * 2,
+    justifyContent: 'center',
+    paddingVertical: 100,
   },
-  loadingText: {
-    ...typography.body,
-    color: colors.mutedForeground,
+  addOnSection: {
     marginTop: spacing.md,
   },
-  currentPlanCard: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: `${colors.primary}30`,
-  },
-  currentPlanContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  currentPlanInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    flex: 1,
-  },
-  currentPlanIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.xl,
-    backgroundColor: `${colors.primary}20`,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  currentPlanDetails: {
-    flex: 1,
-  },
-  currentPlanHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: 2,
-  },
-  currentPlanName: {
-    ...typography.subtitle,
-    color: colors.foreground,
-    textTransform: 'capitalize',
-  },
-  currentPlanBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-  },
-  trialBadgeStyle: {
-    backgroundColor: 'transparent',
-    borderColor: colors.warning,
-  },
-  cancelingBadgeStyle: {
-    backgroundColor: 'transparent',
-    borderColor: colors.destructive,
-  },
-  currentPlanBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  trialBadgeTextStyle: {
-    color: colors.warning,
-  },
-  cancelingBadgeTextStyle: {
-    color: colors.destructive,
-  },
-  currentPlanSubtext: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-  },
-  manageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  addOnCard: {
     backgroundColor: colors.card,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
     borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: spacing.xs,
   },
-  manageButtonText: {
-    ...typography.caption,
-    color: colors.foreground,
-    fontWeight: '500',
-  },
-  tierCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    borderWidth: 2,
-    ...shadows.sm,
-  },
-  tierCardDefault: {
-    borderColor: colors.border,
-  },
-  tierCardPopular: {
-    borderColor: colors.primary,
-  },
-  tierCardCurrent: {
-    borderColor: colors.success,
-  },
-  popularBadge: {
-    position: 'absolute',
-    top: -12,
-    left: '50%',
-    transform: [{ translateX: -50 }],
-    backgroundColor: colors.primary,
-    paddingVertical: 4,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.full,
-  },
-  popularBadgeText: {
-    ...typography.caption,
-    color: colors.primaryForeground,
-    fontWeight: '700',
-    fontSize: 11,
-  },
-  tierHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  tierIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tierIconFree: {
-    backgroundColor: colors.muted,
-  },
-  tierIconPro: {
-    backgroundColor: colors.primaryLight,
-  },
-  tierIconTeam: {
-    backgroundColor: colors.primaryLight,
-  },
-  tierName: {
-    ...typography.subtitle,
-    color: colors.foreground,
-  },
-  tierDescription: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    marginBottom: spacing.md,
-  },
-  tierPricing: {
-    marginBottom: spacing.lg,
-  },
-  tierPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing.xs,
-  },
-  tierPrice: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: colors.foreground,
-  },
-  tierPeriod: {
-    ...typography.body,
-    color: colors.mutedForeground,
-  },
-  tierSeatPrice: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-  seatSelector: {
-    backgroundColor: colors.muted,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  seatSelectorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  seatSelectorLabel: {
-    ...typography.body,
-    color: colors.foreground,
-    fontWeight: '500',
-  },
-  seatControls: {
+  addOnHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+    marginBottom: spacing.sm,
   },
-  seatButton: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
+  addOnIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  seatButtonDisabled: {
-    opacity: 0.5,
-  },
-  seatCount: {
+  addOnName: {
     ...typography.subtitle,
-    color: colors.foreground,
-    minWidth: 32,
-    textAlign: 'center',
-  },
-  seatTotalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  seatTotalLabel: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-  },
-  seatTotalPrice: {
-    ...typography.body,
-    color: colors.foreground,
-    fontWeight: '600',
-  },
-  ctaButton: {
-    paddingVertical: spacing.md,
-    borderRadius: radius.xl,
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  ctaButtonPrimary: {
-    backgroundColor: colors.primary,
-  },
-  ctaButtonOutline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  ctaButtonDisabled: {
-    opacity: 0.5,
-  },
-  ctaButtonText: {
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  ctaButtonTextPrimary: {
-    color: colors.primaryForeground,
-  },
-  ctaButtonTextOutline: {
-    color: colors.foreground,
-  },
-  ctaSubtext: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-  featureList: {
-    gap: spacing.sm,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  featureIconContainer: {
-    marginTop: 2,
-  },
-  featureText: {
-    ...typography.body,
     color: colors.foreground,
     flex: 1,
   },
-  featureTextDisabled: {
-    color: `${colors.mutedForeground}80`,
-  },
-  trialInfoCard: {
-    backgroundColor: colors.muted,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginTop: spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  trialInfoTitle: {
-    ...typography.subtitle,
-    color: colors.foreground,
-    marginBottom: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  trialSteps: {
-    gap: spacing.lg,
-  },
-  trialStep: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  trialStepNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  trialStepNumberText: {
-    ...typography.body,
+  addOnPrice: {
+    ...typography.caption,
     color: colors.primary,
     fontWeight: '700',
   },
-  trialStepContent: {
-    flex: 1,
-  },
-  trialStepTitle: {
-    ...typography.body,
-    color: colors.foreground,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  trialStepText: {
+  addOnDescription: {
     ...typography.caption,
     color: colors.mutedForeground,
-    lineHeight: 18,
-  },
-  cardRequiredNote: {
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginTop: spacing.lg,
-    flexDirection: 'row',
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cardRequiredContent: {
-    flex: 1,
-  },
-  cardRequiredTitle: {
-    ...typography.body,
-    color: colors.foreground,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  cardRequiredText: {
-    ...typography.caption,
-    color: colors.mutedForeground,
-    lineHeight: 18,
-  },
-  supportSection: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-  },
-  supportText: {
-    ...typography.body,
-    color: colors.mutedForeground,
-  },
-  supportLink: {
-    color: colors.primary,
   },
 });
 
-export default function SubscriptionScreen() {
-  const { colors } = useTheme();
-  const { user } = useAuthStore();
+export default function SubscriptionPage() {
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const user = useAuthStore(state => state.user);
 
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+  const [usage, setUsage] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [managingSubscription, setManagingSubscription] = useState(false);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
-  const [teamSeats, setTeamSeats] = useState(2);
-  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   const fetchSubscriptionStatus = useCallback(async () => {
     try {
-      const response = await api.get<SubscriptionStatus>('/api/subscription/status');
-      if (response.data) {
-        setSubscriptionStatus(response.data);
-        // Pre-fill team seats with actual team member count if available
-        if (response.data.teamMemberCount && response.data.teamMemberCount > 0) {
-          setTeamSeats(response.data.teamMemberCount);
-        }
+      const [subResponse, usageResponse] = await Promise.all([
+        api.get<SubscriptionStatus>('/api/subscription/status'),
+        api.get<UsageData>('/api/subscription/usage').catch(() => ({ data: null, error: null })),
+      ]);
+
+      if (subResponse.data) {
+        setSubscriptionStatus(subResponse.data);
+      }
+      if (usageResponse.data) {
+        setUsage(usageResponse.data);
       }
     } catch (error) {
       console.error('Failed to fetch subscription status:', error);
@@ -585,27 +342,24 @@ export default function SubscriptionScreen() {
     fetchSubscriptionStatus();
   }, [fetchSubscriptionStatus]);
 
-  const handleManageSubscription = async () => {
+  const handleManageBilling = async () => {
     setManagingSubscription(true);
     try {
       const response = await api.post<{ url: string }>('/api/subscription/manage');
-      
       if (response.data?.url) {
-        const canOpen = await Linking.canOpenURL(response.data.url);
-        if (canOpen) {
-          await Linking.openURL(response.data.url);
-        } else {
-          Alert.alert('Error', 'Unable to open billing portal. Please try again.');
-        }
+        await Linking.openURL(response.data.url);
       } else {
-        Alert.alert('Error', 'Failed to open billing portal. Please try again.');
+        await Linking.openURL(WEB_BILLING_URL);
       }
-    } catch (error: any) {
-      console.error('Manage subscription error:', error);
-      Alert.alert('Error', error.message || 'Failed to open billing portal.');
+    } catch {
+      await Linking.openURL(WEB_BILLING_URL);
     } finally {
       setManagingSubscription(false);
     }
+  };
+
+  const handleUpgradeOnWeb = async () => {
+    await Linking.openURL(WEB_BILLING_URL);
   };
 
   const formatDate = (dateString?: string | null) => {
@@ -617,462 +371,233 @@ export default function SubscriptionScreen() {
     });
   };
 
-  const isCurrentTier = (tierId: string) => {
-    if (!subscriptionStatus) return tierId === 'free';
-    return subscriptionStatus.tier === tierId;
+  const currentTier = subscriptionStatus?.tier || 'free';
+  const planInfo = PLAN_DETAILS[currentTier] || PLAN_DETAILS.free;
+  const hasActiveSubscription = currentTier === 'pro' || currentTier === 'team' || currentTier === 'trial';
+  const isBeta = subscriptionStatus?.isBeta || subscriptionStatus?.betaUser;
+
+  const getUsagePercent = (used: number, limit: number | null) => {
+    if (!limit) return 0;
+    return Math.min((used / limit) * 100, 100);
   };
 
-  const hasActiveSubscription = subscriptionStatus && 
-    (subscriptionStatus.tier === 'pro' || subscriptionStatus.tier === 'team' || subscriptionStatus.tier === 'trial');
-
-  const getTierCardStyle = (tier: Tier) => {
-    const baseStyle = [styles.tierCard];
-    if (isCurrentTier(tier.id)) {
-      baseStyle.push(styles.tierCardCurrent);
-    } else if (tier.popular) {
-      baseStyle.push(styles.tierCardPopular);
-    } else {
-      baseStyle.push(styles.tierCardDefault);
-    }
-    return baseStyle;
+  const getUsageColor = (percent: number) => {
+    if (percent >= 90) return '#EF4444';
+    if (percent >= 70) return '#F59E0B';
+    return colors.primary;
   };
 
-  const getCtaButtonText = (tier: Tier) => {
-    if (isCurrentTier(tier.id)) return 'Current Plan';
-    if (tier.id === 'free') return 'Free Plan';
-    return `Start Free Trial`;
-  };
-
-  const handleCheckout = async (tierId: string) => {
-    setCheckoutLoading(tierId);
-    try {
-      const response = await api.post<{ url?: string; success?: boolean; betaAccess?: boolean }>('/api/subscription/create-checkout', {
-        tier: tierId,
-        seats: tierId === 'team' ? teamSeats : undefined,
-      });
-
-      if (response.data?.url) {
-        const canOpen = await Linking.canOpenURL(response.data.url);
-        if (canOpen) {
-          await Linking.openURL(response.data.url);
-        } else {
-          Alert.alert('Error', 'Unable to open checkout. Please try again.');
-        }
-      } else if (response.data?.success || response.data?.betaAccess) {
-        Alert.alert('Success', 'Your plan has been upgraded successfully.');
-        fetchSubscriptionStatus();
-      } else {
-        Alert.alert('Error', response.error || 'Failed to start checkout. Please try again.');
-      }
-    } catch (error: any) {
-      console.error('Checkout error:', error);
-      Alert.alert('Error', error.message || 'Failed to start checkout.');
-    } finally {
-      setCheckoutLoading(null);
-    }
-  };
-
-  const renderTierCard = (tier: Tier) => {
-    const isDisabled = isCurrentTier(tier.id) || 
-      (subscriptionStatus?.tier === 'pro' && tier.id === 'pro') ||
-      (subscriptionStatus?.tier === 'team' && tier.id === 'team');
-    const isLoading = checkoutLoading === tier.id;
-    const teamTotal = tier.price + (teamSeats * (tier.seatPrice || 0));
-
+  if (loading) {
     return (
-      <View key={tier.id} style={getTierCardStyle(tier)}>
-        {tier.popular && (
-          <View style={styles.popularBadge}>
-            <Text style={styles.popularBadgeText}>Most Popular</Text>
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: 'Subscription', headerBackTitle: 'Back' }} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Stack.Screen options={{ title: 'Subscription', headerBackTitle: 'Back' }} />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+      >
+        {isBeta && (
+          <View style={styles.betaBadge}>
+            <Feather name="star" size={14} color="#10B981" />
+            <Text style={styles.betaBadgeText}>Founding Member</Text>
           </View>
         )}
 
-        <View style={styles.tierHeader}>
-          <View style={[
-            styles.tierIconContainer,
-            tier.id === 'free' ? styles.tierIconFree :
-            tier.id === 'pro' ? styles.tierIconPro : styles.tierIconTeam
-          ]}>
-            <Feather 
-              name={tier.id === 'free' ? 'zap' : tier.id === 'pro' ? 'award' : 'users'} 
-              size={18} 
-              color={tier.id === 'free' ? colors.mutedForeground : colors.primary} 
-            />
-          </View>
-          <Text style={styles.tierName}>{tier.name}</Text>
-        </View>
-
-        <Text style={styles.tierDescription}>{tier.description}</Text>
-
-        <View style={styles.tierPricing}>
-          <View style={styles.tierPriceRow}>
-            <Text style={styles.tierPrice}>${tier.price}</Text>
-            <Text style={styles.tierPeriod}>/month</Text>
-          </View>
-          {tier.seatPrice && (
-            <Text style={styles.tierSeatPrice}>
-              + ${tier.seatPrice}/seat for team members
-            </Text>
-          )}
-        </View>
-
-        {tier.id === 'team' && !isCurrentTier('team') && (
-          <View style={styles.seatSelector}>
-            <View style={styles.seatSelectorRow}>
-              <Text style={styles.seatSelectorLabel}>Team seats</Text>
-              <View style={styles.seatControls}>
-                <TouchableOpacity
-                  style={[styles.seatButton, teamSeats <= 0 && styles.seatButtonDisabled]}
-                  onPress={() => setTeamSeats(Math.max(0, teamSeats - 1))}
-                  disabled={teamSeats <= 0}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="minus" size={16} color={colors.foreground} />
-                </TouchableOpacity>
-                <Text style={styles.seatCount}>{teamSeats}</Text>
-                <TouchableOpacity
-                  style={[styles.seatButton, teamSeats >= 50 && styles.seatButtonDisabled]}
-                  onPress={() => setTeamSeats(Math.min(50, teamSeats + 1))}
-                  disabled={teamSeats >= 50}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="plus" size={16} color={colors.foreground} />
-                </TouchableOpacity>
-              </View>
-            </View>
-            <View style={styles.seatTotalRow}>
-              <Text style={styles.seatTotalLabel}>Total monthly</Text>
-              <Text style={styles.seatTotalPrice}>${teamTotal} AUD</Text>
-            </View>
-          </View>
-        )}
-
-        {isDisabled || tier.id === 'free' ? (
-          <View
-            style={[
-              styles.ctaButton,
-              styles.ctaButtonOutline,
-              styles.ctaButtonDisabled
-            ]}
-          >
-            <Text style={[styles.ctaButtonText, styles.ctaButtonTextOutline]}>
-              {getCtaButtonText(tier)}
-            </Text>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={[
-              styles.ctaButton,
-              tier.popular ? styles.ctaButtonPrimary : styles.ctaButtonOutline
-            ]}
-            onPress={() => handleCheckout(tier.id)}
-            disabled={isLoading}
-            activeOpacity={0.7}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color={tier.popular ? '#FFFFFF' : colors.primary} />
-            ) : (
-              <Text style={[styles.ctaButtonText, tier.popular ? styles.ctaButtonTextPrimary : styles.ctaButtonTextOutline]}>
-                {getCtaButtonText(tier)}
+        {currentTier === 'trial' && subscriptionStatus?.trialEndsAt && (
+          <View style={[styles.trialBanner, isDark && styles.trialBannerDark]}>
+            <Feather name="clock" size={20} color="#92400E" />
+            <View style={styles.trialBannerText}>
+              <Text style={styles.trialBannerTitle}>Free Trial Active</Text>
+              <Text style={styles.trialBannerSubtitle}>
+                Ends {formatDate(subscriptionStatus.trialEndsAt)}. Upgrade on the web to keep your features.
               </Text>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.planCard}>
+          <View style={styles.planIconRow}>
+            <View style={styles.planIconCircle}>
+              <Feather name={planInfo.icon as any} size={22} color={colors.primary} />
+            </View>
+            <View>
+              <Text style={styles.planName}>{planInfo.name} Plan</Text>
+              <Text style={styles.planStatus}>
+                {isBeta ? 'Lifetime Access' : 
+                 subscriptionStatus?.cancelAtPeriodEnd ? 'Cancels at period end' : 
+                 'Active'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.planFeatures}>
+            {planInfo.features.map((feature, i) => (
+              <View key={i} style={styles.planFeatureItem}>
+                <Feather name="check" size={16} color={colors.primary} />
+                <Text style={styles.planFeatureText}>{feature}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {hasActiveSubscription && (
+          <View style={styles.infoSection}>
+            <Text style={styles.infoSectionTitle}>Billing Details</Text>
+            {subscriptionStatus?.nextBillingDate && (
+              <>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Next billing date</Text>
+                  <Text style={styles.infoValue}>{formatDate(subscriptionStatus.nextBillingDate)}</Text>
+                </View>
+                <View style={styles.divider} />
+              </>
+            )}
+            {subscriptionStatus?.currentPeriodEnd && (
+              <>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Current period ends</Text>
+                  <Text style={styles.infoValue}>{formatDate(subscriptionStatus.currentPeriodEnd)}</Text>
+                </View>
+                <View style={styles.divider} />
+              </>
+            )}
+            {subscriptionStatus?.paymentMethod && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Payment method</Text>
+                <Text style={styles.infoValue}>
+                  {subscriptionStatus.paymentMethod.brand} ****{subscriptionStatus.paymentMethod.last4}
+                </Text>
+              </View>
+            )}
+            {currentTier === 'team' && subscriptionStatus?.teamMemberCount != null && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Team members</Text>
+                  <Text style={styles.infoValue}>{subscriptionStatus.teamMemberCount} seats</Text>
+                </View>
+              </>
+            )}
+          </View>
+        )}
+
+        {usage && currentTier === 'free' && (
+          <View style={styles.infoSection}>
+            <Text style={styles.infoSectionTitle}>Usage This Month</Text>
+            {[
+              { label: 'Jobs', data: usage.jobs },
+              { label: 'Invoices', data: usage.invoices },
+              { label: 'Clients', data: usage.clients },
+            ].map((item, i) => {
+              const percent = getUsagePercent(item.data.used, item.data.limit);
+              const usageColor = getUsageColor(percent);
+              return (
+                <View key={i} style={styles.usageRow}>
+                  <View style={styles.usageHeader}>
+                    <Text style={styles.infoLabel}>{item.label}</Text>
+                    <Text style={styles.infoValue}>
+                      {item.data.used}{item.data.limit ? ` / ${item.data.limit}` : ''}
+                    </Text>
+                  </View>
+                  {item.data.limit && (
+                    <View style={styles.usageBar}>
+                      <View style={[styles.usageFill, { width: `${percent}%`, backgroundColor: usageColor }]} />
+                    </View>
+                  )}
+                  {i < 2 && <View style={[styles.divider, { marginTop: spacing.sm }]} />}
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {hasActiveSubscription && (
+          <TouchableOpacity 
+            style={styles.manageButton}
+            onPress={handleManageBilling}
+            disabled={managingSubscription}
+            activeOpacity={0.8}
+          >
+            {managingSubscription ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <>
+                <Feather name="external-link" size={18} color="#FFFFFF" />
+                <Text style={styles.manageButtonText}>Manage Billing</Text>
+              </>
             )}
           </TouchableOpacity>
         )}
 
-        {tier.id !== 'free' && !isCurrentTier(tier.id) && (
-          <Text style={styles.ctaSubtext}>
-            14-day free trial, cancel anytime
+        {!hasActiveSubscription && !isBeta && (
+          <>
+            <TouchableOpacity 
+              style={styles.manageButton}
+              onPress={handleUpgradeOnWeb}
+              activeOpacity={0.8}
+            >
+              <Feather name="external-link" size={18} color="#FFFFFF" />
+              <Text style={styles.manageButtonText}>View Plans & Upgrade</Text>
+            </TouchableOpacity>
+            <Text style={styles.manageDescription}>
+              Manage your subscription, change plans, and update billing details on the web.
+            </Text>
+          </>
+        )}
+
+        {hasActiveSubscription && (
+          <Text style={styles.manageDescription}>
+            Change plans, update payment details, and view invoices on the web.
           </Text>
         )}
 
-        <View style={styles.featureList}>
-          {tier.features.map((feature, index) => (
-            <View key={index} style={styles.featureItem}>
-              <View style={styles.featureIconContainer}>
-                <Feather 
-                  name={feature.included ? 'check' : 'x'} 
-                  size={18} 
-                  color={feature.included ? colors.success : `${colors.mutedForeground}60`} 
-                />
+        <View style={styles.addOnSection}>
+          <Text style={[styles.infoSectionTitle, { marginBottom: spacing.md }]}>Power Add-Ons</Text>
+          
+          <View style={styles.addOnCard}>
+            <View style={styles.addOnHeader}>
+              <View style={styles.addOnIconCircle}>
+                <Feather name="phone" size={16} color={colors.primary} />
               </View>
-              <Text style={[
-                styles.featureText,
-                !feature.included && styles.featureTextDisabled
-              ]}>
-                {feature.text}
-              </Text>
+              <Text style={styles.addOnName}>AI Receptionist</Text>
+              <Text style={styles.addOnPrice}>$60/mo</Text>
             </View>
-          ))}
-        </View>
-      </View>
-    );
-  };
+            <Text style={styles.addOnDescription}>
+              AI-powered phone answering with a dedicated Australian number. Captures leads and transfers calls to your team.
+            </Text>
+          </View>
 
-  return (
-    <>
-      <Stack.Screen 
-        options={{ 
-          title: 'Subscription',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.foreground,
-        }} 
-      />
-      <ScrollView 
-        style={styles.container}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        <View style={styles.content}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.loadingText}>Loading subscription details...</Text>
+          <View style={styles.addOnCard}>
+            <View style={styles.addOnHeader}>
+              <View style={styles.addOnIconCircle}>
+                <Feather name="smartphone" size={16} color={colors.primary} />
+              </View>
+              <Text style={styles.addOnName}>Dedicated Number</Text>
+              <Text style={styles.addOnPrice}>$5/mo</Text>
             </View>
-          ) : (
-            <>
-              <View style={styles.heroSection}>
-                <View style={styles.trialBadge}>
-                  <Feather name="star" size={14} color={colors.primary} />
-                  <Text style={styles.trialBadgeText}>Free Plan</Text>
-                </View>
-                <Text style={styles.heroTitle}>
-                  Choose Your Plan
-                </Text>
-                <Text style={styles.heroSubtitle}>
-                  Start free and upgrade as your business grows. No credit card required.
-                </Text>
-                
-                <View style={styles.trustBadges}>
-                  <View style={styles.trustBadge}>
-                    <Feather name="shield" size={14} color={colors.success} />
-                    <Text style={styles.trustBadgeText}>No credit card required</Text>
-                  </View>
-                  <View style={styles.trustBadge}>
-                    <Feather name="credit-card" size={14} color={colors.success} />
-                    <Text style={styles.trustBadgeText}>14-day free trial</Text>
-                  </View>
-                  <View style={styles.trustBadge}>
-                    <Feather name="award" size={14} color={colors.success} />
-                    <Text style={styles.trustBadgeText}>Cancel anytime</Text>
-                  </View>
-                </View>
-              </View>
+            <Text style={styles.addOnDescription}>
+              Your own Australian mobile number for sending SMS. Clients see your number, not JobRunner's.
+            </Text>
+          </View>
 
-              {hasActiveSubscription && (
-                <View style={styles.currentPlanCard}>
-                  <View style={styles.currentPlanContent}>
-                    <View style={styles.currentPlanInfo}>
-                      <View style={styles.currentPlanIcon}>
-                        <Feather 
-                          name={subscriptionStatus?.tier === 'team' ? 'users' : 'award'} 
-                          size={24} 
-                          color={colors.primary} 
-                        />
-                      </View>
-                      <View style={styles.currentPlanDetails}>
-                        <View style={styles.currentPlanHeader}>
-                          <Text style={styles.currentPlanName}>
-                            {subscriptionStatus?.tier === 'trial' ? 'Pro' : subscriptionStatus?.tier} Plan
-                          </Text>
-                          {subscriptionStatus?.status === 'active' && (
-                            <View style={[styles.currentPlanBadge, { backgroundColor: colors.success + '20' }]}>
-                              <Text style={[styles.currentPlanBadgeText, { color: colors.success }]}>
-                                Active
-                              </Text>
-                            </View>
-                          )}
-                          {subscriptionStatus?.cancelAtPeriodEnd && (
-                            <View style={[styles.currentPlanBadge, styles.cancelingBadgeStyle]}>
-                              <Text style={[styles.currentPlanBadgeText, styles.cancelingBadgeTextStyle]}>
-                                Canceling
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={styles.currentPlanSubtext}>
-                          {subscriptionStatus?.nextBillingDate ? (
-                            `Next billing: ${formatDate(subscriptionStatus.nextBillingDate)}`
-                          ) : subscriptionStatus?.currentPeriodEnd ? (
-                            `Active until ${formatDate(subscriptionStatus.currentPeriodEnd)}`
-                          ) : (
-                            'Active subscription'
-                          )}
-                        </Text>
-                        {/* Team member count for billing info */}
-                        {(subscriptionStatus?.tier === 'team' || (subscriptionStatus?.teamMemberCount && subscriptionStatus.teamMemberCount > 0)) && (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 }}>
-                            <Feather name="users" size={12} color={colors.mutedForeground} />
-                            <Text style={[styles.currentPlanSubtext, { marginTop: 0 }]}>
-                              {subscriptionStatus.totalBillableUsers} billable user{subscriptionStatus.totalBillableUsers !== 1 ? 's' : ''} (1 owner + {subscriptionStatus.teamMemberCount} team)
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                    {subscriptionStatus?.stripeSubscriptionId && (
-                      <TouchableOpacity 
-                        style={styles.manageButton}
-                        onPress={handleManageSubscription}
-                        disabled={managingSubscription}
-                        activeOpacity={0.7}
-                      >
-                        {managingSubscription ? (
-                          <ActivityIndicator size="small" color={colors.foreground} />
-                        ) : (
-                          <>
-                            <Text style={styles.manageButtonText}>Manage</Text>
-                            <Feather name="external-link" size={14} color={colors.foreground} />
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              )}
-
-              {tiers.map(renderTierCard)}
-
-              {/* Power Add-Ons Section */}
-              <View style={{ marginTop: spacing.lg, marginBottom: spacing.md }}>
-                <Text style={[styles.tierName, { textAlign: 'center', fontSize: 20, marginBottom: spacing.xs }]}>
-                  Power Add-Ons
-                </Text>
-                <Text style={[styles.currentPlanSubtext, { textAlign: 'center', marginBottom: spacing.md }]}>
-                  Available on any paid plan. Add only what you need.
-                </Text>
-              </View>
-
-              {/* AI Receptionist Add-On */}
-              <View style={[styles.tierCard, { marginBottom: spacing.md }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
-                  <View style={{ width: 36, height: 36, borderRadius: radius.md, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
-                    <Feather name="headphones" size={18} color={colors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.tierName}>AI Receptionist</Text>
-                    <Text style={[styles.currentPlanSubtext, { marginTop: 0 }]}>$60/month add-on</Text>
-                  </View>
-                </View>
-                <Text style={[styles.featureText, { marginBottom: spacing.sm, color: colors.mutedForeground }]}>
-                  AI-powered phone answering with a dedicated Australian number. Captures leads and transfers calls to your team.
-                </Text>
-                <View style={styles.featureList}>
-                  {['Dedicated Australian phone number', '24/7 AI answering in your business name', 'Auto lead capture and caller details', 'Live call transfer to team'].map((feat, i) => (
-                    <View key={i} style={styles.featureItem}>
-                      <View style={styles.featureIconContainer}>
-                        <Feather name="check" size={14} color="#2563eb" />
-                      </View>
-                      <Text style={styles.featureText}>{feat}</Text>
-                    </View>
-                  ))}
-                </View>
-                <TouchableOpacity 
-                  style={[styles.ctaButton, styles.ctaButtonOutline, { marginTop: spacing.md }]}
-                  onPress={() => router.push('/more/ai-receptionist')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.ctaButtonTextOutline}>
-                    <Feather name="headphones" size={14} />{'  '}Set Up AI Receptionist
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Custom Website Add-On */}
-              <View style={[styles.tierCard, { marginBottom: spacing.md }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
-                  <View style={{ width: 36, height: 36, borderRadius: radius.md, backgroundColor: `${colors.accent}30`, alignItems: 'center', justifyContent: 'center' }}>
-                    <Feather name="globe" size={18} color={colors.accent} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.tierName}>Custom Website</Text>
-                    <Text style={[styles.currentPlanSubtext, { marginTop: 0 }]}>Custom quote</Text>
-                  </View>
-                </View>
-                <Text style={[styles.featureText, { marginBottom: spacing.sm, color: colors.mutedForeground }]}>
-                  Professional website built for your trade business — mobile-friendly, SEO optimised, and integrated with JobRunner.
-                </Text>
-                <View style={styles.featureList}>
-                  {['Custom design tailored to your trade', 'Local SEO for your suburb and trade', 'JobRunner quote form integration', 'Hosting and support included'].map((feat, i) => (
-                    <View key={i} style={styles.featureItem}>
-                      <View style={styles.featureIconContainer}>
-                        <Feather name="check" size={14} color="#7c3aed" />
-                      </View>
-                      <Text style={styles.featureText}>{feat}</Text>
-                    </View>
-                  ))}
-                </View>
-                <TouchableOpacity 
-                  style={[styles.ctaButton, styles.ctaButtonOutline, { marginTop: spacing.md }]}
-                  onPress={() => router.push('/more/custom-website')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.ctaButtonTextOutline}>
-                    <Feather name="globe" size={14} />{'  '}Learn More
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.trialInfoCard}>
-                <Text style={styles.trialInfoTitle}>
-                  <Feather name="gift" size={18} color={colors.foreground} />
-                  {'  '}How It Works
-                </Text>
-                
-                <View style={styles.trialSteps}>
-                  <View style={styles.trialStep}>
-                    <View style={styles.trialStepNumber}>
-                      <Text style={styles.trialStepNumberText}>1</Text>
-                    </View>
-                    <View style={styles.trialStepContent}>
-                      <Text style={styles.trialStepTitle}>Sign up free</Text>
-                      <Text style={styles.trialStepText}>
-                        No credit card needed. Get started with the Free plan instantly.
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.trialStep}>
-                    <View style={styles.trialStepNumber}>
-                      <Text style={styles.trialStepNumberText}>2</Text>
-                    </View>
-                    <View style={styles.trialStepContent}>
-                      <Text style={styles.trialStepTitle}>Try Pro free for 14 days</Text>
-                      <Text style={styles.trialStepText}>
-                        Upgrade to Pro or Team and get full access to all features during your trial.
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.trialStep}>
-                    <View style={styles.trialStepNumber}>
-                      <Text style={styles.trialStepNumberText}>3</Text>
-                    </View>
-                    <View style={styles.trialStepContent}>
-                      <Text style={styles.trialStepTitle}>Grow your business</Text>
-                      <Text style={styles.trialStepText}>
-                        Keep your plan or cancel anytime. Your data is always safe and accessible.
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.supportSection}>
-                <Text style={styles.supportText}>
-                  Have questions?{' '}
-                  <Text 
-                    style={styles.supportLink}
-                    onPress={() => Linking.openURL('mailto:admin@avwebinnovation.com')}
-                  >
-                    Contact our support team
-                  </Text>
-                </Text>
-              </View>
-            </>
-          )}
+          <TouchableOpacity 
+            style={styles.secondaryButton}
+            onPress={handleUpgradeOnWeb}
+            activeOpacity={0.8}
+          >
+            <Feather name="external-link" size={16} color={colors.foreground} />
+            <Text style={styles.secondaryButtonText}>Manage Add-Ons on Web</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
-    </>
+    </View>
   );
 }

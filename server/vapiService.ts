@@ -1033,7 +1033,7 @@ async function handleCreateBooking(args: any, userId: string, callId: string): P
       name: args.caller_name || 'Unknown Caller',
       phone: args.caller_phone || null,
       email: null,
-      source: 'phone',
+      source: 'ai_receptionist',
       status: 'new',
       description: `Booking request: ${args.job_type || 'Not specified'}${args.preferred_date ? ` for ${args.preferred_date}` : ''}${args.preferred_time ? ` (${args.preferred_time})` : ''}`,
       estimatedValue: null,
@@ -1253,7 +1253,7 @@ async function sendCallNotifications(
 
     const config = await storage.getAiReceptionistConfig(userId);
     if (config?.smsNotifications) {
-      const smsBody = `New AI Receptionist call (${durationText}). ${summaryText.slice(0, 200)}\n\nOpen JobRunner to review the lead.`;
+      const smsBody = `AI Receptionist: ${callerDisplay} called (${durationText}).\n\n${summaryText.slice(0, 200)}\n\nOpen JobRunner to review.`;
 
       const fromNumber = business.dedicatedPhoneNumber || undefined;
       const notifiedNumbers = new Set<string>();
@@ -1302,9 +1302,7 @@ async function sendSupportLineNotifications(
     const summaryText = summary || 'No summary available';
     const durationText = duration ? `${Math.ceil(duration / 60)} min` : 'Unknown';
 
-    const smsBody = callerPhone
-      ? `NEW LEAD - JobRunner Support Line\nCaller: ${callerDisplay}\nDuration: ${durationText}\n\n${summaryText.slice(0, 200)}\n\nTap to call back: ${callerPhone}`
-      : `JobRunner Support Line: Call received (${durationText}). ${summaryText.slice(0, 200)}`;
+    const smsBody = `JobRunner Support Line\nCaller: ${callerDisplay}\nDuration: ${durationText}\n\n${summaryText.slice(0, 200)}\n\nOpen JobRunner to review.`;
 
     await sendSMS({ to: adminPhone, message: smsBody });
     console.log(`[Vapi] Support line SMS sent to admin ${adminPhone}`);
