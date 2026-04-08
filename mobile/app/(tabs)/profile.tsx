@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Linking,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -325,7 +326,7 @@ function MenuItem({
         lockReason || 'This feature requires a plan upgrade. Start a free trial to unlock it.',
         [
           { text: 'Maybe Later', style: 'cancel' },
-          { text: 'View Plans', onPress: () => router.push('/more/subscription' as any) },
+          { text: 'View Plans', onPress: () => Linking.openURL('https://jobrunner.com.au/settings?tab=billing') },
         ]
       );
     } else {

@@ -11,6 +11,7 @@ import {
   Modal,
   Dimensions,
   TextInput,
+  Linking,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -1164,7 +1165,7 @@ export default function TeamOperationsScreen() {
         {needsUpgrade && (
           <TouchableOpacity 
             style={[styles.upgradeBanner, { backgroundColor: colors.primary + '15' }]}
-            onPress={() => router.push('/more/subscription')}
+            onPress={() => Linking.openURL('https://jobrunner.com.au/settings?tab=billing')}
             activeOpacity={0.8}
           >
             <Feather name="star" size={18} color={colors.primary} />

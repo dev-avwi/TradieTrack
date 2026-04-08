@@ -1614,14 +1614,14 @@ export default function SettingsScreen() {
 
           <TouchableOpacity 
             style={styles.subscriptionLink}
-            onPress={() => router.push('/more/subscription')}
+            onPress={() => Linking.openURL('https://jobrunner.com.au/settings?tab=billing')}
             data-testid="button-manage-subscription"
           >
             <View style={styles.subscriptionLinkContent}>
               <Feather name="award" size={20} color={colors.primary} />
               <View style={styles.subscriptionLinkText}>
                 <Text style={styles.subscriptionLinkTitle}>Manage Subscription</Text>
-                <Text style={styles.subscriptionLinkSubtitle}>View plan details, usage & billing</Text>
+                <Text style={styles.subscriptionLinkSubtitle}>View plan details, usage & billing on web</Text>
               </View>
             </View>
             <Feather name="external-link" size={18} color={colors.mutedForeground} />
@@ -2824,7 +2824,7 @@ export default function SettingsScreen() {
                 {currentPlan === 'free' && (
                   <TouchableOpacity 
                     style={styles.upgradeButton}
-                    onPress={() => router.push('/more/subscription')}
+                    onPress={() => Linking.openURL('https://jobrunner.com.au/settings?tab=billing')}
                     data-testid="button-upgrade"
                   >
                     <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
@@ -2834,7 +2834,7 @@ export default function SettingsScreen() {
                 {(currentPlan === 'pro' || currentPlan === 'team') && (
                   <TouchableOpacity 
                     style={styles.manageBillingButton}
-                    onPress={() => router.push('/more/subscription')}
+                    onPress={() => Linking.openURL('https://jobrunner.com.au/settings?tab=billing')}
                   >
                     <Feather name="external-link" size={16} color={colors.foreground} />
                     <Text style={styles.manageBillingText}>Manage Billing</Text>

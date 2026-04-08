@@ -25,7 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 type OnboardingRole = 'owner' | 'worker' | 'subcontractor' | null;
 
-type OwnerStep = 'role' | 'business' | 'trade' | 'teamSize' | 'plan' | 'complete';
+type OwnerStep = 'role' | 'business' | 'trade' | 'teamSize' | 'complete';
 type WorkerStep = 'role' | 'inviteCode' | 'workerDetails' | 'complete';
 type SubcontractorStep = 'role' | 'subDetails' | 'subConnect' | 'privacy' | 'complete';
 
@@ -126,7 +126,7 @@ export default function OnboardingSetupScreen() {
           if (settings.businessName && settings.tradeType) {
             setSelectedRole('owner');
             if (settings.teamSize) {
-              setOwnerStep('plan');
+              setOwnerStep('complete');
             } else {
               setOwnerStep('teamSize');
             }
@@ -378,7 +378,7 @@ export default function OnboardingSetupScreen() {
   const getStepCount = () => {
     if (!selectedRole) return { current: 1, total: 1 };
     if (selectedRole === 'owner') {
-      const steps: OwnerStep[] = ['role', 'business', 'trade', 'teamSize', 'plan', 'complete'];
+      const steps: OwnerStep[] = ['role', 'business', 'trade', 'teamSize', 'complete'];
       return { current: steps.indexOf(ownerStep) + 1, total: steps.length };
     }
     if (selectedRole === 'worker') {
@@ -616,14 +616,19 @@ export default function OnboardingSetupScreen() {
       </View>
 
       <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.primaryButton} onPress={() => {
+        <TouchableOpacity style={[styles.primaryButton, isLoading && { opacity: 0.5 }]} onPress={() => {
           if (!businessData.teamSize) {
             Alert.alert('Required', 'Please select your team size');
             return;
           }
-          setOwnerStep('plan');
-        }} activeOpacity={0.8}>
-          <Text style={styles.primaryButtonText}>Continue</Text>
+          setSelectedPlan('free');
+          handleOwnerComplete();
+        }} disabled={isLoading} activeOpacity={0.8}>
+          {isLoading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Get Started</Text>
+          )}
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -1101,7 +1106,7 @@ export default function OnboardingSetupScreen() {
   const getStepLabel = () => {
     if (currentStep === 'role') return 'Get Started';
     if (selectedRole === 'owner') {
-      const labels: Record<OwnerStep, string> = { role: 'Role', business: 'Business', trade: 'Trade', teamSize: 'Team Size', plan: 'Plan', complete: 'Done!' };
+      const labels: Record<OwnerStep, string> = { role: 'Role', business: 'Business', trade: 'Trade', teamSize: 'Team Size', complete: 'Done!' };
       return labels[ownerStep];
     }
     if (selectedRole === 'worker') {
@@ -1127,7 +1132,7 @@ export default function OnboardingSetupScreen() {
 
   const handleBack = () => {
     if (selectedRole === 'owner') {
-      const steps: OwnerStep[] = ['role', 'business', 'trade', 'teamSize', 'plan'];
+      const steps: OwnerStep[] = ['role', 'business', 'trade', 'teamSize'];
       const idx = steps.indexOf(ownerStep);
       if (idx === 1) { setSelectedRole(null); setOwnerStep('role'); }
       else if (idx > 1) setOwnerStep(steps[idx - 1]);
@@ -1182,7 +1187,6 @@ export default function OnboardingSetupScreen() {
         {selectedRole === 'owner' && ownerStep === 'business' && renderOwnerBusiness()}
         {selectedRole === 'owner' && ownerStep === 'trade' && renderOwnerTrade()}
         {selectedRole === 'owner' && ownerStep === 'teamSize' && renderOwnerTeamSize()}
-        {selectedRole === 'owner' && ownerStep === 'plan' && renderOwnerPlan()}
         {selectedRole === 'worker' && workerStep === 'inviteCode' && renderWorkerInviteCode()}
         {selectedRole === 'worker' && workerStep === 'workerDetails' && renderWorkerDetails()}
         {selectedRole === 'subcontractor' && subStep === 'subDetails' && renderSubDetails()}
