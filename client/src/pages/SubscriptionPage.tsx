@@ -101,7 +101,7 @@ const tiers = [
       { text: 'Automated follow-ups', included: true },
       { text: 'Team management', included: false },
     ],
-    cta: 'Included Free',
+    cta: 'Start 7-Day Free Trial',
     popular: true,
   },
   {
@@ -120,7 +120,7 @@ const tiers = [
       { text: 'Team chat', included: true },
       { text: 'Priority support', included: true },
     ],
-    cta: 'Included Free',
+    cta: 'Start 7-Day Free Trial',
     isContactSales: false,
     popular: false,
   },
@@ -253,30 +253,36 @@ export default function SubscriptionPage() {
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Hero Section */}
         <div className="text-center space-y-4 py-6">
-          <Badge className="bg-orange-100 text-orange-700 border-0 px-4 py-1.5">
-            <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-            Early Access
-          </Badge>
+          {status?.isBeta && (
+            <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 border-0 px-4 py-1.5">
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+              Early Access
+            </Badge>
+          )}
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-            All features included for Early Access members
+            {status?.betaLifetimeAccess
+              ? 'All features included as a Founding Member'
+              : 'Simple pricing for every trade business'}
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            First 10 founding members get lifetime free access in exchange for a testimonial.
+            {status?.betaLifetimeAccess
+              ? 'You have lifetime free access to all features. Thank you for being an early supporter!'
+              : 'Start free and upgrade when you\'re ready. Every plan includes a 7-day free trial.'}
           </p>
           
           {/* Trust Badges */}
           <div className="flex flex-wrap justify-center gap-4 pt-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Shield className="w-4 h-4 text-green-600" />
-              <span>No credit card required</span>
+              <span>No credit card for trial</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CreditCard className="w-4 h-4 text-green-600" />
-              <span>All features unlocked</span>
+              <span>Cancel anytime</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="w-4 h-4 text-green-600" />
-              <span>Lifetime access for early adopters</span>
+              <span>7-day free trial on all plans</span>
             </div>
           </div>
         </div>
@@ -470,22 +476,70 @@ export default function SubscriptionPage() {
                   </div>
                 )}
 
-                {/* CTA - All plans included during Early Access */}
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  disabled
-                  data-testid={`button-plan-${tier.id}`}
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  {isCurrentTier(tier.id) ? 'Current Plan' : 'Included Free'}
-                </Button>
+                {(() => {
+                  const isCurrent = isCurrentTier(tier.id);
+                  const isFoundingMember = status?.betaLifetimeAccess;
+                  const userTierRank = { free: 0, trial: 1, pro: 2, team: 3, business: 3 }[status?.tier || 'free'] ?? 0;
+                  const thisTierRank = { free: 0, trial: 1, pro: 2, team: 3, business: 3 }[tier.id] ?? 0;
+                  const isDowngrade = thisTierRank < userTierRank;
+                  const isUpgrade = thisTierRank > userTierRank;
 
-                {tier.id !== 'free' && (
-                  <p className="text-xs text-center text-muted-foreground">
-                    Paid plans coming soon — free for all founding members
-                  </p>
-                )}
+                  if (isFoundingMember) {
+                    return (
+                      <Button variant="outline" className="w-full" disabled data-testid={`button-plan-${tier.id}`}>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Included Free
+                      </Button>
+                    );
+                  }
+
+                  if (isCurrent || (tier.id === 'free' && !isUpgrade)) {
+                    return (
+                      <Button variant="outline" className="w-full" disabled data-testid={`button-plan-${tier.id}`}>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Current Plan
+                      </Button>
+                    );
+                  }
+
+                  if (isDowngrade) {
+                    return (
+                      <Button variant="outline" className="w-full" disabled data-testid={`button-plan-${tier.id}`}>
+                        Downgrade
+                      </Button>
+                    );
+                  }
+
+                  if (isUpgrade && tier.id !== 'free') {
+                    return (
+                      <>
+                        <Button
+                          className="w-full"
+                          onClick={() => handleStartTrial(tier.id)}
+                          disabled={createCheckoutMutation.isPending}
+                          data-testid={`button-plan-${tier.id}`}
+                        >
+                          {createCheckoutMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          ) : (
+                            <Zap className="w-4 h-4 mr-2" />
+                          )}
+                          {status?.tier === 'trial' ? 'Upgrade Now' : 'Start 7-Day Free Trial'}
+                        </Button>
+                        <p className="text-xs text-center text-muted-foreground">
+                          {status?.tier === 'trial' ? 'Upgrade your subscription' : 'No credit card required to start'}
+                        </p>
+                      </>
+                    );
+                  }
+
+                  return (
+                    <Button variant="outline" className="w-full" disabled data-testid={`button-plan-${tier.id}`}>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Current Plan
+                    </Button>
+                  );
+                })()}
 
                 {/* Features List */}
                 <ul className="space-y-3">
@@ -775,59 +829,46 @@ export default function SubscriptionPage() {
           </CardContent>
         </Card>
 
-        {/* Early Access Information Section */}
-        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
+        {/* How It Works Section */}
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">
-              <Sparkles className="w-5 h-5" />
-              Early Adopter Program
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5" style={{ color: 'hsl(var(--trade))' }} />
+              How upgrading works
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-green-600/10 flex items-center justify-center flex-shrink-0">
-                  <span className="font-bold text-green-600">1</span>
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="font-bold text-primary">1</span>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-1 text-green-900 dark:text-green-100">Sign up for free</h4>
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    No credit card required. Get instant access to all features.
+                  <h4 className="font-medium mb-1">Start your free trial</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Try Pro or Team free for 7 days. No credit card needed to get started.
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-green-600/10 flex items-center justify-center flex-shrink-0">
-                  <span className="font-bold text-green-600">2</span>
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="font-bold text-primary">2</span>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-1 text-green-900 dark:text-green-100">Use all Pro features</h4>
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    Unlimited jobs, quotes, invoices, AI features, and more.
+                  <h4 className="font-medium mb-1">Explore all features</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Use unlimited jobs, AI tools, team management, and more during your trial.
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-green-600/10 flex items-center justify-center flex-shrink-0">
-                  <span className="font-bold text-green-600">3</span>
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="font-bold text-primary">3</span>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-1 text-green-900 dark:text-green-100">Share your feedback</h4>
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    Provide a testimonial and secure lifetime free access.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mt-6 p-4 bg-white/60 dark:bg-green-800/20 rounded-lg border border-green-200 dark:border-green-700">
-              <div className="flex items-start gap-3">
-                <Gift className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-medium mb-1 text-green-900 dark:text-green-100">Limited early adopter spots</h4>
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    First 10 users who sign up and agree to provide a testimonial receive lifetime free access to all Pro features, 
-                    even after we officially launch with paid plans.
+                  <h4 className="font-medium mb-1">Subscribe when you're ready</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Choose a plan that fits. Cancel anytime — no lock-in contracts.
                   </p>
                 </div>
               </div>

@@ -24,6 +24,7 @@ import Header from "@/components/Header";
 import FloatingAIChat from "@/components/FloatingAIChat";
 import PaymentToastProvider from "@/components/PaymentToastProvider";
 import RouteGuard from "@/components/RouteGuard";
+import FeatureGate from "@/components/FeatureGate";
 import ErrorBoundary, { PageErrorBoundary } from "@/components/ErrorBoundary";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { useFeatureAccess } from "@/hooks/use-subscription";
@@ -707,7 +708,9 @@ function Router({
       </Route>
 
       <Route path="/dispatch-board" component={() => (
-        <DispatchBoard />
+        <FeatureGate requiredTier="team" featureName="Dispatch Board" description="Visually schedule and dispatch jobs to team members with drag-and-drop.">
+          <DispatchBoard />
+        </FeatureGate>
       )} />
 
       <Route path="/dispatch">
@@ -748,11 +751,15 @@ function Router({
       </Route>
       
       <Route path="/team-operations">
-        <TeamOperations />
+        <FeatureGate requiredTier="team" featureName="Team Operations" description="Manage your team's schedule, dispatch jobs, and track progress in real time.">
+          <TeamOperations />
+        </FeatureGate>
       </Route>
       
       <Route path="/team-chat" component={() => (
-        <TeamChatPage />
+        <FeatureGate requiredTier="team" featureName="Team Chat" description="Communicate with your team in real-time with built-in messaging.">
+          <TeamChatPage />
+        </FeatureGate>
       )} />
       
       <Route path="/chat" component={() => (
@@ -760,7 +767,9 @@ function Router({
       )} />
       
       <Route path="/map" component={() => (
-        <JobMapPage />
+        <FeatureGate requiredTier="team" featureName="Job Map" description="Track your team's live locations and view all jobs on an interactive map.">
+          <JobMapPage />
+        </FeatureGate>
       )} />
       
       <Route path="/messages">
@@ -775,11 +784,15 @@ function Router({
       )} />
 
       <Route path="/insights" component={() => (
-        <Insights onNavigate={onNavigate} />
+        <FeatureGate requiredTier="pro" featureName="Business Insights" description="Get AI-powered insights and analytics to grow your trade business.">
+          <Insights onNavigate={onNavigate} />
+        </FeatureGate>
       )} />
 
       <Route path="/autopilot" component={() => (
-        <Autopilot onNavigate={onNavigate} />
+        <FeatureGate requiredTier="pro" featureName="Autopilot" description="Automate follow-ups, reminders, and routine tasks to save time.">
+          <Autopilot onNavigate={onNavigate} />
+        </FeatureGate>
       )} />
 
       <Route path="/reports/profitability" component={ProfitabilityReport} />
@@ -787,7 +800,9 @@ function Router({
       <Route path="/reports/payroll" component={PayrollReports} />
 
       <Route path="/reports" component={() => (
-        <Reports />
+        <FeatureGate requiredTier="pro" featureName="Reports" description="Access detailed reports on jobs, revenue, team performance, and more.">
+          <Reports />
+        </FeatureGate>
       )} />
       
       <Route path="/calculators" component={Calculators} />
@@ -877,11 +892,15 @@ function Router({
       <Route path="/open-app/:action/:token" component={OpenApp} />
       
       <Route path="/ai-receptionist/calls" component={() => (
-        <AIReceptionistCalls />
+        <FeatureGate requiredTier="pro" featureName="AI Receptionist" description="AI-powered phone answering that captures leads and transfers calls.">
+          <AIReceptionistCalls />
+        </FeatureGate>
       )} />
       
       <Route path="/ai-receptionist" component={() => (
-        <AIReceptionist />
+        <FeatureGate requiredTier="pro" featureName="AI Receptionist" description="AI-powered phone answering that captures leads and transfers calls.">
+          <AIReceptionist />
+        </FeatureGate>
       )} />
 
       <Route path="/website" component={() => (

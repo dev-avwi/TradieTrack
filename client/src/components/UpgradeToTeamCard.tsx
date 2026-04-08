@@ -2,17 +2,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAppMode } from "@/hooks/use-app-mode";
+import { useFeatureAccess } from "@/hooks/use-subscription";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { Link } from "wouter";
 import { 
   Users, 
   MapPin, 
   Calendar, 
   MessageSquare,
   ArrowRight,
-  CheckCircle,
-  Sparkles
+  Sparkles,
+  Zap,
+  Crown
 } from "lucide-react";
 
 interface UpgradeToTeamCardProps {
@@ -21,9 +24,9 @@ interface UpgradeToTeamCardProps {
 
 export default function UpgradeToTeamCard({ onNavigate }: UpgradeToTeamCardProps) {
   const { canUpgradeToTeam, refreshAppMode } = useAppMode();
+  const { subscriptionTier, isFoundingMember } = useFeatureAccess();
   const { toast } = useToast();
 
-  // Upgrade business settings to team mode
   const upgradeToTeam = useMutation({
     mutationFn: async () => {
       const response = await fetch('/api/business-settings', {
@@ -44,7 +47,6 @@ export default function UpgradeToTeamCard({ onNavigate }: UpgradeToTeamCardProps
         title: "Upgraded to Team Mode!",
         description: "You can now invite team members and access team features.",
       });
-      // Navigate to team page to invite first member
       onNavigate?.('/team?invite=true');
     },
     onError: (error: Error) => {
@@ -67,9 +69,10 @@ export default function UpgradeToTeamCard({ onNavigate }: UpgradeToTeamCardProps
     { icon: MessageSquare, label: "Team chat", description: "Communicate in real-time" },
   ];
 
+  const hasTeamAccess = isFoundingMember || subscriptionTier === 'team' || subscriptionTier === 'business';
+
   return (
     <Card className="border-2 border-dashed overflow-hidden" data-testid="upgrade-to-team-card">
-      {/* Gradient header */}
       <div 
         className="h-2"
         style={{ 
@@ -83,9 +86,11 @@ export default function UpgradeToTeamCard({ onNavigate }: UpgradeToTeamCardProps
             <Sparkles className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
             Ready to grow your business?
           </CardTitle>
-          <Badge variant="secondary" className="text-xs">
-            Free
-          </Badge>
+          {isFoundingMember && (
+            <Badge variant="secondary" className="text-xs">
+              Free
+            </Badge>
+          )}
         </div>
       </CardHeader>
       
@@ -94,7 +99,6 @@ export default function UpgradeToTeamCard({ onNavigate }: UpgradeToTeamCardProps
           Unlock team features to manage workers, track locations, and scale your operations.
         </p>
 
-        {/* Feature list */}
         <div className="grid grid-cols-2 gap-3">
           {teamFeatures.map((feature, index) => (
             <div 
@@ -115,28 +119,49 @@ export default function UpgradeToTeamCard({ onNavigate }: UpgradeToTeamCardProps
           ))}
         </div>
 
-        <Button
-          className="w-full h-12 text-white font-semibold rounded-xl"
-          style={{ 
-            background: 'linear-gradient(90deg, hsl(var(--trade)), hsl(217.2 91.2% 59.8%))' 
-          }}
-          onClick={() => upgradeToTeam.mutate()}
-          disabled={upgradeToTeam.isPending}
-          data-testid="button-upgrade-to-team"
-        >
-          {upgradeToTeam.isPending ? (
-            "Enabling..."
-          ) : (
-            <>
-              Enable Team Mode
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </>
-          )}
-        </Button>
-
-        <p className="text-xs text-center text-muted-foreground">
-          Included free during Early Access. Add team members and start collaborating.
-        </p>
+        {hasTeamAccess ? (
+          <>
+            <Button
+              className="w-full h-12 text-white font-semibold rounded-xl"
+              style={{ 
+                background: 'linear-gradient(90deg, hsl(var(--trade)), hsl(217.2 91.2% 59.8%))' 
+              }}
+              onClick={() => upgradeToTeam.mutate()}
+              disabled={upgradeToTeam.isPending}
+              data-testid="button-upgrade-to-team"
+            >
+              {upgradeToTeam.isPending ? (
+                "Enabling..."
+              ) : (
+                <>
+                  Enable Team Mode
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </Button>
+            {isFoundingMember && (
+              <p className="text-xs text-center text-muted-foreground">
+                Included free as a Founding Member.
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <Link href="/subscription">
+              <Button
+                className="w-full h-12 font-semibold"
+                data-testid="button-upgrade-to-team"
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                {subscriptionTier === 'pro' ? 'Upgrade to Team' : 'Start Free Trial'}
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+            <p className="text-xs text-center text-muted-foreground">
+              Team plan starts at $49/mo. 7-day free trial included.
+            </p>
+          </>
+        )}
       </CardContent>
     </Card>
   );

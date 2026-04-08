@@ -7,6 +7,7 @@ import GettingStartedChecklist from "./GettingStartedChecklist";
 import TrustBanner from "./TrustBanner";
 import ActivityFeed from "./ActivityFeed";
 import FloatingActionButton from "./FloatingActionButton";
+import DashboardUpgradeCard from "./DashboardUpgradeCard";
 import { useDashboardKPIs, useTodaysJobs } from "@/hooks/use-dashboard-data";
 import { useUpdateJob } from "@/hooks/use-jobs";
 import { useToast } from "@/hooks/use-toast";
@@ -292,6 +293,7 @@ export default function OwnerManagerDashboard({
 
   return (
     <div className="w-full px-4 sm:px-6 py-4 pb-28" data-testid="owner-manager-dashboard">
+      <DashboardUpgradeCard />
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">

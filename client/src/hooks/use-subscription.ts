@@ -45,7 +45,7 @@ export function useFeatureAccess() {
   return {
     canUploadLogo: isLoading ? true : tier !== 'free',
     canCustomizeBranding: isLoading ? true : tier !== 'free',
-    canAddTeamMembers: isLoading ? false : tier === 'business',
+    canAddTeamMembers: isLoading ? false : tier === 'business' || tier === 'team',
     canUseAIFeatures: isLoading ? true : tier !== 'free',
     canCreateJob: usage?.canCreateJob ?? true,
     canPurchaseAddons,

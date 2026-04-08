@@ -6,6 +6,7 @@ import { useTodaysJobs } from "@/hooks/use-dashboard-data";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useAppMode } from "@/hooks/use-app-mode";
 import UsageLimitBanner from "./UsageLimitBanner";
+import DashboardUpgradeCard from "./DashboardUpgradeCard";
 import TodayWidget from "./TodayWidget";
 import ActivityFeed from "./ActivityFeed";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -567,6 +568,9 @@ export default function TradieDashboard({
 
       {/* Usage limit warning banner - only shows when nearing limits */}
       <UsageLimitBanner variant="compact" />
+
+      {/* Upgrade card for Free users */}
+      <DashboardUpgradeCard />
 
       {/* Demo data banner - shown when user has sample data loaded */}
       {hasDemoData && (

@@ -10,7 +10,7 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { LogOut, User, LayoutDashboard } from "lucide-react";
+import { LogOut, User, LayoutDashboard, Zap } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ interface AppSidebarProps {
 }
 
 export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { data: businessSettings } = useBusinessSettings();
   const { isTeam, isTradie, isOwner, isManager, userRole } = useAppMode();
   const { isSimpleMode } = useSimpleMode();
@@ -220,6 +220,18 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
             </div>
           </div>
           
+          {isOwner && (!businessSettings?.subscriptionTier || businessSettings?.subscriptionTier === 'free') && (
+            <Button 
+              size="sm" 
+              className="w-full justify-start"
+              onClick={() => setLocation('/subscription')}
+              data-testid="button-sidebar-upgrade"
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              Upgrade Plan
+            </Button>
+          )}
+
           <Button 
             variant="ghost" 
             size="sm" 
