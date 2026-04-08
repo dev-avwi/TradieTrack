@@ -285,6 +285,33 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.lg,
     lineHeight: 18,
   },
+  webNoteCard: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginTop: spacing.xl,
+    gap: spacing.md,
+    alignItems: 'flex-start',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  webNoteTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+  webNoteText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    lineHeight: 18,
+  },
+  webNoteSupport: {
+    ...typography.caption,
+    color: colors.primary,
+    marginTop: 6,
+  },
 });
 
 export default function SubscriptionPage() {
@@ -551,9 +578,18 @@ export default function SubscriptionPage() {
           </View>
         </View>
 
-        <Text style={styles.webNote}>
-          Your business subscription is managed at jobrunner.com.au. Contact support@jobrunner.com.au for plan changes.
-        </Text>
+        <View style={styles.webNoteCard}>
+          <Feather name="globe" size={18} color={colors.mutedForeground} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.webNoteTitle}>Manage Your Plan</Text>
+            <Text style={styles.webNoteText}>
+              View plans, change your subscription, or add features at jobrunner.com.au
+            </Text>
+            <Text style={styles.webNoteSupport}>
+              Need help? support@jobrunner.com.au
+            </Text>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );

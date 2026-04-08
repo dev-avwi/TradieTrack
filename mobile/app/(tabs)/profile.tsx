@@ -322,11 +322,11 @@ function MenuItem({
   const handlePress = () => {
     if (locked) {
       Alert.alert(
-        'Feature Locked',
-        lockReason || 'This feature requires a higher business plan.',
+        'Plan Required',
+        lockReason || 'This feature is available on a higher plan. Visit jobrunner.com.au to manage your plan.',
         [
           { text: 'OK', style: 'cancel' },
-          { text: 'View Plan', onPress: () => router.push('/more/subscription') },
+          { text: 'View My Plan', onPress: () => router.push('/more/subscription') },
         ]
       );
     } else {
