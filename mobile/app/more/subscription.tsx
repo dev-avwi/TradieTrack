@@ -568,7 +568,6 @@ export default function SubscriptionPage() {
                 <Feather name="phone" size={16} color={colors.primary} />
               </View>
               <Text style={styles.addOnName}>AI Receptionist</Text>
-              <Text style={styles.addOnPrice}>$60/mo</Text>
             </View>
             <Text style={styles.addOnDescription}>
               AI-powered phone answering with a dedicated Australian number. Captures leads and transfers calls to your team.
@@ -581,7 +580,6 @@ export default function SubscriptionPage() {
                 <Feather name="smartphone" size={16} color={colors.primary} />
               </View>
               <Text style={styles.addOnName}>Dedicated Number</Text>
-              <Text style={styles.addOnPrice}>$5/mo</Text>
             </View>
             <Text style={styles.addOnDescription}>
               Your own Australian mobile number for sending SMS. Clients see your number, not JobRunner's.

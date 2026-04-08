@@ -323,7 +323,7 @@ function MenuItem({
     if (locked) {
       Alert.alert(
         'Upgrade Required',
-        lockReason || 'This feature requires a plan upgrade. Start a free trial to unlock it.',
+        lockReason || 'This feature requires a plan upgrade. Visit jobrunner.com.au to upgrade.',
         [
           { text: 'Maybe Later', style: 'cancel' },
           { text: 'View Plans', onPress: () => Linking.openURL('https://jobrunner.com.au/settings?tab=billing') },

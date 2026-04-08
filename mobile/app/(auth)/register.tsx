@@ -293,12 +293,12 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.trialInfoCard}>
-            <Text style={styles.trialInfoTitle}>Start Your Free Trial</Text>
+            <Text style={styles.trialInfoTitle}>Built for Aussie Tradies</Text>
             <Text style={styles.trialInfoText}>
-              No credit card required. Full access for 14 days.
+              Jobs, quotes, invoices, and team management in one app.
             </Text>
             <Text style={styles.trialInfoSubtext}>
-              Upgrade anytime for unlimited features
+              Get started in under 2 minutes
             </Text>
           </View>
 

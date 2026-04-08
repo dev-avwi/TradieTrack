@@ -47,11 +47,6 @@ const teamSizes = [
   { value: 'large', label: '10+', description: 'Large op', icon: 'globe' as const, plan: 'team' },
 ];
 
-const plans = [
-  { id: 'free', name: 'Free', price: 0, description: 'Get started at no cost', features: ['25 jobs/month', '25 invoices/month', 'Unlimited quotes', '50 clients'] },
-  { id: 'pro', name: 'Solo', price: 39, description: 'For solo tradies', features: ['Unlimited jobs', 'Unlimited invoices', 'AI features', 'Custom templates'] },
-  { id: 'team', name: 'Team', price: 49, seatPrice: 29, description: 'For businesses with staff', features: ['Everything in Solo', 'Team management', 'GPS tracking', 'Time tracking'] },
-];
 
 export default function OnboardingSetupScreen() {
   const [selectedRole, setSelectedRole] = useState<OnboardingRole>(null);
@@ -77,7 +72,6 @@ export default function OnboardingSetupScreen() {
     calloutFee: '90',
   });
 
-  const [selectedPlan, setSelectedPlan] = useState('free');
   const [inviteCode, setInviteCode] = useState('');
   const [inviteValidation, setInviteValidation] = useState<{ valid: boolean; businessName?: string; roleType?: string; ownerName?: string; error?: string } | null>(null);
   const [isValidatingCode, setIsValidatingCode] = useState(false);
@@ -600,7 +594,6 @@ export default function OnboardingSetupScreen() {
             style={[styles.optionCard, businessData.teamSize === size.value && styles.optionCardSelected]}
             onPress={() => {
               setBusinessData(prev => ({ ...prev, teamSize: size.value }));
-              setSelectedPlan(size.plan);
             }}
             testID={`option-team-${size.value}`}
           >
@@ -621,7 +614,6 @@ export default function OnboardingSetupScreen() {
             Alert.alert('Required', 'Please select your team size');
             return;
           }
-          setSelectedPlan('free');
           handleOwnerComplete();
         }} disabled={isLoading} activeOpacity={0.8}>
           {isLoading ? (
@@ -634,77 +626,6 @@ export default function OnboardingSetupScreen() {
     </ScrollView>
   );
 
-  const renderOwnerPlan = () => (
-    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.stepHeader}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="star" size={32} color={colors.primary} />
-        </View>
-        <Text style={styles.stepTitle}>Choose Your Plan</Text>
-        <Text style={styles.stepSubtitle}>Start with a 14-day free trial on any plan</Text>
-      </View>
-
-      {plans.map((plan) => (
-        <TouchableOpacity
-          key={plan.id}
-          style={[
-            styles.planCard,
-            selectedPlan === plan.id && styles.planCardSelected,
-          ]}
-          onPress={() => setSelectedPlan(plan.id)}
-          activeOpacity={0.7}
-          testID={`plan-${plan.id}`}
-        >
-          <View style={styles.planHeader}>
-            <Text style={[styles.planName, selectedPlan === plan.id && { color: colors.primary }]}>{plan.name}</Text>
-            <View style={styles.planPriceRow}>
-              <Text style={styles.planPrice}>${plan.price}</Text>
-              {plan.price > 0 && <Text style={styles.planPeriod}>/mo</Text>}
-            </View>
-          </View>
-          {plan.seatPrice && (
-            <Text style={styles.planSeatPrice}>+ ${plan.seatPrice}/mo per team member</Text>
-          )}
-          <Text style={styles.planDescription}>{plan.description}</Text>
-          <View style={styles.planFeatures}>
-            {plan.features.map((f, i) => (
-              <View key={i} style={styles.planFeatureItem}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                <Text style={styles.planFeatureText}>{f}</Text>
-              </View>
-            ))}
-          </View>
-          {selectedPlan === plan.id && plan.price > 0 && (
-            <View style={styles.trialBadge}>
-              <Ionicons name="gift" size={14} color={colors.primary} />
-              <Text style={styles.trialBadgeText}>14-day free trial included</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      ))}
-
-      <TouchableOpacity style={styles.startFreeLink} onPress={() => { setSelectedPlan('free'); }}>
-        <Text style={styles.startFreeLinkText}>Start Free instead</Text>
-      </TouchableOpacity>
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity
-          style={[styles.primaryButton, isLoading && { opacity: 0.5 }]}
-          onPress={handleOwnerComplete}
-          disabled={isLoading}
-          activeOpacity={0.8}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.primaryButtonText}>
-              {selectedPlan === 'free' ? 'Start Free' : 'Start 14-Day Free Trial'}
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
-  );
 
   const renderWorkerInviteCode = () => (
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
