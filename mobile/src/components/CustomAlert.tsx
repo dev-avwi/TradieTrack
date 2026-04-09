@@ -14,6 +14,7 @@ import {
   useColorScheme,
   ScrollView,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 
 interface AlertConfig {
   title: string;
@@ -35,25 +36,34 @@ export function useCustomAlert() {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 56, 320);
+const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 48, 340);
 
 function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () => void }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1.1)).current;
+  const scaleAnim = useRef(new Animated.Value(0.92)).current;
+  const translateY = useRef(new Animated.Value(8)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 200,
+        duration: 280,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 8,
-        tension: 100,
+        damping: 22,
+        stiffness: 300,
+        mass: 0.8,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateY, {
+        toValue: 0,
+        damping: 22,
+        stiffness: 300,
+        mass: 0.8,
         useNativeDriver: true,
       }),
     ]).start();
@@ -63,12 +73,12 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 150,
+        duration: 180,
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 0.95,
-        duration: 150,
+        duration: 180,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -83,132 +93,135 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
 
   const cancelBtn = allButtons.find(b => b.style === 'cancel');
   const actionButtons = allButtons.filter(b => b.style !== 'cancel');
-
   const hasMultipleActions = actionButtons.length > 2;
 
-  const cardBg = isDark ? '#1c1c1e' : '#ffffff';
-  const titleColor = isDark ? '#ffffff' : '#000000';
-  const messageColor = isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.8)';
-  const rowBorderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-  const defaultBtnBg = isDark ? '#3a3a3c' : '#e8e8ed';
-  const defaultBtnText = isDark ? '#ffffff' : '#1c1c1e';
-  const destructiveBtnBg = isDark ? '#3a2020' : '#ffeaea';
-  const destructiveBtnText = isDark ? '#ff6961' : '#d70015';
-  const rowTextColor = isDark ? '#ffffff' : '#1c1c1e';
+  const titleColor = isDark ? '#f5f5f7' : '#1d1d1f';
+  const messageColor = isDark ? 'rgba(235,235,245,0.55)' : 'rgba(60,60,67,0.7)';
+  const separatorColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+  const accentColor = isDark ? '#0A84FF' : '#007AFF';
+  const destructiveColor = isDark ? '#FF453A' : '#FF3B30';
+  const cancelTextColor = isDark ? '#f5f5f7' : '#1d1d1f';
 
-  if (hasMultipleActions) {
+  const renderButton = (btn: AlertButton, index: number, isLast: boolean, isSingleAction: boolean) => {
+    const isDestructive = btn.style === 'destructive';
+    const isCancel = btn.style === 'cancel';
+    const textColor = isDestructive ? destructiveColor : isCancel ? cancelTextColor : accentColor;
+    const fontWeight = isCancel ? '400' as const : '600' as const;
+
     return (
-      <Modal transparent visible animationType="none" statusBarTranslucent>
-        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-          <View style={styles.overlayDim} />
-          <Animated.View
-            style={[
-              styles.card,
-              {
-                backgroundColor: cardBg,
-                opacity: fadeAnim,
-                transform: [{ scale: scaleAnim }],
-              },
-            ]}
-          >
-            <View style={styles.contentSection}>
-              <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
-              {config.message ? (
-                <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
-              ) : null}
-            </View>
-
-            <View style={[styles.rowDivider, { backgroundColor: rowBorderColor }]} />
-
-            <ScrollView style={styles.rowList} bounces={false}>
-              {actionButtons.map((btn, i) => {
-                const isDestructive = btn.style === 'destructive';
-                return (
-                  <View key={i}>
-                    <TouchableOpacity
-                      style={styles.rowButton}
-                      onPress={() => dismiss(btn.onPress || undefined)}
-                      activeOpacity={0.5}
-                    >
-                      <Text style={[
-                        styles.rowButtonText,
-                        { color: isDestructive ? destructiveBtnText : rowTextColor },
-                        isDestructive && { fontWeight: '500' },
-                      ]}>
-                        {btn.text || 'OK'}
-                      </Text>
-                    </TouchableOpacity>
-                    {i < actionButtons.length - 1 && (
-                      <View style={[styles.rowDivider, { backgroundColor: rowBorderColor }]} />
-                    )}
-                  </View>
-                );
-              })}
-            </ScrollView>
-
-            {cancelBtn && (
-              <View style={styles.cancelSection}>
-                <TouchableOpacity
-                  style={[styles.pillButton, styles.cancelPill, { backgroundColor: defaultBtnBg }]}
-                  onPress={() => dismiss(cancelBtn.onPress || undefined)}
-                  activeOpacity={0.6}
-                >
-                  <Text style={[styles.pillButtonText, { color: defaultBtnText }]}>
-                    {cancelBtn.text || 'Cancel'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </Animated.View>
-        </Animated.View>
-      </Modal>
+      <View key={index}>
+        <TouchableOpacity
+          style={styles.glassButton}
+          onPress={() => dismiss(btn.onPress || undefined)}
+          activeOpacity={0.4}
+        >
+          <Text style={[
+            styles.glassButtonText,
+            { color: textColor, fontWeight },
+          ]}>
+            {btn.text || 'OK'}
+          </Text>
+        </TouchableOpacity>
+        {!isLast && <View style={[styles.separator, { backgroundColor: separatorColor }]} />}
+      </View>
     );
-  }
+  };
 
-  const pillButtons = cancelBtn
-    ? [cancelBtn, ...actionButtons]
+  const orderedButtons = cancelBtn
+    ? [...actionButtons, cancelBtn]
     : actionButtons;
+
+  const hasTwoSideBySide = orderedButtons.length === 2 && !hasMultipleActions;
 
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent>
       <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-        <View style={styles.overlayDim} />
+        <TouchableOpacity
+          style={styles.overlayDim}
+          activeOpacity={1}
+          onPress={() => {
+            if (config.options?.cancelable !== false && cancelBtn) {
+              dismiss(cancelBtn.onPress || undefined);
+            }
+          }}
+        />
         <Animated.View
           style={[
-            styles.card,
+            styles.glassCard,
             {
-              backgroundColor: cardBg,
+              width: ALERT_WIDTH,
               opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }],
+              transform: [{ scale: scaleAnim }, { translateY }],
             },
           ]}
         >
-          <View style={styles.contentSection}>
-            <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
-            {config.message ? (
-              <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
-            ) : null}
-          </View>
+          <BlurView
+            intensity={isDark ? 60 : 80}
+            tint={isDark ? 'dark' : 'light'}
+            style={styles.blurFill}
+          >
+            <View style={[
+              styles.glassOverlay,
+              { backgroundColor: isDark ? 'rgba(44,44,46,0.72)' : 'rgba(255,255,255,0.78)' },
+            ]}>
+              <View style={styles.contentSection}>
+                <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
+                {config.message ? (
+                  <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
+                ) : null}
+              </View>
 
-          <View style={styles.pillRow}>
-            {pillButtons.map((btn, i) => {
-              const isDestructive = btn.style === 'destructive';
-              const bgColor = isDestructive ? destructiveBtnBg : defaultBtnBg;
-              const txtColor = isDestructive ? destructiveBtnText : defaultBtnText;
-              return (
-                <TouchableOpacity
-                  key={i}
-                  style={[styles.pillButton, styles.pillButtonFlex, { backgroundColor: bgColor }]}
-                  onPress={() => dismiss(btn.onPress || undefined)}
-                  activeOpacity={0.6}
-                >
-                  <Text style={[styles.pillButtonText, { color: txtColor }]}>
-                    {btn.text || 'OK'}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+              <View style={[styles.separator, { backgroundColor: separatorColor }]} />
+
+              {hasTwoSideBySide ? (
+                <View style={styles.sideBySideRow}>
+                  <TouchableOpacity
+                    style={styles.sideBySideButton}
+                    onPress={() => dismiss(orderedButtons[1]?.onPress || undefined)}
+                    activeOpacity={0.4}
+                  >
+                    <Text style={[
+                      styles.glassButtonText,
+                      {
+                        color: orderedButtons[1]?.style === 'destructive' ? destructiveColor
+                          : orderedButtons[1]?.style === 'cancel' ? cancelTextColor
+                          : accentColor,
+                        fontWeight: orderedButtons[1]?.style === 'cancel' ? '400' : '600',
+                      },
+                    ]}>
+                      {orderedButtons[1]?.text || 'Cancel'}
+                    </Text>
+                  </TouchableOpacity>
+                  <View style={[styles.verticalSeparator, { backgroundColor: separatorColor }]} />
+                  <TouchableOpacity
+                    style={styles.sideBySideButton}
+                    onPress={() => dismiss(orderedButtons[0]?.onPress || undefined)}
+                    activeOpacity={0.4}
+                  >
+                    <Text style={[
+                      styles.glassButtonText,
+                      {
+                        color: orderedButtons[0]?.style === 'destructive' ? destructiveColor : accentColor,
+                        fontWeight: '600',
+                      },
+                    ]}>
+                      {orderedButtons[0]?.text || 'OK'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : hasMultipleActions ? (
+                <ScrollView style={styles.buttonList} bounces={false}>
+                  {orderedButtons.map((btn, i) =>
+                    renderButton(btn, i, i === orderedButtons.length - 1, false)
+                  )}
+                </ScrollView>
+              ) : (
+                orderedButtons.map((btn, i) =>
+                  renderButton(btn, i, i === orderedButtons.length - 1, orderedButtons.length === 1)
+                )
+              )}
+            </View>
+          </BlurView>
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -268,83 +281,83 @@ const styles = StyleSheet.create({
   },
   overlayDim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
-  card: {
-    width: ALERT_WIDTH,
-    borderRadius: 14,
+  glassCard: {
+    borderRadius: 20,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.18,
-        shadowRadius: 24,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.15,
+        shadowRadius: 32,
       },
       android: {
-        elevation: 24,
+        elevation: 28,
       },
     }),
   },
+  blurFill: {
+    overflow: 'hidden',
+    borderRadius: 20,
+  },
+  glassOverlay: {
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
   contentSection: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 18,
+    alignItems: 'center',
   },
   title: {
     fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.3,
+    fontWeight: '600',
+    letterSpacing: -0.2,
     lineHeight: 22,
+    textAlign: 'center',
   },
   message: {
-    fontSize: 14,
+    fontSize: 13,
     marginTop: 6,
-    lineHeight: 20,
-    letterSpacing: -0.1,
+    lineHeight: 18,
+    letterSpacing: -0.05,
+    textAlign: 'center',
   },
-  pillRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 8,
+  separator: {
+    height: StyleSheet.hairlineWidth,
   },
-  pillButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+  verticalSeparator: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+  },
+  glassButton: {
+    paddingVertical: 13,
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 46,
   },
-  pillButtonFlex: {
-    flex: 1,
-  },
-  pillButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  glassButtonText: {
+    fontSize: 17,
     letterSpacing: -0.2,
   },
-  rowDivider: {
-    height: StyleSheet.hairlineWidth,
+  sideBySideRow: {
+    flexDirection: 'row',
+    minHeight: 46,
   },
-  rowList: {
+  sideBySideButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 13,
+    paddingHorizontal: 8,
+    minHeight: 46,
+  },
+  buttonList: {
     maxHeight: 280,
-  },
-  rowButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-  },
-  rowButtonText: {
-    fontSize: 16,
-    letterSpacing: -0.1,
-  },
-  cancelSection: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  cancelPill: {
-    width: '100%',
   },
 });
