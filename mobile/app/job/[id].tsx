@@ -27,6 +27,7 @@ import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
+import { GlassButton } from '../../src/components/ui/GlassButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -9785,43 +9786,27 @@ export default function JobDetailScreen() {
           headerRight: () => (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginRight: spacing.xs }}>
               {(isOwnerOrManager || isSoloOwner) && (
-                <TouchableOpacity
+                <GlassButton
                   onPress={() => {
                     setActiveTab('manage');
                   }}
-                  style={{ 
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: colorWithOpacity(colors.primary, 0.1),
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  data-testid="button-edit-header"
+                  testID="button-edit-header"
                 >
                   <Feather name="edit-2" size={16} color={colors.primary} />
-                </TouchableOpacity>
+                </GlassButton>
               )}
               {(isOwnerOrManager || isSoloOwner || canDeleteJobs) && (
-                <TouchableOpacity
+                <GlassButton
                   onPress={showJobActionsMenu}
                   disabled={isCloningJob || isDeletingJob}
-                  style={{ 
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: colorWithOpacity(colors.foreground, 0.08),
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  data-testid="button-job-actions-menu"
+                  testID="button-job-actions-menu"
                 >
                   {(isCloningJob || isDeletingJob) ? (
                     <ActivityIndicator size="small" color={colors.foreground} />
                   ) : (
                     <Feather name="more-vertical" size={16} color={colors.foreground} />
                   )}
-                </TouchableOpacity>
+                </GlassButton>
               )}
             </View>
           ),
