@@ -20,7 +20,7 @@ const TIER_RANK: Record<string, number> = {
   trial: 1,
   pro: 2,
   team: 3,
-  business: 3,
+  business: 4,
 };
 
 function hasSufficientTier(userTier: string, requiredTier: RequiredTier): boolean {

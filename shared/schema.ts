@@ -53,7 +53,17 @@ export const TIER_LIMITS = {
     invoicesPerMonth: -1,
     quotesPerMonth: -1,
     clients: -1,
-    teamMembers: -1, // unlimited based on purchased seats
+    teamMembers: 5, // up to 5 workers
+    photoStorage: -1,
+    templates: -1,
+    features: ['unlimited_jobs', 'unlimited_invoices', 'recurring', 'reports', 'photo_attachments', 'auto_reminders', 'team_management', 'branding', 'ai_assistant', 'live_tracking', 'team_chat'],
+  },
+  business: {
+    jobsPerMonth: -1, // unlimited
+    invoicesPerMonth: -1,
+    quotesPerMonth: -1,
+    clients: -1,
+    teamMembers: 15, // up to 15 workers
     photoStorage: -1,
     templates: -1,
     features: ['unlimited_jobs', 'unlimited_invoices', 'recurring', 'reports', 'photo_attachments', 'auto_reminders', 'team_management', 'branding', 'ai_assistant', 'live_tracking', 'team_chat'],
@@ -66,17 +76,19 @@ export const TIER_LIMITS = {
 // Pricing in cents (AUD)
 export const PRICING = {
   pro: {
-    monthly: 3900, // $39/month
+    monthly: 4900, // $49/month
     name: 'JobRunner Pro',
     description: 'Unlimited jobs, quotes, and invoices for solo tradies',
   },
   team: {
-    baseMonthly: 4900, // $49/month base
-    seatMonthly: 2900, // $29/month per additional seat
+    monthly: 9900, // $99/month
     name: 'JobRunner Team',
-    baseName: 'JobRunner Team (Base)',
-    seatName: 'Additional Team Member',
-    description: 'Full features plus team management and live tracking',
+    description: 'Everything in Pro plus team management for up to 5 workers',
+  },
+  business: {
+    monthly: 19900, // $199/month
+    name: 'JobRunner Business',
+    description: 'Everything in Team plus support for up to 15 workers',
   },
   addons: {
     aiReceptionist: {

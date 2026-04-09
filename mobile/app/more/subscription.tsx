@@ -18,7 +18,7 @@ import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
 
 interface SubscriptionStatus {
-  tier: 'free' | 'pro' | 'team' | 'trial';
+  tier: 'free' | 'pro' | 'team' | 'business' | 'trial';
   status: string;
   trialEndsAt?: string | null;
   nextBillingDate?: string | null;
@@ -54,13 +54,19 @@ const PLAN_DETAILS: Record<string, { name: string; icon: string; color: string; 
     name: 'Pro',
     icon: 'award',
     color: '#2563EB',
-    features: ['Unlimited jobs', 'Unlimited invoices', 'AI features', 'Custom templates', 'Email integration'],
+    features: ['Unlimited jobs & invoices', 'AI-powered features', 'Custom templates', 'Email integration', 'Priority support'],
   },
   team: {
     name: 'Team',
     icon: 'users',
-    color: '#2563EB',
-    features: ['Everything in Pro', 'Team management', 'GPS tracking', 'Time tracking', 'Team chat', 'Role-based permissions'],
+    color: '#7C3AED',
+    features: ['Everything in Pro', 'Up to 5 workers', 'Team management', 'GPS & live tracking', 'Time tracking', 'Team chat'],
+  },
+  business: {
+    name: 'Business',
+    icon: 'briefcase',
+    color: '#059669',
+    features: ['Everything in Team', 'Up to 15 workers', 'Role-based permissions', 'Advanced reporting', 'Priority support'],
   },
   trial: {
     name: 'Trial',
@@ -342,6 +348,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     color: colors.foreground,
   },
+  comparePlanPrice: {
+    fontSize: 22,
+    fontWeight: '700' as const,
+    color: colors.foreground,
+  },
+  comparePlanPriceUnit: {
+    fontSize: 13,
+    fontWeight: '400' as const,
+    color: colors.mutedForeground,
+  },
+  upgradePlanButton: {
+    marginTop: spacing.md,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  upgradePlanButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600' as const,
+    fontSize: 15,
+  },
   webNoteCard: {
     flexDirection: 'row',
     backgroundColor: colors.card,
@@ -412,6 +440,16 @@ export default function SubscriptionPage() {
     fetchSubscriptionStatus();
   }, [fetchSubscriptionStatus]);
 
+  const handleUpgrade = async (tier: 'pro' | 'team' | 'business') => {
+    const tierNames = { pro: 'Pro', team: 'Team', business: 'Business' };
+    const tierPrices = { pro: '$49', team: '$99', business: '$199' };
+    Alert.alert(
+      `Upgrade to ${tierNames[tier]}`,
+      `${tierPrices[tier]}/month. In-App Purchase coming soon.\n\nThis feature is being set up. Check back shortly.`,
+      [{ text: 'OK' }]
+    );
+  };
+
   const handleManageBilling = async () => {
     setManagingSubscription(true);
     try {
@@ -437,7 +475,7 @@ export default function SubscriptionPage() {
 
   const currentTier = subscriptionStatus?.tier || 'free';
   const planInfo = PLAN_DETAILS[currentTier] || PLAN_DETAILS.free;
-  const hasActiveSubscription = currentTier === 'pro' || currentTier === 'team' || currentTier === 'trial';
+  const hasActiveSubscription = currentTier === 'pro' || currentTier === 'team' || currentTier === 'business' || currentTier === 'trial';
   const isBeta = subscriptionStatus?.isBeta || subscriptionStatus?.betaUser;
 
   const getUsagePercent = (used: number, limit: number | null) => {
@@ -607,50 +645,104 @@ export default function SubscriptionPage() {
           </Text>
         )}
 
-        {currentTier === 'free' && (
+        {(currentTier === 'free' || currentTier === 'pro' || currentTier === 'team') && (
           <View style={styles.comparePlansSection}>
-            <Text style={styles.comparePlansTitle}>Available Plans</Text>
-            <Text style={styles.comparePlansSubtitle}>See what's included with each plan</Text>
+            <Text style={styles.comparePlansTitle}>
+              {currentTier === 'free' ? 'Upgrade Your Plan' : 'Available Upgrades'}
+            </Text>
+            <Text style={styles.comparePlansSubtitle}>
+              {currentTier === 'free' ? 'Unlock more features for your business' : 'Take your business to the next level'}
+            </Text>
 
-            <View style={styles.comparePlanCard}>
-              <View style={styles.comparePlanHeader}>
-                <View style={[styles.comparePlanIcon, { backgroundColor: '#2563EB15' }]}>  
-                  <Feather name="award" size={20} color="#2563EB" />
-                </View>
-                <View>
-                  <Text style={styles.comparePlanName}>Pro</Text>
-                  <Text style={styles.comparePlanDesc}>For solo tradies ready to grow</Text>
-                </View>
-              </View>
-              <View style={styles.comparePlanFeatures}>
-                {['Unlimited jobs & invoices', 'AI-powered features', 'Custom invoice templates', 'Email integration', 'Priority support'].map((f, i) => (
-                  <View key={i} style={styles.comparePlanFeatureRow}>
-                    <Feather name="check" size={14} color="#2563EB" />
-                    <Text style={styles.comparePlanFeatureText}>{f}</Text>
+            {currentTier === 'free' && (
+              <View style={[styles.comparePlanCard, { borderColor: '#2563EB', borderWidth: 2 }]}>
+                <View style={styles.comparePlanHeader}>
+                  <View style={[styles.comparePlanIcon, { backgroundColor: '#2563EB15' }]}>  
+                    <Feather name="award" size={20} color="#2563EB" />
                   </View>
-                ))}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.comparePlanName}>Pro</Text>
+                    <Text style={styles.comparePlanDesc}>For solo tradies ready to grow</Text>
+                  </View>
+                  <Text style={styles.comparePlanPrice}>$49<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
+                </View>
+                <View style={styles.comparePlanFeatures}>
+                  {['Unlimited jobs & invoices', 'AI-powered features', 'Custom templates', 'Email integration', 'Priority support'].map((f, i) => (
+                    <View key={i} style={styles.comparePlanFeatureRow}>
+                      <Feather name="check" size={14} color="#2563EB" />
+                      <Text style={styles.comparePlanFeatureText}>{f}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity 
+                  style={[styles.upgradePlanButton, { backgroundColor: '#2563EB' }]}
+                  onPress={() => handleUpgrade('pro')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.upgradePlanButtonText}>Upgrade to Pro</Text>
+                </TouchableOpacity>
               </View>
-            </View>
+            )}
 
-            <View style={styles.comparePlanCard}>
-              <View style={styles.comparePlanHeader}>
-                <View style={[styles.comparePlanIcon, { backgroundColor: '#7C3AED15' }]}>
-                  <Feather name="users" size={20} color="#7C3AED" />
-                </View>
-                <View>
-                  <Text style={styles.comparePlanName}>Team</Text>
-                  <Text style={styles.comparePlanDesc}>For businesses with employees</Text>
-                </View>
-              </View>
-              <View style={styles.comparePlanFeatures}>
-                {['Everything in Pro', 'Team member accounts', 'GPS & live tracking', 'Time tracking & timesheets', 'Team chat', 'Role-based permissions'].map((f, i) => (
-                  <View key={i} style={styles.comparePlanFeatureRow}>
-                    <Feather name="check" size={14} color="#7C3AED" />
-                    <Text style={styles.comparePlanFeatureText}>{f}</Text>
+            {(currentTier === 'free' || currentTier === 'pro') && (
+              <View style={[styles.comparePlanCard, currentTier === 'pro' ? { borderColor: '#7C3AED', borderWidth: 2 } : {}]}>
+                <View style={styles.comparePlanHeader}>
+                  <View style={[styles.comparePlanIcon, { backgroundColor: '#7C3AED15' }]}>
+                    <Feather name="users" size={20} color="#7C3AED" />
                   </View>
-                ))}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.comparePlanName}>Team</Text>
+                    <Text style={styles.comparePlanDesc}>For businesses with workers</Text>
+                  </View>
+                  <Text style={styles.comparePlanPrice}>$99<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
+                </View>
+                <View style={styles.comparePlanFeatures}>
+                  {['Everything in Pro', 'Up to 5 workers', 'GPS & live tracking', 'Time tracking & timesheets', 'Team chat'].map((f, i) => (
+                    <View key={i} style={styles.comparePlanFeatureRow}>
+                      <Feather name="check" size={14} color="#7C3AED" />
+                      <Text style={styles.comparePlanFeatureText}>{f}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity 
+                  style={[styles.upgradePlanButton, { backgroundColor: '#7C3AED' }]}
+                  onPress={() => handleUpgrade('team')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.upgradePlanButtonText}>Upgrade to Team</Text>
+                </TouchableOpacity>
               </View>
-            </View>
+            )}
+
+            {(currentTier === 'free' || currentTier === 'pro' || currentTier === 'team') && (
+              <View style={[styles.comparePlanCard, currentTier === 'team' ? { borderColor: '#059669', borderWidth: 2 } : {}]}>
+                <View style={styles.comparePlanHeader}>
+                  <View style={[styles.comparePlanIcon, { backgroundColor: '#05966915' }]}>
+                    <Feather name="briefcase" size={20} color="#059669" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.comparePlanName}>Business</Text>
+                    <Text style={styles.comparePlanDesc}>For larger crews</Text>
+                  </View>
+                  <Text style={styles.comparePlanPrice}>$199<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
+                </View>
+                <View style={styles.comparePlanFeatures}>
+                  {['Everything in Team', 'Up to 15 workers', 'Role-based permissions', 'Advanced reporting', 'Priority support'].map((f, i) => (
+                    <View key={i} style={styles.comparePlanFeatureRow}>
+                      <Feather name="check" size={14} color="#059669" />
+                      <Text style={styles.comparePlanFeatureText}>{f}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity 
+                  style={[styles.upgradePlanButton, { backgroundColor: '#059669' }]}
+                  onPress={() => handleUpgrade('business')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.upgradePlanButtonText}>Upgrade to Business</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
 
