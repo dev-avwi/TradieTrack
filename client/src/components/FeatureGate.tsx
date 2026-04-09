@@ -5,7 +5,7 @@ import { useFeatureAccess } from "@/hooks/use-subscription";
 import { Lock, Crown, Users, ArrowRight, Sparkles, Zap } from "lucide-react";
 import { Link } from "wouter";
 
-type RequiredTier = 'pro' | 'team';
+type RequiredTier = 'pro' | 'team' | 'business';
 
 interface FeatureGateProps {
   children: React.ReactNode;
@@ -52,6 +52,19 @@ const TIER_INFO: Record<RequiredTier, { label: string; icon: typeof Crown; color
       'Staff scheduling & dispatch',
       'GPS job tracking',
       'Team chat & collaboration',
+    ],
+  },
+  business: {
+    label: 'Business',
+    icon: Users,
+    color: 'hsl(142 71% 45%)',
+    features: [
+      'Everything in Team',
+      'Up to 15 workers',
+      'Advanced reporting & insights',
+      'Priority support',
+      'Full business management',
+      'Custom workflows',
     ],
   },
 };

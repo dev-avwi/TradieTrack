@@ -97,7 +97,7 @@ export function SidebarNav() {
   const isStaffTradie = userRole === 'staff_tradie' || userRole === 'staff' || userRole === 'team';
   
   const subscriptionTier = user?.subscriptionTier || 'free';
-  const hasProSubscription = subscriptionTier === 'pro' || subscriptionTier === 'team' || subscriptionTier === 'beta';
+  const hasProSubscription = subscriptionTier === 'pro' || subscriptionTier === 'team' || subscriptionTier === 'business' || subscriptionTier === 'beta';
 
   const filterOptions: FilterOptions = useMemo(() => ({
     isTeam: Boolean((businessSettings as any)?.hasTeam),

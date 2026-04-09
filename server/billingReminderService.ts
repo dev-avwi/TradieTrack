@@ -24,6 +24,9 @@ function calculateAmount(subscriptionTier: string, seatCount: number = 0): numbe
     const seatsAmount = (seatCount * PRICING.team.seatMonthly) / 100;
     return baseAmount + seatsAmount;
   }
+  if (subscriptionTier === 'business') {
+    return 19999 / 100;
+  }
   return 0;
 }
 
@@ -60,7 +63,7 @@ async function sendBillingReminderEmail(
   const brandColor = settings.brandColor || '#2563eb';
 
   const isTrialing = subscriptionStatus === 'trialing';
-  const planName = subscriptionTier === 'team' ? 'JobRunner Team' : 'JobRunner Pro';
+  const planName = subscriptionTier === 'business' ? 'JobRunner Business' : subscriptionTier === 'team' ? 'JobRunner Team' : 'JobRunner Pro';
 
   const subject = isTrialing
     ? `Your JobRunner trial ends in ${daysUntilBilling} day${daysUntilBilling !== 1 ? 's' : ''}`
@@ -101,7 +104,7 @@ async function sendBillingReminderEmail(
             <td style="padding: 8px 0; color: #666;">Plan:</td>
             <td style="padding: 8px 0; text-align: right; font-weight: bold;">${planName}</td>
           </tr>
-          ${subscriptionTier === 'team' && (settings.seatCount || 0) > 0 ? `
+          ${(subscriptionTier === 'team' || subscriptionTier === 'business') && (settings.seatCount || 0) > 0 ? `
           <tr>
             <td style="padding: 8px 0; color: #666;">Team Seats:</td>
             <td style="padding: 8px 0; text-align: right;">${settings.seatCount} additional</td>
@@ -296,7 +299,7 @@ export async function processBillingReminders(): Promise<{
             const subscriptionTier = user.subscriptionTier || 'free';
             const subscriptionStatus = settings.subscriptionStatus || 'none';
             const isTrialing = subscriptionStatus === 'trialing';
-            const planName = subscriptionTier === 'team' ? 'Team' : 'Pro';
+            const planName = subscriptionTier === 'business' ? 'Business' : subscriptionTier === 'team' ? 'Team' : 'Pro';
             
             await sendPushNotification({
               userId: user.id,
@@ -338,7 +341,7 @@ async function sendOverdueReminderEmail(
 
   const subscriptionTier = user.subscriptionTier || 'free';
   const amount = calculateAmount(subscriptionTier, settings.seatCount || 0);
-  const planName = subscriptionTier === 'team' ? 'JobRunner Team' : 'JobRunner Pro';
+  const planName = subscriptionTier === 'business' ? 'JobRunner Business' : subscriptionTier === 'team' ? 'JobRunner Team' : 'JobRunner Pro';
   const manageUrl = `${getBaseUrl()}/settings?tab=subscription`;
   const brandColor = settings.brandColor || '#2563eb';
 
@@ -425,7 +428,7 @@ async function sendOverdueReminderSms(
 
   let message: string;
   const subscriptionTier = user.subscriptionTier || 'free';
-  const planName = subscriptionTier === 'team' ? 'Team' : subscriptionTier === 'pro' ? 'Pro' : 'your';
+  const planName = subscriptionTier === 'business' ? 'Business' : subscriptionTier === 'team' ? 'Team' : subscriptionTier === 'pro' ? 'Pro' : 'your';
 
   if (daysOverdue >= 14) {
     message = `JobRunner: Your ${planName} plan is ${daysOverdue} days overdue. Update your card to keep access. jobrunner.com.au/billing`;

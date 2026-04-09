@@ -213,7 +213,8 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground truncate">
-                {businessSettings?.subscriptionTier === 'team' ? 'Team Plan' : 
+                {businessSettings?.subscriptionTier === 'business' ? 'Business Plan' :
+                 businessSettings?.subscriptionTier === 'team' ? 'Team Plan' : 
                  businessSettings?.subscriptionTier === 'pro' ? 'Pro Plan' : 
                  businessSettings?.subscriptionTier === 'trial' ? 'Trial' : 'Free Plan'}
               </p>

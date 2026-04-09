@@ -792,7 +792,7 @@ export async function checkTeamMemberOwnerAccess(businessOwnerId: string): Promi
     }
 
     // Allow access if owner has pro or team subscription
-    if (subscriptionTier === 'pro' || subscriptionTier === 'team') {
+    if (subscriptionTier === 'pro' || subscriptionTier === 'team' || subscriptionTier === 'business') {
       return { hasAccess: true };
     }
 

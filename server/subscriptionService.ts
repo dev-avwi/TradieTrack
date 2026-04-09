@@ -50,17 +50,21 @@ async function getEffectiveTier(user: any, subscriptionStatus?: string): Promise
 
   if (isTrialUser && !hasActiveStripeSubscription) {
     if (user.trialStatus === 'active' && user.trialEndsAt && new Date(user.trialEndsAt) > new Date()) {
-      return user.subscriptionTier === 'team' ? 'team' : 'pro';
+      if (user.subscriptionTier === 'business') return 'business';
+      if (user.subscriptionTier === 'team') return 'team';
+      return 'pro';
     }
     return 'free';
   }
 
   if (hasActiveStripeSubscription) {
+    if (user.subscriptionTier === 'business') return 'business';
     if (user.subscriptionTier === 'team') return 'team';
     if (user.subscriptionTier === 'pro') return 'pro';
   }
 
   if (!status || status === 'none') {
+    if (user.subscriptionTier === 'business') return 'business';
     if (user.subscriptionTier === 'team') return 'team';
     if (user.subscriptionTier === 'pro') return 'pro';
   }
@@ -69,6 +73,9 @@ async function getEffectiveTier(user: any, subscriptionStatus?: string): Promise
 }
 
 function getTierLimits(tier: SubscriptionTier) {
+  if (tier === 'business') {
+    return TIER_LIMITS.business || TIER_LIMITS.team;
+  }
   if (tier === 'team') {
     return TIER_LIMITS.team;
   }
