@@ -12,7 +12,6 @@ import {
   AlertButton,
   AlertOptions,
   useColorScheme,
-  ScrollView,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 
@@ -38,32 +37,45 @@ export function useCustomAlert() {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 48, 340);
 
+function getButtonStyle(btn: AlertButton, isDark: boolean) {
+  const isCancel = btn.style === 'cancel';
+  const isDestructive = btn.style === 'destructive';
+
+  if (isCancel) {
+    return {
+      bg: isDark ? 'rgba(120,120,128,0.32)' : 'rgba(120,120,128,0.16)',
+      text: isDark ? '#ffffff' : '#1c1c1e',
+    };
+  }
+  if (isDestructive) {
+    return {
+      bg: isDark ? 'rgba(255,59,48,0.85)' : 'rgba(255,59,48,0.9)',
+      text: '#ffffff',
+    };
+  }
+  return {
+    bg: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(28,28,30,0.85)',
+    text: isDark ? '#000000' : '#ffffff',
+  };
+}
+
 function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () => void }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.92)).current;
-  const translateY = useRef(new Animated.Value(8)).current;
+  const scaleAnim = useRef(new Animated.Value(1.08)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 280,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        damping: 22,
-        stiffness: 300,
-        mass: 0.8,
-        useNativeDriver: true,
-      }),
-      Animated.spring(translateY, {
-        toValue: 0,
-        damping: 22,
-        stiffness: 300,
-        mass: 0.8,
+        friction: 8,
+        tension: 100,
         useNativeDriver: true,
       }),
     ]).start();
@@ -73,155 +85,112 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 180,
+        duration: 140,
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 0.95,
-        duration: 180,
+        duration: 140,
         useNativeDriver: true,
       }),
     ]).start(() => {
       onDismiss();
-      if (callback) setTimeout(callback, 10);
+      if (callback) callback();
     });
   }, [fadeAnim, scaleAnim, onDismiss]);
 
-  const allButtons = config.buttons && config.buttons.length > 0
+  const buttons = config.buttons && config.buttons.length > 0
     ? config.buttons
     : [{ text: 'OK', style: 'default' as const }];
 
-  const cancelBtn = allButtons.find(b => b.style === 'cancel');
-  const actionButtons = allButtons.filter(b => b.style !== 'cancel');
-  const hasMultipleActions = actionButtons.length > 2;
+  const cancelIndex = buttons.findIndex(b => b.style === 'cancel');
+  const nonCancelButtons = buttons.filter(b => b.style !== 'cancel');
+  const cancelButton = cancelIndex >= 0 ? buttons[cancelIndex] : null;
+  const orderedButtons = cancelButton
+    ? [...nonCancelButtons, cancelButton]
+    : nonCancelButtons;
 
-  const titleColor = isDark ? '#f5f5f7' : '#1d1d1f';
-  const messageColor = isDark ? 'rgba(235,235,245,0.55)' : 'rgba(60,60,67,0.7)';
-  const separatorColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
-  const accentColor = isDark ? '#0A84FF' : '#007AFF';
-  const destructiveColor = isDark ? '#FF453A' : '#FF3B30';
-  const cancelTextColor = isDark ? '#f5f5f7' : '#1d1d1f';
+  const showButtonsInRow = orderedButtons.length <= 2;
 
-  const renderButton = (btn: AlertButton, index: number, isLast: boolean, isSingleAction: boolean) => {
-    const isDestructive = btn.style === 'destructive';
-    const isCancel = btn.style === 'cancel';
-    const textColor = isDestructive ? destructiveColor : isCancel ? cancelTextColor : accentColor;
-    const fontWeight = isCancel ? '400' as const : '600' as const;
+  const titleColor = isDark ? '#ffffff' : '#1c1c1e';
+  const messageColor = isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.75)';
 
-    return (
-      <View key={index}>
-        <TouchableOpacity
-          style={styles.glassButton}
-          onPress={() => dismiss(btn.onPress || undefined)}
-          activeOpacity={0.4}
-        >
-          <Text style={[
-            styles.glassButtonText,
-            { color: textColor, fontWeight },
-          ]}>
-            {btn.text || 'OK'}
-          </Text>
-        </TouchableOpacity>
-        {!isLast && <View style={[styles.separator, { backgroundColor: separatorColor }]} />}
+  const renderContent = () => (
+    <>
+      <View style={styles.contentSection}>
+        <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
+        {config.message ? (
+          <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
+        ) : null}
       </View>
-    );
-  };
 
-  const orderedButtons = cancelBtn
-    ? [...actionButtons, cancelBtn]
-    : actionButtons;
-
-  const hasTwoSideBySide = orderedButtons.length === 2 && !hasMultipleActions;
+      <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
+        {orderedButtons.map((btn, i) => {
+          const btnStyle = getButtonStyle(btn, isDark);
+          return (
+            <TouchableOpacity
+              key={i}
+              style={[
+                styles.filledButton,
+                showButtonsInRow && styles.filledButtonFlex,
+                { backgroundColor: btnStyle.bg },
+              ]}
+              onPress={() => dismiss(btn.onPress || undefined)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filledButtonText, { color: btnStyle.text }]}>
+                {btn.text || 'OK'}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </>
+  );
 
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent>
       <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-        <TouchableOpacity
-          style={styles.overlayDim}
-          activeOpacity={1}
-          onPress={() => {
-            if (config.options?.cancelable !== false && cancelBtn) {
-              dismiss(cancelBtn.onPress || undefined);
-            }
-          }}
-        />
+        <View style={styles.overlayBackground} />
         <Animated.View
           style={[
-            styles.glassCard,
+            styles.alertOuter,
             {
-              width: ALERT_WIDTH,
               opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }, { translateY }],
+              transform: [{ scale: scaleAnim }],
             },
           ]}
         >
-          <BlurView
-            intensity={isDark ? 60 : 80}
-            tint={isDark ? 'dark' : 'light'}
-            style={styles.blurFill}
-          >
-            <View style={[
-              styles.glassOverlay,
-              { backgroundColor: isDark ? 'rgba(44,44,46,0.72)' : 'rgba(255,255,255,0.78)' },
-            ]}>
-              <View style={styles.contentSection}>
-                <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
-                {config.message ? (
-                  <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
-                ) : null}
+          {Platform.OS === 'ios' ? (
+            <BlurView
+              intensity={60}
+              tint={isDark ? 'dark' as const : 'light' as const}
+              style={styles.glassCard}
+            >
+              <View style={[
+                styles.glassOverlay,
+                {
+                  backgroundColor: isDark
+                    ? 'rgba(44,44,46,0.45)'
+                    : 'rgba(255,255,255,0.55)',
+                  borderColor: isDark
+                    ? 'rgba(255,255,255,0.08)'
+                    : 'rgba(255,255,255,0.6)',
+                },
+              ]}>
+                {renderContent()}
               </View>
-
-              <View style={[styles.separator, { backgroundColor: separatorColor }]} />
-
-              {hasTwoSideBySide ? (
-                <View style={styles.sideBySideRow}>
-                  <TouchableOpacity
-                    style={styles.sideBySideButton}
-                    onPress={() => dismiss(orderedButtons[1]?.onPress || undefined)}
-                    activeOpacity={0.4}
-                  >
-                    <Text style={[
-                      styles.glassButtonText,
-                      {
-                        color: orderedButtons[1]?.style === 'destructive' ? destructiveColor
-                          : orderedButtons[1]?.style === 'cancel' ? cancelTextColor
-                          : accentColor,
-                        fontWeight: orderedButtons[1]?.style === 'cancel' ? '400' : '600',
-                      },
-                    ]}>
-                      {orderedButtons[1]?.text || 'Cancel'}
-                    </Text>
-                  </TouchableOpacity>
-                  <View style={[styles.verticalSeparator, { backgroundColor: separatorColor }]} />
-                  <TouchableOpacity
-                    style={styles.sideBySideButton}
-                    onPress={() => dismiss(orderedButtons[0]?.onPress || undefined)}
-                    activeOpacity={0.4}
-                  >
-                    <Text style={[
-                      styles.glassButtonText,
-                      {
-                        color: orderedButtons[0]?.style === 'destructive' ? destructiveColor : accentColor,
-                        fontWeight: '600',
-                      },
-                    ]}>
-                      {orderedButtons[0]?.text || 'OK'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ) : hasMultipleActions ? (
-                <ScrollView style={styles.buttonList} bounces={false}>
-                  {orderedButtons.map((btn, i) =>
-                    renderButton(btn, i, i === orderedButtons.length - 1, false)
-                  )}
-                </ScrollView>
-              ) : (
-                orderedButtons.map((btn, i) =>
-                  renderButton(btn, i, i === orderedButtons.length - 1, orderedButtons.length === 1)
-                )
-              )}
+            </BlurView>
+          ) : (
+            <View style={[
+              styles.androidCard,
+              {
+                backgroundColor: isDark ? '#2c2c2e' : '#ffffff',
+              },
+            ]}>
+              {renderContent()}
             </View>
-          </BlurView>
+          )}
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -279,85 +248,82 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  overlayDim: {
+  overlayBackground: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
-  glassCard: {
+  alertOuter: {
+    width: ALERT_WIDTH,
     borderRadius: 20,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.15,
-        shadowRadius: 32,
+        shadowOpacity: 0.25,
+        shadowRadius: 40,
       },
       android: {
-        elevation: 28,
+        elevation: 24,
       },
     }),
   },
-  blurFill: {
-    overflow: 'hidden',
+  glassCard: {
     borderRadius: 20,
+    overflow: 'hidden',
   },
   glassOverlay: {
     borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.18)',
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  androidCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   contentSection: {
     paddingHorizontal: 22,
     paddingTop: 22,
     paddingBottom: 18,
-    alignItems: 'center',
   },
   title: {
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-    lineHeight: 22,
-    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    lineHeight: 24,
   },
   message: {
-    fontSize: 13,
-    marginTop: 6,
-    lineHeight: 18,
-    letterSpacing: -0.05,
-    textAlign: 'center',
+    fontSize: 14.5,
+    marginTop: 8,
+    lineHeight: 20,
+    letterSpacing: -0.1,
   },
-  separator: {
-    height: StyleSheet.hairlineWidth,
+  buttonsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 10,
   },
-  verticalSeparator: {
-    width: StyleSheet.hairlineWidth,
-    alignSelf: 'stretch',
+  buttonsColumn: {
+    flexDirection: 'column',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 8,
   },
-  glassButton: {
+  filledButton: {
     paddingVertical: 13,
     paddingHorizontal: 20,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 46,
+    minHeight: 48,
   },
-  glassButtonText: {
-    fontSize: 17,
-    letterSpacing: -0.2,
-  },
-  sideBySideRow: {
-    flexDirection: 'row',
-    minHeight: 46,
-  },
-  sideBySideButton: {
+  filledButtonFlex: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 8,
-    minHeight: 46,
   },
-  buttonList: {
-    maxHeight: 280,
+  filledButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
 });
