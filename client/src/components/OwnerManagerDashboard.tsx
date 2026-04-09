@@ -232,8 +232,7 @@ export default function OwnerManagerDashboard({
       return (
         <Button
           size="sm"
-          className="text-white font-medium"
-          style={{ backgroundColor: 'hsl(142.1 76.2% 36.3%)' }}
+          className="bg-green-600 text-white font-medium"
           onClick={(e) => handleStartJob(job.id, e)}
           disabled={updateJob.isPending}
           data-testid={`button-start-job-${job.id}`}
@@ -292,7 +291,7 @@ export default function OwnerManagerDashboard({
   const hasOverdue = (cashflow?.overdueCount ?? 0) > 0;
 
   return (
-    <div className="w-full px-4 sm:px-6 py-4 pb-28" data-testid="owner-manager-dashboard">
+    <div className="w-full px-4 sm:px-6 py-4 pb-28 md:pb-6" data-testid="owner-manager-dashboard">
       <DashboardUpgradeCard />
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-3">
         <div>
@@ -309,8 +308,6 @@ export default function OwnerManagerDashboard({
           {onCreateJob && (
             <Button 
               size="sm"
-              className="text-white font-medium"
-              style={{ backgroundColor: 'hsl(var(--trade))' }}
               onClick={onCreateJob}
               data-testid="button-quick-create-job"
             >
@@ -345,12 +342,11 @@ export default function OwnerManagerDashboard({
           <CardContent className="p-3">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                     style={{ backgroundColor: 'hsl(var(--destructive) / 0.1)' }}>
-                  <DollarSign className="h-4 w-4" style={{ color: 'hsl(var(--destructive))' }} />
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-destructive/10">
+                  <DollarSign className="h-4 w-4 text-destructive" />
                 </div>
                 <div>
-                  <p className="text-xl font-bold" style={{ color: 'hsl(var(--destructive))' }}>
+                  <p className="text-xl font-bold text-destructive">
                     {fmtAud(kpis?.unpaidInvoicesTotal || 0)}
                   </p>
                   <p className="text-xs text-muted-foreground">owed across {kpis?.unpaidInvoicesCount || 0} invoices</p>
@@ -371,10 +367,10 @@ export default function OwnerManagerDashboard({
       )}
 
       {kpisLoading ? (
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-3">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 mb-4">
           {[1,2,3,4,5,6].map(i => (
             <Card key={i}>
-              <CardContent className="py-1.5 px-2">
+              <CardContent className="py-2.5 px-3">
                 <Skeleton className="h-6 w-12 mb-1" />
                 <Skeleton className="h-3 w-10" />
               </CardContent>
@@ -382,18 +378,18 @@ export default function OwnerManagerDashboard({
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-3">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 mb-4">
           <Card 
             className="cursor-pointer hover-elevate"
             onClick={() => onNavigate?.('/work?filter=today')}
             data-testid="kpi-jobs-today"
           >
-            <CardContent className="py-1.5 px-2">
-              <div className="flex items-center gap-1">
-                <CalendarDays className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'hsl(221.2 83.2% 53.3%)' }} />
+            <CardContent className="py-2.5 px-3">
+              <div className="flex items-center gap-1.5">
+                <CalendarDays className="h-4 w-4 flex-shrink-0 text-primary" />
                 <p className="text-lg font-bold">{kpis?.jobsToday || 0}</p>
               </div>
-              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">Jobs Today</p>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5 truncate">Jobs Today</p>
             </CardContent>
           </Card>
           <Card 
@@ -401,14 +397,14 @@ export default function OwnerManagerDashboard({
             onClick={() => onNavigate?.('/work?filter=done')}
             data-testid="kpi-jobs-to-invoice"
           >
-            <CardContent className="py-1.5 px-2">
-              <div className="flex items-center gap-1">
-                <DollarSign className="h-3.5 w-3.5 flex-shrink-0" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : undefined }} />
-                <p className="text-lg font-bold" style={{ color: (kpis?.jobsToInvoice ?? 0) > 0 ? 'hsl(38 92% 50%)' : undefined }}>
+            <CardContent className="py-2.5 px-3">
+              <div className="flex items-center gap-1.5">
+                <DollarSign className={`h-4 w-4 flex-shrink-0 ${(kpis?.jobsToInvoice ?? 0) > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
+                <p className={`text-lg font-bold ${(kpis?.jobsToInvoice ?? 0) > 0 ? 'text-amber-500' : ''}`}>
                   {kpis?.jobsToInvoice ?? 0}
                 </p>
               </div>
-              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">To Invoice</p>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5 truncate">To Invoice</p>
             </CardContent>
           </Card>
           <Card 
@@ -416,12 +412,12 @@ export default function OwnerManagerDashboard({
             onClick={() => onNavigate?.('/documents?tab=quotes&filter=sent')}
             data-testid="kpi-pending"
           >
-            <CardContent className="py-1.5 px-2">
-              <div className="flex items-center gap-1">
-                <FileText className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
+            <CardContent className="py-2.5 px-3">
+              <div className="flex items-center gap-1.5">
+                <FileText className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
                 <p className="text-lg font-bold">{kpis?.quotesAwaiting || 0}</p>
               </div>
-              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">Quotes Out</p>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5 truncate">Quotes Out</p>
             </CardContent>
           </Card>
           <Card 
@@ -429,12 +425,12 @@ export default function OwnerManagerDashboard({
             onClick={() => onNavigate?.('/work?filter=in_progress')}
             data-testid="kpi-active-jobs"
           >
-            <CardContent className="py-1.5 px-2">
-              <div className="flex items-center gap-1">
-                <Briefcase className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
+            <CardContent className="py-2.5 px-3">
+              <div className="flex items-center gap-1.5">
+                <Briefcase className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(var(--trade))' }} />
                 <p className="text-lg font-bold">{kpis?.activeJobs || 0}</p>
               </div>
-              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">Active Jobs</p>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5 truncate">Active Jobs</p>
             </CardContent>
           </Card>
           <Card 
@@ -442,14 +438,14 @@ export default function OwnerManagerDashboard({
             onClick={() => onNavigate?.('/insights?tab=profit')}
             data-testid="kpi-weekly-earnings"
           >
-            <CardContent className="py-1.5 px-2">
-              <div className="flex items-center gap-1">
-                <TrendingUp className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
-                <p className="text-lg font-bold" style={{ color: 'hsl(142.1 76.2% 36.3%)' }}>
+            <CardContent className="py-2.5 px-3">
+              <div className="flex items-center gap-1.5">
+                <TrendingUp className="h-4 w-4 flex-shrink-0 text-green-600" />
+                <p className="text-lg font-bold text-green-600">
                   {fmtAud(kpis?.weeklyEarnings || 0)}
                 </p>
               </div>
-              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">This Week</p>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5 truncate">This Week</p>
             </CardContent>
           </Card>
           <Card 
@@ -457,24 +453,24 @@ export default function OwnerManagerDashboard({
             onClick={() => onNavigate?.('/documents?tab=invoices&filter=overdue')}
             data-testid="kpi-overdue-invoices"
           >
-            <CardContent className="py-1.5 px-2">
-              <div className="flex items-center gap-1">
-                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" style={{ color: (cashflow?.overdueCount ?? 0) > 0 ? 'hsl(0 84.2% 60.2%)' : undefined }} />
-                <p className="text-lg font-bold" style={{ color: (cashflow?.overdueCount ?? 0) > 0 ? 'hsl(0 84.2% 60.2%)' : undefined }}>
+            <CardContent className="py-2.5 px-3">
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className={`h-4 w-4 flex-shrink-0 ${(cashflow?.overdueCount ?? 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+                <p className={`text-lg font-bold ${(cashflow?.overdueCount ?? 0) > 0 ? 'text-red-500' : ''}`}>
                   {cashflow?.overdueCount ?? 0}
                 </p>
               </div>
-              <p className="text-[10px] text-muted-foreground font-medium mt-0 truncate">Overdue</p>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5 truncate">Overdue</p>
             </CardContent>
           </Card>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
             <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Target className="h-4 w-4" style={{ color: 'hsl(var(--destructive))' }} />
+              <Target className="h-4 w-4 text-destructive" />
               Action Centre
             </CardTitle>
             <Button variant="ghost" size="sm" onClick={() => onNavigate?.('/action-center')} data-testid="button-view-action-center">
@@ -487,7 +483,11 @@ export default function OwnerManagerDashboard({
                 {actionData.actions.slice(0, 3).map((action) => {
                   const priorityIcon = action.priority === 'fix_now' ? AlertTriangle : action.priority === 'this_week' ? Clock : Lightbulb;
                   const PIcon = priorityIcon;
-                  const priorityColor = action.priority === 'fix_now' ? 'hsl(0 84.2% 60.2%)' : action.priority === 'this_week' ? 'hsl(38 92% 50%)' : 'hsl(142.1 76.2% 36.3%)';
+                  const priorityClasses = action.priority === 'fix_now' 
+                    ? { bg: 'bg-red-500/10', text: 'text-red-500' } 
+                    : action.priority === 'this_week' 
+                    ? { bg: 'bg-amber-500/10', text: 'text-amber-500' } 
+                    : { bg: 'bg-green-500/10', text: 'text-green-600' };
                   return (
                     <div
                       key={action.id}
@@ -495,9 +495,8 @@ export default function OwnerManagerDashboard({
                       onClick={() => onNavigate?.(action.ctaUrl)}
                       data-testid={`action-item-${action.id}`}
                     >
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                           style={{ backgroundColor: `${priorityColor}15` }}>
-                        <PIcon className="h-4 w-4" style={{ color: priorityColor }} />
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${priorityClasses.bg}`}>
+                        <PIcon className={`h-4 w-4 ${priorityClasses.text}`} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{action.title}</p>
@@ -521,7 +520,7 @@ export default function OwnerManagerDashboard({
         <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
           <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
+            <CalendarDays className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} aria-hidden="true" />
             Today's Schedule
           </CardTitle>
           {todaysJobs.length > 0 && onViewJobs && (
@@ -538,8 +537,6 @@ export default function OwnerManagerDashboard({
               {onCreateJob && (
                 <Button 
                   size="sm"
-                  className="text-white font-medium"
-                  style={{ backgroundColor: 'hsl(var(--trade))' }}
                   onClick={onCreateJob}
                   data-testid="button-schedule-job"
                 >
@@ -619,11 +616,11 @@ export default function OwnerManagerDashboard({
       </Card>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-4">
         <Card className="hidden xl:block">
           <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
             <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <CircleDollarSign className="h-4 w-4" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+              <CircleDollarSign className="h-4 w-4 text-green-600" />
               Revenue
             </CardTitle>
             <Button variant="ghost" size="sm" onClick={() => onNavigate?.('/payment-hub')} data-testid="button-view-revenue">
@@ -666,7 +663,7 @@ export default function OwnerManagerDashboard({
                         const barHeight = week.amount > 0 ? Math.max((week.amount / maxVal) * 80, 6) : 3;
                         return (
                           <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative">
-                            <div className="invisible group-hover:visible absolute -top-6 bg-foreground text-background text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap z-10">
+                            <div className="invisible group-hover:visible absolute -top-6 bg-foreground text-background text-xs px-1.5 py-0.5 rounded whitespace-nowrap z-10">
                               ${week.amount.toLocaleString()}
                             </div>
                             <div
@@ -682,7 +679,7 @@ export default function OwnerManagerDashboard({
                     </div>
                     <div className="flex gap-2 mt-2">
                       {paddedWeeks.map((week, i) => (
-                        <span key={i} className="flex-1 text-[10px] text-muted-foreground text-center">{week.week}</span>
+                        <span key={i} className="flex-1 text-xs text-muted-foreground text-center">{week.week}</span>
                       ))}
                     </div>
                   </div>
@@ -691,11 +688,11 @@ export default function OwnerManagerDashboard({
 
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="p-2.5 rounded-lg bg-muted/40">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Outstanding</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Outstanding</p>
                   <p className="text-sm font-bold">${(cashflow?.outstandingTotal ?? 0).toLocaleString()}</p>
                 </div>
                 <div className="p-2.5 rounded-lg bg-muted/40">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">This week</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">This week</p>
                   <p className="text-sm font-bold">${(profitData?.revenueThisWeek ?? 0).toLocaleString()}</p>
                 </div>
               </div>
@@ -706,7 +703,7 @@ export default function OwnerManagerDashboard({
         <Card className="hidden xl:flex xl:flex-col overflow-visible">
           <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
             <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" style={{ color: 'hsl(var(--primary))' }} />
+              <BarChart3 className="h-4 w-4 text-primary" />
               Team Activity
             </CardTitle>
             <Button variant="ghost" size="sm" onClick={() => onNavigate?.('/communications')} data-testid="button-view-all-activity-card">
@@ -783,7 +780,7 @@ export default function OwnerManagerDashboard({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-red-700 dark:text-red-400">{cashflow?.overdueCount} overdue invoice{(cashflow?.overdueCount ?? 0) > 1 ? 's' : ''}</p>
-                    <p className="text-[10px] text-red-500/70 mt-0.5">${(cashflow?.overdueTotal ?? 0).toLocaleString()} outstanding</p>
+                    <p className="text-xs text-red-500/70 mt-0.5">${(cashflow?.overdueTotal ?? 0).toLocaleString()} outstanding</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-red-400 flex-shrink-0" />
                 </div>
@@ -791,7 +788,7 @@ export default function OwnerManagerDashboard({
 
               {profitData && (
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-muted/40">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Gross margin</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Gross margin</p>
                   <p className="text-sm font-bold">{profitData.grossMargin}%</p>
                 </div>
               )}

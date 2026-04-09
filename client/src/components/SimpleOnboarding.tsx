@@ -1887,7 +1887,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           <StepIndicator steps={STEPS} currentStep={currentStep} />
         )}
         
-        <Card className="flex-1 shadow-xl bg-white/95 backdrop-blur-sm border-white/50 [&_*]:text-gray-800 [&_.text-muted-foreground]:text-gray-500">
+        <Card className="flex-1 shadow-xl bg-white/95 backdrop-blur-sm border-white/50 text-gray-800 [&_.text-muted-foreground]:text-gray-500">
           <CardContent className="p-6">
             {renderCurrentStep()}
           </CardContent>
