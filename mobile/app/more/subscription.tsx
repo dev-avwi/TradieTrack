@@ -690,7 +690,7 @@ export default function SubscriptionPage() {
               Have questions about your business account or need support?
             </Text>
             <Text style={styles.webNoteSupport}>
-              support@jobrunner.com.au
+              admin@avwebinnovation.com
             </Text>
           </View>
         </View>

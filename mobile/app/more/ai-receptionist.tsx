@@ -210,7 +210,7 @@ export default function AIReceptionistScreen() {
                 setProvisioningStatus(null);
                 Alert.alert(
                   'Setup Required',
-                  'AI Receptionist setup requires completing your business account configuration at jobrunner.com.au. Contact support@jobrunner.com.au for assistance.',
+                  'AI Receptionist setup requires completing your business account configuration. Contact admin@avwebinnovation.com for assistance.',
                   [{ text: 'OK' }]
                 );
                 return;

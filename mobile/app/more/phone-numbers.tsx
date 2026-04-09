@@ -150,7 +150,7 @@ export default function PhoneNumbersPage() {
               } else if (response.data && (response.data as any).requiresPayment) {
                 Alert.alert(
                   'Add-On Required',
-                  'Dedicated phone numbers are available as a business add-on. Please set this up through your account at jobrunner.com.au or contact support@jobrunner.com.au.',
+                  'Dedicated phone numbers are available as a business add-on. Contact admin@avwebinnovation.com for assistance.',
                   [{ text: 'OK' }]
                 );
               } else {

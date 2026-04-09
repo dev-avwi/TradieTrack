@@ -1515,7 +1515,7 @@ export default function TeamManagementScreen() {
   const handleUpgradeToTeam = async () => {
     Alert.alert(
       'Team Plan',
-      'Team plan subscriptions are managed through your business account at jobrunner.com.au. Contact support@jobrunner.com.au for assistance.',
+      'Team plan subscriptions are managed through your business account. Contact admin@avwebinnovation.com for assistance.',
       [{ text: 'OK' }]
     );
   };
