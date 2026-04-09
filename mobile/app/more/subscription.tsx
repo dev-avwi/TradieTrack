@@ -8,7 +8,8 @@ import {
   Linking,
   ActivityIndicator,
   Alert,
-  RefreshControl
+  RefreshControl,
+  Platform,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -16,6 +17,17 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useAuthStore } from '../../src/lib/store';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
+import {
+  initIAP,
+  cleanupIAP,
+  fetchSubscriptions,
+  purchaseSubscription,
+  restorePurchases,
+  setupPurchaseListeners,
+  isIAPAvailable,
+  IAP_PRODUCT_IDS,
+  productIdToTier,
+} from '../../src/lib/iap';
 
 interface SubscriptionStatus {
   tier: 'free' | 'pro' | 'team' | 'business' | 'trial';
@@ -370,6 +382,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600' as const,
     fontSize: 15,
   },
+  restoreButton: {
+    alignItems: 'center' as const,
+    paddingVertical: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  restoreButtonText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '500' as const,
+  },
   webNoteCard: {
     flexDirection: 'row',
     backgroundColor: colors.card,
@@ -409,6 +432,8 @@ export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [managingSubscription, setManagingSubscription] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const fetchSubscriptionStatus = useCallback(async () => {
     try {
@@ -440,14 +465,93 @@ export default function SubscriptionPage() {
     fetchSubscriptionStatus();
   }, [fetchSubscriptionStatus]);
 
+  useEffect(() => {
+    if (isIAPAvailable()) {
+      initIAP().then(() => {
+        setupPurchaseListeners(
+          async (purchase) => {
+            const tier = productIdToTier(purchase.productId);
+            if (tier && purchase.transactionReceipt) {
+              try {
+                await api.post('/api/subscription/verify-apple-receipt', {
+                  receiptData: purchase.transactionReceipt,
+                  productId: purchase.productId,
+                });
+                Alert.alert('Upgrade Successful', `You're now on the ${tier.charAt(0).toUpperCase() + tier.slice(1)} plan.`);
+                fetchSubscriptionStatus();
+              } catch (error) {
+                console.error('[IAP] Failed to verify receipt:', error);
+                Alert.alert('Verification Issue', 'Your purchase was successful but verification failed. Please try restoring your purchase.');
+              }
+            }
+            setPurchasing(false);
+          },
+          (error) => {
+            console.error('[IAP] Purchase error:', error);
+            Alert.alert('Purchase Failed', 'Something went wrong. Please try again.');
+            setPurchasing(false);
+          }
+        );
+      });
+    }
+    return () => { cleanupIAP(); };
+  }, []);
+
   const handleUpgrade = async (tier: 'pro' | 'team' | 'business') => {
     const tierNames = { pro: 'Pro', team: 'Team', business: 'Business' };
-    const tierPrices = { pro: '$49', team: '$99', business: '$199' };
-    Alert.alert(
-      `Upgrade to ${tierNames[tier]}`,
-      `${tierPrices[tier]}/month. In-App Purchase coming soon.\n\nThis feature is being set up. Check back shortly.`,
-      [{ text: 'OK' }]
-    );
+    const tierPrices = { pro: '$49.99', team: '$99.99', business: '$199.99' };
+    const productIds = {
+      pro: IAP_PRODUCT_IDS.pro,
+      team: IAP_PRODUCT_IDS.team,
+      business: IAP_PRODUCT_IDS.business,
+    };
+
+    if (Platform.OS === 'ios') {
+      setPurchasing(true);
+      try {
+        await purchaseSubscription(productIds[tier]);
+      } catch (error: any) {
+        if (error?.code !== 'E_USER_CANCELLED') {
+          Alert.alert('Purchase Failed', 'Something went wrong. Please try again.');
+        }
+        setPurchasing(false);
+      }
+    } else if (Platform.OS === 'android') {
+      Alert.alert(
+        `Upgrade to ${tierNames[tier]}`,
+        `${tierPrices[tier]}/month. Visit jobrunner.com.au to subscribe.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Website', onPress: () => Linking.openURL('https://jobrunner.com.au/pricing') },
+        ]
+      );
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    setRestoring(true);
+    try {
+      const purchases = await restorePurchases();
+      if (purchases.length > 0) {
+        const latestPurchase = purchases[purchases.length - 1];
+        const tier = productIdToTier(latestPurchase.productId);
+        if (tier) {
+          await api.post('/api/subscription/restore-apple', {
+            receiptData: (latestPurchase as any).transactionReceipt,
+            productId: latestPurchase.productId,
+          });
+          Alert.alert('Purchases Restored', `Your ${tier.charAt(0).toUpperCase() + tier.slice(1)} plan has been restored.`);
+          fetchSubscriptionStatus();
+        }
+      } else {
+        Alert.alert('No Purchases Found', 'No previous subscriptions were found for this Apple ID.');
+      }
+    } catch (error) {
+      console.error('[IAP] Restore failed:', error);
+      Alert.alert('Restore Failed', 'Could not restore purchases. Please try again.');
+    } finally {
+      setRestoring(false);
+    }
   };
 
   const handleManageBilling = async () => {
@@ -675,11 +779,12 @@ export default function SubscriptionPage() {
                   ))}
                 </View>
                 <TouchableOpacity 
-                  style={[styles.upgradePlanButton, { backgroundColor: '#2563EB' }]}
+                  style={[styles.upgradePlanButton, { backgroundColor: '#2563EB' }, purchasing && { opacity: 0.6 }]}
                   onPress={() => handleUpgrade('pro')}
                   activeOpacity={0.8}
+                  disabled={purchasing}
                 >
-                  <Text style={styles.upgradePlanButtonText}>Upgrade to Pro</Text>
+                  {purchasing ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Pro</Text>}
                 </TouchableOpacity>
               </View>
             )}
@@ -705,11 +810,12 @@ export default function SubscriptionPage() {
                   ))}
                 </View>
                 <TouchableOpacity 
-                  style={[styles.upgradePlanButton, { backgroundColor: '#7C3AED' }]}
+                  style={[styles.upgradePlanButton, { backgroundColor: '#7C3AED' }, purchasing && { opacity: 0.6 }]}
                   onPress={() => handleUpgrade('team')}
                   activeOpacity={0.8}
+                  disabled={purchasing}
                 >
-                  <Text style={styles.upgradePlanButtonText}>Upgrade to Team</Text>
+                  {purchasing ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Team</Text>}
                 </TouchableOpacity>
               </View>
             )}
@@ -735,11 +841,12 @@ export default function SubscriptionPage() {
                   ))}
                 </View>
                 <TouchableOpacity 
-                  style={[styles.upgradePlanButton, { backgroundColor: '#059669' }]}
+                  style={[styles.upgradePlanButton, { backgroundColor: '#059669' }, purchasing && { opacity: 0.6 }]}
                   onPress={() => handleUpgrade('business')}
                   activeOpacity={0.8}
+                  disabled={purchasing}
                 >
-                  <Text style={styles.upgradePlanButtonText}>Upgrade to Business</Text>
+                  {purchasing ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Business</Text>}
                 </TouchableOpacity>
               </View>
             )}
@@ -773,6 +880,21 @@ export default function SubscriptionPage() {
             </Text>
           </View>
         </View>
+
+        {Platform.OS === 'ios' && (
+          <TouchableOpacity
+            style={styles.restoreButton}
+            onPress={handleRestorePurchases}
+            disabled={restoring}
+            activeOpacity={0.8}
+          >
+            {restoring ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
+              <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         <View style={styles.webNoteCard}>
           <Feather name="message-circle" size={18} color={colors.mutedForeground} />

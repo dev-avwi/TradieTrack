@@ -5429,6 +5429,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/subscription/verify-apple-receipt", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { receiptData, productId } = req.body;
+
+      if (!receiptData || !productId) {
+        return res.status(400).json({ success: false, message: 'Receipt data and product ID are required' });
+      }
+
+      const tierMap: Record<string, string> = {
+        'com.jobrunner.pro.monthly': 'pro',
+        'com.jobrunner.team.monthly': 'team',
+        'com.jobrunner.business.monthly': 'business',
+      };
+
+      const newTier = tierMap[productId];
+      if (!newTier) {
+        return res.status(400).json({ success: false, message: 'Invalid product ID' });
+      }
+
+      const verifyUrl = process.env.NODE_ENV === 'production'
+        ? 'https://buy.itunes.apple.com/verifyReceipt'
+        : 'https://sandbox.itunes.apple.com/verifyReceipt';
+
+      const appleResponse = await fetch(verifyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          'receipt-data': receiptData,
+          password: process.env.APP_STORE_SHARED_SECRET || '',
+        }),
+      });
+
+      const appleResult = await appleResponse.json();
+
+      if (appleResult.status === 21007) {
+        const sandboxResponse = await fetch('https://sandbox.itunes.apple.com/verifyReceipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            'receipt-data': receiptData,
+            password: process.env.APP_STORE_SHARED_SECRET || '',
+          }),
+        });
+        const sandboxResult = await sandboxResponse.json();
+        if (sandboxResult.status !== 0) {
+          return res.status(400).json({ success: false, message: 'Receipt verification failed (sandbox)' });
+        }
+      } else if (appleResult.status !== 0) {
+        return res.status(400).json({ success: false, message: `Receipt verification failed: status ${appleResult.status}` });
+      }
+
+      await storage.updateUser(userId, {
+        subscriptionTier: newTier,
+        subscriptionStatus: 'active',
+        subscriptionSource: 'apple',
+        appleProductId: productId,
+        appleReceiptData: receiptData,
+      } as any);
+
+      console.log(`[IAP] User ${userId} upgraded to ${newTier} via Apple IAP (product: ${productId})`);
+
+      res.json({
+        success: true,
+        tier: newTier,
+        message: `Successfully upgraded to ${newTier}`,
+      });
+    } catch (error: any) {
+      console.error('Error verifying Apple receipt:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to verify receipt' });
+    }
+  });
+
+  app.post("/api/subscription/restore-apple", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { receiptData, productId } = req.body;
+
+      if (!productId) {
+        return res.status(400).json({ success: false, message: 'Product ID is required' });
+      }
+
+      const tierMap: Record<string, string> = {
+        'com.jobrunner.pro.monthly': 'pro',
+        'com.jobrunner.team.monthly': 'team',
+        'com.jobrunner.business.monthly': 'business',
+      };
+
+      const newTier = tierMap[productId];
+      if (!newTier) {
+        return res.status(400).json({ success: false, message: 'Invalid product ID' });
+      }
+
+      await storage.updateUser(userId, {
+        subscriptionTier: newTier,
+        subscriptionStatus: 'active',
+        subscriptionSource: 'apple',
+        appleProductId: productId,
+      } as any);
+
+      console.log(`[IAP] User ${userId} restored to ${newTier} via Apple IAP`);
+
+      res.json({
+        success: true,
+        tier: newTier,
+        message: `Subscription restored to ${newTier}`,
+      });
+    } catch (error: any) {
+      console.error('Error restoring Apple subscription:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to restore subscription' });
+    }
+  });
+
   // Route optimization endpoint - Uses Google Maps Directions API with waypoint optimization
   app.post("/api/routes/optimize", requireAuth, async (req: any, res) => {
     try {
