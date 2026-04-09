@@ -683,14 +683,14 @@ export default function SubscriptionPage() {
         </View>
 
         <View style={styles.webNoteCard}>
-          <Feather name="globe" size={18} color={colors.mutedForeground} />
+          <Feather name="message-circle" size={18} color={colors.mutedForeground} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.webNoteTitle}>Manage Your Plan</Text>
+            <Text style={styles.webNoteTitle}>Need Help?</Text>
             <Text style={styles.webNoteText}>
-              Visit jobrunner.com.au to change your plan or add features to your business account.
+              Have questions about your business account or need support?
             </Text>
             <Text style={styles.webNoteSupport}>
-              Need help? support@jobrunner.com.au
+              support@jobrunner.com.au
             </Text>
           </View>
         </View>
