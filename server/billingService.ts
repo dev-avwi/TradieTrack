@@ -185,7 +185,7 @@ export async function createSubscriptionCheckout(
   successUrl: string,
   cancelUrl: string,
   businessName?: string,
-  trialDays: number = 30
+  trialDays: number = 7
 ): Promise<CheckoutSessionResult> {
   const stripe = await getUncachableStripeClient();
   if (!stripe) {
@@ -253,7 +253,7 @@ export async function createTeamSubscriptionCheckout(
   cancelUrl: string,
   additionalSeats: number = 0,
   businessName?: string,
-  trialDays: number = 30
+  trialDays: number = 7
 ): Promise<CheckoutSessionResult> {
   const stripe = await getUncachableStripeClient();
   if (!stripe) {
@@ -373,11 +373,11 @@ export async function createTrialSubscription(
       priceId = await getOrCreateProPrice(stripe);
     }
 
-    // Create subscription with 30-day trial
+    // Create subscription with 7-day trial
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: priceId }],
-      trial_period_days: 30,
+      trial_period_days: 7,
       trial_settings: {
         end_behavior: {
           missing_payment_method: 'cancel',
@@ -1120,7 +1120,7 @@ export async function downgradeTeamToPro(userId: string): Promise<DowngradeToPro
 export async function upgradeProToTeamTrial(
   userId: string,
   seats: number = 0, // Default to 0 = just owner, no additional seats
-  trialDays: number = 30
+  trialDays: number = 7
 ): Promise<UpgradeToTeamResult> {
   const stripe = await getUncachableStripeClient();
   if (!stripe) {

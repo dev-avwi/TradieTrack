@@ -5067,7 +5067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subscriptionTier,
           betaUser: true,
           // Set trial end date far in future for beta users
-          trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 1 month
+          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7-day trial
         });
         
         console.log(`[BETA] Granted ${tier} access to user ${userId} without payment`);
@@ -5397,7 +5397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        message: 'Your subscription has been upgraded to Team with a 30-day trial. Invite team members to get started!',
+        message: 'Your subscription has been upgraded to Team with a 7-day trial. Invite team members to get started!',
         trialEndsAt: result.trialEndsAt,
         subscriptionId: result.subscriptionId,
       });
