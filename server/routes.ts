@@ -5005,8 +5005,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalBillableUsers = 1 + teamMemberCount;
       
       // Determine upgrade/downgrade eligibility
-      const canUpgrade = status.tier === 'free' || status.tier === 'trial' || status.tier === 'pro';
-      const canDowngrade = status.tier === 'team' || status.tier === 'pro';
+      const canUpgrade = status.tier === 'free' || status.tier === 'trial' || status.tier === 'pro' || status.tier === 'team';
+      const canDowngrade = status.tier === 'team' || status.tier === 'business' || status.tier === 'pro';
       
       res.json({
         tier: status.tier,
@@ -5018,7 +5018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           last4: paymentMethod.last4,
           brand: paymentMethod.brand,
         } : null,
-        seats: status.tier === 'team' ? status.seatCount : undefined,
+        seats: (status.tier === 'team' || status.tier === 'business') ? status.seatCount : undefined,
         teamMemberCount,
         totalBillableUsers,
         isBeta: IS_BETA,
@@ -5050,8 +5050,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { tier, seats } = req.body;
       
       // Validate tier
-      if (!tier || !['pro', 'team'].includes(tier)) {
-        return res.status(400).json({ error: 'Invalid tier. Must be "pro" or "team"' });
+      if (!tier || !['pro', 'team', 'business'].includes(tier)) {
+        return res.status(400).json({ error: 'Invalid tier. Must be "pro", "team", or "business"' });
       }
       
       const user = await storage.getUser(userId);

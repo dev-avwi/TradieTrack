@@ -319,7 +319,10 @@ export const users = pgTable("users", {
   emailVerificationExpiresAt: timestamp("email_verification_expires_at"),
   passwordResetToken: text("password_reset_token"),
   passwordResetExpiresAt: timestamp("password_reset_expires_at"),
-  subscriptionTier: text("subscription_tier").default('free'), // free, pro, team, trial
+  subscriptionTier: text("subscription_tier").default('free'), // free, pro, team, business, trial
+  subscriptionSource: text("subscription_source"), // 'stripe', 'apple', 'beta'
+  appleProductId: text("apple_product_id"), // Apple IAP product ID if subscribed via Apple
+  appleReceiptData: text("apple_receipt_data"), // Latest Apple receipt for server-side validation
   // Usage tracking
   jobsCreatedThisMonth: integer("jobs_created_this_month").default(0),
   invoicesCreatedThisMonth: integer("invoices_created_this_month").default(0),

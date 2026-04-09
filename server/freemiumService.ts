@@ -149,7 +149,7 @@ export interface FullUsageInfo {
 export interface UsageCounts {
   jobsCreatedThisMonth: number;
   remainingJobs: number;
-  subscriptionTier: 'free' | 'pro' | 'business';
+  subscriptionTier: 'free' | 'pro' | 'team' | 'business';
   canCreateJob: boolean;
   nextResetDate: Date;
 }
@@ -449,7 +449,7 @@ export class FreemiumService {
 
       const tier = user.subscriptionTier || 'free';
       const limits = SUBSCRIPTION_LIMITS[tier];
-      const isUnlimited = tier === 'pro' || tier === 'business';
+      const isUnlimited = tier === 'pro' || tier === 'team' || tier === 'business';
 
       // Get actual counts from database
       const jobs = await storage.getJobs(userId);
