@@ -7,7 +7,6 @@ import {
   Platform,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { BlurView } from 'expo-blur';
 import { useTheme } from '../../lib/theme';
 
 interface GlassButtonProps {
@@ -35,7 +34,7 @@ export function GlassButton({
   const handlePressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     Animated.spring(scaleAnim, {
-      toValue: 0.88,
+      toValue: 0.9,
       damping: 15,
       stiffness: 400,
       mass: 0.6,
@@ -63,17 +62,21 @@ export function GlassButton({
           height: size,
           borderRadius,
           transform: [{ scale: scaleAnim }],
-          overflow: 'hidden',
+          backgroundColor: isDark
+            ? 'rgba(120,120,128,0.24)'
+            : 'rgba(120,120,128,0.12)',
+          alignItems: 'center',
+          justifyContent: 'center',
         },
         Platform.select({
           ios: {
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.35 : 0.12,
-            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: isDark ? 0.3 : 0.08,
+            shadowRadius: 4,
           },
           android: {
-            elevation: 4,
+            elevation: 2,
           },
         }),
         style,
@@ -86,41 +89,16 @@ export function GlassButton({
         disabled={disabled}
         hitSlop={hitSlop}
         testID={testID}
-        style={[
-          styles.pressable,
-          { width: size, height: size, borderRadius },
-        ]}
+        style={{
+          width: size,
+          height: size,
+          borderRadius,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
-        <BlurView
-          intensity={isDark ? 40 : 60}
-          tint={isDark ? 'dark' : 'light'}
-          style={[StyleSheet.absoluteFill, { borderRadius }]}
-        />
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: isDark
-                ? 'rgba(255,255,255,0.12)'
-                : 'rgba(255,255,255,0.65)',
-              borderRadius,
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: isDark
-                ? 'rgba(255,255,255,0.18)'
-                : 'rgba(255,255,255,0.8)',
-            },
-          ]}
-        />
         {children}
       </Pressable>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  pressable: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-});
