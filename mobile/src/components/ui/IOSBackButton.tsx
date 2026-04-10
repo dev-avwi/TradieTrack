@@ -19,7 +19,7 @@ export function IOSBackButton({ onPress }: IOSBackButtonProps) {
   };
   
   return (
-    <GlassButton onPress={handlePress}>
+    <GlassButton onPress={handlePress} tint={colors.primary}>
       <Feather name="chevron-left" size={20} color={colors.primary} />
     </GlassButton>
   );

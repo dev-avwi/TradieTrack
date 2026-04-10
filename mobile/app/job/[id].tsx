@@ -9790,6 +9790,7 @@ export default function JobDetailScreen() {
                   onPress={() => {
                     setActiveTab('manage');
                   }}
+                  tint={colors.primary}
                   testID="button-edit-header"
                 >
                   <Feather name="edit-2" size={16} color={colors.primary} />
@@ -9799,6 +9800,7 @@ export default function JobDetailScreen() {
                 <GlassButton
                   onPress={showJobActionsMenu}
                   disabled={isCloningJob || isDeletingJob}
+                  tint={colors.mutedForeground}
                   testID="button-job-actions-menu"
                 >
                   {(isCloningJob || isDeletingJob) ? (

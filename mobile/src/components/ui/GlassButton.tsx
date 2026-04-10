@@ -2,9 +2,8 @@ import { useRef, ReactNode } from 'react';
 import {
   Animated,
   Pressable,
-  StyleSheet,
-  ViewStyle,
   Platform,
+  ViewStyle,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../lib/theme';
@@ -13,6 +12,7 @@ interface GlassButtonProps {
   onPress: () => void;
   children: ReactNode;
   size?: number;
+  tint?: string;
   disabled?: boolean;
   style?: ViewStyle;
   hitSlop?: number;
@@ -22,19 +22,30 @@ interface GlassButtonProps {
 export function GlassButton({
   onPress,
   children,
-  size = 36,
+  size = 38,
+  tint,
   disabled = false,
   style,
   hitSlop = 8,
   testID,
 }: GlassButtonProps) {
-  const { isDark } = useTheme();
+  const { isDark, colors } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const iconColor = tint || colors.primary;
+
+  const bgColor = tint
+    ? isDark
+      ? `${tint}30`
+      : `${tint}18`
+    : isDark
+      ? `${colors.primary}30`
+      : `${colors.primary}18`;
 
   const handlePressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     Animated.spring(scaleAnim, {
-      toValue: 0.9,
+      toValue: 0.88,
       damping: 15,
       stiffness: 400,
       mass: 0.6,
@@ -62,21 +73,19 @@ export function GlassButton({
           height: size,
           borderRadius,
           transform: [{ scale: scaleAnim }],
-          backgroundColor: isDark
-            ? 'rgba(120,120,128,0.24)'
-            : 'rgba(120,120,128,0.12)',
+          backgroundColor: bgColor,
           alignItems: 'center',
           justifyContent: 'center',
         },
         Platform.select({
           ios: {
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: isDark ? 0.3 : 0.08,
-            shadowRadius: 4,
+            shadowColor: isDark ? '#000' : iconColor,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: isDark ? 0.25 : 0.1,
+            shadowRadius: 6,
           },
           android: {
-            elevation: 2,
+            elevation: 3,
           },
         }),
         style,
