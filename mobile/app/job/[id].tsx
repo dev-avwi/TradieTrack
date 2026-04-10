@@ -26,6 +26,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { GlassButton } from '../../src/components/ui/GlassButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -9782,31 +9783,29 @@ export default function JobDetailScreen() {
           headerBackTitle: 'Back',
           headerBackVisible: true,
           headerRight: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
               {(isOwnerOrManager || isSoloOwner) && (
-                <TouchableOpacity
+                <GlassButton
                   onPress={() => {
                     setActiveTab('manage');
                   }}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   testID="button-edit-header"
                 >
-                  <Feather name="edit-2" size={22} color={colors.primary} />
-                </TouchableOpacity>
+                  <Feather name="edit-2" size={16} color={colors.primary} />
+                </GlassButton>
               )}
               {(isOwnerOrManager || isSoloOwner || canDeleteJobs) && (
-                <TouchableOpacity
+                <GlassButton
                   onPress={showJobActionsMenu}
                   disabled={isCloningJob || isDeletingJob}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   testID="button-job-actions-menu"
                 >
                   {(isCloningJob || isDeletingJob) ? (
                     <ActivityIndicator size="small" color={colors.foreground} />
                   ) : (
-                    <Feather name="more-horizontal" size={22} color={colors.primary} />
+                    <Feather name="more-horizontal" size={16} color={colors.foreground} />
                   )}
-                </TouchableOpacity>
+                </GlassButton>
               )}
             </View>
           ),
