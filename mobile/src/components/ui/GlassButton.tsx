@@ -19,6 +19,14 @@ interface GlassButtonProps {
   testID?: string;
 }
 
+function hexToRgba(hex: string, opacity: number): string {
+  const cleaned = hex.replace('#', '');
+  const r = parseInt(cleaned.substring(0, 2), 16);
+  const g = parseInt(cleaned.substring(2, 4), 16);
+  const b = parseInt(cleaned.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${opacity})`;
+}
+
 export function GlassButton({
   onPress,
   children,
@@ -32,15 +40,9 @@ export function GlassButton({
   const { isDark, colors } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  const iconColor = tint || colors.primary;
-
-  const bgColor = tint
-    ? isDark
-      ? `${tint}30`
-      : `${tint}18`
-    : isDark
-      ? `${colors.primary}30`
-      : `${colors.primary}18`;
+  const baseColor = tint || colors.primary;
+  const bgColor = hexToRgba(baseColor, isDark ? 0.25 : 0.15);
+  const borderColor = hexToRgba(baseColor, isDark ? 0.35 : 0.2);
 
   const handlePressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -74,18 +76,20 @@ export function GlassButton({
           borderRadius,
           transform: [{ scale: scaleAnim }],
           backgroundColor: bgColor,
+          borderWidth: 1,
+          borderColor: borderColor,
           alignItems: 'center',
           justifyContent: 'center',
         },
         Platform.select({
           ios: {
-            shadowColor: isDark ? '#000' : iconColor,
+            shadowColor: baseColor,
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.25 : 0.1,
-            shadowRadius: 6,
+            shadowOpacity: isDark ? 0.3 : 0.15,
+            shadowRadius: 8,
           },
           android: {
-            elevation: 3,
+            elevation: 4,
           },
         }),
         style,
