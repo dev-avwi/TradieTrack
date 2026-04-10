@@ -26,8 +26,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
-import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
-import { GlassButton } from '../../src/components/ui/GlassButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -9781,32 +9779,34 @@ export default function JobDetailScreen() {
         options={{ 
           headerShown: true,
           title: '',
-          headerBackVisible: false,
-          headerLeft: () => <IOSBackButton />,
+          headerBackTitle: 'Back',
+          headerBackVisible: true,
           headerRight: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginRight: spacing.xs }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
               {(isOwnerOrManager || isSoloOwner) && (
-                <GlassButton
+                <TouchableOpacity
                   onPress={() => {
                     setActiveTab('manage');
                   }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   testID="button-edit-header"
                 >
-                  <Feather name="edit-2" size={16} color={colors.primary} />
-                </GlassButton>
+                  <Feather name="edit-2" size={22} color={colors.primary} />
+                </TouchableOpacity>
               )}
               {(isOwnerOrManager || isSoloOwner || canDeleteJobs) && (
-                <GlassButton
+                <TouchableOpacity
                   onPress={showJobActionsMenu}
                   disabled={isCloningJob || isDeletingJob}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   testID="button-job-actions-menu"
                 >
                   {(isCloningJob || isDeletingJob) ? (
                     <ActivityIndicator size="small" color={colors.foreground} />
                   ) : (
-                    <Feather name="more-vertical" size={16} color={colors.foreground} />
+                    <Feather name="more-horizontal" size={22} color={colors.primary} />
                   )}
-                </GlassButton>
+                </TouchableOpacity>
               )}
             </View>
           ),
@@ -9814,7 +9814,7 @@ export default function JobDetailScreen() {
             backgroundColor: colors.background,
           },
           headerShadowVisible: false,
-          headerTintColor: colors.foreground,
+          headerTintColor: colors.primary,
         }} 
       />
 
