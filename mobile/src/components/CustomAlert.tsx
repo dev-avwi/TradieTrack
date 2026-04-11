@@ -14,6 +14,10 @@ import {
   useColorScheme,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
+import {
+  LiquidGlassView,
+  isLiquidGlassSupported,
+} from '@callstack/liquid-glass';
 
 interface AlertConfig {
   title: string;
@@ -35,20 +39,7 @@ export function useCustomAlert() {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 48, 340);
-
-function getButtonColors(btn: AlertButton, isDark: boolean) {
-  if (btn.style === 'destructive') {
-    return {
-      bg: isDark ? '#ff453a' : '#ff3b30',
-      text: '#ffffff',
-    };
-  }
-  return {
-    bg: isDark ? '#ffffff' : '#2c2c2e',
-    text: isDark ? '#000000' : '#ffffff',
-  };
-}
+const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 48, 320);
 
 function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () => void }) {
   const colorScheme = useColorScheme();
@@ -103,9 +94,75 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
 
   const showButtonsInRow = orderedButtons.length <= 2;
 
-  const cardBg = isDark ? '#1c1c1e' : '#ffffff';
   const titleColor = isDark ? '#ffffff' : '#000000';
-  const messageColor = isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.8)';
+  const messageColor = isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.7)';
+
+  const getButtonStyle = (btn: AlertButton) => {
+    if (btn.style === 'destructive') {
+      return {
+        bg: isDark ? 'rgba(255,69,58,0.12)' : 'rgba(255,59,48,0.08)',
+        text: isDark ? '#ff453a' : '#ff3b30',
+        border: isDark ? 'rgba(255,69,58,0.2)' : 'rgba(255,59,48,0.15)',
+      };
+    }
+    if (btn.style === 'cancel') {
+      return {
+        bg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
+        text: isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.6)',
+        border: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+      };
+    }
+    return {
+      bg: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)',
+      text: isDark ? '#ffffff' : '#000000',
+      border: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+    };
+  };
+
+  const cardContent = (
+    <>
+      <View style={styles.contentSection}>
+        <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
+        {config.message ? (
+          <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
+        ) : null}
+      </View>
+
+      <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
+        {orderedButtons.map((btn, i) => {
+          const btnStyle = getButtonStyle(btn);
+          return (
+            <TouchableOpacity
+              key={i}
+              style={[
+                styles.btn,
+                showButtonsInRow && styles.btnFlex,
+                {
+                  backgroundColor: btnStyle.bg,
+                  borderWidth: 0.5,
+                  borderColor: btnStyle.border,
+                },
+              ]}
+              onPress={() => dismiss(btn.onPress || undefined)}
+              activeOpacity={0.6}
+            >
+              <Text style={[
+                styles.btnText,
+                {
+                  color: btnStyle.text,
+                  fontWeight: btn.style === 'cancel' ? '500' : '600',
+                },
+              ]}>
+                {btn.text || 'OK'}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </>
+  );
+
+  const fallbackCardBg = isDark ? 'rgba(44,44,46,0.92)' : 'rgba(255,255,255,0.92)';
 
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent>
@@ -121,42 +178,34 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
 
         <Animated.View
           style={[
-            styles.card,
+            styles.cardOuter,
             {
-              backgroundColor: cardBg,
               opacity: fadeAnim,
               transform: [{ scale: scaleAnim }],
             },
           ]}
         >
-          <View style={styles.contentSection}>
-            <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
-            {config.message ? (
-              <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
-            ) : null}
-          </View>
-
-          <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
-            {orderedButtons.map((btn, i) => {
-              const colors = getButtonColors(btn, isDark);
-              return (
-                <TouchableOpacity
-                  key={i}
-                  style={[
-                    styles.btn,
-                    showButtonsInRow && styles.btnFlex,
-                    { backgroundColor: colors.bg },
-                  ]}
-                  onPress={() => dismiss(btn.onPress || undefined)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.btnText, { color: colors.text }]}>
-                    {btn.text || 'OK'}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          {isLiquidGlassSupported ? (
+            <LiquidGlassView
+              style={styles.glassCard}
+              effect="regular"
+            >
+              {cardContent}
+            </LiquidGlassView>
+          ) : (
+            <View style={[styles.fallbackCard, { backgroundColor: fallbackCardBg }]}>
+              {Platform.OS === 'ios' && (
+                <BlurView
+                  intensity={80}
+                  tint={isDark ? 'dark' as const : 'light' as const}
+                  style={StyleSheet.absoluteFill}
+                />
+              )}
+              <View style={StyleSheet.absoluteFill}>
+                {cardContent}
+              </View>
+            </View>
+          )}
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -216,67 +265,76 @@ const styles = StyleSheet.create({
   },
   overlayDim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
-  card: {
+  cardOuter: {
     width: ALERT_WIDTH,
-    borderRadius: 20,
-    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 16 },
-        shadowOpacity: 0.2,
-        shadowRadius: 48,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.15,
+        shadowRadius: 40,
       },
       android: {
         elevation: 24,
       },
     }),
   },
+  glassCard: {
+    width: '100%',
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  fallbackCard: {
+    width: '100%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.06)',
+  },
   contentSection: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 20,
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 18,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '600',
     letterSpacing: -0.3,
-    lineHeight: 24,
+    lineHeight: 23,
   },
   message: {
-    fontSize: 15,
-    marginTop: 8,
-    lineHeight: 21,
+    fontSize: 14,
+    marginTop: 6,
+    lineHeight: 20,
     letterSpacing: -0.1,
   },
   buttonsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 10,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    gap: 8,
   },
   buttonsColumn: {
     flexDirection: 'column',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    gap: 6,
   },
   btn: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 50,
+    minHeight: 44,
   },
   btnFlex: {
     flex: 1,
   },
   btnText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
     letterSpacing: -0.2,
   },
 });
