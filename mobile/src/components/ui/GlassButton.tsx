@@ -2,6 +2,7 @@ import { useRef, ReactNode } from 'react';
 import {
   Animated,
   Pressable,
+  Platform,
   ViewStyle,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -18,18 +19,30 @@ interface GlassButtonProps {
   testID?: string;
 }
 
+function hexToRgba(hex: string, opacity: number): string {
+  const cleaned = hex.replace('#', '');
+  const r = parseInt(cleaned.substring(0, 2), 16);
+  const g = parseInt(cleaned.substring(2, 4), 16);
+  const b = parseInt(cleaned.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${opacity})`;
+}
+
 export function GlassButton({
   onPress,
   children,
-  size = 44,
+  size = 38,
   tint,
   disabled = false,
   style,
   hitSlop = 8,
   testID,
 }: GlassButtonProps) {
-  const { isDark } = useTheme();
+  const { isDark, colors } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const baseColor = tint || colors.primary;
+  const bgColor = hexToRgba(baseColor, isDark ? 0.25 : 0.15);
+  const borderColor = hexToRgba(baseColor, isDark ? 0.35 : 0.2);
 
   const handlePressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -54,18 +67,31 @@ export function GlassButton({
 
   const borderRadius = size / 2;
 
-  const bgColor = tint
-    ? (isDark ? `${tint}35` : `${tint}20`)
-    : isDark
-      ? 'rgba(255,255,255,0.10)'
-      : 'rgba(0,0,0,0.05)';
-
   return (
     <Animated.View
       style={[
         {
+          width: size,
+          height: size,
+          borderRadius,
           transform: [{ scale: scaleAnim }],
+          backgroundColor: bgColor,
+          borderWidth: 1,
+          borderColor: borderColor,
+          alignItems: 'center',
+          justifyContent: 'center',
         },
+        Platform.select({
+          ios: {
+            shadowColor: baseColor,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: isDark ? 0.3 : 0.15,
+            shadowRadius: 8,
+          },
+          android: {
+            elevation: 4,
+          },
+        }),
         style,
       ]}
     >
@@ -82,7 +108,6 @@ export function GlassButton({
           borderRadius,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: bgColor,
         }}
       >
         {children}

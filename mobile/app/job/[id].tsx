@@ -9785,7 +9785,7 @@ export default function JobDetailScreen() {
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
           headerRight: () => (
-            <GlassPill>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
               {(isOwnerOrManager || isSoloOwner) && (
                 <GlassButton
                   onPress={() => {
@@ -9811,7 +9811,7 @@ export default function JobDetailScreen() {
                   )}
                 </GlassButton>
               )}
-            </GlassPill>
+            </View>
           ),
           headerStyle: {
             backgroundColor: colors.background,
