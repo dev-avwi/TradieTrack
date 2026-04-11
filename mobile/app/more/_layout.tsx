@@ -1,7 +1,6 @@
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/lib/theme';
-import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { getNavigationConfig, isIOS } from '../../src/lib/platform';
 
 export default function MoreLayout() {
@@ -16,8 +15,9 @@ export default function MoreLayout() {
       screenOptions={{
         ...navigationConfig,
         headerShown: false,
-        headerBackVisible: false,
-        headerLeft: isIOS ? () => <IOSBackButton /> : undefined,
+        headerBackVisible: true,
+        headerBackTitle: 'Back',
+        headerTintColor: colors.primary,
         headerTitle: '',
         contentStyle: {
           backgroundColor: colors.background,

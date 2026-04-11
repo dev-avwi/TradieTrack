@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { useTheme } from '../../src/lib/theme';
-import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 
 const isIOS = Platform.OS === 'ios';
 
@@ -12,10 +11,11 @@ export default function JobLayout() {
     <Stack
       screenOptions={{
         headerShown: true,
-        headerBackVisible: false,
-        headerLeft: () => <IOSBackButton />,
+        headerBackVisible: true,
+        headerBackTitle: 'Back',
         headerTitle: '',
         headerShadowVisible: false,
+        headerTintColor: colors.primary,
         headerStyle: {
           backgroundColor: colors.background,
         },
