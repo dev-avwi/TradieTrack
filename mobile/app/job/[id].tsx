@@ -9798,20 +9798,20 @@ export default function JobDetailScreen() {
                     tint={colors.primary}
                     testID="button-edit-header"
                   >
-                    <Feather name="file-text" size={19} color={colors.primary} />
+                    <Feather name="edit-2" size={19} color={colors.primary} />
                   </GlassButton>
                 )}
                 {(isOwnerOrManager || isSoloOwner || canDeleteJobs) && (
                   <GlassButton
                     onPress={showJobActionsMenu}
                     disabled={isCloningJob || isDeletingJob}
-                    tint="#EF4444"
+                    tint={colors.primary}
                     testID="button-job-actions-menu"
                   >
                     {(isCloningJob || isDeletingJob) ? (
-                      <ActivityIndicator size="small" color="#EF4444" />
+                      <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
-                      <Feather name="trash-2" size={19} color="#EF4444" />
+                      <Feather name="more-horizontal" size={19} color={colors.primary} />
                     )}
                   </GlassButton>
                 )}
