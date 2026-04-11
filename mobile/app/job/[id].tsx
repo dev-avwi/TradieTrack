@@ -27,6 +27,7 @@ import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { GlassButton } from '../../src/components/ui/GlassButton';
+import { GlassPill } from '../../src/components/ui/GlassPill';
 import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -9784,21 +9785,7 @@ export default function JobDetailScreen() {
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
           headerRight: () => (
-            <View style={{
-              backgroundColor: isDark ? 'rgba(60,60,60,0.6)' : 'rgba(255,255,255,0.65)',
-              borderRadius: 26,
-              borderWidth: 1,
-              borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.9)',
-              paddingHorizontal: 3,
-              paddingVertical: 3,
-              flexDirection: 'row',
-              gap: 4,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.10,
-              shadowRadius: 10,
-              elevation: 4,
-            }}>
+            <GlassPill>
               {(isOwnerOrManager || isSoloOwner) && (
                 <GlassButton
                   onPress={() => {
@@ -9824,7 +9811,7 @@ export default function JobDetailScreen() {
                   )}
                 </GlassButton>
               )}
-            </View>
+            </GlassPill>
           ),
           headerStyle: {
             backgroundColor: colors.background,

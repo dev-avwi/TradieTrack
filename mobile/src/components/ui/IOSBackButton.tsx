@@ -1,6 +1,7 @@
 import { TouchableOpacity, Text, StyleSheet, View, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useTheme } from '../../lib/theme';
 
 interface IOSBackButtonProps {
@@ -20,50 +21,60 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
   };
 
   return (
-    <View
-      style={[
-        styles.pillContainer,
-        {
-          backgroundColor: isDark ? 'rgba(60,60,60,0.6)' : 'rgba(255,255,255,0.65)',
-          borderWidth: 1,
-          borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.9)',
+    <View style={[
+      styles.outerWrap,
+      Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 12,
         },
-        Platform.select({
-          ios: {
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: 0.10,
-            shadowRadius: 10,
-          },
-          android: {
-            elevation: 4,
-          },
-        }),
-      ]}
-    >
-      <TouchableOpacity
-        onPress={handlePress}
-        activeOpacity={0.7}
-        style={styles.backButton}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        android: { elevation: 6 },
+      }),
+    ]}>
+      <BlurView
+        intensity={80}
+        tint={isDark ? 'dark' : 'light'}
+        style={styles.blurPill}
       >
-        <Feather name="chevron-left" size={20} color={colors.primary} />
-        <Text style={[styles.backText, { color: colors.primary }]}>{label}</Text>
-      </TouchableOpacity>
+        <View style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: isDark ? 'rgba(40,40,40,0.4)' : 'rgba(255,255,255,0.45)',
+            borderRadius: 22,
+          },
+        ]} />
+        <TouchableOpacity
+          onPress={handlePress}
+          activeOpacity={0.7}
+          style={styles.backButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Feather name="chevron-left" size={20} color={colors.primary} />
+          <Text style={[styles.backText, { color: colors.primary }]}>{label}</Text>
+        </TouchableOpacity>
+      </BlurView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  pillContainer: {
-    borderRadius: 20,
+  outerWrap: {
+    borderRadius: 22,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+  blurPill: {
+    borderRadius: 22,
     overflow: 'hidden',
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     gap: 2,
   },
   backText: {
