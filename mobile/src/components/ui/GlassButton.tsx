@@ -2,47 +2,36 @@ import { useRef, ReactNode } from 'react';
 import {
   Animated,
   Pressable,
-  Platform,
+  StyleSheet,
   ViewStyle,
+  Platform,
+  View,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { BlurView } from 'expo-blur';
 import { useTheme } from '../../lib/theme';
 
 interface GlassButtonProps {
   onPress: () => void;
   children: ReactNode;
   size?: number;
-  tint?: string;
   disabled?: boolean;
   style?: ViewStyle;
   hitSlop?: number;
   testID?: string;
 }
 
-function hexToRgba(hex: string, opacity: number): string {
-  const cleaned = hex.replace('#', '');
-  const r = parseInt(cleaned.substring(0, 2), 16);
-  const g = parseInt(cleaned.substring(2, 4), 16);
-  const b = parseInt(cleaned.substring(4, 6), 16);
-  return `rgba(${r},${g},${b},${opacity})`;
-}
-
 export function GlassButton({
   onPress,
   children,
   size = 38,
-  tint,
   disabled = false,
   style,
   hitSlop = 8,
   testID,
 }: GlassButtonProps) {
-  const { isDark, colors } = useTheme();
+  const { isDark } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
-
-  const baseColor = tint || colors.primary;
-  const bgColor = hexToRgba(baseColor, isDark ? 0.25 : 0.15);
-  const borderColor = hexToRgba(baseColor, isDark ? 0.35 : 0.2);
 
   const handlePressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -75,17 +64,13 @@ export function GlassButton({
           height: size,
           borderRadius,
           transform: [{ scale: scaleAnim }],
-          backgroundColor: bgColor,
-          borderWidth: 1,
-          borderColor: borderColor,
-          alignItems: 'center',
-          justifyContent: 'center',
+          overflow: 'hidden',
         },
         Platform.select({
           ios: {
-            shadowColor: baseColor,
+            shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.3 : 0.15,
+            shadowOpacity: isDark ? 0.35 : 0.12,
             shadowRadius: 8,
           },
           android: {
@@ -102,16 +87,43 @@ export function GlassButton({
         disabled={disabled}
         hitSlop={hitSlop}
         testID={testID}
-        style={{
-          width: size,
-          height: size,
-          borderRadius,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+        style={[
+          styles.pressable,
+          { width: size, height: size, borderRadius },
+        ]}
       >
+        {Platform.OS === 'ios' ? (
+          <BlurView
+            intensity={isDark ? 40 : 60}
+            tint={isDark ? 'dark' : 'light'}
+            style={[StyleSheet.absoluteFill, { borderRadius }]}
+          />
+        ) : null}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: isDark
+                ? 'rgba(255,255,255,0.12)'
+                : 'rgba(255,255,255,0.65)',
+              borderRadius,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: isDark
+                ? 'rgba(255,255,255,0.18)'
+                : 'rgba(255,255,255,0.8)',
+            },
+          ]}
+        />
         {children}
       </Pressable>
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  pressable: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+});
