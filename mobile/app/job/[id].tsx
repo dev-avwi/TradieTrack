@@ -9785,16 +9785,18 @@ export default function JobDetailScreen() {
           headerLeft: () => <IOSBackButton />,
           headerRight: () => (
             <View style={{
-              backgroundColor: isDark ? 'rgba(50,50,50,0.85)' : 'rgba(255,255,255,0.85)',
-              borderRadius: 28,
-              paddingHorizontal: 6,
-              paddingVertical: 6,
+              backgroundColor: isDark ? 'rgba(60,60,60,0.6)' : 'rgba(255,255,255,0.65)',
+              borderRadius: 26,
+              borderWidth: 1,
+              borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.9)',
+              paddingHorizontal: 3,
+              paddingVertical: 3,
               flexDirection: 'row',
-              gap: 6,
+              gap: 4,
               shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.12,
-              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: 0.10,
+              shadowRadius: 10,
               elevation: 4,
             }}>
               {(isOwnerOrManager || isSoloOwner) && (

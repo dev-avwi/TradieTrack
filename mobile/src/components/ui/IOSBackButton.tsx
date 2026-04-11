@@ -24,14 +24,16 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
       style={[
         styles.pillContainer,
         {
-          backgroundColor: isDark ? 'rgba(50,50,50,0.85)' : 'rgba(255,255,255,0.85)',
+          backgroundColor: isDark ? 'rgba(60,60,60,0.6)' : 'rgba(255,255,255,0.65)',
+          borderWidth: 1,
+          borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.9)',
         },
         Platform.select({
           ios: {
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.12,
-            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.10,
+            shadowRadius: 10,
           },
           android: {
             elevation: 4,
