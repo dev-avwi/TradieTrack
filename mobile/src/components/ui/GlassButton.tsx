@@ -6,10 +6,13 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
-  interpolate,
   runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import {
+  LiquidGlassView,
+  isLiquidGlassSupported,
+} from '@callstack/liquid-glass';
 import { useTheme } from '../../lib/theme';
 
 function hexToRgba(hex: string, opacity: number): string {
@@ -49,7 +52,6 @@ export function GlassButton({
   const baseColor = tint || colors.primary;
   const bgNormal = hexToRgba(baseColor, isDark ? 0.16 : 0.09);
   const bgPressed = hexToRgba(baseColor, isDark ? 0.28 : 0.16);
-
   const borderRadius = size / 2;
 
   const fireHaptic = () => {
@@ -95,41 +97,49 @@ export function GlassButton({
     ],
   }));
 
-  const bgStyle = useAnimatedStyle(() => ({
+  const fallbackBgStyle = useAnimatedStyle(() => ({
     backgroundColor: pressed.value > 0.5 ? bgPressed : bgNormal,
   }));
+
+  const glassInnerStyle: ViewStyle = {
+    width: size,
+    height: size,
+    borderRadius,
+    alignItems: 'center',
+    justifyContent: 'center',
+  };
 
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
         style={[
           outerStyle,
-          Platform.select({
-            ios: {
-              shadowColor: baseColor,
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: isDark ? 0.15 : 0.06,
-              shadowRadius: 4,
-            },
-            android: { elevation: 1 },
-          }),
+          !isLiquidGlassSupported &&
+            Platform.select({
+              ios: {
+                shadowColor: baseColor,
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDark ? 0.15 : 0.06,
+                shadowRadius: 4,
+              },
+              android: { elevation: 1 },
+            }),
         ]}
         testID={testID}
       >
-        <Animated.View
-          style={[
-            bgStyle,
-            {
-              width: size,
-              height: size,
-              borderRadius,
-              alignItems: 'center',
-              justifyContent: 'center',
-            },
-          ]}
-        >
-          {children}
-        </Animated.View>
+        {isLiquidGlassSupported ? (
+          <LiquidGlassView
+            style={glassInnerStyle}
+            interactive
+            effect="regular"
+          >
+            {children}
+          </LiquidGlassView>
+        ) : (
+          <Animated.View style={[fallbackBgStyle, glassInnerStyle]}>
+            {children}
+          </Animated.View>
+        )}
       </Animated.View>
     </GestureDetector>
   );
@@ -143,10 +153,7 @@ interface GlassModuleProps {
 export function GlassModule({ children, style }: GlassModuleProps) {
   return (
     <View
-      style={[
-        { flexDirection: 'row', alignItems: 'center', gap: 8 },
-        style,
-      ]}
+      style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, style]}
     >
       {children}
     </View>
