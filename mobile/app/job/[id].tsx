@@ -1850,7 +1850,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   
@@ -9784,7 +9784,19 @@ export default function JobDetailScreen() {
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
           headerRight: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            <View style={{
+              backgroundColor: isDark ? 'rgba(50,50,50,0.85)' : 'rgba(255,255,255,0.85)',
+              borderRadius: 28,
+              paddingHorizontal: 6,
+              paddingVertical: 6,
+              flexDirection: 'row',
+              gap: 6,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.12,
+              shadowRadius: 8,
+              elevation: 4,
+            }}>
               {(isOwnerOrManager || isSoloOwner) && (
                 <GlassButton
                   onPress={() => {
@@ -9793,7 +9805,7 @@ export default function JobDetailScreen() {
                   tint={colors.primary}
                   testID="button-edit-header"
                 >
-                  <Feather name="file-text" size={17} color={colors.primary} />
+                  <Feather name="file-text" size={18} color={colors.primary} />
                 </GlassButton>
               )}
               {(isOwnerOrManager || isSoloOwner || canDeleteJobs) && (
@@ -9806,7 +9818,7 @@ export default function JobDetailScreen() {
                   {(isCloningJob || isDeletingJob) ? (
                     <ActivityIndicator size="small" color="#EF4444" />
                   ) : (
-                    <Feather name="trash-2" size={17} color="#EF4444" />
+                    <Feather name="trash-2" size={18} color="#EF4444" />
                   )}
                 </GlassButton>
               )}

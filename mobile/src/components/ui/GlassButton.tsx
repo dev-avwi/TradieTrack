@@ -2,13 +2,9 @@ import { useRef, ReactNode } from 'react';
 import {
   Animated,
   Pressable,
-  StyleSheet,
   ViewStyle,
-  Platform,
-  View,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { BlurView } from 'expo-blur';
 import { useTheme } from '../../lib/theme';
 
 interface GlassButtonProps {
@@ -25,7 +21,7 @@ interface GlassButtonProps {
 export function GlassButton({
   onPress,
   children,
-  size = 40,
+  size = 44,
   tint,
   disabled = false,
   style,
@@ -57,54 +53,40 @@ export function GlassButton({
   };
 
   const borderRadius = size / 2;
-  const useTint = !!tint;
 
-  const tintOverlay = useTint
-    ? (isDark ? `${tint}30` : `${tint}26`)
+  const bgColor = tint
+    ? (isDark ? `${tint}35` : `${tint}20`)
     : isDark
-      ? 'rgba(255,255,255,0.08)'
-      : 'rgba(255,255,255,0.35)';
+      ? 'rgba(255,255,255,0.10)'
+      : 'rgba(0,0,0,0.05)';
 
   return (
     <Animated.View
       style={[
         {
-          width: size,
-          height: size,
-          borderRadius,
           transform: [{ scale: scaleAnim }],
         },
         style,
       ]}
     >
-      <BlurView
-        intensity={isDark ? 50 : 60}
-        tint={isDark ? 'dark' : 'light'}
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={disabled}
+        hitSlop={hitSlop}
+        testID={testID}
         style={{
           width: size,
           height: size,
           borderRadius,
-          overflow: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: bgColor,
         }}
       >
-        <Pressable
-          onPress={onPress}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          disabled={disabled}
-          hitSlop={hitSlop}
-          testID={testID}
-          style={{
-            width: size,
-            height: size,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: tintOverlay,
-          }}
-        >
-          {children}
-        </Pressable>
-      </BlurView>
+        {children}
+      </Pressable>
     </Animated.View>
   );
 }

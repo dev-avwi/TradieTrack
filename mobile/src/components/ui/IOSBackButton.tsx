@@ -1,7 +1,6 @@
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, View, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { useTheme } from '../../lib/theme';
 
 interface IOSBackButtonProps {
@@ -21,10 +20,24 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
   };
 
   return (
-    <BlurView
-      intensity={isDark ? 50 : 60}
-      tint={isDark ? 'dark' : 'light'}
-      style={styles.blurContainer}
+    <View
+      style={[
+        styles.pillContainer,
+        {
+          backgroundColor: isDark ? 'rgba(50,50,50,0.85)' : 'rgba(255,255,255,0.85)',
+        },
+        Platform.select({
+          ios: {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.12,
+            shadowRadius: 8,
+          },
+          android: {
+            elevation: 4,
+          },
+        }),
+      ]}
     >
       <TouchableOpacity
         onPress={handlePress}
@@ -35,12 +48,12 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
         <Feather name="chevron-left" size={20} color={colors.primary} />
         <Text style={[styles.backText, { color: colors.primary }]}>{label}</Text>
       </TouchableOpacity>
-    </BlurView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  blurContainer: {
+  pillContainer: {
     borderRadius: 20,
     overflow: 'hidden',
   },
