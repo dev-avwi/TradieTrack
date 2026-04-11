@@ -39,25 +39,25 @@ export function useCustomAlert() {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 56, 310);
+const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 64, 300);
 
 function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () => void }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1.08)).current;
+  const scaleAnim = useRef(new Animated.Value(1.06)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 200,
+        duration: 220,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 8,
-        tension: 100,
+        friction: 9,
+        tension: 120,
         useNativeDriver: true,
       }),
     ]).start();
@@ -67,12 +67,12 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 140,
+        duration: 150,
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
-        toValue: 0.95,
-        duration: 140,
+        toValue: 0.96,
+        duration: 150,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -95,25 +95,25 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
   const showButtonsInRow = orderedButtons.length <= 2;
 
   const titleColor = isDark ? '#ffffff' : '#1a1a1a';
-  const messageColor = isDark ? 'rgba(235,235,245,0.55)' : 'rgba(60,60,67,0.65)';
+  const messageColor = isDark ? 'rgba(235,235,245,0.55)' : 'rgba(60,60,67,0.6)';
 
   const getButtonStyle = (btn: AlertButton) => {
     if (btn.style === 'destructive') {
       return {
-        bg: isDark ? 'rgba(255,69,58,0.15)' : 'rgba(255,59,48,0.08)',
+        bg: isDark ? 'rgba(255,69,58,0.12)' : 'rgba(255,59,48,0.06)',
         text: isDark ? '#ff453a' : '#ff3b30',
         fontWeight: '600' as const,
       };
     }
     if (btn.style === 'cancel') {
       return {
-        bg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(120,120,128,0.08)',
-        text: isDark ? 'rgba(235,235,245,0.5)' : 'rgba(60,60,67,0.5)',
+        bg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(120,120,128,0.06)',
+        text: isDark ? 'rgba(235,235,245,0.45)' : 'rgba(60,60,67,0.45)',
         fontWeight: '500' as const,
       };
     }
     return {
-      bg: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(120,120,128,0.1)',
+      bg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(120,120,128,0.08)',
       text: isDark ? '#ffffff' : '#1a1a1a',
       fontWeight: '600' as const,
     };
@@ -140,7 +140,7 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
                 { backgroundColor: btnStyle.bg },
               ]}
               onPress={() => dismiss(btn.onPress || undefined)}
-              activeOpacity={0.6}
+              activeOpacity={0.5}
             >
               <Text style={[styles.btnText, { color: btnStyle.text, fontWeight: btnStyle.fontWeight }]}>
                 {btn.text || 'OK'}
@@ -152,14 +152,12 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
     </View>
   );
 
-  const cardBg = isDark ? 'rgba(38,38,40,0.92)' : 'rgba(255,255,255,0.94)';
-
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent>
       <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
         {Platform.OS === 'ios' ? (
           <BlurView
-            intensity={60}
+            intensity={70}
             tint={isDark ? 'dark' as const : 'default' as const}
             style={StyleSheet.absoluteFill}
           />
@@ -176,19 +174,24 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
           ]}
         >
           {isLiquidGlassSupported ? (
-            <LiquidGlassView style={[styles.glassCard, { backgroundColor: cardBg }]} effect="regular">
+            <LiquidGlassView style={styles.glassCard} effect="regular">
               {cardContent}
             </LiquidGlassView>
           ) : (
-            <View style={[styles.fallbackCard, { overflow: 'hidden' }]}>
+            <View style={styles.fallbackCard}>
               {Platform.OS === 'ios' ? (
                 <BlurView
-                  intensity={80}
+                  intensity={90}
                   tint={isDark ? 'dark' as const : 'light' as const}
                   style={StyleSheet.absoluteFill}
                 />
               ) : null}
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: cardBg }]} />
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  { backgroundColor: isDark ? 'rgba(38,38,40,0.85)' : 'rgba(255,255,255,0.85)' },
+                ]}
+              />
               {cardContent}
             </View>
           )}
@@ -251,16 +254,16 @@ const styles = StyleSheet.create({
   },
   overlayDim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.18)',
   },
   cardOuter: {
     width: ALERT_WIDTH,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
-        shadowRadius: 32,
+        shadowOffset: { width: 0, height: 16 },
+        shadowOpacity: 0.10,
+        shadowRadius: 48,
       },
       android: {
         elevation: 20,
@@ -269,12 +272,12 @@ const styles = StyleSheet.create({
   },
   glassCard: {
     width: '100%',
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   fallbackCard: {
     width: '100%',
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   cardInner: {
@@ -283,45 +286,45 @@ const styles = StyleSheet.create({
   contentSection: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 16,
+    paddingBottom: 18,
   },
   title: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: -0.3,
-    lineHeight: 22,
+    letterSpacing: -0.2,
+    lineHeight: 21,
   },
   message: {
-    fontSize: 14,
-    marginTop: 6,
-    lineHeight: 19,
-    letterSpacing: -0.1,
+    fontSize: 13,
+    marginTop: 8,
+    lineHeight: 18,
+    letterSpacing: -0.05,
   },
   buttonsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
     gap: 8,
   },
   buttonsColumn: {
     flexDirection: 'column',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
     gap: 6,
   },
   btn: {
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: 40,
   },
   btnFlex: {
     flex: 1,
   },
   btnText: {
-    fontSize: 16,
-    letterSpacing: -0.2,
+    fontSize: 15,
+    letterSpacing: -0.15,
   },
 });

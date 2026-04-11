@@ -33,7 +33,7 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
 
   const content = (
     <>
-      <Feather name="chevron-left" size={20} color={colors.primary} />
+      <Feather name="chevron-left" size={18} color={colors.primary} />
       <Text style={[styles.backText, { color: colors.primary }]}>{label}</Text>
     </>
   );
@@ -42,7 +42,7 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
     return (
       <TouchableOpacity
         onPress={handlePress}
-        activeOpacity={0.6}
+        activeOpacity={0.5}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <LiquidGlassView style={styles.capsule} interactive effect="clear">
@@ -52,24 +52,15 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
     );
   }
 
-  const bgColor = hexToRgba(colors.primary, isDark ? 0.14 : 0.08);
+  const bgColor = hexToRgba(colors.primary, isDark ? 0.10 : 0.05);
 
   return (
     <TouchableOpacity
       onPress={handlePress}
-      activeOpacity={0.6}
+      activeOpacity={0.5}
       style={[
         styles.capsule,
         { backgroundColor: bgColor },
-        Platform.select({
-          ios: {
-            shadowColor: colors.primary,
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: isDark ? 0.12 : 0.05,
-            shadowRadius: 3,
-          },
-          android: { elevation: 1 },
-        }),
       ]}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
@@ -82,14 +73,14 @@ const styles = StyleSheet.create({
   capsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 6,
-    paddingRight: 14,
-    height: 36,
-    borderRadius: 18,
+    paddingLeft: 4,
+    paddingRight: 10,
+    height: 32,
+    borderRadius: 16,
   },
   backText: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '400',
-    marginLeft: -2,
+    marginLeft: -3,
   },
 });

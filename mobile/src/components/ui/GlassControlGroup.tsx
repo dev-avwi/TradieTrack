@@ -28,7 +28,7 @@ interface GlassControlGroupProps {
 export function GlassControlGroup({ items }: GlassControlGroupProps) {
   const { isDark, colors } = useTheme();
 
-  const separatorColor = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)';
+  const separatorColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)';
 
   const controls = items.map((item, i) => (
     <View key={i} style={styles.itemRow}>
@@ -38,7 +38,7 @@ export function GlassControlGroup({ items }: GlassControlGroupProps) {
       <TouchableOpacity
         onPress={item.onPress}
         disabled={item.disabled}
-        activeOpacity={0.5}
+        activeOpacity={0.4}
         style={styles.touchTarget}
         testID={item.testID}
       >
@@ -55,24 +55,10 @@ export function GlassControlGroup({ items }: GlassControlGroupProps) {
     );
   }
 
-  const bgColor = hexToRgba(colors.primary, isDark ? 0.14 : 0.08);
+  const bgColor = hexToRgba(colors.primary, isDark ? 0.10 : 0.05);
 
   return (
-    <View
-      style={[
-        styles.capsule,
-        { backgroundColor: bgColor },
-        Platform.select({
-          ios: {
-            shadowColor: colors.primary,
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: isDark ? 0.12 : 0.05,
-            shadowRadius: 3,
-          },
-          android: { elevation: 1 },
-        }),
-      ]}
-    >
+    <View style={[styles.capsule, { backgroundColor: bgColor }]}>
       {controls}
     </View>
   );
@@ -82,9 +68,9 @@ const styles = StyleSheet.create({
   capsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 36,
-    borderRadius: 18,
-    paddingHorizontal: 2,
+    height: 32,
+    borderRadius: 16,
+    paddingHorizontal: 1,
   },
   itemRow: {
     flexDirection: 'row',
@@ -93,11 +79,11 @@ const styles = StyleSheet.create({
   },
   separator: {
     width: StyleSheet.hairlineWidth,
-    height: 18,
+    height: 16,
   },
   touchTarget: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
