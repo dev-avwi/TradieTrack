@@ -1,10 +1,7 @@
-import { Pressable, Text, StyleSheet, Platform } from 'react-native';
+import { Pressable, View, Text, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import {
-  LiquidGlassView,
-  isLiquidGlassSupported,
-} from '@callstack/liquid-glass';
+import { BlurView } from 'expo-blur';
 import { useTheme } from '../../lib/theme';
 
 function hexToRgba(hex: string, opacity: number): string {
@@ -31,19 +28,21 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
     }
   };
 
-  const content = (
-    <>
-      <Feather name="chevron-left" size={17} color={colors.primary} />
-      <Text style={[styles.backText, { color: colors.primary }]}>{label}</Text>
-    </>
-  );
-
-  if (isLiquidGlassSupported) {
+  if (Platform.OS === 'ios') {
     return (
-      <Pressable onPress={handlePress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <LiquidGlassView style={styles.capsule} effect="clear">
-          {content}
-        </LiquidGlassView>
+      <Pressable
+        onPress={handlePress}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <View style={styles.capsuleClip}>
+          <BlurView
+            tint={isDark ? 'systemChromeMaterialDark' as any : 'systemChromeMaterial' as any}
+            intensity={70}
+            style={StyleSheet.absoluteFill}
+          />
+          <Feather name="chevron-left" size={16} color={colors.primary} />
+          <Text style={[styles.backText, { color: colors.primary }]}>{label}</Text>
+        </View>
       </Pressable>
     );
   }
@@ -53,26 +52,29 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
   return (
     <Pressable
       onPress={handlePress}
-      style={[styles.capsule, { backgroundColor: bgColor }]}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
-      {content}
+      <View style={[styles.capsuleClip, { backgroundColor: bgColor }]}>
+        <Feather name="chevron-left" size={16} color={colors.primary} />
+        <Text style={[styles.backText, { color: colors.primary }]}>{label}</Text>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  capsule: {
+  capsuleClip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 3,
-    paddingRight: 8,
+    paddingLeft: 4,
+    paddingRight: 10,
     height: 28,
     borderRadius: 14,
+    overflow: 'hidden',
   },
   backText: {
     fontSize: 15,
     fontWeight: '400',
-    marginLeft: -2,
+    marginLeft: -1,
   },
 });

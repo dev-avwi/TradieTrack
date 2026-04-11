@@ -15,10 +15,6 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  LiquidGlassView,
-  isLiquidGlassSupported,
-} from '@callstack/liquid-glass';
 
 interface AlertConfig {
   title: string;
@@ -121,47 +117,16 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
   };
 
   const highlightColors = isDark
-    ? ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.0)']
-    : ['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.0)'];
+    ? ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.0)']
+    : ['rgba(255,255,255,0.50)', 'rgba(255,255,255,0.0)'];
 
-  const cardContent = (
-    <View style={styles.cardInner}>
-      <LinearGradient
-        colors={highlightColors as [string, string]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.topHighlight}
-      />
+  const materialTint = isDark
+    ? ('systemThinMaterialDark' as any)
+    : ('systemThinMaterial' as any);
 
-      <View style={styles.contentSection}>
-        <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
-        {config.message ? (
-          <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
-        ) : null}
-      </View>
-
-      <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
-        {orderedButtons.map((btn, i) => {
-          const btnStyle = getButtonStyle(btn);
-          return (
-            <Pressable
-              key={i}
-              style={[
-                styles.btn,
-                showButtonsInRow && styles.btnFlex,
-                { backgroundColor: btnStyle.bg },
-              ]}
-              onPress={() => dismiss(btn.onPress || undefined)}
-            >
-              <Text style={[styles.btnText, { color: btnStyle.text, fontWeight: btnStyle.fontWeight }]}>
-                {btn.text || 'OK'}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
+  const tintOverlay = isDark
+    ? 'rgba(30,30,32,0.25)'
+    : 'rgba(255,255,255,0.20)';
 
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent>
@@ -169,7 +134,7 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
         {Platform.OS === 'ios' ? (
           <BlurView
             intensity={80}
-            tint={isDark ? 'dark' as const : 'default' as const}
+            tint={isDark ? 'dark' as any : 'default' as any}
             style={StyleSheet.absoluteFill}
           />
         ) : null}
@@ -184,28 +149,52 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
             },
           ]}
         >
-          {isLiquidGlassSupported ? (
-            <LiquidGlassView style={styles.glassCard} effect="regular">
-              {cardContent}
-            </LiquidGlassView>
-          ) : (
-            <View style={styles.fallbackCard}>
-              {Platform.OS === 'ios' ? (
-                <BlurView
-                  intensity={95}
-                  tint={isDark ? 'dark' as const : 'light' as const}
-                  style={StyleSheet.absoluteFill}
-                />
-              ) : null}
-              <View
-                style={[
-                  StyleSheet.absoluteFill,
-                  { backgroundColor: isDark ? 'rgba(38,38,40,0.80)' : 'rgba(255,255,255,0.82)' },
-                ]}
+          <View style={styles.cardClip}>
+            {Platform.OS === 'ios' ? (
+              <BlurView
+                tint={materialTint}
+                intensity={100}
+                style={StyleSheet.absoluteFill}
               />
-              {cardContent}
+            ) : null}
+
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: tintOverlay }]} />
+
+            <LinearGradient
+              colors={highlightColors as [string, string]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.topHighlight}
+            />
+
+            <View style={styles.contentSection}>
+              <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
+              {config.message ? (
+                <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
+              ) : null}
             </View>
-          )}
+
+            <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
+              {orderedButtons.map((btn, i) => {
+                const btnStyle = getButtonStyle(btn);
+                return (
+                  <Pressable
+                    key={i}
+                    style={[
+                      styles.btn,
+                      showButtonsInRow && styles.btnFlex,
+                      { backgroundColor: btnStyle.bg },
+                    ]}
+                    onPress={() => dismiss(btn.onPress || undefined)}
+                  >
+                    <Text style={[styles.btnText, { color: btnStyle.text, fontWeight: btnStyle.fontWeight }]}>
+                      {btn.text || 'OK'}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -265,34 +254,26 @@ const styles = StyleSheet.create({
   },
   overlayDim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.12)',
   },
   cardOuter: {
     width: ALERT_WIDTH,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 20 },
-        shadowOpacity: 0.08,
-        shadowRadius: 60,
+        shadowOffset: { width: 0, height: 24 },
+        shadowOpacity: 0.06,
+        shadowRadius: 64,
       },
       android: {
         elevation: 24,
       },
     }),
   },
-  glassCard: {
+  cardClip: {
     width: '100%',
     borderRadius: 14,
     overflow: 'hidden',
-  },
-  fallbackCard: {
-    width: '100%',
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  cardInner: {
-    width: '100%',
     position: 'relative',
   },
   topHighlight: {
@@ -300,14 +281,14 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 40,
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
+    height: 36,
+    zIndex: 1,
   },
   contentSection: {
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 20,
+    zIndex: 2,
   },
   title: {
     fontSize: 16,
@@ -326,12 +307,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingBottom: 14,
     gap: 8,
+    zIndex: 2,
   },
   buttonsColumn: {
     flexDirection: 'column',
     paddingHorizontal: 14,
     paddingBottom: 14,
     gap: 6,
+    zIndex: 2,
   },
   btn: {
     paddingVertical: 9,

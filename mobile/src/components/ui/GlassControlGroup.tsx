@@ -1,9 +1,6 @@
 import { ReactNode } from 'react';
-import { View, Pressable, StyleSheet } from 'react-native';
-import {
-  LiquidGlassView,
-  isLiquidGlassSupported,
-} from '@callstack/liquid-glass';
+import { View, Pressable, StyleSheet, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useTheme } from '../../lib/theme';
 
 function hexToRgba(hex: string, opacity: number): string {
@@ -28,7 +25,7 @@ interface GlassControlGroupProps {
 export function GlassControlGroup({ items }: GlassControlGroupProps) {
   const { isDark, colors } = useTheme();
 
-  const separatorColor = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)';
+  const separatorColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
 
   const controls = items.map((item, i) => (
     <View key={i} style={styles.itemRow}>
@@ -47,30 +44,35 @@ export function GlassControlGroup({ items }: GlassControlGroupProps) {
     </View>
   ));
 
-  if (isLiquidGlassSupported) {
+  if (Platform.OS === 'ios') {
     return (
-      <LiquidGlassView style={styles.capsule} effect="clear">
+      <View style={styles.capsuleClip}>
+        <BlurView
+          tint={isDark ? 'systemChromeMaterialDark' as any : 'systemChromeMaterial' as any}
+          intensity={70}
+          style={StyleSheet.absoluteFill}
+        />
         {controls}
-      </LiquidGlassView>
+      </View>
     );
   }
 
   const bgColor = hexToRgba(colors.primary, isDark ? 0.08 : 0.04);
 
   return (
-    <View style={[styles.capsule, { backgroundColor: bgColor }]}>
+    <View style={[styles.capsuleClip, { backgroundColor: bgColor }]}>
       {controls}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  capsule: {
+  capsuleClip: {
     flexDirection: 'row',
     alignItems: 'center',
     height: 28,
     borderRadius: 14,
-    paddingHorizontal: 0,
+    overflow: 'hidden',
   },
   itemRow: {
     flexDirection: 'row',
