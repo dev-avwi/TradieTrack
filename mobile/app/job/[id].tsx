@@ -27,6 +27,7 @@ import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { GlassButton } from '../../src/components/ui/GlassButton';
+import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -9780,8 +9781,8 @@ export default function JobDetailScreen() {
         options={{ 
           headerShown: true,
           title: '',
-          headerBackVisible: true,
-          headerBackTitle: 'Back',
+          headerBackVisible: false,
+          headerLeft: () => <IOSBackButton />,
           headerRight: () => (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
               {(isOwnerOrManager || isSoloOwner) && (
