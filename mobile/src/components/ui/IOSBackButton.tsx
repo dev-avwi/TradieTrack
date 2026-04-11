@@ -1,6 +1,7 @@
 import { TouchableOpacity, Text, StyleSheet, View, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useTheme } from '../../lib/theme';
 
 interface IOSBackButtonProps {
@@ -22,39 +23,45 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
   return (
     <View
       style={[
-        styles.capsule,
-        {
-          backgroundColor: isDark ? 'rgba(44,44,46,0.65)' : 'rgba(255,255,255,0.72)',
-          borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.85)',
-        },
         Platform.select({
           ios: {
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: isDark ? 0.35 : 0.12,
-            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: isDark ? 0.4 : 0.14,
+            shadowRadius: 12,
           },
-          android: { elevation: 5 },
+          android: { elevation: 6 },
         }),
       ]}
     >
-      <TouchableOpacity
-        onPress={handlePress}
-        activeOpacity={0.6}
-        style={styles.inner}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      <BlurView
+        intensity={Platform.OS === 'ios' ? (isDark ? 60 : 80) : 0}
+        tint={isDark ? 'dark' : 'light'}
+        style={styles.blurWrap}
       >
-        <Feather name="chevron-left" size={18} color={colors.primary} />
-        <Text style={[styles.label, { color: colors.primary }]}>{label}</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handlePress}
+          activeOpacity={0.6}
+          style={[
+            styles.inner,
+            {
+              backgroundColor: isDark ? 'rgba(44,44,46,0.35)' : 'rgba(255,255,255,0.25)',
+              borderColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.7)',
+            },
+          ]}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Feather name="chevron-left" size={18} color={colors.primary} />
+          <Text style={[styles.label, { color: colors.primary }]}>{label}</Text>
+        </TouchableOpacity>
+      </BlurView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  capsule: {
+  blurWrap: {
     borderRadius: 20,
-    borderWidth: 0.5,
     overflow: 'hidden',
   },
   inner: {
@@ -64,6 +71,8 @@ const styles = StyleSheet.create({
     paddingRight: 14,
     paddingVertical: 7,
     gap: 1,
+    borderRadius: 20,
+    borderWidth: 0.5,
   },
   label: {
     fontSize: 16,
