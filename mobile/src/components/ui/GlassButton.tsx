@@ -35,7 +35,7 @@ interface GlassButtonProps {
 export function GlassButton({
   onPress,
   children,
-  size = 42,
+  size = 44,
   tint,
   disabled = false,
   testID,
@@ -47,9 +47,8 @@ export function GlassButton({
   const pressed = useSharedValue(0);
 
   const baseColor = tint || colors.primary;
-  const bgNormal = hexToRgba(baseColor, isDark ? 0.18 : 0.10);
-  const bgPressed = hexToRgba(baseColor, isDark ? 0.30 : 0.18);
-  const borderNormal = hexToRgba(baseColor, isDark ? 0.12 : 0.06);
+  const bgNormal = hexToRgba(baseColor, isDark ? 0.16 : 0.09);
+  const bgPressed = hexToRgba(baseColor, isDark ? 0.28 : 0.16);
 
   const borderRadius = size / 2;
 
@@ -63,7 +62,7 @@ export function GlassButton({
   const gesture = Gesture.Pan()
     .onBegin((e) => {
       runOnJS(fireHaptic)();
-      scale.value = withSpring(0.90, SPRING_DOWN);
+      scale.value = withSpring(0.91, SPRING_DOWN);
       pressed.value = withTiming(1, { duration: 60 });
       const ox = (e.x - size / 2) / (size / 2);
       const oy = (e.y - size / 2) / (size / 2);
@@ -100,19 +99,23 @@ export function GlassButton({
     backgroundColor: pressed.value > 0.5 ? bgPressed : bgNormal,
   }));
 
-  const shadowStyle = Platform.select({
-    ios: {
-      shadowColor: baseColor,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.2 : 0.08,
-      shadowRadius: 6,
-    },
-    android: { elevation: 2 },
-  });
-
   return (
     <GestureDetector gesture={gesture}>
-      <Animated.View style={[outerStyle, shadowStyle]} testID={testID}>
+      <Animated.View
+        style={[
+          outerStyle,
+          Platform.select({
+            ios: {
+              shadowColor: baseColor,
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: isDark ? 0.15 : 0.06,
+              shadowRadius: 4,
+            },
+            android: { elevation: 1 },
+          }),
+        ]}
+        testID={testID}
+      >
         <Animated.View
           style={[
             bgStyle,
@@ -120,8 +123,6 @@ export function GlassButton({
               width: size,
               height: size,
               borderRadius,
-              borderWidth: 0.5,
-              borderColor: borderNormal,
               alignItems: 'center',
               justifyContent: 'center',
             },
@@ -143,11 +144,7 @@ export function GlassModule({ children, style }: GlassModuleProps) {
   return (
     <View
       style={[
-        {
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-        },
+        { flexDirection: 'row', alignItems: 'center', gap: 8 },
         style,
       ]}
     >
