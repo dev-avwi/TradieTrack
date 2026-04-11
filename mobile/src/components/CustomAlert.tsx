@@ -15,6 +15,10 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import {
+  LiquidGlassView,
+  isLiquidGlassSupported,
+} from '@callstack/liquid-glass';
 
 interface AlertConfig {
   title: string;
@@ -93,8 +97,6 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
 
   const titleColor = isDark ? '#f5f5f7' : '#1a1a1a';
   const messageColor = isDark ? 'rgba(235,235,245,0.55)' : 'rgba(60,60,67,0.6)';
-  const borderColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)';
-  const cardBg = isDark ? 'rgba(44,44,46,0.72)' : 'rgba(255,255,255,0.78)';
 
   const getButtonStyle = (btn: AlertButton) => {
     if (btn.style === 'destructive') {
@@ -122,6 +124,45 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
     ? ['rgba(255,255,255,0.07)', 'rgba(255,255,255,0.0)']
     : ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.0)'];
 
+  const cardContent = (
+    <>
+      <LinearGradient
+        colors={highlightColors as [string, string]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topHighlight}
+      />
+
+      <View style={styles.contentSection}>
+        <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
+        {config.message ? (
+          <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
+        ) : null}
+      </View>
+
+      <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
+        {orderedButtons.map((btn, i) => {
+          const btnStyle = getButtonStyle(btn);
+          return (
+            <Pressable
+              key={i}
+              style={[
+                styles.btn,
+                showButtonsInRow && styles.btnFlex,
+                { backgroundColor: btnStyle.bg },
+              ]}
+              onPress={() => dismiss(btn.onPress || undefined)}
+            >
+              <Text style={[styles.btnText, { color: btnStyle.text, fontWeight: btnStyle.fontWeight }]}>
+                {btn.text || 'OK'}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </>
+  );
+
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent>
       <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
@@ -143,52 +184,30 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
             },
           ]}
         >
-          <View style={[styles.cardClip, { borderColor }]}>
-            {Platform.OS === 'ios' ? (
-              <BlurView
-                tint={isDark ? 'systemThinMaterialDark' as any : 'systemThinMaterial' as any}
-                intensity={100}
-                style={StyleSheet.absoluteFill}
-              />
-            ) : null}
-
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: cardBg }]} />
-
-            <LinearGradient
-              colors={highlightColors as [string, string]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.topHighlight}
-            />
-
-            <View style={styles.contentSection}>
-              <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
-              {config.message ? (
-                <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
+          {isLiquidGlassSupported ? (
+            <LiquidGlassView style={styles.glassCard} effect="regular">
+              {cardContent}
+            </LiquidGlassView>
+          ) : (
+            <View style={styles.fallbackCard}>
+              {Platform.OS === 'ios' ? (
+                <BlurView
+                  tint={isDark ? 'systemThinMaterialDark' as any : 'systemThinMaterial' as any}
+                  intensity={100}
+                  style={StyleSheet.absoluteFill}
+                />
               ) : null}
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    backgroundColor: isDark ? 'rgba(44,44,46,0.72)' : 'rgba(255,255,255,0.78)',
+                  },
+                ]}
+              />
+              {cardContent}
             </View>
-
-            <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
-              {orderedButtons.map((btn, i) => {
-                const btnStyle = getButtonStyle(btn);
-                return (
-                  <Pressable
-                    key={i}
-                    style={[
-                      styles.btn,
-                      showButtonsInRow && styles.btnFlex,
-                      { backgroundColor: btnStyle.bg },
-                    ]}
-                    onPress={() => dismiss(btn.onPress || undefined)}
-                  >
-                    <Text style={[styles.btnText, { color: btnStyle.text, fontWeight: btnStyle.fontWeight }]}>
-                      {btn.text || 'OK'}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
+          )}
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -264,12 +283,16 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  cardClip: {
+  glassCard: {
+    width: '100%',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  fallbackCard: {
     width: '100%',
     borderRadius: 14,
     overflow: 'hidden',
     position: 'relative',
-    borderWidth: StyleSheet.hairlineWidth,
   },
   topHighlight: {
     position: 'absolute',

@@ -1,6 +1,10 @@
-import { Pressable, Text, StyleSheet, Platform } from 'react-native';
+import { Pressable, StyleSheet, Text, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import {
+  LiquidGlassView,
+  isLiquidGlassSupported,
+} from '@callstack/liquid-glass';
 import { useTheme } from '../../lib/theme';
 
 interface IOSBackButtonProps {
@@ -19,27 +23,47 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
     }
   };
 
+  const content = (
+    <>
+      <Feather name="chevron-left" size={17} color={colors.primary} />
+      <Text style={[styles.label, { color: colors.primary }]}>{label}</Text>
+    </>
+  );
+
+  if (isLiquidGlassSupported) {
+    return (
+      <Pressable
+        onPress={handlePress}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <LiquidGlassView style={styles.capsule} effect="clear">
+          {content}
+        </LiquidGlassView>
+      </Pressable>
+    );
+  }
+
   return (
     <Pressable
       onPress={handlePress}
-      style={styles.control}
+      style={styles.capsule}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
-      <Feather name="chevron-left" size={17} color={colors.primary} />
-      <Text style={[styles.backText, { color: colors.primary }]}>{label}</Text>
+      {content}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  control: {
+  capsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 2,
-    paddingRight: 6,
-    height: 28,
+    paddingLeft: 4,
+    paddingRight: 10,
+    height: 30,
+    borderRadius: 15,
   },
-  backText: {
+  label: {
     fontSize: 16,
     fontWeight: '400',
     marginLeft: -1,

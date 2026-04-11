@@ -9782,6 +9782,7 @@ export default function JobDetailScreen() {
         options={{ 
           headerShown: true,
           title: '',
+          headerTransparent: true,
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
           headerRight: () => {
@@ -9807,7 +9808,7 @@ export default function JobDetailScreen() {
             return <GlassControlGroup items={items} />;
           },
           headerStyle: {
-            backgroundColor: colors.background,
+            backgroundColor: 'transparent',
           },
           headerShadowVisible: false,
           headerTintColor: colors.primary,
