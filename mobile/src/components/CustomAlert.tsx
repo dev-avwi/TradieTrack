@@ -96,28 +96,81 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
 
   const titleColor = isDark ? '#ffffff' : '#000000';
   const messageColor = isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.7)';
+  const separatorColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
 
-  const getButtonStyle = (btn: AlertButton) => {
+  const getButtonStyle = (btn: AlertButton, index: number, total: number) => {
+    const isLast = index === total - 1;
     if (btn.style === 'destructive') {
       return {
-        bg: isDark ? 'rgba(255,69,58,0.12)' : 'rgba(255,59,48,0.08)',
         text: isDark ? '#ff453a' : '#ff3b30',
-        border: isDark ? 'rgba(255,69,58,0.2)' : 'rgba(255,59,48,0.15)',
+        fontWeight: '600' as const,
       };
     }
     if (btn.style === 'cancel') {
       return {
-        bg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
-        text: isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.6)',
-        border: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+        text: isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.5)',
+        fontWeight: '400' as const,
       };
     }
     return {
-      bg: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)',
-      text: isDark ? '#ffffff' : '#000000',
-      border: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+      text: isDark ? '#0a84ff' : '#007aff',
+      fontWeight: '600' as const,
     };
   };
+
+  const cardBg = isDark ? 'rgba(44,44,46,0.88)' : 'rgba(255,255,255,0.88)';
+
+  const actionButtons = (
+    <View style={styles.actionsContainer}>
+      <View style={[styles.separator, { backgroundColor: separatorColor }]} />
+      {showButtonsInRow ? (
+        <View style={styles.buttonsRow}>
+          {orderedButtons.map((btn, i) => {
+            const btnStyle = getButtonStyle(btn, i, orderedButtons.length);
+            const showVerticalSep = i < orderedButtons.length - 1;
+            return (
+              <View key={i} style={[styles.btnRowWrapper, i > 0 && styles.btnRowWithSep]}>
+                {i > 0 && (
+                  <View style={[styles.verticalSeparator, { backgroundColor: separatorColor }]} />
+                )}
+                <TouchableOpacity
+                  style={styles.btnRow}
+                  onPress={() => dismiss(btn.onPress || undefined)}
+                  activeOpacity={0.4}
+                >
+                  <Text style={[styles.btnText, { color: btnStyle.text, fontWeight: btnStyle.fontWeight }]}>
+                    {btn.text || 'OK'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </View>
+      ) : (
+        <View style={styles.buttonsColumn}>
+          {orderedButtons.map((btn, i) => {
+            const btnStyle = getButtonStyle(btn, i, orderedButtons.length);
+            return (
+              <View key={i}>
+                {i > 0 && (
+                  <View style={[styles.separator, { backgroundColor: separatorColor }]} />
+                )}
+                <TouchableOpacity
+                  style={styles.btnColumn}
+                  onPress={() => dismiss(btn.onPress || undefined)}
+                  activeOpacity={0.4}
+                >
+                  <Text style={[styles.btnText, { color: btnStyle.text, fontWeight: btnStyle.fontWeight }]}>
+                    {btn.text || 'OK'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
 
   const cardContent = (
     <>
@@ -127,42 +180,9 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
           <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
         ) : null}
       </View>
-
-      <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
-        {orderedButtons.map((btn, i) => {
-          const btnStyle = getButtonStyle(btn);
-          return (
-            <TouchableOpacity
-              key={i}
-              style={[
-                styles.btn,
-                showButtonsInRow && styles.btnFlex,
-                {
-                  backgroundColor: btnStyle.bg,
-                  borderWidth: 0.5,
-                  borderColor: btnStyle.border,
-                },
-              ]}
-              onPress={() => dismiss(btn.onPress || undefined)}
-              activeOpacity={0.6}
-            >
-              <Text style={[
-                styles.btnText,
-                {
-                  color: btnStyle.text,
-                  fontWeight: btn.style === 'cancel' ? '500' : '600',
-                },
-              ]}>
-                {btn.text || 'OK'}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {actionButtons}
     </>
   );
-
-  const fallbackCardBg = isDark ? 'rgba(44,44,46,0.92)' : 'rgba(255,255,255,0.92)';
 
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent>
@@ -186,24 +206,22 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
           ]}
         >
           {isLiquidGlassSupported ? (
-            <LiquidGlassView
-              style={styles.glassCard}
-              effect="regular"
-            >
-              {cardContent}
-            </LiquidGlassView>
+            <View style={[styles.cardBase, { backgroundColor: cardBg }]}>
+              <LiquidGlassView style={styles.glassOverlay} effect="regular">
+                {cardContent}
+              </LiquidGlassView>
+            </View>
           ) : (
-            <View style={[styles.fallbackCard, { backgroundColor: fallbackCardBg }]}>
-              {Platform.OS === 'ios' && (
+            <View style={[styles.cardBase, { overflow: 'hidden' }]}>
+              {Platform.OS === 'ios' ? (
                 <BlurView
                   intensity={80}
                   tint={isDark ? 'dark' as const : 'light' as const}
                   style={StyleSheet.absoluteFill}
                 />
-              )}
-              <View style={StyleSheet.absoluteFill}>
-                {cardContent}
-              </View>
+              ) : null}
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: cardBg }]} />
+              {cardContent}
             </View>
           )}
         </Animated.View>
@@ -281,60 +299,75 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  glassCard: {
+  cardBase: {
     width: '100%',
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
   },
-  fallbackCard: {
+  glassOverlay: {
     width: '100%',
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 0.5,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderRadius: 16,
   },
   contentSection: {
-    paddingHorizontal: 22,
-    paddingTop: 22,
-    paddingBottom: 18,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    alignItems: 'center',
   },
   title: {
     fontSize: 17,
     fontWeight: '600',
     letterSpacing: -0.3,
-    lineHeight: 23,
+    lineHeight: 22,
+    textAlign: 'center',
   },
   message: {
-    fontSize: 14,
-    marginTop: 6,
-    lineHeight: 20,
+    fontSize: 13,
+    marginTop: 4,
+    lineHeight: 18,
     letterSpacing: -0.1,
+    textAlign: 'center',
+  },
+  actionsContainer: {
+    width: '100%',
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    width: '100%',
+  },
+  verticalSeparator: {
+    width: StyleSheet.hairlineWidth,
+    height: '100%',
+    position: 'absolute',
+    left: 0,
+    top: 0,
   },
   buttonsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-    gap: 8,
+    width: '100%',
   },
-  buttonsColumn: {
-    flexDirection: 'column',
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-    gap: 6,
+  btnRowWrapper: {
+    flex: 1,
+    position: 'relative',
   },
-  btn: {
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+  btnRowWithSep: {},
+  btnRow: {
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 44,
   },
-  btnFlex: {
-    flex: 1,
+  buttonsColumn: {
+    width: '100%',
+  },
+  btnColumn: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
   },
   btnText: {
-    fontSize: 15,
+    fontSize: 17,
     letterSpacing: -0.2,
   },
 });
