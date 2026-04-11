@@ -26,7 +26,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
-import { GlassButton, GlassModule } from '../../src/components/ui/GlassButton';
+import { GlassButton } from '../../src/components/ui/GlassButton';
 import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -9784,7 +9784,7 @@ export default function JobDetailScreen() {
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
           headerRight: () => (
-            <GlassModule>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               {(isOwnerOrManager || isSoloOwner) && (
                 <GlassButton
                   onPress={() => {
@@ -9793,7 +9793,7 @@ export default function JobDetailScreen() {
                   tint={colors.primary}
                   testID="button-edit-header"
                 >
-                  <Feather name="file-text" size={18} color={colors.primary} />
+                  <Feather name="file-text" size={19} color={colors.primary} />
                 </GlassButton>
               )}
               {(isOwnerOrManager || isSoloOwner || canDeleteJobs) && (
@@ -9806,11 +9806,11 @@ export default function JobDetailScreen() {
                   {(isCloningJob || isDeletingJob) ? (
                     <ActivityIndicator size="small" color="#EF4444" />
                   ) : (
-                    <Feather name="trash-2" size={18} color="#EF4444" />
+                    <Feather name="trash-2" size={19} color="#EF4444" />
                   )}
                 </GlassButton>
               )}
-            </GlassModule>
+            </View>
           ),
           headerStyle: {
             backgroundColor: colors.background,
