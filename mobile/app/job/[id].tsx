@@ -26,8 +26,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
-import { GlassButton } from '../../src/components/ui/GlassButton';
-import { GlassPill } from '../../src/components/ui/GlassPill';
+import { GlassButton, GlassModule } from '../../src/components/ui/GlassButton';
 import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -9785,7 +9784,7 @@ export default function JobDetailScreen() {
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
           headerRight: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            <GlassModule>
               {(isOwnerOrManager || isSoloOwner) && (
                 <GlassButton
                   onPress={() => {
@@ -9811,7 +9810,7 @@ export default function JobDetailScreen() {
                   )}
                 </GlassButton>
               )}
-            </View>
+            </GlassModule>
           ),
           headerStyle: {
             backgroundColor: colors.background,

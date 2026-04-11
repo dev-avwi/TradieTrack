@@ -3,18 +3,18 @@ import {
   Animated,
   Pressable,
   Platform,
+  View,
   ViewStyle,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../lib/theme';
 
-interface GlassButtonProps {
+interface GlassActionCircleProps {
   onPress: () => void;
   children: ReactNode;
   size?: number;
   tint?: string;
   disabled?: boolean;
-  style?: ViewStyle;
   hitSlop?: number;
   testID?: string;
 }
@@ -30,24 +30,22 @@ function hexToRgba(hex: string, opacity: number): string {
 export function GlassButton({
   onPress,
   children,
-  size = 38,
+  size = 40,
   tint,
   disabled = false,
-  style,
   hitSlop = 8,
   testID,
-}: GlassButtonProps) {
+}: GlassActionCircleProps) {
   const { isDark, colors } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const baseColor = tint || colors.primary;
-  const bgColor = hexToRgba(baseColor, isDark ? 0.25 : 0.15);
-  const borderColor = hexToRgba(baseColor, isDark ? 0.35 : 0.2);
+  const bgColor = hexToRgba(baseColor, isDark ? 0.22 : 0.13);
 
   const handlePressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     Animated.spring(scaleAnim, {
-      toValue: 0.88,
+      toValue: 0.9,
       damping: 15,
       stiffness: 400,
       mass: 0.6,
@@ -68,33 +66,7 @@ export function GlassButton({
   const borderRadius = size / 2;
 
   return (
-    <Animated.View
-      style={[
-        {
-          width: size,
-          height: size,
-          borderRadius,
-          transform: [{ scale: scaleAnim }],
-          backgroundColor: bgColor,
-          borderWidth: 1,
-          borderColor: borderColor,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        Platform.select({
-          ios: {
-            shadowColor: baseColor,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.3 : 0.15,
-            shadowRadius: 8,
-          },
-          android: {
-            elevation: 4,
-          },
-        }),
-        style,
-      ]}
-    >
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <Pressable
         onPress={onPress}
         onPressIn={handlePressIn}
@@ -106,6 +78,7 @@ export function GlassButton({
           width: size,
           height: size,
           borderRadius,
+          backgroundColor: bgColor,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -113,5 +86,43 @@ export function GlassButton({
         {children}
       </Pressable>
     </Animated.View>
+  );
+}
+
+interface GlassModuleProps {
+  children: ReactNode;
+  style?: ViewStyle;
+}
+
+export function GlassModule({ children, style }: GlassModuleProps) {
+  const { isDark } = useTheme();
+
+  return (
+    <View
+      style={[
+        {
+          backgroundColor: isDark ? 'rgba(44,44,46,0.65)' : 'rgba(255,255,255,0.72)',
+          borderRadius: 24,
+          borderWidth: 0.5,
+          borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.85)',
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: 4,
+          gap: 4,
+        },
+        Platform.select({
+          ios: {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: isDark ? 0.35 : 0.12,
+            shadowRadius: 10,
+          },
+          android: { elevation: 5 },
+        }),
+        style,
+      ]}
+    >
+      {children}
+    </View>
   );
 }
