@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 import {
   LiquidGlassView,
   isLiquidGlassSupported,
@@ -28,34 +28,34 @@ interface GlassControlGroupProps {
 export function GlassControlGroup({ items }: GlassControlGroupProps) {
   const { isDark, colors } = useTheme();
 
-  const separatorColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)';
+  const separatorColor = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)';
 
   const controls = items.map((item, i) => (
     <View key={i} style={styles.itemRow}>
       {i > 0 && (
         <View style={[styles.separator, { backgroundColor: separatorColor }]} />
       )}
-      <TouchableOpacity
+      <Pressable
         onPress={item.onPress}
         disabled={item.disabled}
-        activeOpacity={0.4}
         style={styles.touchTarget}
+        hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
         testID={item.testID}
       >
         {item.children}
-      </TouchableOpacity>
+      </Pressable>
     </View>
   ));
 
   if (isLiquidGlassSupported) {
     return (
-      <LiquidGlassView style={styles.capsule} interactive effect="clear">
+      <LiquidGlassView style={styles.capsule} effect="clear">
         {controls}
       </LiquidGlassView>
     );
   }
 
-  const bgColor = hexToRgba(colors.primary, isDark ? 0.10 : 0.05);
+  const bgColor = hexToRgba(colors.primary, isDark ? 0.08 : 0.04);
 
   return (
     <View style={[styles.capsule, { backgroundColor: bgColor }]}>
@@ -68,9 +68,9 @@ const styles = StyleSheet.create({
   capsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 32,
-    borderRadius: 16,
-    paddingHorizontal: 1,
+    height: 28,
+    borderRadius: 14,
+    paddingHorizontal: 0,
   },
   itemRow: {
     flexDirection: 'row',
@@ -79,11 +79,11 @@ const styles = StyleSheet.create({
   },
   separator: {
     width: StyleSheet.hairlineWidth,
-    height: 16,
+    height: 14,
   },
   touchTarget: {
-    width: 34,
-    height: 32,
+    width: 30,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },

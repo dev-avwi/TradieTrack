@@ -3,7 +3,7 @@ import {
   View,
   Text,
   Modal,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   Animated,
   Dimensions,
@@ -14,6 +14,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   LiquidGlassView,
   isLiquidGlassSupported,
@@ -39,25 +40,25 @@ export function useCustomAlert() {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 64, 300);
+const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 64, 296);
 
 function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () => void }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1.06)).current;
+  const scaleAnim = useRef(new Animated.Value(1.04)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 220,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 9,
-        tension: 120,
+        friction: 10,
+        tension: 140,
         useNativeDriver: true,
       }),
     ]).start();
@@ -67,12 +68,12 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 150,
+        duration: 140,
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
-        toValue: 0.96,
-        duration: 150,
+        toValue: 0.97,
+        duration: 140,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -94,33 +95,44 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
 
   const showButtonsInRow = orderedButtons.length <= 2;
 
-  const titleColor = isDark ? '#ffffff' : '#1a1a1a';
-  const messageColor = isDark ? 'rgba(235,235,245,0.55)' : 'rgba(60,60,67,0.6)';
+  const titleColor = isDark ? '#f5f5f7' : '#1d1d1f';
+  const messageColor = isDark ? 'rgba(235,235,245,0.50)' : 'rgba(60,60,67,0.55)';
 
   const getButtonStyle = (btn: AlertButton) => {
     if (btn.style === 'destructive') {
       return {
-        bg: isDark ? 'rgba(255,69,58,0.12)' : 'rgba(255,59,48,0.06)',
+        bg: isDark ? 'rgba(255,69,58,0.10)' : 'rgba(255,59,48,0.05)',
         text: isDark ? '#ff453a' : '#ff3b30',
         fontWeight: '600' as const,
       };
     }
     if (btn.style === 'cancel') {
       return {
-        bg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(120,120,128,0.06)',
-        text: isDark ? 'rgba(235,235,245,0.45)' : 'rgba(60,60,67,0.45)',
+        bg: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(120,120,128,0.04)',
+        text: isDark ? 'rgba(235,235,245,0.40)' : 'rgba(60,60,67,0.40)',
         fontWeight: '500' as const,
       };
     }
     return {
-      bg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(120,120,128,0.08)',
-      text: isDark ? '#ffffff' : '#1a1a1a',
+      bg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(120,120,128,0.06)',
+      text: isDark ? '#f5f5f7' : '#1d1d1f',
       fontWeight: '600' as const,
     };
   };
 
+  const highlightColors = isDark
+    ? ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.0)']
+    : ['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.0)'];
+
   const cardContent = (
     <View style={styles.cardInner}>
+      <LinearGradient
+        colors={highlightColors as [string, string]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topHighlight}
+      />
+
       <View style={styles.contentSection}>
         <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
         {config.message ? (
@@ -132,7 +144,7 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
         {orderedButtons.map((btn, i) => {
           const btnStyle = getButtonStyle(btn);
           return (
-            <TouchableOpacity
+            <Pressable
               key={i}
               style={[
                 styles.btn,
@@ -140,12 +152,11 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
                 { backgroundColor: btnStyle.bg },
               ]}
               onPress={() => dismiss(btn.onPress || undefined)}
-              activeOpacity={0.5}
             >
               <Text style={[styles.btnText, { color: btnStyle.text, fontWeight: btnStyle.fontWeight }]}>
                 {btn.text || 'OK'}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
       </View>
@@ -157,7 +168,7 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
       <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
         {Platform.OS === 'ios' ? (
           <BlurView
-            intensity={70}
+            intensity={80}
             tint={isDark ? 'dark' as const : 'default' as const}
             style={StyleSheet.absoluteFill}
           />
@@ -181,7 +192,7 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
             <View style={styles.fallbackCard}>
               {Platform.OS === 'ios' ? (
                 <BlurView
-                  intensity={90}
+                  intensity={95}
                   tint={isDark ? 'dark' as const : 'light' as const}
                   style={StyleSheet.absoluteFill}
                 />
@@ -189,7 +200,7 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
               <View
                 style={[
                   StyleSheet.absoluteFill,
-                  { backgroundColor: isDark ? 'rgba(38,38,40,0.85)' : 'rgba(255,255,255,0.85)' },
+                  { backgroundColor: isDark ? 'rgba(38,38,40,0.80)' : 'rgba(255,255,255,0.82)' },
                 ]}
               />
               {cardContent}
@@ -254,50 +265,60 @@ const styles = StyleSheet.create({
   },
   overlayDim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.18)',
+    backgroundColor: 'rgba(0,0,0,0.15)',
   },
   cardOuter: {
     width: ALERT_WIDTH,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 16 },
-        shadowOpacity: 0.10,
-        shadowRadius: 48,
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.08,
+        shadowRadius: 60,
       },
       android: {
-        elevation: 20,
+        elevation: 24,
       },
     }),
   },
   glassCard: {
     width: '100%',
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   fallbackCard: {
     width: '100%',
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   cardInner: {
     width: '100%',
+    position: 'relative',
+  },
+  topHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 40,
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
   },
   contentSection: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 18,
+    paddingBottom: 20,
   },
   title: {
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.2,
-    lineHeight: 21,
+    lineHeight: 22,
   },
   message: {
     fontSize: 13,
-    marginTop: 8,
-    lineHeight: 18,
+    marginTop: 10,
+    lineHeight: 19,
     letterSpacing: -0.05,
   },
   buttonsRow: {
@@ -313,12 +334,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   btn: {
-    paddingVertical: 10,
+    paddingVertical: 9,
     paddingHorizontal: 12,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 40,
+    minHeight: 38,
   },
   btnFlex: {
     flex: 1,

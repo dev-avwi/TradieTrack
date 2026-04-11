@@ -1,4 +1,4 @@
-import { TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
+import { Pressable, Text, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import {
@@ -33,39 +33,31 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
 
   const content = (
     <>
-      <Feather name="chevron-left" size={18} color={colors.primary} />
+      <Feather name="chevron-left" size={17} color={colors.primary} />
       <Text style={[styles.backText, { color: colors.primary }]}>{label}</Text>
     </>
   );
 
   if (isLiquidGlassSupported) {
     return (
-      <TouchableOpacity
-        onPress={handlePress}
-        activeOpacity={0.5}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <LiquidGlassView style={styles.capsule} interactive effect="clear">
+      <Pressable onPress={handlePress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <LiquidGlassView style={styles.capsule} effect="clear">
           {content}
         </LiquidGlassView>
-      </TouchableOpacity>
+      </Pressable>
     );
   }
 
-  const bgColor = hexToRgba(colors.primary, isDark ? 0.10 : 0.05);
+  const bgColor = hexToRgba(colors.primary, isDark ? 0.08 : 0.04);
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={handlePress}
-      activeOpacity={0.5}
-      style={[
-        styles.capsule,
-        { backgroundColor: bgColor },
-      ]}
+      style={[styles.capsule, { backgroundColor: bgColor }]}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
       {content}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -73,14 +65,14 @@ const styles = StyleSheet.create({
   capsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 4,
-    paddingRight: 10,
-    height: 32,
-    borderRadius: 16,
+    paddingLeft: 3,
+    paddingRight: 8,
+    height: 28,
+    borderRadius: 14,
   },
   backText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '400',
-    marginLeft: -3,
+    marginLeft: -2,
   },
 });
