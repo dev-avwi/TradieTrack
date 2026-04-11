@@ -25,7 +25,7 @@ interface GlassButtonProps {
 export function GlassButton({
   onPress,
   children,
-  size = 38,
+  size = 40,
   tint,
   disabled = false,
   style,
@@ -57,19 +57,13 @@ export function GlassButton({
   };
 
   const borderRadius = size / 2;
-
   const useTint = !!tint;
-  const bgColor = useTint
-    ? (isDark ? `${tint}55` : `${tint}28`)
-    : isDark
-      ? 'rgba(255,255,255,0.12)'
-      : 'rgba(255,255,255,0.65)';
 
-  const borderColor = useTint
-    ? (isDark ? `${tint}40` : `${tint}20`)
+  const tintOverlay = useTint
+    ? (isDark ? `${tint}30` : `${tint}26`)
     : isDark
-      ? 'rgba(255,255,255,0.18)'
-      : 'rgba(255,255,255,0.8)';
+      ? 'rgba(255,255,255,0.08)'
+      : 'rgba(255,255,255,0.35)';
 
   return (
     <Animated.View
@@ -79,62 +73,38 @@ export function GlassButton({
           height: size,
           borderRadius,
           transform: [{ scale: scaleAnim }],
-          overflow: 'hidden',
         },
-        Platform.select({
-          ios: {
-            shadowColor: tint || '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.35 : 0.15,
-            shadowRadius: 8,
-          },
-          android: {
-            elevation: 4,
-          },
-        }),
         style,
       ]}
     >
-      <Pressable
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        disabled={disabled}
-        hitSlop={hitSlop}
-        testID={testID}
-        style={[
-          styles.pressable,
-          { width: size, height: size, borderRadius },
-        ]}
+      <BlurView
+        intensity={isDark ? 50 : 60}
+        tint={isDark ? 'dark' : 'light'}
+        style={{
+          width: size,
+          height: size,
+          borderRadius,
+          overflow: 'hidden',
+        }}
       >
-        {Platform.OS === 'ios' && !useTint ? (
-          <BlurView
-            intensity={isDark ? 40 : 60}
-            tint={isDark ? 'dark' : 'light'}
-            style={[StyleSheet.absoluteFill, { borderRadius }]}
-          />
-        ) : null}
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: bgColor,
-              borderRadius,
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: borderColor,
-            },
-          ]}
-        />
-        {children}
-      </Pressable>
+        <Pressable
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          disabled={disabled}
+          hitSlop={hitSlop}
+          testID={testID}
+          style={{
+            width: size,
+            height: size,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: tintOverlay,
+          }}
+        >
+          {children}
+        </Pressable>
+      </BlurView>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  pressable: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-});

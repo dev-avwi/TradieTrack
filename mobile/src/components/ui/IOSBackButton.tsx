@@ -1,6 +1,7 @@
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useTheme } from '../../lib/theme';
 
 interface IOSBackButtonProps {
@@ -9,8 +10,8 @@ interface IOSBackButtonProps {
 }
 
 export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
-  const { colors } = useTheme();
-  
+  const { colors, isDark } = useTheme();
+
   const handlePress = () => {
     if (onPress) {
       onPress();
@@ -18,25 +19,37 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
       router.back();
     }
   };
-  
+
   return (
-    <TouchableOpacity 
-      onPress={handlePress}
-      activeOpacity={0.7}
-      style={styles.backButton}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    <BlurView
+      intensity={isDark ? 50 : 60}
+      tint={isDark ? 'dark' : 'light'}
+      style={styles.blurContainer}
     >
-      <Feather name="chevron-left" size={24} color={colors.primary} />
-      <Text style={[styles.backText, { color: colors.primary }]}>{label}</Text>
-    </TouchableOpacity>
+      <TouchableOpacity
+        onPress={handlePress}
+        activeOpacity={0.7}
+        style={styles.backButton}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Feather name="chevron-left" size={20} color={colors.primary} />
+        <Text style={[styles.backText, { color: colors.primary }]}>{label}</Text>
+      </TouchableOpacity>
+    </BlurView>
   );
 }
 
 const styles = StyleSheet.create({
+  blurContainer: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: -8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 2,
   },
   backText: {
     fontSize: 17,
