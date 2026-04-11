@@ -28,7 +28,7 @@ interface GlassControlGroupProps {
 export function GlassControlGroup({ items }: GlassControlGroupProps) {
   const { isDark, colors } = useTheme();
 
-  const separatorColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
+  const separatorColor = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)';
 
   const controls = items.map((item, i) => (
     <View key={i} style={styles.itemRow}>
@@ -49,7 +49,7 @@ export function GlassControlGroup({ items }: GlassControlGroupProps) {
 
   if (isLiquidGlassSupported) {
     return (
-      <LiquidGlassView style={styles.glassCapsule} interactive effect="regular">
+      <LiquidGlassView style={styles.capsule} interactive effect="clear">
         {controls}
       </LiquidGlassView>
     );
@@ -60,10 +60,8 @@ export function GlassControlGroup({ items }: GlassControlGroupProps) {
   return (
     <View
       style={[
-        styles.fallbackCapsule,
-        {
-          backgroundColor: bgColor,
-        },
+        styles.capsule,
+        { backgroundColor: bgColor },
         Platform.select({
           ios: {
             shadowColor: colors.primary,
@@ -81,19 +79,12 @@ export function GlassControlGroup({ items }: GlassControlGroupProps) {
 }
 
 const styles = StyleSheet.create({
-  glassCapsule: {
+  capsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 38,
-    borderRadius: 19,
-    paddingHorizontal: 4,
-  },
-  fallbackCapsule: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 38,
-    borderRadius: 19,
-    paddingHorizontal: 4,
+    height: 36,
+    borderRadius: 18,
+    paddingHorizontal: 2,
   },
   itemRow: {
     flexDirection: 'row',
@@ -102,12 +93,11 @@ const styles = StyleSheet.create({
   },
   separator: {
     width: StyleSheet.hairlineWidth,
-    height: 20,
-    marginHorizontal: 2,
+    height: 18,
   },
   touchTarget: {
-    width: 38,
-    height: 38,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },

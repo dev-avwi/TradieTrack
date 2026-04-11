@@ -1,4 +1,4 @@
-import { TouchableOpacity, Text, StyleSheet, View, Platform } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import {
@@ -45,7 +45,7 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
         activeOpacity={0.6}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <LiquidGlassView style={styles.glassCapsule} interactive effect="regular">
+        <LiquidGlassView style={styles.capsule} interactive effect="clear">
           {content}
         </LiquidGlassView>
       </TouchableOpacity>
@@ -59,10 +59,8 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
       onPress={handlePress}
       activeOpacity={0.6}
       style={[
-        styles.fallbackCapsule,
-        {
-          backgroundColor: bgColor,
-        },
+        styles.capsule,
+        { backgroundColor: bgColor },
         Platform.select({
           ios: {
             shadowColor: colors.primary,
@@ -81,21 +79,13 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
 }
 
 const styles = StyleSheet.create({
-  glassCapsule: {
+  capsule: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: 6,
     paddingRight: 14,
-    height: 38,
-    borderRadius: 19,
-  },
-  fallbackCapsule: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 6,
-    paddingRight: 14,
-    height: 38,
-    borderRadius: 19,
+    height: 36,
+    borderRadius: 18,
   },
   backText: {
     fontSize: 17,
