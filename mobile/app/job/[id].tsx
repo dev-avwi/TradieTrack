@@ -9784,27 +9784,29 @@ export default function JobDetailScreen() {
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
           headerRight: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
               {(isOwnerOrManager || isSoloOwner) && (
                 <GlassButton
                   onPress={() => {
                     setActiveTab('manage');
                   }}
+                  tint={colors.primary}
                   testID="button-edit-header"
                 >
-                  <Feather name="edit-2" size={16} color={colors.primary} />
+                  <Feather name="file-text" size={16} color="#ffffff" />
                 </GlassButton>
               )}
               {(isOwnerOrManager || isSoloOwner || canDeleteJobs) && (
                 <GlassButton
                   onPress={showJobActionsMenu}
                   disabled={isCloningJob || isDeletingJob}
+                  tint="#ff3b30"
                   testID="button-job-actions-menu"
                 >
                   {(isCloningJob || isDeletingJob) ? (
-                    <ActivityIndicator size="small" color={colors.foreground} />
+                    <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
-                    <Feather name="more-horizontal" size={16} color={colors.foreground} />
+                    <Feather name="trash-2" size={16} color="#ffffff" />
                   )}
                 </GlassButton>
               )}

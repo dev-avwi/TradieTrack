@@ -15,6 +15,7 @@ interface GlassButtonProps {
   onPress: () => void;
   children: ReactNode;
   size?: number;
+  tint?: string;
   disabled?: boolean;
   style?: ViewStyle;
   hitSlop?: number;
@@ -25,6 +26,7 @@ export function GlassButton({
   onPress,
   children,
   size = 38,
+  tint,
   disabled = false,
   style,
   hitSlop = 8,
@@ -56,6 +58,19 @@ export function GlassButton({
 
   const borderRadius = size / 2;
 
+  const useTint = !!tint;
+  const bgColor = useTint
+    ? (isDark ? `${tint}55` : `${tint}28`)
+    : isDark
+      ? 'rgba(255,255,255,0.12)'
+      : 'rgba(255,255,255,0.65)';
+
+  const borderColor = useTint
+    ? (isDark ? `${tint}40` : `${tint}20`)
+    : isDark
+      ? 'rgba(255,255,255,0.18)'
+      : 'rgba(255,255,255,0.8)';
+
   return (
     <Animated.View
       style={[
@@ -68,9 +83,9 @@ export function GlassButton({
         },
         Platform.select({
           ios: {
-            shadowColor: '#000',
+            shadowColor: tint || '#000',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.35 : 0.12,
+            shadowOpacity: isDark ? 0.35 : 0.15,
             shadowRadius: 8,
           },
           android: {
@@ -92,7 +107,7 @@ export function GlassButton({
           { width: size, height: size, borderRadius },
         ]}
       >
-        {Platform.OS === 'ios' ? (
+        {Platform.OS === 'ios' && !useTint ? (
           <BlurView
             intensity={isDark ? 40 : 60}
             tint={isDark ? 'dark' : 'light'}
@@ -103,14 +118,10 @@ export function GlassButton({
           style={[
             StyleSheet.absoluteFill,
             {
-              backgroundColor: isDark
-                ? 'rgba(255,255,255,0.12)'
-                : 'rgba(255,255,255,0.65)',
+              backgroundColor: bgColor,
               borderRadius,
               borderWidth: StyleSheet.hairlineWidth,
-              borderColor: isDark
-                ? 'rgba(255,255,255,0.18)'
-                : 'rgba(255,255,255,0.8)',
+              borderColor: borderColor,
             },
           ]}
         />
