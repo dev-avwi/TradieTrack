@@ -91,49 +91,43 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
 
   const showButtonsInRow = orderedButtons.length <= 2;
 
-  const titleColor = isDark ? '#f5f5f7' : '#1d1d1f';
-  const messageColor = isDark ? 'rgba(235,235,245,0.50)' : 'rgba(60,60,67,0.55)';
+  const titleColor = isDark ? '#f5f5f7' : '#1a1a1a';
+  const messageColor = isDark ? 'rgba(235,235,245,0.55)' : 'rgba(60,60,67,0.6)';
+  const borderColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)';
+  const cardBg = isDark ? 'rgba(44,44,46,0.72)' : 'rgba(255,255,255,0.78)';
 
   const getButtonStyle = (btn: AlertButton) => {
     if (btn.style === 'destructive') {
       return {
-        bg: isDark ? 'rgba(255,69,58,0.10)' : 'rgba(255,59,48,0.05)',
+        bg: isDark ? 'rgba(255,69,58,0.12)' : 'rgba(255,59,48,0.06)',
         text: isDark ? '#ff453a' : '#ff3b30',
         fontWeight: '600' as const,
       };
     }
     if (btn.style === 'cancel') {
       return {
-        bg: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(120,120,128,0.04)',
-        text: isDark ? 'rgba(235,235,245,0.40)' : 'rgba(60,60,67,0.40)',
+        bg: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(120,120,128,0.05)',
+        text: isDark ? 'rgba(235,235,245,0.45)' : 'rgba(60,60,67,0.45)',
         fontWeight: '500' as const,
       };
     }
     return {
-      bg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(120,120,128,0.06)',
-      text: isDark ? '#f5f5f7' : '#1d1d1f',
+      bg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(120,120,128,0.07)',
+      text: isDark ? '#f5f5f7' : '#1a1a1a',
       fontWeight: '600' as const,
     };
   };
 
   const highlightColors = isDark
-    ? ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.0)']
-    : ['rgba(255,255,255,0.50)', 'rgba(255,255,255,0.0)'];
-
-  const materialTint = isDark
-    ? ('systemThinMaterialDark' as any)
-    : ('systemThinMaterial' as any);
-
-  const tintOverlay = isDark
-    ? 'rgba(30,30,32,0.25)'
-    : 'rgba(255,255,255,0.20)';
+    ? ['rgba(255,255,255,0.07)', 'rgba(255,255,255,0.0)']
+    : ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.0)'];
 
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent>
       <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
         {Platform.OS === 'ios' ? (
           <BlurView
-            intensity={80}
+            intensity={50}
             tint={isDark ? 'dark' as any : 'default' as any}
             style={StyleSheet.absoluteFill}
           />
@@ -149,16 +143,16 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
             },
           ]}
         >
-          <View style={styles.cardClip}>
+          <View style={[styles.cardClip, { borderColor }]}>
             {Platform.OS === 'ios' ? (
               <BlurView
-                tint={materialTint}
+                tint={isDark ? 'systemThinMaterialDark' as any : 'systemThinMaterial' as any}
                 intensity={100}
                 style={StyleSheet.absoluteFill}
               />
             ) : null}
 
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: tintOverlay }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: cardBg }]} />
 
             <LinearGradient
               colors={highlightColors as [string, string]}
@@ -254,16 +248,16 @@ const styles = StyleSheet.create({
   },
   overlayDim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.12)',
+    backgroundColor: 'rgba(0,0,0,0.10)',
   },
   cardOuter: {
     width: ALERT_WIDTH,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 24 },
-        shadowOpacity: 0.06,
-        shadowRadius: 64,
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.08,
+        shadowRadius: 60,
       },
       android: {
         elevation: 24,
@@ -275,6 +269,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     position: 'relative',
+    borderWidth: StyleSheet.hairlineWidth,
   },
   topHighlight: {
     position: 'absolute',
@@ -286,14 +281,14 @@ const styles = StyleSheet.create({
   },
   contentSection: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 22,
     paddingBottom: 20,
     zIndex: 2,
   },
   title: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
     lineHeight: 22,
   },
   message: {
