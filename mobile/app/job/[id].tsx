@@ -27,10 +27,7 @@ import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { GlassButton } from '../../src/components/ui/GlassButton';
-import {
-  LiquidGlassContainerView,
-  isLiquidGlassSupported,
-} from '@callstack/liquid-glass';
+import { GlassControlGroup } from '../../src/components/ui/GlassControlGroup';
 import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -9788,47 +9785,26 @@ export default function JobDetailScreen() {
           headerBackVisible: false,
           headerLeft: () => <IOSBackButton />,
           headerRight: () => {
-            const buttons = (
-              <>
-                {(isOwnerOrManager || isSoloOwner) && (
-                  <GlassButton
-                    onPress={() => {
-                      setActiveTab('manage');
-                    }}
-                    tint={colors.primary}
-                    testID="button-edit-header"
-                  >
-                    <Feather name="edit-2" size={19} color={colors.primary} />
-                  </GlassButton>
-                )}
-                {(isOwnerOrManager || isSoloOwner || canDeleteJobs) && (
-                  <GlassButton
-                    onPress={showJobActionsMenu}
-                    disabled={isCloningJob || isDeletingJob}
-                    tint={colors.primary}
-                    testID="button-job-actions-menu"
-                  >
-                    {(isCloningJob || isDeletingJob) ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    ) : (
-                      <Feather name="more-horizontal" size={19} color={colors.primary} />
-                    )}
-                  </GlassButton>
-                )}
-              </>
-            );
-            if (isLiquidGlassSupported) {
-              return (
-                <LiquidGlassContainerView spacing={8}>
-                  {buttons}
-                </LiquidGlassContainerView>
-              );
+            const items = [];
+            if (isOwnerOrManager || isSoloOwner) {
+              items.push({
+                onPress: () => setActiveTab('manage'),
+                children: <Feather name="edit-2" size={18} color={colors.primary} />,
+                testID: 'button-edit-header',
+              });
             }
-            return (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                {buttons}
-              </View>
-            );
+            if (isOwnerOrManager || isSoloOwner || canDeleteJobs) {
+              items.push({
+                onPress: showJobActionsMenu,
+                disabled: isCloningJob || isDeletingJob,
+                children: (isCloningJob || isDeletingJob)
+                  ? <ActivityIndicator size="small" color={colors.primary} />
+                  : <Feather name="more-horizontal" size={18} color={colors.primary} />,
+                testID: 'button-job-actions-menu',
+              });
+            }
+            if (items.length === 0) return null;
+            return <GlassControlGroup items={items} />;
           },
           headerStyle: {
             backgroundColor: colors.background,
