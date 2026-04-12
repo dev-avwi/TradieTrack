@@ -5816,8 +5816,8 @@ export default function JobDetailScreen() {
             }}>
               <Feather name="file-text" size={18} color={colors.primary} />
             </View>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, textAlign: 'center' }}>Proof Pack</Text>
-            <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center' }}>Preview & share</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, textAlign: 'center' }}>Proof Pack</Text>
+            <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: 'center' }}>Preview & share</Text>
           </TouchableOpacity>
           {!!client && (
             <TouchableOpacity
@@ -5844,8 +5844,8 @@ export default function JobDetailScreen() {
               }}>
                 <Feather name="globe" size={18} color={colors.primary} />
               </View>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, textAlign: 'center' }}>Client Portal</Text>
-              <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center' }}>{portalEnabled ? 'Enabled' : 'Share tracking'}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, textAlign: 'center' }}>Client Portal</Text>
+              <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: 'center' }}>{portalEnabled ? 'Enabled' : 'Share tracking'}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -6234,7 +6234,7 @@ export default function JobDetailScreen() {
         invoiceStatus={(invoice as any)?.status}
         scheduledAt={job.scheduledAt}
         urgencyLabel={undefined}
-        isOverdue={getJobUrgency(job.scheduledAt, job.status)?.level === 'overdue'}
+        isOverdue={getJobUrgency(job.scheduledAt, job.status, colors.isDark)?.level === 'overdue'}
         clientPhone={client?.phone}
         clientName={client?.name?.split(' ')[0]}
         jobId={job.id}
@@ -6573,7 +6573,7 @@ export default function JobDetailScreen() {
                 <Text style={{ fontSize: 11, fontWeight: '700', color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.3 }}>Notes</Text>
                 <Feather name="edit-2" size={12} color={colors.primary} style={{ marginLeft: 'auto' }} />
               </View>
-              <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }} numberOfLines={3}>{job.notes}</Text>
+              <Text style={{ fontSize: 14, color: colors.mutedForeground, lineHeight: 20 }} numberOfLines={3}>{job.notes}</Text>
             </TouchableOpacity>
           )}
           {!job.notes && (
@@ -9854,7 +9854,7 @@ export default function JobDetailScreen() {
         <View style={styles.statusRow}>
           <StatusBadge status={job.status} />
           {(() => {
-            const urgency = getJobUrgency(job.scheduledAt, job.status);
+            const urgency = getJobUrgency(job.scheduledAt, job.status, colors.isDark);
             if (!urgency) return null;
             return (
               <View style={[styles.headerUrgencyBadge, { backgroundColor: urgency.bgColor, borderColor: `${urgency.color}30` }]}>

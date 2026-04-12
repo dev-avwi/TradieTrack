@@ -92,7 +92,7 @@ function JobListRow({
   const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
   
-  const urgency = getJobUrgency(job.scheduledAt, job.status);
+  const urgency = getJobUrgency(job.scheduledAt, job.status, colors.isDark);
   
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
@@ -203,7 +203,7 @@ function JobCard({
     }
   };
 
-  const urgency = getJobUrgency(job.scheduledAt, job.status);
+  const urgency = getJobUrgency(job.scheduledAt, job.status, colors.isDark);
 
   const handleMorePress = () => {
     onShowActionSheet?.(job);

@@ -11,7 +11,7 @@ export interface JobUrgency {
   animate?: boolean;
 }
 
-export function getJobUrgency(scheduledAt: string | Date | null | undefined, status: string): JobUrgency | null {
+export function getJobUrgency(scheduledAt: string | Date | null | undefined, status: string, isDark?: boolean): JobUrgency | null {
   if (!scheduledAt || status === 'done' || status === 'invoiced' || status === 'in_progress') {
     return null;
   }
@@ -29,8 +29,8 @@ export function getJobUrgency(scheduledAt: string | Date | null | undefined, sta
           ? `Overdue by ${hoursOverdue}h`
           : 'Overdue',
       shortLabel: 'Overdue',
-      color: '#dc2626',
-      bgColor: '#fef2f2',
+      color: isDark ? '#f87171' : '#dc2626',
+      bgColor: isDark ? 'rgba(220,38,38,0.15)' : '#fef2f2',
       animate: true,
     };
   }
@@ -45,8 +45,8 @@ export function getJobUrgency(scheduledAt: string | Date | null | undefined, sta
         ? `Starting in ${minutesUntil}m`
         : `Starting in ${Math.round(minutesUntil / 15) * 15}m`,
       shortLabel: `${minutesUntil}m`,
-      color: '#ea580c',
-      bgColor: '#fff7ed',
+      color: isDark ? '#fb923c' : '#ea580c',
+      bgColor: isDark ? 'rgba(234,88,12,0.15)' : '#fff7ed',
       animate: true,
     };
   }
@@ -56,8 +56,8 @@ export function getJobUrgency(scheduledAt: string | Date | null | undefined, sta
       level: 'today',
       label: `Today at ${format(scheduledDate, 'h:mm a')}`,
       shortLabel: 'Today',
-      color: '#2563eb',
-      bgColor: '#eff6ff',
+      color: isDark ? '#60a5fa' : '#2563eb',
+      bgColor: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
     };
   }
 
@@ -66,8 +66,8 @@ export function getJobUrgency(scheduledAt: string | Date | null | undefined, sta
       level: 'tomorrow',
       label: `Tomorrow at ${format(scheduledDate, 'h:mm a')}`,
       shortLabel: 'Tomorrow',
-      color: '#7c3aed',
-      bgColor: '#f5f3ff',
+      color: isDark ? '#a78bfa' : '#7c3aed',
+      bgColor: isDark ? 'rgba(124,58,237,0.15)' : '#f5f3ff',
     };
   }
 
@@ -76,8 +76,8 @@ export function getJobUrgency(scheduledAt: string | Date | null | undefined, sta
       level: 'upcoming',
       label: format(scheduledDate, 'EEE, MMM d'),
       shortLabel: format(scheduledDate, 'EEE'),
-      color: '#64748b',
-      bgColor: '#f1f5f9',
+      color: isDark ? '#94a3b8' : '#64748b',
+      bgColor: isDark ? 'rgba(100,116,139,0.15)' : '#f1f5f9',
     };
   }
 
