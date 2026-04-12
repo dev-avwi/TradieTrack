@@ -11,15 +11,11 @@ export default function JobLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
         headerBackVisible: false,
-        headerLeft: () => <IOSBackButton />,
         headerTitle: '',
         headerShadowVisible: false,
         headerTintColor: colors.primary,
-        headerStyle: {
-          backgroundColor: colors.background,
-        },
         contentStyle: {
           backgroundColor: colors.background,
         },
@@ -29,16 +25,14 @@ export default function JobLayout() {
         gestureDirection: 'horizontal',
         presentation: 'card',
         freezeOnBlur: true,
-        headerRightContainerStyle: {
-          backgroundColor: 'transparent',
-        },
-        headerLeftContainerStyle: {
-          backgroundColor: 'transparent',
-        },
       }}
     >
       <Stack.Screen name="[id]" options={{ headerShown: isIOS }} />
-      <Stack.Screen name="chat" options={{ headerShown: isIOS }} />
+      <Stack.Screen name="chat" options={{
+        headerShown: isIOS,
+        headerLeft: () => <IOSBackButton />,
+        headerStyle: { backgroundColor: colors.background },
+      }} />
     </Stack>
   );
 }
