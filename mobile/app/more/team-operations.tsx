@@ -544,6 +544,7 @@ export default function TeamOperationsScreen() {
             email={member.email}
             userId={String(member.userId)}
             profileImageUrl={member.profileImageUrl}
+            themeColor={(member as any).themeColor}
             size={40}
           />
           <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
@@ -613,6 +614,7 @@ export default function TeamOperationsScreen() {
             email={member.email}
             userId={String(member.userId)}
             profileImageUrl={member.profileImageUrl}
+            themeColor={(member as any).themeColor}
             size={40}
           />
           <View style={[styles.statusDot, { backgroundColor: subbieStatus.color }]} />
@@ -720,7 +722,7 @@ export default function TeamOperationsScreen() {
               const shortName = isSub && activeJob
                 ? `On job: ${activeJob.title}`
                 : (firstName || member.email?.split('@')[0] || 'Team');
-              const memberColor = isSub ? '#8B5CF6' : getAvatarColor(`${firstName} ${lastName}`).bg;
+              const memberColor = isSub ? '#9B7BDB' : ((member as any).themeColor || getAvatarColor(`${firstName} ${lastName}`).bg);
               
               return (
                 <Marker
@@ -893,6 +895,7 @@ export default function TeamOperationsScreen() {
             email={member.email}
             userId={String(member.userId)}
             profileImageUrl={member.profileImageUrl}
+            themeColor={(member as any).themeColor}
             size={40}
           />
           <View style={styles.memberInfo}>
@@ -1094,6 +1097,7 @@ export default function TeamOperationsScreen() {
             email={member.email}
             userId={String(member.userId || member.id)}
             profileImageUrl={member.profileImageUrl}
+            themeColor={(member as any).themeColor}
             size={36}
           />
           <View style={styles.performanceInfo}>

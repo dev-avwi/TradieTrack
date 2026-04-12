@@ -29909,28 +29909,27 @@ Respond with JSON in this format:
 
   // ===== TEAM MANAGEMENT ROUTES =====
   
-  // Unified color palette for team members - 20 visually distinct colors
   const TEAM_MEMBER_COLOR_PALETTE = [
-    '#3B82F6', // Blue
-    '#22C55E', // Green
-    '#F59E0B', // Amber
-    '#EF4444', // Red
-    '#8B5CF6', // Purple
-    '#EC4899', // Pink
-    '#14B8A6', // Teal
-    '#F97316', // Orange
-    '#6366F1', // Indigo
-    '#84CC16', // Lime
-    '#06B6D4', // Cyan
-    '#A855F7', // Violet
-    '#10B981', // Emerald
-    '#FACC15', // Yellow
-    '#FB7185', // Rose
-    '#0EA5E9', // Sky
-    '#D946EF', // Fuchsia
-    '#78716C', // Stone
-    '#2DD4BF', // Mint
-    '#E11D48', // Crimson
+    '#5B8DEF',
+    '#43B882',
+    '#E87461',
+    '#9B7BDB',
+    '#E8739C',
+    '#4DBECD',
+    '#E49E5C',
+    '#6C8FBF',
+    '#C75B8F',
+    '#5BAF7E',
+    '#7E8FC7',
+    '#D4766B',
+    '#5AADAA',
+    '#BD7BBE',
+    '#6BA3D6',
+    '#D68A6E',
+    '#7B9E57',
+    '#C78B5E',
+    '#8E85C2',
+    '#55B5A6',
   ];
 
   async function getRandomAvailableTeamColor(businessOwnerId: string, excludeUserId?: string): Promise<string> {

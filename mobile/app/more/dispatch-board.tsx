@@ -505,6 +505,7 @@ export default function DispatchBoardScreen() {
                 firstName={assignedMember.firstName}
                 lastName={assignedMember.lastName}
                 userId={String(assignedMember.userId)}
+                themeColor={(assignedMember as any).themeColor}
                 size={22}
               />
               <Text style={styles.assignedName}>{getMemberName(assignedMember)}</Text>
@@ -560,6 +561,7 @@ export default function DispatchBoardScreen() {
               firstName={member.firstName}
               lastName={member.lastName}
               userId={String(member.userId)}
+              themeColor={(member as any).themeColor}
               size={36}
             />
             <View style={styles.scheduleSectionTitleWrap}>
@@ -691,6 +693,7 @@ export default function DispatchBoardScreen() {
                   firstName={assignedMember.firstName}
                   lastName={assignedMember.lastName}
                   userId={String(assignedMember.userId)}
+                  themeColor={(assignedMember as any).themeColor}
                   size={20}
                 />
                 <Text style={styles.kanbanAssignedName} numberOfLines={1}>{getMemberName(assignedMember).split(' ')[0]}</Text>
@@ -1012,6 +1015,7 @@ export default function DispatchBoardScreen() {
                     firstName={member.firstName}
                     lastName={member.lastName}
                     userId={String(member.userId)}
+                    themeColor={(member as any).themeColor}
                     size={36}
                   />
                   <View style={styles.modalMemberInfo}>

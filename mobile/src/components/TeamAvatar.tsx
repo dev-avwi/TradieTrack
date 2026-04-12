@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, Image } from 'react-native';
-import { getAvatarColor } from '../lib/avatar-colors';
+import { getAvatarColor, getAvatarColorByHex } from '../lib/avatar-colors';
 
 interface TeamAvatarProps {
   name?: string;
@@ -9,6 +9,7 @@ interface TeamAvatarProps {
   email?: string;
   userId?: string;
   profileImageUrl?: string | null;
+  themeColor?: string | null;
   size?: number;
 }
 
@@ -36,11 +37,14 @@ function getStableKey(userId?: string, name?: string, firstName?: string, lastNa
   return '';
 }
 
-export function TeamAvatar({ name, firstName, lastName, email, userId, profileImageUrl, size = 40 }: TeamAvatarProps) {
+export function TeamAvatar({ name, firstName, lastName, email, userId, profileImageUrl, themeColor, size = 40 }: TeamAvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const initials = computeInitials(name, firstName, lastName, email);
   const stableKey = getStableKey(userId, name, firstName, lastName, email);
-  const { bg, fg } = getAvatarColor(stableKey);
+
+  const { bg } = themeColor
+    ? getAvatarColorByHex(themeColor, stableKey)
+    : getAvatarColor(stableKey);
 
   const containerStyle = {
     width: size,
@@ -70,7 +74,7 @@ export function TeamAvatar({ name, firstName, lastName, email, userId, profileIm
 
   return (
     <View style={containerStyle}>
-      <Text style={{ color: fg, fontSize, fontWeight: '600', letterSpacing: 0.3 }}>
+      <Text style={{ color: '#ffffff', fontSize, fontWeight: '600', letterSpacing: 0.3 }}>
         {initials}
       </Text>
     </View>

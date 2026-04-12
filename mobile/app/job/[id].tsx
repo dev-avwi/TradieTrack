@@ -6081,20 +6081,12 @@ export default function JobDetailScreen() {
                   gap: spacing.sm,
                 }}
               >
-                <View style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: timer.isPaused || timer.isBreak 
-                    ? colorWithOpacity(colors.warning, 0.15) 
-                    : colorWithOpacity(colors.success, 0.15),
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: timer.isPaused || timer.isBreak ? colors.warning : colors.success }}>
-                    {timer.workerName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                  </Text>
-                </View>
+                <TeamAvatar
+                  name={timer.workerName}
+                  userId={timer.userId ? String(timer.userId) : undefined}
+                  themeColor={(timer as any).themeColor}
+                  size={36}
+                />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>
                     {timer.workerName}{timer.isCurrentUser ? ' (You)' : ''}
@@ -10240,6 +10232,7 @@ export default function JobDetailScreen() {
                       name={member.name}
                       email={member.email}
                       userId={member.userId ? String(member.userId) : String(member.id)}
+                      themeColor={(member as any).themeColor}
                       size={36}
                     />
                     <View style={styles.cardContent}>

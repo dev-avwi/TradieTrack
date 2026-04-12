@@ -1664,7 +1664,7 @@ export default function MapScreen() {
           }
           
           // Use member's theme color as base, fallback to a nice blue
-          const memberColor = member.isSubcontractor ? '#8B5CF6' : (member.themeColor || '#3B82F6');
+          const memberColor = member.isSubcontractor ? '#9B7BDB' : (member.themeColor || '#5B8DEF');
           const activityColor = getActivityColor(member.activityStatus);
           const initials = `${member.user?.firstName?.[0] || '?'}${member.user?.lastName?.[0] || '?'}`;
           const isSelected = selectedWorker?.id === member.id;
@@ -2219,7 +2219,7 @@ export default function MapScreen() {
             contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.sm }}
           >
             {teamMembers.map((member) => {
-              const memberColor = member.themeColor || '#3B82F6';
+              const memberColor = member.themeColor || '#5B8DEF';
               const activityColor = getActivityColor(member.activityStatus);
               const initials = `${member.user?.firstName?.[0] || '?'}${member.user?.lastName?.[0] || '?'}`;
               const firstName = member.user?.firstName || 'Unknown';

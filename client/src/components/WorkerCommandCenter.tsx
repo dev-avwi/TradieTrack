@@ -248,7 +248,7 @@ export default function WorkerCommandCenter({ memberId, open, onOpenChange }: Wo
 
   const hasLocation = data?.location?.latitude && data?.location?.longitude;
   const locationEnabled = data?.member.locationEnabledByOwner && data?.member.locationEnabledByUser;
-  const themeColor = data?.member.themeColor || '#3B82F6';
+  const themeColor = data?.member.themeColor || '#5B8DEF';
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

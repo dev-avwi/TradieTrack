@@ -1978,6 +1978,7 @@ export default function TeamManagementScreen() {
             email={memberEmail}
             userId={member.userId ? String(member.userId) : undefined}
             profileImageUrl={member.user?.profileImageUrl}
+            themeColor={(member as any).themeColor}
             size={40}
           />
           <View style={styles.memberInfo}>
