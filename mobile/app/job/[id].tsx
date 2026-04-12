@@ -1622,14 +1622,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
     fontWeight: '700',
   },
-  floatingControls: {
-    position: 'absolute',
-    left: spacing.lg,
-    right: spacing.lg,
+  customHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    zIndex: 100,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 6,
+    backgroundColor: colors.background,
   },
   floatingRight: {
     flexDirection: 'row',
@@ -1637,7 +1636,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   fixedHeader: {
     paddingHorizontal: spacing.lg,
-    paddingTop: 44,
+    paddingTop: spacing.md,
     paddingBottom: spacing.sm,
     backgroundColor: colors.background,
   },
@@ -9793,33 +9792,42 @@ export default function JobDetailScreen() {
       <View style={styles.container}>
         <Stack.Screen 
         options={{ 
-          headerShown: false,
+          headerShown: true,
+          title: '',
+          headerBackVisible: false,
+          headerShadowVisible: false,
+          headerTintColor: colors.primary,
+          header: () => (
+            <View style={[styles.customHeader, { paddingTop: insets.top }]}>
+              <IOSBackButton />
+              <View style={styles.floatingRight}>
+                {(() => {
+                  const items: any[] = [];
+                  if (isOwnerOrManager || isSoloOwner) {
+                    items.push({
+                      onPress: () => setActiveTab('manage'),
+                      children: <Feather name="edit-2" size={18} color={colors.primary} />,
+                      testID: 'button-edit-header',
+                    });
+                  }
+                  if (isOwnerOrManager || isSoloOwner || canDeleteJobs) {
+                    items.push({
+                      onPress: showJobActionsMenu,
+                      disabled: isCloningJob || isDeletingJob,
+                      children: (isCloningJob || isDeletingJob)
+                        ? <ActivityIndicator size="small" color={colors.primary} />
+                        : <Feather name="more-horizontal" size={18} color={colors.primary} />,
+                      testID: 'button-job-actions-menu',
+                    });
+                  }
+                  if (items.length === 0) return null;
+                  return <GlassControlGroup items={items} />;
+                })()}
+              </View>
+            </View>
+          ),
         }} 
       />
-
-      {/* Floating glass controls - rendered outside nav bar to avoid double-container */}
-      <View style={[styles.floatingControls, { top: insets.top + 4 }]} pointerEvents="box-none">
-        <IOSBackButton />
-        <View style={styles.floatingRight}>
-          {(isOwnerOrManager || isSoloOwner) && (
-            <GlassControlGroup items={[
-              ...(isOwnerOrManager || isSoloOwner ? [{
-                onPress: () => setActiveTab('manage'),
-                children: <Feather name="edit-2" size={18} color={colors.primary} />,
-                testID: 'button-edit-header',
-              }] : []),
-              ...(isOwnerOrManager || isSoloOwner || canDeleteJobs ? [{
-                onPress: showJobActionsMenu,
-                disabled: isCloningJob || isDeletingJob,
-                children: (isCloningJob || isDeletingJob)
-                  ? <ActivityIndicator size="small" color={colors.primary} />
-                  : <Feather name="more-horizontal" size={18} color={colors.primary} />,
-                testID: 'button-job-actions-menu',
-              }] : []),
-            ]} />
-          )}
-        </View>
-      </View>
 
       {/* Fixed Header */}
       <View style={styles.fixedHeader}>
