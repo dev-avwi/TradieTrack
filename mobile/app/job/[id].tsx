@@ -5761,97 +5761,10 @@ export default function JobDetailScreen() {
         </View>
       )}
 
-      {/* Smart Actions Panel */}
-      {!hideAllActions && smartActions.length > 0 && (() => {
-        const visibleActions = smartActions.filter(a => !dismissedActionIds.has(a.id));
-        if (visibleActions.length === 0) return null;
-        return (
-          <View style={{ marginBottom: spacing.md }}>
-            <SmartActionsPanel
-              title="Suggested Actions"
-              subtitle="AI-recommended next steps"
-              actions={visibleActions}
-              onActionToggle={handleSmartActionToggle}
-              onActionExecute={handleSmartActionExecute}
-              onExecuteAll={handleExecuteAllActions}
-              onSkipAll={handleSkipAllActions}
-              onDismissAction={(actionId) => {
-                setDismissedActionIds(prev => new Set([...prev, actionId]));
-              }}
-              onHideAll={() => setHideAllActions(true)}
-              isExecuting={isExecutingActions}
-              entityType="job"
-            />
-          </View>
-        );
-      })()}
-
       {/* Job Progress Bar - Visual workflow indicator */}
       <JobProgressBar status={job.status} />
 
-      {/* Client Portal & Proof Pack */}
-      {(isOwnerOrManager || isSoloOwner) && (
-        <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
-          <TouchableOpacity
-            style={{
-              flex: 1,
-              backgroundColor: colors.card,
-              borderRadius: radius.md,
-              padding: spacing.md,
-              alignItems: 'center',
-              gap: spacing.xs,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-            }}
-            onPress={() => setShowProofPackModal(true)}
-            activeOpacity={0.7}
-          >
-            <View style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: `${colors.primary}15`,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <Feather name="file-text" size={18} color={colors.primary} />
-            </View>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, textAlign: 'center' }}>Proof Pack</Text>
-            <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: 'center' }}>Preview & share</Text>
-          </TouchableOpacity>
-          {!!client && (
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: colors.card,
-                borderRadius: radius.md,
-                padding: spacing.md,
-                alignItems: 'center',
-                gap: spacing.xs,
-                borderWidth: 1,
-                borderColor: colors.cardBorder,
-              }}
-              onPress={() => setActiveTab('manage')}
-              activeOpacity={0.7}
-            >
-              <View style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: `${colors.primary}15`,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <Feather name="globe" size={18} color={colors.primary} />
-              </View>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, textAlign: 'center' }}>Client Portal</Text>
-              <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: 'center' }}>{portalEnabled ? 'Enabled' : 'Share tracking'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {/* Main Action Button - Prominent at top for quick access */}
+      {/* Main Action Button - Hero zone, first thing after status */}
       <View style={styles.actionButtonContainer}>
         {action ? (
           job.status === 'scheduled' && job.clientId ? (
