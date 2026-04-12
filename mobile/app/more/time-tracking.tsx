@@ -1455,68 +1455,70 @@ export default function TimeTrackingScreen() {
                     const isBillable = entry.isBillable !== false && !isBreakEntry;
 
                     return (
-                      <View key={entry.id} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: idx < allEntries.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border + '30' }}>
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isBreakEntry ? '#f59e0b' : colors.primary, marginRight: spacing.sm }} />
-                        <View style={{ flex: 1 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' }}>
-                            <Text style={{ fontSize: 12, color: colors.foreground, fontWeight: '500' }}>
-                              {isBreakEntry ? 'Break' : 'Work'}
+                      <View key={entry.id}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: idx < allEntries.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border + '30' }}>
+                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isBreakEntry ? '#f59e0b' : colors.primary, marginRight: spacing.sm }} />
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' }}>
+                              <Text style={{ fontSize: 12, color: colors.foreground, fontWeight: '500' }}>
+                                {isBreakEntry ? 'Break' : 'Work'}
+                              </Text>
+                              {teamViewEnabled && entry.userName && (
+                                <View style={{ backgroundColor: colors.primary + '12', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                  <Text style={{ fontSize: 9, color: colors.primary, fontWeight: '600' }}>{entry.userName}</Text>
+                                </View>
+                              )}
+                              {isBreakEntry ? (
+                                <View style={{ backgroundColor: '#f59e0b15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                  <Feather name="coffee" size={9} color="#f59e0b" />
+                                </View>
+                              ) : isBillable ? (
+                                <View style={{ backgroundColor: '#22c55e15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                  <Text style={{ fontSize: 9, color: '#22c55e', fontWeight: '600' }}>$</Text>
+                                </View>
+                              ) : null}
+                              {entry.isDisputed && (
+                                <View style={{ backgroundColor: '#ef444415', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                                  <Feather name="alert-triangle" size={8} color="#ef4444" />
+                                  <Text style={{ fontSize: 9, color: '#ef4444', fontWeight: '600' }}>
+                                    {entry.disputeResolvedAt ? 'Resolved' : 'Disputed'}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
+                              {startStr} — {endStr}
                             </Text>
-                            {teamViewEnabled && entry.userName && (
-                              <View style={{ backgroundColor: colors.primary + '12', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                                <Text style={{ fontSize: 9, color: colors.primary, fontWeight: '600' }}>{entry.userName}</Text>
-                              </View>
-                            )}
-                            {isBreakEntry ? (
-                              <View style={{ backgroundColor: '#f59e0b15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                                <Feather name="coffee" size={9} color="#f59e0b" />
-                              </View>
-                            ) : isBillable ? (
-                              <View style={{ backgroundColor: '#22c55e15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                                <Text style={{ fontSize: 9, color: '#22c55e', fontWeight: '600' }}>$</Text>
-                              </View>
-                            ) : null}
-                            {entry.isDisputed && (
-                              <View style={{ backgroundColor: '#ef444415', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                                <Feather name="alert-triangle" size={8} color="#ef4444" />
-                                <Text style={{ fontSize: 9, color: '#ef4444', fontWeight: '600' }}>
-                                  {entry.disputeResolvedAt ? 'Resolved' : 'Disputed'}
-                                </Text>
-                              </View>
-                            )}
                           </View>
-                          <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
-                            {startStr} — {endStr}
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: isBreakEntry ? '#f59e0b' : colors.foreground, marginRight: spacing.sm }}>
+                            {durationStr}
                           </Text>
-                        </View>
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: isBreakEntry ? '#f59e0b' : colors.foreground, marginRight: spacing.sm }}>
-                          {durationStr}
-                        </Text>
-                        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                          {!entry.isDisputed && !isBreakEntry && (
-                            <TouchableOpacity onPress={() => handleOpenDispute(entry.id)} activeOpacity={0.7} hitSlop={8}>
-                              <Feather name="flag" size={14} color="#f59e0b" />
+                          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                            {!entry.isDisputed && !isBreakEntry && (
+                              <TouchableOpacity onPress={() => handleOpenDispute(entry.id)} activeOpacity={0.7} hitSlop={8}>
+                                <Feather name="flag" size={14} color="#f59e0b" />
+                              </TouchableOpacity>
+                            )}
+                            <TouchableOpacity onPress={() => handleDeleteEntry(entry)} activeOpacity={0.7} hitSlop={8}>
+                              <Feather name="trash-2" size={14} color={colors.destructive || '#ef4444'} />
                             </TouchableOpacity>
-                          )}
-                          <TouchableOpacity onPress={() => handleDeleteEntry(entry)} activeOpacity={0.7} hitSlop={8}>
-                            <Feather name="trash-2" size={14} color={colors.destructive || '#ef4444'} />
-                          </TouchableOpacity>
+                          </View>
                         </View>
+                        {entry.isDisputed && entry.disputeReason && !entry.disputeResolvedAt && (
+                          <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
+                            <Text style={{ fontSize: 11, color: '#ef4444' }} numberOfLines={2}>
+                              Reason: {entry.disputeReason}
+                            </Text>
+                          </View>
+                        )}
+                        {entry.isDisputed && entry.disputeResolution && (
+                          <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
+                            <Text style={{ fontSize: 11, color: '#22c55e' }} numberOfLines={2}>
+                              Resolution: {entry.disputeResolution}
+                            </Text>
+                          </View>
+                        )}
                       </View>
-                      {entry.isDisputed && entry.disputeReason && !entry.disputeResolvedAt && (
-                        <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
-                          <Text style={{ fontSize: 11, color: '#ef4444' }} numberOfLines={2}>
-                            Reason: {entry.disputeReason}
-                          </Text>
-                        </View>
-                      )}
-                      {entry.isDisputed && entry.disputeResolution && (
-                        <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
-                          <Text style={{ fontSize: 11, color: '#22c55e' }} numberOfLines={2}>
-                            Resolution: {entry.disputeResolution}
-                          </Text>
-                        </View>
-                      )}
                     );
                   })}
                 </View>
