@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, Platform } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import {
