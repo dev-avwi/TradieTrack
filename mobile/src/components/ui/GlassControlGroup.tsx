@@ -41,7 +41,7 @@ export function GlassControlGroup({ items }: GlassControlGroupProps) {
 
   if (isLiquidGlassSupported) {
     return (
-      <LiquidGlassView style={styles.capsule} effect="clear">
+      <LiquidGlassView style={styles.capsule} effect="regular">
         {controls}
       </LiquidGlassView>
     );

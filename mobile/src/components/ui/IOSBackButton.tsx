@@ -36,7 +36,7 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
         onPress={handlePress}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <LiquidGlassView style={styles.capsule} effect="clear">
+        <LiquidGlassView style={styles.capsule} effect="regular">
           {content}
         </LiquidGlassView>
       </Pressable>
