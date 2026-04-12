@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
-import { useColorScheme, Platform } from 'react-native';
+import { useColorScheme, Platform, Appearance } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { useAuthStore } from './store';
 import { useAdvancedThemeStore } from './advanced-theme-store';
@@ -553,11 +553,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Prefer advanced theme mode if set, otherwise use local state
   const effectiveMode = advancedThemeMode || themeMode;
   const isDark = effectiveMode === 'system' 
     ? systemScheme === 'dark'
     : effectiveMode === 'dark';
+
+  useEffect(() => {
+    if (effectiveMode !== 'system') {
+      Appearance.setColorScheme(isDark ? 'dark' : 'light');
+    } else {
+      Appearance.setColorScheme(null);
+    }
+  }, [effectiveMode, isDark]);
 
   const colors = useMemo(() => {
     const baseColors = isDark ? darkColors : lightColors;
