@@ -1623,7 +1623,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   fixedHeader: {
     paddingHorizontal: spacing.lg,
-    paddingTop: 44,
     paddingBottom: spacing.sm,
     backgroundColor: colors.background,
   },
@@ -9829,7 +9828,7 @@ export default function JobDetailScreen() {
       />
 
       {/* Fixed Header */}
-      <View style={styles.fixedHeader}>
+      <View style={[styles.fixedHeader, { paddingTop: insets.top + 50 }]}>
         <View style={styles.statusRow}>
           <StatusBadge status={job.status} />
           {(() => {
