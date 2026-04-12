@@ -19,7 +19,7 @@ export default function PrivacyPolicy() {
         <Card>
           <CardContent className="p-8">
             <h1 className="text-3xl font-bold mb-2" data-testid="heading-privacy-policy">Privacy Policy</h1>
-            <p className="text-muted-foreground mb-2">Last updated: March 2026</p>
+            <p className="text-muted-foreground mb-2">Last updated: April 2026</p>
             <p className="text-sm text-muted-foreground mb-8">JobRunner is a product of LinkUp2Care Pty Ltd (ABN 34 692 409 448)</p>
 
             <div className="prose prose-sm dark:prose-invert max-w-none space-y-6">
@@ -208,6 +208,11 @@ export default function PrivacyPolicy() {
                   <li><strong>Stripe:</strong> For secure payment processing (<a href="https://stripe.com/au/privacy" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">Stripe Privacy Policy</a>)</li>
                   <li><strong>SendGrid:</strong> For email delivery (<a href="https://www.twilio.com/legal/privacy" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">SendGrid Privacy Policy</a>)</li>
                   <li><strong>Twilio:</strong> For SMS notifications (<a href="https://www.twilio.com/legal/privacy" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">Twilio Privacy Policy</a>)</li>
+                  <li><strong>Vapi.ai:</strong> For AI Receptionist voice call handling and transcription (<a href="https://vapi.ai/privacy" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">Vapi Privacy Policy</a>)</li>
+                  <li><strong>Sentry:</strong> For error tracking and performance monitoring to improve app stability (<a href="https://sentry.io/privacy/" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">Sentry Privacy Policy</a>)</li>
+                  <li><strong>Xero / MYOB / QuickBooks:</strong> For accounting integration when you connect your accounting software. Data shared is limited to invoices, payments, and contacts necessary for synchronisation</li>
+                  <li><strong>Google Calendar / Outlook:</strong> For calendar synchronisation when you connect your calendar. Only job scheduling data is shared</li>
+                  <li><strong>Apple / Google Play:</strong> For in-app purchase processing on iOS and Android devices, subject to Apple's and Google's respective privacy policies</li>
                 </ul>
               </section>
 

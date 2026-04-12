@@ -308,6 +308,31 @@ export default function PrivacyPolicyScreen() {
             We use secure cloud hosting providers for data storage and application hosting. Data may be stored in Australia or overseas data centres with appropriate security measures.
           </Text>
 
+          <Text style={styles.subSectionTitle}>Vapi.ai (AI Voice Receptionist)</Text>
+          <Text style={styles.paragraph}>
+            Vapi.ai handles incoming voice calls for the AI Receptionist feature, including call transcription and voice synthesis with Australian accents.
+          </Text>
+
+          <Text style={styles.subSectionTitle}>Sentry (Error Tracking)</Text>
+          <Text style={styles.paragraph}>
+            Sentry collects crash reports and performance data to help us identify and fix technical issues. No personal business data is included in error reports.
+          </Text>
+
+          <Text style={styles.subSectionTitle}>Accounting Integrations (Xero, MYOB, QuickBooks)</Text>
+          <Text style={styles.paragraph}>
+            When you connect your accounting software, we share invoices, payments, and contact data necessary for synchronisation. We only access the data you authorise.
+          </Text>
+
+          <Text style={styles.subSectionTitle}>Calendar Integrations (Google Calendar, Outlook)</Text>
+          <Text style={styles.paragraph}>
+            When you connect your calendar, only job scheduling data is shared for synchronisation purposes.
+          </Text>
+
+          <Text style={styles.subSectionTitle}>App Store Payments (Apple, Google Play)</Text>
+          <Text style={styles.paragraph}>
+            In-app purchases are processed by Apple or Google Play, subject to their respective privacy policies. We receive purchase confirmation but not your payment card details.
+          </Text>
+
           <Text style={[styles.paragraph, styles.lastParagraph]}>
             These providers are contractually bound to protect your information and may only use it for the specific services they provide to us.
           </Text>
@@ -379,6 +404,23 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View style={styles.card}>
+          <Text style={styles.sectionTitle}>6B. AI & Machine Learning</Text>
+          <Text style={styles.paragraph}>
+            We use OpenAI's GPT models to power AI features such as quote generation, photo analysis, receipt scanning, and business suggestions.
+          </Text>
+          <View style={styles.bulletList}>
+            <BulletItem text="When you use AI features, relevant context (such as job descriptions or uploaded photos) may be sent to AI service providers for processing" colors={colors} styles={styles} />
+            <BulletItem text="AI service providers process this data according to their own privacy policies. We use enterprise-grade API access which does not use your data for model training" colors={colors} styles={styles} />
+            <BulletItem text="You can choose not to use AI features without affecting your access to core platform functionality" colors={colors} styles={styles} />
+            <BulletItem text="We do not sell, share, or use your business data to train AI models" colors={colors} styles={styles} />
+          </View>
+          <Text style={styles.subSectionTitle}>AI Receptionist Voice Calls</Text>
+          <Text style={[styles.paragraph, styles.lastParagraph]}>
+            When the AI Receptionist feature is enabled, incoming voice calls are answered by an AI system powered by Vapi.ai. Calls are recorded and transcribed for quality assurance and business purposes. The AI greeting informs callers that the call is being handled by an AI system and may be recorded, in compliance with Australian telecommunications laws including the Telecommunications (Interception and Access) Act 1979 (Cth).
+          </Text>
+        </View>
+
+        <View style={styles.card}>
           <Text style={styles.sectionTitle}>7. Cookies and Tracking</Text>
           <Text style={styles.paragraph}>
             Our mobile app may use local storage and similar technologies to:
@@ -426,8 +468,8 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Last Updated: March 2026</Text>
-          <Text style={styles.footerText}>Version 2.0</Text>
+          <Text style={styles.footerText}>Last Updated: April 2026</Text>
+          <Text style={styles.footerText}>Version 2.1</Text>
         </View>
       </ScrollView>
     </>

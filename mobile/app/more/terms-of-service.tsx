@@ -557,8 +557,8 @@ export default function TermsOfServiceScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Last Updated: March 2026</Text>
-          <Text style={styles.footerText}>Version 3.0</Text>
+          <Text style={styles.footerText}>Last Updated: April 2026</Text>
+          <Text style={styles.footerText}>Version 3.1</Text>
         </View>
       </ScrollView>
     </>

@@ -19,7 +19,7 @@ export default function TermsOfService() {
         <Card>
           <CardContent className="p-8">
             <h1 className="text-3xl font-bold mb-2" data-testid="heading-terms-of-service">Terms of Service</h1>
-            <p className="text-muted-foreground mb-2">Last updated: March 2026</p>
+            <p className="text-muted-foreground mb-2">Last updated: April 2026</p>
             <p className="text-sm text-muted-foreground mb-8">JobRunner is a product of LinkUp2Care Pty Ltd (ABN 34 692 409 448)</p>
 
             <div className="prose prose-sm dark:prose-invert max-w-none space-y-6">
@@ -70,22 +70,34 @@ export default function TermsOfService() {
                   <li>Basic features included at no cost</li>
                 </ul>
                 
-                <p className="text-muted-foreground leading-relaxed mt-4 mb-3"><strong>Pro Plan ($39/month AUD):</strong></p>
+                <p className="text-muted-foreground leading-relaxed mt-4 mb-3"><strong>Pro Plan ($49/month AUD):</strong></p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                   <li>Unlimited jobs, quotes, and invoices</li>
                   <li>Custom branding and theming</li>
-                  <li>AI-powered quote assistance</li>
-                  <li>Priority email and SMS support</li>
-                  <li>Advanced reporting and analytics</li>
+                  <li>AI-powered quote assistance and AI Assistant</li>
+                  <li>Advanced reporting, insights, and analytics</li>
+                  <li>Autopilot automations</li>
                 </ul>
 
-                <p className="text-muted-foreground leading-relaxed mt-4 mb-3"><strong>Team Plan ($79/month AUD):</strong></p>
+                <p className="text-muted-foreground leading-relaxed mt-4 mb-3"><strong>Team Plan ($99/month AUD):</strong></p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-                  <li>Everything in Pro, plus team management tools</li>
+                  <li>Everything in Pro, plus team management for up to 5 workers</li>
                   <li>Team member accounts with role-based permissions</li>
                   <li>Visual dispatch board and schedule management</li>
                   <li>Live GPS location tracking for field workers</li>
-                  <li>Additional seats available at $15/month each</li>
+                  <li>Team chat and team operations centre</li>
+                </ul>
+
+                <p className="text-muted-foreground leading-relaxed mt-4 mb-3"><strong>Business Plan ($199/month AUD):</strong></p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+                  <li>Everything in Team, plus support for up to 15 workers</li>
+                  <li>Priority support and advanced features</li>
+                </ul>
+
+                <p className="text-muted-foreground leading-relaxed mt-4 mb-3"><strong>Add-Ons (available on any paid plan):</strong></p>
+                <ul className="list-disc pl-6 text-muted-foreground space-y-2">
+                  <li>AI Receptionist: $60/month AUD — AI-powered phone answering with dedicated Australian number</li>
+                  <li>Dedicated Phone Number: $5/month AUD — Dedicated Australian SMS and voice number for your business</li>
                 </ul>
 
                 <p className="text-muted-foreground leading-relaxed mt-4">
