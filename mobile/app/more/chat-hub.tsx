@@ -612,6 +612,7 @@ export default function ChatHubScreen() {
   const [jobStatusFilter, setJobStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const conversationsScrollRef = useRef<ScrollView>(null);
   
@@ -632,14 +633,15 @@ export default function ChatHubScreen() {
 
   const loadData = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const [jobsRes, clientsRes, smsRes, twilioRes, unreadRes, dmRes, teamRes, latestChatsRes] = await Promise.all([
-        api.get<Job[]>('/api/jobs').catch(() => ({ data: [] as Job[] })),
-        api.get<Client[]>('/api/clients').catch(() => ({ data: [] as Client[] })),
-        api.get<SmsConversation[]>('/api/sms/conversations').catch(() => ({ data: [] as SmsConversation[] })),
+        api.get<Job[]>('/api/jobs').catch(() => ({ data: [] as Job[], error: 'jobs' })),
+        api.get<Client[]>('/api/clients').catch(() => ({ data: [] as Client[], error: 'clients' })),
+        api.get<SmsConversation[]>('/api/sms/conversations').catch(() => ({ data: [] as SmsConversation[], error: 'sms' })),
         api.get<TwilioStatus>('/api/sms/status').catch(() => ({ data: null })),
         api.get<UnreadCounts>('/api/chat/unread-counts').catch(() => ({ data: null })),
-        api.get<DirectMessageConversation[]>('/api/direct-messages/conversations').catch(() => ({ data: [] as DirectMessageConversation[] })),
+        api.get<DirectMessageConversation[]>('/api/direct-messages/conversations').catch(() => ({ data: [] as DirectMessageConversation[], error: 'dm' })),
         api.get<TeamMember[]>('/api/team/members').catch(() => ({ data: [] as TeamMember[] })),
         api.get<any[]>('/api/jobs/chat/latest').catch(() => ({ data: [] as any[] })),
       ]);
@@ -657,6 +659,7 @@ export default function ChatHubScreen() {
       setLatestJobChats(chatMap);
     } catch (error) {
       console.error('Error loading data:', error);
+      setLoadError('Could not load conversations. Pull down to retry.');
     } finally {
       setIsLoading(false);
     }
@@ -1550,6 +1553,14 @@ export default function ChatHubScreen() {
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : loadError ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyStateIcon}>
+                <Feather name="wifi-off" size={28} color={colors.destructive} />
+              </View>
+              <Text style={styles.emptyStateTitle}>Something went wrong</Text>
+              <Text style={styles.emptyStateText}>{loadError}</Text>
             </View>
           ) : conversations.length === 0 ? (
             (() => {

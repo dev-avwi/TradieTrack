@@ -933,7 +933,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/beta/status", earlyAccessStatusHandler);
 
   // Public bug report endpoint - allows tradies to report issues even when having problems
-  app.post("/api/bug-reports", async (req: any, res) => {
+  app.post("/api/bug-reports", rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: { error: 'Too many bug reports. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  }), async (req: any, res) => {
     try {
       const { 
         category, 
@@ -43843,7 +43849,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   });
 
   // Address search - Google Places API (when key available) with Nominatim fallback
-  app.get("/api/address-search", async (req, res) => {
+  app.get("/api/address-search", requireAuth, async (req, res) => {
     try {
       const query = req.query.q as string;
       if (!query || query.length < 3) {
@@ -43923,7 +43929,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   });
 
   // Google Places detail lookup for lat/lng after address selection
-  app.get("/api/address-search/details", async (req, res) => {
+  app.get("/api/address-search/details", requireAuth, async (req, res) => {
     try {
       const placeId = req.query.place_id as string;
       const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;

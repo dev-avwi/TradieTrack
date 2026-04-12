@@ -688,7 +688,7 @@ export default function CommunicationsScreen() {
       <View style={[styles.headerCard, { paddingTop: insets.top + 4 }]}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.canGoBack() ? router.back() : router.push('/(tabs)/more' as any)}
+          onPress={() => router.canGoBack() ? router.back() : router.push('/(tabs)/profile' as any)}
         >
           <Feather name="chevron-left" size={24} color={colors.foreground} />
         </TouchableOpacity>
