@@ -4,6 +4,7 @@ import {
   Text, 
   ScrollView, 
   TouchableOpacity,
+  Pressable,
   Alert,
   ActivityIndicator,
   StyleSheet,
@@ -27,8 +28,6 @@ import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { GlassButton } from '../../src/components/ui/GlassButton';
-import { GlassControlGroup } from '../../src/components/ui/GlassControlGroup';
-import { IOSBackButton } from '../../src/components/ui/IOSBackButton';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -1622,18 +1621,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
     fontWeight: '700',
   },
-  glassControlsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  floatingRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   fixedHeader: {
     paddingHorizontal: spacing.lg,
+    paddingTop: 44,
     paddingBottom: spacing.sm,
     backgroundColor: colors.background,
   },
@@ -9787,37 +9777,59 @@ export default function JobDetailScreen() {
   return (
     <>
       <View style={styles.container}>
-        <Stack.Screen options={{ headerShown: false }} />
-
-      {/* Glass Controls + Fixed Header - v7 */}
-      <View style={[styles.fixedHeader, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.glassControlsRow}>
-          <IOSBackButton />
-          <View style={styles.floatingRight}>
-            {(() => {
-              const items: any[] = [];
-              if (isOwnerOrManager || isSoloOwner) {
-                items.push({
-                  onPress: () => setActiveTab('manage'),
-                  children: <Feather name="edit-2" size={18} color={colors.primary} />,
-                  testID: 'button-edit-header',
-                });
-              }
-              if (isOwnerOrManager || isSoloOwner || canDeleteJobs) {
-                items.push({
-                  onPress: showJobActionsMenu,
-                  disabled: isCloningJob || isDeletingJob,
-                  children: (isCloningJob || isDeletingJob)
+        <Stack.Screen 
+        options={{
+          headerShown: true,
+          title: '',
+          headerBackVisible: false,
+          headerShadowVisible: false,
+          headerTransparent: true,
+          headerBlurEffect: isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterial',
+          headerStyle: { backgroundColor: 'transparent' },
+          headerTintColor: colors.primary,
+          headerLeft: () => (
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={{ flexDirection: 'row', alignItems: 'center' }}
+            >
+              <Feather name="chevron-left" size={17} color={colors.primary} />
+              <Text style={{ fontSize: 16, color: colors.primary, marginLeft: -1 }}>Back</Text>
+            </Pressable>
+          ),
+          headerRight: () => (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              {(isOwnerOrManager || isSoloOwner) && (
+                <Pressable
+                  onPress={() => setActiveTab('manage')}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  style={{ width: 32, height: 30, alignItems: 'center', justifyContent: 'center' }}
+                  testID="button-edit-header"
+                >
+                  <Feather name="edit-2" size={18} color={colors.primary} />
+                </Pressable>
+              )}
+              {(isOwnerOrManager || isSoloOwner || canDeleteJobs) && (
+                <Pressable
+                  onPress={showJobActionsMenu}
+                  disabled={isCloningJob || isDeletingJob}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  style={{ width: 32, height: 30, alignItems: 'center', justifyContent: 'center' }}
+                  testID="button-job-actions-menu"
+                >
+                  {(isCloningJob || isDeletingJob)
                     ? <ActivityIndicator size="small" color={colors.primary} />
-                    : <Feather name="more-horizontal" size={18} color={colors.primary} />,
-                  testID: 'button-job-actions-menu',
-                });
-              }
-              if (items.length === 0) return null;
-              return <GlassControlGroup items={items} />;
-            })()}
-          </View>
-        </View>
+                    : <Feather name="more-horizontal" size={18} color={colors.primary} />
+                  }
+                </Pressable>
+              )}
+            </View>
+          ),
+        }} 
+      />
+
+      {/* Fixed Header */}
+      <View style={styles.fixedHeader}>
         <View style={styles.statusRow}>
           <StatusBadge status={job.status} />
           {(() => {
