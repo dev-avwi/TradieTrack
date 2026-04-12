@@ -1933,18 +1933,18 @@ export default function MapScreen() {
                 {unreadAlerts.length > 0 && (
                   <View style={{
                     position: 'absolute',
-                    top: 2,
-                    right: 2,
+                    top: -2,
+                    right: -4,
                     backgroundColor: colors.destructive,
-                    borderRadius: 8,
-                    minWidth: 16,
-                    height: 16,
+                    borderRadius: 7,
+                    minWidth: 14,
+                    height: 14,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    paddingHorizontal: 4,
+                    paddingHorizontal: 3,
                   }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>
-                      {unreadAlerts.length}
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>
+                      {unreadAlerts.length > 9 ? '9+' : unreadAlerts.length}
                     </Text>
                   </View>
                 )}
@@ -2012,27 +2012,27 @@ export default function MapScreen() {
 
       {/* Geofence Alerts Panel */}
       {showAlerts && unreadAlerts.length > 0 && (
-        <View style={[styles.legendCard, { top: insets.top + (headerCollapsed ? 80 : 180), maxHeight: 280 }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <Feather name="bell" size={16} color={colors.destructive} />
-              <Text style={styles.legendTitle}>Recent Alerts</Text>
-            </View>
+        <View style={[styles.legendCard, { top: insets.top + (headerCollapsed ? 80 : 180), maxHeight: 240, width: 260 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
+            <Text style={[styles.legendTitle, { fontSize: 13, fontWeight: '700' }]}>Alerts</Text>
             <TouchableOpacity 
               onPress={() => setShowAlerts(false)}
-              style={{ padding: spacing.xs }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               activeOpacity={0.7}
             >
-              <Feather name="x" size={18} color={colors.mutedForeground} />
+              <Feather name="x" size={16} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
           
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
             {unreadAlerts.slice(0, 5).map((alert) => {
-              const initials = alert.userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+              const firstName = alert.userName.split(' ')[0];
+              const alertIcon = alert.alertType === 'arrival' ? 'log-in' :
+                               alert.alertType === 'departure' ? 'log-out' :
+                               alert.alertType === 'late' ? 'clock' : 'alert-circle';
               const alertColor = alert.alertType === 'arrival' ? colors.success :
-                                alert.alertType === 'departure' ? colors.destructive :
-                                alert.alertType === 'late' ? colors.warning : colors.info;
+                                alert.alertType === 'departure' ? colors.warning :
+                                alert.alertType === 'late' ? colors.destructive : colors.info;
               
               const formatAlertTime = (dateStr: string) => {
                 const date = new Date(dateStr);
@@ -2045,49 +2045,42 @@ export default function MapScreen() {
                 if (diffHours < 24) return `${diffHours}h ago`;
                 return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
               };
+
+              const actionText = alert.alertType === 'arrival' ? 'arrived at' :
+                                 alert.alertType === 'departure' ? 'left' :
+                                 alert.alertType === 'late' ? 'late for' : 'alert for';
               
               return (
                 <TouchableOpacity
                   key={alert.id}
                   style={{
                     flexDirection: 'row',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                     gap: spacing.sm,
-                    padding: spacing.sm,
-                    backgroundColor: colors.muted,
-                    borderRadius: radius.lg,
-                    marginBottom: spacing.xs,
+                    paddingVertical: spacing.xs,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
                   }}
                   onPress={() => markAlertRead(alert.id)}
                   activeOpacity={0.7}
                 >
                   <View style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: alertColor,
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: `${alertColor}15`,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}>
-                    {alert.userAvatar ? (
-                      <View style={{ width: 36, height: 36, borderRadius: 18, overflow: 'hidden' }}>
-                        {/* Avatar image would go here */}
-                      </View>
-                    ) : (
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#fff' }}>{initials}</Text>
-                    )}
+                    <Feather name={alertIcon as any} size={13} color={alertColor} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 13, color: colors.foreground }}>
-                      <Text style={{ fontWeight: '600' }}>{alert.userName}</Text>
-                      <Text style={{ color: colors.mutedForeground }}>
-                        {alert.alertType === 'arrival' ? ' arrived at ' :
-                         alert.alertType === 'departure' ? ' left ' :
-                         alert.alertType === 'late' ? ' is late for ' : ' alert for '}
-                      </Text>
+                    <Text style={{ fontSize: 12, color: colors.foreground }} numberOfLines={1}>
+                      <Text style={{ fontWeight: '600' }}>{firstName}</Text>
+                      <Text style={{ color: colors.mutedForeground }}> {actionText} </Text>
                       <Text style={{ fontWeight: '500' }}>{alert.jobTitle}</Text>
                     </Text>
-                    <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 2 }}>
+                    <Text style={{ fontSize: 10, color: colors.mutedForeground, marginTop: 1 }}>
                       {formatAlertTime(alert.createdAt)}
                     </Text>
                   </View>
