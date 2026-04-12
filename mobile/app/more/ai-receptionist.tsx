@@ -128,8 +128,10 @@ const SHARED_PLATFORM_NUMBER = '0485 013 993';
 export default function AIReceptionistScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { businessSettings, fetchBusinessSettings } = useAuthStore();
+  const { user, businessSettings, fetchBusinessSettings } = useAuthStore();
   const hasDedicatedNumber = !!businessSettings?.dedicatedPhoneNumber;
+  const userTier = user?.subscriptionTier || 'free';
+  const isFreePlan = userTier === 'free' && !user?.betaLifetimeAccess;
   const [config, setConfig] = useState<ReceptionistConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -220,7 +222,15 @@ export default function AIReceptionistScreen() {
             } catch (e: any) {
               setIsProvisioning(false);
               setProvisioningStatus(null);
-              Alert.alert('Error', e?.message || 'Could not set up AI Receptionist. Please try again.');
+              const errorData = e?.response?.data || e;
+              if (errorData?.upgradeRequired) {
+                Alert.alert('Plan Upgrade Required', 'AI Receptionist requires a Pro plan or higher. Please upgrade your subscription first.', [
+                  { text: 'Upgrade', onPress: () => router.push('/more/settings') },
+                  { text: 'Cancel', style: 'cancel' },
+                ]);
+              } else {
+                Alert.alert('Error', errorData?.error || e?.message || 'Could not set up AI Receptionist. Please try again.');
+              }
             }
           },
         },
@@ -436,7 +446,32 @@ export default function AIReceptionistScreen() {
           </View>
         )}
 
-        {!hasDedicatedNumber && !config?.dedicatedPhoneNumber ? (
+        {isFreePlan ? (
+          <View style={styles.card}>
+            <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+                <Feather name="lock" size={28} color={colors.primary} />
+              </View>
+              <Text style={{ ...typography.cardTitle, color: colors.foreground, textAlign: 'center', marginBottom: spacing.xs }}>
+                Pro Plan Required
+              </Text>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18, marginBottom: spacing.xs }}>
+                AI Receptionist is available on Pro, Team, and Business plans.
+              </Text>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18, marginBottom: spacing.lg }}>
+                Upgrade your plan to get a dedicated number and AI-powered call answering for your business. The AI Receptionist add-on is $60/month on top of your plan.
+              </Text>
+              <TouchableOpacity
+                style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.xl, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}
+                onPress={() => router.push('/more/settings')}
+                activeOpacity={0.7}
+              >
+                <Feather name="zap" size={16} color={colors.primaryForeground} />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primaryForeground }}>Upgrade Plan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : !hasDedicatedNumber && !config?.dedicatedPhoneNumber ? (
           <View style={styles.card}>
             <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
               <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.warning}15`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>

@@ -153,6 +153,23 @@ export default function PhoneNumbersPage() {
                 } else {
                   Alert.alert('Error', response.error);
                 }
+              } else if (response.data && (response.data as any).requiresPayment) {
+                const checkoutUrl = (response.data as any).checkoutUrl;
+                if (checkoutUrl) {
+                  Alert.alert(
+                    'Payment Required',
+                    'Dedicated phone numbers are $5/month. You\'ll be taken to checkout to complete your purchase.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Continue to Payment', onPress: () => {
+                        const Linking = require('react-native').Linking;
+                        Linking.openURL(checkoutUrl);
+                      }},
+                    ]
+                  );
+                } else {
+                  Alert.alert('Payment Required', 'Dedicated phone numbers are $5/month. Please contact admin@avwebinnovation.com for assistance.');
+                }
               } else {
                 await fetchBusinessSettings();
                 Alert.alert('Number Reactivated!', `${formatPhone(lastOwnedNumber)} is your dedicated number again.`);
@@ -218,11 +235,26 @@ export default function PhoneNumbersPage() {
                   Alert.alert('Error', response.error);
                 }
               } else if (response.data && (response.data as any).requiresPayment) {
-                Alert.alert(
-                  'Add-On Required',
-                  'Dedicated phone numbers are available as a business add-on. Contact admin@avwebinnovation.com for assistance.',
-                  [{ text: 'OK' }]
-                );
+                const checkoutUrl = (response.data as any).checkoutUrl;
+                if (checkoutUrl) {
+                  Alert.alert(
+                    'Payment Required',
+                    'Dedicated phone numbers are $5/month. You\'ll be taken to checkout to complete your purchase.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Continue to Payment', onPress: () => {
+                        const Linking = require('react-native').Linking;
+                        Linking.openURL(checkoutUrl);
+                      }},
+                    ]
+                  );
+                } else {
+                  Alert.alert(
+                    'Payment Required',
+                    'Dedicated phone numbers are available as a $5/month add-on. Please contact admin@avwebinnovation.com for assistance.',
+                    [{ text: 'OK' }]
+                  );
+                }
               } else {
                 await fetchBusinessSettings();
                 Alert.alert(
