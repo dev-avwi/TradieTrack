@@ -25,6 +25,7 @@ import {
   ActionSheetIOS,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { WebView } from 'react-native-webview';
 import { Slider } from '../../src/components/ui/Slider';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
@@ -11357,118 +11358,29 @@ export default function JobDetailScreen() {
                 </View>
               )}
               
-              {/* Scroll Wheel Time Picker */}
-              {showTimePicker && (() => {
-                const ITEM_HEIGHT = 44;
-                const VISIBLE_ITEMS = 5;
-                const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
-                const hours = Array.from({ length: 24 }, (_, i) => i);
-                const minutes = [0, 15, 30, 45];
-                const currentHour = scheduleDate.getHours();
-                const currentMinuteIdx = minutes.indexOf(
-                  minutes.reduce((prev, curr) => Math.abs(curr - scheduleDate.getMinutes()) < Math.abs(prev - scheduleDate.getMinutes()) ? curr : prev)
-                );
-
-                const WheelColumn = ({ data, selected, onSelect, label }: { data: number[], selected: number, onSelect: (val: number) => void, label: string }) => {
-                  const flatListRef = useRef<FlatList>(null);
-                  const hasScrolledRef = useRef(false);
-
-                  useEffect(() => {
-                    if (!hasScrolledRef.current && flatListRef.current) {
-                      const idx = data.indexOf(selected);
-                      if (idx >= 0) {
-                        setTimeout(() => {
-                          flatListRef.current?.scrollToOffset({ offset: idx * ITEM_HEIGHT, animated: false });
-                          hasScrolledRef.current = true;
-                        }, 50);
+              {/* Native iOS Time Picker */}
+              {showTimePicker && (
+                <View style={{ marginBottom: spacing.md }}>
+                  <DateTimePicker
+                    value={scheduleDate}
+                    mode="time"
+                    display="spinner"
+                    minuteInterval={15}
+                    onChange={(event, selectedDate) => {
+                      if (selectedDate) {
+                        setScheduleDate(selectedDate);
                       }
-                    }
-                  }, []);
-
-                  return (
-                    <View style={{ alignItems: 'center', width: 80 }}>
-                      <Text style={{ color: colors.mutedForeground, fontSize: 11, fontWeight: '600', marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</Text>
-                      <View style={{ height: WHEEL_HEIGHT, overflow: 'hidden' }}>
-                        <FlatList
-                          ref={flatListRef}
-                          data={data}
-                          keyExtractor={(item) => item.toString()}
-                          showsVerticalScrollIndicator={false}
-                          snapToInterval={ITEM_HEIGHT}
-                          decelerationRate="fast"
-                          contentContainerStyle={{ paddingVertical: ITEM_HEIGHT * 2 }}
-                          onMomentumScrollEnd={(e) => {
-                            const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
-                            const clamped = Math.max(0, Math.min(idx, data.length - 1));
-                            onSelect(data[clamped]);
-                          }}
-                          getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
-                          renderItem={({ item, index }) => {
-                            const isSelected = item === selected;
-                            return (
-                              <View style={{ height: ITEM_HEIGHT, justifyContent: 'center', alignItems: 'center' }}>
-                                <Text style={{
-                                  fontSize: isSelected ? 22 : 16,
-                                  fontWeight: isSelected ? '700' : '400',
-                                  color: isSelected ? colors.foreground : colors.mutedForeground,
-                                }}>
-                                  {item.toString().padStart(2, '0')}
-                                </Text>
-                              </View>
-                            );
-                          }}
-                        />
-                        <View pointerEvents="none" style={{
-                          position: 'absolute',
-                          top: ITEM_HEIGHT * 2,
-                          left: 0,
-                          right: 0,
-                          height: ITEM_HEIGHT,
-                          borderTopWidth: 1,
-                          borderBottomWidth: 1,
-                          borderColor: colors.border,
-                          backgroundColor: `${colors.primary}08`,
-                          borderRadius: radius.sm,
-                        }} />
-                      </View>
-                    </View>
-                  );
-                };
-
-                return (
-                  <View style={{ backgroundColor: colors.muted, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-                      <WheelColumn
-                        data={hours}
-                        selected={currentHour}
-                        onSelect={(h) => {
-                          const newDate = new Date(scheduleDate);
-                          newDate.setHours(h);
-                          setScheduleDate(newDate);
-                        }}
-                        label="Hour"
-                      />
-                      <Text style={{ color: colors.foreground, fontSize: 28, fontWeight: '700', marginHorizontal: spacing.sm, marginTop: 14 }}>:</Text>
-                      <WheelColumn
-                        data={minutes}
-                        selected={minutes[currentMinuteIdx]}
-                        onSelect={(m) => {
-                          const newDate = new Date(scheduleDate);
-                          newDate.setMinutes(m);
-                          setScheduleDate(newDate);
-                        }}
-                        label="Minute"
-                      />
-                    </View>
-                    <TouchableOpacity
-                      style={{ backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.sm, marginTop: spacing.md, alignItems: 'center' }}
-                      onPress={() => setShowTimePicker(false)}
-                    >
-                      <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Done</Text>
-                    </TouchableOpacity>
-                  </View>
-                );
-              })()}
+                    }}
+                    themeVariant={colors.isDark ? 'dark' : 'light'}
+                  />
+                  <TouchableOpacity
+                    style={{ backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.sm, alignItems: 'center' }}
+                    onPress={() => setShowTimePicker(false)}
+                  >
+                    <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
               
               <View style={{ flexDirection: 'row', gap: spacing.md }}>
                 <TouchableOpacity
