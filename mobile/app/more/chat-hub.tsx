@@ -1059,17 +1059,64 @@ export default function ChatHubScreen() {
     }
   };
 
-  const showQuickActions = (item: ConversationItem) => {
-    const buttons = SMS_QUICK_ACTIONS.map(action => ({
-      text: action.label,
-      onPress: () => handleQuickActionSend(item, action.id),
+  const handleLinkEnquiryToJob = (item: ConversationItem) => {
+    const pendingJobs = jobs.filter(j => ['pending', 'scheduled'].includes(j.status));
+    if (pendingJobs.length === 0) {
+      Alert.alert('No Jobs Available', 'There are no pending or scheduled jobs to link this enquiry to. Create a new job first.');
+      return;
+    }
+    const jobButtons = pendingJobs.slice(0, 8).map(j => ({
+      text: `${j.title}${j.status === 'scheduled' ? ' (Scheduled)' : ''}`,
+      onPress: async () => {
+        try {
+          await api.patch(`/api/sms/conversations/${item.data.id}`, { jobId: j.id });
+          Alert.alert('Linked', `Enquiry linked to "${j.title}". Future messages from this number will appear under that job.`);
+          loadData();
+        } catch {
+          Alert.alert('Error', 'Could not link enquiry to job. Please try again.');
+        }
+      },
     }));
+    jobButtons.push({ text: 'Cancel', onPress: () => {} });
+    Alert.alert('Link to Job', 'Choose a job to link this enquiry to:', jobButtons as any);
+  };
+
+  const handleCreateJobFromEnquiry = (item: ConversationItem) => {
+    const clientName = item.title || 'Unknown';
+    const phone = item.phone || item.data?.clientPhone || '';
+    router.push(`/more/create-job?enquiryName=${encodeURIComponent(clientName)}&enquiryPhone=${encodeURIComponent(phone)}&smsConversationId=${item.data.id}` as any);
+  };
+
+  const showQuickActions = (item: ConversationItem) => {
+    const buttons: { text: string; onPress: () => void; style?: string }[] = [];
+
+    if (item.type === 'sms' && activeFilter === 'enquiries') {
+      buttons.push({
+        text: 'Create Job from Enquiry',
+        onPress: () => handleCreateJobFromEnquiry(item),
+      });
+      buttons.push({
+        text: 'Link to Existing Job',
+        onPress: () => handleLinkEnquiryToJob(item),
+      });
+    }
+
+    SMS_QUICK_ACTIONS.forEach(action => {
+      buttons.push({
+        text: action.label,
+        onPress: () => handleQuickActionSend(item, action.id),
+      });
+    });
     buttons.push({
       text: 'Send Photo',
       onPress: () => handleSendPhoto(item),
     });
     buttons.push({ text: 'Cancel', onPress: () => {} });
-    Alert.alert('Quick SMS', 'Send a quick message:', buttons as any);
+    Alert.alert(
+      item.type === 'sms' && activeFilter === 'enquiries' ? 'Enquiry Actions' : 'Quick SMS',
+      item.type === 'sms' && activeFilter === 'enquiries' ? 'Manage this enquiry or send a quick reply:' : 'Send a quick message:',
+      buttons as any
+    );
   };
 
   const handleConversationPress = (item: ConversationItem) => {

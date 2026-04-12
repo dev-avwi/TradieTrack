@@ -535,6 +535,18 @@ export default function AIReceptionistScreen() {
               </View>
             ) : (
               <>
+                {config?.approvalStatus === 'pending_approval' && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f59e0b15', borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md, gap: spacing.sm }}>
+                    <Feather name="clock" size={18} color="#f59e0b" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...typography.body, fontWeight: '600', color: colors.foreground }}>Pending Review</Text>
+                      <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2, lineHeight: 16 }}>
+                        Your AI Receptionist is being reviewed by our team. You'll be notified once it's approved and ready to go.
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
                 <View style={styles.enableRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.enableLabel}>AI Receptionist</Text>
@@ -542,7 +554,15 @@ export default function AIReceptionistScreen() {
                   </View>
                   <Switch
                     value={enabled}
+                    disabled={config?.approvalStatus === 'pending_approval'}
                     onValueChange={(val) => {
+                      if (config?.approvalStatus === 'pending_approval') {
+                        Alert.alert(
+                          'Pending Review',
+                          'Your AI Receptionist is still being reviewed. You can enable it once approved.'
+                        );
+                        return;
+                      }
                       if (!val && config?.enabled) {
                         Alert.alert(
                           'Disable AI Receptionist?',

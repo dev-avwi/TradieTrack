@@ -12,12 +12,13 @@ import {
   Platform,
   Share,
   FlatList,
-  ActivityIndicator
+  ActivityIndicator,
+  Switch
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useJobsStore, useTimeTrackingStore } from '../../src/lib/store';
+import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/store';
 import api from '../../src/lib/api';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes } from '../../src/lib/design-tokens';
@@ -47,6 +48,8 @@ interface TimeEntry {
   disputedAt?: string | null;
   disputeResolvedAt?: string | null;
   disputeResolution?: string | null;
+  userName?: string;
+  userEmail?: string;
 }
 
 interface WeeklyStats {
@@ -757,6 +760,9 @@ export default function TimeTrackingScreen() {
   const [isLoadingEntries, setIsLoadingEntries] = useState(false);
   const [sheetDate, setSheetDate] = useState(new Date());
   const [weeklyData, setWeeklyData] = useState<WeeklyStats[]>([]);
+  const [teamViewEnabled, setTeamViewEnabled] = useState(false);
+  const { user } = useAuthStore();
+  const isOwnerOrManager = user?.isOwner === true || user?.roleName === 'MANAGER' || user?.roleName === 'ADMIN';
 
   const [showAddEntryModal, setShowAddEntryModal] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
@@ -784,7 +790,8 @@ export default function TimeTrackingScreen() {
     try {
       const targetDate = date || sheetDate;
       const dateStr = targetDate.toISOString().split('T')[0];
-      const response = await api.get<any[]>(`/api/time-entries?startDate=${dateStr}&endDate=${dateStr}`);
+      const teamParam = teamViewEnabled && isOwnerOrManager ? '&teamView=true' : '';
+      const response = await api.get<any[]>(`/api/time-entries?startDate=${dateStr}&endDate=${dateStr}${teamParam}`);
       if (response.data) {
         setTimeEntries(response.data);
       }
@@ -793,7 +800,7 @@ export default function TimeTrackingScreen() {
     } finally {
       setIsLoadingEntries(false);
     }
-  }, [sheetDate]);
+  }, [sheetDate, teamViewEnabled, isOwnerOrManager]);
 
   const fetchWeeklyData = useCallback(async () => {
     try {
@@ -881,7 +888,7 @@ export default function TimeTrackingScreen() {
     if (activeTab === 'sheet') {
       fetchTimeEntries();
     }
-  }, [activeTab, sheetDate]);
+  }, [activeTab, sheetDate, teamViewEnabled]);
 
   useEffect(() => {
     if (activeTimer) {
@@ -1300,6 +1307,26 @@ export default function TimeTrackingScreen() {
 
     return (
       <View style={{ gap: spacing.md }}>
+        {isOwnerOrManager && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.cardBorder }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Feather name={teamViewEnabled ? 'users' : 'user'} size={16} color={teamViewEnabled ? colors.primary : colors.mutedForeground} />
+              <Text style={{ ...typography.body, fontWeight: '600', color: colors.foreground }}>
+                {teamViewEnabled ? 'Team View' : 'My Entries'}
+              </Text>
+            </View>
+            <Switch
+              value={teamViewEnabled}
+              onValueChange={(val) => {
+                setTeamViewEnabled(val);
+              }}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#FFFFFF"
+              ios_backgroundColor={colors.border}
+            />
+          </View>
+        )}
+
         <View style={styles.sheetDateHeader}>
           <View>
             <Text style={styles.sheetDateText}>{dateLabel}</Text>
@@ -1431,10 +1458,15 @@ export default function TimeTrackingScreen() {
                       <View key={entry.id} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: idx < allEntries.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border + '30' }}>
                         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isBreakEntry ? '#f59e0b' : colors.primary, marginRight: spacing.sm }} />
                         <View style={{ flex: 1 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' }}>
                             <Text style={{ fontSize: 12, color: colors.foreground, fontWeight: '500' }}>
                               {isBreakEntry ? 'Break' : 'Work'}
                             </Text>
+                            {teamViewEnabled && entry.userName && (
+                              <View style={{ backgroundColor: colors.primary + '12', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                <Text style={{ fontSize: 9, color: colors.primary, fontWeight: '600' }}>{entry.userName}</Text>
+                              </View>
+                            )}
                             {isBreakEntry ? (
                               <View style={{ backgroundColor: '#f59e0b15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
                                 <Feather name="coffee" size={9} color="#f59e0b" />

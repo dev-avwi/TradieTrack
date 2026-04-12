@@ -27449,6 +27449,21 @@ Respond with JSON in this format:
         timeEntriesList = [...completed, ...active].sort((a, b) => 
           new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
         );
+      } else if (teamView && !jobId) {
+        const userContext = await getUserContext(userId);
+        const canViewTeam = userContext.isOwner || userContext.roleName === 'MANAGER' || userContext.roleName === 'ADMIN' || userContext.permissions.includes('MANAGE_TEAM' as any);
+        if (!canViewTeam) {
+          return res.status(403).json({ error: 'Team view requires owner or manager access' });
+        }
+        const startDate = req.query.startDate as string | undefined;
+        const endDate = req.query.endDate as string | undefined;
+        if (startDate && endDate) {
+          const start = new Date(startDate + 'T00:00:00');
+          const end = new Date(endDate + 'T23:59:59');
+          timeEntriesList = await storage.getTeamTimeEntriesInRange(userContext.effectiveUserId, start, end);
+        } else {
+          timeEntriesList = await storage.getTimeEntries(userId, jobId);
+        }
       } else {
         timeEntriesList = await storage.getTimeEntries(userId, jobId);
       }

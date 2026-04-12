@@ -424,7 +424,8 @@ function HeroMap({
   jobLng, 
   jobAddress,
   workerStatus,
-  assignments 
+  assignments,
+  scheduledAt 
 }: { 
   token: string; 
   jobLat?: string; 
@@ -432,6 +433,7 @@ function HeroMap({
   jobAddress?: string;
   workerStatus: string | null;
   assignments?: PortalAssignment[];
+  scheduledAt?: string;
 }) {
   const [crewData, setCrewData] = useState<CrewLocationResponse | null>(null);
   const [locationData, setLocationData] = useState<LocationResponse | null>(null);
@@ -611,8 +613,49 @@ function HeroMap({
         )}
 
         {(() => {
-          const showOverlay = workerStatus && ['on_my_way', 'arrived', 'in_progress', 'completed'].includes(workerStatus);
-          if (!showOverlay) return null;
+          const showOverlay = workerStatus && ['assigned', 'on_my_way', 'arrived', 'in_progress', 'completed'].includes(workerStatus);
+          if (!showOverlay && !scheduledAt) return null;
+
+          if (!showOverlay && scheduledAt) {
+            const schedDate = new Date(scheduledAt);
+            const isToday = schedDate.toDateString() === new Date().toDateString();
+            const isTomorrow = schedDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
+            const dateLabel = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : schedDate.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+            const timeLabel = schedDate.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+            return (
+              <div className="absolute bottom-0 left-0 right-0 z-[1000] pointer-events-none">
+                <div className="bg-gradient-to-t from-black/60 via-black/30 to-transparent px-4 pt-8 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-brand/80 flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white font-bold text-sm">Scheduled for {dateLabel}</p>
+                      <p className="text-white/70 text-xs">{timeLabel} - Your tradesperson will be in touch</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (workerStatus === 'assigned') {
+            return (
+              <div className="absolute bottom-0 left-0 right-0 z-[1000] pointer-events-none">
+                <div className="bg-gradient-to-t from-black/60 via-black/30 to-transparent px-4 pt-8 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-brand/80 flex items-center justify-center">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white font-bold text-sm">Tradesperson assigned</p>
+                      <p className="text-white/70 text-xs">You'll be notified when they're on the way</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
           if (workerStatus === 'on_my_way') {
             return (
@@ -983,6 +1026,7 @@ export default function JobPortal() {
               jobAddress={job.address}
               workerStatus={effectiveWorkerStatus}
               assignments={data.assignments}
+              scheduledAt={job.scheduledAt}
             />
           )}
 

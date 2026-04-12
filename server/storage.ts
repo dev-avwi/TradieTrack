@@ -664,6 +664,7 @@ export interface IStorage {
   getTimeEntries(userId: string, jobId?: string): Promise<TimeEntry[]>;
   getTimeEntriesForJob(jobId: string): Promise<TimeEntry[]>;
   getTimeEntriesInRange(userId: string, start: Date, end: Date): Promise<TimeEntry[]>;
+  getTeamTimeEntriesInRange(businessOwnerId: string, start: Date, end: Date): Promise<TimeEntry[]>;
   getTimeEntry(id: string, userId: string): Promise<TimeEntry | undefined>;
   createTimeEntry(entry: InsertTimeEntry & { userId: string }): Promise<TimeEntry>;
   updateTimeEntry(id: string, userId: string, entry: Partial<InsertTimeEntry>): Promise<TimeEntry | undefined>;
@@ -3364,6 +3365,18 @@ export class PostgresStorage implements IStorage {
     return await db.select().from(timeEntries)
       .where(and(
         eq(timeEntries.userId, userId),
+        gte(timeEntries.startTime, start),
+        lte(timeEntries.startTime, end)
+      ))
+      .orderBy(desc(timeEntries.startTime));
+  }
+
+  async getTeamTimeEntriesInRange(businessOwnerId: string, start: Date, end: Date): Promise<TimeEntry[]> {
+    const members = await this.getTeamMembers(businessOwnerId);
+    const userIds = [businessOwnerId, ...members.map(m => m.userId || m.memberId).filter(Boolean)] as string[];
+    return await db.select().from(timeEntries)
+      .where(and(
+        inArray(timeEntries.userId, userIds),
         gte(timeEntries.startTime, start),
         lte(timeEntries.startTime, end)
       ))

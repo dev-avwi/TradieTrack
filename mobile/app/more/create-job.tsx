@@ -532,7 +532,7 @@ function StatusSelector({
 }
 
 export default function CreateJobScreen() {
-  const params = useLocalSearchParams<{ clientId?: string; recurring?: string }>();
+  const params = useLocalSearchParams<{ clientId?: string; recurring?: string; enquiryName?: string; enquiryPhone?: string; smsConversationId?: string }>();
   const { clients, fetchClients } = useClientsStore();
   const { fetchJobs } = useJobsStore();
   const { colors } = useTheme();
@@ -540,8 +540,9 @@ export default function CreateJobScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
 
+  const isFromEnquiry = !!(params.enquiryName || params.enquiryPhone);
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(isFromEnquiry ? `Enquiry from ${params.enquiryName || params.enquiryPhone || 'unknown'}` : '');
   const [clientId, setClientId] = useState<string | null>(params.clientId || null);
   const [address, setAddress] = useState('');
   const [status, setStatus] = useState<JobStatus>('pending');
@@ -842,10 +843,17 @@ export default function CreateJobScreen() {
       const response = await api.post<{ id: string }>('/api/jobs', jobData);
 
       if (response.data?.id) {
+        if (params.smsConversationId) {
+          try {
+            await api.patch(`/api/sms/conversations/${params.smsConversationId}`, { jobId: response.data.id });
+          } catch (linkErr) {
+            if (__DEV__) console.log('Failed to link SMS conversation to job:', linkErr);
+          }
+        }
         await fetchJobs();
         Alert.alert(
           'Job Created!',
-          'Your job has been created successfully.',
+          isFromEnquiry ? 'Job created and linked to the enquiry conversation.' : 'Your job has been created successfully.',
           [
             {
               text: 'View Job',
