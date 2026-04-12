@@ -9789,7 +9789,7 @@ export default function JobDetailScreen() {
       <View style={styles.container}>
         <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Glass Controls + Fixed Header */}
+      {/* Glass Controls + Fixed Header - v7 */}
       <View style={[styles.fixedHeader, { paddingTop: insets.top + 8 }]}>
         <View style={styles.glassControlsRow}>
           <IOSBackButton />
