@@ -22,6 +22,7 @@ import {
   Easing,
   AppState,
   AppStateStatus,
+  ActionSheetIOS,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -3728,15 +3729,34 @@ export default function JobDetailScreen() {
     }
     options.push('Cancel');
 
-    Alert.alert(
-      'Job Actions',
-      undefined,
-      options.map((label, i) => {
-        if (label === 'Cancel') return { text: 'Cancel', style: 'cancel' as const };
-        if (label === 'Delete Job') return { text: label, style: 'destructive' as const, onPress: actions[i] };
-        return { text: label, onPress: actions[i] };
-      })
-    );
+    const cancelButtonIndex = options.length - 1;
+    const destructiveButtonIndex = options.indexOf('Delete Job');
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex,
+          destructiveButtonIndex: destructiveButtonIndex >= 0 ? destructiveButtonIndex : undefined,
+          title: 'Job Actions',
+        },
+        (buttonIndex) => {
+          if (buttonIndex !== cancelButtonIndex && actions[buttonIndex]) {
+            actions[buttonIndex]();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Job Actions',
+        undefined,
+        options.map((label, i) => {
+          if (label === 'Cancel') return { text: 'Cancel', style: 'cancel' as const };
+          if (label === 'Delete Job') return { text: label, style: 'destructive' as const, onPress: actions[i] };
+          return { text: label, onPress: actions[i] };
+        })
+      );
+    }
   };
 
   const loadSignatures = async () => {

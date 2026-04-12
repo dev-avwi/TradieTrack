@@ -508,10 +508,10 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
+  const [themeLoaded, setThemeLoaded] = useState(false);
   const { businessSettings } = useAuthStore();
   const brandColorFromSettings = businessSettings?.brandColor || businessSettings?.primaryColor || null;
 
-  // Get colors from advanced theme store
   const advancedThemeMode = useAdvancedThemeStore(state => state.mode);
   const activePresetId = useAdvancedThemeStore(state => state.activePresetId);
   const customPalette = useAdvancedThemeStore(state => state.customPalette);
@@ -525,6 +525,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
     }).catch((err) => {
       console.warn('Failed to load theme preference from SecureStore:', err);
+    }).finally(() => {
+      setThemeLoaded(true);
     });
   }, []);
 
@@ -603,6 +605,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Effective brand color - use active palette primary if customized, otherwise business settings
   const activePaletteForBrand = getActivePalette();
   const brandColor = activePaletteForBrand?.primary || customPalette?.primary || brandColorFromSettings || DEFAULT_BRAND_COLOR;
+
+  if (!themeLoaded) {
+    return null;
+  }
 
   return (
     <ThemeContext.Provider value={{ themeMode, isDark, colors, shadows, brandColor, setThemeMode }}>
