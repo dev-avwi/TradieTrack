@@ -262,6 +262,7 @@ const styles = StyleSheet.create({
   glassCard: {
     width: '100%',
     borderRadius: 14,
+    overflow: 'hidden',
   },
   fallbackCard: {
     width: '100%',
