@@ -9799,7 +9799,10 @@ export default function JobDetailScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               {(isOwnerOrManager || isSoloOwner) && (
                 <Pressable
-                  onPress={() => setActiveTab('manage')}
+                  onPress={() => {
+                    setNewJobTitle(job.title);
+                    setShowRenameModal(true);
+                  }}
                   hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                   style={{ width: 32, height: 30, alignItems: 'center', justifyContent: 'center' }}
                   testID="button-edit-header"

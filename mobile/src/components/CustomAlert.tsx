@@ -39,13 +39,13 @@ export function useCustomAlert() {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 64, 296);
+const ALERT_WIDTH = Math.min(SCREEN_WIDTH - 56, 300);
 
 function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () => void }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1.04)).current;
+  const scaleAnim = useRef(new Animated.Value(1.08)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -71,7 +71,7 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
-        toValue: 0.97,
+        toValue: 0.95,
         duration: 140,
         useNativeDriver: true,
       }),
@@ -94,27 +94,27 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
 
   const showButtonsInRow = orderedButtons.length <= 2;
 
-  const titleColor = isDark ? '#f5f5f7' : '#1a1a1a';
-  const messageColor = isDark ? 'rgba(235,235,245,0.55)' : 'rgba(60,60,67,0.6)';
+  const titleColor = isDark ? '#f5f5f7' : '#1c1c1e';
+  const messageColor = isDark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.6)';
 
   const getButtonStyle = (btn: AlertButton) => {
     if (btn.style === 'destructive') {
       return {
-        bg: isDark ? 'rgba(255,69,58,0.12)' : 'rgba(255,59,48,0.06)',
-        text: isDark ? '#ff453a' : '#ff3b30',
+        bg: isDark ? 'rgba(255,69,58,0.15)' : 'rgba(255,59,48,0.08)',
+        text: '#ff3b30',
         fontWeight: '600' as const,
       };
     }
     if (btn.style === 'cancel') {
       return {
-        bg: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(120,120,128,0.05)',
-        text: isDark ? 'rgba(235,235,245,0.45)' : 'rgba(60,60,67,0.45)',
-        fontWeight: '500' as const,
+        bg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(120,120,128,0.08)',
+        text: isDark ? 'rgba(235,235,245,0.5)' : 'rgba(60,60,67,0.5)',
+        fontWeight: '600' as const,
       };
     }
     return {
-      bg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(120,120,128,0.07)',
-      text: isDark ? '#f5f5f7' : '#1a1a1a',
+      bg: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.04)',
+      text: isDark ? '#f5f5f7' : '#1c1c1e',
       fontWeight: '600' as const,
     };
   };
@@ -133,10 +133,11 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
           return (
             <Pressable
               key={i}
-              style={[
+              style={({ pressed }) => [
                 styles.btn,
                 showButtonsInRow && styles.btnFlex,
                 { backgroundColor: btnStyle.bg },
+                pressed && { opacity: 0.7 },
               ]}
               onPress={() => dismiss(btn.onPress || undefined)}
             >
@@ -150,18 +151,24 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
     </>
   );
 
+  const cardBg = isDark ? 'rgba(44,44,46,0.85)' : 'rgba(255,255,255,0.92)';
+
   return (
     <Modal transparent visible animationType="none" statusBarTranslucent>
-      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-        {Platform.OS === 'ios' ? (
-          <BlurView
-            intensity={50}
-            tint={isDark ? 'dark' as any : 'default' as any}
-            style={StyleSheet.absoluteFill}
-          />
-        ) : null}
-        <View style={styles.overlayDim} />
+      <Pressable style={styles.overlayTouch} onPress={() => dismiss()}>
+        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+          {Platform.OS === 'ios' ? (
+            <BlurView
+              intensity={40}
+              tint={isDark ? 'dark' : 'default'}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : null}
+          <View style={styles.overlayDim} />
+        </Animated.View>
+      </Pressable>
 
+      <View style={styles.centerContainer} pointerEvents="box-none">
         <Animated.View
           style={[
             styles.cardPosition,
@@ -176,27 +183,19 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
               {alertContent}
             </LiquidGlassView>
           ) : (
-            <View style={styles.fallbackCard}>
+            <View style={[styles.fallbackCard, { backgroundColor: cardBg }]}>
               {Platform.OS === 'ios' ? (
                 <BlurView
-                  tint={isDark ? 'systemThinMaterialDark' as any : 'systemThinMaterial' as any}
+                  tint={isDark ? 'systemThickMaterialDark' as any : 'systemThickMaterial' as any}
                   intensity={100}
                   style={StyleSheet.absoluteFill}
                 />
               ) : null}
-              <View
-                style={[
-                  StyleSheet.absoluteFill,
-                  {
-                    backgroundColor: isDark ? 'rgba(44,44,46,0.72)' : 'rgba(255,255,255,0.78)',
-                  },
-                ]}
-              />
               {alertContent}
             </View>
           )}
         </Animated.View>
-      </Animated.View>
+      </View>
     </Modal>
   );
 }
@@ -247,33 +246,49 @@ export function CustomAlertProvider({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
+  overlayTouch: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+  },
   overlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   overlayDim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.10)',
+    backgroundColor: 'rgba(0,0,0,0.18)',
+  },
+  centerContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
   },
   cardPosition: {
     width: ALERT_WIDTH,
   },
   glassCard: {
     width: '100%',
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   fallbackCard: {
     width: '100%',
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: 'hidden',
-    position: 'relative',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
+      },
+      android: { elevation: 8 },
+    }),
   },
   contentSection: {
-    paddingHorizontal: 20,
-    paddingTop: 22,
-    paddingBottom: 20,
+    paddingHorizontal: 22,
+    paddingTop: 24,
+    paddingBottom: 18,
   },
   title: {
     fontSize: 17,
@@ -283,35 +298,35 @@ const styles = StyleSheet.create({
   },
   message: {
     fontSize: 13,
-    marginTop: 10,
-    lineHeight: 19,
+    marginTop: 8,
+    lineHeight: 18,
     letterSpacing: -0.05,
   },
   buttonsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 14,
-    paddingBottom: 14,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
     gap: 8,
   },
   buttonsColumn: {
     flexDirection: 'column',
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-    gap: 6,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 8,
   },
   btn: {
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 38,
+    minHeight: 44,
   },
   btnFlex: {
     flex: 1,
   },
   btnText: {
-    fontSize: 15,
-    letterSpacing: -0.15,
+    fontSize: 16,
+    letterSpacing: -0.2,
   },
 });
