@@ -3,6 +3,7 @@ import {
   View, 
   Text, 
   ScrollView, 
+  FlatList,
   TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
@@ -476,6 +477,7 @@ export default function AIAssistantScreen() {
   const [pendingAction, setPendingAction] = useState<AIAction | null>(null);
   const [isExecutingAction, setIsExecutingAction] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const chatListRef = useRef<FlatList>(null);
 
   const userName = user?.firstName || (user as any)?.name?.split(' ')[0] || '';
 
@@ -587,7 +589,7 @@ export default function AIAssistantScreen() {
       }
       
       setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
+        chatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
       Alert.alert('Error', 'Failed to send message. Please try again.');
@@ -612,7 +614,7 @@ export default function AIAssistantScreen() {
       }]);
       
       setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
+        chatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
       setPendingAction(null);
@@ -633,7 +635,7 @@ export default function AIAssistantScreen() {
     }]);
     
     setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
+      chatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
   };
 
@@ -677,55 +679,52 @@ export default function AIAssistantScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
       >
-        <ScrollView 
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Header Card */}
-          <View style={styles.headerCard}>
-            <View style={styles.headerIconContainer}>
-              <Feather name="star" size={24} color={colors.primary} />
-            </View>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>
-                {userName ? `Hi ${userName}!` : 'AI Assistant'}
-              </Text>
-              <Text style={styles.headerSubtitle}>
-                {userName ? 'How can I help you today?' : 'Get help with your business tasks'}
-              </Text>
-            </View>
-          </View>
-
-          {/* Proactive Notifications */}
-          {activeNotifications.length > 0 && chatHistory.length === 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionIconContainer}>
-                  <Feather name="bell" size={16} color={colors.destructive} />
-                </View>
-                <Text style={styles.sectionTitle}>Needs Attention</Text>
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.notificationBadgeText}>{activeNotifications.length}</Text>
-                </View>
+        {chatHistory.length === 0 ? (
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.headerCard}>
+              <View style={styles.headerIconContainer}>
+                <Feather name="star" size={24} color={colors.primary} />
               </View>
-              
-              <View style={styles.notificationsContainer}>
-                {activeNotifications.slice(0, 5).map((notification) => (
-                  <NotificationCard
-                    key={notification.id}
-                    notification={notification}
-                    onPress={() => handleNotificationPress(notification)}
-                    onDismiss={() => handleDismissNotification(notification.id)}
-                  />
-                ))}
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.headerTitle}>
+                  {userName ? `Hi ${userName}!` : 'AI Assistant'}
+                </Text>
+                <Text style={styles.headerSubtitle}>
+                  {userName ? 'How can I help you today?' : 'Get help with your business tasks'}
+                </Text>
               </View>
             </View>
-          )}
 
-          {/* Suggested Prompts - Show when no chat history */}
-          {chatHistory.length === 0 && (
+            {activeNotifications.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionIconContainer}>
+                    <Feather name="bell" size={16} color={colors.destructive} />
+                  </View>
+                  <Text style={styles.sectionTitle}>Needs Attention</Text>
+                  <View style={styles.notificationBadge}>
+                    <Text style={styles.notificationBadgeText}>{activeNotifications.length}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.notificationsContainer}>
+                  {activeNotifications.slice(0, 5).map((notification) => (
+                    <NotificationCard
+                      key={notification.id}
+                      notification={notification}
+                      onPress={() => handleNotificationPress(notification)}
+                      onDismiss={() => handleDismissNotification(notification.id)}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionIconContainer}>
@@ -737,17 +736,14 @@ export default function AIAssistantScreen() {
               <View style={styles.suggestionsGrid}>
                 {SUGGESTED_PROMPTS.map((prompt, index) => (
                   <SuggestionCard
-                    key={index}
+                    key={`prompt-${index}`}
                     text={prompt}
                     onPress={() => handleSuggestionPress(prompt)}
                   />
                 ))}
               </View>
             </View>
-          )}
 
-          {/* AI-Generated Suggestions */}
-          {chatHistory.length === 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionIconContainer}>
@@ -765,7 +761,7 @@ export default function AIAssistantScreen() {
                 <View style={styles.suggestionsGrid}>
                   {suggestions.map((suggestion, index) => (
                     <SuggestionCard
-                      key={index}
+                      key={`ai-${index}`}
                       text={suggestion}
                       onPress={() => handleSuggestionPress(suggestion)}
                       isAISuggestion
@@ -780,41 +776,51 @@ export default function AIAssistantScreen() {
                 </View>
               )}
             </View>
-          )}
-
-          {/* Chat History */}
-          {chatHistory.length > 0 && (
-            <View style={styles.chatSection}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionIconContainer}>
-                  <Feather name="message-square" size={16} color={colors.mutedForeground} />
+          </ScrollView>
+        ) : (
+          <FlatList
+            ref={chatListRef}
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            data={chatHistory}
+            keyExtractor={(item, index) => item.id || `msg-${index}`}
+            ListHeaderComponent={
+              <View style={styles.headerCard}>
+                <View style={styles.headerIconContainer}>
+                  <Feather name="star" size={24} color={colors.primary} />
                 </View>
-                <Text style={styles.sectionTitle}>Conversation</Text>
+                <View style={styles.headerTextContainer}>
+                  <Text style={styles.headerTitle}>
+                    {userName ? `Hi ${userName}!` : 'AI Assistant'}
+                  </Text>
+                  <Text style={styles.headerSubtitle}>
+                    {userName ? 'How can I help you today?' : 'Get help with your business tasks'}
+                  </Text>
+                </View>
               </View>
-
-              <View style={styles.chatContainer}>
-                {chatHistory.map((message, index) => (
-                  <ChatBubble 
-                    key={index} 
-                    message={message}
-                    pendingAction={pendingAction}
-                    isExecutingAction={isExecutingAction}
-                    onConfirmAction={handleConfirmAction}
-                    onCancelAction={handleCancelAction}
-                    onFollowupPress={handleSuggestionPress}
-                  />
-                ))}
-                
-                {isSending && (
-                  <View style={[styles.chatBubble, styles.assistantBubble, styles.thinkingBubble]}>
-                    <Text style={styles.chatBubbleLabel}>JobRunner AI</Text>
-                    <ThinkingDots colors={colors} />
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
-        </ScrollView>
+            }
+            renderItem={({ item: message }) => (
+              <ChatBubble
+                message={message}
+                pendingAction={pendingAction}
+                isExecutingAction={isExecutingAction}
+                onConfirmAction={handleConfirmAction}
+                onCancelAction={handleCancelAction}
+                onFollowupPress={handleSuggestionPress}
+              />
+            )}
+            ListFooterComponent={
+              isSending ? (
+                <View style={[styles.chatBubble, styles.assistantBubble, styles.thinkingBubble]}>
+                  <Text style={styles.chatBubbleLabel}>JobRunner AI</Text>
+                  <ThinkingDots colors={colors} />
+                </View>
+              ) : null
+            }
+            onContentSizeChange={() => chatListRef.current?.scrollToEnd({ animated: false })}
+          />
+        )}
 
         {/* Chat Input */}
         <View style={styles.inputContainer}>

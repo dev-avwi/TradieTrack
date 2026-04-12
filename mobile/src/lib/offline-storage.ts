@@ -1866,21 +1866,20 @@ class OfflineStorageService {
    * Product spec: 30s → 2m → 5m → 15m → 30m (then capped at 30m)
    */
   private getBackoffDelay(retryCount: number): number {
-    // First attempt has no delay
     if (retryCount === 0) return 0;
     
-    // Specific delay sequence per product spec
     const delays = [
-      30 * 1000,       // 30 seconds (retry 1)
-      2 * 60 * 1000,   // 2 minutes (retry 2)
-      5 * 60 * 1000,   // 5 minutes (retry 3)
-      15 * 60 * 1000,  // 15 minutes (retry 4)
-      30 * 60 * 1000,  // 30 minutes (retry 5+)
+      30 * 1000,
+      2 * 60 * 1000,
+      5 * 60 * 1000,
+      15 * 60 * 1000,
+      30 * 60 * 1000,
     ];
     
-    // Use the delay for the retry count, capping at the maximum delay
     const index = Math.min(retryCount - 1, delays.length - 1);
-    return delays[index];
+    const baseDelay = delays[index];
+    const jitter = Math.random() * baseDelay * 0.3;
+    return baseDelay + jitter;
   }
 
   async getPendingSyncItems(): Promise<PendingSyncItem[]> {
@@ -2076,13 +2075,11 @@ class OfflineStorageService {
       
       if (failedItems.length === 0) return;
       
-      if (__DEV__) console.log(`[OfflineStorage] Cleaning up ${failedItems.length} permanently failed sync items`);
+      if (__DEV__) console.log(`[OfflineStorage] Marking ${failedItems.length} permanently failed sync items`);
       
       for (const item of failedItems) {
-        // Log the failed item for debugging
         if (__DEV__) console.warn(`[OfflineStorage] Permanently failed: ${item.type} ${item.action} - ${item.last_error}`);
         
-        // Mark the cached item as having a sync failure
         const data = JSON.parse(item.data);
         const tableMap: Record<string, string> = {
           job: 'jobs', client: 'clients', quote: 'quotes',
@@ -2091,15 +2088,16 @@ class OfflineStorageService {
         const table = tableMap[item.type];
         
         if (table && data.id) {
-          // Keep the local data but clear the sync action (user can retry manually)
           await this.db.runAsync(
             `UPDATE ${table} SET pending_sync = 0, sync_action = 'failed' WHERE id = ?`,
             [data.id]
           );
         }
-        
-        // Remove from sync queue
-        await this.db.runAsync('DELETE FROM sync_queue WHERE id = ?', [item.id]);
+
+        await this.db.runAsync(
+          `UPDATE sync_queue SET last_error = ? WHERE id = ?`,
+          [`PERMANENTLY_FAILED: ${item.last_error || 'Max retries exceeded'}`, item.id]
+        );
       }
       
       await this.updatePendingSyncCount();
@@ -2108,14 +2106,46 @@ class OfflineStorageService {
     }
   }
 
+  async retryFailedSyncItems(): Promise<number> {
+    if (!this.db) return 0;
+    
+    try {
+      const result = await this.db.runAsync(
+        `UPDATE sync_queue SET retry_count = 0, last_error = NULL, last_attempted_at = NULL 
+         WHERE retry_count >= ? OR last_error LIKE 'PERMANENTLY_FAILED:%'`,
+        [MAX_RETRY_ATTEMPTS]
+      );
+      
+      const count = result.changes ?? 0;
+      if (count > 0) {
+        await this.updatePendingSyncCount();
+        if (__DEV__) console.log(`[OfflineStorage] Reset ${count} failed sync items for retry`);
+      }
+      return count;
+    } catch (error) {
+      if (__DEV__) console.error('[OfflineStorage] Failed to retry failed sync items:', error);
+      return 0;
+    }
+  }
+
   private async updatePendingSyncCount(): Promise<void> {
     if (!this.db) return;
     
     const result = await this.db.getFirstAsync(
-      'SELECT COUNT(*) as count FROM sync_queue'
+      `SELECT COUNT(*) as count FROM sync_queue WHERE retry_count < ? AND (last_error IS NULL OR last_error NOT LIKE 'PERMANENTLY_FAILED:%')`,
+      [MAX_RETRY_ATTEMPTS]
     ) as any;
     
     useOfflineStore.getState().setPendingSyncCount(result?.count ?? 0);
+  }
+
+  async getFailedSyncCount(): Promise<number> {
+    if (!this.db) return 0;
+    const result = await this.db.getFirstAsync(
+      `SELECT COUNT(*) as count FROM sync_queue WHERE retry_count >= ? OR last_error LIKE 'PERMANENTLY_FAILED:%'`,
+      [MAX_RETRY_ATTEMPTS]
+    ) as any;
+    return result?.count ?? 0;
   }
 
   /**

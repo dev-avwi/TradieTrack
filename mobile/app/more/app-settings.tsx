@@ -511,6 +511,16 @@ export default function AppSettingsScreen() {
     }
   };
 
+  const handleRetryFailed = async () => {
+    const count = await offlineStorage.retryFailedSyncItems();
+    if (count > 0) {
+      Alert.alert('Retrying', `${count} failed item${count === 1 ? '' : 's'} queued for retry.`);
+      await offlineStorage.syncPendingChanges();
+    } else {
+      Alert.alert('All Clear', 'No failed sync items to retry.');
+    }
+  };
+
   const handleClearCache = () => {
     Alert.alert(
       'Clear Local Data?',
@@ -811,6 +821,15 @@ export default function AppSettingsScreen() {
                     </Text>
                   </TouchableOpacity>
                   
+                  <TouchableOpacity
+                    style={[styles.syncButton, styles.outlineButton, { borderColor: colors.warning }]}
+                    onPress={handleRetryFailed}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="rotate-ccw" size={16} color={colors.warning} />
+                    <Text style={[styles.syncButtonText, { color: colors.warning }]}>Retry Failed</Text>
+                  </TouchableOpacity>
+
                   <TouchableOpacity
                     style={[styles.syncButton, styles.outlineButton, { borderColor: colors.border }]}
                     onPress={handleClearCache}

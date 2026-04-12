@@ -400,7 +400,11 @@ function ServicesInitializer() {
           const prefsRes = await api.get('/api/notification-preferences');
           if (prefsRes.error || prefsRes.data?.smartRunningLateEnabled === false || prefsRes.data?.pushNotificationsEnabled === false) return;
 
-          const loc = await location.getCurrentLocation();
+          let loc = location.getLastLocation();
+          const locationAge = loc ? Date.now() - loc.timestamp : Infinity;
+          if (!loc || locationAge > 10 * 60 * 1000) {
+            loc = await location.getCurrentLocation();
+          }
           if (!loc?.latitude) return;
 
           const checkRes = await api.post('/api/smart-running-late/check', {

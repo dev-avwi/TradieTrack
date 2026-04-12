@@ -59,6 +59,10 @@ export interface SubcontractorJobContext {
   businessName: string;
 }
 
+const LOCATION_BUFFER_MAX = 20;
+const STATIONARY_SPEED_THRESHOLD = 0.5;
+const STATIONARY_SKIP_COUNT = 3;
+
 class LocationTrackingService {
   private status: TrackingStatus = 'stopped';
   private currentLocation: LocationUpdate | null = null;
@@ -69,6 +73,8 @@ class LocationTrackingService {
   private _isSubcontractor: boolean = false;
   private _activeJobContext: SubcontractorJobContext | null = null;
   private _onJobContextChange?: (context: SubcontractorJobContext | null) => void;
+  private _locationBuffer: { payload: Record<string, any> }[] = [];
+  private _stationaryCount: number = 0;
 
   /**
    * Silently check current permission state WITHOUT triggering any OS prompts.
@@ -400,18 +406,43 @@ class LocationTrackingService {
       return;
     }
 
+    const payload = {
+      latitude: location.latitude,
+      longitude: location.longitude,
+      accuracy: location.accuracy,
+      heading: location.heading,
+      speed: location.speed,
+      timestamp: new Date(location.timestamp).toISOString(),
+      activeJobId: this._activeJobContext?.jobId || undefined,
+    };
+
     try {
-      await api.post('/api/team-locations', {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        accuracy: location.accuracy,
-        heading: location.heading,
-        speed: location.speed,
-        timestamp: new Date(location.timestamp).toISOString(),
-        activeJobId: this._activeJobContext?.jobId || undefined,
-      });
+      await api.post('/api/team-locations', payload);
+      await this.flushLocationBuffer();
     } catch (error) {
-      if (__DEV__) console.error('[Location] Failed to send location to server:', error);
+      const entry = { payload };
+      if (this._locationBuffer.length < LOCATION_BUFFER_MAX) {
+        this._locationBuffer.push(entry);
+      } else {
+        this._locationBuffer.shift();
+        this._locationBuffer.push(entry);
+      }
+      if (__DEV__) console.warn(`[Location] Buffered update (${this._locationBuffer.length} pending)`);
+    }
+  }
+
+  private async flushLocationBuffer(): Promise<void> {
+    if (this._locationBuffer.length === 0) return;
+    const buffered = [...this._locationBuffer];
+    this._locationBuffer = [];
+    for (let i = 0; i < buffered.length; i++) {
+      const entry = buffered[i];
+      try {
+        await api.post('/api/team-locations', entry.payload);
+      } catch {
+        this._locationBuffer = buffered.slice(i).concat(this._locationBuffer);
+        break;
+      }
     }
   }
 
@@ -503,11 +534,21 @@ class LocationTrackingService {
     }
 
     this.currentLocation = location;
-    
+
     if (this.onLocationUpdate) {
       this.onLocationUpdate(location);
     }
-    
+
+    const speed = location.speed ?? 0;
+    if (speed < STATIONARY_SPEED_THRESHOLD) {
+      this._stationaryCount++;
+      if (this._stationaryCount > 1 && this._stationaryCount % STATIONARY_SKIP_COUNT !== 0) {
+        return;
+      }
+    } else {
+      this._stationaryCount = 0;
+    }
+
     this.sendLocationToServer(location);
   }
 

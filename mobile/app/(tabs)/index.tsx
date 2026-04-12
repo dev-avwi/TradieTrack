@@ -1554,7 +1554,7 @@ function RevenueChart({ isOwner }: { isOwner: boolean }) {
                   : 4;
                 const isCurrentMonth = index === revenueData.length - 1;
                 return (
-                  <View key={index} style={styles.revenueBarColumn}>
+                  <View key={item.month} style={styles.revenueBarColumn}>
                     <Text style={styles.revenueBarValue}>
                       {item.amount > 0 ? formatAmount(item.amount) : ''}
                     </Text>
