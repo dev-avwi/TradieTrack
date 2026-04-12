@@ -5892,6 +5892,34 @@ export default function JobDetailScreen() {
         )}
       </View>
 
+      {/* Scheduled Date Card - right after action buttons */}
+      {job.scheduledAt && (
+        <TouchableOpacity 
+          activeOpacity={0.7} 
+          style={styles.card}
+          onPress={() => {
+            setScheduleDate(new Date(job.scheduledAt!));
+            setShowScheduleModal(true);
+          }}
+        >
+          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+            <Feather name="clock" size={iconSizes.xl} color={colors.primary} />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardLabel}>Scheduled</Text>
+            <Text style={styles.cardValue}>
+              {formatDate(job.scheduledAt)} at {formatTime(job.scheduledAt)}
+            </Text>
+          </View>
+          <Feather 
+            name="edit-2" 
+            size={iconSizes.lg} 
+            color={colors.primary} 
+            style={styles.cardActionIcon}
+          />
+        </TouchableOpacity>
+      )}
+
       {/* Safety & Compliance Section - Prominent before work starts */}
       {(job.status === 'scheduled' || job.status === 'in_progress') && (availableForms.some(isSafetyForm) || swmsDocuments.length > 0 || hasNoSafetyDocs) && (
         <View style={[
@@ -6030,7 +6058,7 @@ export default function JobDetailScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardLabel, { marginBottom: 0 }]}>Team on Job</Text>
-              <Text style={{ fontSize: fontSizes.sm, color: colors.mutedForeground }}>
+              <Text style={{ fontSize: 13, color: colors.mutedForeground }}>
                 {teamTimers.length} worker{teamTimers.length !== 1 ? 's' : ''} clocked in
               </Text>
             </View>
@@ -6062,21 +6090,21 @@ export default function JobDetailScreen() {
                   justifyContent: 'center',
                   alignItems: 'center',
                 }}>
-                  <Text style={{ fontSize: fontSizes.sm, fontWeight: '700', color: timer.isPaused || timer.isBreak ? colors.warning : colors.success }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: timer.isPaused || timer.isBreak ? colors.warning : colors.success }}>
                     {timer.workerName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                   </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: fontSizes.md, fontWeight: '600', color: colors.foreground }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>
                     {timer.workerName}{timer.isCurrentUser ? ' (You)' : ''}
                   </Text>
-                  <Text style={{ fontSize: fontSizes.sm, color: colors.mutedForeground }}>
+                  <Text style={{ fontSize: 13, color: colors.mutedForeground }}>
                     ${timer.hourlyRate}/hr
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={{ 
-                    fontSize: fontSizes.md, 
+                    fontSize: 15, 
                     fontWeight: '700',
                     color: timer.isPaused || timer.isBreak ? colors.warning : colors.success,
                     fontVariant: ['tabular-nums'],
@@ -6102,7 +6130,7 @@ export default function JobDetailScreen() {
                       backgroundColor: timer.isPaused || timer.isBreak ? colors.warning : colors.success,
                     }} />
                     <Text style={{ 
-                      fontSize: fontSizes.xs, 
+                      fontSize: 11, 
                       fontWeight: '600',
                       color: timer.isPaused || timer.isBreak ? colors.warning : colors.success,
                     }}>
@@ -6223,36 +6251,6 @@ export default function JobDetailScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Scheduled Date Card - Tappable to edit schedule */}
-      <TouchableOpacity 
-        activeOpacity={0.7} 
-        style={styles.card}
-        onPress={() => {
-          if (job.scheduledAt) {
-            setScheduleDate(new Date(job.scheduledAt));
-          } else {
-            setScheduleDate(new Date());
-          }
-          setShowScheduleModal(true);
-        }}
-      >
-        <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
-          <Feather name="clock" size={iconSizes.xl} color={colors.primary} />
-        </View>
-        <View style={styles.cardContent}>
-          <Text style={styles.cardLabel}>Scheduled</Text>
-          <Text style={styles.cardValue}>
-            {formatDate(job.scheduledAt)}
-            {job.scheduledAt && ` at ${formatTime(job.scheduledAt)}`}
-          </Text>
-        </View>
-        <Feather 
-          name="edit-2" 
-          size={iconSizes.lg} 
-          color={colors.primary} 
-          style={styles.cardActionIcon}
-        />
-      </TouchableOpacity>
 
       {/* Client Card */}
       {client && (
@@ -8248,61 +8246,47 @@ export default function JobDetailScreen() {
                       {swms.hazards.map((hazard, idx) => (
                         <View key={hazard.id || idx} style={{
                           backgroundColor: colors.muted,
-                          borderRadius: radius.lg,
-                          padding: spacing.md,
-                          marginBottom: spacing.sm,
+                          borderRadius: radius.md,
+                          paddingHorizontal: spacing.sm,
+                          paddingVertical: spacing.sm,
+                          marginBottom: spacing.xs,
                         }}>
                           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
                             <View style={{
-                              width: 24,
-                              height: 24,
-                              borderRadius: 12,
+                              width: 22,
+                              height: 22,
+                              borderRadius: 11,
                               backgroundColor: `${getRiskColor(hazard.riskRating)}20`,
                               alignItems: 'center',
                               justifyContent: 'center',
                               marginTop: 1,
                             }}>
-                              <Text style={{ fontSize: 11, fontWeight: '700', color: getRiskColor(hazard.riskRating) }}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: getRiskColor(hazard.riskRating) }}>
                                 {idx + 1}
                               </Text>
                             </View>
                             <View style={{ flex: 1 }}>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap', marginBottom: 4 }}>
-                                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, flex: 1 }}>
-                                  {hazard.hazardDescription}
-                                </Text>
-                                {hazard.riskRating && (
-                                  <View style={{
-                                    paddingHorizontal: 8,
-                                    paddingVertical: 2,
-                                    borderRadius: radius.pill,
-                                    backgroundColor: `${getRiskColor(hazard.riskRating)}20`,
-                                    borderWidth: 1,
-                                    borderColor: `${getRiskColor(hazard.riskRating)}40`,
-                                  }}>
-                                    <Text style={{ fontSize: 10, fontWeight: '700', color: getRiskColor(hazard.riskRating), textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                                      {hazard.riskRating}
-                                    </Text>
-                                  </View>
-                                )}
-                              </View>
-                              {hazard.responsiblePerson && (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                                  <Feather name="user" size={10} color={colors.mutedForeground} />
-                                  <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
-                                    {hazard.responsiblePerson}
-                                  </Text>
-                                </View>
-                              )}
+                              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground, marginBottom: 2 }} numberOfLines={3}>
+                                {hazard.hazardDescription}
+                              </Text>
                               {hazard.controlMeasures && (
-                                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 2 }}>
-                                  <Feather name="shield" size={11} color={colors.primary} style={{ marginTop: 2 }} />
-                                  <Text style={{ fontSize: 12, color: colors.foreground, flex: 1, lineHeight: 18 }}>
-                                    {hazard.controlMeasures}
-                                  </Text>
-                                </View>
+                                <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 17 }} numberOfLines={3}>
+                                  {hazard.controlMeasures}
+                                </Text>
                               )}
                             </View>
+                            {hazard.riskRating && (
+                              <View style={{
+                                paddingHorizontal: 6,
+                                paddingVertical: 2,
+                                borderRadius: radius.sm,
+                                backgroundColor: `${getRiskColor(hazard.riskRating)}15`,
+                              }}>
+                                <Text style={{ fontSize: 9, fontWeight: '700', color: getRiskColor(hazard.riskRating), textTransform: 'uppercase' }}>
+                                  {hazard.riskRating}
+                                </Text>
+                              </View>
+                            )}
                           </View>
                         </View>
                       ))}
@@ -8378,7 +8362,7 @@ export default function JobDetailScreen() {
                     </View>
                   )}
 
-                  {(!swms.signatures || swms.signatures.length === 0) && (
+                  {(!swms.signatures || swms.signatures.length === 0) && (swms.signatureCount ?? 0) === 0 && (
                   <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                     <TouchableOpacity
                       style={{
@@ -8387,10 +8371,10 @@ export default function JobDetailScreen() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         backgroundColor: colors.primary,
-                        paddingVertical: spacing.md,
+                        paddingVertical: spacing.sm,
                         borderRadius: radius.lg,
                         gap: spacing.xs,
-                        minHeight: 44,
+                        minHeight: 40,
                       }}
                       onPress={() => {
                         setSigningSwmsId(swms.id);
@@ -8399,15 +8383,15 @@ export default function JobDetailScreen() {
                       }}
                       activeOpacity={0.7}
                     >
-                      <Feather name="edit-3" size={16} color={colors.primaryForeground} />
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
+                      <Feather name="edit-3" size={14} color={colors.primaryForeground} />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primaryForeground }}>
                         Sign SWMS
                       </Text>
                     </TouchableOpacity>
                   </View>
                   )}
 
-                  <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: (!swms.signatures || swms.signatures.length === 0) ? 0 : spacing.xs }}>
+                  <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs }}>
                     <TouchableOpacity
                       style={{
                         flex: 1,
@@ -8415,18 +8399,18 @@ export default function JobDetailScreen() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         backgroundColor: colors.muted,
-                        paddingVertical: spacing.md,
-                        borderRadius: radius.lg,
+                        paddingVertical: spacing.sm,
+                        borderRadius: radius.md,
                         borderWidth: 1,
                         borderColor: colors.border,
                         gap: spacing.xs,
-                        minHeight: 44,
+                        minHeight: 36,
                       }}
                       onPress={() => handleDownloadSwmsPdf(swms.id)}
                       activeOpacity={0.7}
                     >
-                      <Feather name="download" size={16} color={colors.foreground} />
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>PDF</Text>
+                      <Feather name="download" size={14} color={colors.foreground} />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>PDF</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -11006,8 +10990,8 @@ export default function JobDetailScreen() {
                         const mins = Math.floor((w.totalMs % (1000 * 60 * 60)) / (1000 * 60));
                         return (
                           <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingLeft: 36 }}>
-                            <Text style={{ fontSize: fontSizes.sm, color: colors.mutedForeground }}>{w.name}</Text>
-                            <Text style={{ fontSize: fontSizes.sm, color: colors.foreground, fontWeight: '600' }}>
+                            <Text style={{ fontSize: 13, color: colors.mutedForeground }}>{w.name}</Text>
+                            <Text style={{ fontSize: 13, color: colors.foreground, fontWeight: '600' }}>
                               {hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`} @ ${w.rate}/hr
                             </Text>
                           </View>
