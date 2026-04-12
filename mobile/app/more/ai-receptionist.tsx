@@ -578,12 +578,47 @@ export default function AIReceptionistScreen() {
                   </Text>
                 </View>
 
-                <View style={[styles.statusBadge, { backgroundColor: enabled ? colors.success + '20' : colors.muted, marginTop: spacing.md }]}>
-                  <Feather name={enabled ? 'check-circle' : 'x-circle'} size={14} color={enabled ? colors.success : colors.mutedForeground} />
-                  <Text style={[styles.statusText, { color: enabled ? colors.success : colors.mutedForeground }]}>
-                    {enabled ? 'Active' : 'Inactive'}
-                  </Text>
-                </View>
+                {(() => {
+                  const approvalStatus = config?.approvalStatus;
+                  const hasVapi = !!config?.vapiAssistantId;
+                  const isConfigured = hasVapi && (config?.mode || 'off') !== 'off';
+
+                  let statusLabel = 'Not Set Up';
+                  let statusColor = colors.mutedForeground;
+                  let statusBg = colors.muted;
+                  let statusIcon: 'minus-circle' | 'clock' | 'check-circle' | 'pause-circle' = 'minus-circle';
+
+                  if (approvalStatus === 'pending_approval') {
+                    statusLabel = 'Pending Approval';
+                    statusColor = '#f59e0b';
+                    statusBg = '#f59e0b20';
+                    statusIcon = 'clock';
+                  } else if (enabled && isConfigured) {
+                    statusLabel = 'Active';
+                    statusColor = colors.success;
+                    statusBg = colors.success + '20';
+                    statusIcon = 'check-circle';
+                  } else if (!enabled && isConfigured) {
+                    statusLabel = 'Paused';
+                    statusColor = '#f59e0b';
+                    statusBg = '#f59e0b20';
+                    statusIcon = 'pause-circle';
+                  } else {
+                    statusLabel = 'Not Set Up';
+                    statusColor = colors.mutedForeground;
+                    statusBg = colors.muted;
+                    statusIcon = 'minus-circle';
+                  }
+
+                  return (
+                    <View style={[styles.statusBadge, { backgroundColor: statusBg, marginTop: spacing.md }]}>
+                      <Feather name={statusIcon} size={14} color={statusColor} />
+                      <Text style={[styles.statusText, { color: statusColor }]}>
+                        {statusLabel}
+                      </Text>
+                    </View>
+                  );
+                })()}
               </>
             )}
           </View>

@@ -1349,84 +1349,148 @@ export default function TimeTrackingScreen() {
             </Text>
           </View>
         ) : (
-          timeEntries.map((entry, index) => {
-            const jobData = jobs.find(j => j.id === entry.jobId);
-            const startStr = formatTimeShort(entry.startTime);
-            const endStr = entry.endTime ? formatTimeShort(entry.endTime) : 'Running';
-            const durationStr = entry.duration ? formatDurationHM(entry.duration) : '--';
-            const isBreakEntry = entry.isBreak;
-            const isBillable = entry.isBillable !== false && !isBreakEntry;
+          (() => {
+            interface GroupedJob {
+              jobId: string;
+              jobTitle: string;
+              workEntries: TimeEntry[];
+              breakEntries: TimeEntry[];
+              totalWorkMinutes: number;
+              totalBreakMinutes: number;
+              earliestStart: string;
+              latestEnd: string | null;
+            }
 
-            return (
-              <View key={entry.id} style={styles.entryCard}>
-                <View style={styles.entryTimeline}>
-                  <Text style={{ fontSize: 10, fontWeight: '600', color: colors.mutedForeground, marginBottom: 4 }}>
-                    {startStr}
-                  </Text>
-                  <View style={[styles.entryTimelineDot, { backgroundColor: isBreakEntry ? '#f59e0b' : colors.primary }]} />
-                  {index < timeEntries.length - 1 && (
-                    <View style={[styles.entryTimelineLine, { backgroundColor: colors.border + '60' }]} />
-                  )}
-                </View>
-                <View style={styles.entryContent}>
-                  <Text style={styles.entryJobName} numberOfLines={1}>
-                    {isBreakEntry ? 'Break' : (jobData?.title || 'Unknown Job')}
-                  </Text>
-                  {entry.description && !isBreakEntry && (
-                    <Text style={styles.entryDescription} numberOfLines={2}>{entry.description}</Text>
-                  )}
-                  <View style={styles.entryTimeRow}>
-                    <Feather name="clock" size={12} color={colors.mutedForeground} />
-                    <Text style={styles.entryTimeText}>{startStr} — {endStr}</Text>
-                    <Text style={styles.entryDuration}>{durationStr}</Text>
-                  </View>
-                  <View style={[styles.entryTimeRow, { marginTop: 4 }]}>
-                    {isBreakEntry ? (
-                      <View style={[styles.entryBillableBadge, { backgroundColor: '#f59e0b18' }]}>
-                        <Text style={[styles.entryBillableText, { color: '#f59e0b' }]}>Break</Text>
-                      </View>
-                    ) : isBillable ? (
-                      <View style={[styles.entryBillableBadge, { backgroundColor: '#22c55e18' }]}>
-                        <Text style={[styles.entryBillableText, { color: '#22c55e' }]}>Billable</Text>
-                      </View>
-                    ) : (
-                      <View style={[styles.entryBillableBadge, { backgroundColor: colors.border + '40' }]}>
-                        <Text style={[styles.entryBillableText, { color: colors.mutedForeground }]}>Non-billable</Text>
-                      </View>
-                    )}
-                    {entry.isDisputed && (
-                      <View style={[styles.entryBillableBadge, { backgroundColor: '#ef444418', flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                        <Feather name="alert-triangle" size={10} color="#ef4444" />
-                        <Text style={[styles.entryBillableText, { color: '#ef4444' }]}>
-                          {entry.disputeResolvedAt ? 'Resolved' : 'Disputed'}
+            const grouped: GroupedJob[] = [];
+            const jobMap = new Map<string, GroupedJob>();
+
+            timeEntries.forEach(entry => {
+              const jId = entry.jobId;
+              if (!jobMap.has(jId)) {
+                const jobData = jobs.find(j => j.id === jId);
+                const group: GroupedJob = {
+                  jobId: jId,
+                  jobTitle: jobData?.title || 'Unknown Job',
+                  workEntries: [],
+                  breakEntries: [],
+                  totalWorkMinutes: 0,
+                  totalBreakMinutes: 0,
+                  earliestStart: entry.startTime,
+                  latestEnd: entry.endTime,
+                };
+                jobMap.set(jId, group);
+                grouped.push(group);
+              }
+              const group = jobMap.get(jId)!;
+              if (entry.isBreak) {
+                group.breakEntries.push(entry);
+                group.totalBreakMinutes += entry.duration || 0;
+              } else {
+                group.workEntries.push(entry);
+                group.totalWorkMinutes += entry.duration || 0;
+              }
+              if (entry.startTime < group.earliestStart) group.earliestStart = entry.startTime;
+              if (entry.endTime && (!group.latestEnd || entry.endTime > group.latestEnd)) group.latestEnd = entry.endTime;
+            });
+
+            return grouped.map((group, groupIdx) => {
+              const allEntries = [...group.workEntries, ...group.breakEntries].sort(
+                (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+              );
+              const totalMinutes = group.totalWorkMinutes + group.totalBreakMinutes;
+
+              return (
+                <View key={group.jobId} style={{ backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.cardBorder, marginBottom: spacing.md, overflow: 'hidden' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border + '40' }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' }}>
+                      <Feather name="briefcase" size={16} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }} numberOfLines={1}>{group.jobTitle}</Text>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
+                        {formatTimeShort(group.earliestStart)} — {group.latestEnd ? formatTimeShort(group.latestEnd) : 'Running'}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: colors.foreground }}>{formatDurationHM(totalMinutes)}</Text>
+                      {group.breakEntries.length > 0 && (
+                        <Text style={{ fontSize: 10, color: '#f59e0b', fontWeight: '500', marginTop: 1 }}>
+                          {formatDurationHM(group.totalBreakMinutes)} break
                         </Text>
-                      </View>
-                    )}
+                      )}
+                    </View>
                   </View>
-                  {entry.isDisputed && entry.disputeReason && !entry.disputeResolvedAt && (
-                    <Text style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }} numberOfLines={2}>
-                      Reason: {entry.disputeReason}
-                    </Text>
-                  )}
-                  {entry.isDisputed && entry.disputeResolution && (
-                    <Text style={{ fontSize: 11, color: '#22c55e', marginTop: 4 }} numberOfLines={2}>
-                      Resolution: {entry.disputeResolution}
-                    </Text>
-                  )}
+                  {allEntries.map((entry, idx) => {
+                    const startStr = formatTimeShort(entry.startTime);
+                    const endStr = entry.endTime ? formatTimeShort(entry.endTime) : 'Running';
+                    const durationStr = entry.duration ? formatDurationHM(entry.duration) : '--';
+                    const isBreakEntry = entry.isBreak;
+                    const isBillable = entry.isBillable !== false && !isBreakEntry;
+
+                    return (
+                      <View key={entry.id} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: idx < allEntries.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border + '30' }}>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isBreakEntry ? '#f59e0b' : colors.primary, marginRight: spacing.sm }} />
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                            <Text style={{ fontSize: 12, color: colors.foreground, fontWeight: '500' }}>
+                              {isBreakEntry ? 'Break' : 'Work'}
+                            </Text>
+                            {isBreakEntry ? (
+                              <View style={{ backgroundColor: '#f59e0b15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                <Feather name="coffee" size={9} color="#f59e0b" />
+                              </View>
+                            ) : isBillable ? (
+                              <View style={{ backgroundColor: '#22c55e15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                <Text style={{ fontSize: 9, color: '#22c55e', fontWeight: '600' }}>$</Text>
+                              </View>
+                            ) : null}
+                            {entry.isDisputed && (
+                              <View style={{ backgroundColor: '#ef444415', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                                <Feather name="alert-triangle" size={8} color="#ef4444" />
+                                <Text style={{ fontSize: 9, color: '#ef4444', fontWeight: '600' }}>
+                                  {entry.disputeResolvedAt ? 'Resolved' : 'Disputed'}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
+                            {startStr} — {endStr}
+                          </Text>
+                        </View>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: isBreakEntry ? '#f59e0b' : colors.foreground, marginRight: spacing.sm }}>
+                          {durationStr}
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                          {!entry.isDisputed && !isBreakEntry && (
+                            <TouchableOpacity onPress={() => handleOpenDispute(entry.id)} activeOpacity={0.7} hitSlop={8}>
+                              <Feather name="flag" size={14} color="#f59e0b" />
+                            </TouchableOpacity>
+                          )}
+                          <TouchableOpacity onPress={() => handleDeleteEntry(entry)} activeOpacity={0.7} hitSlop={8}>
+                            <Feather name="trash-2" size={14} color={colors.destructive || '#ef4444'} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      {entry.isDisputed && entry.disputeReason && !entry.disputeResolvedAt && (
+                        <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
+                          <Text style={{ fontSize: 11, color: '#ef4444' }} numberOfLines={2}>
+                            Reason: {entry.disputeReason}
+                          </Text>
+                        </View>
+                      )}
+                      {entry.isDisputed && entry.disputeResolution && (
+                        <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
+                          <Text style={{ fontSize: 11, color: '#22c55e' }} numberOfLines={2}>
+                            Resolution: {entry.disputeResolution}
+                          </Text>
+                        </View>
+                      )}
+                    );
+                  })}
                 </View>
-                <View style={[styles.entryActions, { flexDirection: 'column', gap: spacing.sm }]}>
-                  {!entry.isDisputed && !isBreakEntry && (
-                    <TouchableOpacity onPress={() => handleOpenDispute(entry.id)} activeOpacity={0.7} hitSlop={8}>
-                      <Feather name="flag" size={16} color="#f59e0b" />
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity onPress={() => handleDeleteEntry(entry)} activeOpacity={0.7} hitSlop={8}>
-                    <Feather name="trash-2" size={16} color={colors.destructive || '#ef4444'} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })
+              );
+            });
+          })()
         )}
 
         {timeEntries.length > 0 && (

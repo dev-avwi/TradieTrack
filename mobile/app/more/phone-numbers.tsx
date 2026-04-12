@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
   Linking,
+  Modal,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -16,6 +17,12 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+function getLastNumberKey(businessId?: string | number) {
+  const id = businessId || 'default';
+  return `@jobrunner_last_dedicated_number:${id}`;
+}
 
 interface AvailableNumber {
   phoneNumber: string;
@@ -41,8 +48,27 @@ export default function PhoneNumbersPage() {
   const [releasing, setReleasing] = useState(false);
   const [areaCode, setAreaCode] = useState('');
   const [locality, setLocality] = useState('');
+  const [showReleaseModal, setShowReleaseModal] = useState(false);
+  const [releaseConfirmText, setReleaseConfirmText] = useState('');
+  const [lastOwnedNumber, setLastOwnedNumber] = useState<string | null>(null);
+  const [reacquiring, setReacquiring] = useState(false);
 
   const currentNumber = businessSettings?.dedicatedPhoneNumber;
+  const storageKey = getLastNumberKey(businessSettings?.id);
+
+  useEffect(() => {
+    if (!businessSettings?.id) return;
+    AsyncStorage.getItem(storageKey).then(val => {
+      if (val) setLastOwnedNumber(val);
+    });
+  }, [storageKey, businessSettings?.id]);
+
+  useEffect(() => {
+    if (currentNumber && businessSettings?.id) {
+      AsyncStorage.setItem(storageKey, currentNumber);
+      setLastOwnedNumber(currentNumber);
+    }
+  }, [currentNumber, storageKey, businessSettings?.id]);
 
   const searchNumbers = useCallback(async () => {
     setLoading(true);
@@ -69,28 +95,72 @@ export default function PhoneNumbersPage() {
   }, [areaCode, locality]);
 
   const handleRelease = () => {
+    setReleaseConfirmText('');
+    setShowReleaseModal(true);
+  };
+
+  const executeRelease = async () => {
+    setReleasing(true);
+    setShowReleaseModal(false);
+    try {
+      const response = await api.post('/api/sms/release-number', {});
+      if (response.error) {
+        Alert.alert('Error', response.error);
+      } else {
+        await fetchBusinessSettings();
+        Alert.alert(
+          'Reverted to Shared', 
+          'Your dedicated number has been released. You can re-acquire it from this screen if it\'s still available.'
+        );
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Failed to release number');
+    } finally {
+      setReleasing(false);
+    }
+  };
+
+  const handleReacquireLastNumber = async () => {
+    if (!lastOwnedNumber) return;
     Alert.alert(
-      'Revert to Shared Number',
-      `Are you sure you want to release ${formatPhone(currentNumber || '')}?\n\nYou'll go back to using the shared JobRunner number (+61 485 013 993). Your existing SMS conversations will be kept, but new messages will come from the shared number.`,
+      'Re-acquire Number',
+      `Get ${formatPhone(lastOwnedNumber)} back as your dedicated business number?`,
       [
-        { text: 'Keep My Number', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Revert to Shared',
-          style: 'destructive',
+          text: 'Get It Back',
           onPress: async () => {
-            setReleasing(true);
+            setReacquiring(true);
             try {
-              const response = await api.post('/api/sms/release-number', {});
+              const response = await api.post('/api/sms/purchase-number', { phoneNumber: lastOwnedNumber });
               if (response.error) {
-                Alert.alert('Error', response.error);
+                if (response.error.includes('not available') || response.error.includes('not found')) {
+                  Alert.alert(
+                    'Number Unavailable',
+                    `${formatPhone(lastOwnedNumber)} is no longer available. You can search for a new number instead.`
+                  );
+                  AsyncStorage.removeItem(storageKey);
+                  setLastOwnedNumber(null);
+                } else if (response.error.includes('address') || response.error.includes('Address')) {
+                  Alert.alert(
+                    'Business Address Required',
+                    'Australian phone numbers require a registered business address. Please add your full address in Settings first.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Go to Settings', onPress: () => router.push('/more/settings') },
+                    ]
+                  );
+                } else {
+                  Alert.alert('Error', response.error);
+                }
               } else {
                 await fetchBusinessSettings();
-                Alert.alert('Reverted to Shared', 'Your dedicated number has been released. You\'re now using the shared JobRunner number for SMS.');
+                Alert.alert('Number Reactivated!', `${formatPhone(lastOwnedNumber)} is your dedicated number again.`);
               }
             } catch (e: any) {
-              Alert.alert('Error', e?.message || 'Failed to release number');
+              Alert.alert('Error', e?.message || 'Failed to re-acquire number');
             } finally {
-              setReleasing(false);
+              setReacquiring(false);
             }
           },
         },
@@ -266,6 +336,48 @@ export default function PhoneNumbersPage() {
           </>
         ) : (
           <>
+            <View style={{ backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, marginBottom: spacing.lg }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.mutedForeground }} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.mutedForeground }}>
+                  Using Shared Number
+                </Text>
+              </View>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: colors.foreground, marginBottom: 4 }}>0485 013 993</Text>
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 18 }}>
+                You're on the shared JobRunner platform number. Get a dedicated number below so clients see your own business number.
+              </Text>
+            </View>
+
+            {lastOwnedNumber && !currentNumber && (
+              <View style={{ backgroundColor: `${colors.primary}08`, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: `${colors.primary}25`, marginBottom: spacing.lg }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+                  <Feather name="rotate-ccw" size={14} color={colors.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Previously Owned Number</Text>
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primary, marginBottom: spacing.xs }}>
+                  {formatPhone(lastOwnedNumber)}
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 18, marginBottom: spacing.md }}>
+                  Want this number back? Tap below to re-acquire it if it's still available.
+                </Text>
+                <TouchableOpacity
+                  style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: spacing.xs }}
+                  onPress={handleReacquireLastNumber}
+                  disabled={reacquiring}
+                  activeOpacity={0.7}
+                >
+                  {reacquiring ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Feather name="phone" size={14} color={colors.primaryForeground} />
+                  )}
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
+                    {reacquiring ? 'Re-acquiring...' : 'Get This Number Back'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <View style={styles.searchCard}>
               <Text style={styles.searchLabel}>Filter by area (optional)</Text>
               <View style={styles.searchRow}>
@@ -381,6 +493,82 @@ export default function PhoneNumbersPage() {
 
         <View style={{ height: spacing.xl }} />
       </ScrollView>
+
+      <Modal
+        visible={showReleaseModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowReleaseModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background, padding: spacing.lg, paddingTop: spacing.xl }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xl }}>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.foreground }}>Release Number</Text>
+            <TouchableOpacity onPress={() => setShowReleaseModal(false)} activeOpacity={0.7}>
+              <Feather name="x" size={24} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ backgroundColor: `${colors.destructive}10`, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+              <Feather name="alert-triangle" size={18} color={colors.destructive} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.destructive }}>This action can't be undone</Text>
+            </View>
+            <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 20 }}>
+              Releasing {formatPhone(currentNumber || '')} means:{'\n'}
+              {'\n'}{'\u2022'} You'll go back to the shared JobRunner number (0485 013 993)
+              {'\n'}{'\u2022'} Your AI Receptionist will be deactivated if active
+              {'\n'}{'\u2022'} Existing SMS conversations will be kept
+              {'\n'}{'\u2022'} The number may not be available to re-acquire later
+            </Text>
+          </View>
+
+          <Text style={{ fontSize: 14, color: colors.foreground, fontWeight: '600', marginBottom: spacing.sm }}>
+            Type RELEASE to confirm
+          </Text>
+          <TextInput
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: releaseConfirmText === 'RELEASE' ? colors.destructive : colors.border,
+              padding: spacing.md,
+              fontSize: 16,
+              fontWeight: '600',
+              color: colors.foreground,
+              letterSpacing: 2,
+              textAlign: 'center',
+              marginBottom: spacing.lg,
+            }}
+            placeholder="RELEASE"
+            placeholderTextColor={colors.mutedForeground + '60'}
+            value={releaseConfirmText}
+            onChangeText={setReleaseConfirmText}
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
+
+          <TouchableOpacity
+            style={{
+              backgroundColor: releaseConfirmText === 'RELEASE' ? colors.destructive : colors.muted,
+              borderRadius: radius.md,
+              paddingVertical: 14,
+              alignItems: 'center',
+              opacity: releaseConfirmText === 'RELEASE' ? 1 : 0.5,
+            }}
+            onPress={executeRelease}
+            disabled={releaseConfirmText !== 'RELEASE' || releasing}
+            activeOpacity={0.7}
+          >
+            {releasing ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={{ fontSize: 15, fontWeight: '700', color: releaseConfirmText === 'RELEASE' ? '#fff' : colors.mutedForeground }}>
+                Release Number
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </>
   );
 }

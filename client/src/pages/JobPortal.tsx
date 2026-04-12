@@ -263,15 +263,22 @@ function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
 
 const workerIcon = L.divIcon({
   className: '',
-  html: `<div style="position:relative;width:40px;height:40px;">
-    <div style="position:absolute;inset:0;width:40px;height:40px;border-radius:50%;background:#2563EB;opacity:0.15;animation:worker-pulse 2.5s ease-out infinite;"></div>
-    <div style="width:40px;height:40px;border-radius:50%;background:#2563EB;border:3px solid white;box-shadow:0 2px 10px rgba(37,99,235,0.4);display:flex;align-items:center;justify-content:center;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="none"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+  html: `<div style="position:relative;width:48px;height:48px;">
+    <div style="position:absolute;inset:-4px;width:56px;height:56px;border-radius:50%;background:#2563EB;opacity:0.12;animation:vehicle-ping 2s ease-out infinite;"></div>
+    <div style="position:absolute;inset:-2px;width:52px;height:52px;border-radius:50%;background:#2563EB;opacity:0.06;animation:vehicle-ping 2s ease-out infinite 0.5s;"></div>
+    <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#2563EB 0%,#1d4ed8 100%);border:3px solid white;box-shadow:0 4px 14px rgba(37,99,235,0.45);display:flex;align-items:center;justify-content:center;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/>
+        <circle cx="6.5" cy="16.5" r="2.5" fill="white" stroke="white"/>
+        <circle cx="16.5" cy="16.5" r="2.5" fill="white" stroke="white"/>
+      </svg>
     </div>
   </div>
-  <style>@keyframes worker-pulse{0%{transform:scale(1);opacity:0.25}100%{transform:scale(2.5);opacity:0}}</style>`,
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
+  <style>
+    @keyframes vehicle-ping{0%{transform:scale(1);opacity:0.2}100%{transform:scale(2.8);opacity:0}}
+  </style>`,
+  iconSize: [48, 48],
+  iconAnchor: [24, 24],
 });
 
 const jobIcon = new L.Icon({
@@ -313,14 +320,18 @@ const subbieIcon = new L.DivIcon({
 const WORKER_COLORS = ['#2563EB', '#E67E22', '#8E44AD', '#E74C3C', '#2ECC71', '#3498DB'];
 
 function createWorkerIcon(color: string, isPrimary: boolean) {
-  const size = isPrimary ? 40 : 32;
-  const svgSize = isPrimary ? 18 : 14;
+  const size = isPrimary ? 48 : 36;
+  const svgSize = isPrimary ? 22 : 16;
   return L.divIcon({
     className: '',
     html: `<div style="position:relative;width:${size}px;height:${size}px;">
-      ${isPrimary ? `<div style="position:absolute;inset:0;width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:0.15;animation:worker-pulse 2.5s ease-out infinite;"></div><style>@keyframes worker-pulse{0%{transform:scale(1);opacity:0.25}100%{transform:scale(2.5);opacity:0}}</style>` : ''}
-      <div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 10px ${color}66;display:flex;align-items:center;justify-content:center;">
-        <svg width="${svgSize}" height="${svgSize}" viewBox="0 0 24 24" fill="white" stroke="none"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+      ${isPrimary ? `<div style="position:absolute;inset:-4px;width:${size + 8}px;height:${size + 8}px;border-radius:50%;background:${color};opacity:0.12;animation:vehicle-ping 2s ease-out infinite;"></div>` : ''}
+      <div style="width:${size}px;height:${size}px;border-radius:50%;background:linear-gradient(135deg,${color} 0%,${color}dd 100%);border:3px solid white;box-shadow:0 3px 12px ${color}55;display:flex;align-items:center;justify-content:center;">
+        <svg width="${svgSize}" height="${svgSize}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/>
+          <circle cx="6.5" cy="16.5" r="2.5" fill="white" stroke="white"/>
+          <circle cx="16.5" cy="16.5" r="2.5" fill="white" stroke="white"/>
+        </svg>
       </div>
     </div>`,
     iconSize: [size, size],
@@ -386,9 +397,9 @@ function RouteLine({ from, to }: { from: [number, number]; to: [number, number] 
       <Polyline
         positions={routeCoords}
         pathOptions={{
-          color: '#1e40af',
-          weight: 12,
-          opacity: 0.18,
+          color: '#2563EB',
+          weight: 14,
+          opacity: 0.12,
           lineCap: 'round',
           lineJoin: 'round',
         }}
@@ -397,11 +408,10 @@ function RouteLine({ from, to }: { from: [number, number]; to: [number, number] 
         positions={routeCoords}
         pathOptions={{
           color: '#2563EB',
-          weight: 6,
-          opacity: 0.9,
+          weight: 5,
+          opacity: 0.85,
           lineCap: 'round',
           lineJoin: 'round',
-          dashArray: '10 8',
         }}
       />
     </>
