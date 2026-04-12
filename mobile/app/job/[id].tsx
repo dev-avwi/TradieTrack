@@ -9783,7 +9783,7 @@ export default function JobDetailScreen() {
           headerBackVisible: false,
           headerShadowVisible: false,
           headerTransparent: true,
-          headerBlurEffect: isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterial',
+          headerBlurEffect: isDark ? 'systemThinMaterialDark' : 'systemThinMaterial',
           headerStyle: { backgroundColor: 'transparent' },
           headerTintColor: colors.primary,
           headerLeft: () => (
