@@ -1628,7 +1628,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingBottom: 6,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
   },
   floatingRight: {
     flexDirection: 'row',

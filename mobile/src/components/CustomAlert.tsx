@@ -14,7 +14,6 @@ import {
   useColorScheme,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
   LiquidGlassView,
   isLiquidGlassSupported,
@@ -120,26 +119,14 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
     };
   };
 
-  const highlightColors = isDark
-    ? ['rgba(255,255,255,0.07)', 'rgba(255,255,255,0.0)']
-    : ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.0)'];
-
-  const cardContent = (
+  const alertContent = (
     <>
-      <LinearGradient
-        colors={highlightColors as [string, string]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.topHighlight}
-      />
-
       <View style={styles.contentSection}>
         <Text style={[styles.title, { color: titleColor }]}>{config.title}</Text>
         {config.message ? (
           <Text style={[styles.message, { color: messageColor }]}>{config.message}</Text>
         ) : null}
       </View>
-
       <View style={showButtonsInRow ? styles.buttonsRow : styles.buttonsColumn}>
         {orderedButtons.map((btn, i) => {
           const btnStyle = getButtonStyle(btn);
@@ -177,7 +164,7 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
 
         <Animated.View
           style={[
-            styles.cardOuter,
+            styles.cardPosition,
             {
               opacity: fadeAnim,
               transform: [{ scale: scaleAnim }],
@@ -186,7 +173,7 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
         >
           {isLiquidGlassSupported ? (
             <LiquidGlassView style={styles.glassCard} effect="regular">
-              {cardContent}
+              {alertContent}
             </LiquidGlassView>
           ) : (
             <View style={styles.fallbackCard}>
@@ -205,7 +192,7 @@ function AlertModal({ config, onDismiss }: { config: AlertConfig; onDismiss: () 
                   },
                 ]}
               />
-              {cardContent}
+              {alertContent}
             </View>
           )}
         </Animated.View>
@@ -269,24 +256,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.10)',
   },
-  cardOuter: {
+  cardPosition: {
     width: ALERT_WIDTH,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 20 },
-        shadowOpacity: 0.08,
-        shadowRadius: 60,
-      },
-      android: {
-        elevation: 24,
-      },
-    }),
   },
   glassCard: {
     width: '100%',
     borderRadius: 14,
-    overflow: 'hidden',
   },
   fallbackCard: {
     width: '100%',
@@ -294,19 +269,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
-  topHighlight: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 36,
-    zIndex: 1,
-  },
   contentSection: {
     paddingHorizontal: 20,
     paddingTop: 22,
     paddingBottom: 20,
-    zIndex: 2,
   },
   title: {
     fontSize: 17,
@@ -325,14 +291,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingBottom: 14,
     gap: 8,
-    zIndex: 2,
   },
   buttonsColumn: {
     flexDirection: 'column',
     paddingHorizontal: 14,
     paddingBottom: 14,
     gap: 6,
-    zIndex: 2,
   },
   btn: {
     paddingVertical: 9,
