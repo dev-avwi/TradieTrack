@@ -8184,31 +8184,10 @@ export default function JobDetailScreen() {
           <Text style={{ fontSize: 14, color: colors.mutedForeground, marginTop: spacing.sm }}>Loading safety documents...</Text>
         </View>
       ) : swmsDocuments.length === 0 ? (
-        <View style={[styles.notesCard, { alignItems: 'center', paddingVertical: spacing.xl }]}>
-          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
-            <Feather name="shield" size={28} color={colors.mutedForeground} />
-          </View>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.foreground, marginBottom: spacing.xs }}>No SWMS Documents</Text>
-          <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: 'center', paddingHorizontal: spacing.lg }}>
-            Create a Safe Work Method Statement for this job to manage hazards and safety requirements.
+        <View style={{ paddingVertical: spacing.sm }}>
+          <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: 'center' }}>
+            No documents yet. Tap Create SWMS above to get started.
           </Text>
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: colors.primary,
-              paddingHorizontal: spacing.lg,
-              paddingVertical: spacing.md,
-              borderRadius: radius.lg,
-              gap: spacing.sm,
-              marginTop: spacing.lg,
-            }}
-            onPress={handleStartCreateSwms}
-            activeOpacity={0.7}
-          >
-            <Feather name="plus" size={18} color={colors.primaryForeground} />
-            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primaryForeground }}>Create SWMS</Text>
-          </TouchableOpacity>
         </View>
       ) : (
         swmsDocuments.map((swms) => {
@@ -11365,13 +11344,13 @@ export default function JobDetailScreen() {
                     value={scheduleDate}
                     mode="time"
                     display="spinner"
-                    minuteInterval={15}
+                    minuteInterval={5}
                     onChange={(event, selectedDate) => {
                       if (selectedDate) {
                         setScheduleDate(selectedDate);
                       }
                     }}
-                    themeVariant={colors.isDark ? 'dark' : 'light'}
+                    themeVariant={isDark ? 'dark' : 'light'}
                   />
                   <TouchableOpacity
                     style={{ backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.sm, alignItems: 'center' }}

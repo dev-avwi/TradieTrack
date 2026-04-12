@@ -2011,85 +2011,150 @@ export default function MapScreen() {
       )}
 
       {/* Geofence Alerts Panel */}
-      {showAlerts && unreadAlerts.length > 0 && (
-        <View style={[styles.legendCard, { top: insets.top + (headerCollapsed ? 80 : 180), maxHeight: 240, width: 260 }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
-            <Text style={[styles.legendTitle, { fontSize: 13, fontWeight: '700' }]}>Alerts</Text>
-            <TouchableOpacity 
-              onPress={() => setShowAlerts(false)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      {showAlerts && unreadAlerts.length > 0 && (() => {
+        const formatAlertTime = (dateStr: string) => {
+          const date = new Date(dateStr);
+          const now = new Date();
+          const diffMs = now.getTime() - date.getTime();
+          const diffMins = Math.floor(diffMs / 60000);
+          const diffHours = Math.floor(diffMs / 3600000);
+          if (diffMins < 1) return 'Just now';
+          if (diffMins < 60) return `${diffMins}m ago`;
+          if (diffHours < 24) return `${diffHours}h ago`;
+          return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+        };
+
+        const grouped = unreadAlerts.reduce((acc, alert) => {
+          const key = `${alert.userName}-${alert.alertType}`;
+          if (!acc[key]) {
+            acc[key] = { ...alert, count: 1, latestTime: alert.createdAt, ids: [alert.id] };
+          } else {
+            acc[key].count++;
+            acc[key].ids.push(alert.id);
+            if (new Date(alert.createdAt) > new Date(acc[key].latestTime)) {
+              acc[key].latestTime = alert.createdAt;
+              acc[key].jobTitle = alert.jobTitle;
+              acc[key].address = alert.address;
+            }
+          }
+          return acc;
+        }, {} as Record<string, GeofenceAlert & { count: number; latestTime: string; ids: string[] }>);
+
+        const groupedAlerts = Object.values(grouped).sort(
+          (a, b) => new Date(b.latestTime).getTime() - new Date(a.latestTime).getTime()
+        );
+
+        const alertTypeConfig = {
+          arrival: { icon: 'log-in' as const, color: colors.success, label: 'Arrivals' },
+          departure: { icon: 'log-out' as const, color: colors.warning, label: 'Departures' },
+          late: { icon: 'clock' as const, color: colors.destructive, label: 'Late' },
+          speed_warning: { icon: 'alert-triangle' as const, color: colors.destructive, label: 'Speed' },
+        };
+
+        const typeCounts = unreadAlerts.reduce((acc, a) => {
+          acc[a.alertType] = (acc[a.alertType] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+
+        return (
+          <View style={[styles.legendCard, { top: insets.top + (headerCollapsed ? 80 : 180), maxHeight: 320, width: 280 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                <Feather name="bell" size={14} color={colors.foreground} />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.foreground }}>Activity</Text>
+                <View style={{ backgroundColor: colors.destructive, borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1, marginLeft: 2 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>{unreadAlerts.length}</Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setShowAlerts(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
+              >
+                <Feather name="x" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm }}>
+              {Object.entries(typeCounts).map(([type, count]) => {
+                const config = alertTypeConfig[type as keyof typeof alertTypeConfig];
+                if (!config) return null;
+                return (
+                  <View key={type} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: `${config.color}12`, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 }}>
+                    <Feather name={config.icon} size={10} color={config.color} />
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: config.color }}>{count}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+              {groupedAlerts.slice(0, 8).map((alert) => {
+                const firstName = alert.userName.split(' ')[0];
+                const config = alertTypeConfig[alert.alertType as keyof typeof alertTypeConfig] || alertTypeConfig.departure;
+                const actionText = alert.alertType === 'arrival' ? 'arrived at' :
+                                   alert.alertType === 'departure' ? 'left' :
+                                   alert.alertType === 'late' ? 'late for' : 'speeding near';
+                
+                return (
+                  <TouchableOpacity
+                    key={alert.id}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'flex-start',
+                      gap: spacing.sm,
+                      paddingVertical: 6,
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                      borderBottomColor: colors.border,
+                    }}
+                    onPress={() => {
+                      alert.ids.forEach(id => markAlertRead(id));
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: 13,
+                      backgroundColor: `${config.color}15`,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginTop: 1,
+                    }}>
+                      <Feather name={config.icon} size={12} color={config.color} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 16 }} numberOfLines={2}>
+                        <Text style={{ fontWeight: '600' }}>{firstName}</Text>
+                        <Text style={{ color: colors.mutedForeground }}> {actionText} </Text>
+                        <Text style={{ fontWeight: '500' }}>{alert.jobTitle || 'job site'}</Text>
+                        {alert.count > 1 && (
+                          <Text style={{ color: colors.mutedForeground, fontSize: 11 }}> ({alert.count}x)</Text>
+                        )}
+                      </Text>
+                      <Text style={{ fontSize: 10, color: colors.mutedForeground, marginTop: 2 }}>
+                        {formatAlertTime(alert.latestTime)}
+                        {alert.address ? ` \u00B7 ${alert.address.split(',')[0]}` : ''}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={{ marginTop: spacing.sm, paddingVertical: 6, alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }}
+              onPress={() => {
+                unreadAlerts.forEach(a => markAlertRead(a.id));
+                setShowAlerts(false);
+              }}
               activeOpacity={0.7}
             >
-              <Feather name="x" size={16} color={colors.mutedForeground} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>Mark All Read</Text>
             </TouchableOpacity>
           </View>
-          
-          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-            {unreadAlerts.slice(0, 5).map((alert) => {
-              const firstName = alert.userName.split(' ')[0];
-              const alertIcon = alert.alertType === 'arrival' ? 'log-in' :
-                               alert.alertType === 'departure' ? 'log-out' :
-                               alert.alertType === 'late' ? 'clock' : 'alert-circle';
-              const alertColor = alert.alertType === 'arrival' ? colors.success :
-                                alert.alertType === 'departure' ? colors.warning :
-                                alert.alertType === 'late' ? colors.destructive : colors.info;
-              
-              const formatAlertTime = (dateStr: string) => {
-                const date = new Date(dateStr);
-                const now = new Date();
-                const diffMs = now.getTime() - date.getTime();
-                const diffMins = Math.floor(diffMs / 60000);
-                const diffHours = Math.floor(diffMs / 3600000);
-                if (diffMins < 1) return 'Just now';
-                if (diffMins < 60) return `${diffMins}m ago`;
-                if (diffHours < 24) return `${diffHours}h ago`;
-                return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-              };
-
-              const actionText = alert.alertType === 'arrival' ? 'arrived at' :
-                                 alert.alertType === 'departure' ? 'left' :
-                                 alert.alertType === 'late' ? 'late for' : 'alert for';
-              
-              return (
-                <TouchableOpacity
-                  key={alert.id}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: spacing.sm,
-                    paddingVertical: spacing.xs,
-                    borderBottomWidth: 1,
-                    borderBottomColor: colors.border,
-                  }}
-                  onPress={() => markAlertRead(alert.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: `${alertColor}15`,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <Feather name={alertIcon as any} size={13} color={alertColor} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, color: colors.foreground }} numberOfLines={1}>
-                      <Text style={{ fontWeight: '600' }}>{firstName}</Text>
-                      <Text style={{ color: colors.mutedForeground }}> {actionText} </Text>
-                      <Text style={{ fontWeight: '500' }}>{alert.jobTitle}</Text>
-                    </Text>
-                    <Text style={{ fontSize: 10, color: colors.mutedForeground, marginTop: 1 }}>
-                      {formatAlertTime(alert.createdAt)}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
+        );
+      })()}
 
       {/* Selected Worker Banner */}
       {selectedWorker && (
