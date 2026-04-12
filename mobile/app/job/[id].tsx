@@ -53,6 +53,7 @@ import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
 import SmartActionsPanel, { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
 import { JobProgressBar, LinkedDocumentsCard, NextActionCard, PaymentCollectionCard } from '../../src/components/JobWorkflowComponents';
+import { CollapsibleSection } from '../../src/components/ui/CollapsibleSection';
 import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { getJobUrgency } from '../../src/lib/jobUrgency';
@@ -6341,98 +6342,6 @@ export default function JobDetailScreen() {
         </View>
       )}
 
-      {/* Previous Jobs Card */}
-      {linkedJobs.length > 0 && (
-        <View style={{
-          backgroundColor: colors.card,
-          borderRadius: radius.xl,
-          padding: spacing.lg,
-          marginBottom: spacing.md,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
-          ...shadows.sm,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
-            <View style={{
-              width: 32,
-              height: 32,
-              borderRadius: radius.md,
-              backgroundColor: `${colors.primary}15`,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: spacing.sm,
-            }}>
-              <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
-            </View>
-            <Text style={{
-              fontSize: 14,
-              fontWeight: '600',
-              color: colors.foreground,
-              flex: 1,
-            }}>Previous Jobs</Text>
-            <Text style={{
-              fontSize: 12,
-              color: colors.mutedForeground,
-            }}>{linkedJobs.length} job{linkedJobs.length !== 1 ? 's' : ''}</Text>
-          </View>
-          {linkedJobs.map((lj) => {
-            const ljDate = lj.scheduledAt || lj.completedAt;
-            const statusColors: Record<string, string> = {
-              pending: colors.pending || colors.warning,
-              scheduled: colors.scheduled || colors.primary,
-              in_progress: colors.inProgress || colors.primary,
-              done: colors.success,
-              invoiced: colors.invoiced || colors.primary,
-            };
-            const ljStatusColor = statusColors[lj.status] || colors.mutedForeground;
-            return (
-              <TouchableOpacity
-                key={lj.id}
-                activeOpacity={0.7}
-                onPress={() => router.push(`/job/${lj.id}`)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: spacing.sm,
-                  borderTopWidth: 1,
-                  borderTopColor: colors.muted,
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={{
-                    fontSize: 14,
-                    fontWeight: '500',
-                    color: colors.foreground,
-                  }} numberOfLines={1}>{lj.title}</Text>
-                  {ljDate && (
-                    <Text style={{
-                      fontSize: 12,
-                      color: colors.mutedForeground,
-                      marginTop: 2,
-                    }}>{new Date(ljDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
-                  )}
-                </View>
-                <View style={{
-                  paddingHorizontal: spacing.sm,
-                  paddingVertical: 2,
-                  borderRadius: radius.sm,
-                  backgroundColor: `${ljStatusColor}20`,
-                  marginRight: spacing.sm,
-                }}>
-                  <Text style={{
-                    fontSize: 11,
-                    fontWeight: '600',
-                    color: ljStatusColor,
-                    textTransform: 'capitalize',
-                  }}>{lj.status.replace('_', ' ')}</Text>
-                </View>
-                <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
-
       {/* Assign Worker Card */}
       {(roleInfo?.isOwner || roleInfo?.roleName === 'admin') && (
         <TouchableOpacity
@@ -6605,6 +6514,112 @@ export default function JobDetailScreen() {
           </Animated.View>
         );
       })()}
+
+      {/* ═══ More Details — Collapsible Layer 3 ═══ */}
+      {(!isSubcontractorUser || linkedJobs.length > 0 || activityLog.length > 0 || isOwnerOrManager || isSoloOwner) && (
+      <CollapsibleSection
+        summaryItems={[
+          (quote || invoice) ? `${[quote && 'Quote', invoice && 'Invoice'].filter(Boolean).join(' + ')}` : '',
+          linkedReceipt ? `Paid ${formatCurrency(linkedReceipt.amount)}` : '',
+          linkedJobs.length > 0 ? `${linkedJobs.length} prev job${linkedJobs.length !== 1 ? 's' : ''}` : '',
+          activityLog.length > 0 ? `${activityLog.length} activit${activityLog.length !== 1 ? 'ies' : 'y'}` : '',
+          (profitabilityData?.revenue?.invoiced || 0) > 0 ? `${formatCurrency(profitabilityData!.revenue.invoiced)} revenue` : '',
+          materials.length > 0 ? `${materials.length} material${materials.length !== 1 ? 's' : ''}` : '',
+          jobExpenses.length > 0 ? `${jobExpenses.length} expense${jobExpenses.length !== 1 ? 's' : ''}` : '',
+        ]}
+      >
+
+      {/* Previous Jobs Card */}
+      {linkedJobs.length > 0 && (
+        <View style={{
+          backgroundColor: colors.card,
+          borderRadius: radius.xl,
+          padding: spacing.lg,
+          marginBottom: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          ...shadows.sm,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
+            <View style={{
+              width: 32,
+              height: 32,
+              borderRadius: radius.md,
+              backgroundColor: `${colors.primary}15`,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: spacing.sm,
+            }}>
+              <Feather name="briefcase" size={iconSizes.md} color={colors.primary} />
+            </View>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: colors.foreground,
+              flex: 1,
+            }}>Previous Jobs</Text>
+            <Text style={{
+              fontSize: 12,
+              color: colors.mutedForeground,
+            }}>{linkedJobs.length} job{linkedJobs.length !== 1 ? 's' : ''}</Text>
+          </View>
+          {linkedJobs.map((lj) => {
+            const ljDate = lj.scheduledAt || lj.completedAt;
+            const statusColors: Record<string, string> = {
+              pending: colors.pending || colors.warning,
+              scheduled: colors.scheduled || colors.primary,
+              in_progress: colors.inProgress || colors.primary,
+              done: colors.success,
+              invoiced: colors.invoiced || colors.primary,
+            };
+            const ljStatusColor = statusColors[lj.status] || colors.mutedForeground;
+            return (
+              <TouchableOpacity
+                key={lj.id}
+                activeOpacity={0.7}
+                onPress={() => router.push(`/job/${lj.id}`)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: spacing.sm,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.muted,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '500',
+                    color: colors.foreground,
+                  }} numberOfLines={1}>{lj.title}</Text>
+                  {ljDate && (
+                    <Text style={{
+                      fontSize: 12,
+                      color: colors.mutedForeground,
+                      marginTop: 2,
+                    }}>{new Date(ljDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+                  )}
+                </View>
+                <View style={{
+                  paddingHorizontal: spacing.sm,
+                  paddingVertical: 2,
+                  borderRadius: radius.sm,
+                  backgroundColor: `${ljStatusColor}20`,
+                  marginRight: spacing.sm,
+                }}>
+                  <Text style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    color: ljStatusColor,
+                    textTransform: 'capitalize',
+                  }}>{lj.status.replace('_', ' ')}</Text>
+                </View>
+                <Feather name="chevron-right" size={iconSizes.sm} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
 
       {/* Linked Documents Card - hidden for subcontractors */}
       {!isSubcontractorUser && (
@@ -6908,6 +6923,8 @@ export default function JobDetailScreen() {
         </View>
       )}
 
+      </CollapsibleSection>
+      )}
 
     </>
   );
