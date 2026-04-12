@@ -41,6 +41,7 @@ interface TimeEntry {
   description: string | null;
   isBreak?: boolean;
   isBillable?: boolean;
+  hourlyRate?: string | number | null;
   category?: string;
   createdAt?: string;
   isDisputed?: boolean;
@@ -716,6 +717,8 @@ interface TimeStats {
   totalEntries: number;
   billableHours: number;
   breakHours: number;
+  weeklyEarnings: number;
+  todayEarnings: number;
 }
 
 function formatDurationHM(minutes: number): string {
@@ -723,6 +726,21 @@ function formatDurationHM(minutes: number): string {
   const m = Math.round(minutes % 60);
   if (h === 0) return `${m}m`;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function formatCurrency(amount: number): string {
+  return `$${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+}
+
+function getEffectiveRate(entry: TimeEntry, jobs: any[], userDefaultRate: number): number {
+  if (entry.hourlyRate != null && entry.hourlyRate !== '') return Number(entry.hourlyRate);
+  const job = jobs.find((j: any) => j.id === entry.jobId);
+  if (job && (job as any).hourlyRate != null && (job as any).hourlyRate !== '') return Number((job as any).hourlyRate);
+  return userDefaultRate;
+}
+
+function calculateEarnings(minutes: number, hourlyRate: number): number {
+  return (minutes / 60) * hourlyRate;
 }
 
 function formatTimeShort(dateStr: string): string {
@@ -750,7 +768,7 @@ export default function TimeTrackingScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('timer');
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
-  const [timeStats, setTimeStats] = useState<TimeStats>({ todayHours: 0, weekHours: 0, totalEntries: 0, billableHours: 0, breakHours: 0 });
+  const [timeStats, setTimeStats] = useState<TimeStats>({ todayHours: 0, weekHours: 0, totalEntries: 0, billableHours: 0, breakHours: 0, weeklyEarnings: 0, todayEarnings: 0 });
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
@@ -779,6 +797,10 @@ export default function TimeTrackingScreen() {
   const [showEntryEndPicker, setShowEntryEndPicker] = useState(false);
   const [isAddingEntry, setIsAddingEntry] = useState(false);
   const [entryIsBillable, setEntryIsBillable] = useState(true);
+  const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const userDefaultRate = user?.defaultHourlyRate != null ? Number(user.defaultHourlyRate) : 100;
 
   const isLoading = isLoadingJobs || isTimerLoading;
   const isTimerRunning = !!activeTimer;
@@ -841,6 +863,8 @@ export default function TimeTrackingScreen() {
         let weekMinutes = 0;
         let billableMinutes = 0;
         let breakMinutes = 0;
+        let weeklyEarnings = 0;
+        let todayEarnings = 0;
         
         entries.forEach((entry: any) => {
           if (entry.duration) {
@@ -849,6 +873,13 @@ export default function TimeTrackingScreen() {
               breakMinutes += entry.duration;
             } else if (entry.isBillable !== false) {
               billableMinutes += entry.duration;
+              const rate = getEffectiveRate(entry, jobs, userDefaultRate);
+              const earned = calculateEarnings(entry.duration, rate);
+              weeklyEarnings += earned;
+              const ed = new Date(entry.startTime).toISOString().split('T')[0];
+              if (ed === today) {
+                todayEarnings += earned;
+              }
             }
             const entryDate = new Date(entry.startTime).toISOString().split('T')[0];
             if (entryDate === today) {
@@ -863,12 +894,14 @@ export default function TimeTrackingScreen() {
           totalEntries: entries.length,
           billableHours: Math.round((billableMinutes / 60) * 10) / 10,
           breakHours: Math.round((breakMinutes / 60) * 10) / 10,
+          weeklyEarnings: Math.round(weeklyEarnings * 100) / 100,
+          todayEarnings: Math.round(todayEarnings * 100) / 100,
         });
       }
     } catch (error) {
       if (__DEV__) console.log('Failed to fetch time stats:', error);
     }
-  }, []);
+  }, [jobs, userDefaultRate]);
 
   const refreshData = useCallback(async () => {
     await Promise.all([fetchJobs(), fetchActiveTimer(), fetchTimeStats(), fetchWeeklyData()]);
@@ -1022,6 +1055,51 @@ export default function TimeTrackingScreen() {
     );
   };
 
+  const handleOpenEditEntry = (entry: TimeEntry) => {
+    const start = new Date(entry.startTime);
+    const end = entry.endTime ? new Date(entry.endTime) : new Date();
+    setEditingEntry(entry);
+    setEntryDate(start);
+    setEntryStartTime(start);
+    setEntryEndTime(end);
+    setEntryDescription(entry.description || '');
+    setEntryJobId(entry.jobId);
+    setEntryIsBillable(entry.isBillable !== false);
+    setShowAddEntryModal(true);
+  };
+
+  const handleSaveEditEntry = async () => {
+    if (!editingEntry) return;
+    const startDateTime = new Date(entryDate);
+    startDateTime.setHours(entryStartTime.getHours(), entryStartTime.getMinutes(), 0, 0);
+    const endDateTime = new Date(entryDate);
+    endDateTime.setHours(entryEndTime.getHours(), entryEndTime.getMinutes(), 0, 0);
+    if (endDateTime <= startDateTime) {
+      Alert.alert('Invalid Time', 'End time must be after start time.');
+      return;
+    }
+    const durationMinutes = Math.round((endDateTime.getTime() - startDateTime.getTime()) / 60000);
+    setIsSavingEdit(true);
+    try {
+      await api.patch(`/api/time-entries/${editingEntry.id}`, {
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
+        duration: durationMinutes,
+        description: entryDescription || undefined,
+        isBillable: entryIsBillable,
+        jobId: entryJobId,
+      });
+      setShowAddEntryModal(false);
+      setEditingEntry(null);
+      await Promise.all([fetchTimeEntries(), fetchTimeStats(), fetchWeeklyData()]);
+      Alert.alert('Updated', 'Time entry updated.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update time entry.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   const handleOpenDispute = (entryId: string) => {
     setDisputeEntryId(entryId);
     setDisputeReason('');
@@ -1053,6 +1131,7 @@ export default function TimeTrackingScreen() {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0, 0);
+    setEditingEntry(null);
     setEntryDate(now);
     setEntryStartTime(startOfToday);
     setEntryEndTime(endOfToday);
@@ -1096,24 +1175,59 @@ export default function TimeTrackingScreen() {
     }
   };
 
-  const handleExportTimesheet = async () => {
-    const dateStr = sheetDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const totalMinutes = timeEntries.reduce((sum, e) => sum + (e.duration || 0), 0);
-    let text = `Timesheet - ${dateStr}\n`;
-    text += `Total: ${formatDurationHM(totalMinutes)}\n\n`;
-    timeEntries.forEach(entry => {
+  const buildCsvExport = (entries: TimeEntry[], label: string) => {
+    const rows: string[] = [];
+    rows.push('Date,Start,End,Duration,Job,Type,Billable,Rate ($/hr),Amount ($),Notes');
+    let totalEarnings = 0;
+    entries.forEach(entry => {
       const jobData = jobs.find(j => j.id === entry.jobId);
+      const dateVal = new Date(entry.startTime).toLocaleDateString('en-AU');
       const start = formatTimeShort(entry.startTime);
       const end = entry.endTime ? formatTimeShort(entry.endTime) : 'Running';
       const dur = entry.duration ? formatDurationHM(entry.duration) : '--';
-      text += `${start} - ${end} (${dur})\n`;
-      text += `Job: ${jobData?.title || 'Unknown'}\n`;
-      if (entry.description) text += `Notes: ${entry.description}\n`;
-      text += '\n';
+      const type = entry.isBreak ? 'Break' : 'Work';
+      const billable = entry.isBillable !== false && !entry.isBreak ? 'Yes' : 'No';
+      const rate = getEffectiveRate(entry, jobs, userDefaultRate);
+      const amount = entry.duration && !entry.isBreak && entry.isBillable !== false
+        ? calculateEarnings(entry.duration, rate)
+        : 0;
+      totalEarnings += amount;
+      const notes = (entry.description || '').replace(/"/g, '""');
+      const jobTitle = (jobData?.title || 'Unknown').replace(/"/g, '""');
+      rows.push(`${dateVal},${start},${end},${dur},"${jobTitle}",${type},${billable},${rate.toFixed(2)},${amount.toFixed(2)},"${notes}"`);
     });
+    const totalMinutes = entries.reduce((sum, e) => sum + (e.duration || 0), 0);
+    rows.push('');
+    rows.push(`,,,"${formatDurationHM(totalMinutes)}",,,,,${totalEarnings.toFixed(2)},`);
+    return { csv: rows.join('\n'), totalEarnings, totalMinutes };
+  };
+
+  const handleExportTimesheet = async () => {
+    const dateStr = sheetDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const { csv, totalEarnings, totalMinutes } = buildCsvExport(timeEntries, dateStr);
+    const summary = `Timesheet - ${dateStr}\nTotal: ${formatDurationHM(totalMinutes)} | Earnings: ${formatCurrency(totalEarnings)}\n\n${csv}`;
     try {
-      await Share.share({ message: text, title: `Timesheet ${dateStr}` });
+      await Share.share({ message: summary, title: `Timesheet ${dateStr}` });
     } catch {}
+  };
+
+  const handleExportWeekly = async () => {
+    try {
+      const { start, end } = getWeekDates();
+      const startStr = start.toISOString().split('T')[0];
+      const endStr = end.toISOString().split('T')[0];
+      const response = await api.get<any[]>(`/api/time-entries?startDate=${startStr}&endDate=${endStr}`);
+      if (!response.data?.length) {
+        Alert.alert('No Data', 'No time entries this week to export.');
+        return;
+      }
+      const weekLabel = `${start.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+      const { csv, totalEarnings, totalMinutes } = buildCsvExport(response.data, weekLabel);
+      const summary = `Weekly Timesheet - ${weekLabel}\nTotal: ${formatDurationHM(totalMinutes)} | Earnings: ${formatCurrency(totalEarnings)}\n\n${csv}`;
+      await Share.share({ message: summary, title: `Weekly Timesheet ${weekLabel}` });
+    } catch {
+      Alert.alert('Error', 'Failed to export weekly timesheet.');
+    }
   };
 
   const navigateSheetDate = (direction: number) => {
@@ -1155,6 +1269,24 @@ export default function TimeTrackingScreen() {
               ? 'Timer running...' 
               : 'Ready to start tracking'}
         </Text>
+
+        {isTimerRunning && !isOnBreak && (() => {
+          const activeJob = activeTimer ? jobs.find(j => j.id === activeTimer.jobId) : null;
+          const rate = activeJob && (activeJob as any).hourlyRate != null && (activeJob as any).hourlyRate !== ''
+            ? Number((activeJob as any).hourlyRate)
+            : userDefaultRate;
+          const earned = (timerSeconds / 3600) * rate;
+          return (
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs, marginTop: -spacing.xs }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#22c55e', fontVariant: ['tabular-nums'] as any }}>
+                {formatCurrency(earned)}
+              </Text>
+              <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                @ {formatCurrency(rate)}/hr
+              </Text>
+            </View>
+          );
+        })()}
 
         {isOnBreak && (
           <View style={styles.breakBadge}>
@@ -1353,12 +1485,26 @@ export default function TimeTrackingScreen() {
           </View>
         </View>
 
-        {dayTotalMinutes > 0 && (
-          <View style={styles.dayTotalRow}>
-            <Text style={styles.dayTotalLabel}>Day Total</Text>
-            <Text style={styles.dayTotalValue}>{formatDurationHM(dayTotalMinutes)}</Text>
-          </View>
-        )}
+        {dayTotalMinutes > 0 && (() => {
+          const dayBillableEntries = timeEntries.filter(e => !e.isBreak && e.isBillable !== false && e.duration);
+          const dayEarnings = dayBillableEntries.reduce((sum, e) => {
+            const rate = getEffectiveRate(e, jobs, userDefaultRate);
+            return sum + calculateEarnings(e.duration!, rate);
+          }, 0);
+          return (
+            <View style={styles.dayTotalRow}>
+              <Text style={styles.dayTotalLabel}>Day Total</Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.dayTotalValue}>{formatDurationHM(dayTotalMinutes)}</Text>
+                {dayEarnings > 0 && (
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#22c55e', marginTop: 1 }}>
+                    {formatCurrency(dayEarnings)}
+                  </Text>
+                )}
+              </View>
+            </View>
+          );
+        })()}
 
         {isLoadingEntries ? (
           <View style={[styles.emptyState, { paddingVertical: spacing['2xl'] }]}>
@@ -1494,6 +1640,11 @@ export default function TimeTrackingScreen() {
                             {durationStr}
                           </Text>
                           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                            {entry.endTime && (
+                              <TouchableOpacity onPress={() => handleOpenEditEntry(entry)} activeOpacity={0.7} hitSlop={8}>
+                                <Feather name="edit-2" size={14} color={colors.primary} />
+                              </TouchableOpacity>
+                            )}
                             {!entry.isDisputed && !isBreakEntry && (
                               <TouchableOpacity onPress={() => handleOpenDispute(entry.id)} activeOpacity={0.7} hitSlop={8}>
                                 <Feather name="flag" size={14} color="#f59e0b" />
@@ -1533,8 +1684,8 @@ export default function TimeTrackingScreen() {
               <Feather name="share" size={20} color={colors.primary} />
             </View>
             <View style={styles.exportCardText}>
-              <Text style={styles.exportCardTitle}>Export Timesheet</Text>
-              <Text style={styles.exportCardSubtitle}>Share this day's entries as text</Text>
+              <Text style={styles.exportCardTitle}>Export Day CSV</Text>
+              <Text style={styles.exportCardSubtitle}>Share this day's entries with rates and earnings</Text>
             </View>
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </TouchableOpacity>
@@ -1550,9 +1701,29 @@ export default function TimeTrackingScreen() {
     const avgDailyHours = timeStats.weekHours > 0 
       ? Math.round((timeStats.weekHours / Math.max(1, weeklyData.filter(d => d.hours > 0).length)) * 10) / 10
       : 0;
+    const weeklyEarnings = timeStats.weeklyEarnings;
+    const daysWorked = weeklyData.filter(d => d.hours > 0).length;
+    const avgDailyEarnings = daysWorked > 0 ? weeklyEarnings / daysWorked : 0;
 
     return (
       <View style={styles.statsSection}>
+        {weeklyEarnings > 0 && (
+          <View style={[styles.statsCard, { backgroundColor: '#22c55e12', borderColor: '#22c55e30' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#22c55e20', alignItems: 'center', justifyContent: 'center' }}>
+                <Feather name="dollar-sign" size={18} color="#22c55e" />
+              </View>
+              <Text style={{ ...typography.cardTitle, color: colors.foreground }}>Weekly Earnings</Text>
+            </View>
+            <Text style={{ fontSize: 32, fontWeight: '700', color: '#22c55e', marginBottom: spacing.xs }}>
+              {formatCurrency(weeklyEarnings)}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+              Avg {formatCurrency(avgDailyEarnings)}/day  ·  {timeStats.billableHours}h billable
+            </Text>
+          </View>
+        )}
+
         <View style={styles.weeklyChart}>
           <Text style={styles.chartTitle}>This Week</Text>
           <View style={styles.chartBarsContainer}>
@@ -1604,6 +1775,12 @@ export default function TimeTrackingScreen() {
             <Text style={styles.statsMetricLabel}>Avg Daily</Text>
             <Text style={styles.statsMetricValue}>{avgDailyHours}h</Text>
           </View>
+          {weeklyEarnings > 0 && (
+            <View style={[styles.statsMetricRow, { borderBottomWidth: 0, borderTopWidth: 1, borderTopColor: colors.border + '40', marginTop: spacing.xs }]}>
+              <Text style={[styles.statsMetricLabel, { fontWeight: '600' }]}>Est. Earnings</Text>
+              <Text style={[styles.statsMetricValue, { color: '#22c55e' }]}>{formatCurrency(weeklyEarnings)}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.statsCard}>
@@ -1625,13 +1802,13 @@ export default function TimeTrackingScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.exportCard} onPress={handleExportTimesheet} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.exportCard} onPress={handleExportWeekly} activeOpacity={0.7}>
           <View style={[styles.emptyStateIcon, { backgroundColor: colors.primary + '12', width: 44, height: 44 }]}>
             <Feather name="download" size={20} color={colors.primary} />
           </View>
           <View style={styles.exportCardText}>
-            <Text style={styles.exportCardTitle}>Export Weekly Report</Text>
-            <Text style={styles.exportCardSubtitle}>Share your weekly timesheet summary</Text>
+            <Text style={styles.exportCardTitle}>Export Weekly CSV</Text>
+            <Text style={styles.exportCardSubtitle}>Share weekly timesheet with rates and earnings</Text>
           </View>
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         </TouchableOpacity>
@@ -1687,8 +1864,8 @@ export default function TimeTrackingScreen() {
             </View>
             <View style={styles.statsRow}>
               <StatCard
-                title="BILLABLE"
-                value={`${timeStats.billableHours.toFixed(1)}h`}
+                title="EARNED"
+                value={formatCurrency(timeStats.weeklyEarnings)}
                 icon={<Feather name="dollar-sign" size={18} color="#22c55e" />}
                 colors={colors}
                 accentColor="#22c55e"
@@ -1736,24 +1913,28 @@ export default function TimeTrackingScreen() {
         visible={showAddEntryModal}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowAddEntryModal(false)}
+        onRequestClose={() => { setShowAddEntryModal(false); setEditingEntry(null); }}
       >
         <View style={[styles.container, { paddingTop: spacing.lg }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity 
-              onPress={() => setShowAddEntryModal(false)}
+              onPress={() => { setShowAddEntryModal(false); setEditingEntry(null); }}
               style={styles.modalCloseButton}
             >
               <Feather name="x" size={24} color={colors.foreground} />
             </TouchableOpacity>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add Time Entry</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              {editingEntry ? 'Edit Time Entry' : 'Add Time Entry'}
+            </Text>
             <TouchableOpacity 
-              onPress={handleAddEntry}
-              disabled={isAddingEntry || !entryJobId}
-              style={[styles.modalSaveButton, (!entryJobId || isAddingEntry) && styles.modalSaveButtonDisabled]}
+              onPress={editingEntry ? handleSaveEditEntry : handleAddEntry}
+              disabled={(editingEntry ? isSavingEdit : isAddingEntry) || !entryJobId}
+              style={[styles.modalSaveButton, (!entryJobId || (editingEntry ? isSavingEdit : isAddingEntry)) && styles.modalSaveButtonDisabled]}
             >
-              <Text style={[styles.modalSaveText, (!entryJobId || isAddingEntry) && styles.modalSaveTextDisabled]}>
-                {isAddingEntry ? 'Saving...' : 'Save'}
+              <Text style={[styles.modalSaveText, (!entryJobId || (editingEntry ? isSavingEdit : isAddingEntry)) && styles.modalSaveTextDisabled]}>
+                {editingEntry 
+                  ? (isSavingEdit ? 'Saving...' : 'Update')
+                  : (isAddingEntry ? 'Saving...' : 'Save')}
               </Text>
             </TouchableOpacity>
           </View>
