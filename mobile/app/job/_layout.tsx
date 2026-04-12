@@ -27,7 +27,7 @@ export default function JobLayout() {
         freezeOnBlur: true,
       }}
     >
-      <Stack.Screen name="[id]" options={{ headerShown: isIOS }} />
+      <Stack.Screen name="[id]" options={{ headerShown: false }} />
       <Stack.Screen name="chat" options={{
         headerShown: isIOS,
         headerLeft: () => <IOSBackButton />,
