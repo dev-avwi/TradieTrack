@@ -1623,6 +1623,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   fixedHeader: {
     paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
     backgroundColor: colors.background,
   },
@@ -9782,9 +9783,7 @@ export default function JobDetailScreen() {
           title: '',
           headerBackVisible: false,
           headerShadowVisible: false,
-          headerTransparent: true,
-          headerBlurEffect: isDark ? 'systemThinMaterialDark' : 'systemThinMaterial',
-          headerStyle: { backgroundColor: 'transparent' },
+          headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.primary,
           headerLeft: () => (
             <Pressable
@@ -9828,7 +9827,7 @@ export default function JobDetailScreen() {
       />
 
       {/* Fixed Header */}
-      <View style={[styles.fixedHeader, { paddingTop: insets.top + 50 }]}>
+      <View style={styles.fixedHeader}>
         <View style={styles.statusRow}>
           <StatusBadge status={job.status} />
           {(() => {
