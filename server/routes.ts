@@ -5157,11 +5157,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'AI Receptionist is already active.' });
       }
 
+      const businessSettings = await storage.getBusinessSettings(userId);
+      const dedicatedNumber = businessSettings?.dedicatedPhoneNumber;
+      if (!dedicatedNumber) {
+        return res.status(400).json({
+          error: 'You need a dedicated phone number first. Purchase one from the Phone Numbers screen before setting up AI Receptionist.',
+          needsDedicatedNumber: true,
+          redirectTo: '/phone-numbers',
+        });
+      }
+
+      const { isSharedPlatformNumber } = await import('./phoneNumberUtils');
+      if (isSharedPlatformNumber(dedicatedNumber)) {
+        return res.status(400).json({
+          error: 'AI Receptionist requires a dedicated number. The shared platform number cannot be used. Please purchase your own number first.',
+          needsDedicatedNumber: true,
+          redirectTo: '/phone-numbers',
+        });
+      }
+
       // BETA MODE: Skip Stripe, trigger provisioning directly
       if (IS_BETA) {
         console.log(`[BETA] Triggering AI Receptionist provisioning for user ${userId} without payment`);
 
-        // Create or update config to provisioning state
         if (!existingConfig) {
           await storage.createAiReceptionistConfig({
             userId,
@@ -5177,9 +5195,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Trigger provisioning asynchronously
         const { provisionAiReceptionist } = await import('./aiReceptionistProvisioning');
-        provisionAiReceptionist(userId).catch(err => {
+        provisionAiReceptionist(userId, dedicatedNumber).catch(err => {
           console.error('[BETA AI Receptionist] Provisioning failed:', err);
         });
 
@@ -5207,13 +5224,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const host = req.headers.host;
       const baseUrl = `${protocol}://${host}`;
 
-      const businessSettings = await storage.getBusinessSettings(userId);
       const result = await createAiReceptionistCheckout(
         userId,
         user.email,
         `${baseUrl}/ai-receptionist?provisioning=true`,
         `${baseUrl}/settings?tab=billing&canceled=true`,
-        businessSettings?.businessName || undefined
+        businessSettings?.businessName || undefined,
       );
 
       if (!result.success) {

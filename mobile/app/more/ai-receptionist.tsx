@@ -223,7 +223,12 @@ export default function AIReceptionistScreen() {
               setIsProvisioning(false);
               setProvisioningStatus(null);
               const errorData = e?.response?.data || e;
-              if (errorData?.upgradeRequired) {
+              if (errorData?.needsDedicatedNumber) {
+                Alert.alert('Dedicated Number Required', 'You need a dedicated phone number before setting up AI Receptionist.', [
+                  { text: 'Get a Number', onPress: () => router.push('/more/phone-numbers') },
+                  { text: 'Cancel', style: 'cancel' },
+                ]);
+              } else if (errorData?.upgradeRequired) {
                 Alert.alert('Plan Upgrade Required', 'AI Receptionist requires a Pro plan or higher. Please upgrade your subscription first.', [
                   { text: 'Upgrade', onPress: () => router.push('/more/settings') },
                   { text: 'Cancel', style: 'cancel' },
@@ -626,8 +631,8 @@ export default function AIReceptionistScreen() {
                 </View>
 
                 <View style={{ marginTop: spacing.md, padding: spacing.md, backgroundColor: colors.primary + '10', borderRadius: radius.lg }}>
-                  <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: 4 }}>Your business number</Text>
-                  <Text style={styles.phoneNumber}>{config?.dedicatedPhoneNumber || businessSettings?.dedicatedPhoneNumber}</Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: 4 }}>Your AI answers on</Text>
+                  <Text style={styles.phoneNumber}>{formatPhoneDisplay(config?.dedicatedPhoneNumber || businessSettings?.dedicatedPhoneNumber || '')}</Text>
                   <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 4, lineHeight: 16 }}>
                     This number handles AI calls and SMS via Chat Hub.
                   </Text>

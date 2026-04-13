@@ -1,8 +1,8 @@
 import { storage } from './storage';
-import { searchAvailableNumbers, purchasePhoneNumber, createOrFindTwilioAddress } from './twilioClient';
 import { createAssistant, importPhoneNumber, getWebhookUrl } from './vapiService';
 import { createNotification } from './notifications';
 import { logTeamActivity } from './activityService';
+import { isSharedPlatformNumber } from './phoneNumberUtils';
 
 interface ProvisioningResult {
   success: boolean;
@@ -11,7 +11,7 @@ interface ProvisioningResult {
   error?: string;
 }
 
-export async function provisionAiReceptionist(userId: string): Promise<ProvisioningResult> {
+export async function provisionAiReceptionist(userId: string, phoneNumber?: string): Promise<ProvisioningResult> {
   const stepErrors: string[] = [];
 
   try {
@@ -39,59 +39,21 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
       throw new Error('Business name is required to provision the AI Receptionist.');
     }
 
-    console.log(`[AI Provisioning] Starting provisioning for user ${userId} (${settings.businessName})`);
-
-    const correctDomain = process.env.CUSTOM_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
-    const baseUrl = `https://${correctDomain}`;
-    const smsWebhookUrl = `${baseUrl}/api/sms/webhook/incoming`;
-
-    let purchasedNumber: string;
-    let twilioNumberSid: string | undefined;
-
-    if (settings.dedicatedPhoneNumber) {
-      console.log(`[AI Provisioning] User already has dedicated number: ${settings.dedicatedPhoneNumber} — skipping purchase`);
-      purchasedNumber = settings.dedicatedPhoneNumber;
-    } else {
-      console.log(`[AI Provisioning] Step 1: Searching for available AU numbers...`);
-      const searchResult = await searchAvailableNumbers({ limit: 5 });
-      if (!searchResult.success || !searchResult.numbers || searchResult.numbers.length === 0) {
-        throw new Error(`No Australian phone numbers available: ${searchResult.error || 'No numbers found'}`);
-      }
-
-      const selectedNumber = searchResult.numbers[0];
-      console.log(`[AI Provisioning] Found number: ${selectedNumber.phoneNumber}`);
-
-      console.log(`[AI Provisioning] Step 2: Setting up address for number purchase...`);
-      let addressSid: string | undefined;
-      if (settings.address) {
-        const addressResult = await createOrFindTwilioAddress(userId, {
-          businessName: settings.businessName,
-          address: settings.address,
-          customerName: settings.businessName,
-        });
-        if (addressResult.success && addressResult.addressSid) {
-          addressSid = addressResult.addressSid;
-        } else {
-          console.warn(`[AI Provisioning] Address setup warning: ${addressResult.error} - proceeding without address`);
-        }
-      }
-
-      console.log(`[AI Provisioning] Step 3: Purchasing number ${selectedNumber.phoneNumber}...`);
-      const purchaseResult = await purchasePhoneNumber(selectedNumber.phoneNumber, smsWebhookUrl, addressSid, settings.businessName);
-      if (!purchaseResult.success || !purchaseResult.phoneNumber) {
-        throw new Error(`Failed to purchase phone number: ${purchaseResult.error || 'Unknown error'}`);
-      }
-
-      purchasedNumber = purchaseResult.phoneNumber;
-      twilioNumberSid = purchaseResult.sid;
-      console.log(`[AI Provisioning] Purchased: ${purchasedNumber} (SID: ${twilioNumberSid})`);
-
-      await storage.updateBusinessSettings(userId, {
-        dedicatedPhoneNumber: purchasedNumber,
-      });
+    const dedicatedNumber = phoneNumber || settings.dedicatedPhoneNumber;
+    if (!dedicatedNumber) {
+      throw new Error('A dedicated phone number is required before setting up AI Receptionist. Please purchase a dedicated number first.');
     }
 
-    console.log(`[AI Provisioning] Step 4: Creating Vapi assistant...`);
+    if (isSharedPlatformNumber(dedicatedNumber)) {
+      throw new Error('AI Receptionist requires a dedicated number. The shared platform number cannot be used.');
+    }
+
+    console.log(`[AI Provisioning] Starting provisioning for user ${userId} (${settings.businessName})`);
+    console.log(`[AI Provisioning] Using existing dedicated number: ${dedicatedNumber}`);
+
+    const purchasedNumber = dedicatedNumber;
+
+    console.log(`[AI Provisioning] Step 1: Creating Vapi assistant...`);
     const webhookUrl = getWebhookUrl();
     const updatedConfig = await storage.getAiReceptionistConfig(userId);
     const transferNumbers = (updatedConfig?.transferNumbers || []) as Array<{ name: string; phone: string; priority: number }>;
@@ -122,7 +84,7 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
 
     console.log(`[AI Provisioning] Created assistant: ${assistant.id}`);
 
-    console.log(`[AI Provisioning] Step 5: Importing number to Vapi...`);
+    console.log(`[AI Provisioning] Step 2: Importing number to Vapi...`);
     const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || '';
     const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || '';
 
@@ -136,12 +98,12 @@ export async function provisionAiReceptionist(userId: string): Promise<Provision
       stepErrors.push(`Phone import to Vapi: ${vapiImportError.message}`);
     }
 
-    console.log(`[AI Provisioning] Step 6: Saving to database...`);
+    console.log(`[AI Provisioning] Step 3: Saving to database...`);
     await storage.updateAiReceptionistConfig(userId, {
       vapiAssistantId: assistant.id,
       vapiPhoneNumberId: vapiPhoneNumberId || null,
       dedicatedPhoneNumber: purchasedNumber,
-      twilioNumberSid: twilioNumberSid || null,
+      twilioNumberSid: null,
       approvalStatus: 'pending_approval',
       provisioningError: stepErrors.length > 0 ? stepErrors.join('; ') : null,
       enabled: false,

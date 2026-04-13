@@ -98,10 +98,30 @@ export function setupStripeWebhooks(app: Express, stripe: any, storage: any) {
             }
 
             try {
-              const { provisionAiReceptionist } = await import('./aiReceptionistProvisioning');
-              provisionAiReceptionist(userId).catch(err => {
-                console.error('[AI Receptionist] Async provisioning failed:', err);
-              });
+              const userSettings = await storage.getBusinessSettings(userId);
+              const userDedicatedNumber = userSettings?.dedicatedPhoneNumber;
+              if (!userDedicatedNumber) {
+                console.error('[AI Receptionist] No dedicated number found for user — cannot provision');
+                const existingCfg = await storage.getAiReceptionistConfig(userId);
+                if (existingCfg) {
+                  await storage.updateAiReceptionistConfig(userId, {
+                    approvalStatus: 'failed',
+                    provisioningError: 'No dedicated phone number found. Please purchase a dedicated number and try again.',
+                  });
+                }
+                await createNotification(storage, {
+                  userId,
+                  type: 'ai_receptionist_error',
+                  title: 'AI Receptionist Setup Issue',
+                  message: 'You need a dedicated phone number before AI Receptionist can be set up. Please purchase one from the Phone Numbers screen.',
+                  relatedType: 'ai_receptionist',
+                });
+              } else {
+                const { provisionAiReceptionist } = await import('./aiReceptionistProvisioning');
+                provisionAiReceptionist(userId, userDedicatedNumber).catch(err => {
+                  console.error('[AI Receptionist] Async provisioning failed:', err);
+                });
+              }
             } catch (provisionError) {
               console.error('[AI Receptionist] Failed to start provisioning:', provisionError);
             }

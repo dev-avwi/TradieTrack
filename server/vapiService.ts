@@ -461,7 +461,12 @@ export async function enableAiReceptionist(userId: string): Promise<{
     }
 
     if (!settings.dedicatedPhoneNumber) {
-      return { success: false, error: 'A dedicated phone number is required. Please contact support to provision one.' };
+      return { success: false, error: 'A dedicated phone number is required. Please purchase one from the Phone Numbers screen first.' };
+    }
+
+    const { isSharedPlatformNumber } = await import('./phoneNumberUtils');
+    if (isSharedPlatformNumber(settings.dedicatedPhoneNumber)) {
+      return { success: false, error: 'AI Receptionist requires a dedicated number. The shared platform number cannot be used.' };
     }
 
     let config = await storage.getAiReceptionistConfig(userId);

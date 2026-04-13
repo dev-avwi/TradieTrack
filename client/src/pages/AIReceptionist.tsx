@@ -653,13 +653,13 @@ export default function AIReceptionist() {
               <Loader2 className="h-12 w-12 animate-spin mx-auto" style={{ color: "hsl(var(--trade))" }} />
               <h2 className="text-xl font-semibold">Setting up your AI Receptionist...</h2>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                We're purchasing your dedicated Australian phone number, setting up your AI voice assistant, 
+                We're setting up your AI voice assistant on your dedicated number
                 and configuring everything for your business. This usually takes about 30 seconds.
               </p>
               <div className="flex flex-col gap-2 text-xs text-muted-foreground pt-4">
                 <div className="flex items-center gap-2 justify-center">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>Searching for available Australian numbers...</span>
+                  <span>Configuring AI assistant on your number...</span>
                 </div>
               </div>
               <Button
@@ -776,7 +776,7 @@ export default function AIReceptionist() {
               {config?.dedicatedPhoneNumber && (
                 <div className="flex items-center gap-2 text-sm">
                   <PhoneCall className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Phone number:</span>
+                  <span className="text-muted-foreground">Your AI answers on:</span>
                   <span className="font-medium">{config.dedicatedPhoneNumber}</span>
                 </div>
               )}
