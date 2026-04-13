@@ -108,7 +108,7 @@ async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
   return price.id;
 }
 
-// Get or create Team base price ($49/month) and seat price ($29/month)
+// Get or create Team base price ($59/month) and seat price ($29/month)
 async function getOrCreateTeamPrices(stripe: Stripe): Promise<{ basePriceId: string; seatPriceId: string }> {
   // Try to find existing prices
   const prices = await stripe.prices.list({
@@ -942,7 +942,7 @@ export async function initializeStripeProducts(): Promise<{
   }
 }
 
-// Fix Team base price - creates new price at $49/month and archives the old $59 price
+// Fix Team base price - creates new price at $59/month and archives any old incorrect prices
 export async function fixTeamBasePrice(): Promise<{
   success: boolean;
   oldPrice?: { id: string; amount: number };
@@ -970,41 +970,41 @@ export async function fixTeamBasePrice(): Promise<{
       limit: 100 
     });
 
-    // Find price with wrong amount ($59 = 5900 cents)
-    const wrongPrice = prices.data.find(p => p.unit_amount === 5900);
+    // Find price with wrong amount ($49 = 4900 cents)
+    const wrongPrice = prices.data.find(p => p.unit_amount === 4900);
     const correctPrice = prices.data.find(p => p.unit_amount === PRICING.team.baseMonthly);
 
     if (!wrongPrice && correctPrice) {
       return { 
         success: true, 
         newPrice: { id: correctPrice.id, amount: correctPrice.unit_amount || 0 },
-        error: 'Price is already correct at $49/month' 
+        error: 'Price is already correct at $59/month' 
       };
     }
 
     if (!wrongPrice) {
-      return { success: false, error: 'No $59 price found to fix' };
+      return { success: false, error: 'No $49 price found to fix' };
     }
 
-    // Create new price at correct amount ($49 = 4900 cents)
+    // Create new price at correct amount ($59 = 5900 cents)
     const newPrice = await stripe.prices.create({
       product: teamBaseProduct.id,
-      unit_amount: PRICING.team.baseMonthly, // 4900 = $49
+      unit_amount: PRICING.team.baseMonthly, // 5900 = $59
       currency: 'aud',
       recurring: { interval: 'month' },
       lookup_key: 'jobrunner_team_base_monthly',
-      transfer_lookup_key: true, // Transfer lookup key from old price
+      transfer_lookup_key: true,
       metadata: { tier: 'team', type: 'base' },
     });
 
-    // Archive the old price (can't delete, but can deactivate)
+    // Archive the old price
     await stripe.prices.update(wrongPrice.id, { active: false });
 
-    console.log(`✅ Fixed Team base price: archived ${wrongPrice.id} ($59), created ${newPrice.id} ($49)`);
+    console.log(`✅ Fixed Team base price: archived ${wrongPrice.id} ($49), created ${newPrice.id} ($59)`);
 
     return {
       success: true,
-      oldPrice: { id: wrongPrice.id, amount: 5900 },
+      oldPrice: { id: wrongPrice.id, amount: 4900 },
       newPrice: { id: newPrice.id, amount: PRICING.team.baseMonthly },
     };
   } catch (error: any) {

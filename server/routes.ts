@@ -11265,7 +11265,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  // Admin endpoint to fix Team base price from $59 to $49
+  // Admin endpoint to fix Team base price from $49 to $59
   app.post("/api/admin/fix-team-price", requireAuth, async (req: any, res) => {
     const user = await storage.getUser(req.userId);
     if (!user?.isPlatformAdmin) return res.status(403).json({ error: 'Admin access required' });
@@ -11283,7 +11283,7 @@ Be specific about materials, colors, and features that would be included.`
       
       res.json({
         success: true,
-        message: 'Team base price fixed from $59 to $49/month',
+        message: 'Team base price fixed from $49 to $59/month',
         oldPrice: result.oldPrice,
         newPrice: result.newPrice
       });
@@ -32020,7 +32020,7 @@ Respond with JSON in this format:
   
   // ===== STRIPE CONNECT ROUTES =====
   // Two-layer payment architecture:
-  // Layer 1: Platform subscriptions (JobRunner charges tradies $39/month)
+  // Layer 1: Platform subscriptions (JobRunner charges tradies $49/month Pro, $59/month Team)
   // Layer 2: Customer payments (clients pay tradies, with platform application_fee)
   
   // Create or get Stripe Connect Express account for tradie (owner only)

@@ -81,14 +81,11 @@ export const PRICING = {
     description: 'Unlimited jobs, quotes, and invoices for solo tradies',
   },
   team: {
-    monthly: 9900, // $99/month
-    name: 'JobRunner Team',
-    description: 'Everything in Pro plus team management for up to 5 workers',
-  },
-  business: {
-    monthly: 19900, // $199/month
-    name: 'JobRunner Business',
-    description: 'Everything in Team plus support for up to 15 workers',
+    baseMonthly: 5900, // $59/month base
+    seatMonthly: 2900, // $29/month per seat
+    baseName: 'JobRunner Team',
+    seatName: 'JobRunner Team Seat',
+    description: 'Everything in Pro plus team management for growing businesses',
   },
   addons: {
     aiReceptionist: {
