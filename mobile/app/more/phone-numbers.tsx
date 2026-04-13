@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -78,6 +78,8 @@ export default function PhoneNumbersPage() {
   const [reacquiring, setReacquiring] = useState(false);
   const [aiConfigs, setAiConfigs] = useState<AiConfig[]>([]);
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const searchSectionY = useRef(0);
   const [labelText, setLabelText] = useState('');
 
   const [showPortForm, setShowPortForm] = useState(false);
@@ -90,21 +92,15 @@ export default function PhoneNumbersPage() {
   const [loadingPortRequests, setLoadingPortRequests] = useState(false);
 
   const currentNumber = businessSettings?.dedicatedPhoneNumber;
-  const storageKey = getLastNumberKey(businessSettings?.id);
+  const archivedNumber = (businessSettings as any)?.archivedPhoneNumber || null;
 
   useEffect(() => {
-    if (!businessSettings?.id) return;
-    AsyncStorage.getItem(storageKey).then(val => {
-      if (val) setLastOwnedNumber(val);
-    });
-  }, [storageKey, businessSettings?.id]);
-
-  useEffect(() => {
-    if (currentNumber && businessSettings?.id) {
-      AsyncStorage.setItem(storageKey, currentNumber);
-      setLastOwnedNumber(currentNumber);
+    if (archivedNumber && !currentNumber) {
+      setLastOwnedNumber(archivedNumber);
+    } else if (currentNumber) {
+      setLastOwnedNumber(null);
     }
-  }, [currentNumber, storageKey, businessSettings?.id]);
+  }, [archivedNumber, currentNumber]);
 
   const searchNumbers = useCallback(async () => {
     setLoading(true);
@@ -146,11 +142,11 @@ export default function PhoneNumbersPage() {
         await fetchBusinessSettings();
         Alert.alert(
           'Reverted to Shared', 
-          'Your dedicated number has been released. You can re-acquire it from this screen if it\'s still available.'
+          'Your dedicated number has been archived. You can re-apply it anytime from this screen without losing it.'
         );
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to release number');
+      Alert.alert('Error', e?.message || 'Failed to archive number');
     } finally {
       setReleasing(false);
     }
@@ -397,7 +393,7 @@ export default function PhoneNumbersPage() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollViewRef} style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.pageTitle}>Phone Numbers</Text>
         <Text style={styles.pageSubtitle}>
           Your dedicated Australian phone number for two-way SMS with clients and AI Receptionist calls.
@@ -550,7 +546,9 @@ export default function PhoneNumbersPage() {
             <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.lg }}>
               <TouchableOpacity
                 style={{ flex: 1, backgroundColor: `${colors.primary}08`, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: `${colors.primary}20`, alignItems: 'center', gap: spacing.xs }}
-                onPress={() => router.push('/more/ai-receptionist')}
+                onPress={() => {
+                  scrollViewRef.current?.scrollTo({ y: searchSectionY.current, animated: true });
+                }}
                 activeOpacity={0.7}
               >
                 <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
@@ -699,7 +697,7 @@ export default function PhoneNumbersPage() {
               </View>
             )}
 
-            <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
+            <View onLayout={(e) => { searchSectionY.current = e.nativeEvent.layout.y; }} style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
               <TouchableOpacity
                 style={{ flex: 1, backgroundColor: showPortForm ? `${colors.primary}15` : colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: showPortForm ? colors.primary : colors.border, alignItems: 'center', gap: spacing.xs }}
                 onPress={() => setShowPortForm(true)}
@@ -933,35 +931,35 @@ export default function PhoneNumbersPage() {
       >
         <View style={{ flex: 1, backgroundColor: colors.background, padding: spacing.lg, paddingTop: spacing.xl }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xl }}>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.foreground }}>Release Number</Text>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.foreground }}>Revert to Shared</Text>
             <TouchableOpacity onPress={() => setShowReleaseModal(false)} activeOpacity={0.7}>
               <Feather name="x" size={24} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
 
-          <View style={{ backgroundColor: `${colors.destructive}10`, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg }}>
+          <View style={{ backgroundColor: `${colors.primary}10`, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
-              <Feather name="alert-triangle" size={18} color={colors.destructive} />
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.destructive }}>This action can't be undone</Text>
+              <Feather name="info" size={18} color={colors.primary} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>Your number will be archived</Text>
             </View>
             <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 20 }}>
-              Releasing {formatPhone(currentNumber || '')} means:{'\n'}
-              {'\n'}{'\u2022'} You'll go back to the shared JobRunner number (0485 013 993)
-              {'\n'}{'\u2022'} Your AI Receptionist will be deactivated if active
+              Reverting {formatPhone(currentNumber || '')} means:{'\n'}
+              {'\n'}{'\u2022'} You'll go back to the shared JobRunner number
+              {'\n'}{'\u2022'} Your AI Receptionist will be paused if active
               {'\n'}{'\u2022'} Existing SMS conversations will be kept
-              {'\n'}{'\u2022'} The number may not be available to re-acquire later
+              {'\n'}{'\u2022'} Your number is archived — re-apply it anytime
             </Text>
           </View>
 
           <Text style={{ fontSize: 14, color: colors.foreground, fontWeight: '600', marginBottom: spacing.sm }}>
-            Type RELEASE to confirm
+            Type REVERT to confirm
           </Text>
           <TextInput
             style={{
               backgroundColor: colors.card,
               borderRadius: radius.md,
               borderWidth: 1,
-              borderColor: releaseConfirmText === 'RELEASE' ? colors.destructive : colors.border,
+              borderColor: releaseConfirmText === 'REVERT' ? colors.primary : colors.border,
               padding: spacing.md,
               fontSize: 16,
               fontWeight: '600',
@@ -970,7 +968,7 @@ export default function PhoneNumbersPage() {
               textAlign: 'center',
               marginBottom: spacing.lg,
             }}
-            placeholder="RELEASE"
+            placeholder="REVERT"
             placeholderTextColor={colors.mutedForeground + '60'}
             value={releaseConfirmText}
             onChangeText={setReleaseConfirmText}
@@ -980,21 +978,21 @@ export default function PhoneNumbersPage() {
 
           <TouchableOpacity
             style={{
-              backgroundColor: releaseConfirmText === 'RELEASE' ? colors.destructive : colors.muted,
+              backgroundColor: releaseConfirmText === 'REVERT' ? colors.primary : colors.muted,
               borderRadius: radius.md,
               paddingVertical: 14,
               alignItems: 'center',
-              opacity: releaseConfirmText === 'RELEASE' ? 1 : 0.5,
+              opacity: releaseConfirmText === 'REVERT' ? 1 : 0.5,
             }}
             onPress={executeRelease}
-            disabled={releaseConfirmText !== 'RELEASE' || releasing}
+            disabled={releaseConfirmText !== 'REVERT' || releasing}
             activeOpacity={0.7}
           >
             {releasing ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={{ fontSize: 15, fontWeight: '700', color: releaseConfirmText === 'RELEASE' ? '#fff' : colors.mutedForeground }}>
-                Release Number
+              <Text style={{ fontSize: 15, fontWeight: '700', color: releaseConfirmText === 'REVERT' ? '#fff' : colors.mutedForeground }}>
+                Revert to Shared
               </Text>
             )}
           </TouchableOpacity>

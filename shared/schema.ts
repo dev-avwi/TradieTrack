@@ -496,6 +496,7 @@ export const businessSettings = pgTable("business_settings", {
   // SMS Configuration
   smsMode: text("sms_mode").default('standard'), // 'standard' (shared number) or 'ai_receptionist' (dedicated number with AI)
   dedicatedPhoneNumber: text("dedicated_phone_number"), // Dedicated Twilio number for AI Receptionist (E.164 format)
+  archivedPhoneNumber: text("archived_phone_number"), // Archived dedicated number (kept on Twilio, can be re-acquired)
   // Vapi AI Receptionist Configuration
   vapiAssistantId: text("vapi_assistant_id"), // Vapi assistant ID for this business
   vapiPhoneNumberId: text("vapi_phone_number_id"), // Vapi phone number ID

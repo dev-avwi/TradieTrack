@@ -1853,64 +1853,6 @@ export default function AIReceptionistScreen() {
           </View>
         )}
 
-        <View style={styles.card}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
-            <Feather name="mic" size={18} color={colors.primary} />
-            <Text style={styles.cardTitle}>Request a Voice</Text>
-          </View>
-          <Text style={styles.cardSubtitle}>Want a different voice? Describe what you'd like and we'll set it up.</Text>
-
-          {Array.isArray(voiceRequests) && voiceRequests.length > 0 && (
-            <View style={{ marginBottom: spacing.md }}>
-              <Text style={[styles.inputLabel, { marginBottom: spacing.sm }]}>Your Requests</Text>
-              {voiceRequests.map((req) => (
-                <View key={req.id} style={{ borderWidth: 1, borderColor: colors.cardBorder, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ ...typography.body, color: colors.foreground }}>{req.requestedDescription}</Text>
-                      {req.adminNotes ? <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 4 }}>Admin: {req.adminNotes}</Text> : null}
-                      <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 4 }}>{new Date(req.createdAt).toLocaleDateString()}</Text>
-                    </View>
-                    <View style={[styles.statusBadge, {
-                      backgroundColor: req.status === 'resolved' ? '#dcfce7' : req.status === 'in_progress' ? '#dbeafe' : req.status === 'rejected' ? '#fee2e2' : '#fef3c7',
-                    }]}>
-                      <Text style={[styles.statusText, {
-                        color: req.status === 'resolved' ? '#15803d' : req.status === 'in_progress' ? '#1d4ed8' : req.status === 'rejected' ? '#b91c1c' : '#92400e',
-                      }]}>
-                        {req.status === 'in_progress' ? 'In Progress' : req.status.charAt(0).toUpperCase() + req.status.slice(1)}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-
-          <TextInput
-            style={[styles.textArea, { marginBottom: spacing.md }]}
-            value={voiceRequestText}
-            onChangeText={setVoiceRequestText}
-            placeholder="Describe the voice you'd like (e.g., 'younger female voice', 'British accent')..."
-            placeholderTextColor={colors.mutedForeground}
-            multiline
-            maxLength={500}
-          />
-          <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: colors.cardBorder }, (isSubmittingVR || voiceRequestText.length < 5) && { opacity: 0.5 }]}
-            onPress={handleSubmitVoiceRequest}
-            disabled={isSubmittingVR || voiceRequestText.length < 5}
-            activeOpacity={0.8}
-          >
-            {isSubmittingVR ? (
-              <ActivityIndicator size="small" color={colors.foreground} />
-            ) : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                <Feather name="send" size={16} color={colors.foreground} />
-                <Text style={[styles.saveButtonText, { color: colors.foreground }]}>Submit Request</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
       </ScrollView>
     </View>
   );

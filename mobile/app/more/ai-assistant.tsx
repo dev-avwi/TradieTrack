@@ -702,21 +702,21 @@ export default function AIAssistantScreen() {
               </Text>
             </View>
 
-            <View style={styles.quickActionsGrid}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActionsRow}>
               {QUICK_ACTIONS.map((action, index) => (
                 <TouchableOpacity
                   key={index}
-                  style={styles.quickActionCard}
+                  style={styles.quickActionChip}
                   onPress={() => handleSuggestionPress(action.prompt)}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.quickActionIcon, { backgroundColor: `${colors.primary}12` }]}>
-                    <Feather name={action.icon} size={18} color={colors.primary} />
+                    <Feather name={action.icon} size={14} color={colors.primary} />
                   </View>
                   <Text style={styles.quickActionLabel}>{action.label}</Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
 
             {activeNotifications.length > 0 && (
               <View style={styles.section}>
@@ -886,30 +886,31 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: 4,
     lineHeight: 20,
   },
-  quickActionsGrid: {
+  quickActionsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 28,
+    gap: 8,
+    paddingBottom: 16,
   },
-  quickActionCard: {
-    width: '47%' as any,
+  quickActionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: 10,
+    gap: 8,
   },
   quickActionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickActionLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.foreground,
   },
@@ -1027,6 +1028,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 12,
+    paddingRight: 16,
     paddingBottom: Platform.OS === 'ios' ? 28 : 12,
     backgroundColor: colors.card,
     borderTopWidth: 1,

@@ -73,15 +73,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   heroSection: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  heroTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginBottom: spacing.xs,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
+  },
+  heroLeft: {
+    flex: 1,
   },
   heroIconWrap: {
     width: 36,
@@ -92,16 +92,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: colors.foreground,
     letterSpacing: -0.5,
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.mutedForeground,
-    marginTop: 4,
-    lineHeight: 20,
+    marginTop: 2,
   },
   statsRow: {
     flexDirection: 'row',
@@ -134,15 +133,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xs,
+    paddingBottom: spacing.sm,
     gap: spacing.sm,
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: radius.pill,
     backgroundColor: colors.muted,
   },
@@ -681,15 +680,15 @@ export default function CommunicationsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       
       <View style={[styles.heroSection, { paddingTop: insets.top + 4 }]}>
-        <View style={styles.heroTopRow}>
-          <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <View style={styles.heroIconWrap}>
-              <Feather name="refresh-cw" size={15} color={colors.primary} />
-            </View>
-          </TouchableOpacity>
+        <View style={styles.heroLeft}>
+          <Text style={styles.pageTitle}>Communications</Text>
+          <Text style={styles.pageSubtitle}>Emails & SMS history</Text>
         </View>
-        <Text style={styles.pageTitle}>Communications</Text>
-        <Text style={styles.pageSubtitle}>Emails & SMS history</Text>
+        <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <View style={styles.heroIconWrap}>
+            <Feather name="refresh-cw" size={15} color={colors.primary} />
+          </View>
+        </TouchableOpacity>
       </View>
       
       <View style={styles.statsRow}>

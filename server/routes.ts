@@ -37757,39 +37757,35 @@ Respond with JSON in this format:
         return res.status(404).json({ error: 'No dedicated number to release' });
       }
 
-      const { releasePhoneNumber } = await import('./twilioClient');
-      const result = await releasePhoneNumber(settings.dedicatedPhoneNumber);
-
-      if (!result.success) {
-        console.error(`[SMS] Failed to release number from Twilio: ${result.error}`);
-        return res.status(500).json({ error: 'Failed to release number from Twilio. Please try again or contact support.' });
-      }
+      const archivedNumber = settings.dedicatedPhoneNumber;
 
       try {
         const { destroyAiReceptionist } = await import('./vapiService');
         const aiConfig = await storage.getAiReceptionistConfig(businessOwnerId);
         if (aiConfig?.enabled || aiConfig?.vapiAssistantId) {
           await destroyAiReceptionist(businessOwnerId);
-          console.log(`[SMS] Destroyed AI Receptionist for business ${businessOwnerId} during number release`);
+          console.log(`[SMS] Paused AI Receptionist for business ${businessOwnerId} during number archive`);
         }
       } catch (vapiErr) {
-        console.error(`[SMS] Warning: Failed to clean up AI Receptionist during number release:`, vapiErr);
+        console.error(`[SMS] Warning: Failed to clean up AI Receptionist during number archive:`, vapiErr);
       }
 
       await storage.updateBusinessSettings(businessOwnerId, {
         dedicatedPhoneNumber: null,
+        archivedPhoneNumber: archivedNumber,
         smsMode: 'standard',
       });
 
-      console.log(`[SMS] Business ${businessOwnerId} released dedicated number (by user ${userId})`);
+      console.log(`[SMS] Business ${businessOwnerId} archived dedicated number ${archivedNumber} (by user ${userId})`);
       
       res.json({
         success: true,
-        message: 'Phone number released. You are now using the shared JobRunner number.',
+        archivedNumber,
+        message: 'Reverted to shared number. Your dedicated number has been archived and can be re-applied anytime.',
       });
     } catch (error: any) {
-      console.error('Error releasing phone number:', error);
-      res.status(500).json({ error: 'Failed to release phone number' });
+      console.error('Error archiving phone number:', error);
+      res.status(500).json({ error: 'Failed to archive phone number' });
     }
   });
 
