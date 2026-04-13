@@ -97,7 +97,7 @@ export default function TermsOfService() {
                 <p className="text-muted-foreground leading-relaxed mt-4 mb-3"><strong>Add-Ons (available on any paid plan):</strong></p>
                 <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                   <li>AI Receptionist: $60/month AUD — AI-powered phone answering with dedicated Australian number</li>
-                  <li>Dedicated Phone Number: $5/month AUD — Dedicated Australian SMS and voice number for your business</li>
+                  <li>Dedicated Phone Number: $10/month AUD — Dedicated Australian SMS and voice number for your business</li>
                 </ul>
 
                 <p className="text-muted-foreground leading-relaxed mt-4">

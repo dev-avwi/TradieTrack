@@ -630,7 +630,7 @@ export default function AIReceptionist() {
               </div>
               <Button onClick={() => setLocation("/settings")} data-testid="button-get-dedicated-number">
                 <Phone className="h-4 w-4 mr-2" />
-                Get a Dedicated Number — $5/month
+                Get a Dedicated Number — $10/month
               </Button>
               <p className="text-xs text-muted-foreground mt-3">
                 Go to Settings to purchase your dedicated Australian phone number

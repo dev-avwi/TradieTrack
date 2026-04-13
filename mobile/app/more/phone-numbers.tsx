@@ -158,7 +158,7 @@ export default function PhoneNumbersPage() {
                 if (checkoutUrl) {
                   Alert.alert(
                     'Payment Required',
-                    'Dedicated phone numbers are $5/month. You\'ll be taken to checkout to complete your purchase.',
+                    'Dedicated phone numbers are $10/month. You\'ll be taken to checkout to complete your purchase.',
                     [
                       { text: 'Cancel', style: 'cancel' },
                       { text: 'Continue to Payment', onPress: () => {
@@ -168,7 +168,7 @@ export default function PhoneNumbersPage() {
                     ]
                   );
                 } else {
-                  Alert.alert('Payment Required', 'Dedicated phone numbers are $5/month. Please contact admin@avwebinnovation.com for assistance.');
+                  Alert.alert('Payment Required', 'Dedicated phone numbers are $10/month. Please contact admin@avwebinnovation.com for assistance.');
                 }
               } else {
                 await fetchBusinessSettings();
@@ -239,7 +239,7 @@ export default function PhoneNumbersPage() {
                 if (checkoutUrl) {
                   Alert.alert(
                     'Payment Required',
-                    'Dedicated phone numbers are $5/month. You\'ll be taken to checkout to complete your purchase.',
+                    'Dedicated phone numbers are $10/month. You\'ll be taken to checkout to complete your purchase.',
                     [
                       { text: 'Cancel', style: 'cancel' },
                       { text: 'Continue to Payment', onPress: () => {
@@ -251,7 +251,7 @@ export default function PhoneNumbersPage() {
                 } else {
                   Alert.alert(
                     'Payment Required',
-                    'Dedicated phone numbers are available as a $5/month add-on. Please contact admin@avwebinnovation.com for assistance.',
+                    'Dedicated phone numbers are available as a $10/month add-on. Please contact admin@avwebinnovation.com for assistance.',
                     [{ text: 'OK' }]
                   );
                 }
@@ -301,7 +301,7 @@ export default function PhoneNumbersPage() {
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: `${colors.info}10`, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md, gap: spacing.xs, borderWidth: 1, borderColor: `${colors.info}30` }}>
           <Feather name="info" size={14} color={colors.info} />
           <Text style={{ fontSize: 12, color: colors.info, flex: 1, lineHeight: 17 }}>
-            Beta access — phone number setup is currently free during the beta period. Standard pricing ($5/mo) applies after launch.
+            Beta access — phone number setup is currently free during the beta period. Standard pricing ($10/mo) applies after launch.
           </Text>
         </View>
 

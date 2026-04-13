@@ -3413,7 +3413,7 @@ function DedicatedNumberAddon() {
               </AlertDialog>
             </div>
             <p className="text-xs text-muted-foreground">
-              $5/month for your dedicated number. SMS billed at ~$0.06/message.
+              $10/month for your dedicated number. SMS billed at ~$0.06/message.
             </p>
           </div>
         ) : (

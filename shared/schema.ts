@@ -97,7 +97,7 @@ export const PRICING = {
       description: 'AI-powered phone answering with dedicated Australian number',
     },
     dedicatedNumber: {
-      monthly: 500, // $5/month
+      monthly: 1000, // $10/month
       name: 'Dedicated Phone Number',
       description: 'Dedicated Australian SMS & voice number for your business',
     },
