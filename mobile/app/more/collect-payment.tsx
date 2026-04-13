@@ -44,18 +44,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingTop: pageShell.paddingTop,
     paddingBottom: 100,
   },
-  header: {
-    marginBottom: spacing.sm,
+  heroSection: {
+    marginBottom: spacing.md,
     paddingTop: spacing.sm,
   },
   pageTitle: {
-    ...typography.largeTitle,
+    fontSize: 28,
+    fontWeight: '800',
     color: colors.foreground,
+    letterSpacing: -0.5,
   },
   pageSubtitle: {
-    ...typography.caption,
+    fontSize: 14,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 4,
+    lineHeight: 20,
   },
   headerBanner: {
     backgroundColor: colors.primaryLight,
@@ -3236,7 +3239,7 @@ export default function CollectScreen() {
             />
           }
         >
-          <View style={styles.header}>
+          <View style={styles.heroSection}>
             <Text style={styles.pageTitle}>Collect Payment</Text>
             <Text style={styles.pageSubtitle}>Get paid instantly with multiple options</Text>
           </View>

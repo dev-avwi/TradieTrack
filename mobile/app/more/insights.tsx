@@ -82,24 +82,21 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingTop: pageShell.paddingTop,
     paddingBottom: 100,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
+  heroSection: {
+    marginBottom: spacing.md,
     paddingTop: spacing.sm,
   },
-  headerLeft: {
-    flex: 1,
-  },
   pageTitle: {
-    ...typography.largeTitle,
+    fontSize: 28,
+    fontWeight: '800',
     color: colors.foreground,
+    letterSpacing: -0.5,
   },
   pageSubtitle: {
-    ...typography.caption,
+    fontSize: 14,
     color: colors.mutedForeground,
-    marginTop: spacing.xs,
+    marginTop: 4,
+    lineHeight: 20,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -869,11 +866,9 @@ export default function InsightsScreen() {
             />
           }
         >
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.pageTitle}>Insights</Text>
-              <Text style={styles.pageSubtitle}>Business analytics and insights</Text>
-            </View>
+          <View style={styles.heroSection}>
+            <Text style={styles.pageTitle}>Insights</Text>
+            <Text style={styles.pageSubtitle}>Business analytics and performance tracking</Text>
           </View>
 
           <ScrollView

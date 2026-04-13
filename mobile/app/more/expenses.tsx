@@ -20,8 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { spacing, radius, shadows, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
-import { AnimatedCardPressable } from '../../src/components/ui/AnimatedPressable';
+import { spacing, radius, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { format } from 'date-fns';
 
@@ -77,11 +76,10 @@ function ExpenseCard({
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <AnimatedCardPressable onPress={onPress} style={styles.expenseCard}>
-      <View style={[styles.expenseCardAccent, { backgroundColor: colors.destructive }]} />
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.expenseCard}>
       <View style={styles.expenseCardContent}>
         <View style={styles.expenseCardHeader}>
-          <View style={styles.expenseHeaderLeft}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.expenseDescription} numberOfLines={1}>{expense.description}</Text>
             {expense.categoryName && (
               <View style={[styles.categoryBadge, { backgroundColor: colors.primaryLight }]}>
@@ -97,22 +95,22 @@ function ExpenseCard({
           </Text>
         </View>
 
-        <View style={styles.expenseDetails}>
+        <View style={styles.expenseMetaRow}>
           {expense.vendor && (
-            <View style={styles.expenseDetailRow}>
-              <Feather name="shopping-bag" size={12} color={colors.mutedForeground} />
-              <Text style={styles.expenseDetailText} numberOfLines={1}>{expense.vendor}</Text>
+            <View style={styles.expenseMetaChip}>
+              <Feather name="shopping-bag" size={11} color={colors.mutedForeground} />
+              <Text style={styles.expenseMetaText} numberOfLines={1}>{expense.vendor}</Text>
             </View>
           )}
           {expense.jobTitle && (
-            <View style={styles.expenseDetailRow}>
-              <Feather name="briefcase" size={12} color={colors.mutedForeground} />
-              <Text style={styles.expenseDetailText} numberOfLines={1}>{expense.jobTitle}</Text>
+            <View style={styles.expenseMetaChip}>
+              <Feather name="briefcase" size={11} color={colors.mutedForeground} />
+              <Text style={styles.expenseMetaText} numberOfLines={1}>{expense.jobTitle}</Text>
             </View>
           )}
-          <View style={styles.expenseDetailRow}>
-            <Feather name="calendar" size={12} color={colors.mutedForeground} />
-            <Text style={styles.expenseDetailText} numberOfLines={1}>
+          <View style={styles.expenseMetaChip}>
+            <Feather name="calendar" size={11} color={colors.mutedForeground} />
+            <Text style={styles.expenseMetaText} numberOfLines={1}>
               {expense.expenseDate
                 ? format(new Date(expense.expenseDate), 'dd MMM yyyy')
                 : 'No date'}
@@ -130,7 +128,7 @@ function ExpenseCard({
       >
         <Feather name="trash-2" size={14} color={colors.destructive} />
       </TouchableOpacity>
-    </AnimatedCardPressable>
+    </TouchableOpacity>
   );
 }
 
@@ -421,27 +419,51 @@ export default function ExpensesScreen() {
             <RefreshControl refreshing={isLoading} onRefresh={fetchData} tintColor={colors.primary} />
           }
         >
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.pageTitle}>{filterByJobId ? 'Job Expenses' : 'Expenses'}</Text>
-              <Text style={styles.pageSubtitle}>
-                {filterByJobId 
-                  ? (jobs.find(j => j.id === filterByJobId)?.title || 'Filtered by job')
-                  : 'Track costs across all your jobs'}
-              </Text>
+          <View style={styles.heroSection}>
+            <Text style={styles.pageTitle}>{filterByJobId ? 'Job Expenses' : 'Expenses'}</Text>
+            <Text style={styles.pageSubtitle}>
+              {filterByJobId
+                ? (jobs.find(j => j.id === filterByJobId)?.title || 'Filtered by job')
+                : 'Track and manage costs across all your jobs'}
+            </Text>
+
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <View style={[styles.statIcon, { backgroundColor: `${colors.destructive}15` }]}>
+                  <Feather name="trending-down" size={16} color={colors.destructive} />
+                </View>
+                <Text style={styles.statValue}>{formatCurrency(stats.total)}</Text>
+                <Text style={styles.statLabel}>Total</Text>
+              </View>
+              <View style={styles.statCard}>
+                <View style={[styles.statIcon, { backgroundColor: `${colors.primary}15` }]}>
+                  <Feather name="hash" size={16} color={colors.primary} />
+                </View>
+                <Text style={styles.statValue}>{stats.count}</Text>
+                <Text style={styles.statLabel}>Recorded</Text>
+              </View>
+              <View style={styles.statCard}>
+                <View style={[styles.statIcon, { backgroundColor: `${colors.info}15` }]}>
+                  <Feather name="tag" size={16} color={colors.info} />
+                </View>
+                <Text style={styles.statValue}>{categories.length}</Text>
+                <Text style={styles.statLabel}>Categories</Text>
+              </View>
+              <View style={styles.statCard}>
+                <View style={[styles.statIcon, { backgroundColor: `${colors.warning}15` }]}>
+                  <Feather name="briefcase" size={16} color={colors.warning} />
+                </View>
+                <Text style={styles.statValue}>{new Set(expenses.filter((e) => e.jobId).map((e) => e.jobId)).size}</Text>
+                <Text style={styles.statLabel}>Jobs</Text>
+              </View>
             </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Feather name="arrow-left" size={iconSizes.lg} color={colors.foreground} />
-            </TouchableOpacity>
           </View>
+
           {filterByJobId && (
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setFilterByJobId(null)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs, marginBottom: spacing.sm }}
+              activeOpacity={0.7}
+              style={styles.jobFilterBanner}
             >
               <Feather name="x-circle" size={14} color={colors.primary} />
               <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>Show all expenses</Text>
@@ -449,17 +471,7 @@ export default function ExpensesScreen() {
           )}
 
           <TouchableOpacity
-            style={{
-              backgroundColor: colors.card,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              borderRadius: radius.lg,
-              padding: spacing.md,
-              marginBottom: spacing.sm,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.md,
-            }}
+            style={styles.scanBanner}
             onPress={() => {
               Alert.alert(
                 'AI Receipt Scanner',
@@ -473,87 +485,50 @@ export default function ExpensesScreen() {
             }}
             activeOpacity={0.7}
           >
-            <View style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              backgroundColor: `${colors.primary}15`,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
+            <View style={styles.scanBannerIcon}>
               <Feather name="camera" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.foreground }}>Scan Receipt with AI</Text>
-              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
-                Photo a receipt to auto-extract vendor, amount, GST & items
+              <Text style={styles.scanBannerTitle}>Scan Receipt with AI</Text>
+              <Text style={styles.scanBannerSubtitle}>
+                Auto-extract vendor, amount, GST & items
               </Text>
             </View>
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </TouchableOpacity>
 
-          <View style={styles.actionRow}>
+          <View style={styles.searchSection}>
+            <View style={styles.searchBar}>
+              <Feather name="search" size={16} color={colors.mutedForeground} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search expenses..."
+                placeholderTextColor={colors.mutedForeground}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Feather name="x" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              )}
+            </View>
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colors.primary }]}
+              style={styles.addButton}
               onPress={() => {
                 resetForm();
                 setShowExpenseModal(true);
               }}
-              activeOpacity={0.7}
             >
-              <Feather name="plus" size={16} color={colors.primaryForeground} />
-              <Text style={[styles.actionButtonText, { color: colors.primaryForeground }]}>Record Expense</Text>
+              <Feather name="plus" size={18} color={colors.primaryForeground} />
             </TouchableOpacity>
-          </View>
-
-          <View style={[styles.overviewCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-            <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>TOTAL EXPENSES</Text>
-            <Text style={[styles.overviewValue, { color: colors.foreground }]}>{formatCurrency(stats.total)}</Text>
-            <Text style={[styles.overviewSubtext, { color: colors.mutedForeground }]}>
-              {stats.count} expense{stats.count !== 1 ? 's' : ''} recorded
-            </Text>
-          </View>
-
-          <View style={styles.kpiGrid}>
-            <View style={[styles.kpiCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-              <View style={styles.kpiIconRow}>
-                <Feather name="tag" size={14} color={colors.info} />
-                <Text style={[styles.kpiLabel, { color: colors.mutedForeground }]}>Categories</Text>
-              </View>
-              <Text style={[styles.kpiValue, { color: colors.foreground }]}>{categories.length}</Text>
-            </View>
-            <View style={[styles.kpiCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-              <View style={styles.kpiIconRow}>
-                <Feather name="briefcase" size={14} color={colors.warning} />
-                <Text style={[styles.kpiLabel, { color: colors.mutedForeground }]}>Linked Jobs</Text>
-              </View>
-              <Text style={[styles.kpiValue, { color: colors.foreground }]}>
-                {new Set(expenses.filter((e) => e.jobId).map((e) => e.jobId)).size}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.searchBar}>
-            <Feather name="search" size={iconSizes.xl} color={colors.mutedForeground} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search expenses..."
-              placeholderTextColor={colors.mutedForeground}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Feather name="x" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            )}
           </View>
 
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.filtersScroll}
-            contentContainerStyle={styles.filtersContent}
+            contentContainerStyle={styles.filterScroll}
+            style={{ flexGrow: 0 }}
           >
             {categoryFilters.map((filter) => {
               const isActive = activeFilter === filter.key;
@@ -562,58 +537,58 @@ export default function ExpensesScreen() {
                   key={filter.key}
                   onPress={() => setActiveFilter(filter.key)}
                   activeOpacity={0.7}
-                  style={[styles.filterPill, isActive && styles.filterPillActive]}
+                  style={[styles.filterChip, isActive && styles.filterChipActive]}
                 >
-                  <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
-                    {filter.label}
+                  <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                    {filter.label} ({filter.count})
                   </Text>
-                  <View style={[styles.filterCount, isActive && styles.filterCountActive]}>
-                    <Text style={[styles.filterCountText, isActive && styles.filterCountTextActive]}>
-                      {filter.count}
-                    </Text>
-                  </View>
                 </TouchableOpacity>
               );
             })}
             <TouchableOpacity
               onPress={() => setShowCategoryModal(true)}
               activeOpacity={0.7}
-              style={[styles.filterPill, { borderStyle: 'dashed' as any }]}
+              style={[styles.filterChip, { borderStyle: 'dashed' as any }]}
             >
               <Feather name="plus" size={12} color={colors.mutedForeground} />
-              <Text style={styles.filterPillText}>Add Category</Text>
+              <Text style={styles.filterChipText}>Add</Text>
             </TouchableOpacity>
           </ScrollView>
 
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Feather name="trending-down" size={iconSizes.md} color={colors.destructive} />
-              <Text style={styles.sectionTitle}>
-                {filteredExpenses.length} EXPENSE{filteredExpenses.length !== 1 ? 'S' : ''}
-              </Text>
-            </View>
-
+          <View style={styles.listSection}>
             {isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
             ) : sortedExpenses.length === 0 ? (
               <View style={styles.emptyState}>
-                <View style={styles.emptyStateIcon}>
-                  <Feather name="dollar-sign" size={iconSizes['4xl']} color={colors.mutedForeground} />
+                <View style={styles.emptyIconWrap}>
+                  <Feather name="receipt" size={28} color={colors.primary} />
                 </View>
-                <Text style={styles.emptyStateTitle}>No expenses found</Text>
-                <Text style={styles.emptyStateSubtitle}>
+                <Text style={styles.emptyTitle}>No Expenses Found</Text>
+                <Text style={styles.emptySubtitle}>
                   {searchQuery || activeFilter !== 'all'
                     ? 'Try adjusting your search or filters'
                     : 'Record your first expense or scan a receipt to get started'}
                 </Text>
+                {!searchQuery && activeFilter === 'all' && (
+                  <TouchableOpacity
+                    style={styles.emptyButton}
+                    onPress={() => {
+                      resetForm();
+                      setShowExpenseModal(true);
+                    }}
+                  >
+                    <Feather name="plus" size={14} color="#FFFFFF" />
+                    <Text style={styles.emptyButtonText}>Record Expense</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : (
               <View style={styles.expensesList}>
                 {groupedExpenses.map(([dateLabel, dateExpenses]) => (
                   <View key={dateLabel}>
-                    <Text style={[styles.dateGroupLabel, { color: colors.mutedForeground }]}>{dateLabel}</Text>
+                    <Text style={styles.dateGroupLabel}>{dateLabel}</Text>
                     {dateExpenses.map((expense) => (
                       <ExpenseCard
                         key={expense.id}
@@ -995,178 +970,157 @@ const createStyles = (colors: ThemeColors) =>
       flex: 1,
     },
     contentContainer: {
-      paddingHorizontal: pageShell.paddingHorizontal,
-      paddingTop: pageShell.paddingTop,
-      paddingBottom: pageShell.paddingBottom,
+      paddingBottom: 100,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      marginBottom: spacing.lg,
-      paddingTop: spacing.sm,
-    },
-    headerLeft: {
-      flex: 1,
+    heroSection: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
     },
     pageTitle: {
-      ...typography.pageTitle,
+      fontSize: 28,
+      fontWeight: '800',
       color: colors.foreground,
+      letterSpacing: -0.5,
     },
     pageSubtitle: {
-      ...typography.caption,
+      fontSize: 14,
       color: colors.mutedForeground,
-      marginTop: spacing.xs,
+      marginTop: 4,
+      lineHeight: 20,
     },
-    backButton: {
-      padding: spacing.sm,
-      borderRadius: radius.lg,
+    statsRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.md,
+    },
+    statCard: {
+      flex: 1,
       backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      padding: spacing.sm,
+      alignItems: 'center',
       borderWidth: 1,
       borderColor: colors.cardBorder,
     },
-    actionRow: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      marginBottom: spacing.lg,
-    },
-    actionButton: {
-      flex: 1,
-      flexDirection: 'row',
+    statIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing.sm,
-      paddingVertical: spacing.md,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: 'transparent',
+      marginBottom: 4,
     },
-    actionButtonText: {
-      ...typography.button,
-    },
-    overviewCard: {
-      borderRadius: radius.xl,
-      padding: spacing.lg,
-      marginBottom: spacing.lg,
-      borderWidth: 1,
-    },
-    overviewLabel: {
-      ...typography.label,
-      marginBottom: spacing.xs,
-    },
-    overviewValue: {
-      fontSize: 28,
+    statValue: {
+      fontSize: 16,
       fontWeight: '700',
-      marginBottom: spacing.xs,
+      color: colors.foreground,
     },
-    overviewSubtext: {
-      ...typography.caption,
+    statLabel: {
+      fontSize: 11,
+      color: colors.mutedForeground,
+      marginTop: 1,
     },
-    kpiGrid: {
-      flexDirection: 'row',
-      gap: spacing.md,
-      marginBottom: spacing.lg,
-    },
-    kpiCard: {
-      flex: 1,
-      borderRadius: radius.lg,
-      padding: spacing.md,
-      borderWidth: 1,
-    },
-    kpiIconRow: {
+    jobFilterBanner: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.xs,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.lg,
       marginBottom: spacing.sm,
     },
-    kpiLabel: {
-      fontSize: 12,
-      fontWeight: '500',
+    scanBanner: {
+      marginHorizontal: spacing.lg,
+      backgroundColor: colors.primaryLight,
+      borderWidth: 1,
+      borderColor: colors.promoBorder,
+      borderRadius: radius.xl,
+      padding: spacing.md,
+      marginBottom: spacing.sm,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
     },
-    kpiValue: {
-      fontSize: 20,
+    scanBannerIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: `${colors.primary}15`,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scanBannerTitle: {
+      fontSize: 15,
       fontWeight: '700',
+      color: colors.foreground,
+    },
+    scanBannerSubtitle: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      marginTop: 2,
+    },
+    searchSection: {
+      flexDirection: 'row',
+      paddingHorizontal: spacing.lg,
+      gap: spacing.sm,
+      marginBottom: spacing.sm,
     },
     searchBar: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: colors.card,
-      borderRadius: radius.xl,
-      paddingHorizontal: spacing.lg,
-      height: sizes.searchBarHeight,
-      marginBottom: spacing.lg,
-      gap: spacing.md,
+      borderRadius: radius.lg,
+      paddingHorizontal: spacing.sm,
+      gap: spacing.xs,
+      height: 44,
       borderWidth: 1,
       borderColor: colors.cardBorder,
     },
     searchInput: {
       flex: 1,
-      ...typography.body,
+      fontSize: 15,
       color: colors.foreground,
     },
-    filtersScroll: {
-      marginBottom: spacing.lg,
-      marginHorizontal: -pageShell.paddingHorizontal,
+    addButton: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.lg,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    filtersContent: {
-      paddingHorizontal: pageShell.paddingHorizontal,
-      gap: spacing.sm,
+    filterScroll: {
+      paddingHorizontal: spacing.lg,
+      gap: spacing.xs,
+      paddingBottom: spacing.sm,
     },
-    filterPill: {
+    filterChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
       borderRadius: radius.full,
       backgroundColor: colors.card,
       borderWidth: 1,
       borderColor: colors.cardBorder,
-      gap: spacing.xs,
+      gap: 4,
     },
-    filterPillActive: {
-      backgroundColor: colors.primary,
+    filterChipActive: {
+      backgroundColor: colors.primaryLight,
       borderColor: colors.primary,
     },
-    filterPillText: {
-      ...typography.captionSmall,
+    filterChipText: {
+      fontSize: 13,
+      color: colors.mutedForeground,
       fontWeight: '500',
-      color: colors.foreground,
     },
-    filterPillTextActive: {
-      color: colors.primaryForeground,
-    },
-    filterCount: {
-      backgroundColor: colors.muted,
-      paddingHorizontal: spacing.xs,
-      paddingVertical: 2,
-      borderRadius: radius.sm,
-      minWidth: sizes.filterCountMin,
-      alignItems: 'center',
-    },
-    filterCountActive: {
-      backgroundColor: 'rgba(255,255,255,0.25)',
-    },
-    filterCountText: {
-      fontSize: 11,
+    filterChipTextActive: {
+      color: colors.primary,
       fontWeight: '600',
-      color: colors.foreground,
     },
-    filterCountTextActive: {
-      color: colors.primaryForeground,
-    },
-    section: {
-      marginBottom: spacing.xl,
-    },
-    sectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: spacing.lg,
-      gap: spacing.sm,
-    },
-    sectionTitle: {
-      ...typography.label,
-      color: colors.foreground,
-      letterSpacing: 0.5,
+    listSection: {
+      paddingHorizontal: spacing.lg,
     },
     loadingContainer: {
       paddingVertical: spacing['3xl'],
@@ -1174,48 +1128,64 @@ const createStyles = (colors: ThemeColors) =>
     },
     emptyState: {
       alignItems: 'center',
-      paddingVertical: spacing['4xl'],
+      justifyContent: 'center',
+      paddingVertical: spacing.xl * 2,
       paddingHorizontal: spacing.lg,
+      gap: spacing.sm,
+    },
+    emptyIconWrap: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: `${colors.primary}12`,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.xs,
+    },
+    emptyTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.foreground,
+    },
+    emptySubtitle: {
+      fontSize: 14,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    emptyButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      backgroundColor: colors.primary,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 10,
+      borderRadius: radius.lg,
+      marginTop: spacing.sm,
+    },
+    emptyButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
+    expensesList: {
+      gap: spacing.xs,
+    },
+    dateGroupLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.mutedForeground,
+      marginBottom: spacing.sm,
+      marginTop: spacing.md,
+      letterSpacing: 0.3,
+    },
+    expenseCard: {
+      flexDirection: 'row',
       backgroundColor: colors.card,
       borderRadius: radius.xl,
       borderWidth: 1,
       borderColor: colors.cardBorder,
-    },
-    emptyStateIcon: {
-      marginBottom: spacing.lg,
-    },
-    emptyStateTitle: {
-      ...typography.subtitle,
-      color: colors.foreground,
-      marginBottom: spacing.xs,
-    },
-    emptyStateSubtitle: {
-      ...typography.caption,
-      color: colors.mutedForeground,
-      textAlign: 'center',
-      paddingHorizontal: spacing.md,
-    },
-    expensesList: {
-      gap: spacing.md,
-    },
-    dateGroupLabel: {
-      ...typography.label,
       marginBottom: spacing.sm,
-      marginTop: spacing.sm,
-    },
-    expenseCard: {
-      width: '100%',
-      flexDirection: 'row',
-      backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      marginBottom: spacing.sm,
-      ...shadows.sm,
-    },
-    expenseCardAccent: {
-      width: 4,
     },
     expenseCardContent: {
       flex: 1,
@@ -1223,22 +1193,14 @@ const createStyles = (colors: ThemeColors) =>
     },
     expenseCardHeader: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
-      marginBottom: spacing.sm,
       gap: spacing.sm,
-    },
-    expenseHeaderLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      flex: 1,
     },
     expenseDescription: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
       color: colors.foreground,
-      flex: 1,
     },
     expenseTotal: {
       fontSize: 16,
@@ -1247,28 +1209,35 @@ const createStyles = (colors: ThemeColors) =>
     categoryBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 2,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
       borderRadius: radius.full,
-      gap: 4,
+      gap: 3,
+      marginTop: 4,
+      alignSelf: 'flex-start',
     },
     categoryBadgeText: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '600',
     },
-    expenseDetails: {
-      gap: spacing.xs,
+    expenseMetaRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
       marginTop: spacing.sm,
     },
-    expenseDetailRow: {
+    expenseMetaChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.sm,
+      gap: 3,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: radius.full,
     },
-    expenseDetailText: {
-      fontSize: 13,
+    expenseMetaText: {
+      fontSize: 11,
       color: colors.mutedForeground,
-      flex: 1,
     },
     deleteButton: {
       justifyContent: 'center',
