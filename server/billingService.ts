@@ -394,9 +394,9 @@ export async function createTrialSubscription(
       ? new Date(subscription.trial_end * 1000) 
       : undefined;
 
-    // Update user and business settings
     await storage.updateUser(userId, {
       subscriptionTier: tier,
+      subscriptionSource: 'stripe',
       trialStatus: 'active',
       trialStartedAt: new Date(),
       trialEndsAt: trialEnd,
@@ -763,9 +763,9 @@ export async function handleSubscriptionWebhook(
         ? new Date(sub.trial_end * 1000) 
         : undefined;
 
-      // Update user with subscription and trial info
       await storage.updateUser(userId, {
         subscriptionTier: isActive ? tier : 'free',
+        subscriptionSource: isActive ? 'stripe' : undefined,
         trialStatus: isTrialing ? 'active' : (isActive ? 'converted' : undefined),
         trialStartedAt: isTrialing && event.type === 'customer.subscription.created' ? new Date() : undefined,
         trialEndsAt: trialEnd,

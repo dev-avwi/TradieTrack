@@ -38,6 +38,7 @@ interface SubscriptionStatus {
   cancelAtPeriodEnd?: boolean;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  subscriptionSource?: 'apple' | 'stripe' | 'manual' | null;
   seats?: number;
   teamMemberCount?: number;
   totalBillableUsers?: number;
@@ -289,7 +290,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   addOnName: {
     ...typography.subtitle,
     color: colors.foreground,
-    flex: 1,
+  },
+  addOnPrice: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+    marginTop: 2,
   },
   addOnDescription: {
     ...typography.caption,
@@ -434,6 +440,7 @@ export default function SubscriptionPage() {
   const [managingSubscription, setManagingSubscription] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [applePrices, setApplePrices] = useState<Record<string, string>>({});
 
   const fetchSubscriptionStatus = useCallback(async () => {
     try {
@@ -467,7 +474,7 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     if (isIAPAvailable()) {
-      initIAP().then(() => {
+      initIAP().then(async () => {
         setupPurchaseListeners(
           async (purchase) => {
             const tier = productIdToTier(purchase.productId);
@@ -492,6 +499,21 @@ export default function SubscriptionPage() {
             setPurchasing(false);
           }
         );
+        try {
+          const subs = await fetchSubscriptions();
+          const prices: Record<string, string> = {};
+          subs.forEach((sub) => {
+            const tier = productIdToTier(sub.productId);
+            if (tier && sub.localizedPrice) {
+              prices[tier] = sub.localizedPrice;
+            }
+          });
+          if (Object.keys(prices).length > 0) {
+            setApplePrices(prices);
+          }
+        } catch (err) {
+          console.log('[IAP] Could not fetch store prices, using defaults');
+        }
       });
     }
     return () => { cleanupIAP(); };
@@ -499,7 +521,7 @@ export default function SubscriptionPage() {
 
   const handleUpgrade = async (tier: 'pro' | 'team' | 'business') => {
     const tierNames = { pro: 'Pro', team: 'Team', business: 'Business' };
-    const tierPrices = { pro: '$49.99', team: '$99.99', business: '$199.99' };
+    const defaultPrices = { pro: '$49', team: '$99', business: '$199' };
     const productIds = {
       pro: IAP_PRODUCT_IDS.pro,
       team: IAP_PRODUCT_IDS.team,
@@ -517,9 +539,10 @@ export default function SubscriptionPage() {
         setPurchasing(false);
       }
     } else if (Platform.OS === 'android') {
+      const price = applePrices[tier] || defaultPrices[tier];
       Alert.alert(
         `Upgrade to ${tierNames[tier]}`,
-        `${tierPrices[tier]}/month. Visit jobrunner.com.au to subscribe.`,
+        `${price}/month. Visit jobrunner.com.au to subscribe.`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Open Website', onPress: () => Linking.openURL('https://jobrunner.com.au/pricing') },
@@ -555,17 +578,26 @@ export default function SubscriptionPage() {
   };
 
   const handleManageBilling = async () => {
-    setManagingSubscription(true);
-    try {
-      const response = await api.post<{ url: string }>('/api/subscription/manage');
-      if (response.data?.url) {
-        await Linking.openURL(response.data.url);
-      }
-    } catch {
-      Alert.alert('Unable to open billing', 'Please manage your subscription at jobrunner.com.au');
-    } finally {
-      setManagingSubscription(false);
+    const source = subscriptionStatus?.subscriptionSource;
+    if (source === 'apple') {
+      await Linking.openURL('https://apps.apple.com/account/subscriptions');
+      return;
     }
+    if (source === 'stripe' || subscriptionStatus?.stripeSubscriptionId) {
+      setManagingSubscription(true);
+      try {
+        const response = await api.post<{ url: string }>('/api/subscription/manage');
+        if (response.data?.url) {
+          await Linking.openURL(response.data.url);
+        }
+      } catch {
+        Alert.alert('Unable to open billing', 'Please manage your subscription at jobrunner.com.au');
+      } finally {
+        setManagingSubscription(false);
+      }
+      return;
+    }
+    Alert.alert('Manage Subscription', 'Contact admin@avwebinnovation.com for billing assistance.');
   };
 
   const formatDate = (dateString?: string | null) => {
@@ -737,7 +769,9 @@ export default function SubscriptionPage() {
             ) : (
               <>
                 <Feather name="settings" size={18} color="#FFFFFF" />
-                <Text style={styles.manageButtonText}>Manage Billing</Text>
+                <Text style={styles.manageButtonText}>
+                  {subscriptionStatus?.subscriptionSource === 'apple' ? 'Manage in App Store' : 'Manage Billing'}
+                </Text>
               </>
             )}
           </TouchableOpacity>
@@ -745,7 +779,9 @@ export default function SubscriptionPage() {
 
         {hasActiveSubscription && (
           <Text style={styles.manageDescription}>
-            View invoices and update payment details for your business subscription.
+            {subscriptionStatus?.subscriptionSource === 'apple'
+              ? 'Manage, upgrade, or cancel your subscription through the App Store.'
+              : 'View invoices and update payment details for your business subscription.'}
           </Text>
         )}
 
@@ -768,7 +804,7 @@ export default function SubscriptionPage() {
                     <Text style={styles.comparePlanName}>Pro</Text>
                     <Text style={styles.comparePlanDesc}>For solo tradies ready to grow</Text>
                   </View>
-                  <Text style={styles.comparePlanPrice}>$49<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
+                  <Text style={styles.comparePlanPrice}>{applePrices.pro || '$49'}<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
                 </View>
                 <View style={styles.comparePlanFeatures}>
                   {['Unlimited jobs & invoices', 'AI-powered features', 'Custom templates', 'Email integration', 'Priority support'].map((f, i) => (
@@ -799,7 +835,7 @@ export default function SubscriptionPage() {
                     <Text style={styles.comparePlanName}>Team</Text>
                     <Text style={styles.comparePlanDesc}>For businesses with workers</Text>
                   </View>
-                  <Text style={styles.comparePlanPrice}>$99<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
+                  <Text style={styles.comparePlanPrice}>{applePrices.team || '$99'}<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
                 </View>
                 <View style={styles.comparePlanFeatures}>
                   {['Everything in Pro', 'Up to 5 workers', 'GPS & live tracking', 'Time tracking & timesheets', 'Team chat'].map((f, i) => (
@@ -830,7 +866,7 @@ export default function SubscriptionPage() {
                     <Text style={styles.comparePlanName}>Business</Text>
                     <Text style={styles.comparePlanDesc}>For larger crews</Text>
                   </View>
-                  <Text style={styles.comparePlanPrice}>$199<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
+                  <Text style={styles.comparePlanPrice}>{applePrices.business || '$199'}<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
                 </View>
                 <View style={styles.comparePlanFeatures}>
                   {['Everything in Team', 'Up to 15 workers', 'Role-based permissions', 'Advanced reporting', 'Priority support'].map((f, i) => (
@@ -856,29 +892,45 @@ export default function SubscriptionPage() {
         <View style={styles.addOnSection}>
           <Text style={[styles.infoSectionTitle, { marginBottom: spacing.md }]}>Available Add-Ons</Text>
           
-          <View style={styles.addOnCard}>
+          <TouchableOpacity 
+            style={styles.addOnCard} 
+            onPress={() => router.push('/more/ai-receptionist')}
+            activeOpacity={0.8}
+          >
             <View style={styles.addOnHeader}>
               <View style={styles.addOnIconCircle}>
                 <Feather name="phone" size={16} color={colors.primary} />
               </View>
-              <Text style={styles.addOnName}>AI Receptionist</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.addOnName}>AI Receptionist</Text>
+                <Text style={styles.addOnPrice}>$60/mo</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
             </View>
             <Text style={styles.addOnDescription}>
-              AI-powered phone answering with a dedicated Australian number. Captures leads and transfers calls to your team.
+              AI-powered phone answering with a dedicated Australian number. Captures leads and transfers calls.
             </Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.addOnCard}>
+          <TouchableOpacity 
+            style={styles.addOnCard} 
+            onPress={() => router.push('/more/phone-numbers')}
+            activeOpacity={0.8}
+          >
             <View style={styles.addOnHeader}>
               <View style={styles.addOnIconCircle}>
                 <Feather name="smartphone" size={16} color={colors.primary} />
               </View>
-              <Text style={styles.addOnName}>Dedicated Number</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.addOnName}>Dedicated Number</Text>
+                <Text style={styles.addOnPrice}>$10/mo</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
             </View>
             <Text style={styles.addOnDescription}>
               Your own Australian mobile number for sending SMS. Clients see your number, not JobRunner's.
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {Platform.OS === 'ios' && (

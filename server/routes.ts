@@ -5036,6 +5036,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         trialEndsAt: user?.trialEndsAt || null,
         nextBillingDate: status.currentPeriodEnd || null,
         cancelAtPeriodEnd: status.cancelAtPeriodEnd || false,
+        subscriptionSource: user?.subscriptionSource || null,
+        stripeSubscriptionId: status.stripeSubscriptionId || null,
         paymentMethod: paymentMethod.success ? {
           last4: paymentMethod.last4,
           brand: paymentMethod.brand,
@@ -5545,8 +5547,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.userId!;
       const { receiptData, productId } = req.body;
 
-      if (!productId) {
-        return res.status(400).json({ success: false, message: 'Product ID is required' });
+      if (!receiptData || !productId) {
+        return res.status(400).json({ success: false, message: 'Receipt data and product ID are required' });
       }
 
       const tierMap: Record<string, string> = {
@@ -5560,14 +5562,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: 'Invalid product ID' });
       }
 
+      const verifyUrl = process.env.NODE_ENV === 'production'
+        ? 'https://buy.itunes.apple.com/verifyReceipt'
+        : 'https://sandbox.itunes.apple.com/verifyReceipt';
+
+      const appleResponse = await fetch(verifyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          'receipt-data': receiptData,
+          password: process.env.APP_STORE_SHARED_SECRET || '',
+        }),
+      });
+
+      const appleResult = await appleResponse.json();
+
+      if (appleResult.status === 21007) {
+        const sandboxResponse = await fetch('https://sandbox.itunes.apple.com/verifyReceipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            'receipt-data': receiptData,
+            password: process.env.APP_STORE_SHARED_SECRET || '',
+          }),
+        });
+        const sandboxResult = await sandboxResponse.json();
+        if (sandboxResult.status !== 0) {
+          return res.status(400).json({ success: false, message: 'Receipt verification failed during restore' });
+        }
+      } else if (appleResult.status !== 0) {
+        return res.status(400).json({ success: false, message: `Receipt verification failed: status ${appleResult.status}` });
+      }
+
       await storage.updateUser(userId, {
         subscriptionTier: newTier,
         subscriptionStatus: 'active',
         subscriptionSource: 'apple',
         appleProductId: productId,
+        appleReceiptData: receiptData,
       } as any);
 
-      console.log(`[IAP] User ${userId} restored to ${newTier} via Apple IAP`);
+      console.log(`[IAP] User ${userId} restored to ${newTier} via Apple IAP (verified)`);
 
       res.json({
         success: true,
