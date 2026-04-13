@@ -1,5 +1,5 @@
 import { storage } from './storage';
-import { sendInvoiceEmail } from './emailService';
+import { sendSystemEmail, sendInvoiceEmail } from './emailService';
 import { notifyInvoiceOverdue } from './pushNotifications';
 import { notifyInvoiceOverdue as notifyInvoiceOverdueDB } from './notifications';
 import { sendSMS } from './twilioClient';
@@ -209,10 +209,62 @@ export async function processOverdueReminders(): Promise<ReminderResult[]> {
   return results;
 }
 
-export async function sendManualReminder(
+function generateReminderContent(
+  invoice: any,
+  client: any,
+  businessSettings: any,
+  tone: 'friendly' | 'professional' | 'firm'
+) {
+  const daysPastDue = invoice.dueDate
+    ? Math.floor((Date.now() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+  const templateDay = daysPastDue >= 30 ? 30 : daysPastDue >= 14 ? 14 : 7;
+  const template = REMINDER_TEMPLATES[tone][templateDay];
+  const amount = Number(invoice.total).toFixed(2);
+  const paymentLink = (invoice as any).paymentToken
+    ? `${getProductionBaseUrl()}/portal/invoice/${(invoice as any).paymentToken}`
+    : '';
+  return template(
+    client.name.split(' ')[0],
+    invoice.number,
+    amount,
+    businessSettings.businessName || 'Your Service Provider',
+    paymentLink
+  );
+}
+
+export async function previewReminder(
   invoiceId: string,
   userId: string,
   tone: 'friendly' | 'professional' | 'firm' = 'friendly'
+): Promise<{ subject: string; emailBody: string; smsBody: string; clientName: string; clientEmail: string | null; clientPhone: string | null; hasValidMobile: boolean } | { error: string }> {
+  try {
+    const invoice = await storage.getInvoice(invoiceId, userId);
+    if (!invoice) return { error: 'Invoice not found' };
+    const client = await storage.getClient(invoice.clientId, userId);
+    if (!client) return { error: 'Client not found' };
+    const businessSettings = await storage.getBusinessSettings(userId);
+    if (!businessSettings) return { error: 'Business settings not found' };
+
+    const content = generateReminderContent(invoice, client, businessSettings, tone);
+    return {
+      ...content,
+      clientName: client.name,
+      clientEmail: client.email || null,
+      clientPhone: client.phone || null,
+      hasValidMobile: !!(client.phone && isValidAustralianMobile(client.phone)),
+    };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function sendManualReminder(
+  invoiceId: string,
+  userId: string,
+  tone: 'friendly' | 'professional' | 'firm' = 'friendly',
+  customSubject?: string,
+  customMessage?: string
 ): Promise<ReminderResult> {
   try {
     const invoice = await storage.getInvoice(invoiceId, userId);
@@ -230,24 +282,13 @@ export async function sendManualReminder(
       return { invoiceId, success: false, emailSent: false, smsSent: false, error: 'Business settings not found' };
     }
     
-    const daysPastDue = invoice.dueDate 
+    const daysPastDue = invoice.dueDate
       ? Math.floor((Date.now() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))
       : 0;
-    
-    const templateDay = daysPastDue >= 30 ? 30 : daysPastDue >= 14 ? 14 : 7;
-    const template = REMINDER_TEMPLATES[tone][templateDay];
-    
-    const amount = Number(invoice.total).toFixed(2);
-    const paymentLink = (invoice as any).paymentToken 
-      ? `${getProductionBaseUrl()}/portal/invoice/${(invoice as any).paymentToken}`
-      : '';
-    const content = template(
-      client.name.split(' ')[0],
-      invoice.number,
-      amount,
-      businessSettings.businessName || 'Your Service Provider',
-      paymentLink
-    );
+
+    const content = generateReminderContent(invoice, client, businessSettings, tone);
+    if (customSubject) content.subject = customSubject;
+    if (customMessage) content.emailBody = customMessage;
     
     let emailSent = false;
     let smsSent = false;
@@ -255,12 +296,14 @@ export async function sendManualReminder(
     
     if (client.email) {
       try {
-        await sendInvoiceEmail(
-          { ...invoice, lineItems: [] },
-          client,
-          businessSettings,
-          null
-        );
+        const htmlBody = content.emailBody.replace(/\n/g, '<br>');
+        await sendSystemEmail({
+          to: client.email,
+          subject: content.subject,
+          html: htmlBody,
+          from: { name: businessSettings.businessName || 'Your Service Provider' },
+          replyTo: businessSettings.email || undefined,
+        });
         emailSent = true;
       } catch (e: any) {
         error = e.message;

@@ -41,6 +41,11 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Eye, Edit3 } from "lucide-react";
 import type { Invoice, Quote, Client } from "@shared/schema";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { useLocation } from "wouter";
@@ -517,6 +522,18 @@ function StripeConnectCard({
   );
 }
 
+interface ReminderPreview {
+  invoiceId: string;
+  tone: 'friendly' | 'professional' | 'firm';
+  subject: string;
+  emailBody: string;
+  smsBody: string;
+  clientName: string;
+  clientEmail: string | null;
+  clientPhone: string | null;
+  hasValidMobile: boolean;
+}
+
 function SmartChaserTab({ onViewInvoice }: { onViewInvoice: (id: string) => void }) {
   const { toast } = useToast();
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
@@ -524,6 +541,9 @@ function SmartChaserTab({ onViewInvoice }: { onViewInvoice: (id: string) => void
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [chaserFilter, setChaserFilter] = useState<string>('all');
+  const [previewLoading, setPreviewLoading] = useState<string | null>(null);
+  const [preview, setPreview] = useState<ReminderPreview | null>(null);
+  const [previewEditing, setPreviewEditing] = useState(false);
 
   const { data: chaserData, isLoading: chaserLoading } = useQuery<ChaserResponse>({
     queryKey: ['/api/payment-chaser/summary'],
@@ -537,13 +557,45 @@ function SmartChaserTab({ onViewInvoice }: { onViewInvoice: (id: string) => void
     return items.filter(item => item.urgency === chaserFilter);
   }, [items, chaserFilter]);
 
-  const sendReminder = async (invoiceId: string, tone: string) => {
-    setSendingReminder(invoiceId);
+  const loadPreview = async (invoiceId: string, tone: 'friendly' | 'professional' | 'firm') => {
+    setPreviewLoading(`${invoiceId}-${tone}`);
     try {
-      await apiRequest('POST', `/api/invoices/${invoiceId}/reminder`, { tone });
-      toast({ title: "Reminder Sent", description: `${tone.charAt(0).toUpperCase() + tone.slice(1)} reminder sent successfully` });
-      queryClient.invalidateQueries({ queryKey: ['/api/payment-chaser/summary'] });
+      const response = await apiRequest('POST', `/api/invoices/${invoiceId}/reminder/preview`, { tone });
+      const data = await response.json();
+      if (data.error) {
+        toast({ title: "Preview Error", description: data.error, variant: "destructive" });
+        return;
+      }
+      setPreview({ invoiceId, tone, ...data });
+      setPreviewEditing(false);
       setToneSelector(null);
+    } catch (error: any) {
+      toast({ title: "Preview Error", description: error.message || "Could not load preview", variant: "destructive" });
+    } finally {
+      setPreviewLoading(null);
+    }
+  };
+
+  const sendReminder = async () => {
+    if (!preview) return;
+    setSendingReminder(preview.invoiceId);
+    try {
+      const response = await apiRequest('POST', `/api/invoices/${preview.invoiceId}/reminder`, {
+        tone: preview.tone,
+        customSubject: preview.subject,
+        customMessage: preview.emailBody,
+      });
+      const result = await response.json();
+      if (result.success) {
+        const channels: string[] = [];
+        if (result.emailSent) channels.push('email');
+        if (result.smsSent) channels.push('SMS');
+        toast({ title: "Reminder Sent", description: `${preview.tone.charAt(0).toUpperCase() + preview.tone.slice(1)} reminder sent to ${preview.clientName} via ${channels.join(' & ')}` });
+        queryClient.invalidateQueries({ queryKey: ['/api/payment-chaser/summary'] });
+        setPreview(null);
+      } else {
+        toast({ title: "Failed to Send", description: result.error || "Could not send reminder. Check client has an email or mobile on file.", variant: "destructive" });
+      }
     } catch (error: any) {
       toast({ title: "Failed to Send", description: error.message || "Could not send reminder", variant: "destructive" });
     } finally {
@@ -741,19 +793,22 @@ function SmartChaserTab({ onViewInvoice }: { onViewInvoice: (id: string) => void
                         {isExpanded ? (
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs text-muted-foreground mr-1">Tone:</span>
-                            {(['friendly', 'professional', 'firm'] as const).map(tone => (
-                              <Button
-                                key={tone}
-                                size="sm"
-                                variant={tone === item.recommendedTone ? 'default' : 'outline'}
-                                onClick={() => sendReminder(item.invoiceId, tone)}
-                                disabled={isSending}
-                                data-testid={`btn-send-${tone}-${item.invoiceId}`}
-                              >
-                                {isSending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
-                                {tone.charAt(0).toUpperCase() + tone.slice(1)}
-                              </Button>
-                            ))}
+                            {(['friendly', 'professional', 'firm'] as const).map(tone => {
+                              const isLoadingThis = previewLoading === `${item.invoiceId}-${tone}`;
+                              return (
+                                <Button
+                                  key={tone}
+                                  size="sm"
+                                  variant={tone === item.recommendedTone ? 'default' : 'outline'}
+                                  onClick={() => loadPreview(item.invoiceId, tone)}
+                                  disabled={!!previewLoading}
+                                  data-testid={`btn-send-${tone}-${item.invoiceId}`}
+                                >
+                                  {isLoadingThis ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Eye className="h-3 w-3 mr-1" />}
+                                  {tone.charAt(0).toUpperCase() + tone.slice(1)}
+                                </Button>
+                              );
+                            })}
                             <Button size="sm" variant="ghost" onClick={() => setToneSelector(null)}>
                               Cancel
                             </Button>
@@ -809,6 +864,129 @@ function SmartChaserTab({ onViewInvoice }: { onViewInvoice: (id: string) => void
           </ScrollArea>
         </CardContent>
       </Card>
+
+      <Dialog open={!!preview} onOpenChange={(open) => { if (!open) { setPreview(null); setPreviewEditing(false); } }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-4 w-4" />
+              Preview Reminder
+            </DialogTitle>
+            <DialogDescription>
+              Review the message before sending to {preview?.clientName}
+            </DialogDescription>
+          </DialogHeader>
+
+          {preview && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground">Tone:</span>
+                {(['friendly', 'professional', 'firm'] as const).map(tone => (
+                  <Button
+                    key={tone}
+                    size="sm"
+                    variant={preview.tone === tone ? 'default' : 'outline'}
+                    className="h-7 text-xs px-2.5"
+                    disabled={!!previewLoading}
+                    onClick={() => {
+                      if (tone !== preview.tone) loadPreview(preview.invoiceId, tone);
+                    }}
+                  >
+                    {previewLoading === `${preview.invoiceId}-${tone}` ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+                    {tone.charAt(0).toUpperCase() + tone.slice(1)}
+                  </Button>
+                ))}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs px-2 ml-auto"
+                  onClick={() => setPreviewEditing(!previewEditing)}
+                >
+                  <Edit3 className="h-3 w-3 mr-1" />
+                  {previewEditing ? 'Done editing' : 'Edit'}
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                {preview.clientEmail && (
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-3 w-3" />
+                    {preview.clientEmail}
+                  </span>
+                )}
+                {preview.hasValidMobile && preview.clientPhone && (
+                  <span className="flex items-center gap-1">
+                    <MessageSquare className="h-3 w-3" />
+                    SMS to {preview.clientPhone}
+                  </span>
+                )}
+                {!preview.clientEmail && !preview.hasValidMobile && (
+                  <span className="text-destructive">No email or mobile on file</span>
+                )}
+              </div>
+
+              {preview.clientEmail && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <Mail className="h-3 w-3" /> Email
+                  </Label>
+                  {previewEditing ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={preview.subject}
+                        onChange={(e) => setPreview({ ...preview, subject: e.target.value })}
+                        className="text-sm"
+                        placeholder="Subject"
+                      />
+                      <Textarea
+                        value={preview.emailBody}
+                        onChange={(e) => setPreview({ ...preview, emailBody: e.target.value })}
+                        className="text-sm min-h-[140px] resize-none"
+                      />
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border p-3 bg-muted/30 space-y-1.5">
+                      <p className="text-sm font-medium">{preview.subject}</p>
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground">{preview.emailBody}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {preview.hasValidMobile && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <MessageSquare className="h-3 w-3" /> SMS
+                  </Label>
+                  <div className="rounded-lg border p-3 bg-muted/30">
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground">{preview.smsBody}</p>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[11px] text-muted-foreground">
+                Invoice details, payment link, and your business info are included automatically.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => { setPreview(null); setPreviewEditing(false); }}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!!sendingReminder || (!preview?.clientEmail && !preview?.hasValidMobile)}
+              onClick={sendReminder}
+            >
+              {sendingReminder ? (
+                <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Sending...</>
+              ) : (
+                <><Send className="h-3.5 w-3.5 mr-1" />Send Reminder</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

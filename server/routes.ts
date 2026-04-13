@@ -38969,15 +38969,30 @@ Respond with JSON in this format:
     }
   });
   
-  // Send manual reminder for invoice
-  app.post("/api/invoices/:id/reminder", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+  app.post("/api/invoices/:id/reminder/preview", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const invoiceId = req.params.id;
       const { tone } = req.body;
+      const { previewReminder } = await import('./reminderService');
+      const result = await previewReminder(invoiceId, userId, tone || 'friendly');
+      if ('error' in result) {
+        return res.status(400).json(result);
+      }
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/invoices/:id/reminder", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const invoiceId = req.params.id;
+      const { tone, customSubject, customMessage } = req.body;
       
       const { sendManualReminder } = await import('./reminderService');
-      const result = await sendManualReminder(invoiceId, userId, tone || 'friendly');
+      const result = await sendManualReminder(invoiceId, userId, tone || 'friendly', customSubject, customMessage);
       
       res.json(result);
     } catch (error: any) {
