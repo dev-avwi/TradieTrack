@@ -184,7 +184,7 @@ import {
 import { getSafetyFormTemplates, getSafetyFormTemplate } from "./safetyTemplates";
 import { generateAISuggestions, chatWithAI, analyzeReceipt, detectHazards, type BusinessContext } from "./ai";
 import { notifyQuoteSent, notifyInvoiceSent, notifyInvoicePaid, notifyJobScheduled, notifyJobStarted, notifyJobCompleted, notifyJobAssigned as notifyJobAssignedDB, notifyTeamMemberInvited, notifySmsReceived, notifyTimesheetSubmitted, notifyChatMessage, notifyQuoteAccepted as notifyQuoteAcceptedDB, notifyQuoteRejected as notifyQuoteRejectedDB, notifyGeofenceCheckIn, notifyGeofenceCheckOut, notifyRecurringJobCreated, notifyRecurringInvoiceCreated, notifyInvoiceOverdue as notifyInvoiceOverdueDB, notifyQuoteExpiring, notifyPaymentFailed } from "./notifications";
-import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected, notifyTeamMessage, notifyInvoiceOverdue, notifySmsReceived as notifySmsReceivedPush, notifyGeofenceEvent, notifyTimesheetSubmitted as notifyTimesheetSubmittedPush, notifyQuoteExpiring as notifyQuoteExpiringPush, notifyPaymentFailed as notifyPaymentFailedPush, notifyTrialExpiring as notifyTrialExpiringPush, notifyTimesheetDisputeFiled, notifyTimesheetDisputeResolved } from "./pushNotifications";
+import { notifyJobAssigned, notifyJobUpdate, notifyPaymentReceived, notifyQuoteAccepted, notifyQuoteRejected, notifyTeamMessage, notifyInvoiceOverdue, notifySmsReceived as notifySmsReceivedPush, notifyGeofenceEvent, notifyTimesheetSubmitted as notifyTimesheetSubmittedPush, notifyQuoteExpiring as notifyQuoteExpiringPush, notifyPaymentFailed as notifyPaymentFailedPush, notifyTrialExpiring as notifyTrialExpiringPush, notifyTimesheetDisputeFiled, notifyTimesheetDisputeResolved, notifyJobNudge, notifyNudgeResponse } from "./pushNotifications";
 import { getEmailIntegration, getGmailConnectionStatus } from "./emailIntegrationService";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeInitialized } from "./stripeClient";
 import { checkTwilioAvailability, sendSMS, validateTwilioWebhook } from "./twilioClient";
@@ -17219,7 +17219,8 @@ Be specific about materials, colors, and features that would be included.`
       // Allow null for unassigning jobs
       if (assignedTo === null || assignedTo === undefined) {
         // Unassign the job - only owners/managers can do this
-        if (!userContext.isOwner && !userContext.hasViewAll) {
+        const canManageJobs = userContext.isOwner || userContext.permissions.includes('view_all');
+        if (!canManageJobs) {
           return res.status(403).json({ error: "You don't have permission to unassign jobs" });
         }
         
@@ -17308,6 +17309,319 @@ Be specific about materials, colors, and features that would be included.`
     } catch (error: any) {
       console.error("Error assigning job:", error);
       res.status(500).json({ error: error.message || "Failed to assign job" });
+    }
+  });
+
+  // Multi-assign: assign multiple workers to a job
+  app.post("/api/jobs/:id/multi-assign", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const canManage = userContext.isOwner || userContext.permissions.includes('view_all');
+      if (!canManage) {
+        return res.status(403).json({ error: "Only owners and managers can multi-assign jobs" });
+      }
+
+      const { workerIds } = req.body;
+      if (!Array.isArray(workerIds)) {
+        return res.status(400).json({ error: "workerIds must be an array" });
+      }
+
+      const jobId = req.params.id;
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) return res.status(404).json({ error: "Job not found" });
+
+      const teamMembers = await storage.getTeamMembers(userContext.effectiveUserId);
+      const existingAssignments = await storage.getJobAssignments(jobId);
+
+      const results: any[] = [];
+      const assigner = await storage.getUser(req.userId);
+
+      for (const workerId of workerIds) {
+        const validMember = teamMembers.find((m: any) =>
+          (m.memberId === workerId || m.userId === workerId) &&
+          m.inviteStatus === 'accepted'
+        );
+        const isOwner = workerId === userContext.businessOwnerId || workerId === userContext.effectiveUserId;
+        if (!validMember && !isOwner) continue;
+
+        const alreadyAssigned = existingAssignments.find((a: any) =>
+          a.userId === workerId && a.isActive
+        );
+        if (alreadyAssigned) {
+          results.push({ workerId, status: 'already_assigned' });
+          continue;
+        }
+
+        const resolvedUserId = await resolveAssigneeUserId(workerId, userContext.effectiveUserId) || workerId;
+
+        try {
+          const assignment = await storage.createJobAssignment({
+            jobId,
+            userId: resolvedUserId,
+            teamMemberId: validMember?.id || null,
+            assignmentStatus: 'assigned',
+            isActive: true,
+            isPrimary: existingAssignments.length === 0 && results.filter(r => r.status === 'assigned').length === 0,
+            workerDisplayNameSnapshot: validMember
+              ? [validMember.firstName, validMember.lastName].filter(Boolean).join(' ') || validMember.email
+              : null,
+          });
+
+          await notifyJobAssigned(resolvedUserId, job.title, job.id);
+          try {
+            await notifyJobAssignedDB(storage, resolvedUserId, job, assigner || { firstName: 'Manager' });
+          } catch (e) {}
+
+          results.push({ workerId, status: 'assigned', assignmentId: assignment?.id });
+        } catch (assignErr) {
+          console.error(`[MultiAssign] Failed to assign ${workerId}:`, assignErr);
+          results.push({ workerId, status: 'error' });
+        }
+      }
+
+      if (results.some(r => r.status === 'assigned') && job.status === 'pending') {
+        await storage.updateJob(jobId, userContext.effectiveUserId, { status: 'scheduled' });
+      }
+
+      if (results.length > 0) {
+        const firstAssigned = results.find(r => r.status === 'assigned');
+        if (firstAssigned) {
+          const resolvedId = await resolveAssigneeUserId(firstAssigned.workerId, userContext.effectiveUserId) || firstAssigned.workerId;
+          await storage.updateJob(jobId, userContext.effectiveUserId, { assignedTo: resolvedId });
+        }
+      }
+
+      const allAssignments = await storage.getJobAssignments(jobId);
+      res.json({ results, assignments: allAssignments });
+    } catch (error: any) {
+      console.error("Error in multi-assign:", error);
+      res.status(500).json({ error: error.message || "Failed to multi-assign job" });
+    }
+  });
+
+  // Unassign a specific worker from a job
+  app.delete("/api/jobs/:jobId/assignments/:userId/remove", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const canManage = userContext.isOwner || userContext.permissions.includes('view_all');
+      if (!canManage) {
+        return res.status(403).json({ error: "Only owners and managers can unassign workers" });
+      }
+
+      const { jobId, userId: targetUserId } = req.params;
+
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) return res.status(404).json({ error: "Job not found or access denied" });
+
+      const assignments = await storage.getJobAssignments(jobId);
+      const assignment = assignments.find((a: any) => a.userId === targetUserId && a.isActive);
+
+      if (!assignment) {
+        return res.status(404).json({ error: "Assignment not found" });
+      }
+
+      await storage.updateJobAssignment(assignment.id, { isActive: false, assignmentStatus: 'removed' });
+
+      const remaining = assignments.filter((a: any) => a.id !== assignment.id && a.isActive);
+      if (remaining.length > 0) {
+        const primary = remaining.find((a: any) => a.isPrimary) || remaining[0];
+        await storage.updateJob(jobId, userContext.effectiveUserId, { assignedTo: primary.userId });
+      } else {
+        await storage.updateJob(jobId, userContext.effectiveUserId, { assignedTo: null });
+      }
+
+      const allAssignments = await storage.getJobAssignments(jobId);
+      res.json({ removed: true, assignments: allAssignments });
+    } catch (error: any) {
+      console.error("Error removing assignment:", error);
+      res.status(500).json({ error: error.message || "Failed to remove assignment" });
+    }
+  });
+
+  // Get team member availability (active timers + upcoming jobs)
+  app.get("/api/team/members/availability", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const canManage = userContext.isOwner || userContext.permissions.includes('view_all');
+      if (!canManage) {
+        return res.status(403).json({ error: "Only owners and managers can view team availability" });
+      }
+
+      const teamMembers = await storage.getTeamMembers(userContext.effectiveUserId);
+      const now = new Date();
+      const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+
+      const availability: any[] = [];
+
+      for (const member of teamMembers) {
+        if (member.inviteStatus !== 'accepted') continue;
+        const memberId = member.memberId || member.id;
+
+        let activeTimer: any = null;
+        let activeJobTitle: string | null = null;
+        let timerStartTime: string | null = null;
+
+        try {
+          const timer = await storage.getActiveTimeEntry(memberId);
+          if (timer) {
+            activeTimer = timer;
+            timerStartTime = timer.startTime ? new Date(timer.startTime).toISOString() : null;
+            if (timer.jobId) {
+              const activeJob = await storage.getJobPublic(timer.jobId);
+              activeJobTitle = activeJob?.title || null;
+            }
+          }
+        } catch (e) {}
+
+        let nextScheduledJob: any = null;
+        try {
+          const memberJobs = await storage.getJobs(memberId);
+          const upcoming = memberJobs
+            .filter((j: any) => {
+              const scheduledDate = (j as any).scheduledDate || (j as any).scheduledAt;
+              if (!scheduledDate) return false;
+              const sd = new Date(scheduledDate);
+              return sd >= now && sd <= twoHoursFromNow &&
+                ['scheduled', 'pending'].includes(j.status) &&
+                (j.assignedTo === memberId);
+            })
+            .sort((a: any, b: any) => {
+              const aD = new Date((a as any).scheduledDate || (a as any).scheduledAt);
+              const bD = new Date((b as any).scheduledDate || (b as any).scheduledAt);
+              return aD.getTime() - bD.getTime();
+            });
+
+          if (upcoming.length > 0) {
+            const nj = upcoming[0];
+            nextScheduledJob = {
+              id: nj.id,
+              title: nj.title,
+              scheduledDate: (nj as any).scheduledDate || (nj as any).scheduledAt,
+            };
+          }
+        } catch (e) {}
+
+        let status: 'available' | 'on_job' | 'upcoming' = 'available';
+        if (activeTimer) status = 'on_job';
+        else if (nextScheduledJob) status = 'upcoming';
+
+        availability.push({
+          memberId,
+          status,
+          activeJobTitle,
+          timerStartTime,
+          nextScheduledJob,
+        });
+      }
+
+      res.json(availability);
+    } catch (error: any) {
+      console.error("Error fetching team availability:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch availability" });
+    }
+  });
+
+  // Nudge a worker about an upcoming job
+  app.post("/api/jobs/:jobId/nudge-worker", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const canManage = userContext.isOwner || userContext.permissions.includes('view_all');
+      if (!canManage) {
+        return res.status(403).json({ error: "Only owners and managers can nudge workers" });
+      }
+
+      const { jobId } = req.params;
+      const { workerId } = req.body;
+      if (!workerId) return res.status(400).json({ error: "workerId is required" });
+
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) return res.status(404).json({ error: "Job not found" });
+
+      const manager = await storage.getUser(req.userId);
+      const managerName = manager?.firstName || manager?.fullName || 'Your manager';
+
+      let minutesAway: number | null = null;
+      const scheduledDate = (job as any).scheduledDate || (job as any).scheduledAt;
+      if (scheduledDate) {
+        const scheduled = new Date(scheduledDate);
+        const now = new Date();
+        minutesAway = Math.max(0, Math.round((scheduled.getTime() - now.getTime()) / (1000 * 60)));
+      }
+
+      const resolvedUserId = await resolveAssigneeUserId(workerId, userContext.effectiveUserId) || workerId;
+
+      await notifyJobNudge(
+        resolvedUserId,
+        job.title,
+        jobId,
+        (job as any).address || null,
+        minutesAway,
+        managerName
+      );
+
+      await storage.createNotification({
+        userId: resolvedUserId,
+        type: 'general',
+        title: `Heads Up from ${managerName}`,
+        message: `${job.title}${(job as any).address ? ` at ${(job as any).address}` : ''}${minutesAway ? ` in ~${minutesAway} min` : ' coming up'}`,
+        relatedId: jobId,
+        relatedType: 'job',
+      });
+
+      res.json({ success: true, nudgedUserId: resolvedUserId });
+    } catch (error: any) {
+      console.error("Error nudging worker:", error);
+      res.status(500).json({ error: error.message || "Failed to nudge worker" });
+    }
+  });
+
+  // Worker responds to a nudge
+  app.post("/api/jobs/:jobId/nudge-response", requireAuth, async (req: any, res) => {
+    try {
+      const { response } = req.body;
+      if (!['acknowledged', 'running_late'].includes(response)) {
+        return res.status(400).json({ error: "Response must be 'acknowledged' or 'running_late'" });
+      }
+
+      const { jobId } = req.params;
+      const job = await storage.getJobPublic(jobId);
+      if (!job) return res.status(404).json({ error: "Job not found" });
+
+      const assignments = await storage.getJobAssignments(jobId);
+      const isAssigned = assignments.some((a: any) => a.userId === req.userId && a.isActive);
+      const isJobAssignee = job.assignedTo === req.userId;
+      if (!isAssigned && !isJobAssignee) {
+        return res.status(403).json({ error: "You are not assigned to this job" });
+      }
+
+      const worker = await storage.getUser(req.userId);
+      const workerName = worker?.firstName || worker?.fullName || 'Worker';
+
+      const managerId = job.userId;
+
+      await notifyNudgeResponse(
+        managerId,
+        workerName,
+        job.title,
+        jobId,
+        response
+      );
+
+      await storage.createNotification({
+        userId: managerId,
+        type: 'general',
+        title: response === 'acknowledged' ? 'Worker Confirmed' : 'Worker Running Late',
+        message: response === 'acknowledged'
+          ? `${workerName}: "Got it, heading there now" for ${job.title}`
+          : `${workerName}: "Running late" for ${job.title}`,
+        relatedId: jobId,
+        relatedType: 'job',
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error handling nudge response:", error);
+      res.status(500).json({ error: error.message || "Failed to handle nudge response" });
     }
   });
 

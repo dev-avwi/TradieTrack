@@ -2062,6 +2062,10 @@ export default function JobDetailScreen() {
   const [magicLinkPhone, setMagicLinkPhone] = useState('');
   const [magicLinkRate, setMagicLinkRate] = useState('');
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
+  const [jobAssignments, setJobAssignments] = useState<any[]>([]);
+  const [selectedWorkerIds, setSelectedWorkerIds] = useState<Set<string>>(new Set());
+  const [teamAvailability, setTeamAvailability] = useState<Map<string, any>>(new Map());
+  const [isNudging, setIsNudging] = useState<string | null>(null);
 
   const [jobMessages, setJobMessages] = useState<JobChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -2465,6 +2469,7 @@ export default function JobDetailScreen() {
     if (id) {
       loadMaterials();
       loadTeamMembers();
+      loadJobAssignments();
     }
   }, [id]);
 
@@ -3101,12 +3106,86 @@ export default function JobDetailScreen() {
     setShowCostPromptModal(false);
   };
 
+  const loadJobAssignments = async () => {
+    if (!id) return;
+    try {
+      const response = await api.get(`/api/jobs/${id}/assignments`);
+      const assignments = Array.isArray(response.data) ? response.data : [];
+      setJobAssignments(assignments.filter((a: any) => a.isActive));
+    } catch (e) {
+      setJobAssignments([]);
+    }
+  };
+
+  const loadTeamAvailability = async () => {
+    try {
+      const response = await api.get('/api/team/members/availability');
+      const avail = new Map<string, any>();
+      if (Array.isArray(response.data)) {
+        response.data.forEach((item: any) => avail.set(item.memberId, item));
+      }
+      setTeamAvailability(avail);
+    } catch (e) {}
+  };
+
+  const handleMultiAssign = async () => {
+    if (!id || selectedWorkerIds.size === 0) return;
+    setIsAssigning(true);
+    try {
+      const workerIds = Array.from(selectedWorkerIds);
+      await api.post(`/api/jobs/${id}/multi-assign`, { workerIds });
+      await Promise.all([loadJob(), loadJobAssignments()]);
+      setShowAssignModal(false);
+      setSelectedWorkerIds(new Set());
+    } catch (e) {
+      Alert.alert('Error', 'Failed to assign workers');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleRemoveAssignment = async (workerId: string) => {
+    if (!id) return;
+    Alert.alert(
+      'Remove Worker',
+      'Remove this worker from the job?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/jobs/${id}/assignments/${workerId}/remove`);
+              await Promise.all([loadJob(), loadJobAssignments()]);
+            } catch (e) {
+              Alert.alert('Error', 'Failed to remove worker');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleNudgeWorker = async (workerId: string) => {
+    if (!id) return;
+    setIsNudging(workerId);
+    try {
+      await api.post(`/api/jobs/${id}/nudge-worker`, { workerId });
+      Alert.alert('Sent', 'Heads up notification sent to worker');
+    } catch (e) {
+      Alert.alert('Error', 'Failed to send notification');
+    } finally {
+      setIsNudging(null);
+    }
+  };
+
   const handleAssignWorker = async (memberId: string | null) => {
     if (!id) return;
     setIsAssigning(true);
     try {
       await api.patch(`/api/jobs/${id}`, { assignedTo: memberId });
-      await loadJob();
+      await Promise.all([loadJob(), loadJobAssignments()]);
       setShowAssignModal(false);
     } catch (e) {
       Alert.alert('Error', 'Failed to assign worker');
@@ -6334,26 +6413,136 @@ export default function JobDetailScreen() {
         </View>
       )}
 
-      {/* Assign Worker Card */}
+      {/* Assigned Team Card */}
       {(roleInfo?.isOwner || roleInfo?.roleName === 'admin') && (
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => setShowAssignModal(true)}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
-            <Feather name="user-check" size={iconSizes.xl} color={colors.primary} />
+        <View style={{
+          backgroundColor: colors.card,
+          borderRadius: radius.xl,
+          padding: spacing.lg,
+          marginBottom: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          ...shadows.sm,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: jobAssignments.length > 0 ? spacing.md : 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+                <Feather name="users" size={iconSizes.lg} color={colors.primary} />
+              </View>
+              <View>
+                <Text style={styles.cardLabel}>Assigned Team</Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground }}>
+                  {jobAssignments.length > 0 ? `${jobAssignments.length} worker${jobAssignments.length !== 1 ? 's' : ''}` : 'No workers assigned'}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                const currentlyAssigned = new Set(jobAssignments.map((a: any) => a.userId));
+                setSelectedWorkerIds(currentlyAssigned);
+                loadTeamAvailability();
+                setShowAssignModal(true);
+              }}
+              style={{
+                backgroundColor: `${colors.primary}15`,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.xs,
+                borderRadius: radius.lg,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+              }}
+              activeOpacity={0.7}
+            >
+              <Feather name="plus" size={14} color={colors.primary} />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
+                {jobAssignments.length > 0 ? 'Edit' : 'Assign'}
+              </Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Assigned Worker</Text>
-            <Text style={styles.cardValue}>
-              {job.assignedTo
-                ? (teamMembers.find(m => m.id === job.assignedTo || m.memberId === job.assignedTo)?.name || 'Worker assigned')
-                : 'Tap to assign a worker'}
-            </Text>
-          </View>
-          <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
-        </TouchableOpacity>
+
+          {jobAssignments.map((assignment: any) => {
+            const member = teamMembers.find(m =>
+              m.userId === assignment.userId || m.memberId === assignment.userId || m.id === assignment.userId
+            );
+            const displayName = assignment.workerDisplayNameSnapshot || member?.name || 'Worker';
+            const statusColors: Record<string, string> = {
+              assigned: colors.mutedForeground,
+              accepted: colors.primary,
+              en_route: '#F59E0B',
+              arrived: '#10B981',
+              in_progress: '#10B981',
+              completed: colors.mutedForeground,
+            };
+            const statusLabels: Record<string, string> = {
+              assigned: 'Assigned',
+              accepted: 'Accepted',
+              en_route: 'On the way',
+              arrived: 'On site',
+              in_progress: 'Working',
+              completed: 'Done',
+            };
+            const statusColor = statusColors[assignment.assignmentStatus] || colors.mutedForeground;
+            const statusLabel = statusLabels[assignment.assignmentStatus] || assignment.assignmentStatus;
+
+            return (
+              <View
+                key={assignment.id}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: spacing.sm,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.border,
+                  gap: spacing.sm,
+                }}
+              >
+                <TeamAvatar
+                  name={displayName}
+                  userId={assignment.userId}
+                  themeColor={member?.themeColor || (member as any)?.themeColor}
+                  size={36}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '600' }}>{displayName}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: statusColor }} />
+                    <Text style={{ ...typography.caption, color: statusColor }}>{statusLabel}</Text>
+                    {assignment.isPrimary && (
+                      <Text style={{ ...typography.caption, color: colors.mutedForeground }}> · Lead</Text>
+                    )}
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleNudgeWorker(assignment.userId)}
+                  disabled={isNudging === assignment.userId}
+                  style={{
+                    padding: spacing.xs,
+                    borderRadius: radius.md,
+                    backgroundColor: `${colors.primary}10`,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {isNudging === assignment.userId ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Feather name="bell" size={16} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleRemoveAssignment(assignment.userId)}
+                  style={{
+                    padding: spacing.xs,
+                    borderRadius: radius.md,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="x" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </View>
       )}
 
       {/* Description & Notes Card */}
@@ -10191,43 +10380,95 @@ export default function JobDetailScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Assign Worker Modal */}
+      {/* Assign Workers Modal - Multi-select with availability */}
       <Modal visible={showAssignModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { maxHeight: '70%' }]}>
+          <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Assign Worker</Text>
-              <TouchableOpacity onPress={() => setShowAssignModal(false)}>
+              <Text style={styles.modalTitle}>Assign Workers</Text>
+              <TouchableOpacity onPress={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }}>
                 <Feather name="x" size={24} color={colors.foreground} />
               </TouchableOpacity>
             </View>
+            {selectedWorkerIds.size > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
+                <Feather name="check-circle" size={14} color={colors.primary} />
+                <Text style={{ ...typography.caption, color: colors.primary, fontWeight: '600' }}>
+                  {selectedWorkerIds.size} worker{selectedWorkerIds.size !== 1 ? 's' : ''} selected
+                </Text>
+              </View>
+            )}
             <ScrollView style={{ maxHeight: 400 }}>
-              {/* Unassign option */}
-              <TouchableOpacity
-                style={[styles.card, { marginBottom: spacing.xs }]}
-                onPress={() => handleAssignWorker(null)}
-                activeOpacity={0.7}
-                disabled={isAssigning}
-              >
-                <View style={[styles.cardIconContainer, { backgroundColor: `${colors.muted}30` }]}>
-                  <Feather name="user-x" size={iconSizes.lg} color={colors.mutedForeground} />
-                </View>
-                <View style={styles.cardContent}>
-                  <Text style={styles.cardLabel}>Unassigned</Text>
-                  <Text style={{ ...typography.caption, color: colors.mutedForeground }}>Remove worker assignment</Text>
-                </View>
-                {!job.assignedTo && <Feather name="check" size={iconSizes.md} color={colors.primary} />}
-              </TouchableOpacity>
               {teamMembers.map((member) => {
-                const isAssigned = job.assignedTo && (job.assignedTo === member.id || job.assignedTo === member.memberId);
+                const memberId = member.memberId || member.userId || member.id;
+                const isSelected = selectedWorkerIds.has(memberId);
+                const availability = teamAvailability.get(memberId);
+                const availStatus = availability?.status || 'available';
+
+                let availLabel = 'Available';
+                let availColor = '#10B981';
+                let availIcon: string = 'check-circle';
+
+                if (availStatus === 'on_job') {
+                  const jobName = availability?.activeJobTitle || 'a job';
+                  const startTime = availability?.timerStartTime;
+                  let elapsed = '';
+                  if (startTime) {
+                    const mins = Math.floor((Date.now() - new Date(startTime).getTime()) / (1000 * 60));
+                    elapsed = mins >= 60 ? ` (${Math.floor(mins / 60)}h ${mins % 60}m in)` : ` (${mins}m in)`;
+                  }
+                  availLabel = `On: ${jobName}${elapsed}`;
+                  availColor = '#F59E0B';
+                  availIcon = 'clock';
+                } else if (availStatus === 'upcoming') {
+                  const nextJob = availability?.nextScheduledJob;
+                  if (nextJob) {
+                    const scheduledDate = new Date(nextJob.scheduledDate);
+                    const mins = Math.max(0, Math.floor((scheduledDate.getTime() - Date.now()) / (1000 * 60)));
+                    const timeStr = scheduledDate.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+                    availLabel = `Next: ${nextJob.title} at ${timeStr}${mins <= 60 ? ` (${mins}m)` : ''}`;
+                  } else {
+                    availLabel = 'Has upcoming job';
+                  }
+                  availColor = '#3B82F6';
+                  availIcon = 'calendar';
+                }
+
                 return (
                   <TouchableOpacity
                     key={member.id}
-                    style={[styles.card, { marginBottom: spacing.xs }]}
-                    onPress={() => handleAssignWorker(member.memberId || member.id)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: spacing.md,
+                      paddingHorizontal: spacing.lg,
+                      gap: spacing.sm,
+                      backgroundColor: isSelected ? `${colors.primary}08` : 'transparent',
+                    }}
+                    onPress={() => {
+                      const next = new Set(selectedWorkerIds);
+                      if (next.has(memberId)) {
+                        next.delete(memberId);
+                      } else {
+                        next.add(memberId);
+                      }
+                      setSelectedWorkerIds(next);
+                    }}
                     activeOpacity={0.7}
                     disabled={isAssigning}
                   >
+                    <View style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 4,
+                      borderWidth: 2,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      backgroundColor: isSelected ? colors.primary : 'transparent',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      {isSelected && <Feather name="check" size={14} color={colors.primaryForeground} />}
+                    </View>
                     <TeamAvatar
                       name={member.name}
                       email={member.email}
@@ -10235,11 +10476,17 @@ export default function JobDetailScreen() {
                       themeColor={(member as any).themeColor}
                       size={36}
                     />
-                    <View style={styles.cardContent}>
-                      <Text style={styles.cardLabel}>{member.name || member.email || 'Team Member'}</Text>
-                      {member.role && <Text style={{ ...typography.caption, color: colors.mutedForeground }}>{member.role}</Text>}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '500' }}>
+                        {member.name || member.email || 'Team Member'}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <Feather name={availIcon as any} size={11} color={availColor} />
+                        <Text style={{ fontSize: 11, color: availColor }} numberOfLines={1}>
+                          {availLabel}
+                        </Text>
+                      </View>
                     </View>
-                    {isAssigned && <Feather name="check" size={iconSizes.md} color={colors.primary} />}
                   </TouchableOpacity>
                 );
               })}
@@ -10257,7 +10504,7 @@ export default function JobDetailScreen() {
                 </View>
               )}
 
-              <View style={{ borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.md, paddingTop: spacing.md }}>
+              <View style={{ borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.md, paddingTop: spacing.md, paddingHorizontal: spacing.lg }}>
                 {!showMagicLinkInAssign ? (
                   <TouchableOpacity
                     style={{
@@ -10355,10 +10602,42 @@ export default function JobDetailScreen() {
                 )}
               </View>
             </ScrollView>
-            <View style={styles.modalFooter}>
-              <Button variant="outline" onPress={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }} style={{ flex: 1 }}>
-                {isAssigning ? 'Assigning...' : 'Close'}
-              </Button>
+            <View style={[styles.modalFooter, { gap: spacing.sm }]}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.lg,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+                onPress={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 14, color: colors.foreground }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.lg,
+                  alignItems: 'center',
+                  backgroundColor: colors.primary,
+                  opacity: isAssigning ? 0.6 : 1,
+                }}
+                onPress={handleMultiAssign}
+                disabled={isAssigning || selectedWorkerIds.size === 0}
+                activeOpacity={0.8}
+              >
+                {isAssigning ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
+                    {selectedWorkerIds.size > 0 ? `Assign ${selectedWorkerIds.size} Worker${selectedWorkerIds.size !== 1 ? 's' : ''}` : 'Select Workers'}
+                  </Text>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
         </View>

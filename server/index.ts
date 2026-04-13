@@ -433,6 +433,21 @@ if (process.env.DATABASE_URL) {
     }).catch(error => {
       console.error('Failed to start stale timer scheduler:', error);
     });
+
+    // Start overtime nudge scheduler - runs every 15 minutes
+    import('./overtimeNudgeService').then(({ checkOvertimeTimers }) => {
+      const OVERTIME_INTERVAL = 15 * 60 * 1000;
+      setInterval(async () => {
+        try {
+          await checkOvertimeTimers();
+        } catch (error) {
+          console.error('[Scheduler] Overtime nudge check failed:', error);
+        }
+      }, OVERTIME_INTERVAL);
+      console.log('✅ Overtime nudge scheduler started (every 15 minutes)');
+    }).catch(error => {
+      console.error('Failed to start overtime nudge scheduler:', error);
+    });
     
     // Start demo data refresh scheduler to keep team members "alive"
     if (enableDemoData) {

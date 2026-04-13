@@ -63,7 +63,10 @@ export type NotificationType =
   | 'daily_summary'
   | 'weekly_summary'
   | 'automation'
-  | 'general';
+  | 'general'
+  | 'job_nudge'
+  | 'job_nudge_response'
+  | 'overtime_warning';
 
 interface SendNotificationOptions {
   userId: string;
@@ -129,6 +132,10 @@ async function shouldSendNotification(userId: string, type: NotificationType): P
         return settings.notifyDailySummary === true;
       case 'weekly_summary':
         return settings.notifyWeeklySummary === true;
+      case 'job_nudge':
+      case 'job_nudge_response':
+      case 'overtime_warning':
+        return settings.notifyJobReminders !== false;
       case 'trial_expiring':
       case 'automation':
       case 'general':
@@ -457,5 +464,44 @@ export async function notifyTimesheetDisputeResolved(userId: string, resolution:
     title: 'Dispute Resolved',
     body: `Your timesheet dispute has been resolved: ${resolution}`,
     data: { relatedType: 'timesheet' },
+  });
+}
+
+export async function notifyJobNudge(userId: string, jobTitle: string, jobId: string, address: string | null, minutesAway: number | null, managerName: string): Promise<void> {
+  const timeText = minutesAway ? `in ~${minutesAway} min` : 'coming up';
+  const addressText = address ? ` at ${address}` : '';
+  await sendPushNotification({
+    userId,
+    type: 'job_nudge',
+    title: `Heads Up from ${managerName}`,
+    body: `${jobTitle}${addressText} ${timeText}`,
+    data: { jobId, relatedType: 'job', action: 'nudge' },
+  });
+}
+
+export async function notifyNudgeResponse(managerId: string, workerName: string, jobTitle: string, jobId: string, response: 'acknowledged' | 'running_late'): Promise<void> {
+  const responseText = response === 'acknowledged'
+    ? `${workerName}: "Got it, heading there now" for ${jobTitle}`
+    : `${workerName}: "Running late" for ${jobTitle}`;
+  await sendPushNotification({
+    userId: managerId,
+    type: 'job_nudge_response',
+    title: response === 'acknowledged' ? 'Worker Confirmed' : 'Worker Running Late',
+    body: responseText,
+    data: { jobId, relatedType: 'job', workerResponse: response },
+  });
+}
+
+export async function notifyOvertimeWarning(userId: string, jobTitle: string, jobId: string, elapsedHours: number, estimatedHours: number, nextJobTitle: string | null, nextJobTime: string | null): Promise<void> {
+  let body = `You've been on ${jobTitle} for ${elapsedHours.toFixed(1)}h — estimated was ${estimatedHours.toFixed(1)}h.`;
+  if (nextJobTitle && nextJobTime) {
+    body += ` Next: ${nextJobTitle} at ${nextJobTime}.`;
+  }
+  await sendPushNotification({
+    userId,
+    type: 'overtime_warning',
+    title: 'Running Over Time',
+    body,
+    data: { jobId, relatedType: 'job', action: 'overtime', elapsedHours, estimatedHours },
   });
 }
