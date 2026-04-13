@@ -1124,6 +1124,8 @@ function OperationalAlertsCard() {
   const [summary, setSummary] = useState({ total: 0, urgent: 0, important: 0, info: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   const fetchAlerts = useCallback(async () => {
     try {
@@ -1145,16 +1147,28 @@ function OperationalAlertsCard() {
     return () => clearInterval(interval);
   }, [fetchAlerts]);
 
-  const handleAlertPress = useCallback((alert: MobileOperationalAlert) => {
+  const handleAlertAction = useCallback((alert: MobileOperationalAlert) => {
     if (alert.actionType === 'navigate') {
       router.push('/(tabs)/schedule' as any);
+    } else if (alert.actionType === 'nudge') {
+      router.push('/(tabs)/schedule' as any);
     } else if (alert.relatedJobId) {
-      router.push(`/job/${alert.relatedJobId}`);
+      if (alert.type === 'unassigned_upcoming') {
+        router.push(`/job/${alert.relatedJobId}?action=assign`);
+      } else if (alert.type === 'uninvoiced_job') {
+        router.push(`/job/${alert.relatedJobId}?action=invoice`);
+      } else {
+        router.push(`/job/${alert.relatedJobId}`);
+      }
     }
   }, []);
 
-  const handleViewSchedule = useCallback(() => {
-    router.push('/(tabs)/schedule' as any);
+  const dismissAlert = useCallback((alertId: string) => {
+    setDismissedIds(prev => new Set([...prev, alertId]));
+  }, []);
+
+  const dismissAll = useCallback(() => {
+    setDismissed(true);
   }, []);
 
   if (isLoading) {
@@ -1165,9 +1179,13 @@ function OperationalAlertsCard() {
     );
   }
 
-  if (alerts.length === 0) return null;
+  if (dismissed) return null;
 
-  const displayAlerts = expanded ? alerts : alerts.slice(0, 3);
+  const visibleAlerts = alerts.filter(a => !dismissedIds.has(a.id));
+  if (visibleAlerts.length === 0) return null;
+
+  const displayAlerts = expanded ? visibleAlerts : visibleAlerts.slice(0, 3);
+  const visibleUrgent = visibleAlerts.filter(a => a.severity === 'urgent').length;
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -1198,14 +1216,19 @@ function OperationalAlertsCard() {
               <Feather name="radio" size={14} color={colors.destructive} />
             </View>
             <Text style={{ fontSize: 15, fontWeight: '700', color: colors.foreground }}>Attention Needed</Text>
-            {summary.urgent > 0 && (
+            {visibleUrgent > 0 && (
               <View style={{ backgroundColor: colorWithOpacity(colors.destructive, 0.15), paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.sm }}>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.destructive }}>{summary.urgent} urgent</Text>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.destructive }}>{visibleUrgent} urgent</Text>
               </View>
             )}
           </View>
-          <View style={{ backgroundColor: colorWithOpacity(colors.primary, 0.1), paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full }}>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>{summary.total}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <View style={{ backgroundColor: colorWithOpacity(colors.primary, 0.1), paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>{visibleAlerts.length}</Text>
+            </View>
+            <TouchableOpacity onPress={dismissAll} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Feather name="x" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -1214,7 +1237,7 @@ function OperationalAlertsCard() {
           const iconName = getSeverityIcon(alert.type);
 
           return (
-            <TouchableOpacity
+            <View
               key={alert.id}
               style={{
                 flexDirection: 'row',
@@ -1224,64 +1247,73 @@ function OperationalAlertsCard() {
                 borderTopWidth: index > 0 ? 1 : 0,
                 borderTopColor: colors.border,
               }}
-              onPress={() => {
-                if (alert.actionType === 'nudge') {
-                  handleViewSchedule();
-                } else {
-                  handleAlertPress(alert);
-                }
-              }}
-              activeOpacity={0.7}
             >
-              <View style={{
-                width: 3,
-                height: 32,
-                borderRadius: 2,
-                backgroundColor: severityColor,
-              }} />
-              <View style={{
-                width: 28,
-                height: 28,
-                borderRadius: radius.md,
-                backgroundColor: colorWithOpacity(severityColor, 0.12),
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <Feather name={iconName} size={14} color={severityColor} />
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }} numberOfLines={1}>{alert.title}</Text>
-                  {alert.timeInfo && (
-                    <Text style={{ fontSize: 11, color: colors.mutedForeground }}>{alert.timeInfo}</Text>
-                  )}
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1, minWidth: 0 }}
+                onPress={() => handleAlertAction(alert)}
+                activeOpacity={0.7}
+              >
+                <View style={{
+                  width: 3,
+                  height: 32,
+                  borderRadius: 2,
+                  backgroundColor: severityColor,
+                }} />
+                <View style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: radius.md,
+                  backgroundColor: colorWithOpacity(severityColor, 0.12),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Feather name={iconName} size={14} color={severityColor} />
                 </View>
-                <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 1 }} numberOfLines={1}>{alert.message}</Text>
-              </View>
-              <View style={{
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: radius.md,
-                backgroundColor: alert.severity === 'urgent' ? colors.primary : colorWithOpacity(colors.primary, 0.1),
-              }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }} numberOfLines={1}>{alert.title}</Text>
+                    {alert.timeInfo && (
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground }}>{alert.timeInfo}</Text>
+                    )}
+                  </View>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 1 }} numberOfLines={1}>{alert.message}</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleAlertAction(alert)}
+                activeOpacity={0.7}
+                style={{
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: radius.md,
+                  backgroundColor: alert.severity === 'urgent' ? colors.primary : colorWithOpacity(colors.primary, 0.1),
+                }}
+              >
                 <Text style={{
                   fontSize: 11,
                   fontWeight: '600',
                   color: alert.severity === 'urgent' ? '#fff' : colors.primary,
                 }}>{alert.actionLabel}</Text>
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => dismissAlert(alert.id)}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+                style={{ paddingLeft: 2 }}
+              >
+                <Feather name="x" size={14} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
           );
         })}
 
-        {alerts.length > 3 && (
+        {visibleAlerts.length > 3 && (
           <TouchableOpacity
             style={{ alignItems: 'center', paddingTop: spacing.sm, flexDirection: 'row', justifyContent: 'center', gap: 4 }}
             onPress={() => setExpanded(!expanded)}
             activeOpacity={0.7}
           >
             <Text style={{ fontSize: 13, fontWeight: '500', color: colors.primary }}>
-              {expanded ? 'Show less' : `View all ${alerts.length} alerts`}
+              {expanded ? 'Show less' : `View all ${visibleAlerts.length} alerts`}
             </Text>
             <Feather name={expanded ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
           </TouchableOpacity>

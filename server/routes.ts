@@ -4857,7 +4857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const { sendSMS: twilioSend } = await import('./twilioClient');
           const smsResult = await twilioSend({
             to: contactPhone,
-            body: smsMessage,
+            message: smsMessage,
           });
           sendResults.sms = smsResult.success;
         } catch (smsErr: any) {

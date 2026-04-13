@@ -1852,7 +1852,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 });
 
 export default function JobDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, action } = useLocalSearchParams<{ id: string; action?: string }>();
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
@@ -2276,6 +2276,18 @@ export default function JobDetailScreen() {
       subscription.remove();
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!job || isLoading || !action) return;
+    const timer = setTimeout(() => {
+      if (action === 'assign') {
+        setShowAssignModal(true);
+      } else if (action === 'invoice') {
+        router.replace(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [job, isLoading, action]);
 
   useEffect(() => {
     if (timerError) {
