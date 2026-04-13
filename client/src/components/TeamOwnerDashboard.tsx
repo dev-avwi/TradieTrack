@@ -128,20 +128,6 @@ export default function TeamOwnerDashboard({
   const { toast } = useToast();
   const { canUseAIFeatures } = useFeatureAccess();
 
-  interface ProfitSnapshot {
-    revenueToday: number;
-    revenueThisWeek: number;
-    revenueThisMonth: number;
-    labourCostThisMonth: number;
-    materialCostThisMonth: number;
-    grossProfit: number;
-    grossMargin: number;
-    cashCollectedToday: number;
-  }
-  const { data: profitSnapshot, isLoading: profitLoading } = useQuery<ProfitSnapshot>({
-    queryKey: ["/api/dashboard/profit-snapshot"],
-    staleTime: 5 * 60 * 1000,
-  });
   
   // Fetch team presence for status indicators
   interface PresenceData {
@@ -411,71 +397,6 @@ export default function TeamOwnerDashboard({
           </div>
         </section>
       )}
-
-      {/* Profit Snapshot */}
-      {profitLoading ? (
-        <section>
-          <h2 className="ios-label mb-3 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }} />
-            Profit Snapshot
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="feed-card">
-                <div className="card-padding">
-                  <Skeleton className="h-4 w-20 mb-2" />
-                  <Skeleton className="h-7 w-24" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : profitSnapshot && (profitSnapshot.revenueThisMonth > 0 || profitSnapshot.labourCostThisMonth > 0 || profitSnapshot.materialCostThisMonth > 0) ? (
-        <section>
-          <h2 className="ios-label mb-3 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }} />
-            Profit Snapshot
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="feed-card">
-              <div className="card-padding">
-                <p className="ios-caption">Revenue This Month</p>
-                <p className="text-2xl font-bold" style={{ color: 'hsl(142.1, 76.2%, 36.3%)' }}>
-                  ${profitSnapshot.revenueThisMonth.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
-              </div>
-            </div>
-            <div className="feed-card">
-              <div className="card-padding">
-                <p className="ios-caption">Labour Costs</p>
-                <p className="text-2xl font-bold">
-                  ${profitSnapshot.labourCostThisMonth.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
-              </div>
-            </div>
-            <div className="feed-card">
-              <div className="card-padding">
-                <p className="ios-caption">Material Costs</p>
-                <p className="text-2xl font-bold">
-                  ${profitSnapshot.materialCostThisMonth.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
-              </div>
-            </div>
-            <div className="feed-card">
-              <div className="card-padding">
-                <p className="ios-caption">Gross Profit</p>
-                <p className="text-2xl font-bold" style={{ color: profitSnapshot.grossProfit >= 0 ? 'hsl(142.1, 76.2%, 36.3%)' : 'hsl(var(--destructive))' }}>
-                  ${Math.abs(profitSnapshot.grossProfit).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                  {profitSnapshot.grossProfit < 0 && ' loss'}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {profitSnapshot.grossMargin}% margin
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : null}
 
       {/* Quick Links - KPIs */}
       <section>
