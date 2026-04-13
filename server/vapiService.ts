@@ -769,6 +769,8 @@ export async function updateReceptionistConfig(userId: string, updates: {
   maxCallDurationSeconds?: number;
   endCallMessage?: string;
   backgroundSound?: string;
+  autoReplyEnabled?: boolean;
+  autoReplyMessage?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const config = await storage.getAiReceptionistConfig(userId);
@@ -795,6 +797,8 @@ export async function updateReceptionistConfig(userId: string, updates: {
     if (updates.maxCallDurationSeconds !== undefined) configUpdates.maxCallDurationSeconds = updates.maxCallDurationSeconds;
     if (updates.endCallMessage !== undefined) configUpdates.endCallMessage = updates.endCallMessage;
     if (updates.backgroundSound !== undefined) configUpdates.backgroundSound = updates.backgroundSound;
+    if (updates.autoReplyEnabled !== undefined) configUpdates.autoReplyEnabled = updates.autoReplyEnabled;
+    if (updates.autoReplyMessage !== undefined) configUpdates.autoReplyMessage = updates.autoReplyMessage;
 
     await storage.updateAiReceptionistConfig(userId, configUpdates);
 
@@ -1461,8 +1465,90 @@ async function handleEndOfCallReport(event: any): Promise<any> {
 
   await sendCallNotifications(business, callId, call.customer?.number, message.summary, updates.duration as number | null);
 
+  const callDuration = (updates.duration as number | null) || 0;
+  if (callDuration > 10 && call.customer?.number && business.dedicatedPhoneNumber) {
+    await sendCallerAutoReply(business, call.customer.number);
+  }
+
+  await sendCallPushNotification(
+    business.userId,
+    existingCall?.callerName || 'Unknown caller',
+    call.customer?.number || null,
+    callRecord?.callerIntent || existingCall?.callerIntent || null,
+    message.summary || null,
+    callDuration,
+  );
+
   console.log(`[Vapi Webhook] Call ${callId} completed - duration: ${updates.duration}s`);
   return { ok: true };
+}
+
+async function sendCallerAutoReply(
+  business: BusinessSettings,
+  callerPhone: string,
+): Promise<void> {
+  try {
+    const config = await storage.getAiReceptionistConfig(business.userId);
+    if (!config || !config.autoReplyEnabled) {
+      console.log(`[Vapi] Auto-reply disabled for user ${business.userId}, skipping caller SMS`);
+      return;
+    }
+
+    if (!business.dedicatedPhoneNumber) {
+      console.log(`[Vapi] No dedicated number for user ${business.userId}, skipping auto-reply SMS`);
+      return;
+    }
+
+    const businessName = business.businessName || 'the business';
+    const template = config.autoReplyMessage ||
+      'Thanks for calling {{business_name}}. We got your message and will get back to you shortly. — Sent via JobRunner';
+    const smsBody = template.replace(/\{\{business_name\}\}/g, businessName);
+
+    await sendSMS({
+      to: callerPhone,
+      message: smsBody,
+      fromNumber: business.dedicatedPhoneNumber,
+    });
+    console.log(`[Vapi] Auto-reply SMS sent to caller ${callerPhone} from ${business.dedicatedPhoneNumber}`);
+  } catch (e: any) {
+    console.error(`[Vapi] Auto-reply SMS failed for caller ${callerPhone}:`, e.message);
+  }
+}
+
+async function sendCallPushNotification(
+  userId: string,
+  callerName: string | null,
+  callerPhone: string | null,
+  callerIntent: string | null,
+  summary: string | null,
+  duration: number,
+): Promise<void> {
+  if (duration <= 10) return;
+  try {
+    const { sendPushNotification } = await import('./pushNotifications');
+
+    const name = callerName || callerPhone || 'Unknown caller';
+    const intentLabel = callerIntent
+      ? callerIntent.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      : null;
+    const summarySnippet = summary ? summary.slice(0, 120) : 'No summary available';
+
+    let body = `${name}`;
+    if (intentLabel) body += ` — ${intentLabel}`;
+    body += `. ${summarySnippet}`;
+
+    await sendPushNotification({
+      userId,
+      type: 'ai_receptionist_call',
+      title: 'AI Receptionist Call',
+      body,
+      data: { callerPhone, callerIntent, relatedType: 'ai_call' },
+      skipInAppNotification: true,
+    });
+    console.log(`[Vapi] Push notification sent to tradie ${userId} for AI call`);
+  } catch (e: any) {
+    console.error(`[Vapi] Push notification failed for user ${userId}:`, e.message);
+  }
 }
 
 async function sendCallNotifications(

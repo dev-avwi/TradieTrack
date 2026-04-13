@@ -90,6 +90,8 @@ interface ReceptionistConfig {
   maxCallDurationSeconds: number | null;
   endCallMessage: string | null;
   backgroundSound: string | null;
+  autoReplyEnabled: boolean;
+  autoReplyMessage: string | null;
 }
 
 interface AnalyticsSummary {
@@ -215,6 +217,8 @@ export default function AIReceptionistScreen() {
   const [maxCallDurationSeconds, setMaxCallDurationSeconds] = useState(300);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [isTestingCall, setIsTestingCall] = useState(false);
+  const [autoReplyEnabled, setAutoReplyEnabled] = useState(true);
+  const [autoReplyMessage, setAutoReplyMessage] = useState("Thanks for calling {{business_name}}. We got your message and will get back to you shortly. — Sent via JobRunner");
 
   const pollProvisioningStatus = useCallback(async (maxAttempts = 15) => {
     for (let i = 0; i < maxAttempts; i++) {
@@ -353,6 +357,8 @@ export default function AIReceptionistScreen() {
         if (data.voicemailDetectionEnabled != null) setVoicemailDetectionEnabled(data.voicemailDetectionEnabled);
         if (data.silenceTimeoutSeconds != null) setSilenceTimeoutSeconds(data.silenceTimeoutSeconds);
         if (data.maxCallDurationSeconds != null) setMaxCallDurationSeconds(data.maxCallDurationSeconds);
+        setAutoReplyEnabled(data.autoReplyEnabled ?? true);
+        if (data.autoReplyMessage) setAutoReplyMessage(data.autoReplyMessage);
         setConfigLoaded(true);
         setUserChangedEnabled(false);
       }
@@ -454,6 +460,8 @@ export default function AIReceptionistScreen() {
         voicemailDetectionEnabled,
         silenceTimeoutSeconds,
         maxCallDurationSeconds,
+        autoReplyEnabled,
+        autoReplyMessage,
       });
 
       if (userChangedEnabled) {
@@ -1293,6 +1301,40 @@ export default function AIReceptionistScreen() {
                 <Feather name="check" size={16} color={colors.primary} />
                 <Text style={[styles.addButtonText, { color: colors.primary }]}>Add Holiday</Text>
               </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        <Text style={styles.sectionTitle}>Auto-Reply SMS</Text>
+        <View style={styles.card}>
+          <View style={styles.enableRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.enableLabel}>Auto-reply to callers</Text>
+              <Text style={styles.enableSublabel}>Send an SMS to the caller after each AI-handled call confirming their message was received</Text>
+            </View>
+            <Switch
+              value={autoReplyEnabled}
+              onValueChange={setAutoReplyEnabled}
+              trackColor={{ false: colors.border, true: colors.success }}
+              thumbColor={'#FFFFFF'}
+              ios_backgroundColor={colors.border}
+            />
+          </View>
+          {autoReplyEnabled && (
+            <View style={{ marginTop: spacing.md }}>
+              <Text style={styles.inputLabel}>Reply message template</Text>
+              <TextInput
+                style={styles.textArea}
+                value={autoReplyMessage}
+                onChangeText={setAutoReplyMessage}
+                placeholder="Thanks for calling {{business_name}}. We got your message and will get back to you shortly."
+                placeholderTextColor={colors.mutedForeground}
+                multiline
+                numberOfLines={3}
+              />
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs }}>
+                Use {'{{business_name}}'} to insert your business name. SMS sent from your dedicated number only.
+              </Text>
             </View>
           )}
         </View>

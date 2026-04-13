@@ -42065,6 +42065,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
           businessName: settings?.businessName || null,
           businessPhone: settings?.phone || null,
           tradeType: settings?.industry || null,
+          autoReplyEnabled: p.config.autoReplyEnabled ?? true,
           callStats: {
             totalCalls,
             completedCalls: completedCalls.length,
@@ -46947,6 +46948,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
           provisioningError: null,
           knowledgeBank: null,
           smsNotifications: false,
+          autoReplyEnabled: true,
+          autoReplyMessage: "Thanks for calling {{business_name}}. We got your message and will get back to you shortly. — Sent via JobRunner",
         });
       }
       res.json({
@@ -46964,6 +46967,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         approvedAt: config.approvedAt || null,
         knowledgeBank: config.knowledgeBank || null,
         smsNotifications: config.smsNotifications || false,
+        autoReplyEnabled: config.autoReplyEnabled ?? true,
+        autoReplyMessage: config.autoReplyMessage || "Thanks for calling {{business_name}}. We got your message and will get back to you shortly. — Sent via JobRunner",
         voiceStability: config.voiceStability ?? 0.5,
         voiceClarity: config.voiceClarity ?? 0.75,
         voiceSpeed: config.voiceSpeed ?? 1.0,
@@ -47038,6 +47043,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     maxCallDurationSeconds: z.number().min(60).max(3600).optional(),
     endCallMessage: z.string().max(500).optional(),
     backgroundSound: z.enum(['off', 'office', 'cafe']).optional(),
+    autoReplyEnabled: z.boolean().optional(),
+    autoReplyMessage: z.string().max(500).optional(),
   });
 
   app.post("/api/ai-receptionist/config", requireAuth, ownerOnly(), async (req: any, res) => {
@@ -47114,7 +47121,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       const { voice, greeting, mode, transferNumbers, businessHours, knowledgeBank, smsNotifications,
         voiceStability, voiceClarity, voiceSpeed, voiceStyleExaggeration, voiceSpeakerBoost,
         voicemailDetectionEnabled, voicemailMessage, silenceTimeoutSeconds, maxCallDurationSeconds,
-        endCallMessage, backgroundSound } = parsed.data;
+        endCallMessage, backgroundSound, autoReplyEnabled, autoReplyMessage } = parsed.data;
 
       const { updateReceptionistConfig } = await import('./vapiService');
       const result = await updateReceptionistConfig(userId, {
@@ -47125,6 +47132,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         businessHours,
         knowledgeBank: knowledgeBank === null ? undefined : knowledgeBank,
         smsNotifications,
+        autoReplyEnabled,
+        autoReplyMessage,
         voiceStability,
         voiceClarity,
         voiceSpeed,
@@ -47154,6 +47163,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         vapiAssistantId: config?.vapiAssistantId || null,
         knowledgeBank: config?.knowledgeBank || null,
         smsNotifications: config?.smsNotifications || false,
+        autoReplyEnabled: config?.autoReplyEnabled ?? true,
+        autoReplyMessage: config?.autoReplyMessage || "Thanks for calling {{business_name}}. We got your message and will get back to you shortly. — Sent via JobRunner",
         voiceStability: config?.voiceStability ?? 0.5,
         voiceClarity: config?.voiceClarity ?? 0.75,
         voiceSpeed: config?.voiceSpeed ?? 1.0,

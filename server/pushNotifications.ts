@@ -66,7 +66,8 @@ export type NotificationType =
   | 'general'
   | 'job_nudge'
   | 'job_nudge_response'
-  | 'overtime_warning';
+  | 'overtime_warning'
+  | 'ai_receptionist_call';
 
 interface SendNotificationOptions {
   userId: string;
@@ -136,6 +137,8 @@ async function shouldSendNotification(userId: string, type: NotificationType): P
       case 'job_nudge_response':
       case 'overtime_warning':
         return settings.notifyJobReminders !== false;
+      case 'ai_receptionist_call':
+        return true;
       case 'trial_expiring':
       case 'automation':
       case 'general':
@@ -304,6 +307,8 @@ function getChannelId(type: NotificationType): string {
     case 'sms_received':
     case 'team_invite':
       return 'messages';
+    case 'ai_receptionist_call':
+      return 'default';
     default:
       return 'default';
   }

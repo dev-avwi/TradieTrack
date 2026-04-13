@@ -1336,6 +1336,7 @@ interface AiQueueItem {
 }
 
 interface ActiveAssistant extends AiQueueItem {
+  autoReplyEnabled?: boolean;
   callStats: {
     totalCalls: number;
     completedCalls: number;
@@ -1649,6 +1650,15 @@ function AIApprovalView() {
                               {assistant.dedicatedPhoneNumber}
                             </Badge>
                           )}
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${assistant.autoReplyEnabled !== false
+                              ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30'
+                              : 'bg-muted text-muted-foreground'}`}
+                          >
+                            <MessageSquare className="h-3 w-3 mr-1" />
+                            Auto-Reply {assistant.autoReplyEnabled !== false ? 'On' : 'Off'}
+                          </Badge>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">

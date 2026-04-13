@@ -4600,6 +4600,8 @@ export const aiReceptionistConfig = pgTable("ai_receptionist_config", {
   maxCallDurationSeconds: integer("max_call_duration_seconds").default(600),
   endCallMessage: text("end_call_message"),
   backgroundSound: text("background_sound").default('off'),
+  autoReplyEnabled: boolean("auto_reply_enabled").notNull().default(true),
+  autoReplyMessage: text("auto_reply_message").default("Thanks for calling {{business_name}}. We got your message and will get back to you shortly. — Sent via JobRunner"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
