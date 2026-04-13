@@ -2095,8 +2095,11 @@ function OwnerDashboardScreen() {
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [allJobs, setAllJobs] = useState<any[]>([]);
-  const [myAllJobs, setMyAllJobs] = useState<any[]>([]); // All jobs assigned to staff (for My Stats)
+  const [myAllJobs, setMyAllJobs] = useState<any[]>([]);
   const [schedulerY, setSchedulerY] = useState(0);
+  const [schedulerSearch, setSchedulerSearch] = useState('');
+  const [schedulerExpanded, setSchedulerExpanded] = useState(false);
+  const SCHEDULER_COLLAPSED_COUNT = 4;
   
   // Scroll to job scheduler section
   const scrollToScheduler = useCallback(() => {
@@ -3516,70 +3519,132 @@ function OwnerDashboardScreen() {
             </View>
           )}
 
+          {/* Team Members Search */}
+          {teamMembers.length > SCHEDULER_COLLAPSED_COUNT && (
+            <View style={styles.schedulerSearchWrap}>
+              <Feather name="search" size={14} color={colors.mutedForeground} style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.schedulerSearchInput}
+                placeholder="Search team members..."
+                placeholderTextColor={colors.mutedForeground}
+                value={schedulerSearch}
+                onChangeText={setSchedulerSearch}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {schedulerSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setSchedulerSearch('')} activeOpacity={0.7}>
+                  <Feather name="x" size={14} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
           {/* Team Members */}
           <View style={styles.teamMembersList}>
-            {teamMembers.map((member: any) => {
-              const memberJobs = getJobsForMember(member.memberId);
-              const isClickable = !!selectedJob && !isAssigning;
-              
+            {(() => {
+              const filtered = schedulerSearch.trim()
+                ? teamMembers.filter((m: any) => {
+                    const name = getMemberName(m).toLowerCase();
+                    return name.includes(schedulerSearch.trim().toLowerCase());
+                  })
+                : teamMembers;
+              const showAll = schedulerExpanded || schedulerSearch.trim().length > 0;
+              const visible = showAll ? filtered : filtered.slice(0, SCHEDULER_COLLAPSED_COUNT);
+              const hiddenCount = filtered.length - SCHEDULER_COLLAPSED_COUNT;
+
               return (
-                <TouchableOpacity
-                  key={member.id}
-                  style={[
-                    styles.teamMemberCard,
-                    isClickable && styles.teamMemberCardClickable
-                  ]}
-                  onPress={() => {
-                    if (isClickable && member.memberId) {
-                      handleAssignJob(selectedJob.id, member.memberId);
-                    }
-                  }}
-                  activeOpacity={isClickable ? 0.7 : 1}
-                  disabled={!isClickable}
-                >
-                  <View style={styles.teamMemberHeader}>
-                    <TeamAvatar
-                      firstName={member.firstName}
-                      lastName={member.lastName}
-                      email={member.email}
-                      userId={String(member.userId || member.id)}
-                      themeColor={member.themeColor}
-                      size={36}
-                    />
-                    <View style={styles.teamMemberInfo}>
-                      <Text style={styles.teamMemberName}>{getMemberName(member)}</Text>
-                      <Text style={styles.teamMemberJobCount}>
-                        {memberJobs.length} active job{memberJobs.length !== 1 ? 's' : ''}
+                <>
+                  {visible.map((member: any) => {
+                    const memberJobs = getJobsForMember(member.memberId);
+                    const isClickable = !!selectedJob && !isAssigning;
+
+                    return (
+                      <TouchableOpacity
+                        key={member.id}
+                        style={[
+                          styles.teamMemberCard,
+                          isClickable && styles.teamMemberCardClickable
+                        ]}
+                        onPress={() => {
+                          if (isClickable && member.memberId) {
+                            handleAssignJob(selectedJob.id, member.memberId);
+                          }
+                        }}
+                        activeOpacity={isClickable ? 0.7 : 1}
+                        disabled={!isClickable}
+                      >
+                        <View style={styles.teamMemberHeader}>
+                          <TeamAvatar
+                            firstName={member.firstName}
+                            lastName={member.lastName}
+                            email={member.email}
+                            userId={String(member.userId || member.id)}
+                            themeColor={member.themeColor}
+                            size={36}
+                          />
+                          <View style={styles.teamMemberInfo}>
+                            <Text style={styles.teamMemberName}>{getMemberName(member)}</Text>
+                            <Text style={styles.teamMemberJobCount}>
+                              {memberJobs.length} active job{memberJobs.length !== 1 ? 's' : ''}
+                            </Text>
+                          </View>
+                          {isClickable && (
+                            <View style={styles.tapToAssignBadge}>
+                              <Text style={styles.tapToAssignText}>Tap to assign</Text>
+                            </View>
+                          )}
+                        </View>
+                        {memberJobs.length > 0 && (
+                          <View style={styles.memberJobsList}>
+                            {memberJobs.slice(0, 2).map((job: any) => (
+                              <TouchableOpacity
+                                key={job.id}
+                                style={styles.memberJobItem}
+                                onPress={() => handleUnassignJob(job)}
+                                activeOpacity={0.7}
+                                disabled={isAssigning}
+                              >
+                                <Text style={styles.memberJobTitle} numberOfLines={1}>{job.title}</Text>
+                                <View style={styles.memberJobActions}>
+                                  <StatusBadge status={job.status} size="sm" />
+                                  <Feather name="x-circle" size={iconSizes.md} color={colors.mutedForeground} style={{ marginLeft: 6 }} />
+                                </View>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+
+                  {schedulerSearch.trim().length === 0 && filtered.length > SCHEDULER_COLLAPSED_COUNT && (
+                    <TouchableOpacity
+                      style={styles.schedulerToggle}
+                      onPress={() => setSchedulerExpanded(!schedulerExpanded)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.schedulerToggleText}>
+                        {schedulerExpanded ? 'Show Less' : `View All (${hiddenCount} more)`}
+                      </Text>
+                      <Feather
+                        name={schedulerExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={14}
+                        color={colors.primary}
+                      />
+                    </TouchableOpacity>
+                  )}
+
+                  {schedulerSearch.trim().length > 0 && filtered.length === 0 && (
+                    <View style={{ paddingVertical: spacing.lg, alignItems: 'center' }}>
+                      <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>
+                        No team members match "{schedulerSearch.trim()}"
                       </Text>
                     </View>
-                    {isClickable && (
-                      <View style={styles.tapToAssignBadge}>
-                        <Text style={styles.tapToAssignText}>Tap to assign</Text>
-                      </View>
-                    )}
-                  </View>
-                  {memberJobs.length > 0 && (
-                    <View style={styles.memberJobsList}>
-                      {memberJobs.slice(0, 2).map((job: any) => (
-                        <TouchableOpacity 
-                          key={job.id} 
-                          style={styles.memberJobItem}
-                          onPress={() => handleUnassignJob(job)}
-                          activeOpacity={0.7}
-                          disabled={isAssigning}
-                        >
-                          <Text style={styles.memberJobTitle} numberOfLines={1}>{job.title}</Text>
-                          <View style={styles.memberJobActions}>
-                            <StatusBadge status={job.status} size="sm" />
-                            <Feather name="x-circle" size={iconSizes.md} color={colors.mutedForeground} style={{ marginLeft: 6 }} />
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
                   )}
-                </TouchableOpacity>
+                </>
               );
-            })}
+            })()}
           </View>
         </View>
       )}
@@ -3903,6 +3968,36 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.caption,
     color: colors.mutedForeground,
     marginBottom: spacing.md,
+  },
+  schedulerSearchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    paddingHorizontal: spacing.md,
+    paddingVertical: Platform.OS === 'ios' ? spacing.sm : 0,
+    marginBottom: spacing.md,
+  },
+  schedulerSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.foreground,
+    paddingVertical: spacing.xs,
+  },
+  schedulerToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: spacing.md,
+    marginTop: spacing.xs,
+  },
+  schedulerToggleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
   },
   selectionBanner: {
     flexDirection: 'row',
