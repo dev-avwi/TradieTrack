@@ -118,6 +118,18 @@ export async function handleOnMyWay(params: OnMyWayParams): Promise<OnMyWayResul
     await storage.upsertWorkerState(actorUserId, bizOwnerId, 'travelling', jobId);
     const { broadcastWorkerStateChange } = await import('../websocket');
     broadcastWorkerStateChange(bizOwnerId, { userId: actorUserId, state: 'travelling', jobId });
+    await storage.upsertTradieStatus({
+      userId: assignment.userId,
+      businessOwnerId: effectiveUserId,
+      activityStatus: 'travelling',
+      currentJobId: jobId,
+      lastSeenAt: new Date(),
+      lastLocationUpdate: new Date(),
+      ...(workerLatitude != null && workerLongitude != null ? {
+        currentLatitude: workerLatitude.toString(),
+        currentLongitude: workerLongitude.toString(),
+      } : {}),
+    });
   } catch (e) {
     console.warn('[WorkerState] Auto-update travelling failed:', e);
   }

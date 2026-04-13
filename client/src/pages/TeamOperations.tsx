@@ -128,6 +128,7 @@ interface TeamPresenceData {
   status: string;
   statusMessage?: string;
   currentJobId?: string;
+  destinationJobTitle?: string;
   lastSeenAt?: string;
   lastLocationLat?: number;
   lastLocationLng?: number;
@@ -209,6 +210,8 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 const STATUS_COLORS: Record<string, { bg: string; text: string; icon: any; markerBg: string; markerText: string }> = {
   online: { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-400", icon: Circle, markerBg: "#22c55e", markerText: "#fff" },
   on_job: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-400", icon: Wrench, markerBg: "#3b82f6", markerText: "#fff" },
+  travelling: { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-400", icon: Navigation2, markerBg: "#f97316", markerText: "#fff" },
+  driving: { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-400", icon: Car, markerBg: "#f97316", markerText: "#fff" },
   busy: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-400", icon: Clock, markerBg: "#f59e0b", markerText: "#fff" },
   break: { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-400", icon: Coffee, markerBg: "#eab308", markerText: "#000" },
   offline: { bg: "bg-gray-100 dark:bg-gray-800", text: "text-gray-500 dark:text-gray-400", icon: Circle, markerBg: "#9ca3af", markerText: "#fff" },
@@ -219,6 +222,8 @@ function getStatusDisplay(status: string) {
   const statusLabels: Record<string, string> = {
     online: "Available",
     on_job: "On Job",
+    travelling: "Travelling",
+    driving: "Driving",
     busy: "Busy",
     break: "On Break",
     offline: "Offline",
@@ -724,15 +729,22 @@ function LiveOpsTab() {
                                     {p.statusMessage && (
                                       <p className="text-xs text-muted-foreground mb-2 italic">"{p.statusMessage}"</p>
                                     )}
+
+                                    {p.status === 'travelling' && p.destinationJobTitle && (
+                                      <div className="flex items-center gap-2 text-sm mb-2 text-orange-600 dark:text-orange-400">
+                                        <Navigation2 className="h-4 w-4" />
+                                        <span className="truncate">Heading to: {p.destinationJobTitle}</span>
+                                      </div>
+                                    )}
                                     
-                                    {currentJob && (
+                                    {currentJob && p.status !== 'travelling' && (
                                       <div className="flex items-center gap-2 text-sm mb-2">
                                         <Briefcase className="h-4 w-4 text-muted-foreground" />
                                         <span className="truncate">{currentJob.title}</span>
                                       </div>
                                     )}
                                     
-                                    {!currentJob && nextJob && (
+                                    {!currentJob && p.status !== 'travelling' && nextJob && (
                                       <div className="flex items-center gap-2 text-sm mb-2 text-muted-foreground">
                                         <Clock className="h-4 w-4" />
                                         <span className="truncate">Next: {nextJob.title}</span>

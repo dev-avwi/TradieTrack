@@ -41996,6 +41996,14 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
               activityStatus = 'idle';
             }
           }
+
+          let destinationJobTitle: string | null = null;
+          if (activityStatus === 'travelling' && tradieStatus?.currentJobId) {
+            try {
+              const destJob = await storage.getJob(tradieStatus.currentJobId, businessOwnerId);
+              if (destJob) destinationJobTitle = destJob.title || null;
+            } catch (e) {}
+          }
           
           return {
             id: presence?.id || memberId,
@@ -42004,6 +42012,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
             status: activityStatus,
             statusMessage: tradieStatus?.statusMessage || presence?.statusMessage || null,
             currentJobId: tradieStatus?.currentJobId || presence?.currentJobId || null,
+            destinationJobTitle,
             lastLocationLat: tradieStatus?.currentLatitude || (latestLocation?.latitude ? parseFloat(latestLocation.latitude) : null),
             lastLocationLng: tradieStatus?.currentLongitude || (latestLocation?.longitude ? parseFloat(latestLocation.longitude) : null),
             lastLocationUpdatedAt: tradieStatus?.lastSeenAt || latestLocation?.timestamp || null,

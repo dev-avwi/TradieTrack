@@ -2089,7 +2089,13 @@ export default function JobDetailScreen() {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [showNextJobModal, setShowNextJobModal] = useState(false);
   const [nextJob, setNextJob] = useState<any>(null);
+  const [nextJobDriveInfo, setNextJobDriveInfo] = useState<{ distanceKm: number; driveMinutes: number } | null>(null);
+  const [nextJobClientPhone, setNextJobClientPhone] = useState<string | null>(null);
   const [isCompletingJob, setIsCompletingJob] = useState(false);
+  const [isHeadingToNext, setIsHeadingToNext] = useState(false);
+  const [showWrapUpBanner, setShowWrapUpBanner] = useState(false);
+  const [wrapUpNextJob, setWrapUpNextJob] = useState<any>(null);
+  const [wrapUpDriveMinutes, setWrapUpDriveMinutes] = useState<number>(0);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -5058,6 +5064,157 @@ export default function JobDetailScreen() {
     }
   };
 
+  const calcHaversineDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }, []);
+
+  const calcDriveMinutes = useCallback((distanceKm: number): number => {
+    if (distanceKm <= 5) return Math.max(5, Math.round(distanceKm * 3));
+    if (distanceKm <= 20) return Math.round(distanceKm * 2.5);
+    if (distanceKm <= 50) return Math.round(distanceKm * 2);
+    return Math.round(distanceKm * 1.5);
+  }, []);
+
+  useEffect(() => {
+    if (!job || job.status !== 'in_progress') {
+      setShowWrapUpBanner(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const checkWrapUp = async () => {
+      try {
+        const res = await api.get('/api/jobs');
+        if (cancelled || !res.data || !Array.isArray(res.data)) return;
+
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+        const upcoming = res.data
+          .filter((j: any) =>
+            j.id !== job.id &&
+            ['scheduled'].includes(j.status) &&
+            j.scheduledAt
+          )
+          .filter((j: any) => {
+            const d = new Date(j.scheduledAt);
+            return d >= now && d < todayEnd;
+          })
+          .sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+        if (upcoming.length === 0) {
+          if (!cancelled) setShowWrapUpBanner(false);
+          return;
+        }
+
+        const nextScheduled = upcoming[0];
+        const nextStartTime = new Date(nextScheduled.scheduledAt).getTime();
+        let driveMinutes = 20;
+
+        try {
+          const { status } = await Location.getForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            if (nextScheduled.latitude && nextScheduled.longitude) {
+              const dist = calcHaversineDistance(
+                loc.coords.latitude, loc.coords.longitude,
+                parseFloat(nextScheduled.latitude), parseFloat(nextScheduled.longitude)
+              );
+              driveMinutes = calcDriveMinutes(dist);
+            }
+          }
+        } catch (e) {}
+
+        const bufferMinutes = 15;
+        const shouldLeaveBy = nextStartTime - (driveMinutes + bufferMinutes) * 60 * 1000;
+        const minutesUntilLeave = (shouldLeaveBy - now.getTime()) / (1000 * 60);
+
+        if (minutesUntilLeave <= 20 && minutesUntilLeave > -30) {
+          if (!cancelled) {
+            setWrapUpNextJob(nextScheduled);
+            setWrapUpDriveMinutes(driveMinutes);
+            setShowWrapUpBanner(true);
+          }
+        } else {
+          if (!cancelled) setShowWrapUpBanner(false);
+        }
+      } catch (e) {
+        if (__DEV__) console.log('[WrapUp] Check failed:', e);
+      }
+    };
+
+    checkWrapUp();
+    const interval = setInterval(checkWrapUp, 2 * 60 * 1000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [job?.id, job?.status, calcHaversineDistance, calcDriveMinutes]);
+
+  const handleHeadToNextJob = async () => {
+    if (!nextJob) return;
+    setIsHeadingToNext(true);
+    try {
+      let coords: { latitude: number; longitude: number } | null = null;
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+        }
+      } catch (e) {}
+
+      const response = await api.post(`/api/jobs/${nextJob.id}/on-my-way`, {
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+      });
+
+      if (response.error) {
+        Alert.alert('Could Not Notify', response.error || 'Failed to send notification to client. You can still navigate manually.');
+        setIsHeadingToNext(false);
+        return;
+      }
+
+      if (nextJob.latitude && nextJob.longitude) {
+        try {
+          await locationTracking.addJobGeofence(
+            nextJob.id,
+            parseFloat(nextJob.latitude),
+            parseFloat(nextJob.longitude),
+            nextJob.geofenceRadius || 100
+          );
+        } catch (e) {}
+      }
+
+      setShowNextJobModal(false);
+
+      if (nextJob.address) {
+        const encodedAddress = encodeURIComponent(nextJob.address);
+        Linking.openURL(`https://maps.google.com/?daddr=${encodedAddress}`);
+      } else if (nextJob.latitude && nextJob.longitude) {
+        Linking.openURL(`https://maps.google.com/?daddr=${nextJob.latitude},${nextJob.longitude}`);
+      }
+
+      setTimeout(() => {
+        router.push(`/job/${nextJob.id}`);
+      }, 500);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to start transition. Please try again.');
+    } finally {
+      setIsHeadingToNext(false);
+    }
+  };
+
   const handleOnMyWay = async () => {
     if (!job) return;
     
@@ -5162,9 +5319,44 @@ export default function JobDetailScreen() {
               .sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
             
             if (upcomingJobs.length > 0) {
-              setNextJob(upcomingJobs[0]);
+              const nextScheduledJob = upcomingJobs[0];
+              setNextJob(nextScheduledJob);
+
+              let driveInfo: { distanceKm: number; driveMinutes: number } | null = null;
+              try {
+                const { status: locStatus } = await Location.getForegroundPermissionsAsync();
+                if (locStatus === 'granted' && nextScheduledJob.latitude && nextScheduledJob.longitude) {
+                  const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                  const dist = calcHaversineDistance(
+                    loc.coords.latitude, loc.coords.longitude,
+                    parseFloat(nextScheduledJob.latitude), parseFloat(nextScheduledJob.longitude)
+                  );
+                  driveInfo = {
+                    distanceKm: Math.round(dist * 10) / 10,
+                    driveMinutes: calcDriveMinutes(dist),
+                  };
+                }
+              } catch (e) {}
+              setNextJobDriveInfo(driveInfo);
+
+              if (nextScheduledJob.clientId) {
+                try {
+                  const clientRes = await api.get(`/api/clients/${nextScheduledJob.clientId}`);
+                  if (clientRes.data?.phone) {
+                    setNextJobClientPhone(clientRes.data.phone);
+                  } else {
+                    setNextJobClientPhone(null);
+                  }
+                } catch (e) {
+                  setNextJobClientPhone(null);
+                }
+              } else {
+                setNextJobClientPhone(null);
+              }
             } else {
               setNextJob(null);
+              setNextJobDriveInfo(null);
+              setNextJobClientPhone(null);
             }
             setShowNextJobModal(true);
           }
@@ -5844,6 +6036,39 @@ export default function JobDetailScreen() {
 
       {/* Job Progress Bar - Visual workflow indicator */}
       <JobProgressBar status={job.status} />
+
+      {/* Wrap-Up Banner - appears when next job is approaching */}
+      {showWrapUpBanner && wrapUpNextJob && (
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            backgroundColor: colors.warning + '15',
+            borderWidth: 1,
+            borderColor: colors.warning + '40',
+            borderRadius: radius.lg,
+            padding: spacing.md,
+            marginBottom: spacing.md,
+          }}
+          onPress={() => router.push(`/job/${wrapUpNextJob.id}`)}
+          activeOpacity={0.8}
+        >
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.warning + '25', alignItems: 'center', justifyContent: 'center' }}>
+            <Feather name="clock" size={18} color={colors.warning} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.warning }}>Time to wrap up</Text>
+            <Text style={{ fontSize: 12, color: colors.foreground, marginTop: 2 }} numberOfLines={1}>
+              {wrapUpNextJob.title} at {new Date(wrapUpNextJob.scheduledAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+            <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
+              ~{wrapUpDriveMinutes} min drive to next site
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={colors.warning} />
+        </TouchableOpacity>
+      )}
 
       {/* Main Action Button - Hero zone, first thing after status */}
       <View style={styles.actionButtonContainer}>
@@ -11440,43 +11665,75 @@ export default function JobDetailScreen() {
                       )}
                     </View>
                   </View>
+
+                  {nextJobDriveInfo && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.primary + '10', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 8 }}>
+                      <Feather name="navigation" size={16} color={colors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
+                        ~{nextJobDriveInfo.driveMinutes < 60
+                          ? `${nextJobDriveInfo.driveMinutes} min`
+                          : `${Math.floor(nextJobDriveInfo.driveMinutes / 60)}h ${nextJobDriveInfo.driveMinutes % 60}m`} drive
+                        {nextJobDriveInfo.distanceKm < 1
+                          ? ` (${Math.round(nextJobDriveInfo.distanceKm * 1000)}m)`
+                          : ` (${nextJobDriveInfo.distanceKm} km)`}
+                      </Text>
+                    </View>
+                  )}
+
                   {nextJob.address && (
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
                       <Feather name="map-pin" size={16} color={colors.mutedForeground} style={{ marginTop: 2 }} />
                       <Text style={{ fontSize: 14, color: colors.foreground, flex: 1 }}>{nextJob.address}</Text>
                     </View>
                   )}
-                  {nextJob.clientName && (
+
+                  {(nextJob.clientName || nextJobClientPhone) && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                       <Feather name="user" size={16} color={colors.mutedForeground} />
-                      <Text style={{ fontSize: 14, color: colors.foreground }}>{nextJob.clientName}</Text>
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                        {nextJob.clientName && (
+                          <Text style={{ fontSize: 14, color: colors.foreground }}>{nextJob.clientName}</Text>
+                        )}
+                        {nextJobClientPhone && (
+                          <TouchableOpacity
+                            onPress={() => Linking.openURL(`tel:${nextJobClientPhone.replace(/\s/g, '')}`)}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          >
+                            <Feather name="phone" size={13} color={colors.primary} />
+                            <Text style={{ fontSize: 13, color: colors.primary }}>{nextJobClientPhone}</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
                   )}
-                  <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm }}>
-                    {nextJob.address && (
-                      <TouchableOpacity
-                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingVertical: spacing.sm, borderRadius: 8 }}
-                        onPress={() => {
-                          setShowNextJobModal(false);
-                          const encodedAddress = encodeURIComponent(nextJob.address);
-                          Linking.openURL(`https://maps.google.com/?daddr=${encodedAddress}`);
-                        }}
-                      >
-                        <Feather name="navigation" size={16} color={colors.white} />
-                        <Text style={{ color: colors.white, fontWeight: '600', fontSize: 14 }}>Navigate</Text>
-                      </TouchableOpacity>
-                    )}
+
+                  {(nextJob.address || (nextJob.latitude && nextJob.longitude)) && (
                     <TouchableOpacity
-                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: colors.card, paddingVertical: spacing.sm, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}
-                      onPress={() => {
-                        setShowNextJobModal(false);
-                        router.push(`/job/${nextJob.id}`);
-                      }}
+                      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.success, paddingVertical: 14, borderRadius: 8, marginTop: spacing.xs }}
+                      onPress={handleHeadToNextJob}
+                      disabled={isHeadingToNext}
                     >
-                      <Feather name="eye" size={16} color={colors.foreground} />
-                      <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>View Job</Text>
+                      {isHeadingToNext ? (
+                        <ActivityIndicator size="small" color={colors.white} />
+                      ) : (
+                        <>
+                          <Feather name="navigation" size={18} color={colors.white} />
+                          <Text style={{ color: colors.white, fontWeight: '700', fontSize: 15 }}>Head There Now</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
-                  </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: colors.card, paddingVertical: spacing.sm, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}
+                    onPress={() => {
+                      setShowNextJobModal(false);
+                      router.push(`/job/${nextJob.id}`);
+                    }}
+                  >
+                    <Feather name="eye" size={16} color={colors.foreground} />
+                    <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>View Job Details</Text>
+                  </TouchableOpacity>
                 </View>
               ) : (
                 <View style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md }}>
