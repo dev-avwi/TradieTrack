@@ -4,10 +4,11 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useFeatureAccess } from "@/hooks/use-subscription";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,12 @@ import {
   Sparkles,
   ImagePlus,
   X,
+  Phone,
+  MessageSquare,
+  CalendarPlus,
+  Code,
+  Copy,
+  Check,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
@@ -41,8 +48,17 @@ interface WebsiteAddon {
   domainStatus: string;
   hostingStatus: string;
   monthlyFee: string | null;
+  websiteClickToCall: boolean;
+  websiteChatWidget: boolean;
+  websiteBookingForm: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+interface EmbedSnippets {
+  clickToCall: string | null;
+  chatWidget: string | null;
+  bookingForm: string | null;
 }
 
 interface ChangeRequest {
@@ -200,6 +216,40 @@ export default function WebsiteAddon() {
       description: description.trim(),
       priority,
       screenshotUrl,
+    });
+  };
+
+  const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
+
+  const featureToggleMutation = useMutation({
+    mutationFn: async (data: { websiteClickToCall?: boolean; websiteChatWidget?: boolean; websiteBookingForm?: boolean }) => {
+      const response = await apiRequest("PATCH", "/api/website-addon/features", data);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update features");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Feature Updated", description: "Website feature settings have been saved." });
+      queryClient.invalidateQueries({ queryKey: ["/api/website-addon"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/website-addon/embed-snippets"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Update Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const { data: embedSnippets } = useQuery<EmbedSnippets>({
+    queryKey: ["/api/website-addon/embed-snippets"],
+    enabled: !!addon && (!!addon.websiteClickToCall || !!addon.websiteChatWidget || !!addon.websiteBookingForm),
+  });
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedSnippet(label);
+      toast({ title: "Copied", description: `${label} embed code copied to clipboard.` });
+      setTimeout(() => setCopiedSnippet(null), 2000);
     });
   };
 
@@ -535,6 +585,154 @@ export default function WebsiteAddon() {
           </Card>
         </div>
       </div>
+
+      {hasAddonAccess && (
+        <div className="space-y-6 mt-6">
+          <Card data-testid="card-website-features">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Website Features</CardTitle>
+              <CardDescription>Enable interactive features on your website to generate more leads</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4 p-3 rounded-md border" data-testid="toggle-click-to-call">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-md bg-blue-100 dark:bg-blue-500/15 p-2">
+                    <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Click-to-Call Button</p>
+                    <p className="text-xs text-muted-foreground">Floating call button that dials your dedicated number</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={addon?.websiteClickToCall || false}
+                  onCheckedChange={(checked) => featureToggleMutation.mutate({ websiteClickToCall: checked })}
+                  disabled={featureToggleMutation.isPending}
+                  data-testid="switch-click-to-call"
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-4 p-3 rounded-md border" data-testid="toggle-chat-widget">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-md bg-purple-100 dark:bg-purple-500/15 p-2">
+                    <MessageSquare className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">AI Chat Widget</p>
+                    <p className="text-xs text-muted-foreground">AI-powered live chat using your knowledge bank</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={addon?.websiteChatWidget || false}
+                  onCheckedChange={(checked) => featureToggleMutation.mutate({ websiteChatWidget: checked })}
+                  disabled={featureToggleMutation.isPending}
+                  data-testid="switch-chat-widget"
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-4 p-3 rounded-md border" data-testid="toggle-booking-form">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-md bg-green-100 dark:bg-green-500/15 p-2">
+                    <CalendarPlus className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Booking / Contact Form</p>
+                    <p className="text-xs text-muted-foreground">Collects name, phone, email, job type and creates leads</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={addon?.websiteBookingForm || false}
+                  onCheckedChange={(checked) => featureToggleMutation.mutate({ websiteBookingForm: checked })}
+                  disabled={featureToggleMutation.isPending}
+                  data-testid="switch-booking-form"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {(addon?.websiteClickToCall || addon?.websiteChatWidget || addon?.websiteBookingForm) && embedSnippets && (
+            <Card data-testid="card-embed-snippets">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Code className="h-4 w-4 text-muted-foreground" />
+                  Embed Code Snippets
+                </CardTitle>
+                <CardDescription>Copy and paste these into your website HTML to enable each feature</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {embedSnippets.clickToCall && (
+                  <div className="space-y-2" data-testid="snippet-click-to-call">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium flex items-center gap-1.5">
+                        <Phone className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        Click-to-Call
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(embedSnippets.clickToCall!, "Click-to-Call")}
+                        data-testid="button-copy-click-to-call"
+                      >
+                        {copiedSnippet === "Click-to-Call" ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
+                        {copiedSnippet === "Click-to-Call" ? "Copied" : "Copy"}
+                      </Button>
+                    </div>
+                    <pre className="text-xs bg-muted/50 p-3 rounded-md overflow-x-auto max-h-32 border">
+                      <code>{embedSnippets.clickToCall}</code>
+                    </pre>
+                  </div>
+                )}
+
+                {embedSnippets.chatWidget && (
+                  <div className="space-y-2" data-testid="snippet-chat-widget">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium flex items-center gap-1.5">
+                        <MessageSquare className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                        AI Chat Widget
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(embedSnippets.chatWidget!, "Chat Widget")}
+                        data-testid="button-copy-chat-widget"
+                      >
+                        {copiedSnippet === "Chat Widget" ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
+                        {copiedSnippet === "Chat Widget" ? "Copied" : "Copy"}
+                      </Button>
+                    </div>
+                    <pre className="text-xs bg-muted/50 p-3 rounded-md overflow-x-auto max-h-32 border">
+                      <code>{embedSnippets.chatWidget}</code>
+                    </pre>
+                  </div>
+                )}
+
+                {embedSnippets.bookingForm && (
+                  <div className="space-y-2" data-testid="snippet-booking-form">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium flex items-center gap-1.5">
+                        <CalendarPlus className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                        Booking Form
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(embedSnippets.bookingForm!, "Booking Form")}
+                        data-testid="button-copy-booking-form"
+                      >
+                        {copiedSnippet === "Booking Form" ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
+                        {copiedSnippet === "Booking Form" ? "Copied" : "Copy"}
+                      </Button>
+                    </div>
+                    <pre className="text-xs bg-muted/50 p-3 rounded-md overflow-x-auto max-h-32 border">
+                      <code>{embedSnippets.bookingForm}</code>
+                    </pre>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
     </PageShell>
   );
 }

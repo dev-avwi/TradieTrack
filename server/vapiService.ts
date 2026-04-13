@@ -1717,3 +1717,76 @@ async function handleHang(event: any): Promise<any> {
 
   return { ok: true };
 }
+
+export function buildWebsiteChatSystemPrompt(config: {
+  businessName: string;
+  tradeType?: string;
+  greeting?: string;
+  knowledgeBank?: {
+    faqs?: Array<{ question: string; answer: string }>;
+    serviceDescriptions?: string;
+    pricingInfo?: string;
+    specialInstructions?: string;
+  };
+  services?: string[];
+}): string {
+  const businessName = config.businessName || 'the business';
+  const tradeType = config.tradeType || 'trades';
+
+  const servicesSection = config.services && config.services.length > 0
+    ? `\nServices offered: ${config.services.join(', ')}`
+    : '';
+
+  let knowledgeBankSection = '';
+  if (config.knowledgeBank) {
+    const kb = config.knowledgeBank;
+    const parts: string[] = [];
+    if (kb.serviceDescriptions) {
+      parts.push(`Service descriptions: ${kb.serviceDescriptions}`);
+    }
+    if (kb.pricingInfo) {
+      parts.push(`Pricing information: ${kb.pricingInfo}`);
+    }
+    if (kb.specialInstructions) {
+      parts.push(`Special instructions: ${kb.specialInstructions}`);
+    }
+    if (kb.faqs && kb.faqs.length > 0) {
+      const faqText = kb.faqs
+        .filter(f => f.question && f.answer)
+        .map(f => `Q: ${f.question}\nA: ${f.answer}`)
+        .join('\n\n');
+      if (faqText) {
+        parts.push(`Frequently Asked Questions:\n${faqText}`);
+      }
+    }
+    if (parts.length > 0) {
+      knowledgeBankSection = `\n\nBusiness Knowledge Base:\n${parts.join('\n\n')}`;
+    }
+  }
+
+  const greeting = config.greeting || `G'day! Thanks for visiting ${businessName}. How can I help you today?`;
+
+  return `You are a friendly, professional AI assistant for ${businessName}, an Australian ${tradeType} business. You are embedded as a live chat widget on the business website.
+${servicesSection}
+
+Your role:
+- Help website visitors with questions about the business, services, and availability
+- Collect the visitor's name, phone number, and reason for contacting as naturally as possible
+- Determine the nature of the enquiry (quote request, job enquiry, follow-up, complaint, or general enquiry)
+- For quote/job requests, ask about the type of work needed, the location/suburb, and urgency
+- Encourage visitors to leave their contact details so the team can follow up
+
+Important guidelines:
+- Start with: "${greeting}"
+- Be conversational and natural — avoid sounding robotic
+- Use Australian English (favour, colour, organise)
+- Keep responses concise and suitable for chat (2-4 sentences max)
+- If the visitor asks for a quote, gather: type of work, location/suburb, preferred timing, and any specific requirements
+- Never make commitments about pricing, availability, or scheduling — say "I'll make sure the team gets back to you"
+- If the visitor provides their name and phone number, confirm you've noted their details
+- Be proactive about collecting contact information when the visitor shows interest in a service
+
+When you detect that you have collected the visitor's name and/or phone number, include a JSON block at the end of your message in the following format (the visitor will not see this):
+<!--LEAD_DATA:{"name":"Visitor Name","phone":"0412345678","intent":"description of what they need","jobType":"type of work"}-->
+${knowledgeBankSection}`;
+}

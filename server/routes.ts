@@ -160,6 +160,7 @@ import {
   auditLogs,
   systemEvents,
   websiteChangeRequests,
+  websiteAddons,
   subcontractorTokens,
   subcontractorEvents,
   subcontractorInvoices,
@@ -41365,14 +41366,30 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       }).from(businessSettings);
       
       const businessSettingsMap = new Map(allBusinessSettings.map(bs => [bs.userId, bs]));
+
+      const allWebsiteAddons = await db.select({
+        businessId: websiteAddons.businessId,
+        websiteClickToCall: websiteAddons.websiteClickToCall,
+        websiteChatWidget: websiteAddons.websiteChatWidget,
+        websiteBookingForm: websiteAddons.websiteBookingForm,
+      }).from(websiteAddons);
+      const websiteAddonMap = new Map(allWebsiteAddons.map(wa => [wa.businessId, wa]));
       
       // Enrich user data
-      const enrichedUsers = allUsers.map(user => ({
-        ...user,
-        name: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'Unknown',
-        hasCompletedOnboarding: businessSettingsMap.has(user.id),
-        businessName: businessSettingsMap.get(user.id)?.businessName || null,
-      }));
+      const enrichedUsers = allUsers.map(user => {
+        const wa = websiteAddonMap.get(user.id);
+        return {
+          ...user,
+          name: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'Unknown',
+          hasCompletedOnboarding: businessSettingsMap.has(user.id),
+          businessName: businessSettingsMap.get(user.id)?.businessName || null,
+          websiteFeatures: wa ? {
+            clickToCall: wa.websiteClickToCall || false,
+            chatWidget: wa.websiteChatWidget || false,
+            bookingForm: wa.websiteBookingForm || false,
+          } : null,
+        };
+      });
       
       res.json({ users: enrichedUsers });
     } catch (error: any) {
@@ -47736,6 +47753,370 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       }
       console.error("Error creating change request:", error);
       res.status(500).json({ error: "Failed to create change request" });
+    }
+  });
+
+  app.patch("/api/website-addon/features", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const addon = await storage.getWebsiteAddon(effectiveUserId);
+      if (!addon) {
+        return res.status(403).json({ error: "Website add-on is not active for this business." });
+      }
+
+      const schema = z.object({
+        websiteClickToCall: z.boolean().optional(),
+        websiteChatWidget: z.boolean().optional(),
+        websiteBookingForm: z.boolean().optional(),
+      });
+      const parsed = schema.parse(req.body);
+      const updated = await storage.updateWebsiteAddon(effectiveUserId, parsed);
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error("Error updating website features:", error);
+      res.status(500).json({ error: "Failed to update website features" });
+    }
+  });
+
+  app.get("/api/website-addon/embed-snippets", requireAuth, async (req: any, res) => {
+    try {
+      const effectiveUserId = req.effectiveUserId || req.userId;
+      const addon = await storage.getWebsiteAddon(effectiveUserId);
+      if (!addon) {
+        return res.status(403).json({ error: "Website add-on is not active for this business." });
+      }
+
+      const settings = await storage.getBusinessSettings(effectiveUserId);
+      const baseUrl = getProductionBaseUrl(req);
+      const businessId = effectiveUserId;
+      const escapeJsString = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/'/g, "\\'").replace(/</g, '\\x3c').replace(/>/g, '\\x3e').replace(/\n/g, '\\n');
+      const businessPhone = escapeJsString(settings?.dedicatedPhoneNumber || settings?.phone || '');
+      const businessName = escapeJsString(settings?.businessName || 'Business');
+
+      const clickToCallSnippet = `<!-- JobRunner Click-to-Call Button -->
+<div id="jr-click-to-call"></div>
+<script>
+(function(){
+  var phone = "${businessPhone}";
+  var el = document.getElementById("jr-click-to-call");
+  if(!el || !phone) return;
+  var btn = document.createElement("a");
+  btn.href = "tel:" + phone;
+  btn.style.cssText = "position:fixed;bottom:20px;right:20px;z-index:9999;background:#2563EB;color:#fff;border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);cursor:pointer;text-decoration:none;transition:transform 0.2s;";
+  btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
+  btn.onmouseover = function(){ btn.style.transform="scale(1.1)"; };
+  btn.onmouseout = function(){ btn.style.transform="scale(1)"; };
+  el.appendChild(btn);
+})();
+</script>`;
+
+      const chatWidgetSnippet = `<!-- JobRunner AI Chat Widget -->
+<div id="jr-chat-widget"></div>
+<script>
+(function(){
+  var BUSINESS_ID = "${businessId}";
+  var API_URL = "${baseUrl}/api/public/website-chat/" + BUSINESS_ID;
+  var el = document.getElementById("jr-chat-widget");
+  if(!el) return;
+
+  var isOpen = false;
+  var messages = [];
+  var sessionId = "chat_" + Math.random().toString(36).substr(2, 9);
+
+  function esc(s) {
+    var d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function render() {
+    var bubble = '<div id="jr-chat-bubble" style="position:fixed;bottom:20px;right:20px;z-index:9998;background:#2563EB;color:#fff;border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);cursor:pointer;" onclick="document.getElementById(\\'jr-chat-widget\\').dispatchEvent(new Event(\\'toggle\\'))"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>';
+
+    var panel = '<div id="jr-chat-panel" style="position:fixed;bottom:86px;right:20px;z-index:9999;width:360px;max-height:500px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.12);display:' + (isOpen ? 'flex' : 'none') + ';flex-direction:column;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;">';
+    panel += '<div style="background:#2563EB;color:#fff;padding:16px;font-weight:600;">Chat with ${businessName}</div>';
+    panel += '<div id="jr-chat-messages" style="flex:1;overflow-y:auto;padding:12px;max-height:340px;">';
+    messages.forEach(function(m) {
+      var align = m.role === "user" ? "flex-end" : "flex-start";
+      var bg = m.role === "user" ? "#2563EB" : "#f1f5f9";
+      var color = m.role === "user" ? "#fff" : "#1e293b";
+      panel += '<div style="display:flex;justify-content:' + align + ';margin-bottom:8px;"><div style="background:' + bg + ';color:' + color + ';padding:8px 12px;border-radius:12px;max-width:80%;font-size:14px;line-height:1.4;">' + esc(m.content) + '</div></div>';
+    });
+    panel += '</div>';
+    panel += '<div style="padding:12px;border-top:1px solid #e2e8f0;display:flex;gap:8px;">';
+    panel += '<input id="jr-chat-input" type="text" placeholder="Type a message..." style="flex:1;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;" onkeydown="if(event.key===\\'Enter\\')document.getElementById(\\'jr-chat-widget\\').dispatchEvent(new Event(\\'send\\'))" />';
+    panel += '<button onclick="document.getElementById(\\'jr-chat-widget\\').dispatchEvent(new Event(\\'send\\'))" style="background:#2563EB;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:14px;">Send</button>';
+    panel += '</div></div>';
+
+    el.innerHTML = bubble + panel;
+  }
+
+  el.addEventListener("toggle", function() { isOpen = !isOpen; render(); });
+  el.addEventListener("send", function() {
+    var input = document.getElementById("jr-chat-input");
+    if(!input || !input.value.trim()) return;
+    var msg = input.value.trim();
+    messages.push({ role: "user", content: msg });
+    render();
+    var history = messages.slice(0, -1).map(function(m) { return { role: m.role, content: m.content }; });
+    fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: msg, sessionId: sessionId, history: history }) })
+      .then(function(r) { return r.json(); })
+      .then(function(data) { messages.push({ role: "assistant", content: data.reply || "Sorry, I couldn't process that." }); render(); })
+      .catch(function() { messages.push({ role: "assistant", content: "Sorry, something went wrong. Please try again." }); render(); });
+  });
+
+  if(messages.length === 0) {
+    messages.push({ role: "assistant", content: "Hi! How can I help you today? I can answer questions about our services, schedule a booking, or take a message." });
+  }
+  render();
+})();
+</script>`;
+
+      const bookingFormSnippet = `<!-- JobRunner Booking Form -->
+<div id="jr-booking-form"></div>
+<script>
+(function(){
+  var BUSINESS_ID = "${businessId}";
+  var API_URL = "${baseUrl}/api/public/website-booking/" + BUSINESS_ID;
+  var el = document.getElementById("jr-booking-form");
+  if(!el) return;
+
+  el.innerHTML = '<div style="max-width:480px;margin:0 auto;font-family:system-ui,-apple-system,sans-serif;">' +
+    '<h3 style="font-size:20px;font-weight:600;margin-bottom:16px;color:#1e293b;">Book a Service</h3>' +
+    '<form id="jr-booking-form-el" style="display:flex;flex-direction:column;gap:12px;">' +
+    '<input name="name" required placeholder="Your Name *" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;" />' +
+    '<input name="phone" required placeholder="Phone Number *" type="tel" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;" />' +
+    '<input name="email" placeholder="Email Address" type="email" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;" />' +
+    '<input name="jobType" placeholder="Type of Job (e.g. Plumbing Repair)" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;" />' +
+    '<input name="preferredDate" placeholder="Preferred Date" type="date" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;" />' +
+    '<textarea name="message" placeholder="Tell us about the job..." rows="3" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;resize:vertical;"></textarea>' +
+    '<button type="submit" style="background:#2563EB;color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:600;cursor:pointer;">Submit Booking Request</button>' +
+    '<div id="jr-booking-status" style="display:none;padding:12px;border-radius:8px;text-align:center;font-size:14px;"></div>' +
+    '</form></div>';
+
+  document.getElementById("jr-booking-form-el").addEventListener("submit", function(e) {
+    e.preventDefault();
+    var form = e.target;
+    var status = document.getElementById("jr-booking-status");
+    var btn = form.querySelector("button[type=submit]");
+    btn.disabled = true;
+    btn.textContent = "Submitting...";
+    var data = { name: form.name.value, phone: form.phone.value, email: form.email.value || null, jobType: form.jobType.value || null, preferredDate: form.preferredDate.value || null, message: form.message.value || null };
+    fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+      .then(function(res) {
+        if(res.ok) {
+          status.style.display = "block";
+          status.style.background = "#f0fdf4";
+          status.style.color = "#166534";
+          status.textContent = "Thank you! Your booking request has been submitted. We'll be in touch soon.";
+          form.reset();
+        } else {
+          status.style.display = "block";
+          status.style.background = "#fef2f2";
+          status.style.color = "#991b1b";
+          status.textContent = res.data.error || "Something went wrong. Please try again.";
+        }
+        btn.disabled = false;
+        btn.textContent = "Submit Booking Request";
+      })
+      .catch(function() {
+        status.style.display = "block";
+        status.style.background = "#fef2f2";
+        status.style.color = "#991b1b";
+        status.textContent = "Network error. Please try again.";
+        btn.disabled = false;
+        btn.textContent = "Submit Booking Request";
+      });
+  });
+})();
+</script>`;
+
+      res.json({
+        clickToCall: addon.websiteClickToCall ? clickToCallSnippet : null,
+        chatWidget: addon.websiteChatWidget ? chatWidgetSnippet : null,
+        bookingForm: addon.websiteBookingForm ? bookingFormSnippet : null,
+      });
+    } catch (error) {
+      console.error("Error generating embed snippets:", error);
+      res.status(500).json({ error: "Failed to generate embed snippets" });
+    }
+  });
+
+  const websiteChatLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    message: { error: 'Too many messages. Please slow down.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app.post("/api/public/website-chat/:businessId", websiteChatLimiter, async (req: any, res) => {
+    try {
+      const { businessId } = req.params;
+      const messageSchema = z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(2000),
+      });
+      const schema = z.object({
+        message: z.string().min(1).max(2000),
+        sessionId: z.string().optional(),
+        history: z.array(messageSchema).max(50).optional(),
+      });
+      const parsed = schema.parse(req.body);
+
+      const addon = await storage.getWebsiteAddon(businessId);
+      if (!addon || !addon.websiteChatWidget) {
+        return res.status(404).json({ error: "Chat widget is not enabled for this business." });
+      }
+
+      const settings = await storage.getBusinessSettings(businessId);
+      const aiConfig = await db.select().from(aiReceptionistConfig).where(eq(aiReceptionistConfig.userId, businessId)).limit(1);
+      const knowledgeBank = aiConfig[0]?.knowledgeBank as any || {};
+      const receptionistGreeting = aiConfig[0]?.greeting as string || undefined;
+
+      const businessName = settings?.businessName || 'Our Business';
+      const user = await storage.getUser(businessId);
+      const tradeType = user?.tradeType || 'trade';
+
+      const { buildWebsiteChatSystemPrompt } = await import('./vapiService');
+      const systemPrompt = buildWebsiteChatSystemPrompt({
+        businessName,
+        tradeType,
+        greeting: receptionistGreeting,
+        knowledgeBank: knowledgeBank,
+        services: settings?.services as string[] || [],
+      });
+
+      const conversationMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+        { role: "system", content: systemPrompt },
+      ];
+
+      if (parsed.history && parsed.history.length > 0) {
+        const cleanHistory = parsed.history.map(m => ({
+          role: m.role as "user" | "assistant",
+          content: m.content.replace(/<!--LEAD_DATA:.*?-->/g, ''),
+        }));
+        conversationMessages.push(...cleanHistory);
+      }
+
+      conversationMessages.push({ role: "user", content: parsed.message });
+
+      const { default: OpenAI } = await import("openai");
+      const openai = new OpenAI();
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: conversationMessages,
+        max_tokens: 400,
+        temperature: 0.7,
+      });
+
+      const rawReply = completion.choices[0]?.message?.content || "Sorry, I couldn't process that request.";
+
+      const leadDataMatch = rawReply.match(/<!--LEAD_DATA:(.*?)-->/);
+      const reply = rawReply.replace(/<!--LEAD_DATA:.*?-->/g, '').trim();
+
+      if (leadDataMatch) {
+        try {
+          const leadData = JSON.parse(leadDataMatch[1]);
+          const leadName = leadData.name || 'Website Chat Visitor';
+          const leadPhone = leadData.phone || null;
+
+          if (leadPhone) {
+            const recentLeads = await storage.getLeadsByUserAndPhone(businessId, leadPhone);
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            const recentDuplicate = recentLeads?.find((l: any) => l.createdAt && new Date(l.createdAt) > oneHourAgo);
+            if (recentDuplicate) {
+              return res.json({ reply });
+            }
+          }
+
+          await storage.createLead({
+            userId: businessId,
+            name: leadName,
+            phone: leadPhone,
+            source: 'website_chat',
+            status: 'new',
+            description: leadData.intent || `Website chat enquiry`,
+            notes: [
+              leadData.jobType ? `Work type: ${leadData.jobType}` : null,
+              `Source: Website Chat Widget`,
+              `Session: ${parsed.sessionId || 'unknown'}`,
+            ].filter(Boolean).join('\n'),
+          });
+        } catch (leadErr) {
+          console.error("Failed to create lead from chat:", leadErr);
+        }
+      }
+
+      res.json({ reply });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error("Error in website chat:", error);
+      res.status(500).json({ error: "Failed to process chat message" });
+    }
+  });
+
+  const websiteBookingLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: { error: 'Too many submissions. Please wait a moment.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app.post("/api/public/website-booking/:businessId", websiteBookingLimiter, async (req: any, res) => {
+    try {
+      const { businessId } = req.params;
+      const schema = z.object({
+        name: z.string().min(1, "Name is required").max(200),
+        phone: z.string().min(1, "Phone number is required").max(30),
+        email: z.string().email().max(200).optional().nullable(),
+        jobType: z.string().max(200).optional().nullable(),
+        preferredDate: z.string().optional().nullable(),
+        message: z.string().max(2000).optional().nullable(),
+      });
+      const parsed = schema.parse(req.body);
+
+      const addon = await storage.getWebsiteAddon(businessId);
+      if (!addon || !addon.websiteBookingForm) {
+        return res.status(404).json({ error: "Booking form is not enabled for this business." });
+      }
+
+      const description = [
+        parsed.jobType ? `Job Type: ${parsed.jobType}` : null,
+        parsed.preferredDate ? `Preferred Date: ${parsed.preferredDate}` : null,
+        parsed.message ? `Message: ${parsed.message}` : null,
+      ].filter(Boolean).join('\n');
+
+      const lead = await storage.createLead({
+        userId: businessId,
+        name: parsed.name,
+        phone: parsed.phone,
+        email: parsed.email || null,
+        source: 'website_booking',
+        status: 'new',
+        description: description || 'Website booking form submission',
+        followUpDate: parsed.preferredDate ? new Date(parsed.preferredDate) : null,
+      });
+
+      try {
+        await notifyOwnerViaEmail(businessId, 'New Website Booking', `New booking request from ${parsed.name} (${parsed.phone})${parsed.jobType ? ` - ${parsed.jobType}` : ''}. Check your Leads in JobRunner.`);
+      } catch (notifErr) {
+        console.error("Failed to notify owner of booking:", notifErr);
+      }
+
+      res.json({ success: true, message: "Booking request submitted successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0].message });
+      }
+      console.error("Error in website booking:", error);
+      res.status(500).json({ error: "Failed to submit booking request" });
     }
   });
 

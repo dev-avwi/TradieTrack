@@ -672,6 +672,25 @@ function UsersView({
                               Verified
                             </Badge>
                           )}
+                          {(user as any).websiteFeatures && (
+                            <>
+                              {(user as any).websiteFeatures.clickToCall && (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30 text-xs hidden xl:inline-flex">
+                                  Call
+                                </Badge>
+                              )}
+                              {(user as any).websiteFeatures.chatWidget && (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/30 text-xs hidden xl:inline-flex">
+                                  Chat
+                                </Badge>
+                              )}
+                              {(user as any).websiteFeatures.bookingForm && (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30 text-xs hidden xl:inline-flex">
+                                  Booking
+                                </Badge>
+                              )}
+                            </>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="pr-6 text-right">

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -74,6 +74,16 @@ const FEATURE_OPTIONS = [
 const BUDGET_OPTIONS = ['~$500', '~$1,000', '$1,500+', 'Not sure'];
 const TIMELINE_OPTIONS = ['ASAP', '2 weeks', '1 month', 'No rush'];
 
+interface WebsiteAddonData {
+  id: string;
+  websiteClickToCall: boolean;
+  websiteChatWidget: boolean;
+  websiteBookingForm: boolean;
+  domainUrl: string | null;
+  domainStatus: string;
+  hostingStatus: string;
+}
+
 export default function CustomWebsitePage() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
@@ -83,6 +93,34 @@ export default function CustomWebsitePage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedTier, setSelectedTier] = useState<number | null>(null);
+  const [addonData, setAddonData] = useState<WebsiteAddonData | null>(null);
+  const [addonLoading, setAddonLoading] = useState(true);
+  const [togglingFeature, setTogglingFeature] = useState<string | null>(null);
+
+  const fetchAddon = useCallback(async () => {
+    try {
+      const res = await api.get<WebsiteAddonData>('/api/website-addon');
+      setAddonData(res.data || null);
+    } catch {
+      setAddonData(null);
+    } finally {
+      setAddonLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchAddon(); }, [fetchAddon]);
+
+  const toggleFeatureSetting = async (feature: string, value: boolean) => {
+    setTogglingFeature(feature);
+    try {
+      await api.patch('/api/website-addon/features', { [feature]: value });
+      setAddonData(prev => prev ? { ...prev, [feature]: value } : prev);
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.error || 'Failed to update feature.');
+    } finally {
+      setTogglingFeature(null);
+    }
+  };
 
   const [businessName, setBusinessName] = useState(businessSettings?.businessName || '');
   const [tradeType, setTradeType] = useState(businessSettings?.tradeType || '');
@@ -185,6 +223,78 @@ export default function CustomWebsitePage() {
               </View>
             ))}
           </ScrollView>
+
+          {addonData && (
+            <View style={styles.listSection}>
+              <Text style={styles.sectionLabel}>Website Features</Text>
+              <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.md, marginTop: -spacing.sm }}>
+                Enable interactive features to generate more leads
+              </Text>
+
+              <View style={styles.tierCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#2563EB12', alignItems: 'center', justifyContent: 'center' }}>
+                      <Feather name="phone-call" size={16} color="#2563EB" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>Click-to-Call</Text>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground }}>Floating call button on your site</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={addonData.websiteClickToCall}
+                    onValueChange={(v) => toggleFeatureSetting('websiteClickToCall', v)}
+                    disabled={togglingFeature === 'websiteClickToCall'}
+                    trackColor={{ false: colors.muted, true: `${colors.primary}60` }}
+                    thumbColor={addonData.websiteClickToCall ? colors.primary : colors.mutedForeground}
+                  />
+                </View>
+
+                <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.sm }} />
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#7c3aed12', alignItems: 'center', justifyContent: 'center' }}>
+                      <Feather name="message-circle" size={16} color="#7c3aed" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>AI Chat Widget</Text>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground }}>AI-powered live chat with your knowledge</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={addonData.websiteChatWidget}
+                    onValueChange={(v) => toggleFeatureSetting('websiteChatWidget', v)}
+                    disabled={togglingFeature === 'websiteChatWidget'}
+                    trackColor={{ false: colors.muted, true: `${colors.primary}60` }}
+                    thumbColor={addonData.websiteChatWidget ? colors.primary : colors.mutedForeground}
+                  />
+                </View>
+
+                <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.sm }} />
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#16a34a12', alignItems: 'center', justifyContent: 'center' }}>
+                      <Feather name="calendar" size={16} color="#16a34a" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>Booking Form</Text>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground }}>Collect leads with name, phone, job type</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={addonData.websiteBookingForm}
+                    onValueChange={(v) => toggleFeatureSetting('websiteBookingForm', v)}
+                    disabled={togglingFeature === 'websiteBookingForm'}
+                    trackColor={{ false: colors.muted, true: `${colors.primary}60` }}
+                    thumbColor={addonData.websiteBookingForm ? colors.primary : colors.mutedForeground}
+                  />
+                </View>
+              </View>
+            </View>
+          )}
 
           {submitted ? (
             <View style={styles.listSection}>

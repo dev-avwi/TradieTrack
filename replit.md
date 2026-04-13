@@ -46,4 +46,21 @@ Core architectural and design decisions include:
 *   **Routing/ETA**: OSRM (Open Source Routing Machine)
 *   **Tap to Pay (Stripe Terminal)**: `@stripe/stripe-terminal-react-native` SDK
 *   **AI Receptionist (Voice)**: Vapi.ai (enhanced with ElevenLabs for voice tuning)
+
+### Website Addon Interactive Features
+The website addon (`website_addons` table) now includes three toggleable interactive features:
+- **Click-to-Call** (`websiteClickToCall`): Embeddable floating phone button that dials the business's dedicated number
+- **AI Chat Widget** (`websiteChatWidget`): Embeddable AI-powered live chat using the business's knowledge bank (same AI brain as the receptionist)
+- **Booking Form** (`websiteBookingForm`): Embeddable booking/contact form that creates leads in the business's account
+
+Public API endpoints (no auth required, rate-limited):
+- `POST /api/public/website-chat/:businessId` — Chat with the AI widget
+- `POST /api/public/website-booking/:businessId` — Submit a booking form (creates a lead)
+
+Authenticated endpoints:
+- `PATCH /api/website-addon/features` — Toggle website features on/off
+- `GET /api/website-addon/embed-snippets` — Get HTML/JS embed code snippets for enabled features
+
+Feature toggles are available in both the web client (WebsiteAddon.tsx) and mobile app (custom-website.tsx). Admin dashboard shows enabled features per business in the Users table.
+
 *   **Error Tracking**: Sentry
