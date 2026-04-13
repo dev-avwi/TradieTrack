@@ -298,6 +298,13 @@ export default function PhoneNumbersPage() {
           Your dedicated Australian phone number for two-way SMS with clients and AI Receptionist calls.
         </Text>
 
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: `${colors.info}10`, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md, gap: spacing.xs, borderWidth: 1, borderColor: `${colors.info}30` }}>
+          <Feather name="info" size={14} color={colors.info} />
+          <Text style={{ fontSize: 12, color: colors.info, flex: 1, lineHeight: 17 }}>
+            Beta access — phone number setup is currently free during the beta period. Standard pricing ($5/mo) applies after launch.
+          </Text>
+        </View>
+
         {currentNumber ? (
           <>
             <View style={styles.currentNumberCard}>

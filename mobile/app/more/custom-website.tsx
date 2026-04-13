@@ -53,10 +53,17 @@ const FEATURE_OPTIONS = [
   'Before & After Photos',
 ];
 
+const PRICING_TIERS = [
+  { name: 'Portfolio', pages: 'Up to 3 pages', price: '$500', desc: 'Perfect for tradies who want an online presence', features: ['Responsive design', 'Contact form', 'Google Maps', 'Social links'] },
+  { name: '5-Page Business', pages: 'Up to 5 pages', price: '$1,000', desc: 'Full business site with all the essentials', features: ['Everything in Portfolio', 'Photo gallery', 'Testimonials', 'Quote request form', 'Local SEO'] },
+  { name: 'Premium Custom', pages: '6+ pages', price: 'From $1,500', desc: 'Enterprise-grade with advanced features', features: ['Everything in Business', 'Blog', 'Online booking', 'Before & after gallery', 'Live chat'] },
+];
+
 const BUDGET_OPTIONS = [
-  'Standard',
-  'Premium',
-  'Custom',
+  'Portfolio (~$500)',
+  'Business (~$1,000)',
+  'Premium ($1,500+)',
+  'Not sure yet',
 ];
 
 const TIMELINE_OPTIONS = [
@@ -140,16 +147,31 @@ export default function CustomWebsitePage() {
           Professional website built for your trade business — mobile-friendly, SEO optimised, and integrated with JobRunner.
         </Text>
 
-        <View style={styles.pricingCard}>
-          <View style={styles.pricingHeader}>
-            <Text style={styles.pricingLabel}>Professional Website</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-              <Text style={styles.pricingAmount}>Custom</Text>
-              <Text style={styles.pricingPeriod}>quote</Text>
+        <Text style={styles.sectionTitle}>Pricing</Text>
+        {PRICING_TIERS.map((tier, i) => (
+          <View key={i} style={[styles.pricingCard, i === 1 && { borderColor: colors.primary, borderWidth: 2 }]}>
+            {i === 1 && (
+              <View style={{ position: 'absolute', top: -10, alignSelf: 'center', backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 3, borderRadius: radius.full }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primaryForeground }}>MOST POPULAR</Text>
+              </View>
+            )}
+            <View style={styles.pricingHeader}>
+              <Text style={styles.pricingLabel}>{tier.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+                <Text style={styles.pricingAmount}>{tier.price}</Text>
+              </View>
+              <Text style={styles.pricingNote}>{tier.pages} — {tier.desc}</Text>
             </View>
-            <Text style={styles.pricingNote}>Contact us for business pricing</Text>
+            <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.md }}>
+              {tier.features.map((feat, j) => (
+                <View key={j} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 }}>
+                  <Feather name="check" size={14} color={colors.success} />
+                  <Text style={{ fontSize: 13, color: colors.foreground }}>{feat}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        ))}
 
         <Text style={styles.sectionTitle}>What's Included</Text>
         <View style={styles.featuresGrid}>

@@ -52,7 +52,7 @@ import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecord
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
 import SmartActionsPanel, { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
-import { JobProgressBar, LinkedDocumentsCard, NextActionCard, PaymentCollectionCard, WorkerStateQuickActions } from '../../src/components/JobWorkflowComponents';
+import { JobProgressBar, LinkedDocumentsCard, NextActionCard, PaymentCollectionCard } from '../../src/components/JobWorkflowComponents';
 import { CollapsibleSection } from '../../src/components/ui/CollapsibleSection';
 import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
@@ -6354,6 +6354,73 @@ export default function JobDetailScreen() {
         );
       })()}
 
+      {/* Time Entries List - shows individual completed entries */}
+      {timeEntries.length > 0 && !isTimerForThisJob && (
+        <View style={[styles.card, { flexDirection: 'column', alignItems: 'stretch', paddingVertical: spacing.md }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+            <View style={[styles.cardIconContainer, { backgroundColor: colorWithOpacity(colors.primary, 0.12) }]}>
+              <Feather name="list" size={iconSizes.xl} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardLabel, { marginBottom: 0 }]}>Time Entries</Text>
+              <Text style={{ fontSize: 13, color: colors.mutedForeground }}>
+                {timeEntries.filter(e => e.endTime && e.endTime !== 'null' && e.endTime !== '').length} entr{timeEntries.filter(e => e.endTime && e.endTime !== 'null' && e.endTime !== '').length === 1 ? 'y' : 'ies'} logged
+              </Text>
+            </View>
+          </View>
+          {timeEntries
+            .filter(e => e.endTime && e.endTime !== 'null' && e.endTime !== '')
+            .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+            .slice(0, 5)
+            .map((entry, idx) => {
+              const start = new Date(entry.startTime);
+              const end = new Date(entry.endTime!);
+              const durationMs = end.getTime() - start.getTime();
+              const durationMin = Math.round(durationMs / (1000 * 60));
+              const hrs = Math.floor(durationMin / 60);
+              const mins = durationMin % 60;
+              const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+              const dateStr = start.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+              const startStr = start.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+              const endStr = end.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+              return (
+                <View
+                  key={entry.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: spacing.sm,
+                    borderTopWidth: 1,
+                    borderTopColor: colors.border,
+                    gap: spacing.sm,
+                  }}
+                >
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: entry.isBreak ? colors.warning : colors.success }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>
+                      {entry.isBreak ? 'Break' : (entry.userName || 'You')}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                      {dateStr} {startStr} - {endStr}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: entry.isBreak ? colors.warning : colors.foreground }}>{timeStr}</Text>
+                    {entry.hourlyRate && !entry.isBreak && (
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground }}>${parseFloat(entry.hourlyRate).toFixed(0)}/hr</Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          {timeEntries.filter(e => e.endTime && e.endTime !== 'null' && e.endTime !== '').length > 5 && (
+            <Text style={{ fontSize: 12, color: colors.mutedForeground, textAlign: 'center', marginTop: spacing.sm }}>
+              + {timeEntries.filter(e => e.endTime && e.endTime !== 'null' && e.endTime !== '').length - 5} more entries
+            </Text>
+          )}
+        </View>
+      )}
+
       {/* Team on Job - shows all workers currently tracked on this job */}
       {teamTimers.length > 0 && (
         <View style={[styles.card, { flexDirection: 'column', alignItems: 'stretch', paddingVertical: spacing.md }]}>
@@ -6523,10 +6590,6 @@ export default function JobDetailScreen() {
           }
         }}
       />
-      )}
-
-      {(job.status === 'scheduled' || job.status === 'in_progress') && (
-        <WorkerStateQuickActions jobId={job.id} jobStatus={job.status} />
       )}
 
       {/* Address Card */}

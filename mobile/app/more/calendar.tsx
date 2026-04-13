@@ -728,80 +728,174 @@ export default function CalendarScreen() {
             </View>
           )}
 
-          {viewMode === 'today' && (
-            <View style={styles.todayViewContainer}>
-              <View style={styles.todayViewHeader}>
-                <Text style={styles.todayViewDate}>
-                  {today.toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
-                </Text>
-                <Text style={styles.todayViewWeekday}>
-                  {today.toLocaleDateString('en-AU', { weekday: 'long' })}
-                </Text>
-                <Text style={styles.todayViewSubtitle}>
-                  {selectedDateJobs.length} job{selectedDateJobs.length !== 1 ? 's' : ''} scheduled today
-                </Text>
-              </View>
+          {viewMode === 'today' && (() => {
+            const TIMELINE_START = 6;
+            const TIMELINE_END = 20;
+            const HOUR_HEIGHT = 72;
+            const timelineHours = Array.from({ length: TIMELINE_END - TIMELINE_START }, (_, i) => TIMELINE_START + i);
+            const currentHour = today.getHours();
+            const currentMinute = today.getMinutes();
+            const nowOffset = (currentHour - TIMELINE_START) * HOUR_HEIGHT + (currentMinute / 60) * HOUR_HEIGHT;
 
-              {selectedDateConflicts.length > 0 && (
-                <View style={styles.conflictBanner}>
-                  <Feather name="alert-triangle" size={20} color={colors.destructive} />
-                  <View style={styles.conflictBannerContent}>
-                    <Text style={styles.conflictBannerTitle}>
-                      Schedule Conflict{selectedDateConflicts.length > 1 ? 's' : ''}
-                    </Text>
-                    <Text style={styles.conflictBannerText}>
-                      {selectedDateConflicts.length} overlapping job{selectedDateConflicts.length > 1 ? 's' : ''} detected today
-                    </Text>
+            const getJobPosition = (job: any) => {
+              if (!job.scheduledAt) return null;
+              const jobDate = new Date(job.scheduledAt);
+              const jobHour = jobDate.getHours();
+              const jobMinute = jobDate.getMinutes();
+              const rawTop = (jobHour - TIMELINE_START) * HOUR_HEIGHT + (jobMinute / 60) * HOUR_HEIGHT;
+              const durationMin = job.estimatedDuration || 60;
+              const rawHeight = Math.max((durationMin / 60) * HOUR_HEIGHT, 44);
+              const containerHeight = timelineHours.length * HOUR_HEIGHT;
+              const top = Math.max(0, Math.min(rawTop, containerHeight - 44));
+              const height = Math.min(rawHeight, containerHeight - top);
+              return { top, height, isOutOfRange: jobHour < TIMELINE_START || jobHour >= TIMELINE_END };
+            };
+
+            const earlyLateJobs = selectedDateJobs.filter(job => {
+              if (!job.scheduledAt) return false;
+              const h = new Date(job.scheduledAt).getHours();
+              return h < TIMELINE_START || h >= TIMELINE_END;
+            });
+
+            return (
+              <View style={styles.todayViewContainer}>
+                <View style={styles.todayViewHeader}>
+                  <Text style={styles.todayViewDate}>
+                    {today.toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
+                  </Text>
+                  <Text style={styles.todayViewWeekday}>
+                    {today.toLocaleDateString('en-AU', { weekday: 'long' })}
+                  </Text>
+                  <Text style={styles.todayViewSubtitle}>
+                    {selectedDateJobs.length} job{selectedDateJobs.length !== 1 ? 's' : ''} scheduled today
+                  </Text>
+                </View>
+
+                {selectedDateConflicts.length > 0 && (
+                  <View style={styles.conflictBanner}>
+                    <Feather name="alert-triangle" size={20} color={colors.destructive} />
+                    <View style={styles.conflictBannerContent}>
+                      <Text style={styles.conflictBannerTitle}>
+                        Schedule Conflict{selectedDateConflicts.length > 1 ? 's' : ''}
+                      </Text>
+                      <Text style={styles.conflictBannerText}>
+                        {selectedDateConflicts.length} overlapping job{selectedDateConflicts.length > 1 ? 's' : ''} detected today
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              )}
+                )}
 
-              {selectedDateJobs.length === 0 ? (
-                <View style={styles.noJobsCard}>
-                  <Feather name="sun" size={32} color={colors.mutedForeground} />
-                  <Text style={styles.noJobsText}>No jobs scheduled for today</Text>
-                </View>
-              ) : (
-                selectedDateJobs.map(job => (
-                  <TouchableOpacity
-                    key={job.id}
-                    style={[styles.jobCard, conflictingJobIds.has(job.id) && styles.conflictJobCard]}
-                    activeOpacity={0.7}
-                    onPress={() => router.push(`/job/${job.id}`)}
-                  >
-                    <View style={styles.jobCardLeft}>
-                      <View style={styles.jobTimeContainer}>
-                        <Feather name="clock" size={14} color={colors.primary} />
-                        <Text style={styles.jobTime}>{formatTime(job.scheduledAt)}</Text>
+                {selectedDateJobs.length === 0 ? (
+                  <View style={styles.noJobsCard}>
+                    <Feather name="sun" size={32} color={colors.mutedForeground} />
+                    <Text style={styles.noJobsText}>No jobs scheduled for today</Text>
+                  </View>
+                ) : (
+                  <>
+                  {earlyLateJobs.length > 0 && (
+                    <View style={{ marginBottom: spacing.md }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: colors.mutedForeground, marginBottom: spacing.xs }}>Outside Hours</Text>
+                      {earlyLateJobs.map(job => (
+                        <TouchableOpacity
+                          key={`early-${job.id}`}
+                          activeOpacity={0.7}
+                          onPress={() => router.push(`/job/${job.id}`)}
+                          style={{
+                            backgroundColor: colors.card,
+                            borderRadius: radius.md,
+                            padding: spacing.sm,
+                            marginBottom: spacing.xs,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: spacing.sm,
+                          }}
+                        >
+                          <Feather name="clock" size={14} color={colors.mutedForeground} />
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>{formatTime(job.scheduledAt)}</Text>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground, flex: 1 }} numberOfLines={1}>{job.title}</Text>
+                          <StatusBadge status={job.status} size="sm" />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  <View style={{ height: timelineHours.length * HOUR_HEIGHT, position: 'relative' }}>
+                    {timelineHours.map(hour => {
+                      const h = hour % 12 || 12;
+                      const ampm = hour < 12 ? 'am' : 'pm';
+                      const yPos = (hour - TIMELINE_START) * HOUR_HEIGHT;
+                      return (
+                        <View key={hour} style={{ position: 'absolute', top: yPos, left: 0, right: 0, height: HOUR_HEIGHT, flexDirection: 'row' }}>
+                          <View style={{ width: 48, alignItems: 'flex-end', paddingRight: 8, paddingTop: 0 }}>
+                            <Text style={{ fontSize: 11, color: colors.mutedForeground, fontWeight: '500' }}>{h} {ampm}</Text>
+                          </View>
+                          <View style={{ flex: 1, borderTopWidth: 1, borderTopColor: colors.border }} />
+                        </View>
+                      );
+                    })}
+
+                    {currentHour >= TIMELINE_START && currentHour < TIMELINE_END && (
+                      <View style={{ position: 'absolute', top: nowOffset, left: 40, right: 0, flexDirection: 'row', alignItems: 'center', zIndex: 10 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.destructive }} />
+                        <View style={{ flex: 1, height: 2, backgroundColor: colors.destructive }} />
                       </View>
-                      <StatusBadge status={job.status} size="sm" />
-                    </View>
-                    <View style={styles.jobCardContent}>
-                      <Text style={styles.jobTitle}>{job.title}</Text>
-                      {conflictingJobIds.has(job.id) && (
-                        <View style={styles.conflictJobBadge}>
-                          <Feather name="alert-triangle" size={11} color={colors.destructive} />
-                          <Text style={styles.conflictJobBadgeText}>Overlapping</Text>
-                        </View>
-                      )}
-                      {getClientName(job.clientId) && (
-                        <View style={styles.jobDetailRow}>
-                          <Feather name="user" size={12} color={colors.mutedForeground} />
-                          <Text style={styles.jobDetailText}>{getClientName(job.clientId)}</Text>
-                        </View>
-                      )}
-                      {job.address && (
-                        <View style={styles.jobDetailRow}>
-                          <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-                          <Text style={styles.jobDetailText} numberOfLines={1}>{job.address}</Text>
-                        </View>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
-          )}
+                    )}
+
+                    {selectedDateJobs.filter(job => {
+                      if (!job.scheduledAt) return false;
+                      const h = new Date(job.scheduledAt).getHours();
+                      return h >= TIMELINE_START && h < TIMELINE_END;
+                    }).map(job => {
+                      const pos = getJobPosition(job);
+                      if (!pos) return null;
+                      const isConflict = conflictingJobIds.has(job.id);
+                      return (
+                        <TouchableOpacity
+                          key={job.id}
+                          activeOpacity={0.7}
+                          onPress={() => router.push(`/job/${job.id}`)}
+                          style={{
+                            position: 'absolute',
+                            top: pos.top,
+                            left: 56,
+                            right: 4,
+                            height: pos.height,
+                            backgroundColor: isConflict ? (colors.destructiveLight || '#FEF2F2') : colors.primaryLight,
+                            borderLeftWidth: 3,
+                            borderLeftColor: isConflict ? colors.destructive : colors.primary,
+                            borderRadius: radius.md,
+                            padding: spacing.sm,
+                            justifyContent: 'center',
+                            zIndex: 5,
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: isConflict ? colors.destructive : colors.primary }}>
+                              {formatTime(job.scheduledAt)}
+                            </Text>
+                            <StatusBadge status={job.status} size="sm" />
+                            {isConflict && <Feather name="alert-triangle" size={11} color={colors.destructive} />}
+                          </View>
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }} numberOfLines={1}>{job.title}</Text>
+                          {pos.height > 50 && getClientName(job.clientId) && (
+                            <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 1 }} numberOfLines={1}>{getClientName(job.clientId)}</Text>
+                          )}
+                          {pos.height > 64 && job.address && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 }}>
+                              <Feather name="map-pin" size={10} color={colors.mutedForeground} />
+                              <Text style={{ fontSize: 11, color: colors.mutedForeground }} numberOfLines={1}>{job.address}</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  </>
+                )}
+              </View>
+            );
+          })()}
 
           {viewMode === 'week' && (
             <View style={styles.weekView}>

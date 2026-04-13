@@ -12,6 +12,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -84,6 +85,19 @@ const formatDate = (dateString?: string): string => {
   if (!dateString) return '';
   const date = new Date(dateString);
   return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const formatRelativeDate = (dateString?: string): string => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 };
 
 export default function LeadsScreen() {
@@ -162,6 +176,18 @@ export default function LeadsScreen() {
       }
     });
     return counts;
+  }, [leads]);
+
+  const totalPipelineValue = useMemo(() => {
+    return leads
+      .filter(l => ['new', 'contacted', 'quoted'].includes(l.status || 'new'))
+      .reduce((sum, l) => sum + (parseFloat(l.estimatedValue || '0') || 0), 0);
+  }, [leads]);
+
+  const wonValue = useMemo(() => {
+    return leads
+      .filter(l => l.status === 'won')
+      .reduce((sum, l) => sum + (parseFloat(l.estimatedValue || '0') || 0), 0);
   }, [leads]);
 
   const resetForm = () => {
@@ -287,44 +313,76 @@ export default function LeadsScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Feather name="arrow-left" size={iconSizes.md} color={colors.foreground} />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Leads</Text>
-            <Text style={styles.headerSubtitle}>{leads.length} total leads</Text>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.heroSection}>
+          <Text style={styles.pageTitle}>Leads</Text>
+          <Text style={styles.pageSubtitle}>
+            Track and convert potential customers into paying clients.
+          </Text>
+
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: `${colors.primary}15` }]}>
+                <Feather name="users" size={16} color={colors.primary} />
+              </View>
+              <Text style={styles.statValue}>{statusCounts.active || 0}</Text>
+              <Text style={styles.statLabel}>Active</Text>
+            </View>
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: `${colors.success}15` }]}>
+                <Feather name="check-circle" size={16} color={colors.success} />
+              </View>
+              <Text style={styles.statValue}>{statusCounts.won || 0}</Text>
+              <Text style={styles.statLabel}>Won</Text>
+            </View>
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: `${colors.warning}15` }]}>
+                <Feather name="dollar-sign" size={16} color={colors.warning} />
+              </View>
+              <Text style={styles.statValue}>{totalPipelineValue > 0 ? `$${Math.round(totalPipelineValue / 1000)}k` : '$0'}</Text>
+              <Text style={styles.statLabel}>Pipeline</Text>
+            </View>
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: `${colors.success}15` }]}>
+                <Feather name="trending-up" size={16} color={colors.success} />
+              </View>
+              <Text style={styles.statValue}>{wonValue > 0 ? `$${Math.round(wonValue / 1000)}k` : '$0'}</Text>
+              <Text style={styles.statLabel}>Won</Text>
+            </View>
           </View>
+        </View>
+
+        <View style={styles.searchSection}>
+          <View style={styles.searchBar}>
+            <Feather name="search" size={16} color={colors.mutedForeground} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search leads..."
+              placeholderTextColor={colors.mutedForeground}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Feather name="x" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+
           <TouchableOpacity
-            style={[styles.headerAction, { backgroundColor: colors.primary }]}
+            style={styles.addButton}
             onPress={() => { resetForm(); setEditingLead(null); setShowForm(true); }}
           >
-            <Feather name="plus" size={iconSizes.sm} color="#FFFFFF" />
+            <Feather name="plus" size={18} color={colors.primaryForeground} />
           </TouchableOpacity>
         </View>
-      </View>
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Feather name="search" size={iconSizes.sm} color={colors.mutedForeground} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search leads..."
-            placeholderTextColor={colors.mutedForeground}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Feather name="x" size={iconSizes.sm} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.filterContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll} style={{ flexGrow: 0 }}>
           {FILTERS.map(f => (
             <TouchableOpacity
               key={f.key}
@@ -337,112 +395,110 @@ export default function LeadsScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
 
-      <ScrollView
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-      >
-        {error ? (
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIconWrap, { backgroundColor: `${colors.destructive}12` }]}>
-              <Feather name="alert-circle" size={28} color={colors.destructive} />
-            </View>
-            <Text style={styles.emptyTitle}>Something went wrong</Text>
-            <Text style={styles.emptySubtitle}>{error}</Text>
-            <TouchableOpacity style={styles.emptyButton} onPress={() => { setLoading(true); fetchLeads(); }}>
-              <Feather name="refresh-cw" size={iconSizes.sm} color="#FFFFFF" />
-              <Text style={styles.emptyButtonText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        ) : filteredLeads.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconWrap}>
-              <Feather name="user-plus" size={28} color={colors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>No Leads Found</Text>
-            <Text style={styles.emptySubtitle}>
-              {searchQuery || activeFilter !== 'all' ? 'Try adjusting your filters' : 'Add your first lead to get started'}
-            </Text>
-            {!searchQuery && activeFilter === 'all' && (
-              <TouchableOpacity style={styles.emptyButton} onPress={() => { resetForm(); setEditingLead(null); setShowForm(true); }}>
-                <Feather name="plus" size={iconSizes.sm} color="#FFFFFF" />
-                <Text style={styles.emptyButtonText}>Add Lead</Text>
+        <View style={styles.listSection}>
+          {error ? (
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIconWrap, { backgroundColor: `${colors.destructive}12` }]}>
+                <Feather name="alert-circle" size={28} color={colors.destructive} />
+              </View>
+              <Text style={styles.emptyTitle}>Something went wrong</Text>
+              <Text style={styles.emptySubtitle}>{error}</Text>
+              <TouchableOpacity style={styles.emptyButton} onPress={() => { setLoading(true); fetchLeads(); }}>
+                <Feather name="refresh-cw" size={iconSizes.sm} color="#FFFFFF" />
+                <Text style={styles.emptyButtonText}>Retry</Text>
               </TouchableOpacity>
-            )}
-          </View>
-        ) : (
-          filteredLeads.map(lead => {
-            const statusConfig = getStatusConfig(lead.status as LeadStatus, colors);
-            return (
-              <TouchableOpacity key={lead.id} style={styles.card} onPress={() => handleEdit(lead)} activeOpacity={0.7}>
-                <View style={styles.cardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardName} numberOfLines={1}>{lead.name}</Text>
-                    {lead.description && <Text style={styles.cardDescription} numberOfLines={1}>{lead.description}</Text>}
+            </View>
+          ) : filteredLeads.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconWrap}>
+                <Feather name="user-plus" size={32} color={colors.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>No Leads Found</Text>
+              <Text style={styles.emptySubtitle}>
+                {searchQuery || activeFilter !== 'all' ? 'Try adjusting your filters' : 'Add your first lead to start building your pipeline'}
+              </Text>
+              {!searchQuery && activeFilter === 'all' && (
+                <TouchableOpacity style={styles.emptyButton} onPress={() => { resetForm(); setEditingLead(null); setShowForm(true); }}>
+                  <Feather name="plus" size={iconSizes.sm} color="#FFFFFF" />
+                  <Text style={styles.emptyButtonText}>Add Lead</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            filteredLeads.map(lead => {
+              const statusConfig = getStatusConfig(lead.status as LeadStatus, colors);
+              const hasValue = lead.estimatedValue && parseFloat(lead.estimatedValue) > 0;
+              return (
+                <TouchableOpacity key={lead.id} style={styles.card} onPress={() => handleEdit(lead)} activeOpacity={0.7}>
+                  <View style={styles.cardTop}>
+                    <View style={styles.cardAvatar}>
+                      <Text style={styles.cardAvatarText}>{lead.name.charAt(0).toUpperCase()}</Text>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.cardName} numberOfLines={1}>{lead.name}</Text>
+                        {lead.createdAt && (
+                          <Text style={styles.cardTime}>{formatRelativeDate(lead.createdAt)}</Text>
+                        )}
+                      </View>
+                      {lead.description ? (
+                        <Text style={styles.cardDescription} numberOfLines={1}>{lead.description}</Text>
+                      ) : lead.phone ? (
+                        <Text style={styles.cardDescription}>{lead.phone}</Text>
+                      ) : lead.email ? (
+                        <Text style={styles.cardDescription} numberOfLines={1}>{lead.email}</Text>
+                      ) : null}
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+                      <Feather name={statusConfig.icon} size={11} color={statusConfig.color} />
+                      <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
+                    </View>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
-                    <Feather name={statusConfig.icon} size={12} color={statusConfig.color} />
-                    <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
+
+                  <View style={styles.cardBottom}>
+                    <View style={styles.cardMetaRow}>
+                      <View style={styles.metaChip}>
+                        <Feather name={getSourceIcon(lead.source as LeadSource)} size={11} color={colors.mutedForeground} />
+                        <Text style={styles.metaChipText}>{SOURCE_OPTIONS.find(s => s.value === lead.source)?.label || 'Other'}</Text>
+                      </View>
+                      {hasValue && (
+                        <View style={[styles.metaChip, { backgroundColor: `${colors.success}10` }]}>
+                          <Feather name="dollar-sign" size={11} color={colors.success} />
+                          <Text style={[styles.metaChipText, { color: colors.success, fontWeight: '600' }]}>{formatCurrency(lead.estimatedValue)}</Text>
+                        </View>
+                      )}
+                      {lead.followUpDate && (
+                        <View style={[styles.metaChip, { backgroundColor: `${colors.warning}10` }]}>
+                          <Feather name="calendar" size={11} color={colors.warning} />
+                          <Text style={[styles.metaChipText, { color: colors.warning }]}>{formatDate(lead.followUpDate)}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={styles.cardActionRow}>
+                      {(lead.status || 'new') !== 'won' && (
+                        <TouchableOpacity
+                          style={[styles.cardActionBtn, { backgroundColor: `${colors.success}12` }]}
+                          onPress={(e) => { e.stopPropagation?.(); setLeadToConvert(lead); setShowConvertModal(true); }}
+                        >
+                          <Feather name="user-check" size={13} color={colors.success} />
+                          <Text style={[styles.cardActionText, { color: colors.success }]}>Convert</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={[styles.cardActionBtn, { backgroundColor: colors.muted }]}
+                        onPress={(e) => { e.stopPropagation?.(); handleDelete(lead); }}
+                      >
+                        <Feather name="trash-2" size={13} color={colors.destructive} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-
-                <View style={styles.cardMeta}>
-                  {lead.phone && (
-                    <View style={styles.metaItem}>
-                      <Feather name="phone" size={12} color={colors.mutedForeground} />
-                      <Text style={styles.metaText}>{lead.phone}</Text>
-                    </View>
-                  )}
-                  {lead.email && (
-                    <View style={styles.metaItem}>
-                      <Feather name="mail" size={12} color={colors.mutedForeground} />
-                      <Text style={styles.metaText} numberOfLines={1}>{lead.email}</Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.cardFooter}>
-                  <View style={styles.metaItem}>
-                    <Feather name={getSourceIcon(lead.source as LeadSource)} size={12} color={colors.mutedForeground} />
-                    <Text style={styles.metaText}>{SOURCE_OPTIONS.find(s => s.value === lead.source)?.label || 'Other'}</Text>
-                  </View>
-                  {lead.estimatedValue && parseFloat(lead.estimatedValue) > 0 && (
-                    <View style={styles.metaItem}>
-                      <Feather name="dollar-sign" size={12} color={colors.success} />
-                      <Text style={[styles.metaText, { color: colors.success }]}>{formatCurrency(lead.estimatedValue)}</Text>
-                    </View>
-                  )}
-                  {lead.followUpDate && (
-                    <View style={styles.metaItem}>
-                      <Feather name="calendar" size={12} color={colors.warning} />
-                      <Text style={[styles.metaText, { color: colors.warning }]}>{formatDate(lead.followUpDate)}</Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.cardActions}>
-                  {(lead.status || 'new') !== 'won' && (
-                    <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: colors.successLight }]}
-                      onPress={(e) => { e.stopPropagation?.(); setLeadToConvert(lead); setShowConvertModal(true); }}
-                    >
-                      <Feather name="user-check" size={14} color={colors.success} />
-                      <Text style={[styles.actionButtonText, { color: colors.success }]}>Convert</Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: colors.muted }]}
-                    onPress={(e) => { e.stopPropagation?.(); handleDelete(lead); }}
-                  >
-                    <Feather name="trash-2" size={14} color={colors.destructive} />
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        )}
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
       </ScrollView>
 
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet">
@@ -564,44 +620,48 @@ export default function LeadsScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm, backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border },
-  headerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  backButton: { padding: spacing.xs },
-  headerTitle: { ...typography.subtitle, color: colors.foreground },
-  headerSubtitle: { ...typography.caption, color: colors.mutedForeground },
-  headerAction: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   loadingText: { ...typography.body, color: colors.mutedForeground },
-  searchContainer: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.md, paddingHorizontal: spacing.sm, gap: spacing.xs, height: sizes.inputHeight, borderWidth: 1, borderColor: colors.border },
-  searchInput: { flex: 1, ...typography.body, color: colors.foreground },
-  filterContainer: { paddingBottom: spacing.sm },
-  filterScroll: { paddingHorizontal: spacing.md, gap: spacing.xs },
-  filterChip: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+  heroSection: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md },
+  pageTitle: { fontSize: 28, fontWeight: '800', color: colors.foreground, letterSpacing: -0.5 },
+  pageSubtitle: { fontSize: 14, color: colors.mutedForeground, marginTop: 4, lineHeight: 20 },
+  statsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  statCard: { flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: colors.cardBorder },
+  statIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  statValue: { fontSize: 16, fontWeight: '700', color: colors.foreground },
+  statLabel: { fontSize: 11, color: colors.mutedForeground, marginTop: 1 },
+  searchSection: { flexDirection: 'row', paddingHorizontal: spacing.lg, gap: spacing.sm, marginBottom: spacing.sm },
+  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.lg, paddingHorizontal: spacing.sm, gap: spacing.xs, height: 44, borderWidth: 1, borderColor: colors.cardBorder },
+  searchInput: { flex: 1, fontSize: 15, color: colors.foreground },
+  addButton: { width: 44, height: 44, borderRadius: radius.lg, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  filterScroll: { paddingHorizontal: spacing.lg, gap: spacing.xs, paddingBottom: spacing.sm },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.full, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder },
   filterChipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  filterChipText: { ...typography.caption, color: colors.mutedForeground },
+  filterChipText: { fontSize: 13, color: colors.mutedForeground, fontWeight: '500' },
   filterChipTextActive: { color: colors.primary, fontWeight: '600' },
-  list: { flex: 1 },
-  listContent: { paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
+  listSection: { paddingHorizontal: spacing.lg },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2, paddingHorizontal: spacing.lg, gap: spacing.sm },
   emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
-  emptyTitle: { ...typography.subtitle, color: colors.foreground },
-  emptySubtitle: { ...typography.body, color: colors.mutedForeground, textAlign: 'center' },
-  emptyButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, marginTop: spacing.sm },
-  emptyButtonText: { ...typography.label, color: '#FFFFFF' },
-  card: { backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.cardBorder },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.sm },
-  cardName: { ...typography.subtitle, color: colors.foreground },
-  cardDescription: { ...typography.caption, color: colors.mutedForeground, marginTop: 2 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.full },
-  statusBadgeText: { ...typography.caption, fontWeight: '600' },
-  cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { ...typography.caption, color: colors.mutedForeground },
-  cardFooter: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
-  cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.xs, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },
-  actionButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md },
-  actionButtonText: { ...typography.caption, fontWeight: '600' },
+  emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.foreground },
+  emptySubtitle: { fontSize: 14, color: colors.mutedForeground, textAlign: 'center', lineHeight: 20 },
+  emptyButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: radius.lg, marginTop: spacing.sm },
+  emptyButtonText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
+  card: { backgroundColor: colors.card, borderRadius: radius.xl, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.cardBorder, overflow: 'hidden' },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, paddingBottom: spacing.sm },
+  cardAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' },
+  cardAvatarText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  cardName: { fontSize: 15, fontWeight: '600', color: colors.foreground, flex: 1 },
+  cardTime: { fontSize: 11, color: colors.mutedForeground },
+  cardDescription: { fontSize: 13, color: colors.mutedForeground, marginTop: 1 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.full },
+  statusBadgeText: { fontSize: 11, fontWeight: '600' },
+  cardBottom: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, paddingTop: spacing.xs },
+  cardMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: spacing.sm },
+  metaChip: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.muted, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full },
+  metaChipText: { fontSize: 11, color: colors.mutedForeground },
+  cardActionRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.xs },
+  cardActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.md },
+  cardActionText: { fontSize: 12, fontWeight: '600' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   modalCancel: { ...typography.body, color: colors.mutedForeground },
   modalTitle: { ...typography.subtitle, color: colors.foreground },
