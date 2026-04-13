@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert, TextInput, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert, TextInput, Linking, Platform } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -210,11 +210,22 @@ export default function AIReceptionistScreen() {
               if (checkoutRes.data?.url) {
                 setIsProvisioning(false);
                 setProvisioningStatus(null);
-                Alert.alert(
-                  'Setup Required',
-                  'AI Receptionist setup requires completing your business account configuration. Contact admin@avwebinnovation.com for assistance.',
-                  [{ text: 'OK' }]
-                );
+                if (Platform.OS === 'ios') {
+                  Alert.alert(
+                    'Contact Us to Enable',
+                    'AI Receptionist is a managed professional service. Please contact admin@avwebinnovation.com to get set up.',
+                    [{ text: 'OK' }]
+                  );
+                } else {
+                  Alert.alert(
+                    'Complete Setup',
+                    'You\'ll be taken to checkout to complete your AI Receptionist setup.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Continue', onPress: () => Linking.openURL(checkoutRes.data!.url!) },
+                    ]
+                  );
+                }
                 return;
               }
               setProvisioningStatus('Configuring AI voice and responses...');
@@ -464,7 +475,7 @@ export default function AIReceptionistScreen() {
                 AI Receptionist is available on Pro, Team, and Business plans.
               </Text>
               <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18, marginBottom: spacing.lg }}>
-                Upgrade your plan to get a dedicated number and AI-powered call answering for your business. The AI Receptionist add-on is $60/month on top of your plan.
+                Upgrade your plan to get a dedicated number and AI-powered call answering for your business. AI Receptionist is a managed service add-on — contact us after upgrading to get started.
               </Text>
               <TouchableOpacity
                 style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.xl, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}

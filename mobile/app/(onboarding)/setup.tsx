@@ -41,10 +41,10 @@ const tradeTypes = [
 ];
 
 const teamSizes = [
-  { value: 'solo', label: 'Just Me', description: 'Solo tradie', icon: 'person' as const, plan: 'pro' },
-  { value: 'small', label: '2-5', description: 'Small team', icon: 'people' as const, plan: 'team' },
-  { value: 'medium', label: '6-10', description: 'Growing', icon: 'business' as const, plan: 'team' },
-  { value: 'large', label: '10+', description: 'Large op', icon: 'globe' as const, plan: 'team' },
+  { value: 'solo', label: 'Just Me', description: 'Solo tradie', icon: 'person' as const },
+  { value: 'small', label: '2-5', description: 'Small team', icon: 'people' as const },
+  { value: 'medium', label: '6-10', description: 'Growing', icon: 'business' as const },
+  { value: 'large', label: '10+', description: 'Large op', icon: 'globe' as const },
 ];
 
 

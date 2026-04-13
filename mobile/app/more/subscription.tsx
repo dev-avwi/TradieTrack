@@ -591,7 +591,7 @@ export default function SubscriptionPage() {
           await Linking.openURL(response.data.url);
         }
       } catch {
-        Alert.alert('Unable to open billing', 'Please manage your subscription at jobrunner.com.au');
+        Alert.alert('Unable to open billing', 'Please contact admin@avwebinnovation.com for billing assistance.');
       } finally {
         setManagingSubscription(false);
       }
@@ -903,12 +903,14 @@ export default function SubscriptionPage() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.addOnName}>AI Receptionist</Text>
-                <Text style={styles.addOnPrice}>$60/mo</Text>
+                <Text style={styles.addOnPrice}>{Platform.OS === 'ios' ? 'Managed Service' : '$60/mo'}</Text>
               </View>
               <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
             </View>
             <Text style={styles.addOnDescription}>
-              AI-powered phone answering with a dedicated Australian number. Captures leads and transfers calls.
+              {Platform.OS === 'ios' 
+                ? 'Professional AI phone answering service with a dedicated Australian number. Contact us to set up.'
+                : 'AI-powered phone answering with a dedicated Australian number. Captures leads and transfers calls.'}
             </Text>
           </TouchableOpacity>
 
@@ -928,7 +930,7 @@ export default function SubscriptionPage() {
               <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
             </View>
             <Text style={styles.addOnDescription}>
-              Your own Australian mobile number for sending SMS. Clients see your number, not JobRunner's.
+              Your own Australian mobile number for sending SMS and receiving calls. A real telecommunications service.
             </Text>
           </TouchableOpacity>
         </View>

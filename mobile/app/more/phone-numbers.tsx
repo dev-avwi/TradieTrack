@@ -158,7 +158,7 @@ export default function PhoneNumbersPage() {
                 if (checkoutUrl) {
                   Alert.alert(
                     'Payment Required',
-                    'Dedicated phone numbers are $10/month. You\'ll be taken to checkout to complete your purchase.',
+                    'Dedicated phone numbers are a $10/month telecommunications service. You\'ll be taken to checkout to complete your purchase.',
                     [
                       { text: 'Cancel', style: 'cancel' },
                       { text: 'Continue to Payment', onPress: () => {
@@ -242,7 +242,7 @@ export default function PhoneNumbersPage() {
                 if (checkoutUrl) {
                   Alert.alert(
                     'Payment Required',
-                    'Dedicated phone numbers are $10/month. You\'ll be taken to checkout to complete your purchase.',
+                    'Dedicated phone numbers are a $10/month telecommunications service. You\'ll be taken to checkout to complete your purchase.',
                     [
                       { text: 'Cancel', style: 'cancel' },
                       { text: 'Continue to Payment', onPress: () => {
