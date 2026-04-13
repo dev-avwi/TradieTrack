@@ -1178,31 +1178,16 @@ export default function TeamOperationsScreen() {
     <>
       <Stack.Screen
         options={{
-          title: 'Team Operations',
-          headerShown: !isTabletDevice,
-          headerStyle: { backgroundColor: colors.background },
-          headerShadowVisible: false,
-          headerTintColor: colors.foreground,
-          headerBackTitle: '',
-          headerRight: () => (
-            <TouchableOpacity onPress={onRefresh} style={{ marginRight: spacing.sm }}>
-              <Feather name="refresh-cw" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          ),
+          headerShown: false,
         }}
       />
-      <View style={[styles.container, { paddingTop: isTabletDevice ? spacing.xs : 0 }]}>
-        {isTabletDevice && (
-          <View style={styles.tabletHeader}>
-            <View>
-              <Text style={styles.tabletTitle}>Team Operations</Text>
-              <Text style={styles.tabletSubtitle}>{acceptedMembers.length} team members</Text>
-            </View>
-            <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-              <Feather name="refresh-cw" size={20} color={colors.foreground} />
-            </TouchableOpacity>
+      <View style={styles.container}>
+        <View style={[styles.tabletHeader, { paddingTop: insets.top + 4 }]}>
+          <View>
+            <Text style={styles.tabletTitle}>Team Operations</Text>
+            <Text style={styles.tabletSubtitle}>{acceptedMembers.length} team members</Text>
           </View>
-        )}
+        </View>
         
         {/* Upgrade banner for non-team subscribers */}
         {needsUpgrade && (

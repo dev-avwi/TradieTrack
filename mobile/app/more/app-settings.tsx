@@ -324,11 +324,18 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.md,
   },
-  footerLogoImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
+  footerLogoWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 22,
+    backgroundColor: `${colors.primary}12`,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.md,
+  },
+  footerLogoImage: {
+    width: 52,
+    height: 52,
   },
   footerTitle: {
     ...typography.subtitle,
@@ -891,11 +898,13 @@ export default function AppSettingsScreen() {
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Image
-              source={require('../../assets/jobrunner-logo.png')}
-              style={styles.footerLogoImage}
-              resizeMode="contain"
-            />
+            <View style={styles.footerLogoWrap}>
+              <Image
+                source={require('../../assets/jobrunner-logo.png')}
+                style={styles.footerLogoImage}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.footerTitle}>JobRunner</Text>
             <Text style={styles.footerSubtitle}>Made in Australia for Australian Tradies</Text>
             <Text style={styles.footerVersion}>Version 1.1.0</Text>
