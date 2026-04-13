@@ -925,6 +925,8 @@ export default function PhoneNumbersPage() {
             ) : null}
           </>
         )}
+          </>
+        )}
 
         <View style={{ height: spacing.xl }} />
       </ScrollView>
