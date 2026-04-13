@@ -69,6 +69,9 @@ interface BusinessSettings {
   calloutFee?: number;
   onboardingCompleted?: boolean;
   onboardingUrl?: string;
+  dedicatedPhoneNumber?: string;
+  aiReceptionistEnabled?: boolean;
+  aiReceptionistMode?: string;
 }
 
 interface Job {

@@ -22,9 +22,9 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 type ViewMode = 'week' | 'month' | 'today';
 
 const SCHEDULE_TABS = [
+  { key: 'today', label: 'Today', icon: 'sun' },
   { key: 'week', label: 'Week', icon: 'calendar' },
   { key: 'month', label: 'Month', icon: 'grid' },
-  { key: 'today', label: 'Today', icon: 'sun' },
 ] as const;
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -314,12 +314,13 @@ const createStyles = (colors: ThemeColors, isTabletDevice: boolean = false, resp
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
+    gap: spacing.sm,
   },
   noJobsText: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.mutedForeground,
-    marginTop: spacing.sm,
+    fontWeight: '500',
   },
   jobCard: {
     backgroundColor: colors.card,
@@ -327,7 +328,7 @@ const createStyles = (colors: ThemeColors, isTabletDevice: boolean = false, resp
     padding: spacing.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     borderLeftWidth: 4,
     borderLeftColor: colors.primary,
   },
@@ -475,7 +476,7 @@ export default function CalendarScreen() {
   
   const { jobs, fetchJobs, isLoading } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();
-  const [viewMode, setViewMode] = useState<ViewMode>('week');
+  const [viewMode, setViewMode] = useState<ViewMode>('today');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
 

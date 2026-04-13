@@ -1967,10 +1967,17 @@ export default function SettingsScreen() {
                   <Text style={styles.subscriptionTitle}>Business SMS Number</Text>
                 </View>
                 {businessSettings?.dedicatedPhoneNumber ? (
-                  <View style={styles.businessInfoRow}>
+                  <TouchableOpacity 
+                    style={styles.businessInfoRow}
+                    onPress={() => router.push('/more/phone-numbers')}
+                    activeOpacity={0.7}
+                  >
                     <Text style={styles.businessInfoLabel}>Active Number</Text>
-                    <Text style={[styles.businessInfoValue, { color: colors.success, fontWeight: '600' }]}>{businessSettings.dedicatedPhoneNumber}</Text>
-                  </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                      <Text style={[styles.businessInfoValue, { color: colors.success, fontWeight: '600' }]}>{businessSettings.dedicatedPhoneNumber}</Text>
+                      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                    </View>
+                  </TouchableOpacity>
                 ) : (
                   <>
                     <Text style={[styles.planDescription, { marginBottom: spacing.sm }]}>

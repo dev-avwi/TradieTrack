@@ -496,7 +496,7 @@ export default function CommunicationsScreen() {
               subject,
               body: log.description || '',
               fullBody: metadata.emailBody || metadata.messageBody || log.description || '',
-              timestamp: new Date(log.createdAt || new Date()),
+              timestamp: log.createdAt ? new Date(log.createdAt) : new Date(),
               entityType: log.entityType || undefined,
               entityId: log.entityId || undefined,
               entityNumber: metadata.quoteNumber || metadata.invoiceNumber || metadata.receiptNumber,
@@ -523,7 +523,7 @@ export default function CommunicationsScreen() {
                   recipientPhone: conv.clientPhone,
                   body: msg.body || '',
                   fullBody: msg.body || '',
-                  timestamp: new Date(msg.createdAt || new Date()),
+                  timestamp: msg.createdAt ? new Date(msg.createdAt) : new Date(),
                   entityType: conv.jobId ? 'job' : undefined,
                   entityId: conv.jobId || undefined,
                 });
@@ -532,7 +532,7 @@ export default function CommunicationsScreen() {
         });
       }
       
-      items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      items.sort((a, b) => (b.timestamp?.getTime?.() || 0) - (a.timestamp?.getTime?.() || 0));
       setCommunications(items);
     } catch (error) {
       console.error('Failed to fetch communications:', error);
@@ -640,7 +640,7 @@ export default function CommunicationsScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Feather name="clock" size={12} color={colors.mutedForeground} />
                 <Text style={styles.itemTime as any}>
-                  {formatDistanceToNow(item.timestamp, { addSuffix: true })}
+                  {item.timestamp && !isNaN(item.timestamp.getTime()) ? formatDistanceToNow(item.timestamp, { addSuffix: true }) : ''}
                 </Text>
                 {item.source && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: item.source === 'mobile' ? `${colors.info}15` : `${colors.success}15`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
@@ -875,7 +875,7 @@ export default function CommunicationsScreen() {
                         Sent at
                       </Text>
                       <Text style={{ fontSize: typographySizes.sm, color: colors.foreground }}>
-                        {format(selectedItem.timestamp, 'h:mm:ss a')}
+                        {selectedItem.timestamp && !isNaN(new Date(selectedItem.timestamp).getTime()) ? format(new Date(selectedItem.timestamp), 'h:mm:ss a') : '-'}
                       </Text>
                     </View>
                     <View style={styles.detailRow}>

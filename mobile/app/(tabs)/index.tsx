@@ -3052,14 +3052,25 @@ function OwnerDashboardScreen() {
             </>
           ) : (
             <>
-              <KPICard
-                title="Overdue"
-                value={overdueCount}
-                icon="alert-circle"
-                iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
-                iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
-                onPress={() => router.push('/more/documents?tab=invoices&filter=overdue')}
-              />
+              {businessSettings?.aiReceptionistEnabled ? (
+                <KPICard
+                  title="AI Phone"
+                  value={businessSettings?.aiReceptionistMode === 'always_on_transfer' ? 'Live' : businessSettings?.aiReceptionistMode === 'after_hours' ? 'After Hrs' : 'Active'}
+                  icon="phone"
+                  iconBg={colors.successLight}
+                  iconColor={colors.success}
+                  onPress={() => router.push('/more/ai-receptionist')}
+                />
+              ) : (
+                <KPICard
+                  title="Overdue"
+                  value={overdueCount}
+                  icon="alert-circle"
+                  iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
+                  iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
+                  onPress={() => router.push('/more/documents?tab=invoices&filter=overdue')}
+                />
+              )}
               <KPICard
                 title="To Invoice"
                 value={toInvoiceCount}

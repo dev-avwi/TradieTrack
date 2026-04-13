@@ -199,11 +199,14 @@ export default function PhoneNumbersPage() {
     }
 
     const hasSms = number.capabilities?.sms;
+    const hasMms = number.capabilities?.mms;
     const hasVoice = number.capabilities?.voice;
     let capabilityNote = '';
-    if (hasSms && hasVoice) capabilityNote = 'SMS + Voice';
-    else if (hasSms) capabilityNote = 'SMS only';
-    else if (hasVoice) capabilityNote = 'Voice only (no SMS)';
+    const caps: string[] = [];
+    if (hasVoice) caps.push('Voice');
+    if (hasSms) caps.push('SMS');
+    if (hasMms) caps.push('MMS');
+    capabilityNote = caps.length > 0 ? caps.join(' + ') : 'Standard';
 
     Alert.alert(
       'Get This Number',

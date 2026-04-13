@@ -169,16 +169,37 @@ function getInitials(firstName?: string, lastName?: string, email?: string): str
 
 function formatLastSeen(dateStr?: string): string {
   if (!dateStr) return 'Unknown';
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'Unknown';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  } catch { return 'Unknown'; }
+}
+
+function safeDateFormat(dateStr: string | undefined | null, formatStr: string): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return format(d, formatStr);
+  } catch { return ''; }
+}
+
+function safeDateDistance(dateStr: string | undefined | null): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return formatDistanceToNow(d, { addSuffix: true });
+  } catch { return ''; }
 }
 
 export default function TeamOperationsScreen() {
@@ -189,7 +210,7 @@ export default function TeamOperationsScreen() {
   const isTabletDevice = isTablet();
   const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal, isTabletDevice), [colors, contentWidth, responsiveShell.paddingHorizontal, isTabletDevice]);
   const { user } = useAuthStore();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapView | null>(null);
   
   // Subscription-aware access control
   const { hasTeamSubscription, hasProSubscription, subscriptionTier } = useUserRole();
@@ -248,12 +269,12 @@ export default function TeamOperationsScreen() {
         api.get<any[]>('/api/team/worker-states'),
       ]);
 
-      if (membersRes.data) setTeamMembers(membersRes.data);
-      if (presenceRes.data) setTeamPresence(presenceRes.data);
-      if (workerStatesRes.data) setWorkerStates(workerStatesRes.data);
-      if (activityRes.data) setActivityFeed(activityRes.data);
-      if (jobsRes.data) setJobs(jobsRes.data);
-      if (timeOffRes.data) setTimeOffRequests(timeOffRes.data);
+      if (Array.isArray(membersRes.data)) setTeamMembers(membersRes.data);
+      if (Array.isArray(presenceRes.data)) setTeamPresence(presenceRes.data);
+      if (Array.isArray(workerStatesRes.data)) setWorkerStates(workerStatesRes.data);
+      if (Array.isArray(activityRes.data)) setActivityFeed(activityRes.data);
+      if (Array.isArray(jobsRes.data)) setJobs(jobsRes.data);
+      if (Array.isArray(timeOffRes.data)) setTimeOffRequests(timeOffRes.data);
     } catch (error) {
       console.error('Error fetching team data:', error);
     } finally {
@@ -368,10 +389,12 @@ export default function TeamOperationsScreen() {
     ? Math.round(memberStats.reduce((sum, m) => sum + m.completionRate, 0) / memberStats.length)
     : 0;
 
-  const pendingTimeOff = timeOffRequests.filter(t => t.status === 'pending');
-  const upcomingTimeOff = timeOffRequests.filter(t => 
-    t.status === 'approved' && isAfter(new Date(t.startDate), new Date())
-  );
+  const pendingTimeOff = (timeOffRequests || []).filter(t => t.status === 'pending');
+  const upcomingTimeOff = (timeOffRequests || []).filter(t => {
+    try {
+      return t.status === 'approved' && t.startDate && isAfter(new Date(t.startDate), new Date());
+    } catch { return false; }
+  });
 
   const onlineCount = useMemo(() => {
     return teamPresence.filter(p => p.status === 'online' || p.status === 'on_job').length;
@@ -669,9 +692,9 @@ export default function TeamOperationsScreen() {
           <Feather name={config.icon} size={16} color={config.color} />
         </View>
         <View style={styles.activityContent}>
-          <Text style={styles.activityTitle}>{item.description || item.activityType.replace(/_/g, ' ')}</Text>
+          <Text style={styles.activityTitle}>{item.description || (typeof item.activityType === 'string' ? item.activityType.replace(/_/g, ' ') : 'Activity')}</Text>
           {item.actorName && <Text style={styles.activityDescription}>{item.actorName}</Text>}
-          <Text style={styles.activityTime}>{formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</Text>
+          <Text style={styles.activityTime}>{safeDateDistance(item.createdAt)}</Text>
         </View>
         {item.isImportant && (
           <View style={styles.importantBadge}>
@@ -1022,9 +1045,9 @@ export default function TeamOperationsScreen() {
                   </View>
                 </View>
                 <Text style={styles.timeOffDates}>
-                  {format(new Date(request.startDate), 'MMM d')} - {format(new Date(request.endDate), 'MMM d, yyyy')}
+                  {safeDateFormat(request.startDate, 'MMM d')} - {safeDateFormat(request.endDate, 'MMM d, yyyy')}
                 </Text>
-                <Text style={styles.timeOffReason}>{request.reason.replace(/_/g, ' ')}</Text>
+                <Text style={styles.timeOffReason}>{typeof request.reason === 'string' ? request.reason.replace(/_/g, ' ') : '-'}</Text>
                 {isOwnerOrManager && (
                   <View style={styles.timeOffActions}>
                     <TouchableOpacity
@@ -1339,7 +1362,7 @@ export default function TeamOperationsScreen() {
                       )}
                       {job.scheduledAt && (
                         <Text style={styles.assignJobDate}>
-                          {format(new Date(job.scheduledAt), 'EEE d MMM')}
+                          {safeDateFormat(job.scheduledAt, 'EEE d MMM')}
                         </Text>
                       )}
                     </View>
