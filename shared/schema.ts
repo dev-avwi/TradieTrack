@@ -4792,3 +4792,35 @@ export const subcontractorInvoiceItems = pgTable("subcontractor_invoice_items", 
 export const insertSubcontractorInvoiceItemSchema = createInsertSchema(subcontractorInvoiceItems).omit({ id: true, createdAt: true });
 export type InsertSubcontractorInvoiceItem = z.infer<typeof insertSubcontractorInvoiceItemSchema>;
 export type SubcontractorInvoiceItem = typeof subcontractorInvoiceItems.$inferSelect;
+
+// Worker State System
+export const WORKER_STATES = ['available', 'on_job', 'travelling', 'break', 'delayed', 'needs_help'] as const;
+export type WorkerStateValue = typeof WORKER_STATES[number];
+
+export const WORKER_STATE_CONFIG: Record<WorkerStateValue, { label: string; color: string }> = {
+  available: { label: 'Available', color: '#22c55e' },
+  on_job: { label: 'On Job', color: '#f97316' },
+  travelling: { label: 'Travelling', color: '#3b82f6' },
+  break: { label: 'Break', color: '#9ca3af' },
+  delayed: { label: 'Delayed', color: '#eab308' },
+  needs_help: { label: 'Needs Help', color: '#ef4444' },
+};
+
+export const workerStates = pgTable("worker_states", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  businessOwnerId: varchar("business_owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  state: text("state").notNull().default('available'),
+  jobId: varchar("job_id"),
+  note: text("note"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_worker_states_user").on(table.userId),
+  index("idx_worker_states_business").on(table.businessOwnerId),
+  unique("uq_worker_states_biz_user").on(table.businessOwnerId, table.userId),
+]);
+
+export const insertWorkerStateSchema = createInsertSchema(workerStates).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertWorkerState = z.infer<typeof insertWorkerStateSchema>;
+export type WorkerState = typeof workerStates.$inferSelect;

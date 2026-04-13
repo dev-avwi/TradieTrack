@@ -121,6 +121,15 @@ interface TeamMemberChangedEvent {
   timestamp: number;
 }
 
+interface WorkerStateChangedEvent {
+  type: 'worker_state_changed';
+  userId: string;
+  state: string;
+  jobId?: string | null;
+  note?: string | null;
+  timestamp: number;
+}
+
 interface GeofenceAlertEvent {
   type: 'geofence_alert';
   alertId: string;
@@ -164,6 +173,7 @@ type RealtimeEvent =
   | TeamPresenceChangedEvent
   | ActivityFeedUpdatedEvent
   | TeamMemberChangedEvent
+  | WorkerStateChangedEvent
   | GeofenceAlertEvent
   | JobEditingPresenceEvent
   | JobFieldUpdatedEvent;
@@ -379,6 +389,13 @@ export function useRealtimeUpdates({
         safeInvalidateQueries({ queryKey: ['/api/dispatch/board'] });
         break;
 
+      case 'worker_state_changed':
+        safeInvalidateQueries({ queryKey: ['/api/team/worker-states'] });
+        safeInvalidateQueries({ queryKey: ['/api/worker/state'] });
+        safeInvalidateQueries({ queryKey: ['/api/team/presence'] });
+        safeInvalidateQueries({ queryKey: ['/api/dispatch/board'] });
+        break;
+
       case 'geofence_alert':
         safeInvalidateQueries({ queryKey: ['/api/geofence-alerts'] });
         safeInvalidateQueries({ queryKey: ['/api/map/geofence-alerts'] });
@@ -475,6 +492,7 @@ export function useRealtimeUpdates({
             'team_presence_changed',
             'activity_feed_updated',
             'team_member_changed',
+            'worker_state_changed',
             'geofence_alert',
             'job_editing_presence',
             'job_field_updated'

@@ -295,6 +295,18 @@ function LiveOpsTab() {
     queryKey: ['/api/team/roles'],
   });
 
+  const { data: workerStates = [] } = useQuery<{ userId: string; state: string; note: string | null; jobId: string | null }[]>({
+    queryKey: ['/api/team/worker-states'],
+  });
+
+  const workerStateMap = useMemo(() => {
+    const map: Record<string, { state: string; note: string | null }> = {};
+    for (const ws of workerStates) {
+      map[ws.userId] = { state: ws.state, note: ws.note };
+    }
+    return map;
+  }, [workerStates]);
+
   const inviteMutation = useMutation({
     mutationFn: async (data: { email: string; firstName: string; lastName: string; roleId: string; phone?: string; hourlyRate?: number }) => {
       const response = await apiRequest('POST', '/api/team/members/invite', data);
@@ -525,7 +537,31 @@ function LiveOpsTab() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                              {(() => {
+                                const ws = workerStateMap[member.memberId || member.id];
+                                if (!ws || ws.state === 'available') return null;
+                                const stateConfig: Record<string, { label: string; color: string }> = {
+                                  on_job: { label: 'On Job', color: '#f97316' },
+                                  travelling: { label: 'Travelling', color: '#3b82f6' },
+                                  break: { label: 'Break', color: '#9ca3af' },
+                                  delayed: { label: 'Delayed', color: '#eab308' },
+                                  needs_help: { label: 'Needs Help', color: '#ef4444' },
+                                };
+                                const cfg = stateConfig[ws.state];
+                                if (!cfg) return null;
+                                return (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs no-default-hover-elevate no-default-active-elevate"
+                                    style={{ backgroundColor: `${cfg.color}20`, color: cfg.color, borderColor: `${cfg.color}30` }}
+                                    title={ws.note || undefined}
+                                  >
+                                    <span className="inline-block w-1.5 h-1.5 rounded-full mr-1" style={{ backgroundColor: cfg.color }} />
+                                    {cfg.label}
+                                  </Badge>
+                                );
+                              })()}
                               {member.roleName && (
                                 <Badge variant="secondary" className="text-xs">{member.roleName}</Badge>
                               )}

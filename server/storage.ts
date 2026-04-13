@@ -392,6 +392,9 @@ import {
   type InsertSubcontractorInvoice,
   type SubcontractorInvoiceItem,
   type InsertSubcontractorInvoiceItem,
+  workerStates,
+  type WorkerState,
+  type InsertWorkerState,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -1227,6 +1230,11 @@ export interface IStorage {
   getSubcontractorInvoiceItems(invoiceId: string): Promise<SubcontractorInvoiceItem[]>;
   createSubcontractorInvoiceItem(item: InsertSubcontractorInvoiceItem): Promise<SubcontractorInvoiceItem>;
   deleteSubcontractorInvoiceItems(invoiceId: string): Promise<boolean>;
+
+  // Worker States
+  getWorkerState(userId: string, businessOwnerId?: string): Promise<WorkerState | undefined>;
+  getWorkerStatesByBusiness(businessOwnerId: string): Promise<WorkerState[]>;
+  upsertWorkerState(userId: string, businessOwnerId: string, state: string, jobId?: string | null, note?: string | null): Promise<WorkerState>;
 }
 
 const pool = new pg.Pool({
@@ -8348,6 +8356,34 @@ Thank you for your prompt attention to this matter.`,
   async deleteSubcontractorInvoiceItems(invoiceId: string): Promise<boolean> {
     const result = await db.delete(subcontractorInvoiceItems).where(eq(subcontractorInvoiceItems.invoiceId, invoiceId)).returning();
     return result.length > 0;
+  }
+
+  // Worker States
+  async getWorkerState(userId: string, businessOwnerId?: string): Promise<WorkerState | undefined> {
+    if (businessOwnerId) {
+      const [result] = await db.select().from(workerStates)
+        .where(and(eq(workerStates.userId, userId), eq(workerStates.businessOwnerId, businessOwnerId)))
+        .limit(1);
+      return result;
+    }
+    const [result] = await db.select().from(workerStates).where(eq(workerStates.userId, userId)).limit(1);
+    return result;
+  }
+
+  async getWorkerStatesByBusiness(businessOwnerId: string): Promise<WorkerState[]> {
+    return await db.select().from(workerStates).where(eq(workerStates.businessOwnerId, businessOwnerId));
+  }
+
+  async upsertWorkerState(userId: string, businessOwnerId: string, state: string, jobId?: string | null, note?: string | null): Promise<WorkerState> {
+    const [result] = await db
+      .insert(workerStates)
+      .values({ userId, businessOwnerId, state, jobId: jobId ?? null, note: note ?? null })
+      .onConflictDoUpdate({
+        target: [workerStates.businessOwnerId, workerStates.userId],
+        set: { state, jobId: jobId ?? null, note: note ?? null, updatedAt: new Date() },
+      })
+      .returning();
+    return result;
   }
 }
 

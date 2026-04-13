@@ -550,6 +550,22 @@ export function broadcastTeamMemberChange(
   });
 }
 
+export function broadcastWorkerStateChange(
+  businessId: string,
+  details: {
+    userId: string;
+    state: string;
+    jobId?: string | null;
+    note?: string | null;
+  }
+) {
+  broadcastToBusinessUsers(businessId, {
+    type: 'worker_state_changed',
+    ...details,
+    timestamp: Date.now(),
+  });
+}
+
 interface EditorEntry { userId: string; userName: string; joinedAt: number; connectionIds: Set<string> }
 const jobEditors = new Map<string, Map<string, EditorEntry>>();
 

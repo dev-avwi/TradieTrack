@@ -39,7 +39,11 @@ import {
   SignalLow,
   SignalZero,
   MapPinOff,
-  ChevronRight
+  ChevronRight,
+  Coffee,
+  AlertTriangle,
+  HelpCircle,
+  CircleDot
 } from "lucide-react";
 import XeroRibbon from "./XeroRibbon";
 import "leaflet/dist/leaflet.css";
@@ -114,6 +118,15 @@ interface CommandCenterData {
   }>;
 }
 
+const WORKER_STATE_CONFIG: Record<string, { color: string; bg: string; darkBg: string; icon: any; label: string }> = {
+  available: { color: 'text-green-600', bg: 'bg-green-100', darkBg: 'dark:bg-green-900/30', icon: CircleDot, label: 'Available' },
+  on_job: { color: 'text-orange-600', bg: 'bg-orange-100', darkBg: 'dark:bg-orange-900/30', icon: Briefcase, label: 'On Job' },
+  travelling: { color: 'text-blue-600', bg: 'bg-blue-100', darkBg: 'dark:bg-blue-900/30', icon: Car, label: 'Travelling' },
+  break: { color: 'text-gray-500', bg: 'bg-gray-100', darkBg: 'dark:bg-gray-800', icon: Coffee, label: 'On Break' },
+  delayed: { color: 'text-yellow-600', bg: 'bg-yellow-100', darkBg: 'dark:bg-yellow-900/30', icon: AlertTriangle, label: 'Delayed' },
+  needs_help: { color: 'text-red-600', bg: 'bg-red-100', darkBg: 'dark:bg-red-900/30', icon: HelpCircle, label: 'Needs Help' },
+};
+
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-slate-500",
   scheduled: "bg-blue-500",
@@ -171,6 +184,15 @@ export default function WorkerCommandCenter({ memberId, open, onOpenChange }: Wo
     },
     enabled: open && !!memberId,
   });
+
+  const { data: workerStates } = useQuery<any[]>({
+    queryKey: ['/api/team/worker-states'],
+    enabled: open && !!memberId,
+  });
+
+  const workerState = workerStates?.find((ws: any) => ws.userId === data?.member?.memberId);
+  const currentWorkerState = workerState?.state || 'available';
+  const stateConfig = WORKER_STATE_CONFIG[currentWorkerState] || WORKER_STATE_CONFIG.available;
 
   const assignJobMutation = useMutation({
     mutationFn: async (jobId: string) => {
@@ -344,7 +366,11 @@ export default function WorkerCommandCenter({ memberId, open, onOpenChange }: Wo
                       <Shield className="h-4 w-4 flex-shrink-0" style={{ color: themeColor }} />
                       <span className="text-sm">{data.member.role}</span>
                     </div>
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-2 flex-wrap mt-2">
+                      <Badge variant="secondary" className={`${stateConfig.bg} ${stateConfig.darkBg} ${stateConfig.color} gap-1`}>
+                        <stateConfig.icon className="h-3 w-3" />
+                        {stateConfig.label}
+                      </Badge>
                       {data.location && getStatusBadge(data.location.status)}
                       {data.member.hourlyRate && (
                         <Badge variant="outline" className="text-xs">

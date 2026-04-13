@@ -52,7 +52,7 @@ import { VoiceRecorder, VoiceNotePlayer } from '../../src/components/VoiceRecord
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { JobForms } from '../../src/components/FormRenderer';
 import SmartActionsPanel, { SmartAction, getJobSmartActions } from '../../src/components/SmartActionsPanel';
-import { JobProgressBar, LinkedDocumentsCard, NextActionCard, PaymentCollectionCard } from '../../src/components/JobWorkflowComponents';
+import { JobProgressBar, LinkedDocumentsCard, NextActionCard, PaymentCollectionCard, WorkerStateQuickActions } from '../../src/components/JobWorkflowComponents';
 import { CollapsibleSection } from '../../src/components/ui/CollapsibleSection';
 import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEditor';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
@@ -6298,6 +6298,10 @@ export default function JobDetailScreen() {
           }
         }}
       />
+      )}
+
+      {(job.status === 'scheduled' || job.status === 'in_progress') && (
+        <WorkerStateQuickActions jobId={job.id} jobStatus={job.status} />
       )}
 
       {/* Address Card */}

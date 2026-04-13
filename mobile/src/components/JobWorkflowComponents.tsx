@@ -1670,3 +1670,157 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+
+interface WorkerStateQuickActionsProps {
+  jobId: string;
+  jobStatus: string;
+}
+
+const WORKER_STATE_BUTTONS = [
+  { state: 'delayed', label: 'Delayed', icon: 'alert-triangle' as const, color: '#eab308', bg: 'rgba(234,179,8,0.1)' },
+  { state: 'needs_help', label: 'Needs Help', icon: 'alert-circle' as const, color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+];
+
+export function WorkerStateQuickActions({ jobId, jobStatus }: WorkerStateQuickActionsProps) {
+  const { colors } = useTheme();
+  const [updating, setUpdating] = useState<string | null>(null);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [pendingState, setPendingState] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState('');
+
+  if (jobStatus !== 'scheduled' && jobStatus !== 'in_progress') return null;
+
+  const handleSetState = (state: string) => {
+    setPendingState(state);
+    setNoteText('');
+    setShowNoteModal(true);
+  };
+
+  const confirmSetState = async () => {
+    if (!pendingState) return;
+    const state = pendingState;
+    const label = state === 'delayed' ? 'Delayed' : 'Needs Help';
+    setShowNoteModal(false);
+    setUpdating(state);
+    try {
+      await api.post('/api/worker/state', { state, jobId, note: noteText || null });
+      Alert.alert('Status Updated', `Your status has been set to "${label}".`);
+    } catch {
+      Alert.alert('Error', 'Failed to update status. Please try again.');
+    } finally {
+      setUpdating(null);
+      setPendingState(null);
+      setNoteText('');
+    }
+  };
+
+  const pendingLabel = pendingState === 'delayed' ? 'Delayed' : 'Needs Help';
+  const pendingColor = pendingState === 'delayed' ? '#eab308' : '#ef4444';
+
+  return (
+    <>
+    <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm }}>
+      {WORKER_STATE_BUTTONS.map(btn => (
+        <TouchableOpacity
+          key={btn.state}
+          style={{
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: spacing.xs,
+            paddingVertical: spacing.sm,
+            borderRadius: radius.md,
+            backgroundColor: btn.bg,
+            borderWidth: 1,
+            borderColor: `${btn.color}30`,
+          }}
+          onPress={() => handleSetState(btn.state)}
+          disabled={updating !== null}
+          activeOpacity={0.7}
+        >
+          {updating === btn.state ? (
+            <ActivityIndicator size="small" color={btn.color} />
+          ) : (
+            <Feather name={btn.icon} size={14} color={btn.color} />
+          )}
+          <Text style={{ fontSize: 13, fontWeight: '600', color: btn.color }}>
+            {btn.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+
+    <Modal
+      visible={showNoteModal}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setShowNoteModal(false)}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}
+      >
+        <View style={{
+          width: '85%',
+          backgroundColor: colors.card,
+          borderRadius: radius.lg,
+          padding: spacing.lg,
+        }}>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.foreground, marginBottom: spacing.xs }}>
+            {pendingLabel}
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.mutedForeground, marginBottom: spacing.md }}>
+            Add a note (optional):
+          </Text>
+          <TextInput
+            style={{
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: radius.md,
+              padding: spacing.sm,
+              fontSize: 14,
+              color: colors.foreground,
+              backgroundColor: colors.background,
+              minHeight: 60,
+              textAlignVertical: 'top',
+            }}
+            placeholder="e.g. Stuck in traffic, ETA 20 mins"
+            placeholderTextColor={colors.mutedForeground}
+            value={noteText}
+            onChangeText={setNoteText}
+            multiline
+          />
+          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                paddingVertical: spacing.sm,
+                borderRadius: radius.md,
+                borderWidth: 1,
+                borderColor: colors.border,
+                alignItems: 'center',
+              }}
+              onPress={() => { setShowNoteModal(false); setPendingState(null); }}
+            >
+              <Text style={{ color: colors.foreground, fontWeight: '600' }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                paddingVertical: spacing.sm,
+                borderRadius: radius.md,
+                backgroundColor: pendingColor,
+                alignItems: 'center',
+              }}
+              onPress={confirmSetState}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Confirm</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+    </>
+  );
+}

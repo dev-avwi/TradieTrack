@@ -40,9 +40,13 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 const STATUS_CONFIG: Record<string, { color: string; label: string; icon: keyof typeof Feather.glyphMap }> = {
   online: { color: '#22c55e', label: 'Online', icon: 'circle' },
   busy: { color: '#f59e0b', label: 'Busy', icon: 'circle' },
-  on_job: { color: '#3b82f6', label: 'On Job', icon: 'tool' },
-  break: { color: '#a855f7', label: 'On Break', icon: 'coffee' },
+  on_job: { color: '#f97316', label: 'On Job', icon: 'tool' },
+  break: { color: '#9ca3af', label: 'On Break', icon: 'coffee' },
   offline: { color: '#6b7280', label: 'Offline', icon: 'circle' },
+  available: { color: '#22c55e', label: 'Available', icon: 'check-circle' },
+  travelling: { color: '#3b82f6', label: 'Travelling', icon: 'navigation' },
+  delayed: { color: '#eab308', label: 'Delayed', icon: 'alert-triangle' },
+  needs_help: { color: '#ef4444', label: 'Needs Help', icon: 'alert-circle' },
 };
 
 const ACTIVITY_CONFIG: Record<string, { icon: keyof typeof Feather.glyphMap; color: string; bgColor: string }> = {
@@ -198,6 +202,7 @@ export default function TeamOperationsScreen() {
 
   const [teamMembers, setTeamMembers] = useState<TeamMemberData[]>([]);
   const [teamPresence, setTeamPresence] = useState<TeamPresenceData[]>([]);
+  const [workerStates, setWorkerStates] = useState<any[]>([]);
   const [activityFeed, setActivityFeed] = useState<ActivityFeedItem[]>([]);
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [availabilityMap, setAvailabilityMap] = useState<Map<string, TeamMemberAvailability[]>>(new Map());
@@ -234,16 +239,18 @@ export default function TeamOperationsScreen() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [membersRes, presenceRes, activityRes, jobsRes, timeOffRes] = await Promise.all([
+      const [membersRes, presenceRes, activityRes, jobsRes, timeOffRes, workerStatesRes] = await Promise.all([
         api.get<TeamMemberData[]>('/api/team/members'),
         api.get<TeamPresenceData[]>('/api/team/presence'),
         api.get<ActivityFeedItem[]>('/api/activity-feed?limit=50'),
         api.get<JobData[]>('/api/jobs'),
         api.get<TeamMemberTimeOff[]>('/api/team/time-off'),
+        api.get<any[]>('/api/team/worker-states'),
       ]);
 
       if (membersRes.data) setTeamMembers(membersRes.data);
       if (presenceRes.data) setTeamPresence(presenceRes.data);
+      if (workerStatesRes.data) setWorkerStates(workerStatesRes.data);
       if (activityRes.data) setActivityFeed(activityRes.data);
       if (jobsRes.data) setJobs(jobsRes.data);
       if (timeOffRes.data) setTimeOffRequests(timeOffRes.data);
@@ -527,8 +534,11 @@ export default function TeamOperationsScreen() {
   );
 
   const renderMemberCard = (member: MemberWithDetails) => {
-    const status = member.presence?.status || 'offline';
-    const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.offline;
+    const ws = workerStates.find((w: any) => w.userId === member.userId);
+    const wsState = ws?.state || 'available';
+    const wsConfig = STATUS_CONFIG[wsState] || STATUS_CONFIG.available;
+    const presenceStatus = member.presence?.status || 'offline';
+    const presenceConfig = STATUS_CONFIG[presenceStatus] || STATUS_CONFIG.offline;
 
     return (
       <TouchableOpacity
@@ -547,19 +557,23 @@ export default function TeamOperationsScreen() {
             themeColor={(member as any).themeColor}
             size={40}
           />
-          <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+          <View style={[styles.statusDot, { backgroundColor: wsConfig.color }]} />
         </View>
         <View style={styles.memberInfo}>
           <View style={styles.memberNameRow}>
             <Text style={styles.memberName}>{member.firstName} {member.lastName}</Text>
+            <View style={[styles.roleBadge, { backgroundColor: `${wsConfig.color}15` }]}>
+              <Feather name={wsConfig.icon} size={10} color={wsConfig.color} style={{ marginRight: 3 }} />
+              <Text style={[styles.roleBadgeText, { color: wsConfig.color }]}>{wsConfig.label}</Text>
+            </View>
             {member.roleName && (
-              <View style={[styles.roleBadge, { backgroundColor: `${statusConfig.color}15` }]}>
-                <Text style={[styles.roleBadgeText, { color: statusConfig.color }]}>{member.roleName}</Text>
+              <View style={[styles.roleBadge, { backgroundColor: `${presenceConfig.color}15`, marginLeft: 4 }]}>
+                <Text style={[styles.roleBadgeText, { color: presenceConfig.color }]}>{member.roleName}</Text>
               </View>
             )}
           </View>
           <Text style={styles.memberStatus}>
-            {statusConfig.label} · {formatLastSeen(member.presence?.lastSeenAt)}
+            {presenceConfig.label} · {formatLastSeen(member.presence?.lastSeenAt)}
           </Text>
         </View>
         <View style={styles.memberCardActions}>

@@ -1899,6 +1899,20 @@ function OwnerDashboardScreen() {
   // To Invoice count - jobs with status 'done' but no linked invoice
   const [toInvoiceCount, setToInvoiceCount] = useState(0);
   
+  // Worker state
+  const [workerState, setWorkerState] = useState<{ state: string; note: string | null }>({ state: 'available', note: null });
+
+  const fetchWorkerState = useCallback(async () => {
+    try {
+      const response = await api.get<any>('/api/worker/state');
+      if (response.data) {
+        setWorkerState({ state: response.data.state || 'available', note: response.data.note || null });
+      }
+    } catch (error) {
+      if (__DEV__) console.log('Error fetching worker state:', error);
+    }
+  }, []);
+
   // Activity feed state
   const [activities, setActivities] = useState<any[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
@@ -2261,6 +2275,7 @@ function OwnerDashboardScreen() {
   const fetchMyAllJobsRef = useRef(fetchMyAllJobs);
   const fetchToInvoiceCountRef = useRef(fetchToInvoiceCount);
   const fetchDailySummaryRef = useRef(fetchDailySummary);
+  const fetchWorkerStateRef = useRef(fetchWorkerState);
   
   // Keep refs updated
   fetchTodaysJobsRef.current = fetchTodaysJobs;
@@ -2271,6 +2286,7 @@ function OwnerDashboardScreen() {
   fetchMyAllJobsRef.current = fetchMyAllJobs;
   fetchToInvoiceCountRef.current = fetchToInvoiceCount;
   fetchDailySummaryRef.current = fetchDailySummary;
+  fetchWorkerStateRef.current = fetchWorkerState;
 
   const refreshData = useCallback(async () => {
     await Promise.all([
@@ -2281,6 +2297,7 @@ function OwnerDashboardScreen() {
       fetchMyAllJobsRef.current(),
       fetchToInvoiceCountRef.current(),
       fetchDailySummaryRef.current(),
+      fetchWorkerStateRef.current(),
     ]);
     // Mark initial load as complete on first data fetch
     setInitialLoadComplete(true);
@@ -2646,13 +2663,58 @@ function OwnerDashboardScreen() {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.headerLeft}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }}>
               <Text style={styles.headerTitle}>{getGreeting()}, {userName}</Text>
               <View style={[styles.roleBadge, { backgroundColor: colorWithOpacity(colors.primary, 0.1) }]}>
                 <Text style={[styles.roleBadgeText, { color: colors.primary }]}>
                   {isSubcontractorUser ? 'Subcontractor' : isOwner() ? 'Owner' : roleInfo?.roleName === 'OWNER' ? 'Owner' : roleInfo?.roleName || 'Staff'}
                 </Text>
               </View>
+              {workerState.state !== 'available' && (
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  paddingHorizontal: spacing.sm,
+                  paddingVertical: 2,
+                  borderRadius: radius.full,
+                  backgroundColor: colorWithOpacity(
+                    workerState.state === 'on_job' ? '#f97316' :
+                    workerState.state === 'travelling' ? '#3b82f6' :
+                    workerState.state === 'break' ? '#9ca3af' :
+                    workerState.state === 'delayed' ? '#eab308' :
+                    workerState.state === 'needs_help' ? '#ef4444' : '#22c55e',
+                    0.15
+                  ),
+                }}>
+                  <View style={{
+                    width: 6, height: 6, borderRadius: 3,
+                    backgroundColor:
+                      workerState.state === 'on_job' ? '#f97316' :
+                      workerState.state === 'travelling' ? '#3b82f6' :
+                      workerState.state === 'break' ? '#9ca3af' :
+                      workerState.state === 'delayed' ? '#eab308' :
+                      workerState.state === 'needs_help' ? '#ef4444' : '#22c55e',
+                  }} />
+                  <Text style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    color:
+                      workerState.state === 'on_job' ? '#f97316' :
+                      workerState.state === 'travelling' ? '#3b82f6' :
+                      workerState.state === 'break' ? '#9ca3af' :
+                      workerState.state === 'delayed' ? '#eab308' :
+                      workerState.state === 'needs_help' ? '#ef4444' : '#22c55e',
+                  }}>
+                    {workerState.state === 'on_job' ? 'On Job' :
+                     workerState.state === 'travelling' ? 'Travelling' :
+                     workerState.state === 'break' ? 'Break' :
+                     workerState.state === 'delayed' ? 'Delayed' :
+                     workerState.state === 'needs_help' ? 'Needs Help' :
+                     workerState.state.charAt(0).toUpperCase() + workerState.state.slice(1)}
+                  </Text>
+                </View>
+              )}
             </View>
             <Text style={styles.headerSubtitle}>
               {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -2673,6 +2735,62 @@ function OwnerDashboardScreen() {
         onClose={() => setShowNotifications(false)}
         onNavigateToItem={handleNavigateToItem}
       />
+
+      {/* Worker State Quick Set */}
+      {isStaffUser && (
+        <View style={{ paddingHorizontal: spacing.md, marginTop: spacing.sm }}>
+          <View style={{
+            flexDirection: 'row',
+            gap: spacing.xs,
+            flexWrap: 'wrap',
+          }}>
+            {[
+              { state: 'available', label: 'Available', color: '#22c55e' },
+              { state: 'break', label: 'Break', color: '#9ca3af' },
+              { state: 'delayed', label: 'Delayed', color: '#eab308' },
+              { state: 'needs_help', label: 'Help', color: '#ef4444' },
+            ].map(btn => {
+              const isActive = workerState.state === btn.state;
+              return (
+                <TouchableOpacity
+                  key={btn.state}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    paddingHorizontal: spacing.sm,
+                    paddingVertical: 4,
+                    borderRadius: radius.full,
+                    backgroundColor: isActive ? colorWithOpacity(btn.color, 0.2) : colorWithOpacity(colors.foreground, 0.05),
+                    borderWidth: 1,
+                    borderColor: isActive ? colorWithOpacity(btn.color, 0.4) : 'transparent',
+                  }}
+                  onPress={async () => {
+                    try {
+                      await api.post('/api/worker/state', { state: btn.state });
+                      setWorkerState({ state: btn.state, note: null });
+                    } catch {
+                      Alert.alert('Error', 'Failed to update status');
+                    }
+                  }}
+                >
+                  <View style={{
+                    width: 6, height: 6, borderRadius: 3,
+                    backgroundColor: isActive ? btn.color : colorWithOpacity(colors.foreground, 0.3),
+                  }} />
+                  <Text style={{
+                    fontSize: 12,
+                    fontWeight: isActive ? '700' : '500',
+                    color: isActive ? btn.color : colors.mutedForeground,
+                  }}>
+                    {btn.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       {/* Trust Banner - Dismissible */}
       <TrustBanner />

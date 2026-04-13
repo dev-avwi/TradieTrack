@@ -519,6 +519,19 @@ async function resolveAssigneeUserId(assignedTo: string | null | undefined, busi
   }
 }
 
+
+// Helper to auto-update worker state and broadcast via WebSocket
+async function autoUpdateWorkerState(userId: string, state: string, jobId?: string | null, note?: string | null) {
+  try {
+    const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+    const businessOwnerId = teamMembership?.businessOwnerId || userId;
+    await storage.upsertWorkerState(userId, businessOwnerId, state, jobId, note);
+    const { broadcastWorkerStateChange } = await import('./websocket');
+    broadcastWorkerStateChange(businessOwnerId, { userId, state, jobId, note });
+  } catch (err) {
+    console.warn('[WorkerState] Auto-update failed:', err);
+  }
+}
 // Helper function to gather rich business context for AI
 // Enhanced to be role-aware: workers see limited data, owners/managers see everything
 async function gatherAIContext(userId: string, storage: any, userContext?: UserContext): Promise<BusinessContext> {
@@ -17505,9 +17518,17 @@ Be specific about materials, colors, and features that would be included.`
         if (activeTimer) status = 'on_job';
         else if (nextScheduledJob) status = 'upcoming';
 
+        let workerState = null;
+        try {
+          workerState = await storage.getWorkerState(memberId, userContext.effectiveUserId);
+        } catch (e) {}
+
         availability.push({
           memberId,
           status,
+          workerState: workerState?.state || 'available',
+          workerStateNote: workerState?.note || null,
+          workerStateJobId: workerState?.jobId || null,
           activeJobTitle,
           timerStartTime,
           nextScheduledJob,
@@ -28274,6 +28295,9 @@ Respond with JSON in this format:
           timeEntryId: timeEntry.id,
         });
       }
+
+      // Auto-update worker state to on_job
+      await autoUpdateWorkerState(userId, 'on_job', data.jobId || null);
       
       if (idempKey) {
         await setIdempotencyRecord(idempKey, timeEntry);
@@ -28431,6 +28455,9 @@ Respond with JSON in this format:
           timeEntryId: id,
         });
       }
+
+      // Auto-update worker state to available
+      await autoUpdateWorkerState((existingEntry as any).userId || userId, 'available', null);
       
       res.json(stoppedEntry);
     } catch (error) {
@@ -28485,6 +28512,9 @@ Respond with JSON in this format:
         pausedAt: new Date().toISOString(),
       });
       
+
+      // Auto-update worker state to break
+      await autoUpdateWorkerState((existingEntry as any).userId || userId, 'break', existingEntry.jobId || null);
       res.json(pausedEntry);
     } catch (error) {
       console.error('Error pausing time entry:', error);
@@ -28574,6 +28604,9 @@ Respond with JSON in this format:
         pausedDuration: currentPausedDuration + pauseDuration,
       });
       
+
+      // Auto-update worker state to on_job
+      await autoUpdateWorkerState((existingEntry as any).userId || userId, 'on_job', existingEntry.jobId || null);
       res.json(resumedEntry);
     } catch (error) {
       console.error('Error resuming time entry:', error);
@@ -33514,6 +33547,7 @@ Respond with JSON in this format:
             ...logContext,
             entryId: newEntry.id
           }));
+          await autoUpdateWorkerState(userId, 'on_job', jobId);
           timeEntryAction = { type: 'clock_in', entryId: newEntry.id };
         } else if (activeEntry.jobId === jobId) {
           // Already on this job, no action needed
@@ -33551,6 +33585,7 @@ Respond with JSON in this format:
               clockOutLongitude: String(longitude),
               clockOutAddress: address || undefined,
             });
+            await autoUpdateWorkerState(userId, 'available', null);
             console.info('[Geofence] Auto clock-out succeeded:', JSON.stringify({
               ...logContext,
               entryId: activeEntry.id,
@@ -42069,6 +42104,105 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+
+  // ============================================
+  // WORKER STATE SYSTEM ROUTES
+  // ============================================
+
+  // Get all worker states for business (manager view)
+  app.get("/api/team/worker-states", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+      const businessOwnerId = teamMembership?.businessOwnerId || userId;
+
+      const states = await storage.getWorkerStatesByBusiness(businessOwnerId);
+
+      const enriched = await Promise.all(states.map(async (ws: any) => {
+        const user = await storage.getUser(ws.userId);
+        return {
+          ...ws,
+          user: user ? {
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            profileImageUrl: user.profileImageUrl,
+            themeColor: user.themeColor,
+          } : null,
+        };
+      }));
+
+      res.json(enriched);
+    } catch (error: any) {
+      console.error('Error fetching worker states:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get current user's worker state
+  app.get("/api/worker/state", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const membership = await storage.getTeamMembershipByMemberId(userId);
+      const businessOwnerId = membership?.businessOwnerId || userId;
+      const state = await storage.getWorkerState(userId, businessOwnerId);
+      res.json(state || { userId, state: 'available', jobId: null, note: null });
+    } catch (error: any) {
+      console.error('Error fetching worker state:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Set worker state (manual update)
+  app.post("/api/worker/state", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { state, jobId, note, targetUserId } = req.body;
+
+      const validStates = ['available', 'on_job', 'travelling', 'break', 'delayed', 'needs_help'];
+      if (!state || !validStates.includes(state)) {
+        return res.status(400).json({ error: 'Invalid state. Must be one of: ' + validStates.join(', ') });
+      }
+
+      const effectiveUserId = targetUserId || userId;
+
+      const callerMembership = await storage.getTeamMembershipByMemberId(userId);
+      const callerBusinessId = callerMembership?.businessOwnerId || userId;
+
+      if (effectiveUserId !== userId) {
+        const userContext = await getUserContext(userId);
+        if (userContext.role !== 'owner' && userContext.role !== 'manager' && userContext.role !== 'admin') {
+          return res.status(403).json({ error: 'Only managers or owners can change another worker\'s state' });
+        }
+        const targetMembership = await storage.getTeamMembershipByMemberId(effectiveUserId);
+        if (!targetMembership || targetMembership.businessOwnerId !== callerBusinessId) {
+          return res.status(403).json({ error: 'Target user is not in your business' });
+        }
+      }
+
+      const businessOwnerId = callerBusinessId;
+
+      const workerState = await storage.upsertWorkerState(effectiveUserId, businessOwnerId, state, jobId, note);
+
+      try {
+        const { broadcastWorkerStateChange } = await import('./websocket');
+        broadcastWorkerStateChange(businessOwnerId, {
+          userId: effectiveUserId,
+          state,
+          jobId,
+          note,
+        });
+      } catch (wsErr) {
+        console.warn('[WS] Failed to broadcast worker state change:', wsErr);
+      }
+
+      res.json(workerState);
+    } catch (error: any) {
+      console.error('Error updating worker state:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
   // ============================================
   // TEAM MEMBER SKILLS ROUTES
   // ============================================

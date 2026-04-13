@@ -112,6 +112,16 @@ export async function handleOnMyWay(params: OnMyWayParams): Promise<OnMyWayResul
     workerEtaMinutes: etaMinutes,
   });
 
+  try {
+    const teamMembership = await storage.getTeamMembershipByMemberId(actorUserId);
+    const bizOwnerId = teamMembership?.businessOwnerId || effectiveUserId;
+    await storage.upsertWorkerState(actorUserId, bizOwnerId, 'travelling', jobId);
+    const { broadcastWorkerStateChange } = await import('../websocket');
+    broadcastWorkerStateChange(bizOwnerId, { userId: actorUserId, state: 'travelling', jobId });
+  } catch (e) {
+    console.warn('[WorkerState] Auto-update travelling failed:', e);
+  }
+
   await storage.createAssignmentEvent({
     assignmentId,
     jobId,
@@ -270,6 +280,22 @@ export async function handleWorkerStatusChange(params: WorkerStatusParams): Prom
   const job = await storage.getJob(jobId, effectiveUserId);
   if (job) {
     await storage.updateJob(jobId, effectiveUserId, jobUpdateData);
+  }
+
+  try {
+    const teamMembership = await storage.getTeamMembershipByMemberId(actorUserId);
+    const bizOwnerId = teamMembership?.businessOwnerId || effectiveUserId;
+    const workerStateMap: Record<string, string> = {
+      arrived: 'on_job',
+      in_progress: 'on_job',
+      completed: 'available',
+    };
+    const newState = workerStateMap[status] || 'available';
+    await storage.upsertWorkerState(actorUserId, bizOwnerId, newState, status === 'completed' ? null : jobId);
+    const { broadcastWorkerStateChange } = await import('../websocket');
+    broadcastWorkerStateChange(bizOwnerId, { userId: actorUserId, state: newState, jobId: status === 'completed' ? null : jobId });
+  } catch (e) {
+    console.warn('[WorkerState] Auto-update on status change failed:', e);
   }
 
   await storage.createAssignmentEvent({

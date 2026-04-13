@@ -71,6 +71,8 @@ import {
   Settings2,
   Sun,
   Moon,
+  Coffee,
+  HelpCircle,
 } from "lucide-react";
 import {
   Popover,
@@ -1044,6 +1046,10 @@ export default function DispatchBoard() {
 
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
     queryKey: ['/api/team/members'],
+  });
+
+  const { data: workerStatesData = [] } = useQuery<any[]>({
+    queryKey: ['/api/team/worker-states'],
   });
 
   const { data: dispatchJobs = [], isLoading: dispatchLoading } = useQuery<DispatchJob[]>({
@@ -2322,7 +2328,24 @@ export default function DispatchBoard() {
             </CardHeader>
             <CardContent className="p-3">
               <div className="space-y-3">
-                {teamMembersWithJobs.map(member => (
+                {teamMembersWithJobs.map(member => {
+                  const memberWs = workerStatesData.find((ws: any) => ws.userId === (member as any).userId || ws.userId === (member as any).memberId);
+                  const wsState = memberWs?.state || 'available';
+                  const wsConfig: Record<string, { color: string; bg: string; label: string; Icon: any }> = {
+                    available: { color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900/30', label: 'Available', Icon: CircleDot },
+                    on_job: { color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30', label: 'On Job', Icon: Briefcase },
+                    travelling: { color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/30', label: 'Travelling', Icon: Truck },
+                    break: { color: 'text-gray-500', bg: 'bg-gray-100 dark:bg-gray-800', label: 'Break', Icon: Coffee },
+                    delayed: { color: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-900/30', label: 'Delayed', Icon: AlertTriangle },
+                    needs_help: { color: 'text-red-600', bg: 'bg-red-100 dark:bg-red-900/30', label: 'Help', Icon: HelpCircle },
+                  };
+                  const wc = wsConfig[wsState] || wsConfig.available;
+                  const WsIcon = wc.Icon;
+                  const stateHexColors: Record<string, string> = {
+                    available: '#22c55e', on_job: '#f97316', travelling: '#3b82f6',
+                    break: '#9ca3af', delayed: '#eab308', needs_help: '#ef4444',
+                  };
+                  return (
                   <div key={member.id} className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -2332,13 +2355,20 @@ export default function DispatchBoard() {
                               {(member.firstName?.[0] || '') + (member.lastName?.[0] || '')}
                             </AvatarFallback>
                           </Avatar>
-                          <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background ${member.isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
+                          <span
+                            className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background"
+                            style={{ backgroundColor: stateHexColors[wsState] || '#22c55e' }}
+                          />
                         </div>
                         <span className="text-sm font-medium">
                           {member.firstName} {member.lastName}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
+                        <Badge variant="secondary" className={`text-xs ${wc.bg} ${wc.color} gap-0.5`}>
+                          <WsIcon className="h-2.5 w-2.5" />
+                          {wc.label}
+                        </Badge>
                         <Badge 
                           variant={member.totalHours > member.capacity ? "destructive" : "secondary"}
                           className="text-xs"
@@ -2364,7 +2394,8 @@ export default function DispatchBoard() {
                       </span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
