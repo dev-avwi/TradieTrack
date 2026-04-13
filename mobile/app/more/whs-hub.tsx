@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal, TextInput, Alert, Platform, KeyboardAvoidingView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { useTheme } from '../../src/lib/theme';
+import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
-import { spacing, radius, shadows, typography, pageShell, componentStyles } from '../../src/lib/design-tokens';
+import { spacing, radius, shadows, typography, pageShell, componentStyles, iconSizes, typographySizes, sizes } from '../../src/lib/design-tokens';
 
 type TabKey = 'incidents' | 'emergency' | 'jsa' | 'environments' | 'signage' | 'hazard_reports' | 'ppe' | 'training';
 
@@ -65,9 +65,67 @@ const REPORTED_TO_ROLES = [
   { value: 'hsr', label: 'HSR' },
 ];
 
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  heroSection: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
+  pageTitle: { fontSize: 28, fontWeight: '800', color: colors.foreground, letterSpacing: -0.5 },
+  pageSubtitle: { fontSize: 14, color: colors.mutedForeground, marginTop: 4, lineHeight: 20 },
+  statsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  statCard: { flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: colors.cardBorder },
+  statIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  statValue: { fontSize: 16, fontWeight: '700', color: colors.foreground },
+  statLabel: { fontSize: 11, color: colors.mutedForeground, marginTop: 1 },
+  filterScroll: { paddingHorizontal: spacing.lg, gap: spacing.xs, paddingBottom: spacing.sm },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.full, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  filterChipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  filterChipText: { fontSize: 13, color: colors.mutedForeground, fontWeight: '500' },
+  filterChipTextActive: { color: colors.primary, fontWeight: '600' },
+  listSection: { paddingHorizontal: spacing.lg, paddingBottom: 100 },
+  card: { backgroundColor: colors.card, borderRadius: radius['2xl'], padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.cardBorder, ...shadows.sm },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: colors.foreground },
+  cardSubtext: { fontSize: 12, color: colors.mutedForeground, marginTop: 2, lineHeight: 17 },
+  cardMeta: { fontSize: 12, lineHeight: 17 },
+  badge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full, marginRight: 4, marginBottom: 4 },
+  badgeText: { fontSize: 11, fontWeight: '600' },
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2, paddingHorizontal: spacing.lg, gap: spacing.sm },
+  emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
+  emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.foreground },
+  emptyDesc: { fontSize: 14, color: colors.mutedForeground, textAlign: 'center' as const, lineHeight: 20 },
+  emptyButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: radius.lg, marginTop: spacing.sm },
+  emptyButtonText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
+  fab: { position: 'absolute', bottom: spacing.xl, right: spacing.lg, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', ...shadows.lg },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  metaChip: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.muted, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full },
+  metaChipText: { fontSize: 11, color: colors.mutedForeground },
+  stepCard: { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: radius.lg, padding: spacing.sm, marginBottom: spacing.sm },
+  stepHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
+  hazardBadge: { backgroundColor: 'rgba(239,68,68,0.12)', paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.sm, marginRight: 4, marginBottom: 4 },
+  hazardBadgeText: { fontSize: 10, color: '#ef4444', fontWeight: '600' },
+  ppeBadge: { backgroundColor: 'rgba(59,130,246,0.12)', paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.sm, marginRight: 4, marginBottom: 4 },
+  ppeBadgeText: { fontSize: 10, color: '#3b82f6', fontWeight: '600' },
+  checkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs + 2, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  sectionTitle: { fontSize: 14, fontWeight: '600', color: colors.foreground, marginBottom: spacing.sm, marginTop: spacing.sm },
+  modalContainer: { flex: 1, backgroundColor: colors.background },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modalTitle: { ...typography.subtitle, color: colors.foreground },
+  modalBody: { padding: spacing.md },
+  inputLabel: { fontSize: 13, fontWeight: '500', color: colors.foreground, marginBottom: spacing.xs },
+  input: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md, fontSize: 15, color: colors.foreground, marginBottom: spacing.md },
+  textArea: { minHeight: 80, textAlignVertical: 'top' },
+  optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
+  optionChip: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
+  optionChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  optionChipText: { fontSize: 12, color: colors.foreground },
+  optionChipTextActive: { color: '#fff' },
+  chipButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.lg, borderWidth: 1 },
+  saveButton: { fontSize: 16, fontWeight: '600' },
+});
+
 export default function WhsHubScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [activeTab, setActiveTab] = useState<TabKey>('incidents');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -278,61 +336,6 @@ export default function WhsHubScreen() {
 
   const openIncidents = incidents.filter(r => r.status === 'open').length;
 
-  const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    headerBar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm, backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border },
-    headerTitle: { fontSize: 17, fontWeight: '700', color: colors.foreground },
-    headerSubtitle: { fontSize: 12, color: colors.mutedForeground },
-    backBtn: { padding: spacing.xs },
-    statsRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.md, marginBottom: spacing.md },
-    statCard: { flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: colors.cardBorder },
-    statIconWrap: { width: 32, height: 32, borderRadius: 16, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' },
-    statNumber: { fontSize: 20, fontWeight: '700', color: colors.foreground, marginTop: 4 },
-    statLabel: { fontSize: 11, color: colors.mutedForeground, marginTop: 1 },
-    tabsRow: { flexDirection: 'row', paddingHorizontal: spacing.md, marginBottom: spacing.md, gap: spacing.xs },
-    tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.full, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder },
-    tabActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-    tabText: { fontSize: 13, color: colors.mutedForeground, fontWeight: '500' },
-    tabTextActive: { color: colors.primary, fontWeight: '600' },
-    card: { backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.cardBorder },
-    cardTitle: { fontSize: 15, fontWeight: '600', color: colors.foreground },
-    cardSubtext: { fontSize: 12, color: colors.mutedForeground, marginTop: 2 },
-    badge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.full, marginRight: spacing.xs, marginBottom: spacing.xs },
-    badgeText: { fontSize: 11, fontWeight: '600' },
-    fab: { position: 'absolute', bottom: spacing.xl, right: spacing.lg, width: 52, height: 52, borderRadius: 26, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', ...shadows.lg },
-    emptyState: { alignItems: 'center', paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
-    emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
-    emptyTitle: { fontSize: 16, fontWeight: '600', color: colors.foreground, marginBottom: spacing.xs },
-    emptyDesc: { fontSize: 13, color: colors.mutedForeground, textAlign: 'center' as const, lineHeight: 18 },
-    emptyText: { fontSize: 14, color: colors.mutedForeground, marginTop: spacing.md, textAlign: 'center' },
-    modalContainer: { flex: 1, backgroundColor: colors.background },
-    modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-    modalTitle: { fontSize: 18, fontWeight: '600', color: colors.foreground },
-    modalBody: { padding: spacing.md },
-    inputLabel: { fontSize: 13, fontWeight: '500', color: colors.foreground, marginBottom: spacing.xs },
-    input: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.sm, fontSize: 15, color: colors.foreground, marginBottom: spacing.md },
-    textArea: { minHeight: 80, textAlignVertical: 'top' },
-    submitBtn: { backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.md, alignItems: 'center', marginTop: spacing.md },
-    submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-    optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
-    optionChip: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
-    optionChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-    optionChipText: { fontSize: 12, color: colors.foreground },
-    optionChipTextActive: { color: '#fff' },
-    row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    stepCard: { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.sm },
-    stepHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-    hazardBadge: { backgroundColor: 'rgba(239,68,68,0.12)', paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.sm, marginRight: 4, marginBottom: 4 },
-    hazardBadgeText: { fontSize: 10, color: '#ef4444', fontWeight: '600' },
-    ppeBadge: { backgroundColor: 'rgba(59,130,246,0.12)', paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.sm, marginRight: 4, marginBottom: 4 },
-    ppeBadgeText: { fontSize: 10, color: '#3b82f6', fontWeight: '600' },
-    checkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.border },
-    sectionTitle: { fontSize: 14, fontWeight: '600', color: colors.foreground, marginBottom: spacing.sm, marginTop: spacing.sm },
-    chipButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md, borderWidth: 1 },
-    cardMeta: { fontSize: 12 },
-    saveButton: { fontSize: 16, fontWeight: '600' },
-  });
-
   function renderIncidents() {
     if (incidents.length === 0) {
       return (
@@ -342,6 +345,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No Incident Reports</Text>
           <Text style={styles.emptyDesc}>Report incidents to keep your site safe and maintain compliance.</Text>
+          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowIncidentForm(true)}>
+            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Text style={styles.emptyButtonText}>Report Incident</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -396,6 +403,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No Emergency Plans</Text>
           <Text style={styles.emptyDesc}>Set up emergency info for your sites including assembly points and first aid.</Text>
+          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowEmergencyForm(true)}>
+            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Text style={styles.emptyButtonText}>Add Plan</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -457,6 +468,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No JSAs Created</Text>
           <Text style={styles.emptyDesc}>Create a Job Safety Analysis before starting work on site.</Text>
+          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowJsaForm(true)}>
+            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Text style={styles.emptyButtonText}>Create JSA</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -510,6 +525,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No Hazardous Environments</Text>
           <Text style={styles.emptyDesc}>Track hazardous environments and required PPE for your work sites.</Text>
+          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowEnvForm(true)}>
+            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Text style={styles.emptyButtonText}>Add Environment</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -557,6 +576,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No Safety Signage</Text>
           <Text style={styles.emptyDesc}>Track safety signage requirements for your work sites.</Text>
+          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowSignForm(true)}>
+            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Text style={styles.emptyButtonText}>Add Sign</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -738,8 +761,8 @@ export default function WhsHubScreen() {
                 </View>
               </View>
             ))}
-            <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]} onPress={() => setJsaForm(p => ({ ...p, steps: [...p.steps, { taskDescription: '', hazards: '', riskLevel: 'medium', controlMeasures: '', responsiblePerson: '' }] }))}>
-              <Text style={[styles.submitBtnText, { color: colors.foreground }]}>+ Add Step</Text>
+            <TouchableOpacity style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center', marginTop: spacing.sm, borderStyle: 'dashed' }} onPress={() => setJsaForm(p => ({ ...p, steps: [...p.steps, { taskDescription: '', hazards: '', riskLevel: 'medium', controlMeasures: '', responsiblePerson: '' }] }))}>
+              <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: '600' }}>+ Add Step</Text>
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -866,6 +889,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No Hazard Reports</Text>
           <Text style={styles.emptyDesc}>Spot a hazard? Report it before someone gets hurt.</Text>
+          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowHazardForm(true)}>
+            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Text style={styles.emptyButtonText}>Report Hazard</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -1001,6 +1028,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No PPE Check-ins</Text>
           <Text style={styles.emptyDesc}>Start a daily PPE check-in to verify workers have proper safety gear.</Text>
+          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowPpeForm(true)}>
+            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Text style={styles.emptyButtonText}>Start Check-in</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -1086,6 +1117,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No Training Records</Text>
           <Text style={styles.emptyDesc}>Track White Cards, licences, first aid certs, and other qualifications.</Text>
+          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowTrainingForm(true)}>
+            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Text style={styles.emptyButtonText}>Add Record</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -1200,55 +1235,66 @@ export default function WhsHubScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={styles.headerBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={20} color={colors.foreground} />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>WHS Safety</Text>
-          <Text style={styles.headerSubtitle}>Incidents, JSAs & compliance</Text>
-        </View>
-        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center' }}>
-          <Feather name="shield" size={18} color={colors.primary} />
-        </View>
-      </View>
-
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md }}>
           <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Loading safety data...</Text>
         </View>
       ) : (
         <>
-          <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-            <View style={styles.statsRow}>
-              {[
-                { icon: 'alert-triangle' as const, value: openIncidents, label: 'Open', color: openIncidents > 0 ? '#ef4444' : colors.success },
-                { icon: 'phone' as const, value: emergencyInfo.length, label: 'Plans', color: '#8b5cf6' },
-                { icon: 'clipboard' as const, value: jsaDocs.length, label: 'JSAs', color: colors.primary },
-                { icon: 'activity' as const, value: incidents.length, label: 'Total', color: colors.info },
-              ].map((stat, idx) => (
-                <View key={idx} style={styles.statCard}>
-                  <View style={[styles.statIconWrap, { backgroundColor: `${stat.color}15` }]}>
-                    <Feather name={stat.icon} size={15} color={stat.color} />
-                  </View>
-                  <Text style={styles.statNumber}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.heroSection}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+                <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Feather name="arrow-left" size={20} color={colors.foreground} />
+                </TouchableOpacity>
+                <View style={{ flex: 1 }} />
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center' }}>
+                  <Feather name="shield" size={16} color={colors.primary} />
                 </View>
-              ))}
-            </View>
+              </View>
+              <Text style={styles.pageTitle}>WHS Safety</Text>
+              <Text style={styles.pageSubtitle}>
+                Incidents, JSAs & site compliance all in one place.
+              </Text>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
-              <View style={styles.tabsRow}>
-                {TABS.map(tab => (
-                  <TouchableOpacity key={tab.key} style={[styles.tab, activeTab === tab.key && styles.tabActive]} onPress={() => setActiveTab(tab.key)}>
-                    <Feather name={tab.icon} size={14} color={activeTab === tab.key ? colors.primary : colors.mutedForeground} />
-                    <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
-                  </TouchableOpacity>
+              <View style={styles.statsRow}>
+                {[
+                  { icon: 'alert-triangle' as const, value: openIncidents, label: 'Open', color: openIncidents > 0 ? '#ef4444' : colors.success },
+                  { icon: 'phone' as const, value: emergencyInfo.length, label: 'Plans', color: '#8b5cf6' },
+                  { icon: 'clipboard' as const, value: jsaDocs.length, label: 'JSAs', color: colors.primary },
+                  { icon: 'activity' as const, value: incidents.length, label: 'Total', color: colors.info },
+                ].map((stat, idx) => (
+                  <View key={idx} style={styles.statCard}>
+                    <View style={[styles.statIcon, { backgroundColor: `${stat.color}15` }]}>
+                      <Feather name={stat.icon} size={16} color={stat.color} />
+                    </View>
+                    <Text style={styles.statValue}>{stat.value}</Text>
+                    <Text style={styles.statLabel}>{stat.label}</Text>
+                  </View>
                 ))}
               </View>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll} style={{ flexGrow: 0 }}>
+              {TABS.map(tab => (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[styles.filterChip, activeTab === tab.key && styles.filterChipActive]}
+                  onPress={() => setActiveTab(tab.key)}
+                >
+                  <Feather name={tab.icon} size={14} color={activeTab === tab.key ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.filterChipText, activeTab === tab.key && styles.filterChipTextActive]}>{tab.label}</Text>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
 
-            <View style={{ paddingHorizontal: spacing.md, paddingBottom: 100 }}>
+            <View style={styles.listSection}>
               {activeTab === 'incidents' && renderIncidents()}
               {activeTab === 'emergency' && renderEmergency()}
               {activeTab === 'jsa' && renderJsa()}
@@ -1261,7 +1307,7 @@ export default function WhsHubScreen() {
           </ScrollView>
 
           {showFab && (
-            <TouchableOpacity style={styles.fab} onPress={fabAction}>
+            <TouchableOpacity style={styles.fab} onPress={fabAction} activeOpacity={0.85}>
               <Feather name="plus" size={24} color="#fff" />
             </TouchableOpacity>
           )}
