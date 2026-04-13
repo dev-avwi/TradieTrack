@@ -6,10 +6,15 @@ import { PRICING } from '@shared/schema';
 import type { User, BusinessSettings } from '@shared/schema';
 import { sendPushNotification } from './pushNotifications';
 import { getProductionBaseUrl } from './urlHelper';
+import { getUncachableStripeClient } from './stripeClient';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-06-20',
-});
+let stripe: Stripe | null = null;
+async function getStripe(): Promise<Stripe | null> {
+  if (!stripe) {
+    stripe = await getUncachableStripeClient();
+  }
+  return stripe;
+}
 
 const getBaseUrl = () => {
   return getProductionBaseUrl();

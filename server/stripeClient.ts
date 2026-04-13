@@ -10,8 +10,8 @@ let isTestMode: boolean | null = null;
 /**
  * Get Stripe credentials from multiple sources (standalone deployment support)
  * Priority:
- * 1. Direct environment variables (STRIPE_SECRET_KEY, VITE_STRIPE_PUBLIC_KEY)
- * 2. Replit managed connector (most reliable in Replit environment)
+ * 1. Replit managed connector (most reliable in Replit environment)
+ * 2. Direct environment variables (STRIPE_SECRET_KEY, VITE_STRIPE_PUBLIC_KEY)
  * 3. Testing keys (only as fallback for e2e tests)
  */
 async function getCredentials() {
@@ -20,29 +20,7 @@ async function getCredentials() {
     return cachedCredentials;
   }
   
-  // Priority 1: Check for direct environment variables (standalone deployment)
-  const directSecretKey = process.env.STRIPE_SECRET_KEY;
-  const directPublishableKey = process.env.VITE_STRIPE_PUBLIC_KEY;
-  
-  if (directSecretKey && directPublishableKey) {
-    // Detect if we're using test mode keys
-    const usingTestKeys = directSecretKey.startsWith('sk_test_') || directPublishableKey.startsWith('pk_test_');
-    isTestMode = usingTestKeys;
-    
-    if (usingTestKeys) {
-      console.log('⚠️ Using Stripe TEST MODE keys - payments will be simulated');
-    } else {
-      console.log('✅ Using Stripe LIVE MODE keys');
-    }
-    console.log('✅ Using direct Stripe environment variables');
-    cachedCredentials = {
-      publishableKey: directPublishableKey,
-      secretKey: directSecretKey,
-    };
-    return cachedCredentials;
-  }
-
-  // Priority 2: Try Replit managed connector (preferred in Replit environment)
+  // Priority 1: Try Replit managed connector (preferred in Replit environment)
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? 'repl ' + process.env.REPL_IDENTITY
@@ -97,6 +75,26 @@ async function getCredentials() {
     }
   }
   
+  // Priority 2: Check for direct environment variables (standalone deployment fallback)
+  const directSecretKey = process.env.STRIPE_SECRET_KEY;
+  const directPublishableKey = process.env.VITE_STRIPE_PUBLIC_KEY;
+  
+  if (directSecretKey && directPublishableKey) {
+    const usingTestKeys = directSecretKey.startsWith('sk_test_') || directPublishableKey.startsWith('pk_test_');
+    isTestMode = usingTestKeys;
+    
+    if (usingTestKeys) {
+      console.log('⚠️ Using Stripe TEST MODE keys (env var fallback)');
+    } else {
+      console.log('✅ Using Stripe LIVE MODE keys (env var fallback)');
+    }
+    cachedCredentials = {
+      publishableKey: directPublishableKey,
+      secretKey: directSecretKey,
+    };
+    return cachedCredentials;
+  }
+
   // Priority 3: Check for testing keys (only as fallback for e2e tests)
   const testingSecretKey = process.env.TESTING_STRIPE_SECRET_KEY;
   const testingPublishableKey = process.env.TESTING_VITE_STRIPE_PUBLIC_KEY;
