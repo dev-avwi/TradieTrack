@@ -89,7 +89,7 @@ const tiers = [
   {
     id: 'pro',
     name: 'Pro',
-    price: 39,
+    price: 49,
     description: 'For growing trade businesses',
     features: [
       { text: 'Unlimited jobs', included: true },
@@ -107,7 +107,7 @@ const tiers = [
   {
     id: 'team',
     name: 'Team',
-    price: 49,
+    price: 59,
     seatPrice: 29,
     description: 'For businesses with employees',
     features: [
