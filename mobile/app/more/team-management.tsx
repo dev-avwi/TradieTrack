@@ -2246,7 +2246,7 @@ export default function TeamManagementScreen() {
         </TouchableOpacity>
         
         <Text style={styles.ctaSubtext}>
-          Manage your business plan at jobrunner.com.au
+          Upgrade your plan in Subscription settings
         </Text>
       </View>
 

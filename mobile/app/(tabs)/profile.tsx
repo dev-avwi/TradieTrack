@@ -323,7 +323,7 @@ function MenuItem({
     if (locked) {
       Alert.alert(
         'Plan Required',
-        lockReason || 'This feature is available on a higher plan. Visit jobrunner.com.au to manage your plan.',
+        lockReason || 'This feature is available on a higher plan. Upgrade in the Subscription page.',
         [
           { text: 'OK', style: 'cancel' },
           { text: 'View My Plan', onPress: () => router.push('/more/subscription') },

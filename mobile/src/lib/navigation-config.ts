@@ -469,7 +469,7 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
     if (item.hideInSimpleMode && options.isSimpleMode) {
       if (item.showLockedIfNoAccess) {
         item.locked = true;
-        item.lockReason = 'Available on the Team plan. Visit jobrunner.com.au to manage your plan.';
+        item.lockReason = 'Available on the Team plan. Upgrade in Subscription settings.';
         item.badge = 'Team';
       } else {
         continue;
@@ -479,7 +479,7 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
     if (item.requiresProPlan && options.hasProSubscription === false) {
       if (item.showLockedIfNoAccess) {
         item.locked = true;
-        item.lockReason = 'Available on the Pro plan. Visit jobrunner.com.au to manage your plan.';
+        item.lockReason = 'Available on the Pro plan. Upgrade in Subscription settings.';
         item.badge = 'Pro';
       } else {
         continue;
@@ -489,7 +489,7 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
     if (item.requiresTeam && !options.isTeam) {
       if (item.showLockedIfNoAccess) {
         item.locked = true;
-        item.lockReason = 'Available on the Team plan. Visit jobrunner.com.au to manage your plan.';
+        item.lockReason = 'Available on the Team plan. Upgrade in Subscription settings.';
         item.badge = 'Team';
       } else {
         continue;
