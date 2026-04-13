@@ -1129,8 +1129,8 @@ function OperationalAlertsCard() {
     try {
       const response = await api.get<{ alerts: MobileOperationalAlert[]; summary: typeof summary }>('/api/operational-alerts');
       if (response.data) {
-        setAlerts(response.data.alerts);
-        setSummary(response.data.summary);
+        setAlerts(Array.isArray(response.data.alerts) ? response.data.alerts : []);
+        setSummary(response.data.summary || { total: 0, urgent: 0, important: 0, info: 0 });
       }
     } catch (err) {
       if (__DEV__) console.log('Error fetching operational alerts:', err);
