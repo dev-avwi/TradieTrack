@@ -49,6 +49,9 @@ export class AuthService {
       if (validatedData.password.length < 8) {
         return { success: false, error: 'Password must be at least 8 characters' };
       }
+      if (!/[A-Z]/.test(validatedData.password) || !/[0-9]/.test(validatedData.password)) {
+        return { success: false, error: 'Password must include at least one uppercase letter and one number' };
+      }
 
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(validatedData.email);
@@ -237,6 +240,9 @@ export class AuthService {
     try {
       if (newPassword.length < 8) {
         return { success: false, error: 'Password must be at least 8 characters' };
+      }
+      if (!/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+        return { success: false, error: 'Password must include at least one uppercase letter and one number' };
       }
 
       const user = await storage.getUserByPasswordResetToken(token);

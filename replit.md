@@ -9,7 +9,7 @@ JobRunner utilizes an event-driven architecture with TypeScript. The frontend is
 
 Core architectural and design decisions include:
 *   **UI/UX**: Mobile-first design with card-based layouts, touch-optimized components, customizable theming, dynamic layouts, and full mobile parity. Key features include "Today's Schedule," Smart Address Auto-fill, and enhanced mobile job details with variations, linked jobs, site updates, job documents, and Proof Pack section toggles.
-*   **Authentication**: Supports Email/password, Google OAuth, Apple Sign-In, and Xero OAuth for robust user authentication.
+*   **Authentication**: Supports Email/password, Google OAuth, Apple Sign-In, and Xero OAuth for robust user authentication. Password policy enforced consistently across all auth paths (register, reset, change): minimum 8 characters, at least one uppercase letter, and one number.
 *   **Onboarding**: A multi-step wizard for business setup, including Stripe integration and team invites.
 *   **AI Integration**: Utilizes GPT-4o-mini and GPT-4o vision for features like business suggestions, quote generation, voice note transcription, photo auto-categorization, receipt scanning, SWMS hazard detection, AI Photo Analysis, AI Schedule Optimizer, and a Role-Aware AI Assistant.
 *   **PDF Generation**: Server-side generation of customizable quotes, invoices, and Job Proof Packs, incorporating GPS Worker Presence Verification and photo GPS location stamps.

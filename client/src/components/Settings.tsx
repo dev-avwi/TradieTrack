@@ -796,8 +796,12 @@ export default function Settings({
       toast({ title: 'Passwords do not match', variant: 'destructive' });
       return;
     }
-    if (passwordForm.newPassword.length < 6) {
-      toast({ title: 'Password must be at least 6 characters', variant: 'destructive' });
+    if (passwordForm.newPassword.length < 8) {
+      toast({ title: 'Password must be at least 8 characters', variant: 'destructive' });
+      return;
+    }
+    if (!/[A-Z]/.test(passwordForm.newPassword) || !/[0-9]/.test(passwordForm.newPassword)) {
+      toast({ title: 'Password must include at least one uppercase letter and one number', variant: 'destructive' });
       return;
     }
     changePasswordMutation.mutate({
@@ -1277,26 +1281,6 @@ export default function Settings({
         </Card>
       )}
 
-      {canAccessBusinessSettings && (
-        <Card 
-          className="hover-elevate cursor-pointer" 
-          onClick={() => { window.location.href = '/website'; }}
-          data-testid="card-website-addon-link"
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Globe className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-                <div>
-                  <p className="font-semibold">Website</p>
-                  <p className="text-sm text-muted-foreground">Preview your website, check status & request changes</p>
-                </div>
-              </div>
-              <ExternalLink className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <Tabs 
         value={activeTab} 
@@ -1751,7 +1735,7 @@ export default function Settings({
                     type="password"
                     value={passwordForm.newPassword}
                     onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                    placeholder="At least 6 characters"
+                    placeholder="Min 8 chars, 1 uppercase, 1 number"
                     data-testid="input-new-password"
                   />
                 </div>
@@ -3286,6 +3270,29 @@ function BillingTabContent() {
         <CardContent className="pt-0">
           <p className="text-sm text-muted-foreground">
             Set up your AI-powered virtual receptionist to handle calls, create leads, and transfer to your team.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Custom Website Add-on */}
+      <Card 
+        className="hover-elevate cursor-pointer" 
+        onClick={() => { window.location.href = '/website'; }}
+        data-testid="card-website-addon-link"
+      >
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+          <div className="flex items-center gap-2">
+            <Globe className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+            <CardTitle className="text-base">Custom Website</CardTitle>
+          </div>
+          <Button variant="outline" onClick={(e) => { e.stopPropagation(); window.location.href = '/website'; }}>
+            <ExternalLink className="h-4 w-4 mr-1.5" />
+            Manage
+          </Button>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <p className="text-sm text-muted-foreground">
+            Get a professional website for your trade business. Preview your site, check domain status, and request changes.
           </p>
         </CardContent>
       </Card>

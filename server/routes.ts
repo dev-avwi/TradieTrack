@@ -4792,6 +4792,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (newPassword.length < 8) {
         return res.status(400).json({ error: "New password must be at least 8 characters" });
       }
+      if (!/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+        return res.status(400).json({ error: "Password must include at least one uppercase letter and one number" });
+      }
 
       const user = await storage.getUser(req.user.id);
       if (!user || !user.password) {

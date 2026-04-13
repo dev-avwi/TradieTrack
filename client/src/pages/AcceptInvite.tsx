@@ -200,6 +200,14 @@ export default function AcceptInvite() {
       });
       return;
     }
+    if (!/[A-Z]/.test(formData.password) || !/[0-9]/.test(formData.password)) {
+      toast({
+        title: "Weak password",
+        description: "Password must include at least one uppercase letter and one number",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setAcceptStatus('loading');
     try {
