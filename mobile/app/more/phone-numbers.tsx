@@ -543,36 +543,14 @@ export default function PhoneNumbersPage() {
               </View>
             </View>
 
-            <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.lg }}>
-              <TouchableOpacity
-                style={{ flex: 1, backgroundColor: `${colors.primary}08`, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: `${colors.primary}20`, alignItems: 'center', gap: spacing.xs }}
-                onPress={() => {
-                  if (searchSectionY.current > 0) {
-                    scrollViewRef.current?.scrollTo({ y: searchSectionY.current - 20, animated: true });
-                  } else {
-                    scrollViewRef.current?.scrollToEnd({ animated: true });
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
-                  <Feather name="plus" size={16} color={colors.primary} />
-                </View>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Add Number</Text>
-                <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: 'center' }}>Up to {MAX_NUMBERS} total</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ flex: 1, backgroundColor: `${colors.destructive}06`, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: `${colors.destructive}15`, alignItems: 'center', gap: spacing.xs }}
-                onPress={handleRelease}
-                activeOpacity={0.7}
-              >
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.destructive}12`, alignItems: 'center', justifyContent: 'center' }}>
-                  <Feather name="rotate-ccw" size={16} color={colors.destructive} />
-                </View>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Revert to Shared</Text>
-                <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: 'center' }}>Use platform number</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: `${colors.destructive}06`, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: `${colors.destructive}15`, marginTop: spacing.md, marginBottom: spacing.lg }}
+              onPress={handleRelease}
+              activeOpacity={0.7}
+            >
+              <Feather name="rotate-ccw" size={14} color={colors.destructive} />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.destructive }}>Revert to Shared Number</Text>
+            </TouchableOpacity>
           </>
         ) : (
           <>
