@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, Switch, Alert, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Switch, Alert, ActivityIndicator, TouchableOpacity, Platform, Image } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeMode } from '../../src/lib/theme';
@@ -322,6 +322,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  footerLogoImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
     marginBottom: spacing.md,
   },
   footerTitle: {
@@ -885,9 +891,11 @@ export default function AppSettingsScreen() {
 
           {/* Footer */}
           <View style={styles.footer}>
-            <View style={styles.footerLogo}>
-              <Feather name="tool" size={24} color="#fff" />
-            </View>
+            <Image
+              source={require('../../assets/jobrunner-logo.png')}
+              style={styles.footerLogoImage}
+              resizeMode="contain"
+            />
             <Text style={styles.footerTitle}>JobRunner</Text>
             <Text style={styles.footerSubtitle}>Made in Australia for Australian Tradies</Text>
             <Text style={styles.footerVersion}>Version 1.1.0</Text>

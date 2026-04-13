@@ -1208,7 +1208,7 @@ function OperationalAlertsCard() {
   };
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { marginBottom: spacing['3xl'] + 4 }]}>
       <View style={{ padding: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
@@ -3027,9 +3027,7 @@ function OwnerDashboardScreen() {
 
       {/* Operational Alerts - Managers */}
       {roleResolved && !isStaffUser && (
-        <View style={styles.section}>
-          <OperationalAlertsCard />
-        </View>
+        <OperationalAlertsCard />
       )}
 
       {/* Time Tracking Widget - All Users */}

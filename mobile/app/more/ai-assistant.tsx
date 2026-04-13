@@ -56,6 +56,13 @@ interface AINotification {
   priority: 'high' | 'medium' | 'low';
 }
 
+const QUICK_ACTIONS = [
+  { icon: 'briefcase' as const, label: 'Today\'s Jobs', prompt: 'What jobs do I have today and what should I focus on?' },
+  { icon: 'dollar-sign' as const, label: 'Chase Payments', prompt: 'Which invoices are overdue and how should I follow up?' },
+  { icon: 'file-text' as const, label: 'Draft Quote', prompt: 'Help me draft a quote for a new job' },
+  { icon: 'trending-up' as const, label: 'Business Insights', prompt: 'Generate a weekly performance summary for my business' },
+];
+
 const SUGGESTED_PROMPTS = [
   "How can I follow up with overdue invoices?",
   "Generate a weekly performance summary",
@@ -686,26 +693,35 @@ export default function AIAssistantScreen() {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.headerCard}>
-              <View style={styles.headerIconContainer}>
-                <Feather name="star" size={24} color={colors.primary} />
-              </View>
-              <View style={styles.headerTextContainer}>
-                <Text style={styles.headerTitle}>
-                  {userName ? `Hi ${userName}!` : 'AI Assistant'}
-                </Text>
-                <Text style={styles.headerSubtitle}>
-                  {userName ? 'How can I help you today?' : 'Get help with your business tasks'}
-                </Text>
-              </View>
+            <View style={styles.heroSection}>
+              <Text style={styles.heroGreeting}>
+                {userName ? `G'day ${userName}` : 'AI Assistant'}
+              </Text>
+              <Text style={styles.heroSubtitle}>
+                Your business co-pilot — powered by AI
+              </Text>
+            </View>
+
+            <View style={styles.quickActionsGrid}>
+              {QUICK_ACTIONS.map((action, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.quickActionCard}
+                  onPress={() => handleSuggestionPress(action.prompt)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.quickActionIcon, { backgroundColor: `${colors.primary}12` }]}>
+                    <Feather name={action.icon} size={18} color={colors.primary} />
+                  </View>
+                  <Text style={styles.quickActionLabel}>{action.label}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
             {activeNotifications.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <View style={styles.sectionIconContainer}>
-                    <Feather name="bell" size={16} color={colors.destructive} />
-                  </View>
+                  <Feather name="bell" size={15} color={colors.destructive} />
                   <Text style={styles.sectionTitle}>Needs Attention</Text>
                   <View style={styles.notificationBadge}>
                     <Text style={styles.notificationBadgeText}>{activeNotifications.length}</Text>
@@ -725,16 +741,41 @@ export default function AIAssistantScreen() {
               </View>
             )}
 
+            {(isLoadingSuggestions || suggestions.length > 0) && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Feather name="cpu" size={15} color={colors.primary} />
+                  <Text style={styles.sectionTitle}>Smart Insights</Text>
+                </View>
+                
+                {isLoadingSuggestions ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={styles.loadingText}>Analysing your business...</Text>
+                  </View>
+                ) : (
+                  <View style={styles.suggestionsGrid}>
+                    {suggestions.map((suggestion, index) => (
+                      <SuggestionCard
+                        key={`ai-${index}`}
+                        text={suggestion}
+                        onPress={() => handleSuggestionPress(suggestion)}
+                        isAISuggestion
+                      />
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <View style={styles.sectionIconContainer}>
-                  <Feather name="zap" size={16} color={colors.mutedForeground} />
-                </View>
-                <Text style={styles.sectionTitle}>Try asking:</Text>
+                <Feather name="message-circle" size={15} color={colors.mutedForeground} />
+                <Text style={styles.sectionTitle}>Try asking</Text>
               </View>
               
               <View style={styles.suggestionsGrid}>
-                {SUGGESTED_PROMPTS.map((prompt, index) => (
+                {SUGGESTED_PROMPTS.slice(0, 4).map((prompt, index) => (
                   <SuggestionCard
                     key={`prompt-${index}`}
                     text={prompt}
@@ -742,39 +783,6 @@ export default function AIAssistantScreen() {
                   />
                 ))}
               </View>
-            </View>
-
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionIconContainer}>
-                  <Feather name="star" size={16} color={colors.primary} />
-                </View>
-                <Text style={styles.sectionTitle}>Smart Suggestions:</Text>
-              </View>
-              
-              {isLoadingSuggestions ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={styles.loadingText}>Analyzing your business...</Text>
-                </View>
-              ) : suggestions.length > 0 ? (
-                <View style={styles.suggestionsGrid}>
-                  {suggestions.map((suggestion, index) => (
-                    <SuggestionCard
-                      key={`ai-${index}`}
-                      text={suggestion}
-                      onPress={() => handleSuggestionPress(suggestion)}
-                      isAISuggestion
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateText}>
-                    No suggestions available right now
-                  </Text>
-                </View>
-              )}
             </View>
           </ScrollView>
         ) : (
@@ -786,18 +794,13 @@ export default function AIAssistantScreen() {
             data={chatHistory}
             keyExtractor={(item, index) => item.id || `msg-${index}`}
             ListHeaderComponent={
-              <View style={styles.headerCard}>
-                <View style={styles.headerIconContainer}>
-                  <Feather name="star" size={24} color={colors.primary} />
+              <View style={styles.chatHeaderCard}>
+                <View style={styles.chatHeaderIcon}>
+                  <Feather name="cpu" size={16} color={colors.primary} />
                 </View>
-                <View style={styles.headerTextContainer}>
-                  <Text style={styles.headerTitle}>
-                    {userName ? `Hi ${userName}!` : 'AI Assistant'}
-                  </Text>
-                  <Text style={styles.headerSubtitle}>
-                    {userName ? 'How can I help you today?' : 'Get help with your business tasks'}
-                  </Text>
-                </View>
+                <Text style={styles.chatHeaderText}>
+                  {userName ? `Chat with JobRunner AI` : 'AI Assistant'}
+                </Text>
               </View>
             }
             renderItem={({ item: message }) => (
@@ -865,39 +868,71 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 24,
   },
-  headerCard: {
+  heroSection: {
+    marginBottom: 24,
+  },
+  heroGreeting: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.foreground,
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    marginTop: 4,
+    lineHeight: 20,
+  },
+  quickActionsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 28,
+  },
+  quickActionCard: {
+    width: '47%' as any,
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 20,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: 10,
   },
-  headerIconContainer: {
-    width: 48,
-    height: 48,
+  quickActionIcon: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  headerTextContainer: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 18,
+  quickActionLabel: {
+    fontSize: 14,
     fontWeight: '600',
     color: colors.foreground,
-    marginBottom: 2,
   },
-  headerSubtitle: {
+  chatHeaderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingBottom: 12,
+    marginBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  chatHeaderIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: `${colors.primary}12`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatHeaderText: {
     fontSize: 14,
+    fontWeight: '600',
     color: colors.mutedForeground,
   },
   section: {
@@ -906,28 +941,27 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
     marginBottom: 12,
   },
-  sectionIconContainer: {
-    marginRight: 8,
-  },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.mutedForeground,
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
   },
   suggestionsGrid: {
     gap: 8,
   },
   suggestionCard: {
-    backgroundColor: colors.muted,
-    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderRadius: 14,
     padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   aiSuggestionCard: {
-    backgroundColor: colors.primaryLight,
-    borderWidth: 1,
-    borderColor: `${colors.primary}30`,
+    backgroundColor: `${colors.primary}06`,
+    borderColor: `${colors.primary}20`,
   },
   suggestionText: {
     fontSize: 14,
@@ -1031,11 +1065,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   notificationCard: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    borderLeftWidth: 4,
+    borderLeftWidth: 3,
   },
   notificationHeader: {
     flexDirection: 'row',
