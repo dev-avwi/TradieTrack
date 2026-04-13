@@ -281,7 +281,7 @@ export default function WhsHubScreen() {
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     headerBar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm, backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border },
-    headerTitle: { fontSize: 17, fontWeight: '600', color: colors.foreground },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: colors.foreground },
     headerSubtitle: { fontSize: 12, color: colors.mutedForeground },
     backBtn: { padding: spacing.xs },
     statsRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.md, marginBottom: spacing.md },
@@ -1208,6 +1208,9 @@ export default function WhsHubScreen() {
           <Text style={styles.headerTitle}>WHS Safety</Text>
           <Text style={styles.headerSubtitle}>Incidents, JSAs & compliance</Text>
         </View>
+        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center' }}>
+          <Feather name="shield" size={18} color={colors.primary} />
+        </View>
       </View>
 
       {loading ? (
@@ -1218,34 +1221,20 @@ export default function WhsHubScreen() {
         <>
           <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
             <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <View style={styles.statIconWrap}>
-                  <Feather name="alert-triangle" size={16} color={colors.primary} />
+              {[
+                { icon: 'alert-triangle' as const, value: openIncidents, label: 'Open', color: openIncidents > 0 ? '#ef4444' : colors.success },
+                { icon: 'phone' as const, value: emergencyInfo.length, label: 'Plans', color: '#8b5cf6' },
+                { icon: 'clipboard' as const, value: jsaDocs.length, label: 'JSAs', color: colors.primary },
+                { icon: 'activity' as const, value: incidents.length, label: 'Total', color: colors.info },
+              ].map((stat, idx) => (
+                <View key={idx} style={styles.statCard}>
+                  <View style={[styles.statIconWrap, { backgroundColor: `${stat.color}15` }]}>
+                    <Feather name={stat.icon} size={15} color={stat.color} />
+                  </View>
+                  <Text style={styles.statNumber}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
                 </View>
-                <Text style={styles.statNumber}>{openIncidents}</Text>
-                <Text style={styles.statLabel}>Open</Text>
-              </View>
-              <View style={styles.statCard}>
-                <View style={styles.statIconWrap}>
-                  <Feather name="phone" size={16} color={colors.primary} />
-                </View>
-                <Text style={styles.statNumber}>{emergencyInfo.length}</Text>
-                <Text style={styles.statLabel}>Plans</Text>
-              </View>
-              <View style={styles.statCard}>
-                <View style={styles.statIconWrap}>
-                  <Feather name="clipboard" size={16} color={colors.primary} />
-                </View>
-                <Text style={styles.statNumber}>{jsaDocs.length}</Text>
-                <Text style={styles.statLabel}>JSAs</Text>
-              </View>
-              <View style={styles.statCard}>
-                <View style={styles.statIconWrap}>
-                  <Feather name="activity" size={16} color={colors.primary} />
-                </View>
-                <Text style={styles.statNumber}>{incidents.length}</Text>
-                <Text style={styles.statLabel}>Total</Text>
-              </View>
+              ))}
             </View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>

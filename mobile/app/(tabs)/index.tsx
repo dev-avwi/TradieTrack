@@ -3543,6 +3543,7 @@ function OwnerDashboardScreen() {
                       lastName={member.lastName}
                       email={member.email}
                       userId={String(member.userId || member.id)}
+                      themeColor={member.themeColor}
                       size={36}
                     />
                     <View style={styles.teamMemberInfo}>

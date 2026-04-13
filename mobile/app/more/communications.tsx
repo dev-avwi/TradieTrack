@@ -90,10 +90,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   headerIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: `${colors.primary}12`,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -102,13 +102,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   headerTitle: {
     fontSize: typographySizes.lg,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.foreground,
   },
   headerSubtitle: {
     fontSize: typographySizes.sm,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: 1,
   },
   statsRow: {
     flexDirection: 'row',
@@ -325,25 +325,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: spacing['2xl'],
   },
   emptyIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.muted,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: `${colors.primary}10`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
   },
   emptyText: {
     fontSize: typographySizes.lg,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.foreground,
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   emptySubtext: {
     fontSize: typographySizes.sm,
     color: colors.mutedForeground,
     textAlign: 'center',
     paddingHorizontal: spacing.xl,
+    lineHeight: 20,
   },
   loadingContainer: {
     flex: 1,
@@ -692,39 +693,32 @@ export default function CommunicationsScreen() {
         >
           <Feather name="chevron-left" size={24} color={colors.foreground} />
         </TouchableOpacity>
-        <View style={styles.headerIconContainer}>
-          <Feather name="send" size={iconSizes.lg} color={colors.primary} />
-        </View>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Communications Hub</Text>
-          <Text style={styles.headerSubtitle}>View all sent emails and SMS</Text>
+          <Text style={styles.headerTitle}>Communications</Text>
+          <Text style={styles.headerSubtitle}>Emails & SMS history</Text>
         </View>
-        <TouchableOpacity onPress={onRefresh}>
-          <Feather name="refresh-cw" size={iconSizes.md} color={colors.primary} />
+        <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <View style={styles.headerIconContainer}>
+            <Feather name="refresh-cw" size={15} color={colors.primary} />
+          </View>
         </TouchableOpacity>
       </View>
       
       <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Feather name="activity" size={14} color={colors.mutedForeground} style={{ marginBottom: 2 }} />
-          <Text style={styles.statValue}>{stats.total}</Text>
-          <Text style={styles.statLabel}>Total</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Feather name="mail" size={14} color={colors.info} style={{ marginBottom: 2 }} />
-          <Text style={[styles.statValue, { color: colors.info }]}>{stats.emails}</Text>
-          <Text style={styles.statLabel}>Emails</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Feather name="message-square" size={14} color={colors.success} style={{ marginBottom: 2 }} />
-          <Text style={[styles.statValue, { color: colors.success }]}>{stats.sms}</Text>
-          <Text style={styles.statLabel}>SMS</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Feather name="check-circle" size={14} color={colors.success} style={{ marginBottom: 2 }} />
-          <Text style={[styles.statValue, { color: colors.success }]}>{stats.delivered}</Text>
-          <Text style={styles.statLabel}>Delivered</Text>
-        </View>
+        {[
+          { icon: 'activity' as const, value: stats.total, label: 'Total', color: colors.primary },
+          { icon: 'mail' as const, value: stats.emails, label: 'Emails', color: colors.info },
+          { icon: 'message-square' as const, value: stats.sms, label: 'SMS', color: colors.success },
+          { icon: 'check-circle' as const, value: stats.delivered, label: 'Delivered', color: '#8b5cf6' },
+        ].map((stat, idx) => (
+          <View key={idx} style={styles.statCard}>
+            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: `${stat.color}15`, alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+              <Feather name={stat.icon} size={13} color={stat.color} />
+            </View>
+            <Text style={styles.statValue}>{stat.value}</Text>
+            <Text style={styles.statLabel}>{stat.label}</Text>
+          </View>
+        ))}
       </View>
       
       <View style={styles.tabsContainer}>
@@ -777,15 +771,24 @@ export default function CommunicationsScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : filteredCommunications.length === 0 ? (
-        <View style={styles.emptyContainer}>
+        <ScrollView
+          contentContainerStyle={styles.emptyContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
+        >
           <View style={styles.emptyIconContainer}>
-            <Feather name="inbox" size={36} color={colors.mutedForeground} />
+            <Feather name="inbox" size={28} color={colors.primary} />
           </View>
           <Text style={styles.emptyText}>No communications yet</Text>
           <Text style={styles.emptySubtext}>
             Sent emails and SMS messages will appear here
           </Text>
-        </View>
+        </ScrollView>
       ) : (
         <ScrollView
           refreshControl={

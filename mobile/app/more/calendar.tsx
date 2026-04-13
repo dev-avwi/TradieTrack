@@ -851,6 +851,7 @@ export default function CalendarScreen() {
                       const pos = getJobPosition(job);
                       if (!pos) return null;
                       const isConflict = conflictingJobIds.has(job.id);
+                      const accentColor = isConflict ? colors.destructive : colors.primary;
                       return (
                         <TouchableOpacity
                           key={job.id}
@@ -860,30 +861,33 @@ export default function CalendarScreen() {
                             position: 'absolute',
                             top: pos.top,
                             left: 56,
-                            right: 4,
+                            right: 8,
                             height: pos.height,
-                            backgroundColor: isConflict ? (colors.destructiveLight || '#FEF2F2') : colors.primaryLight,
+                            backgroundColor: colors.card,
                             borderLeftWidth: 3,
-                            borderLeftColor: isConflict ? colors.destructive : colors.primary,
-                            borderRadius: radius.md,
-                            padding: spacing.sm,
+                            borderLeftColor: accentColor,
+                            borderRadius: radius.lg,
+                            padding: spacing.sm + 2,
                             justifyContent: 'center',
                             zIndex: 5,
+                            borderWidth: 1,
+                            borderColor: colors.cardBorder,
+                            ...shadows.sm,
                           }}
                         >
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: isConflict ? colors.destructive : colors.primary }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: accentColor }}>
                               {formatTime(job.scheduledAt)}
                             </Text>
                             <StatusBadge status={job.status} size="sm" />
                             {isConflict && <Feather name="alert-triangle" size={11} color={colors.destructive} />}
                           </View>
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }} numberOfLines={1}>{job.title}</Text>
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, letterSpacing: -0.2 }} numberOfLines={1}>{job.title}</Text>
                           {pos.height > 50 && getClientName(job.clientId) && (
-                            <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 1 }} numberOfLines={1}>{getClientName(job.clientId)}</Text>
+                            <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }} numberOfLines={1}>{getClientName(job.clientId)}</Text>
                           )}
-                          {pos.height > 64 && job.address && (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 }}>
+                          {pos.height > 68 && job.address && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
                               <Feather name="map-pin" size={10} color={colors.mutedForeground} />
                               <Text style={{ fontSize: 11, color: colors.mutedForeground }} numberOfLines={1}>{job.address}</Text>
                             </View>
