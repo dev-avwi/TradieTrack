@@ -79,7 +79,7 @@ export default function PhoneNumbersPage() {
   const [aiConfigs, setAiConfigs] = useState<AiConfig[]>([]);
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
-  const searchSectionRef = useRef<View>(null);
+  const searchSectionY = useRef(0);
   const [labelText, setLabelText] = useState('');
 
   const [showPortForm, setShowPortForm] = useState(false);
@@ -547,15 +547,11 @@ export default function PhoneNumbersPage() {
               <TouchableOpacity
                 style={{ flex: 1, backgroundColor: `${colors.primary}08`, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: `${colors.primary}20`, alignItems: 'center', gap: spacing.xs }}
                 onPress={() => {
-                  searchSectionRef.current?.measureLayout(
-                    scrollViewRef.current?.getInnerViewRef() as any,
-                    (_x: number, y: number) => {
-                      scrollViewRef.current?.scrollTo({ y: y - 20, animated: true });
-                    },
-                    () => {
-                      scrollViewRef.current?.scrollToEnd({ animated: true });
-                    }
-                  );
+                  if (searchSectionY.current > 0) {
+                    scrollViewRef.current?.scrollTo({ y: searchSectionY.current - 20, animated: true });
+                  } else {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                  }
                 }}
                 activeOpacity={0.7}
               >
@@ -592,37 +588,41 @@ export default function PhoneNumbersPage() {
                 You're on the shared JobRunner platform number. Get a dedicated number below so clients see your own business number.
               </Text>
             </View>
+          </>
+        )}
 
-            {lastOwnedNumber && !currentNumber && (
-              <View style={{ backgroundColor: `${colors.primary}08`, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: `${colors.primary}25`, marginBottom: spacing.lg }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
-                  <Feather name="rotate-ccw" size={14} color={colors.primary} />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Previously Owned Number</Text>
-                </View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primary, marginBottom: spacing.xs }}>
-                  {formatPhone(lastOwnedNumber)}
-                </Text>
-                <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 18, marginBottom: spacing.md }}>
-                  Want this number back? Tap below to re-acquire it if it's still available.
-                </Text>
-                <TouchableOpacity
-                  style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: spacing.xs }}
-                  onPress={handleReacquireLastNumber}
-                  disabled={reacquiring}
-                  activeOpacity={0.7}
-                >
-                  {reacquiring ? (
-                    <ActivityIndicator size="small" color={colors.primaryForeground} />
-                  ) : (
-                    <Feather name="phone" size={14} color={colors.primaryForeground} />
-                  )}
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
-                    {reacquiring ? 'Re-acquiring...' : 'Get This Number Back'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
+        {lastOwnedNumber && !currentNumber && (
+          <View style={{ backgroundColor: `${colors.primary}08`, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: `${colors.primary}25`, marginBottom: spacing.lg }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+              <Feather name="rotate-ccw" size={14} color={colors.primary} />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Previously Owned Number</Text>
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primary, marginBottom: spacing.xs }}>
+              {formatPhone(lastOwnedNumber)}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 18, marginBottom: spacing.md }}>
+              Want this number back? Tap below to re-acquire it if it's still available.
+            </Text>
+            <TouchableOpacity
+              style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: spacing.xs }}
+              onPress={handleReacquireLastNumber}
+              disabled={reacquiring}
+              activeOpacity={0.7}
+            >
+              {reacquiring ? (
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
+              ) : (
+                <Feather name="phone" size={14} color={colors.primaryForeground} />
+              )}
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
+                {reacquiring ? 'Re-acquiring...' : 'Get This Number Back'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
+        {aiConfigs.length < MAX_NUMBERS && (
+          <>
             {portRequests.filter(r => r.status === 'submitted' || r.status === 'processing' || r.status === 'completed').map(pr => {
               const statusConfig: Record<string, { color: string; icon: 'clock' | 'loader' | 'check-circle' | 'x-circle'; label: string }> = {
                 submitted: { color: colors.warning, icon: 'clock', label: 'Submitted' },
@@ -705,7 +705,7 @@ export default function PhoneNumbersPage() {
               </View>
             )}
 
-            <View ref={searchSectionRef} style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
+            <View onLayout={(e) => { searchSectionY.current = e.nativeEvent.layout.y; }} style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
               <TouchableOpacity
                 style={{ flex: 1, backgroundColor: showPortForm ? `${colors.primary}15` : colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: showPortForm ? colors.primary : colors.border, alignItems: 'center', gap: spacing.xs }}
                 onPress={() => setShowPortForm(true)}
@@ -923,8 +923,6 @@ export default function PhoneNumbersPage() {
                 </TouchableOpacity>
               </View>
             ) : null}
-            </>
-            )}
           </>
         )}
 
