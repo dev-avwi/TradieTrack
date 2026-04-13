@@ -814,6 +814,7 @@ function Router({
       <Route path="/admin/kanban" component={AdminDashboard} />
       <Route path="/admin/ai-queue" component={AdminDashboard} />
       <Route path="/admin/call-monitor" component={AdminDashboard} />
+      <Route path="/admin/porting" component={AdminDashboard} />
       <Route path="/admin/activity" component={AdminDashboard} />
       <Route path="/admin/health" component={AdminDashboard} />
       <Route path="/admin/settings" component={AdminDashboard} />
@@ -1489,6 +1490,8 @@ function AppLayout() {
           <Route path="/admin/users" component={AdminDashboard} />
           <Route path="/admin/kanban" component={AdminDashboard} />
           <Route path="/admin/ai-queue" component={AdminDashboard} />
+          <Route path="/admin/call-monitor" component={AdminDashboard} />
+          <Route path="/admin/porting" component={AdminDashboard} />
           <Route path="/admin/activity" component={AdminDashboard} />
           <Route path="/admin/health" component={AdminDashboard} />
           <Route path="/admin/settings" component={AdminDashboard} />

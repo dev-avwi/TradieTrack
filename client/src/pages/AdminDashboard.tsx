@@ -3002,14 +3002,14 @@ export default function AdminDashboard() {
           className="mb-6"
           data-testid="admin-tabs"
         >
-          <TabsList className="w-full sm:w-auto justify-start h-auto p-1 gap-1 flex-wrap">
+          <TabsList className="w-full sm:w-auto justify-start h-auto p-1 gap-1 overflow-x-auto flex-nowrap">
             {adminRoutes.map((route) => {
               const Icon = route.icon;
               return (
                 <TabsTrigger 
                   key={route.path} 
                   value={route.path}
-                  className="flex items-center gap-2 px-3 py-2"
+                  className="flex items-center gap-2 px-3 py-2 shrink-0"
                   data-testid={`tab-${route.label.toLowerCase()}`}
                 >
                   <Icon className="h-4 w-4" />
