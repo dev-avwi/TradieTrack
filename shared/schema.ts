@@ -4714,9 +4714,9 @@ export const websiteAddons = pgTable("website_addons", {
   domainStatus: text("domain_status").notNull().default('not_set_up'),
   hostingStatus: text("hosting_status").notNull().default('inactive'),
   monthlyFee: decimal("monthly_fee", { precision: 10, scale: 2 }),
-  websiteClickToCall: boolean("website_click_to_call").default(false),
-  websiteChatWidget: boolean("website_chat_widget").default(false),
-  websiteBookingForm: boolean("website_booking_form").default(false),
+  websiteClickToCall: boolean("website_click_to_call").default(true),
+  websiteChatWidget: boolean("website_chat_widget").default(true),
+  websiteBookingForm: boolean("website_booking_form").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

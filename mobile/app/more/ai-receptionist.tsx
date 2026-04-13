@@ -286,7 +286,7 @@ export default function AIReceptionistScreen() {
   }, [stopAudio]);
 
   const filteredCalls = useMemo(() => {
-    let calls = [...recentCalls];
+    let calls = Array.isArray(recentCalls) ? [...recentCalls] : [];
     if (sentimentFilter !== 'all') {
       calls = calls.filter(c => c.sentiment === sentimentFilter);
     }
@@ -498,7 +498,7 @@ export default function AIReceptionistScreen() {
     try {
       const phoneFilter = selectedConfigId ? `&phoneNumberId=${selectedConfigId}` : '';
       const response = await api.get<CallLog[]>(`/api/ai-receptionist/calls?limit=10${phoneFilter}`);
-      setRecentCalls(response.data || []);
+      setRecentCalls(Array.isArray(response.data) ? response.data : []);
     } catch (e) {
     }
   }, [selectedConfigId]);
@@ -729,7 +729,7 @@ export default function AIReceptionistScreen() {
           <Text style={styles.pageTitle}>AI Receptionist</Text>
         </View>
 
-        {allConfigs.length > 1 && (
+        {Array.isArray(allConfigs) && allConfigs.length > 1 && (
           <View style={[styles.card, { marginBottom: spacing.md }]}>
             <Text style={[styles.cardTitle, { marginBottom: spacing.sm }]}>Select Number</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -spacing.xs }}>
@@ -1647,10 +1647,10 @@ export default function AIReceptionistScreen() {
                 <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>Avg Duration</Text>
               </View>
             </View>
-            {Object.keys(analytics.outcomeBreakdown || {}).length > 0 && (
+            {analytics?.outcomeBreakdown && typeof analytics.outcomeBreakdown === 'object' && Object.keys(analytics.outcomeBreakdown).length > 0 && (
               <View style={{ gap: spacing.xs }}>
                 <Text style={{ ...typography.caption, color: colors.mutedForeground, fontWeight: '600', marginBottom: spacing.xs }}>Outcomes</Text>
-                {Object.entries(analytics.outcomeBreakdown).map(([outcome, count]) => {
+                {Object.entries(analytics.outcomeBreakdown || {}).map(([outcome, count]) => {
                   const outcomeLabels: Record<string, string> = {
                     message_taken: 'Message Taken',
                     transferred: 'Transferred',
@@ -1860,7 +1860,7 @@ export default function AIReceptionistScreen() {
           </View>
           <Text style={styles.cardSubtitle}>Want a different voice? Describe what you'd like and we'll set it up.</Text>
 
-          {voiceRequests.length > 0 && (
+          {Array.isArray(voiceRequests) && voiceRequests.length > 0 && (
             <View style={{ marginBottom: spacing.md }}>
               <Text style={[styles.inputLabel, { marginBottom: spacing.sm }]}>Your Requests</Text>
               {voiceRequests.map((req) => (

@@ -1180,11 +1180,13 @@ export default function TeamOperationsScreen() {
         options={{
           title: 'Team Operations',
           headerShown: !isTabletDevice,
-          headerStyle: { backgroundColor: colors.card },
+          headerStyle: { backgroundColor: colors.background },
+          headerShadowVisible: false,
           headerTintColor: colors.foreground,
+          headerBackTitle: '',
           headerRight: () => (
-            <TouchableOpacity onPress={onRefresh} style={{ marginRight: spacing.md }}>
-              <Feather name="refresh-cw" size={20} color={colors.foreground} />
+            <TouchableOpacity onPress={onRefresh} style={{ marginRight: spacing.sm }}>
+              <Feather name="refresh-cw" size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
           ),
         }}

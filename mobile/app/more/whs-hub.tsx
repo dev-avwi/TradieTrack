@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal, TextInput, Alert, Platform, KeyboardAvoidingView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, componentStyles, iconSizes, typographySizes, sizes } from '../../src/lib/design-tokens';
@@ -134,6 +135,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
 export default function WhsHubScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [activeTab, setActiveTab] = useState<TabKey>('incidents');
   const [refreshing, setRefreshing] = useState(false);
@@ -639,7 +641,7 @@ export default function WhsHubScreen() {
 
   function renderIncidentModal() {
     return (
-      <Modal visible={showIncidentForm} animationType="slide">
+      <Modal visible={showIncidentForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowIncidentForm(false)}>
         <KeyboardAvoidingView style={styles.modalContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowIncidentForm(false)}>
@@ -701,7 +703,7 @@ export default function WhsHubScreen() {
 
   function renderEmergencyModal() {
     return (
-      <Modal visible={showEmergencyForm} animationType="slide">
+      <Modal visible={showEmergencyForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEmergencyForm(false)}>
         <KeyboardAvoidingView style={styles.modalContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowEmergencyForm(false)}>
@@ -744,7 +746,7 @@ export default function WhsHubScreen() {
 
   function renderJsaModal() {
     return (
-      <Modal visible={showJsaForm} animationType="slide">
+      <Modal visible={showJsaForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowJsaForm(false)}>
         <KeyboardAvoidingView style={styles.modalContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowJsaForm(false)}>
@@ -803,7 +805,7 @@ export default function WhsHubScreen() {
   function renderEnvModal() {
     const envType = envTypes.find((t: any) => t.type === selectedEnvType);
     return (
-      <Modal visible={showEnvForm} animationType="slide">
+      <Modal visible={showEnvForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEnvForm(false)}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => { setShowEnvForm(false); setSelectedEnvType(''); }}>
@@ -846,7 +848,7 @@ export default function WhsHubScreen() {
 
   function renderSignModal() {
     return (
-      <Modal visible={showSignForm} animationType="slide">
+      <Modal visible={showSignForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowSignForm(false)}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowSignForm(false)}>
@@ -1279,11 +1281,7 @@ export default function WhsHubScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.heroSection}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
-                <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Feather name="arrow-left" size={20} color={colors.foreground} />
-                </TouchableOpacity>
-                <View style={{ flex: 1 }} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: spacing.xs }}>
                 <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center' }}>
                   <Feather name="shield" size={16} color={colors.primary} />
                 </View>

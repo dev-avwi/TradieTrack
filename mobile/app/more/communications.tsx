@@ -72,24 +72,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  headerCard: {
+  heroSection: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  heroTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    gap: spacing.sm,
+    justifyContent: 'flex-end',
+    marginBottom: spacing.xs,
   },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerIconContainer: {
+  heroIconWrap: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -97,102 +91,102 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: typographySizes.lg,
-    fontWeight: '700',
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: '800',
     color: colors.foreground,
+    letterSpacing: -0.5,
   },
-  headerSubtitle: {
-    fontSize: typographySizes.sm,
+  pageSubtitle: {
+    fontSize: 14,
     color: colors.mutedForeground,
-    marginTop: 1,
+    marginTop: 4,
+    lineHeight: 20,
   },
   statsRow: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     gap: spacing.sm,
   },
   statCard: {
     flex: 1,
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    padding: spacing.sm,
+    borderRadius: radius['2xl'],
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     alignItems: 'center',
+    ...shadows.sm,
   },
   statValue: {
-    fontSize: typographySizes.xl,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: colors.foreground,
+    letterSpacing: -0.3,
   },
   statLabel: {
-    fontSize: typographySizes.xs,
+    fontSize: 11,
     color: colors.mutedForeground,
-    marginTop: 2,
+    marginTop: 3,
+    fontWeight: '500',
   },
-  tabsContainer: {
+  filterRow: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
     gap: spacing.sm,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: spacing.sm,
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: spacing.xs + 2,
     paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
     backgroundColor: colors.muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: spacing.xs,
-    minHeight: 40,
   },
-  tabActive: {
+  filterChipActive: {
     backgroundColor: colors.primary,
   },
-  tabText: {
-    fontSize: typographySizes.sm,
+  filterChipText: {
+    fontSize: 13,
     fontWeight: '500',
     color: colors.mutedForeground,
   },
-  tabTextActive: {
-    color: colors.primaryForeground,
+  filterChipTextActive: {
+    color: '#fff',
+    fontWeight: '600',
   },
-  tabBadge: {
-    backgroundColor: colors.mutedForeground,
+  filterBadge: {
+    backgroundColor: `${colors.mutedForeground}30`,
     paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingVertical: 1,
     borderRadius: radius.pill,
-    minWidth: 20,
+    minWidth: 18,
     alignItems: 'center',
   },
-  tabBadgeActive: {
-    backgroundColor: colors.primaryForeground,
+  filterBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
-  tabBadgeText: {
-    fontSize: typographySizes.xs,
-    fontWeight: '600',
-    color: colors.muted,
+  filterBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.mutedForeground,
   },
-  tabBadgeTextActive: {
-    color: colors.primary,
+  filterBadgeTextActive: {
+    color: '#fff',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: spacing.md,
+    marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.card,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     gap: spacing.sm,
   },
   searchInput: {
@@ -202,7 +196,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   listContent: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
     gap: spacing.sm,
   },
@@ -686,22 +680,16 @@ export default function CommunicationsScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       
-      <View style={[styles.headerCard, { paddingTop: insets.top + 4 }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.canGoBack() ? router.back() : router.push('/(tabs)/profile' as any)}
-        >
-          <Feather name="chevron-left" size={24} color={colors.foreground} />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Communications</Text>
-          <Text style={styles.headerSubtitle}>Emails & SMS history</Text>
+      <View style={[styles.heroSection, { paddingTop: insets.top + 4 }]}>
+        <View style={styles.heroTopRow}>
+          <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <View style={styles.heroIconWrap}>
+              <Feather name="refresh-cw" size={15} color={colors.primary} />
+            </View>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <View style={styles.headerIconContainer}>
-            <Feather name="refresh-cw" size={15} color={colors.primary} />
-          </View>
-        </TouchableOpacity>
+        <Text style={styles.pageTitle}>Communications</Text>
+        <Text style={styles.pageSubtitle}>Emails & SMS history</Text>
       </View>
       
       <View style={styles.statsRow}>
@@ -712,8 +700,8 @@ export default function CommunicationsScreen() {
           { icon: 'check-circle' as const, value: stats.delivered, label: 'Delivered', color: '#8b5cf6' },
         ].map((stat, idx) => (
           <View key={idx} style={styles.statCard}>
-            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: `${stat.color}15`, alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
-              <Feather name={stat.icon} size={13} color={stat.color} />
+            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: `${stat.color}12`, alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
+              <Feather name={stat.icon} size={14} color={stat.color} />
             </View>
             <Text style={styles.statValue}>{stat.value}</Text>
             <Text style={styles.statLabel}>{stat.label}</Text>
@@ -721,7 +709,7 @@ export default function CommunicationsScreen() {
         ))}
       </View>
       
-      <View style={styles.tabsContainer}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
         {(['all', 'email', 'sms'] as TabType[]).map((tab) => {
           const count = tab === 'all' ? stats.total : tab === 'email' ? stats.emails : stats.sms;
           const isActive = activeTab === tab;
@@ -729,26 +717,27 @@ export default function CommunicationsScreen() {
           return (
             <TouchableOpacity
               key={tab}
-              style={[styles.tab, isActive && styles.tabActive]}
+              style={[styles.filterChip, isActive && styles.filterChipActive]}
               onPress={() => setActiveTab(tab)}
+              activeOpacity={0.7}
             >
               <Feather
                 name={iconName as any}
-                size={14}
-                color={isActive ? colors.primaryForeground : colors.mutedForeground}
+                size={13}
+                color={isActive ? '#fff' : colors.mutedForeground}
               />
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+              <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
                 {tab === 'all' ? 'All' : tab === 'email' ? 'Email' : 'SMS'}
               </Text>
-              <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
-                <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+              <View style={[styles.filterBadge, isActive && styles.filterBadgeActive]}>
+                <Text style={[styles.filterBadgeText, isActive && styles.filterBadgeTextActive]}>
                   {count}
                 </Text>
               </View>
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
       
       <View style={styles.searchContainer}>
         <Feather name="search" size={iconSizes.sm} color={colors.mutedForeground} />

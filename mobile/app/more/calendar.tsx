@@ -859,37 +859,36 @@ export default function CalendarScreen() {
                           onPress={() => router.push(`/job/${job.id}`)}
                           style={{
                             position: 'absolute',
-                            top: pos.top + 2,
+                            top: pos.top + 1,
                             left: 58,
-                            right: 14,
-                            height: Math.max(pos.height - 4, 40),
+                            right: 10,
+                            height: Math.max(pos.height - 2, 32),
                             backgroundColor: colors.card,
                             borderLeftWidth: 3,
                             borderLeftColor: accentColor,
-                            borderRadius: radius.lg,
-                            padding: spacing.md,
+                            borderRadius: radius.md,
+                            paddingHorizontal: spacing.sm,
+                            paddingVertical: 4,
                             justifyContent: 'center',
                             zIndex: 5,
-                            borderWidth: 1,
+                            borderWidth: StyleSheet.hairlineWidth,
                             borderColor: colors.cardBorder,
-                            ...shadows.sm,
                           }}
                         >
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                            <Text style={{ fontSize: 12, fontWeight: '700', color: accentColor }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: accentColor }}>
                               {formatTime(job.scheduledAt)}
                             </Text>
-                            <StatusBadge status={job.status} size="sm" />
-                            {isConflict && <Feather name="alert-triangle" size={11} color={colors.destructive} />}
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.foreground, flex: 1, letterSpacing: -0.2 }} numberOfLines={1}>{job.title}</Text>
+                            {isConflict && <Feather name="alert-triangle" size={10} color={colors.destructive} />}
                           </View>
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground, letterSpacing: -0.2 }} numberOfLines={1}>{job.title}</Text>
-                          {pos.height > 50 && getClientName(job.clientId) && (
-                            <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }} numberOfLines={1}>{getClientName(job.clientId)}</Text>
+                          {pos.height > 40 && getClientName(job.clientId) && (
+                            <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }} numberOfLines={1}>{getClientName(job.clientId)}</Text>
                           )}
-                          {pos.height > 68 && job.address && (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                              <Feather name="map-pin" size={10} color={colors.mutedForeground} />
-                              <Text style={{ fontSize: 11, color: colors.mutedForeground }} numberOfLines={1}>{job.address}</Text>
+                          {pos.height > 56 && job.address && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 }}>
+                              <Feather name="map-pin" size={9} color={colors.mutedForeground} />
+                              <Text style={{ fontSize: 10, color: colors.mutedForeground }} numberOfLines={1}>{job.address}</Text>
                             </View>
                           )}
                         </TouchableOpacity>

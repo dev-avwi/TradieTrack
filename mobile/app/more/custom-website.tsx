@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
 import { useAuthStore } from '../../src/lib/store';
@@ -87,6 +88,7 @@ interface WebsiteAddonData {
 export default function CustomWebsitePage() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { user, businessSettings } = useAuthStore();
   const [showForm, setShowForm] = useState(false);
@@ -197,11 +199,7 @@ export default function CustomWebsitePage() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.heroSection}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
-              <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Feather name="arrow-left" size={20} color={colors.foreground} />
-              </TouchableOpacity>
-              <View style={{ flex: 1 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: spacing.xs }}>
               <View style={styles.heroIconWrap}>
                 <Feather name="globe" size={16} color={colors.primary} />
               </View>
@@ -212,17 +210,19 @@ export default function CustomWebsitePage() {
             </Text>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.highlightsScroll} style={{ flexGrow: 0 }}>
+          <View style={styles.highlightsGrid}>
             {HIGHLIGHTS.map((h, i) => (
               <View key={i} style={styles.highlightCard}>
                 <View style={styles.highlightIconWrap}>
                   <Feather name={h.icon} size={16} color={colors.primary} />
                 </View>
-                <Text style={styles.highlightTitle}>{h.title}</Text>
-                <Text style={styles.highlightDesc}>{h.desc}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.highlightTitle}>{h.title}</Text>
+                  <Text style={styles.highlightDesc}>{h.desc}</Text>
+                </View>
               </View>
             ))}
-          </ScrollView>
+          </View>
 
           {addonData && (
             <View style={styles.listSection}>
@@ -372,7 +372,7 @@ export default function CustomWebsitePage() {
 
         <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowForm(false)}>
           <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, { paddingTop: Math.max(insets.top, spacing.md) }]}>
               <TouchableOpacity onPress={() => setShowForm(false)}>
                 <Feather name="x" size={24} color={colors.foreground} />
               </TouchableOpacity>
@@ -462,11 +462,11 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
   heroIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center' },
   pageTitle: { fontSize: 28, fontWeight: '800', color: colors.foreground, letterSpacing: -0.5 },
   pageSubtitle: { fontSize: 14, color: colors.mutedForeground, marginTop: 4, lineHeight: 20 },
-  highlightsScroll: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.md },
-  highlightCard: { width: 130, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.md, borderWidth: 1, borderColor: colors.cardBorder },
-  highlightIconWrap: { width: 32, height: 32, borderRadius: 16, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
+  highlightsGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.md },
+  highlightCard: { width: '48%' as any, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.md, borderWidth: 1, borderColor: colors.cardBorder },
+  highlightIconWrap: { width: 32, height: 32, borderRadius: 16, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center' },
   highlightTitle: { fontSize: 13, fontWeight: '600', color: colors.foreground },
-  highlightDesc: { fontSize: 11, color: colors.mutedForeground, marginTop: 2, lineHeight: 15 },
+  highlightDesc: { fontSize: 11, color: colors.mutedForeground, marginTop: 1, lineHeight: 14 },
   listSection: { paddingHorizontal: spacing.lg },
   sectionLabel: { fontSize: 17, fontWeight: '700', color: colors.foreground, marginBottom: spacing.md },
   processRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },

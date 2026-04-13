@@ -546,6 +546,31 @@ export default function PhoneNumbersPage() {
                 </TouchableOpacity>
               </View>
             </View>
+
+            <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.lg }}>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: `${colors.primary}08`, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: `${colors.primary}20`, alignItems: 'center', gap: spacing.xs }}
+                onPress={() => router.push('/more/ai-receptionist')}
+                activeOpacity={0.7}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
+                  <Feather name="plus" size={16} color={colors.primary} />
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Add Number</Text>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: 'center' }}>Up to {MAX_NUMBERS} total</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: `${colors.destructive}06`, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: `${colors.destructive}15`, alignItems: 'center', gap: spacing.xs }}
+                onPress={handleRelease}
+                activeOpacity={0.7}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.destructive}12`, alignItems: 'center', justifyContent: 'center' }}>
+                  <Feather name="rotate-ccw" size={16} color={colors.destructive} />
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Revert to Shared</Text>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: 'center' }}>Use platform number</Text>
+              </TouchableOpacity>
+            </View>
           </>
         ) : (
           <>
