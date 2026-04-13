@@ -1385,7 +1385,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: responsivePadding,
-    paddingTop: spacing.md,
+    paddingTop: 0,
     paddingBottom: spacing.sm,
   },
   tabletTitle: {

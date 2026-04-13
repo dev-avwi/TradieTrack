@@ -325,17 +325,17 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   footerLogoWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 22,
-    backgroundColor: `${colors.primary}12`,
+    width: 88,
+    height: 88,
+    borderRadius: 24,
+    backgroundColor: `${colors.primary}15`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
   },
   footerLogoImage: {
-    width: 52,
-    height: 52,
+    width: 68,
+    height: 68,
   },
   footerTitle: {
     ...typography.subtitle,

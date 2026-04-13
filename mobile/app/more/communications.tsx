@@ -708,35 +708,37 @@ export default function CommunicationsScreen() {
         ))}
       </View>
       
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-        {(['all', 'email', 'sms'] as TabType[]).map((tab) => {
-          const count = tab === 'all' ? stats.total : tab === 'email' ? stats.emails : stats.sms;
-          const isActive = activeTab === tab;
-          const iconName = tab === 'all' ? 'inbox' : tab === 'email' ? 'mail' : 'message-square';
-          return (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.filterChip, isActive && styles.filterChipActive]}
-              onPress={() => setActiveTab(tab)}
-              activeOpacity={0.7}
-            >
-              <Feather
-                name={iconName as any}
-                size={13}
-                color={isActive ? '#fff' : colors.mutedForeground}
-              />
-              <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
-                {tab === 'all' ? 'All' : tab === 'email' ? 'Email' : 'SMS'}
-              </Text>
-              <View style={[styles.filterBadge, isActive && styles.filterBadgeActive]}>
-                <Text style={[styles.filterBadgeText, isActive && styles.filterBadgeTextActive]}>
-                  {count}
+      <View style={{ flexGrow: 0, flexShrink: 0 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          {(['all', 'email', 'sms'] as TabType[]).map((tab) => {
+            const count = tab === 'all' ? stats.total : tab === 'email' ? stats.emails : stats.sms;
+            const isActive = activeTab === tab;
+            const iconName = tab === 'all' ? 'inbox' : tab === 'email' ? 'mail' : 'message-square';
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                onPress={() => setActiveTab(tab)}
+                activeOpacity={0.7}
+              >
+                <Feather
+                  name={iconName as any}
+                  size={13}
+                  color={isActive ? '#fff' : colors.mutedForeground}
+                />
+                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                  {tab === 'all' ? 'All' : tab === 'email' ? 'Email' : 'SMS'}
                 </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+                <View style={[styles.filterBadge, isActive && styles.filterBadgeActive]}>
+                  <Text style={[styles.filterBadgeText, isActive && styles.filterBadgeTextActive]}>
+                    {count}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
       
       <View style={styles.searchContainer}>
         <Feather name="search" size={iconSizes.sm} color={colors.mutedForeground} />
