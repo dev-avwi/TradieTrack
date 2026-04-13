@@ -1104,6 +1104,193 @@ function ThisWeekSection({ jobs, onViewJob }: { jobs: any[]; onViewJob: (id: str
 }
 
 // KPI Stat Card Component - matches web feed-card styling
+interface MobileOperationalAlert {
+  id: string;
+  type: string;
+  severity: "urgent" | "important" | "info";
+  title: string;
+  message: string;
+  actionType: string;
+  actionLabel: string;
+  relatedJobId?: string;
+  relatedUserId?: string;
+  timeInfo?: string;
+}
+
+function OperationalAlertsCard() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const [alerts, setAlerts] = useState<MobileOperationalAlert[]>([]);
+  const [summary, setSummary] = useState({ total: 0, urgent: 0, important: 0, info: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      const response = await api.get<{ alerts: MobileOperationalAlert[]; summary: typeof summary }>('/api/operational-alerts');
+      if (response.data) {
+        setAlerts(response.data.alerts);
+        setSummary(response.data.summary);
+      }
+    } catch (err) {
+      if (__DEV__) console.log('Error fetching operational alerts:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 60000);
+    return () => clearInterval(interval);
+  }, [fetchAlerts]);
+
+  const handleAlertPress = useCallback((alert: MobileOperationalAlert) => {
+    if (alert.actionType === 'navigate') {
+      router.push('/(tabs)/schedule' as any);
+    } else if (alert.relatedJobId) {
+      router.push(`/job/${alert.relatedJobId}`);
+    }
+  }, []);
+
+  const handleViewSchedule = useCallback(() => {
+    router.push('/(tabs)/schedule' as any);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.card, { padding: spacing.md }]}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (alerts.length === 0) return null;
+
+  const displayAlerts = expanded ? alerts : alerts.slice(0, 3);
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'urgent': return colors.destructive;
+      case 'important': return colors.warning;
+      default: return colors.info;
+    }
+  };
+
+  const getSeverityIcon = (type: string): keyof typeof Feather.glyphMap => {
+    switch (type) {
+      case 'schedule_risk': return 'clock';
+      case 'unassigned_upcoming': return 'user-plus';
+      case 'job_overrun': return 'alert-circle';
+      case 'worker_idle': return 'users';
+      case 'schedule_conflict': return 'git-branch';
+      case 'uninvoiced_job': return 'dollar-sign';
+      default: return 'alert-triangle';
+    }
+  };
+
+  return (
+    <View style={styles.card}>
+      <View style={{ padding: spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <View style={{ width: 28, height: 28, borderRadius: radius.md, backgroundColor: colorWithOpacity(colors.destructive, 0.12), alignItems: 'center', justifyContent: 'center' }}>
+              <Feather name="radio" size={14} color={colors.destructive} />
+            </View>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.foreground }}>Attention Needed</Text>
+            {summary.urgent > 0 && (
+              <View style={{ backgroundColor: colorWithOpacity(colors.destructive, 0.15), paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.sm }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.destructive }}>{summary.urgent} urgent</Text>
+              </View>
+            )}
+          </View>
+          <View style={{ backgroundColor: colorWithOpacity(colors.primary, 0.1), paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>{summary.total}</Text>
+          </View>
+        </View>
+
+        {displayAlerts.map((alert, index) => {
+          const severityColor = getSeverityColor(alert.severity);
+          const iconName = getSeverityIcon(alert.type);
+
+          return (
+            <TouchableOpacity
+              key={alert.id}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                paddingVertical: spacing.sm,
+                borderTopWidth: index > 0 ? 1 : 0,
+                borderTopColor: colors.border,
+              }}
+              onPress={() => {
+                if (alert.actionType === 'nudge') {
+                  handleViewSchedule();
+                } else {
+                  handleAlertPress(alert);
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 3,
+                height: 32,
+                borderRadius: 2,
+                backgroundColor: severityColor,
+              }} />
+              <View style={{
+                width: 28,
+                height: 28,
+                borderRadius: radius.md,
+                backgroundColor: colorWithOpacity(severityColor, 0.12),
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Feather name={iconName} size={14} color={severityColor} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }} numberOfLines={1}>{alert.title}</Text>
+                  {alert.timeInfo && (
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground }}>{alert.timeInfo}</Text>
+                  )}
+                </View>
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 1 }} numberOfLines={1}>{alert.message}</Text>
+              </View>
+              <View style={{
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: radius.md,
+                backgroundColor: alert.severity === 'urgent' ? colors.primary : colorWithOpacity(colors.primary, 0.1),
+              }}>
+                <Text style={{
+                  fontSize: 11,
+                  fontWeight: '600',
+                  color: alert.severity === 'urgent' ? '#fff' : colors.primary,
+                }}>{alert.actionLabel}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+
+        {alerts.length > 3 && (
+          <TouchableOpacity
+            style={{ alignItems: 'center', paddingTop: spacing.sm, flexDirection: 'row', justifyContent: 'center', gap: 4 }}
+            onPress={() => setExpanded(!expanded)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '500', color: colors.primary }}>
+              {expanded ? 'Show less' : `View all ${alerts.length} alerts`}
+            </Text>
+            <Feather name={expanded ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+}
+
 function KPICard({ 
   title, 
   value, 
@@ -2801,6 +2988,13 @@ function OwnerDashboardScreen() {
       {/* Getting Started Checklist - Show for new owners */}
       {roleResolved && !isStaffUser && !isLoading && (
         <GettingStartedChecklist />
+      )}
+
+      {/* Operational Alerts - Managers */}
+      {roleResolved && !isStaffUser && (
+        <View style={styles.section}>
+          <OperationalAlertsCard />
+        </View>
       )}
 
       {/* Time Tracking Widget - All Users */}

@@ -24846,6 +24846,29 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  app.get("/api/operational-alerts", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const isManagerOrOwner = userContext.isOwner || userContext.roleName === 'manager' || userContext.roleName === 'Manager';
+      if (!isManagerOrOwner) {
+        return res.json({ alerts: [], summary: { total: 0, urgent: 0, important: 0, info: 0 } });
+      }
+      const effectiveUserId = userContext.effectiveUserId;
+      const { getOperationalAlerts } = await import("./operationalAlertsService");
+      const alerts = await getOperationalAlerts(effectiveUserId);
+      const summary = {
+        total: alerts.length,
+        urgent: alerts.filter(a => a.severity === "urgent").length,
+        important: alerts.filter(a => a.severity === "important").length,
+        info: alerts.filter(a => a.severity === "info").length,
+      };
+      res.json({ alerts, summary });
+    } catch (error) {
+      console.error("Error fetching operational alerts:", error);
+      res.status(500).json({ error: "Failed to fetch operational alerts" });
+    }
+  });
+
   app.get("/api/bi/action-center", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);

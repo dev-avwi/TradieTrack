@@ -37,6 +37,11 @@ import {
   Search,
   Mail,
   Edit3,
+  Radio,
+  UserPlus,
+  Timer,
+  Users,
+  GitBranch,
 } from "lucide-react";
 
 interface ActionItem {
@@ -63,6 +68,32 @@ interface ActionCenterData {
     fix_now: ActionItem[];
     this_week: ActionItem[];
     suggestions: ActionItem[];
+  };
+}
+
+interface OperationalAlert {
+  id: string;
+  type: string;
+  severity: "urgent" | "important" | "info";
+  title: string;
+  message: string;
+  actionType: string;
+  actionLabel: string;
+  relatedJobId?: string;
+  relatedUserId?: string;
+  relatedInvoiceId?: string;
+  workerName?: string;
+  jobTitle?: string;
+  timeInfo?: string;
+}
+
+interface OperationalAlertsData {
+  alerts: OperationalAlert[];
+  summary: {
+    total: number;
+    urgent: number;
+    important: number;
+    info: number;
   };
 }
 
@@ -217,6 +248,172 @@ const urgencyConfig: Record<string, { variant: "default" | "outline" | "destruct
   urgent: { variant: "default", label: "Urgent" },
   emergency: { variant: "destructive", label: "Emergency" },
 };
+
+const severityConfig = {
+  urgent: {
+    icon: AlertTriangle,
+    color: "hsl(var(--destructive))",
+    bg: "hsl(var(--destructive) / 0.1)",
+    label: "Urgent",
+  },
+  important: {
+    icon: Clock,
+    color: "hsl(38 92% 50%)",
+    bg: "hsl(38 92% 50% / 0.1)",
+    label: "Important",
+  },
+  info: {
+    icon: Lightbulb,
+    color: "hsl(221.2 83.2% 53.3%)",
+    bg: "hsl(221.2 83.2% 53.3% / 0.1)",
+    label: "Info",
+  },
+};
+
+const alertTypeIcons: Record<string, typeof AlertTriangle> = {
+  schedule_risk: Timer,
+  unassigned_upcoming: UserPlus,
+  job_overrun: Clock,
+  worker_idle: Users,
+  schedule_conflict: GitBranch,
+  uninvoiced_job: DollarSign,
+};
+
+function LiveOpsSection({ navigate }: { navigate: (path: string) => void }) {
+  const { toast } = useToast();
+  const [expanded, setExpanded] = useState(true);
+
+  const { data: opsData, isLoading } = useQuery<OperationalAlertsData>({
+    queryKey: ["/api/operational-alerts"],
+    refetchInterval: 60000,
+  });
+
+  const handleAlertAction = (alert: OperationalAlert) => {
+    switch (alert.actionType) {
+      case "view":
+        if (alert.relatedJobId) navigate(`/jobs/${alert.relatedJobId}`);
+        break;
+      case "navigate":
+        navigate("/schedule");
+        break;
+      case "assign":
+        if (alert.relatedJobId) navigate(`/jobs/${alert.relatedJobId}`);
+        break;
+      case "nudge":
+        navigate("/schedule");
+        break;
+      case "invoice":
+        if (alert.relatedJobId) navigate(`/jobs/${alert.relatedJobId}`);
+        break;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="animate-fade-up">
+        <div className="feed-card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-5 h-5 rounded-full bg-muted animate-pulse" />
+            <div className="h-4 w-20 rounded bg-muted animate-pulse" />
+          </div>
+          <div className="space-y-2">
+            <div className="h-12 rounded-md bg-muted animate-pulse" />
+            <div className="h-12 rounded-md bg-muted animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!opsData || opsData.alerts.length === 0) return null;
+
+  const visibleAlerts = expanded ? opsData.alerts : opsData.alerts.slice(0, 3);
+
+  return (
+    <div className="animate-fade-up">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <Radio className="h-4 w-4" style={{ color: "hsl(var(--destructive))" }} />
+          <p className="ios-label">LIVE OPS</p>
+          {opsData.summary.urgent > 0 && (
+            <Badge variant="destructive" className="no-default-hover-elevate no-default-active-elevate text-xs">
+              {opsData.summary.urgent} urgent
+            </Badge>
+          )}
+          {opsData.summary.important > 0 && (
+            <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs" style={{ borderColor: "hsl(38 92% 50% / 0.4)", color: "hsl(38 92% 50%)" }}>
+              {opsData.summary.important} important
+            </Badge>
+          )}
+        </div>
+        {opsData.alerts.length > 3 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? "Show less" : `Show all (${opsData.alerts.length})`}
+            {expanded ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}
+          </Button>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {visibleAlerts.map((alert) => {
+          const severity = severityConfig[alert.severity];
+          const SeverityIcon = severity.icon;
+          const TypeIcon = alertTypeIcons[alert.type] || AlertCircle;
+
+          return (
+            <div key={alert.id} className="flex rounded-2xl overflow-visible">
+              <div className="w-1 flex-shrink-0 rounded-l-2xl" style={{ backgroundColor: severity.color }} />
+              <div
+                className="feed-card flex-1 rounded-l-none card-press cursor-pointer"
+                style={{ backgroundColor: severity.bg }}
+                onClick={() => handleAlertAction(alert)}
+              >
+                <div className="p-3">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                        style={{ backgroundColor: `${severity.color}1a` }}
+                      >
+                        <TypeIcon className="h-3.5 w-3.5" style={{ color: severity.color }} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-semibold text-foreground leading-snug">{alert.title}</p>
+                          {alert.timeInfo && (
+                            <Badge variant="outline" className="no-default-hover-elevate no-default-active-elevate text-xs">
+                              {alert.timeInfo}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="ios-caption mt-0.5 line-clamp-2">{alert.message}</p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={alert.severity === "urgent" ? "default" : "outline"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAlertAction(alert);
+                      }}
+                    >
+                      {alert.actionLabel}
+                      <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function ActionCenter({ onNavigate }: ActionCenterProps) {
   const [, setLocation] = useLocation();
@@ -770,6 +967,8 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
         subtitle="What needs your attention"
         leading={<Zap className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />}
       />
+
+      <LiveOpsSection navigate={navigate} />
 
       {(isLoading || requestsLoading) && pendingRequests.length === 0 && (
         <LoadingSkeleton />
