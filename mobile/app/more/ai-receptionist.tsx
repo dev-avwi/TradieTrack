@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert, TextInput, Linking, Platform } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { useTheme } from '../../src/lib/theme';
@@ -168,13 +168,24 @@ const createStyles = (colors: any) => StyleSheet.create({
 
 const SHARED_PLATFORM_NUMBER = '0485 013 993';
 
+interface MultiNumberConfig {
+  id: string;
+  dedicatedPhoneNumber: string | null;
+  label: string | null;
+  enabled: boolean;
+  approvalStatus: string | null;
+}
+
 export default function AIReceptionistScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, businessSettings, fetchBusinessSettings } = useAuthStore();
+  const { configId: urlConfigId } = useLocalSearchParams<{ configId?: string }>();
   const hasDedicatedNumber = !!businessSettings?.dedicatedPhoneNumber;
   const userTier = user?.subscriptionTier || 'free';
   const isFreePlan = userTier === 'free' && !user?.betaLifetimeAccess;
+  const [allConfigs, setAllConfigs] = useState<MultiNumberConfig[]>([]);
+  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(urlConfigId || null);
   const [config, setConfig] = useState<ReceptionistConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -392,39 +403,79 @@ export default function AIReceptionistScreen() {
     );
   };
 
+  const fetchAllConfigs = useCallback(async () => {
+    try {
+      const response = await api.get<MultiNumberConfig[]>('/api/ai-receptionist/configs');
+      if (response.data && Array.isArray(response.data)) {
+        setAllConfigs(response.data);
+        if (!selectedConfigId && response.data.length > 0) {
+          setSelectedConfigId(response.data[0].id);
+        }
+      }
+    } catch (e) {}
+  }, [selectedConfigId]);
+
   const fetchConfig = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await api.get<ReceptionistConfig>('/api/ai-receptionist/config');
+      const endpoint = selectedConfigId
+        ? `/api/ai-receptionist/configs/${selectedConfigId}`
+        : '/api/ai-receptionist/config';
+      const response = await api.get<any>(endpoint);
       const data = response.data;
       if (data) {
-        setConfig(data);
-        setEnabled(data.enabled);
-        setMode(data.mode || 'off');
-        setVoice(data.voice || 'Jess');
-        setGreeting(data.greeting || '');
-        setTransferNumbers(data.transferNumbers || []);
-        if (data.businessHours?.schedule && data.businessHours.schedule.length > 0) {
-          setSchedule(data.businessHours.schedule);
-        } else if (data.businessHours?.days) {
+        const mappedConfig: ReceptionistConfig = selectedConfigId ? {
+          enabled: data.enabled,
+          mode: data.mode || 'off',
+          voice: data.voiceName || 'Jess',
+          greeting: data.greeting || null,
+          transferNumbers: data.transferNumbers || [],
+          businessHours: data.businessHours || null,
+          dedicatedPhoneNumber: data.dedicatedPhoneNumber || null,
+          vapiAssistantId: data.vapiAssistantId || null,
+          approvalStatus: data.approvalStatus || null,
+          knowledgeBank: data.knowledgeBank || null,
+          voiceStability: data.voiceStability ?? null,
+          voiceClarity: data.voiceClarity ?? null,
+          voiceSpeed: data.voiceSpeed ?? null,
+          voiceStyleExaggeration: data.voiceStyleExaggeration ?? null,
+          voiceSpeakerBoost: data.voiceSpeakerBoost ?? null,
+          voicemailDetectionEnabled: data.voicemailDetectionEnabled ?? null,
+          voicemailMessage: data.voicemailMessage || null,
+          silenceTimeoutSeconds: data.silenceTimeoutSeconds ?? null,
+          maxCallDurationSeconds: data.maxCallDurationSeconds ?? null,
+          endCallMessage: data.endCallMessage || null,
+          backgroundSound: data.backgroundSound || null,
+          autoReplyEnabled: data.autoReplyEnabled ?? true,
+          autoReplyMessage: data.autoReplyMessage || null,
+        } : data;
+        setConfig(mappedConfig);
+        setEnabled(mappedConfig.enabled);
+        setMode(mappedConfig.mode || 'off');
+        setVoice(mappedConfig.voice || 'Jess');
+        setGreeting(mappedConfig.greeting || '');
+        setTransferNumbers(mappedConfig.transferNumbers || []);
+        if (mappedConfig.businessHours?.schedule && mappedConfig.businessHours.schedule.length > 0) {
+          setSchedule(mappedConfig.businessHours.schedule);
+        } else if (mappedConfig.businessHours?.days) {
           setSchedule(prev => prev.map(s => ({
             ...s,
-            enabled: data.businessHours!.days.includes(s.day),
-            start: data.businessHours!.start || s.start,
-            end: data.businessHours!.end || s.end,
+            enabled: mappedConfig.businessHours!.days.includes(s.day),
+            start: mappedConfig.businessHours!.start || s.start,
+            end: mappedConfig.businessHours!.end || s.end,
           })));
         }
-        if (data.businessHours?.holidays) setHolidays(data.businessHours.holidays);
-        if (data.businessHours?.timezone) setTimezone(data.businessHours.timezone);
-        if (data.knowledgeBank) setKnowledgeBank(data.knowledgeBank);
-        if (data.voiceStability != null) setVoiceStability(data.voiceStability);
-        if (data.voiceClarity != null) setVoiceClarity(data.voiceClarity);
-        if (data.voiceSpeed != null) setVoiceSpeed(data.voiceSpeed);
-        if (data.voicemailDetectionEnabled != null) setVoicemailDetectionEnabled(data.voicemailDetectionEnabled);
-        if (data.silenceTimeoutSeconds != null) setSilenceTimeoutSeconds(data.silenceTimeoutSeconds);
-        if (data.maxCallDurationSeconds != null) setMaxCallDurationSeconds(data.maxCallDurationSeconds);
-        setAutoReplyEnabled(data.autoReplyEnabled ?? true);
-        if (data.autoReplyMessage) setAutoReplyMessage(data.autoReplyMessage);
+        if (mappedConfig.businessHours?.holidays) setHolidays(mappedConfig.businessHours.holidays);
+        if (mappedConfig.businessHours?.timezone) setTimezone(mappedConfig.businessHours.timezone);
+        if (mappedConfig.knowledgeBank) setKnowledgeBank(mappedConfig.knowledgeBank);
+        if (mappedConfig.voiceStability != null) setVoiceStability(mappedConfig.voiceStability);
+        if (mappedConfig.voiceClarity != null) setVoiceClarity(mappedConfig.voiceClarity);
+        if (mappedConfig.voiceSpeed != null) setVoiceSpeed(mappedConfig.voiceSpeed);
+        if (mappedConfig.voicemailDetectionEnabled != null) setVoicemailDetectionEnabled(mappedConfig.voicemailDetectionEnabled);
+        if (mappedConfig.silenceTimeoutSeconds != null) setSilenceTimeoutSeconds(mappedConfig.silenceTimeoutSeconds);
+        if (mappedConfig.maxCallDurationSeconds != null) setMaxCallDurationSeconds(mappedConfig.maxCallDurationSeconds);
+        setAutoReplyEnabled(mappedConfig.autoReplyEnabled ?? true);
+        if (mappedConfig.autoReplyMessage) setAutoReplyMessage(mappedConfig.autoReplyMessage);
         setConfigLoaded(true);
         setUserChangedEnabled(false);
       }
@@ -433,7 +484,7 @@ export default function AIReceptionistScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedConfigId]);
 
   const fetchVoiceRequests = useCallback(async () => {
     try {
@@ -445,15 +496,17 @@ export default function AIReceptionistScreen() {
 
   const fetchRecentCalls = useCallback(async () => {
     try {
-      const response = await api.get<CallLog[]>('/api/ai-receptionist/calls?limit=10');
+      const phoneFilter = selectedConfigId ? `&phoneNumberId=${selectedConfigId}` : '';
+      const response = await api.get<CallLog[]>(`/api/ai-receptionist/calls?limit=10${phoneFilter}`);
       setRecentCalls(response.data || []);
     } catch (e) {
     }
-  }, []);
+  }, [selectedConfigId]);
 
   const fetchAnalytics = useCallback(async () => {
     try {
-      const response = await api.get<AnalyticsSummary>('/api/ai-receptionist/analytics');
+      const phoneFilter = selectedConfigId ? `?phoneNumberId=${selectedConfigId}` : '';
+      const response = await api.get<AnalyticsSummary>(`/api/ai-receptionist/analytics${phoneFilter}`);
       if (response.data) setAnalytics(response.data);
     } catch (e) {
     }
@@ -496,7 +549,9 @@ export default function AIReceptionistScreen() {
     }
   }, []);
 
-  useEffect(() => { fetchConfig(); fetchVoiceRequests(); fetchRecentCalls(); fetchAnalytics(); fetchHolidayPresets(); }, [fetchConfig, fetchVoiceRequests, fetchRecentCalls, fetchAnalytics, fetchHolidayPresets]);
+  useEffect(() => { fetchAllConfigs(); }, []);
+  useEffect(() => { fetchConfig(); fetchRecentCalls(); fetchAnalytics(); }, [selectedConfigId, fetchConfig, fetchRecentCalls, fetchAnalytics]);
+  useEffect(() => { fetchVoiceRequests(); fetchHolidayPresets(); }, [fetchVoiceRequests, fetchHolidayPresets]);
 
   const handleSave = async () => {
     if (!configLoaded) {
@@ -507,7 +562,10 @@ export default function AIReceptionistScreen() {
     try {
       const enabledDays = schedule.filter(s => s.enabled).map(s => s.day);
       const firstEnabled = schedule.find(s => s.enabled);
-      await api.patch('/api/ai-receptionist/config', {
+      const configEndpoint = selectedConfigId
+        ? `/api/ai-receptionist/configs/${selectedConfigId}`
+        : '/api/ai-receptionist/config';
+      await api.patch(configEndpoint, {
         mode,
         voice,
         greeting: greeting || null,
@@ -551,7 +609,10 @@ export default function AIReceptionistScreen() {
   const handleSaveKnowledgeBank = async () => {
     setIsSavingKB(true);
     try {
-      await api.patch('/api/ai-receptionist/config', { knowledgeBank });
+      const kbEndpoint = selectedConfigId
+        ? `/api/ai-receptionist/configs/${selectedConfigId}`
+        : '/api/ai-receptionist/config';
+      await api.patch(kbEndpoint, { knowledgeBank });
       Alert.alert('Saved', 'Knowledge bank has been synced to the AI.');
     } catch {
       Alert.alert('Error', 'Could not save knowledge bank.');
@@ -667,6 +728,40 @@ export default function AIReceptionistScreen() {
         <View style={styles.header}>
           <Text style={styles.pageTitle}>AI Receptionist</Text>
         </View>
+
+        {allConfigs.length > 1 && (
+          <View style={[styles.card, { marginBottom: spacing.md }]}>
+            <Text style={[styles.cardTitle, { marginBottom: spacing.sm }]}>Select Number</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -spacing.xs }}>
+              {allConfigs.map((cfg) => {
+                const isSelected = selectedConfigId === cfg.id;
+                return (
+                  <TouchableOpacity
+                    key={cfg.id}
+                    onPress={() => setSelectedConfigId(cfg.id)}
+                    activeOpacity={0.7}
+                    style={{
+                      paddingHorizontal: spacing.md,
+                      paddingVertical: spacing.sm,
+                      borderRadius: radius.lg,
+                      marginHorizontal: spacing.xs,
+                      backgroundColor: isSelected ? `${colors.primary}15` : `${colors.muted}50`,
+                      borderWidth: isSelected ? 1 : StyleSheet.hairlineWidth,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: isSelected ? '700' : '500', color: isSelected ? colors.primary : colors.foreground }}>
+                      {cfg.label || (cfg.dedicatedPhoneNumber ? formatPhoneDisplay(cfg.dedicatedPhoneNumber) : 'Number')}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 2 }}>
+                      {cfg.label && cfg.dedicatedPhoneNumber ? formatPhoneDisplay(cfg.dedicatedPhoneNumber) : (cfg.enabled ? 'Active' : 'Inactive')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
         {!config?.enabled && mode === 'off' && (
           <View style={{ backgroundColor: `${colors.primary}08`, borderRadius: radius['2xl'], padding: spacing.lg, marginBottom: spacing.lg, borderWidth: 1, borderColor: `${colors.primary}20` }}>

@@ -49,6 +49,17 @@ interface PortRequest {
   updatedAt: string;
 }
 
+interface AiConfig {
+  id: string;
+  dedicatedPhoneNumber: string | null;
+  label: string | null;
+  enabled: boolean;
+  approvalStatus: string | null;
+  voiceName: string | null;
+  mode: string | null;
+}
+
+const MAX_NUMBERS = 5;
 export default function PhoneNumbersPage() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -65,6 +76,9 @@ export default function PhoneNumbersPage() {
   const [releaseConfirmText, setReleaseConfirmText] = useState('');
   const [lastOwnedNumber, setLastOwnedNumber] = useState<string | null>(null);
   const [reacquiring, setReacquiring] = useState(false);
+  const [aiConfigs, setAiConfigs] = useState<AiConfig[]>([]);
+  const [editingLabel, setEditingLabel] = useState<string | null>(null);
+  const [labelText, setLabelText] = useState('');
 
   const [showPortForm, setShowPortForm] = useState(false);
   const [portPhone, setPortPhone] = useState('');
@@ -208,17 +222,6 @@ export default function PhoneNumbersPage() {
   };
 
   const handlePurchase = (number: AvailableNumber) => {
-    if (currentNumber) {
-      Alert.alert(
-        'Already Have a Number',
-        `Your business already has ${formatPhone(currentNumber)}.\n\nTo get a different number, you need to release your current one first.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Release Current Number', style: 'destructive', onPress: handleRelease },
-        ]
-      );
-      return;
-    }
 
     const hasSms = number.capabilities?.sms;
     const hasMms = number.capabilities?.mms;
@@ -354,10 +357,34 @@ export default function PhoneNumbersPage() {
     }
   }, [portPhone, portCarrier, portAccount, portLoaAgreed, fetchPortRequests]);
 
+  const fetchAiConfigs = useCallback(async () => {
+    try {
+      const response = await api.get<AiConfig[]>('/api/ai-receptionist/configs');
+      if (response.data && Array.isArray(response.data)) {
+        setAiConfigs(response.data);
+      }
+    } catch (e) {}
+  }, []);
+
   useEffect(() => {
     if (!currentNumber) searchNumbers();
     fetchPortRequests();
+    fetchAiConfigs();
   }, []);
+
+  const saveLabel = async (configId: string) => {
+    try {
+      await api.patch(`/api/ai-receptionist/configs/${configId}/label`, { label: labelText });
+      setEditingLabel(null);
+      fetchAiConfigs();
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Failed to update label');
+    }
+  };
+
+  useEffect(() => {
+    if (!currentNumber && aiConfigs.length === 0) searchNumbers();
+  }, [aiConfigs]);
 
   const formatPhone = (phone: string) => {
     if (phone.startsWith('+61')) {
@@ -383,13 +410,111 @@ export default function PhoneNumbersPage() {
           </Text>
         </View>
 
-        {currentNumber ? (
+        {aiConfigs.length > 0 ? (
+          <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm, gap: spacing.sm }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.foreground }}>
+                Your Numbers ({aiConfigs.length}/{MAX_NUMBERS})
+              </Text>
+              {aiConfigs.length < MAX_NUMBERS && (
+                <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                  {MAX_NUMBERS - aiConfigs.length} slot{MAX_NUMBERS - aiConfigs.length !== 1 ? 's' : ''} available
+                </Text>
+              )}
+            </View>
+
+            {aiConfigs.map((cfg) => (
+              <View key={cfg.id} style={styles.currentNumberCard}>
+                <View style={styles.currentNumberHeader}>
+                  <View style={styles.activeIndicator}>
+                    <View style={[styles.activeDot, !cfg.enabled && { backgroundColor: colors.mutedForeground }]} />
+                    <Text style={styles.activeLabel}>
+                      {cfg.enabled ? 'Active' : cfg.approvalStatus === 'provisioning' ? 'Setting Up' : 'Inactive'}
+                    </Text>
+                  </View>
+                  {editingLabel === cfg.id ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                      <TextInput
+                        style={{ fontSize: 12, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, paddingHorizontal: spacing.xs, paddingVertical: 2, minWidth: 100 }}
+                        value={labelText}
+                        onChangeText={setLabelText}
+                        placeholder="Label"
+                        placeholderTextColor={colors.mutedForeground}
+                        maxLength={100}
+                        autoFocus
+                      />
+                      <TouchableOpacity onPress={() => saveLabel(cfg.id)} activeOpacity={0.7}>
+                        <Feather name="check" size={16} color={colors.success} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setEditingLabel(null)} activeOpacity={0.7}>
+                        <Feather name="x" size={16} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => { setEditingLabel(cfg.id); setLabelText(cfg.label || ''); }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ fontSize: 12, color: colors.primary }}>
+                        {cfg.label || 'Add Label'}
+                      </Text>
+                      <Feather name="edit-2" size={11} color={colors.primary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={styles.currentNumberRow}>
+                  <View style={styles.currentNumberIcon}>
+                    <Feather name="phone" size={22} color={cfg.enabled ? colors.success : colors.mutedForeground} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.currentNumberText}>
+                      {cfg.dedicatedPhoneNumber ? formatPhone(cfg.dedicatedPhoneNumber) : 'No number'}
+                    </Text>
+                    <Text style={styles.currentNumberDesc}>
+                      {cfg.label || (cfg.mode === 'always_on_message' ? 'Message Mode' : cfg.mode === 'always_on_transfer' ? 'Transfer Mode' : cfg.mode || 'AI Receptionist')}
+                      {cfg.voiceName ? ` \u2022 ${cfg.voiceName}` : ''}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.currentNumberActions}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => router.push(`/more/ai-receptionist?configId=${cfg.id}`)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="settings" size={14} color={colors.primary} />
+                    <Text style={[styles.actionButtonText, { color: colors.primary }]}>Configure AI</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => router.push('/more/chat-hub')}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="message-square" size={14} color={colors.primary} />
+                    <Text style={[styles.actionButtonText, { color: colors.primary }]}>Chat Hub</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+
+            {aiConfigs.length < MAX_NUMBERS && (
+              <>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.foreground, marginTop: spacing.lg, marginBottom: spacing.sm }}>Add Another Number</Text>
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: spacing.md }}>
+                  You can add up to {MAX_NUMBERS} dedicated numbers, each with its own AI Receptionist configuration.
+                </Text>
+              </>
+            )}
+          </>
+        ) : currentNumber ? (
           <>
             <View style={styles.currentNumberCard}>
               <View style={styles.currentNumberHeader}>
                 <View style={styles.activeIndicator}>
                   <View style={styles.activeDot} />
-                  <Text style={styles.activeLabel}>Active — Your Dedicated Number</Text>
+                  <Text style={styles.activeLabel}>Active - Your Dedicated Number</Text>
                 </View>
               </View>
               <View style={styles.currentNumberRow}>
@@ -402,54 +527,25 @@ export default function PhoneNumbersPage() {
                 </View>
               </View>
 
-              <View style={{ backgroundColor: `${colors.muted}50`, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md }}>
-                <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 18 }}>
-                  Clients see this number when you send SMS. Replies come straight to your Chat Hub. You've upgraded from the shared JobRunner number (0485 013 993).
-                </Text>
-              </View>
-
               <View style={styles.currentNumberActions}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => router.push('/more/ai-receptionist')}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="cpu" size={14} color={colors.primary} />
+                  <Text style={[styles.actionButtonText, { color: colors.primary }]}>AI Receptionist</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => router.push('/more/chat-hub')}
                   activeOpacity={0.7}
                 >
                   <Feather name="message-square" size={14} color={colors.primary} />
-                  <Text style={[styles.actionButtonText, { color: colors.primary }]}>Open Chat Hub</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.releaseButton]}
-                  onPress={handleRelease}
-                  disabled={releasing}
-                  activeOpacity={0.7}
-                >
-                  {releasing ? (
-                    <ActivityIndicator size="small" color={colors.destructive} />
-                  ) : (
-                    <Feather name="x-circle" size={14} color={colors.destructive} />
-                  )}
-                  <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
-                    {releasing ? 'Releasing...' : 'Revert to Shared'}
-                  </Text>
+                  <Text style={[styles.actionButtonText, { color: colors.primary }]}>Chat Hub</Text>
                 </TouchableOpacity>
               </View>
             </View>
-
-            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.foreground, marginTop: spacing.lg, marginBottom: spacing.sm }}>Next Steps</Text>
-            <TouchableOpacity
-              style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.md }}
-              onPress={() => router.push('/more/ai-receptionist')}
-              activeOpacity={0.7}
-            >
-              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
-                <Feather name="cpu" size={18} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>Set Up AI Receptionist</Text>
-                <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>Let AI answer calls and take messages on this number</Text>
-              </View>
-              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
           </>
         ) : (
           <>

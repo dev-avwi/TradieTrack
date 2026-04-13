@@ -1358,6 +1358,15 @@ interface AiQueueItem {
 
 interface ActiveAssistant extends AiQueueItem {
   autoReplyEnabled?: boolean;
+  label?: string | null;
+  allNumbers?: Array<{
+    id: string;
+    dedicatedPhoneNumber: string | null;
+    label: string | null;
+    enabled: boolean;
+    mode: string | null;
+    voiceName: string | null;
+  }>;
   callStats: {
     totalCalls: number;
     completedCalls: number;
@@ -1883,12 +1892,19 @@ function AIApprovalView() {
                             <Mic className="h-3 w-3 mr-1" />
                             {assistant.voiceName || 'Jess'}
                           </Badge>
-                          {assistant.dedicatedPhoneNumber && (
+                          {assistant.allNumbers && assistant.allNumbers.length > 1 ? (
+                            assistant.allNumbers.map((num, idx) => (
+                              <Badge key={num.id || idx} variant="outline" className="text-xs">
+                                <Phone className="h-3 w-3 mr-1" />
+                                {num.label ? `${num.label}: ` : ''}{num.dedicatedPhoneNumber || 'N/A'}
+                              </Badge>
+                            ))
+                          ) : assistant.dedicatedPhoneNumber ? (
                             <Badge variant="outline" className="text-xs">
                               <Phone className="h-3 w-3 mr-1" />
-                              {assistant.dedicatedPhoneNumber}
+                              {assistant.label ? `${assistant.label}: ` : ''}{assistant.dedicatedPhoneNumber}
                             </Badge>
-                          )}
+                          ) : null}
                           <Badge
                             variant="outline"
                             className={`text-xs ${assistant.autoReplyEnabled !== false

@@ -1012,12 +1012,16 @@ export interface IStorage {
 
   // AI Receptionist Config
   getAiReceptionistConfig(userId: string): Promise<AiReceptionistConfig | undefined>;
+  getAiReceptionistConfigById(configId: string): Promise<AiReceptionistConfig | undefined>;
+  getAiReceptionistConfigsByUser(userId: string): Promise<AiReceptionistConfig[]>;
+  getAiReceptionistConfigByPhone(phoneNumber: string): Promise<AiReceptionistConfig | undefined>;
   getAllAiReceptionistConfigs(): Promise<AiReceptionistConfig[]>;
   createAiReceptionistConfig(config: InsertAiReceptionistConfig): Promise<AiReceptionistConfig>;
   updateAiReceptionistConfig(userId: string, updates: Partial<InsertAiReceptionistConfig>): Promise<AiReceptionistConfig | undefined>;
+  updateAiReceptionistConfigById(configId: string, updates: Partial<InsertAiReceptionistConfig>): Promise<AiReceptionistConfig | undefined>;
 
   // AI Receptionist Calls
-  getAiReceptionistCalls(userId: string, limit?: number): Promise<AiReceptionistCall[]>;
+  getAiReceptionistCalls(userId: string, limit?: number, phoneNumberId?: string): Promise<AiReceptionistCall[]>;
   getAiReceptionistCall(id: string, userId: string): Promise<AiReceptionistCall | undefined>;
   getAiReceptionistCallByVapiId(vapiCallId: string): Promise<AiReceptionistCall | undefined>;
   createAiReceptionistCall(call: InsertAiReceptionistCall): Promise<AiReceptionistCall>;
@@ -7025,6 +7029,32 @@ Thank you for your prompt attention to this matter.`,
     return result[0];
   }
 
+  async getAiReceptionistConfigById(configId: string): Promise<AiReceptionistConfig | undefined> {
+    const result = await db
+      .select()
+      .from(aiReceptionistConfig)
+      .where(eq(aiReceptionistConfig.id, configId))
+      .limit(1);
+    return result[0];
+  }
+
+  async getAiReceptionistConfigsByUser(userId: string): Promise<AiReceptionistConfig[]> {
+    return db
+      .select()
+      .from(aiReceptionistConfig)
+      .where(eq(aiReceptionistConfig.userId, userId))
+      .orderBy(aiReceptionistConfig.createdAt);
+  }
+
+  async getAiReceptionistConfigByPhone(phoneNumber: string): Promise<AiReceptionistConfig | undefined> {
+    const result = await db
+      .select()
+      .from(aiReceptionistConfig)
+      .where(eq(aiReceptionistConfig.dedicatedPhoneNumber, phoneNumber))
+      .limit(1);
+    return result[0];
+  }
+
   async getAllAiReceptionistConfigs(): Promise<AiReceptionistConfig[]> {
     return db.select().from(aiReceptionistConfig);
   }
@@ -7046,11 +7076,24 @@ Thank you for your prompt attention to this matter.`,
     return updated;
   }
 
-  async getAiReceptionistCalls(userId: string, limit: number = 50): Promise<AiReceptionistCall[]> {
+  async updateAiReceptionistConfigById(configId: string, updates: Partial<InsertAiReceptionistConfig>): Promise<AiReceptionistConfig | undefined> {
+    const [updated] = await db
+      .update(aiReceptionistConfig)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(aiReceptionistConfig.id, configId))
+      .returning();
+    return updated;
+  }
+
+  async getAiReceptionistCalls(userId: string, limit: number = 50, phoneNumberId?: string): Promise<AiReceptionistCall[]> {
+    const conditions = [eq(aiReceptionistCalls.userId, userId)];
+    if (phoneNumberId) {
+      conditions.push(eq(aiReceptionistCalls.phoneNumberId, phoneNumberId));
+    }
     return db
       .select()
       .from(aiReceptionistCalls)
-      .where(eq(aiReceptionistCalls.userId, userId))
+      .where(and(...conditions))
       .orderBy(desc(aiReceptionistCalls.createdAt))
       .limit(limit);
   }

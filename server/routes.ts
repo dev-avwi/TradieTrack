@@ -5158,12 +5158,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'User email is required for checkout' });
       }
 
-      const existingConfig = await storage.getAiReceptionistConfig(userId);
-      if (existingConfig?.approvalStatus === 'pending_approval' || existingConfig?.approvalStatus === 'provisioning') {
-        return res.status(400).json({ error: 'AI Receptionist is already being set up or pending approval.' });
+      const existingConfigs = await storage.getAiReceptionistConfigsByUser(userId);
+      const activeConfigs = existingConfigs.filter(c => c.approvalStatus === 'approved' || c.approvalStatus === 'active' || c.enabled);
+      const pendingConfigs = existingConfigs.filter(c => c.approvalStatus === 'pending_approval' || c.approvalStatus === 'provisioning');
+      if (pendingConfigs.length > 0) {
+        return res.status(400).json({ error: 'An AI Receptionist number is already being set up or pending approval.' });
       }
-      if (existingConfig?.approvalStatus === 'approved' && existingConfig?.enabled) {
-        return res.status(400).json({ error: 'AI Receptionist is already active.' });
+      const MAX_NUMBERS = 5;
+      if (activeConfigs.length >= MAX_NUMBERS) {
+        return res.status(400).json({ error: `Maximum of ${MAX_NUMBERS} AI Receptionist numbers allowed per business.` });
       }
 
       const businessSettings = await storage.getBusinessSettings(userId);
@@ -42078,6 +42081,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
           const outcome = (call as any).outcome || 'unknown';
           outcomeBreakdown[outcome] = (outcomeBreakdown[outcome] || 0) + 1;
         }
+        const allUserConfigs = await storage.getAiReceptionistConfigsByUser(p.config.userId);
         return {
           ...p.config,
           userName: p.userName && p.userLastName ? `${p.userName} ${p.userLastName}` : p.userEmail || 'Unknown',
@@ -42086,6 +42090,14 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
           businessPhone: settings?.phone || null,
           tradeType: settings?.industry || null,
           autoReplyEnabled: p.config.autoReplyEnabled ?? true,
+          allNumbers: allUserConfigs.map(c => ({
+            id: c.id,
+            dedicatedPhoneNumber: c.dedicatedPhoneNumber,
+            label: c.label,
+            enabled: c.enabled,
+            mode: c.mode,
+            voiceName: c.voiceName,
+          })),
           callStats: {
             totalCalls,
             completedCalls: completedCalls.length,
@@ -47043,6 +47055,54 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+  app.get("/api/ai-receptionist/configs", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
+    try {
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
+      const configs = await storage.getAiReceptionistConfigsByUser(userId);
+      res.json(configs);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Get AI receptionist configs error:", message);
+      res.status(500).json({ error: "Failed to get AI receptionist configs" });
+    }
+  });
+
+  app.get("/api/ai-receptionist/configs/:configId", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
+    try {
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
+      const config = await storage.getAiReceptionistConfigById(req.params.configId);
+      if (!config || config.userId !== userId) {
+        return res.status(404).json({ error: "Config not found" });
+      }
+      res.json(config);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Get AI receptionist config by ID error:", message);
+      res.status(500).json({ error: "Failed to get AI receptionist config" });
+    }
+  });
+
+  app.patch("/api/ai-receptionist/configs/:configId/label", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
+    try {
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
+      const config = await storage.getAiReceptionistConfigById(req.params.configId);
+      if (!config || config.userId !== userId) {
+        return res.status(404).json({ error: "Config not found" });
+      }
+      const labelSchema = z.object({ label: z.string().max(100) });
+      const parsed = labelSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid label" });
+      }
+      const updated = await storage.updateAiReceptionistConfigById(req.params.configId, { label: parsed.data.label });
+      res.json(updated);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Update config label error:", message);
+      res.status(500).json({ error: "Failed to update label" });
+    }
+  });
+
   const transferNumberSchema = z.object({
     name: z.string().min(1),
     phone: z.string().min(5),
@@ -47239,6 +47299,70 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+  app.patch("/api/ai-receptionist/configs/:configId", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
+    try {
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
+      const config = await storage.getAiReceptionistConfigById(req.params.configId);
+      if (!config || config.userId !== userId) {
+        return res.status(404).json({ error: "Config not found" });
+      }
+      const parsed = aiReceptionistConfigSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid config", details: parsed.error.flatten().fieldErrors });
+      }
+      const { voice, greeting, mode, transferNumbers, businessHours, knowledgeBank, smsNotifications,
+        voiceStability, voiceClarity, voiceSpeed, voiceStyleExaggeration, voiceSpeakerBoost,
+        voicemailDetectionEnabled, voicemailMessage, silenceTimeoutSeconds, maxCallDurationSeconds,
+        endCallMessage, backgroundSound, autoReplyEnabled, autoReplyMessage } = parsed.data;
+
+      const updateData: any = {};
+      if (voice !== undefined) updateData.voiceName = voice;
+      if (greeting !== undefined) updateData.greeting = greeting;
+      if (mode !== undefined) updateData.mode = mode;
+      if (transferNumbers !== undefined) updateData.transferNumbers = transferNumbers;
+      if (businessHours !== undefined) updateData.businessHours = businessHours;
+      if (knowledgeBank !== undefined && knowledgeBank !== null) updateData.knowledgeBank = knowledgeBank;
+      if (smsNotifications !== undefined) updateData.smsNotifications = smsNotifications;
+      if (autoReplyEnabled !== undefined) updateData.autoReplyEnabled = autoReplyEnabled;
+      if (autoReplyMessage !== undefined) updateData.autoReplyMessage = autoReplyMessage;
+      if (voiceStability !== undefined) updateData.voiceStability = voiceStability;
+      if (voiceClarity !== undefined) updateData.voiceClarity = voiceClarity;
+      if (voiceSpeed !== undefined) updateData.voiceSpeed = voiceSpeed;
+      if (voiceStyleExaggeration !== undefined) updateData.voiceStyleExaggeration = voiceStyleExaggeration;
+      if (voiceSpeakerBoost !== undefined) updateData.voiceSpeakerBoost = voiceSpeakerBoost;
+      if (voicemailDetectionEnabled !== undefined) updateData.voicemailDetectionEnabled = voicemailDetectionEnabled;
+      if (voicemailMessage !== undefined) updateData.voicemailMessage = voicemailMessage;
+      if (silenceTimeoutSeconds !== undefined) updateData.silenceTimeoutSeconds = silenceTimeoutSeconds;
+      if (maxCallDurationSeconds !== undefined) updateData.maxCallDurationSeconds = maxCallDurationSeconds;
+      if (endCallMessage !== undefined) updateData.endCallMessage = endCallMessage;
+      if (backgroundSound !== undefined) updateData.backgroundSound = backgroundSound;
+
+      const updated = await storage.updateAiReceptionistConfigById(req.params.configId, updateData);
+
+      if (config.vapiAssistantId && Object.keys(updateData).length > 0) {
+        try {
+          const { updateReceptionistConfigById } = await import('./vapiService');
+          await updateReceptionistConfigById(req.params.configId, userId, {
+            voice, greeting, mode, transferNumbers, businessHours,
+            knowledgeBank: knowledgeBank === null ? undefined : knowledgeBank,
+            smsNotifications, autoReplyEnabled, autoReplyMessage,
+            voiceStability, voiceClarity, voiceSpeed, voiceStyleExaggeration, voiceSpeakerBoost,
+            voicemailDetectionEnabled, voicemailMessage, silenceTimeoutSeconds, maxCallDurationSeconds,
+            endCallMessage, backgroundSound,
+          });
+        } catch (vapiErr: any) {
+          console.error(`[AI Config] VAPI update failed for config ${req.params.configId}:`, vapiErr.message);
+        }
+      }
+
+      res.json(updated);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Update AI receptionist config by ID error:", message);
+      res.status(500).json({ error: "Failed to update AI receptionist config" });
+    }
+  });
+
   app.post("/api/ai-receptionist/enable", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
@@ -47300,7 +47424,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const limit = parseInt(req.query.limit as string) || 50;
-      let calls = await storage.getAiReceptionistCalls(userId, Math.min(limit, 200));
+      const phoneNumberId = req.query.phoneNumberId as string | undefined;
+      let calls = await storage.getAiReceptionistCalls(userId, Math.min(limit, 200), phoneNumberId);
 
       const sentimentFilter = req.query.sentiment as string;
       if (sentimentFilter && ['positive', 'neutral', 'negative'].includes(sentimentFilter)) {
@@ -47494,7 +47619,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   app.get("/api/ai-receptionist/analytics", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
-      const calls = await storage.getAiReceptionistCalls(userId);
+      const phoneNumberId = req.query.phoneNumberId as string | undefined;
+      const calls = await storage.getAiReceptionistCalls(userId, undefined, phoneNumberId);
       const totalCalls = calls.length;
       const completedCalls = calls.filter((c: any) => c.status === 'completed');
       const missedCalls = calls.filter((c: any) => c.outcome === 'missed' || c.status === 'missed');

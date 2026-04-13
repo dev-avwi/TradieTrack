@@ -4571,6 +4571,7 @@ export const rateLimits = pgTable("rate_limits", {
 export const aiReceptionistConfig = pgTable("ai_receptionist_config", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  label: text("label"),
   vapiAssistantId: text("vapi_assistant_id"),
   vapiPhoneNumberId: text("vapi_phone_number_id"),
   voiceId: text("voice_id"),
@@ -4607,6 +4608,7 @@ export const aiReceptionistConfig = pgTable("ai_receptionist_config", {
 }, (table) => [
   index("idx_ai_config_user").on(table.userId),
   index("idx_ai_config_approval").on(table.approvalStatus),
+  index("idx_ai_config_phone").on(table.dedicatedPhoneNumber),
 ]);
 
 export const insertAiReceptionistConfigSchema = createInsertSchema(aiReceptionistConfig).omit({ id: true, createdAt: true, updatedAt: true });
@@ -4617,6 +4619,8 @@ export const aiReceptionistCalls = pgTable("ai_receptionist_calls", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   vapiCallId: text("vapi_call_id").notNull(),
+  phoneNumberId: varchar("phone_number_id"),
+  calledNumber: text("called_number"),
   callerPhone: text("caller_phone"),
   callerName: text("caller_name"),
   status: text("status").notNull().default('ringing'), // ringing, in_progress, completed, failed, missed, transferred
@@ -4640,6 +4644,7 @@ export const aiReceptionistCalls = pgTable("ai_receptionist_calls", {
   index("idx_ai_calls_user").on(table.userId),
   index("idx_ai_calls_vapi").on(table.vapiCallId),
   index("idx_ai_calls_created").on(table.createdAt),
+  index("idx_ai_calls_phone_number").on(table.phoneNumberId),
 ]);
 
 export const insertAiReceptionistCallSchema = createInsertSchema(aiReceptionistCalls).omit({ id: true, createdAt: true, updatedAt: true });

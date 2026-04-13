@@ -875,27 +875,165 @@ export async function updateReceptionistConfig(userId: string, updates: {
   }
 }
 
+export async function updateReceptionistConfigById(configId: string, userId: string, updates: {
+  voice?: string;
+  greeting?: string;
+  mode?: string;
+  transferNumbers?: Array<{ name: string; phone: string; priority: number }>;
+  businessHours?: BusinessHoursConfig;
+  knowledgeBank?: KnowledgeBankContent;
+  smsNotifications?: boolean;
+  voiceStability?: number;
+  voiceClarity?: number;
+  voiceSpeed?: number;
+  voiceStyleExaggeration?: number;
+  voiceSpeakerBoost?: boolean;
+  voicemailDetectionEnabled?: boolean;
+  voicemailMessage?: string;
+  silenceTimeoutSeconds?: number;
+  maxCallDurationSeconds?: number;
+  endCallMessage?: string;
+  backgroundSound?: string;
+  autoReplyEnabled?: boolean;
+  autoReplyMessage?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const config = await storage.getAiReceptionistConfigById(configId);
+    if (!config || config.userId !== userId) {
+      return { success: false, error: 'AI Receptionist config not found.' };
+    }
+
+    if (!config.vapiAssistantId) {
+      return { success: true };
+    }
+
+    const needsVapiSync = updates.voice || updates.greeting || updates.transferNumbers || updates.businessHours || updates.knowledgeBank ||
+      updates.voiceStability !== undefined || updates.voiceClarity !== undefined || updates.voiceSpeed !== undefined ||
+      updates.voiceStyleExaggeration !== undefined || updates.voiceSpeakerBoost !== undefined ||
+      updates.voicemailDetectionEnabled !== undefined || updates.voicemailMessage !== undefined ||
+      updates.silenceTimeoutSeconds !== undefined || updates.maxCallDurationSeconds !== undefined ||
+      updates.endCallMessage !== undefined || updates.backgroundSound !== undefined;
+
+    if (needsVapiSync) {
+      const settings = await storage.getBusinessSettings(userId);
+      const webhookUrl = getWebhookUrl();
+
+      const teamMembers = await storage.getTeamMembers(userId);
+      const teamInfo = teamMembers
+        .filter(m => m.isActive)
+        .map(m => ({ name: `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email, role: m.role || 'team member' }));
+
+      const clients = await storage.getClients(userId);
+      const knownClientCount = clients.length;
+
+      let services: string[] = [];
+      try {
+        const catalogItems = await storage.getLineItemCatalog(userId);
+        services = catalogItems.map(item => item.name).filter(Boolean).slice(0, 20);
+      } catch (catalogErr) {
+        services = [];
+      }
+
+      const systemPrompt = buildSmartSystemPrompt({
+        businessName: settings?.businessName || 'the business',
+        industry: settings?.industry || undefined,
+        mode: updates.mode || config.mode || 'always_on_message',
+        transferNumbers: updates.transferNumbers || (config.transferNumbers as any) || [],
+        knowledgeBank: updates.knowledgeBank || (config.knowledgeBank as any) || undefined,
+        team: teamInfo,
+        knownClientCount,
+        services,
+      });
+
+      const vapiUpdates: any = {
+        model: {
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'system', content: systemPrompt }],
+        },
+        serverUrl: webhookUrl,
+      };
+
+      if (updates.voice) {
+        vapiUpdates.voice = {
+          provider: '11labs',
+          voiceId: updates.voice,
+          stability: updates.voiceStability ?? config.voiceStability ?? 0.5,
+          similarityBoost: updates.voiceClarity ?? config.voiceClarity ?? 0.75,
+          speed: updates.voiceSpeed ?? config.voiceSpeed ?? 1.0,
+        };
+      }
+
+      if (updates.greeting) {
+        vapiUpdates.firstMessage = updates.greeting;
+      }
+
+      if (updates.voicemailDetectionEnabled !== undefined) {
+        vapiUpdates.voicemailDetection = {
+          enabled: updates.voicemailDetectionEnabled,
+          provider: 'twilio',
+        };
+      }
+
+      if (updates.silenceTimeoutSeconds !== undefined) {
+        vapiUpdates.silenceTimeoutSeconds = updates.silenceTimeoutSeconds;
+      }
+      if (updates.maxCallDurationSeconds !== undefined) {
+        vapiUpdates.maxDurationSeconds = updates.maxCallDurationSeconds;
+      }
+      if (updates.endCallMessage !== undefined) {
+        vapiUpdates.endCallMessage = updates.endCallMessage;
+      }
+      if (updates.backgroundSound !== undefined) {
+        vapiUpdates.backgroundSound = updates.backgroundSound === 'off' ? undefined : updates.backgroundSound;
+      }
+
+      await makeVapiRequest(`/assistant/${config.vapiAssistantId}`, 'PATCH', vapiUpdates);
+      console.log(`[Vapi] Updated assistant ${config.vapiAssistantId} for config ${configId}`);
+    }
+
+    return { success: true };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[Vapi] Failed to update config ${configId}:`, message);
+    return { success: false, error: message };
+  }
+}
+
 const assistantCache = new Map<string, { userId: string; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 
 export async function findBusinessByVapiAssistant(assistantId: string): Promise<BusinessSettings | undefined> {
+  const result = await findBusinessAndConfigByVapiAssistant(assistantId);
+  return result?.business;
+}
+
+export async function findBusinessAndConfigByVapiAssistant(assistantId: string): Promise<{ business: BusinessSettings; config?: AiReceptionistConfig } | undefined> {
   const cached = assistantCache.get(assistantId);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return storage.getBusinessSettings(cached.userId);
+    const business = await storage.getBusinessSettings(cached.userId);
+    if (!business) return undefined;
+    const allConfigs = await storage.getAiReceptionistConfigsByUser(cached.userId);
+    const config = allConfigs.find(c => c.vapiAssistantId === assistantId);
+    return { business, config };
   }
 
   const allSettings = await storage.getAllBusinessSettings();
   const match = allSettings.find(s => s.vapiAssistantId === assistantId);
   if (match) {
     assistantCache.set(assistantId, { userId: match.userId, timestamp: Date.now() });
-    return match;
+    const allConfigs = await storage.getAiReceptionistConfigsByUser(match.userId);
+    const config = allConfigs.find(c => c.vapiAssistantId === assistantId);
+    return { business: match, config };
   }
 
   const allConfigs = await storage.getAllAiReceptionistConfigs();
   const configMatch = allConfigs.find(c => c.vapiAssistantId === assistantId);
   if (configMatch) {
     assistantCache.set(assistantId, { userId: configMatch.userId, timestamp: Date.now() });
-    return storage.getBusinessSettings(configMatch.userId);
+    const business = await storage.getBusinessSettings(configMatch.userId);
+    if (!business) return undefined;
+    return { business, config: configMatch };
   }
 
   return undefined;
@@ -1337,14 +1475,16 @@ async function handleStatusUpdate(event: any): Promise<any> {
   const assistantId = call.assistantId;
   if (!assistantId) return { ok: true };
 
-  const business = await findBusinessByVapiAssistant(assistantId);
-  if (!business) {
+  const result = await findBusinessAndConfigByVapiAssistant(assistantId);
+  if (!result) {
     console.warn(`[Vapi Webhook] No business found for assistant ${assistantId}`);
     return { ok: true };
   }
+  const { business, config: matchedConfig } = result;
 
   const status = event.message?.status || event.status;
   const callId = call.id;
+  const calledNumber = call.phoneNumber?.number || matchedConfig?.dedicatedPhoneNumber || null;
 
   const existingCall = await storage.getAiReceptionistCallByVapiId(callId);
 
@@ -1354,11 +1494,15 @@ async function handleStatusUpdate(event: any): Promise<any> {
       vapiCallId: callId,
       callerPhone: call.customer?.number || null,
       status: status === 'in-progress' ? 'in_progress' : status || 'ringing',
+      phoneNumberId: matchedConfig?.id || null,
+      calledNumber,
     });
   } else {
     const mappedStatus = status === 'in-progress' ? 'in_progress' : status;
     await storage.updateAiReceptionistCall(existingCall.id, business.userId, {
       status: mappedStatus || existingCall.status,
+      ...(matchedConfig?.id && !existingCall.phoneNumberId ? { phoneNumberId: matchedConfig.id } : {}),
+      ...(calledNumber && !existingCall.calledNumber ? { calledNumber } : {}),
     });
   }
 
@@ -1373,8 +1517,8 @@ async function handleEndOfCallReport(event: any): Promise<any> {
   const assistantId = call.assistantId;
   if (!assistantId) return { ok: true };
 
-  const business = await findBusinessByVapiAssistant(assistantId);
-  if (!business) {
+  const lookupResult = await findBusinessAndConfigByVapiAssistant(assistantId);
+  if (!lookupResult) {
     console.log(`[Vapi Webhook] No business found for assistant ${assistantId} — treating as support line call`);
     await sendSupportLineNotifications(
       call.customer?.number || null,
@@ -1383,6 +1527,8 @@ async function handleEndOfCallReport(event: any): Promise<any> {
     );
     return { ok: true };
   }
+  const business = lookupResult.business;
+  const matchedConfig = lookupResult.config;
 
   const callId = call.id;
   const existingCall = await storage.getAiReceptionistCallByVapiId(callId);
@@ -1419,9 +1565,17 @@ async function handleEndOfCallReport(event: any): Promise<any> {
 
   let callRecord: any;
   if (existingCall) {
+    if (matchedConfig?.id && !existingCall.phoneNumberId) {
+      (updates as any).phoneNumberId = matchedConfig.id;
+    }
+    const ecrCalledNumber = call.phoneNumber?.number || matchedConfig?.dedicatedPhoneNumber || null;
+    if (ecrCalledNumber && !existingCall.calledNumber) {
+      (updates as any).calledNumber = ecrCalledNumber;
+    }
     await storage.updateAiReceptionistCall(existingCall.id, business.userId, updates);
     callRecord = existingCall;
   } else {
+    const calledNumber = call.phoneNumber?.number || matchedConfig?.dedicatedPhoneNumber || null;
     const createPayload: InsertAiReceptionistCall = {
       userId: business.userId,
       vapiCallId: callId,
@@ -1436,6 +1590,8 @@ async function handleEndOfCallReport(event: any): Promise<any> {
       outcome: updates.outcome || null,
       sentiment: updates.sentiment || null,
       sentimentScore: updates.sentimentScore ?? null,
+      phoneNumberId: matchedConfig?.id || null,
+      calledNumber,
     };
     callRecord = await storage.createAiReceptionistCall(createPayload);
   }
@@ -1663,16 +1819,20 @@ async function handleToolCalls(event: any): Promise<any> {
   const assistantId = call.assistantId;
   if (!assistantId) return { ok: true };
 
-  const business = await findBusinessByVapiAssistant(assistantId);
-  if (!business) return { ok: true };
+  const lookupResult = await findBusinessAndConfigByVapiAssistant(assistantId);
+  if (!lookupResult) return { ok: true };
+  const { business, config: matchedConfig } = lookupResult;
 
   let existingCall = await storage.getAiReceptionistCallByVapiId(call.id);
   if (!existingCall) {
+    const calledNumber = call.phoneNumber?.number || matchedConfig?.dedicatedPhoneNumber || null;
     existingCall = await storage.createAiReceptionistCall({
       userId: business.userId,
       vapiCallId: call.id,
       callerPhone: call.customer?.number || null,
       status: 'in_progress',
+      phoneNumberId: matchedConfig?.id || null,
+      calledNumber,
     });
   }
 
@@ -1704,8 +1864,9 @@ async function handleHang(event: any): Promise<any> {
   const assistantId = call.assistantId;
   if (!assistantId) return { ok: true };
 
-  const business = await findBusinessByVapiAssistant(assistantId);
-  if (!business) return { ok: true };
+  const lookupResult = await findBusinessAndConfigByVapiAssistant(assistantId);
+  if (!lookupResult) return { ok: true };
+  const { business } = lookupResult;
 
   const existingCall = await storage.getAiReceptionistCallByVapiId(call.id);
   if (existingCall) {
