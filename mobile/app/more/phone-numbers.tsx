@@ -79,7 +79,7 @@ export default function PhoneNumbersPage() {
   const [aiConfigs, setAiConfigs] = useState<AiConfig[]>([]);
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
-  const searchSectionY = useRef(0);
+  const searchSectionRef = useRef<View>(null);
   const [labelText, setLabelText] = useState('');
 
   const [showPortForm, setShowPortForm] = useState(false);
@@ -547,7 +547,15 @@ export default function PhoneNumbersPage() {
               <TouchableOpacity
                 style={{ flex: 1, backgroundColor: `${colors.primary}08`, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: `${colors.primary}20`, alignItems: 'center', gap: spacing.xs }}
                 onPress={() => {
-                  scrollViewRef.current?.scrollTo({ y: searchSectionY.current, animated: true });
+                  searchSectionRef.current?.measureLayout(
+                    scrollViewRef.current?.getInnerViewRef() as any,
+                    (_x: number, y: number) => {
+                      scrollViewRef.current?.scrollTo({ y: y - 20, animated: true });
+                    },
+                    () => {
+                      scrollViewRef.current?.scrollToEnd({ animated: true });
+                    }
+                  );
                 }}
                 activeOpacity={0.7}
               >
@@ -697,7 +705,7 @@ export default function PhoneNumbersPage() {
               </View>
             )}
 
-            <View onLayout={(e) => { searchSectionY.current = e.nativeEvent.layout.y; }} style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
+            <View ref={searchSectionRef} style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
               <TouchableOpacity
                 style={{ flex: 1, backgroundColor: showPortForm ? `${colors.primary}15` : colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: showPortForm ? colors.primary : colors.border, alignItems: 'center', gap: spacing.xs }}
                 onPress={() => setShowPortForm(true)}
