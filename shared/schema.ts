@@ -4839,3 +4839,28 @@ export const workerStates = pgTable("worker_states", {
 export const insertWorkerStateSchema = createInsertSchema(workerStates).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertWorkerState = z.infer<typeof insertWorkerStateSchema>;
 export type WorkerState = typeof workerStates.$inferSelect;
+
+export const PORT_REQUEST_STATUSES = ['submitted', 'processing', 'completed', 'failed'] as const;
+export type PortRequestStatus = typeof PORT_REQUEST_STATUSES[number];
+
+export const numberPortRequests = pgTable("number_port_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  phoneNumber: text("phone_number").notNull(),
+  currentCarrier: text("current_carrier").notNull(),
+  accountNumber: text("account_number").notNull(),
+  authorisationAgreed: boolean("authorisation_agreed").notNull().default(false),
+  status: text("status").notNull().default('submitted'),
+  adminNotes: text("admin_notes"),
+  estimatedCompletionDate: timestamp("estimated_completion_date"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_port_requests_user").on(table.userId),
+  index("idx_port_requests_status").on(table.status),
+]);
+
+export const insertNumberPortRequestSchema = createInsertSchema(numberPortRequests).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true });
+export type InsertNumberPortRequest = z.infer<typeof insertNumberPortRequestSchema>;
+export type NumberPortRequest = typeof numberPortRequests.$inferSelect;

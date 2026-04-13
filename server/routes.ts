@@ -166,6 +166,9 @@ import {
   subcontractorInvoiceItems,
   insertSubcontractorInvoiceSchema,
   insertSubcontractorInvoiceItemSchema,
+  numberPortRequests,
+  insertNumberPortRequestSchema,
+  PORT_REQUEST_STATUSES,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, asc, and, gte, lte, lt, isNotNull, isNull, inArray, or, count, sum, ne } from "drizzle-orm";
@@ -48777,6 +48780,177 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     } catch (error) {
       console.error('[Subcontractor Invoice PDF] Error:', error);
       res.status(500).json({ error: 'Failed to generate PDF' });
+    }
+  });
+
+
+  // ==================== Number Port Request Routes ====================
+
+  // User: Submit a port request
+  app.post("/api/port-requests", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      let businessOwnerId = userId;
+      const membership = await storage.getTeamMembershipByMemberId(userId);
+      if (membership) {
+        const memberRole = membership.role;
+        if (memberRole !== 'owner' && memberRole !== 'manager') {
+          return res.status(403).json({ error: 'Only business owners and managers can submit port requests.' });
+        }
+        businessOwnerId = membership.businessOwnerId;
+      }
+
+      const { phoneNumber, currentCarrier, accountNumber, authorisationAgreed } = req.body;
+
+      if (!phoneNumber || !currentCarrier || !accountNumber) {
+        return res.status(400).json({ error: 'Phone number, current carrier, and account number are required.' });
+      }
+
+      if (!authorisationAgreed) {
+        return res.status(400).json({ error: 'You must agree to the Letter of Authorisation to proceed.' });
+      }
+
+      const phoneRegex = /^\+?\d{8,15}$/;
+      const cleanPhone = phoneNumber.replace(/[\s\-()]/g, '');
+      if (!phoneRegex.test(cleanPhone)) {
+        return res.status(400).json({ error: 'Invalid phone number format.' });
+      }
+
+      let normalizedPhone = cleanPhone;
+      if (normalizedPhone.startsWith('0')) {
+        normalizedPhone = '+61' + normalizedPhone.substring(1);
+      } else if (!normalizedPhone.startsWith('+')) {
+        normalizedPhone = '+' + normalizedPhone;
+      }
+
+      const settings = await storage.getBusinessSettings(businessOwnerId);
+      if (settings?.dedicatedPhoneNumber) {
+        return res.status(409).json({ error: 'Your business already has a dedicated number. Release it first before porting a new one.' });
+      }
+
+      const existingRequests = await storage.getNumberPortRequests(businessOwnerId);
+      const activeRequest = existingRequests.find(r => r.status === 'submitted' || r.status === 'processing');
+      if (activeRequest) {
+        return res.status(409).json({ error: 'You already have an active port request. Please wait for it to be processed.' });
+      }
+
+      const estimatedCompletion = new Date();
+      estimatedCompletion.setDate(estimatedCompletion.getDate() + 10);
+
+      const portRequest = await storage.createNumberPortRequest({
+        userId: businessOwnerId,
+        phoneNumber: normalizedPhone,
+        currentCarrier: currentCarrier.trim(),
+        accountNumber: accountNumber.trim(),
+        authorisationAgreed: true,
+        status: 'submitted',
+        estimatedCompletionDate: estimatedCompletion,
+      });
+
+      res.json({ success: true, portRequest });
+    } catch (error: any) {
+      console.error('[Port Request] Error creating port request:', error);
+      res.status(500).json({ error: 'Failed to submit port request.' });
+    }
+  });
+
+  // User: Get their port requests (owner/manager only)
+  app.get("/api/port-requests", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      let businessOwnerId = userId;
+      const membership = await storage.getTeamMembershipByMemberId(userId);
+      if (membership) {
+        const memberRole = membership.role;
+        if (memberRole !== 'owner' && memberRole !== 'manager') {
+          return res.status(403).json({ error: 'Only business owners and managers can view port requests.' });
+        }
+        businessOwnerId = membership.businessOwnerId;
+      }
+
+      const requests = await storage.getNumberPortRequests(businessOwnerId);
+      const sanitized = requests.map(r => ({
+        ...r,
+        accountNumber: r.accountNumber ? '***' + r.accountNumber.slice(-4) : '****',
+      }));
+      res.json({ portRequests: sanitized });
+    } catch (error: any) {
+      console.error('[Port Request] Error fetching port requests:', error);
+      res.status(500).json({ error: 'Failed to fetch port requests.' });
+    }
+  });
+
+  // Admin: Get all port requests
+  app.get("/api/admin/port-requests", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const allRequests = await storage.getAllNumberPortRequests();
+
+      const enrichedRequests = await Promise.all(allRequests.map(async (req) => {
+        const user = await storage.getUser(req.userId);
+        const settings = await storage.getBusinessSettings(req.userId);
+        return {
+          ...req,
+          userName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown',
+          userEmail: user?.email || null,
+          businessName: settings?.businessName || null,
+        };
+      }));
+
+      res.json({ portRequests: enrichedRequests });
+    } catch (error: any) {
+      console.error('[Admin Port Request] Error fetching all port requests:', error);
+      res.status(500).json({ error: 'Failed to fetch port requests.' });
+    }
+  });
+
+  // Admin: Update port request status
+  app.patch("/api/admin/port-requests/:id", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status, adminNotes } = req.body;
+
+      if (status && !PORT_REQUEST_STATUSES.includes(status)) {
+        return res.status(400).json({ error: `Invalid status. Must be one of: ${PORT_REQUEST_STATUSES.join(', ')}` });
+      }
+
+      const existing = await storage.getNumberPortRequest(id);
+      if (!existing) {
+        return res.status(404).json({ error: 'Port request not found.' });
+      }
+
+      const updates: any = { updatedAt: new Date() };
+      if (status) updates.status = status;
+      if (adminNotes !== undefined) updates.adminNotes = adminNotes;
+
+      if (status === 'completed') {
+        updates.completedAt = new Date();
+
+        const settings = await storage.getBusinessSettings(existing.userId);
+        if (!settings) {
+          return res.status(400).json({ error: 'Business settings not found for this user. Cannot complete port.' });
+        }
+        if (settings.dedicatedPhoneNumber) {
+          return res.status(409).json({ error: 'Business already has a dedicated number. Release it first before completing the port.' });
+        }
+        await storage.updateBusinessSettings(existing.userId, {
+          dedicatedPhoneNumber: existing.phoneNumber,
+          smsMode: 'ai_receptionist',
+        });
+
+        const aiConfig = await storage.getAiReceptionistConfig(existing.userId);
+        if (aiConfig) {
+          const { provisionAiReceptionist } = await import('./aiReceptionistProvisioning');
+          provisionAiReceptionist(existing.userId, existing.phoneNumber).catch(err => {
+            console.error('[Port Request] AI Receptionist provisioning failed after port completion:', err);
+          });
+        }
+      }
+
+      const updated = await storage.updateNumberPortRequest(id, updates);
+      res.json({ success: true, portRequest: updated });
+    } catch (error: any) {
+      console.error('[Admin Port Request] Error updating port request:', error);
+      res.status(500).json({ error: 'Failed to update port request.' });
     }
   });
 

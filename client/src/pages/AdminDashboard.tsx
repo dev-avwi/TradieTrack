@@ -146,6 +146,7 @@ const adminRoutes = [
   { path: "/admin/kanban", label: "Kanban", icon: Kanban },
   { path: "/admin/ai-queue", label: "AI Queue", icon: Bot },
   { path: "/admin/call-monitor", label: "Calls", icon: PhoneIncoming },
+  { path: "/admin/porting", label: "Porting", icon: PhoneForwarded },
   { path: "/admin/activity", label: "Activity", icon: Activity },
   { path: "/admin/health", label: "Health", icon: HeartPulse },
 ];
@@ -2657,6 +2658,205 @@ function CommunicationsView() {
   );
 }
 
+interface PortRequest {
+  id: string;
+  userId: string;
+  phoneNumber: string;
+  currentCarrier: string;
+  accountNumber: string;
+  authorisationAgreed: boolean;
+  status: string;
+  adminNotes: string | null;
+  estimatedCompletionDate: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  userName?: string;
+  userEmail?: string | null;
+  businessName?: string | null;
+}
+
+function PortingView() {
+  const { toast } = useToast();
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [editingNotes, setEditingNotes] = useState<string | null>(null);
+  const [notesText, setNotesText] = useState("");
+
+  const { data: portData, isLoading } = useQuery<{ portRequests: PortRequest[] }>({
+    queryKey: ['/api/admin/port-requests'],
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, status, adminNotes }: { id: string; status?: string; adminNotes?: string }) => {
+      const response = await apiRequest("PATCH", `/api/admin/port-requests/${id}`, { status, adminNotes });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update port request");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Port Request Updated", description: "Status has been updated successfully." });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/port-requests'] });
+      setEditingNotes(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Update Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const requests = portData?.portRequests || [];
+  const filtered = statusFilter === 'all' ? requests : requests.filter(r => r.status === statusFilter);
+
+  const statusCounts = {
+    all: requests.length,
+    submitted: requests.filter(r => r.status === 'submitted').length,
+    processing: requests.filter(r => r.status === 'processing').length,
+    completed: requests.filter(r => r.status === 'completed').length,
+    failed: requests.filter(r => r.status === 'failed').length,
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'submitted': return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30">Submitted</Badge>;
+      case 'processing': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30">Processing</Badge>;
+      case 'completed': return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30">Completed</Badge>;
+      case 'failed': return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30">Failed</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const formatPhoneDisplay = (phone: string) => {
+    if (phone.startsWith('+61')) {
+      const local = phone.replace('+61', '0');
+      return local.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3');
+    }
+    return phone;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {(['all', 'submitted', 'processing', 'completed', 'failed'] as const).map(s => (
+          <Button
+            key={s}
+            variant={statusFilter === s ? "default" : "outline"}
+            className="capitalize"
+            onClick={() => setStatusFilter(s)}
+          >
+            {s} ({statusCounts[s]})
+          </Button>
+        ))}
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between gap-3">
+          <CardTitle className="text-base md:text-lg">Port Requests</CardTitle>
+          {statusCounts.submitted > 0 && (
+            <Badge variant="secondary">{statusCounts.submitted} pending</Badge>
+          )}
+        </CardHeader>
+        <CardContent className="px-0 pb-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="pl-6">Business</TableHead>
+                  <TableHead>Phone Number</TableHead>
+                  <TableHead className="hidden md:table-cell">Carrier</TableHead>
+                  <TableHead className="hidden lg:table-cell">Account #</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden sm:table-cell">Submitted</TableHead>
+                  <TableHead className="pr-6">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-12">
+                      <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+                    </TableCell>
+                  </TableRow>
+                ) : filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-12">
+                      <PhoneForwarded className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+                      <p className="text-muted-foreground">No port requests found</p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filtered.map(pr => (
+                    <TableRow key={pr.id}>
+                      <TableCell className="pl-6">
+                        <div>
+                          <p className="font-medium truncate max-w-[150px]">{pr.businessName || 'Unknown'}</p>
+                          <p className="text-xs text-muted-foreground truncate max-w-[150px]">{pr.userEmail || pr.userName}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono font-medium">{formatPhoneDisplay(pr.phoneNumber)}</TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">{pr.currentCarrier}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground font-mono text-xs">{pr.accountNumber}</TableCell>
+                      <TableCell>{getStatusBadge(pr.status)}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                        {pr.createdAt ? formatDate(pr.createdAt) : '-'}
+                      </TableCell>
+                      <TableCell className="pr-6">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Select
+                            value={pr.status}
+                            onValueChange={(val) => updateMutation.mutate({ id: pr.id, status: val })}
+                          >
+                            <SelectTrigger className="w-[130px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="submitted">Submitted</SelectItem>
+                              <SelectItem value="processing">Processing</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="failed">Failed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingNotes(editingNotes === pr.id ? null : pr.id);
+                              setNotesText(pr.adminNotes || '');
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {editingNotes === pr.id && (
+                          <div className="mt-2 flex gap-2">
+                            <Input
+                              placeholder="Admin notes..."
+                              value={notesText}
+                              onChange={(e) => setNotesText(e.target.value)}
+                              className="text-sm"
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => updateMutation.mutate({ id: pr.id, adminNotes: notesText })}
+                              disabled={updateMutation.isPending}
+                            >
+                              Save
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [location, setLocation] = useLocation();
 
@@ -2738,6 +2938,8 @@ export default function AdminDashboard() {
         return <AIApprovalView />;
       case '/admin/call-monitor':
         return <CallMonitoringView />;
+      case '/admin/porting':
+        return <PortingView />;
       default:
         return (
           <OverviewView 

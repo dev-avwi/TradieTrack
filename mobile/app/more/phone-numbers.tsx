@@ -36,6 +36,19 @@ interface AvailableNumber {
   };
 }
 
+interface PortRequest {
+  id: string;
+  phoneNumber: string;
+  currentCarrier: string;
+  accountNumber: string;
+  status: 'submitted' | 'processing' | 'completed' | 'failed';
+  adminNotes: string | null;
+  estimatedCompletionDate: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function PhoneNumbersPage() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -52,6 +65,15 @@ export default function PhoneNumbersPage() {
   const [releaseConfirmText, setReleaseConfirmText] = useState('');
   const [lastOwnedNumber, setLastOwnedNumber] = useState<string | null>(null);
   const [reacquiring, setReacquiring] = useState(false);
+
+  const [showPortForm, setShowPortForm] = useState(false);
+  const [portPhone, setPortPhone] = useState('');
+  const [portCarrier, setPortCarrier] = useState('');
+  const [portAccount, setPortAccount] = useState('');
+  const [portLoaAgreed, setPortLoaAgreed] = useState(false);
+  const [submittingPort, setSubmittingPort] = useState(false);
+  const [portRequests, setPortRequests] = useState<PortRequest[]>([]);
+  const [loadingPortRequests, setLoadingPortRequests] = useState(false);
 
   const currentNumber = businessSettings?.dedicatedPhoneNumber;
   const storageKey = getLastNumberKey(businessSettings?.id);
@@ -280,8 +302,61 @@ export default function PhoneNumbersPage() {
     );
   };
 
+  const fetchPortRequests = useCallback(async () => {
+    setLoadingPortRequests(true);
+    try {
+      const response = await api.get<{ portRequests: PortRequest[] }>('/api/port-requests');
+      if (response.data?.portRequests) {
+        setPortRequests(response.data.portRequests);
+      }
+    } catch (e) {
+      console.error('Failed to fetch port requests:', e);
+    } finally {
+      setLoadingPortRequests(false);
+    }
+  }, []);
+
+  const submitPortRequest = useCallback(async () => {
+    if (!portPhone.trim() || !portCarrier.trim() || !portAccount.trim()) {
+      Alert.alert('Missing Details', 'Please fill in all required fields.');
+      return;
+    }
+    if (!portLoaAgreed) {
+      Alert.alert('Authorisation Required', 'You must agree to the Letter of Authorisation to proceed.');
+      return;
+    }
+    setSubmittingPort(true);
+    try {
+      const response = await api.post('/api/port-requests', {
+        phoneNumber: portPhone.trim(),
+        currentCarrier: portCarrier.trim(),
+        accountNumber: portAccount.trim(),
+        authorisationAgreed: true,
+      });
+      if (response.error) {
+        Alert.alert('Error', response.error);
+      } else {
+        Alert.alert(
+          'Port Request Submitted',
+          'Your number porting request has been submitted. Australian number ports typically take 5\u201310 business days. You can track the status on this screen.',
+        );
+        setShowPortForm(false);
+        setPortPhone('');
+        setPortCarrier('');
+        setPortAccount('');
+        setPortLoaAgreed(false);
+        fetchPortRequests();
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Failed to submit port request.');
+    } finally {
+      setSubmittingPort(false);
+    }
+  }, [portPhone, portCarrier, portAccount, portLoaAgreed, fetchPortRequests]);
+
   useEffect(() => {
     if (!currentNumber) searchNumbers();
+    fetchPortRequests();
   }, []);
 
   const formatPhone = (phone: string) => {
@@ -420,6 +495,197 @@ export default function PhoneNumbersPage() {
                 </TouchableOpacity>
               </View>
             )}
+
+            {portRequests.filter(r => r.status === 'submitted' || r.status === 'processing' || r.status === 'completed').map(pr => {
+              const statusConfig: Record<string, { color: string; icon: 'clock' | 'loader' | 'check-circle' | 'x-circle'; label: string }> = {
+                submitted: { color: colors.warning, icon: 'clock', label: 'Submitted' },
+                processing: { color: colors.info, icon: 'loader', label: 'Processing' },
+                completed: { color: colors.success, icon: 'check-circle', label: 'Completed' },
+                failed: { color: colors.destructive, icon: 'x-circle', label: 'Failed' },
+              };
+              const sc = statusConfig[pr.status] || statusConfig.submitted;
+              return (
+                <View key={pr.id} style={{ backgroundColor: `${sc.color}08`, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: `${sc.color}25`, marginBottom: spacing.lg }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+                    <Feather name={pr.status === 'completed' ? 'check-circle' : 'phone-forwarded'} size={14} color={sc.color} />
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>
+                      {pr.status === 'completed' ? 'Number Ported Successfully' : `Port Request — ${sc.label}`}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: colors.foreground, marginBottom: spacing.xs }}>
+                    {formatPhone(pr.phoneNumber)}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 18 }}>
+                    Carrier: {pr.currentCarrier}
+                  </Text>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.md, gap: spacing.xs }}>
+                    {['submitted', 'processing', 'completed'].map((step, idx) => {
+                      const stepDone = ['submitted', 'processing', 'completed'].indexOf(pr.status) >= idx;
+                      return (
+                        <View key={step} style={{ flex: 1, alignItems: 'center' }}>
+                          <View style={{ width: '100%', height: 4, borderRadius: 2, backgroundColor: stepDone ? sc.color : `${colors.muted}80`, marginBottom: 4 }} />
+                          <Text style={{ fontSize: 10, color: stepDone ? sc.color : colors.mutedForeground, textTransform: 'capitalize' }}>
+                            {step}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  {pr.status === 'completed' && pr.completedAt && (
+                    <Text style={{ fontSize: 11, color: colors.success, marginTop: spacing.sm, fontWeight: '500' }}>
+                      Ported on {new Date(pr.completedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })} — Number is now active on your account.
+                    </Text>
+                  )}
+                  {pr.status !== 'completed' && pr.estimatedCompletionDate && (
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: spacing.sm }}>
+                      Estimated completion: {new Date(pr.estimatedCompletionDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </Text>
+                  )}
+                  {pr.adminNotes && (
+                    <View style={{ backgroundColor: `${colors.muted}50`, borderRadius: radius.sm, padding: spacing.sm, marginTop: spacing.sm }}>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground }}>{pr.adminNotes}</Text>
+                    </View>
+                  )}
+
+                  {pr.status !== 'completed' && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: `${colors.info}10`, borderRadius: radius.sm, padding: spacing.sm, marginTop: spacing.sm, gap: spacing.xs }}>
+                      <Feather name="info" size={12} color={colors.info} />
+                      <Text style={{ fontSize: 11, color: colors.info, flex: 1, lineHeight: 16 }}>
+                        AU number ports typically take 5–10 business days. We'll update the status as it progresses.
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+
+            {portRequests.filter(r => r.status === 'failed').length > 0 && (
+              <View style={{ marginBottom: spacing.md }}>
+                {portRequests.filter(r => r.status === 'failed').map(pr => (
+                  <View key={pr.id} style={{ backgroundColor: `${colors.destructive}08`, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: `${colors.destructive}25`, marginBottom: spacing.sm }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+                      <Feather name="x-circle" size={14} color={colors.destructive} />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.destructive }}>Port Failed</Text>
+                    </View>
+                    <Text style={{ fontSize: 14, color: colors.foreground }}>{formatPhone(pr.phoneNumber)}</Text>
+                    {pr.adminNotes && (
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: spacing.xs }}>{pr.adminNotes}</Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: showPortForm ? `${colors.primary}15` : colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: showPortForm ? colors.primary : colors.border, alignItems: 'center', gap: spacing.xs }}
+                onPress={() => setShowPortForm(true)}
+                activeOpacity={0.7}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
+                  <Feather name="phone-forwarded" size={16} color={colors.primary} />
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Port My Number</Text>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: 'center' }}>Keep your existing number</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: !showPortForm ? `${colors.primary}15` : colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: !showPortForm ? colors.primary : colors.border, alignItems: 'center', gap: spacing.xs }}
+                onPress={() => setShowPortForm(false)}
+                activeOpacity={0.7}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
+                  <Feather name="plus" size={16} color={colors.primary} />
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Get New Number</Text>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: 'center' }}>Search Australian numbers</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showPortForm ? (
+              <View style={{ backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, marginBottom: spacing.lg }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.foreground, marginBottom: spacing.xs }}>Port Your Existing Number</Text>
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 18, marginBottom: spacing.md }}>
+                  Bring your current business number to JobRunner. Your clients keep calling the same number — and our AI can answer it.
+                </Text>
+
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground, marginBottom: 4 }}>Phone Number</Text>
+                <TextInput
+                  style={[styles.searchInput, { marginBottom: spacing.sm }]}
+                  placeholder="e.g. 0412 345 678"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={portPhone}
+                  onChangeText={setPortPhone}
+                  keyboardType="phone-pad"
+                />
+
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground, marginBottom: 4 }}>Current Carrier / Provider</Text>
+                <TextInput
+                  style={[styles.searchInput, { marginBottom: spacing.sm }]}
+                  placeholder="e.g. Telstra, Optus, Vodafone"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={portCarrier}
+                  onChangeText={setPortCarrier}
+                />
+
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground, marginBottom: 4 }}>Account Number</Text>
+                <TextInput
+                  style={[styles.searchInput, { marginBottom: spacing.md }]}
+                  placeholder="Your carrier account number"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={portAccount}
+                  onChangeText={setPortAccount}
+                />
+
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.md }}
+                  onPress={() => setPortLoaAgreed(!portLoaAgreed)}
+                  activeOpacity={0.7}
+                >
+                  <View style={{
+                    width: 22, height: 22, borderRadius: 4, borderWidth: 2,
+                    borderColor: portLoaAgreed ? colors.primary : colors.border,
+                    backgroundColor: portLoaAgreed ? colors.primary : 'transparent',
+                    alignItems: 'center', justifyContent: 'center', marginTop: 1,
+                  }}>
+                    {portLoaAgreed && <Feather name="check" size={14} color={colors.primaryForeground} />}
+                  </View>
+                  <Text style={{ fontSize: 12, color: colors.foreground, flex: 1, lineHeight: 18 }}>
+                    I authorise JobRunner to submit a porting request on my behalf (Letter of Authorisation). I confirm I am the authorised account holder for this number.
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={{ backgroundColor: `${colors.info}10`, borderRadius: radius.sm, padding: spacing.sm, marginBottom: spacing.md, flexDirection: 'row', gap: spacing.xs }}>
+                  <Feather name="clock" size={12} color={colors.info} style={{ marginTop: 2 }} />
+                  <Text style={{ fontSize: 11, color: colors.info, flex: 1, lineHeight: 16 }}>
+                    Australian number ports typically take 5–10 business days. Your number will continue working with your current carrier during this time.
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: (portPhone && portCarrier && portAccount && portLoaAgreed) ? colors.primary : colors.muted,
+                    borderRadius: radius.md, paddingVertical: 12, alignItems: 'center',
+                    flexDirection: 'row', justifyContent: 'center', gap: spacing.xs,
+                    opacity: (portPhone && portCarrier && portAccount && portLoaAgreed) ? 1 : 0.5,
+                  }}
+                  onPress={submitPortRequest}
+                  disabled={submittingPort || !portPhone || !portCarrier || !portAccount || !portLoaAgreed}
+                  activeOpacity={0.7}
+                >
+                  {submittingPort ? (
+                    <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  ) : (
+                    <Feather name="send" size={14} color={(portPhone && portCarrier && portAccount && portLoaAgreed) ? colors.primaryForeground : colors.mutedForeground} />
+                  )}
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: (portPhone && portCarrier && portAccount && portLoaAgreed) ? colors.primaryForeground : colors.mutedForeground }}>
+                    {submittingPort ? 'Submitting...' : 'Submit Port Request'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+            <>
             <View style={styles.searchCard}>
               <Text style={styles.searchLabel}>Filter by area (optional)</Text>
               <View style={styles.searchRow}>
@@ -530,6 +796,8 @@ export default function PhoneNumbersPage() {
                 </TouchableOpacity>
               </View>
             ) : null}
+            </>
+            )}
           </>
         )}
 

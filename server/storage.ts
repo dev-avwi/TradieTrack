@@ -395,6 +395,9 @@ import {
   workerStates,
   type WorkerState,
   type InsertWorkerState,
+  numberPortRequests,
+  type NumberPortRequest,
+  type InsertNumberPortRequest,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -1235,6 +1238,13 @@ export interface IStorage {
   getWorkerState(userId: string, businessOwnerId?: string): Promise<WorkerState | undefined>;
   getWorkerStatesByBusiness(businessOwnerId: string): Promise<WorkerState[]>;
   upsertWorkerState(userId: string, businessOwnerId: string, state: string, jobId?: string | null, note?: string | null): Promise<WorkerState>;
+
+  // Number Port Requests
+  getNumberPortRequests(userId: string): Promise<NumberPortRequest[]>;
+  getNumberPortRequest(id: string): Promise<NumberPortRequest | undefined>;
+  getAllNumberPortRequests(): Promise<NumberPortRequest[]>;
+  createNumberPortRequest(request: InsertNumberPortRequest): Promise<NumberPortRequest>;
+  updateNumberPortRequest(id: string, updates: Partial<NumberPortRequest>): Promise<NumberPortRequest | undefined>;
 }
 
 const pool = new pg.Pool({
@@ -8383,6 +8393,29 @@ Thank you for your prompt attention to this matter.`,
         set: { state, jobId: jobId ?? null, note: note ?? null, updatedAt: new Date() },
       })
       .returning();
+    return result;
+  }
+
+  async getNumberPortRequests(userId: string): Promise<NumberPortRequest[]> {
+    return await db.select().from(numberPortRequests).where(eq(numberPortRequests.userId, userId)).orderBy(desc(numberPortRequests.createdAt));
+  }
+
+  async getNumberPortRequest(id: string): Promise<NumberPortRequest | undefined> {
+    const [result] = await db.select().from(numberPortRequests).where(eq(numberPortRequests.id, id)).limit(1);
+    return result;
+  }
+
+  async getAllNumberPortRequests(): Promise<NumberPortRequest[]> {
+    return await db.select().from(numberPortRequests).orderBy(desc(numberPortRequests.createdAt));
+  }
+
+  async createNumberPortRequest(request: InsertNumberPortRequest): Promise<NumberPortRequest> {
+    const [result] = await db.insert(numberPortRequests).values(request).returning();
+    return result;
+  }
+
+  async updateNumberPortRequest(id: string, updates: Partial<NumberPortRequest>): Promise<NumberPortRequest | undefined> {
+    const [result] = await db.update(numberPortRequests).set({ ...updates, updatedAt: new Date() }).where(eq(numberPortRequests.id, id)).returning();
     return result;
   }
 }
