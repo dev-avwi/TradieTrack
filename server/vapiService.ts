@@ -9,12 +9,49 @@ interface TransferNumber {
   priority: number;
 }
 
+interface DaySchedule {
+  day: number;
+  enabled: boolean;
+  start: string;
+  end: string;
+  breakStart?: string;
+  breakEnd?: string;
+}
+
+interface Holiday {
+  date: string;
+  label: string;
+}
+
 interface BusinessHoursConfig {
   start: string;
   end: string;
   timezone: string;
   days: number[];
+  schedule?: DaySchedule[];
+  holidays?: Holiday[];
 }
+
+export const AUSTRALIAN_PUBLIC_HOLIDAYS: Holiday[] = [
+  { date: '2026-01-01', label: "New Year's Day" },
+  { date: '2026-01-26', label: 'Australia Day' },
+  { date: '2026-04-03', label: 'Good Friday' },
+  { date: '2026-04-04', label: 'Saturday before Easter Sunday' },
+  { date: '2026-04-06', label: 'Easter Monday' },
+  { date: '2026-04-25', label: 'ANZAC Day' },
+  { date: '2026-06-08', label: "Queen's Birthday" },
+  { date: '2026-12-25', label: 'Christmas Day' },
+  { date: '2026-12-26', label: 'Boxing Day' },
+  { date: '2027-01-01', label: "New Year's Day" },
+  { date: '2027-01-26', label: 'Australia Day' },
+  { date: '2027-03-26', label: 'Good Friday' },
+  { date: '2027-03-27', label: 'Saturday before Easter Sunday' },
+  { date: '2027-03-29', label: 'Easter Monday' },
+  { date: '2027-04-25', label: 'ANZAC Day' },
+  { date: '2027-06-14', label: "Queen's Birthday" },
+  { date: '2027-12-25', label: 'Christmas Day' },
+  { date: '2027-12-26', label: 'Boxing Day' },
+];
 
 const VAPI_API_BASE = 'https://api.vapi.ai';
 const VAPI_API_KEY = process.env.VAPI_PRIVATE_KEY || '';
@@ -83,7 +120,7 @@ interface VapiAssistantConfig {
   voice?: string;
   voiceTuning?: VoiceTuning;
   transferNumbers?: Array<{ name: string; phone: string; priority: number }>;
-  businessHours?: { start: string; end: string; timezone: string; days: number[] };
+  businessHours?: BusinessHoursConfig;
   webhookUrl: string;
   services?: string[];
   teamInfo?: Array<{ name: string; role: string }>;
@@ -181,8 +218,35 @@ function buildSystemPrompt(config: VapiAssistantConfig): string {
     }
   }
 
+  let availabilityContext = '';
+  if (config.businessHours) {
+    const bh = config.businessHours;
+    const tz = bh.timezone || 'Australia/Sydney';
+    const hasHolidays = bh.holidays && bh.holidays.length > 0;
+    const hasBreaks = bh.schedule?.some(s => s.enabled && s.breakStart);
+    availabilityContext = `\nIMPORTANT: At the very start of every call, you MUST silently call "check_availability" to determine the current real-time availability status (open, closed, on break, or holiday). Use the result to guide how you handle the call — if the business is closed, on break, or it's a holiday, let the caller know and offer to take a message. Do NOT guess the current availability from the schedule below — always check in real-time.`;
+    if (hasHolidays) {
+      availabilityContext += `\nThe business has configured holidays/days off. If "check_availability" reports a holiday, mention the holiday name and offer to take a message.`;
+    }
+    if (hasBreaks) {
+      availabilityContext += `\nSome days have break windows configured. If "check_availability" reports the team is on break, let the caller know when they'll be back and offer to take a message.`;
+    }
+  }
+
+  let hoursDescription = 'standard business hours';
+  if (config.businessHours) {
+    const bh = config.businessHours;
+    if (bh.schedule && bh.schedule.length > 0) {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const enabledDays = bh.schedule.filter(s => s.enabled);
+      hoursDescription = enabledDays.map(s => `${dayNames[s.day]}: ${s.start}-${s.end}${s.breakStart ? ` (break ${s.breakStart}-${s.breakEnd})` : ''}`).join(', ');
+    } else {
+      hoursDescription = `${bh.start} to ${bh.end}`;
+    }
+  }
+
   return `You are a friendly, professional AI receptionist for ${businessName}, an Australian ${tradeType} business.
-${servicesSection}${teamSection}${clientContextSection}
+${servicesSection}${teamSection}${clientContextSection}${availabilityContext}
 
 Your role:
 - Answer incoming calls in a warm, natural Australian tone
@@ -198,7 +262,7 @@ Important guidelines:
 - If the caller asks for a quote, gather: type of work, location/suburb, preferred timing, and any specific requirements
 - If the caller is upset, be empathetic and assure them someone will follow up promptly
 - Never make commitments about pricing, availability, or scheduling — say "I'll make sure the team gets back to you"
-- If asked about business hours, refer to: ${config.businessHours ? `${config.businessHours.start} to ${config.businessHours.end}` : 'standard business hours'}
+- If asked about business hours, refer to: ${hoursDescription}
 - At the end of the call, confirm you've captured their details and let them know someone will be in touch
 
 Available tools:
@@ -209,13 +273,14 @@ Available tools:
 ${(config.transferNumbers && config.transferNumbers.length > 0) || (config.teamInfo && config.teamInfo.length > 0) ? '5. "transfer_call" - Transfer the call to an available team member when the caller wants to speak with someone directly.' : ''}
 
 Workflow:
-1. First, greet the caller and ask how you can help
-2. Use "lookup_client" if they mention being an existing client
-3. Gather their details and reason for calling
-4. Use "check_availability" if they ask about scheduling
-5. Use "capture_lead" to save their details
-6. If they want to book, use "create_booking"
-7. If they insist on speaking with someone, use "transfer_call" (if available)${knowledgeBankSection}`;
+1. FIRST, silently call "check_availability" to determine real-time business status (open/closed/break/holiday) — adapt your greeting accordingly
+2. Greet the caller and ask how you can help (if closed/break/holiday, proactively let them know)
+3. Use "lookup_client" if they mention being an existing client
+4. Gather their details and reason for calling
+5. Use "check_availability" again if they ask about scheduling or availability
+6. Use "capture_lead" to save their details
+7. If they want to book, use "create_booking"
+8. If they insist on speaking with someone, use "transfer_call" (if available)${knowledgeBankSection}`;
 }
 
 function buildToolDefinitions(config: VapiAssistantConfig): any[] {
@@ -690,7 +755,7 @@ export async function updateReceptionistConfig(userId: string, updates: {
   greeting?: string;
   mode?: string;
   transferNumbers?: Array<{ name: string; phone: string; priority: number }>;
-  businessHours?: { start: string; end: string; timezone: string; days: number[] };
+  businessHours?: BusinessHoursConfig;
   knowledgeBank?: KnowledgeBankContent;
   smsNotifications?: boolean;
   voiceStability?: number;
@@ -946,8 +1011,16 @@ async function handleCaptureLead(args: any, userId: string, callId: string): Pro
   }
 }
 
-function isWithinBusinessHours(businessHours: any): boolean {
-  if (!businessHours) return true;
+interface AvailabilityStatus {
+  open: boolean;
+  reason: 'open' | 'closed_day' | 'closed_hours' | 'on_break' | 'holiday';
+  holidayLabel?: string;
+  breakEnd?: string;
+  todayHours?: string;
+}
+
+function getAvailabilityStatus(businessHours: any): AvailabilityStatus {
+  if (!businessHours) return { open: true, reason: 'open' };
   try {
     const tz = businessHours.timezone || 'Australia/Brisbane';
     const now = new Date();
@@ -961,22 +1034,67 @@ function isWithinBusinessHours(businessHours: any): boolean {
     const parts = formatter.formatToParts(now);
     const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
     const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
+    const nowMinutes = hour * 60 + minute;
     const dayName = parts.find(p => p.type === 'weekday')?.value || '';
     const dayMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 };
     const dayNumber = dayMap[dayName] ?? new Date().getDay();
 
+    const dateFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+    const todayDate = dateFormatter.format(now);
+
+    const holidays: Holiday[] = businessHours.holidays || [];
+    const todayHoliday = holidays.find(h => h.date === todayDate);
+    if (todayHoliday) {
+      return { open: false, reason: 'holiday', holidayLabel: todayHoliday.label };
+    }
+
+    const schedule: DaySchedule[] = businessHours.schedule || [];
+    if (schedule.length > 0) {
+      const todaySchedule = schedule.find(s => s.day === dayNumber);
+      if (!todaySchedule || !todaySchedule.enabled) {
+        return { open: false, reason: 'closed_day' };
+      }
+
+      const [sH, sM] = todaySchedule.start.split(':').map(Number);
+      const [eH, eM] = todaySchedule.end.split(':').map(Number);
+      const startMins = sH * 60 + (sM || 0);
+      const endMins = eH * 60 + (eM || 0);
+
+      if (todaySchedule.breakStart && todaySchedule.breakEnd) {
+        const [bsH, bsM] = todaySchedule.breakStart.split(':').map(Number);
+        const [beH, beM] = todaySchedule.breakEnd.split(':').map(Number);
+        const breakStartMins = bsH * 60 + (bsM || 0);
+        const breakEndMins = beH * 60 + (beM || 0);
+        if (nowMinutes >= breakStartMins && nowMinutes < breakEndMins) {
+          return { open: false, reason: 'on_break', breakEnd: todaySchedule.breakEnd, todayHours: `${todaySchedule.start}-${todaySchedule.end}` };
+        }
+      }
+
+      if (nowMinutes >= startMins && nowMinutes <= endMins) {
+        return { open: true, reason: 'open', todayHours: `${todaySchedule.start}-${todaySchedule.end}` };
+      }
+      return { open: false, reason: 'closed_hours', todayHours: `${todaySchedule.start}-${todaySchedule.end}` };
+    }
+
     const activeDays = businessHours.days || [1, 2, 3, 4, 5];
-    if (!activeDays.includes(dayNumber)) return false;
+    if (!activeDays.includes(dayNumber)) return { open: false, reason: 'closed_day' };
 
     const [startH, startM] = (businessHours.start || '08:00').split(':').map(Number);
     const [endH, endM] = (businessHours.end || '17:00').split(':').map(Number);
-    const nowMinutes = hour * 60 + minute;
     const startMinutes = startH * 60 + (startM || 0);
     const endMinutes = endH * 60 + (endM || 0);
-    return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
+    const hoursStr = `${businessHours.start || '08:00'}-${businessHours.end || '17:00'}`;
+    if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
+      return { open: true, reason: 'open', todayHours: hoursStr };
+    }
+    return { open: false, reason: 'closed_hours', todayHours: hoursStr };
   } catch {
-    return true;
+    return { open: true, reason: 'open' };
   }
+}
+
+function isWithinBusinessHours(businessHours: any): boolean {
+  return getAvailabilityStatus(businessHours).open;
 }
 
 async function getAvailableTransferTarget(userId: string, _settings: BusinessSettings, callerPhone?: string | null): Promise<{ name: string; phone: string } | null> {
@@ -1078,18 +1196,28 @@ async function handleCheckAvailability(args: any, userId: string): Promise<any> 
 
     const config = await storage.getAiReceptionistConfig(userId);
     const businessHours = (config?.businessHours || null) as BusinessHoursConfig | null;
-    const withinHours = isWithinBusinessHours(businessHours);
+    const status = getAvailabilityStatus(businessHours);
 
     const teamMembers = await storage.getTeamMembers(userId);
     const availableCount = teamMembers.filter(m => m.isActive && m.aiReceptionistAvailability).length;
 
-    const hoursStr = businessHours
-      ? `${businessHours.start || '8:00'} to ${businessHours.end || '5:00 PM'}`
-      : 'standard business hours';
+    if (status.reason === 'holiday') {
+      return { result: `We're closed for the public holiday today (${status.holidayLabel}). I'll take your details and someone will get back to you on the next business day.` };
+    }
 
-    if (withinHours && availableCount > 0) {
+    if (status.reason === 'on_break') {
+      return { result: `The team is currently on a break and will be back at ${status.breakEnd}. I'm happy to take your details and have someone call you back shortly.` };
+    }
+
+    if (status.reason === 'closed_day') {
+      return { result: `The business doesn't operate today. I'll take your details and someone will get back to you on the next business day.` };
+    }
+
+    const hoursStr = status.todayHours || 'standard business hours';
+
+    if (status.open && availableCount > 0) {
       return { result: `The team is currently available during business hours (${hoursStr}). ${availableCount} team member${availableCount > 1 ? 's are' : ' is'} available. Would you like me to transfer you or take a message?` };
-    } else if (withinHours) {
+    } else if (status.open) {
       return { result: `We're within business hours (${hoursStr}), but the team is currently busy. I can take your details and have someone call you back.` };
     } else {
       return { result: `We're currently outside business hours (${hoursStr}). I'll take your details and someone will get back to you during business hours.` };

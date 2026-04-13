@@ -45,13 +45,36 @@ interface CallLog {
   createdAt: string;
 }
 
+interface DaySchedule {
+  day: number;
+  enabled: boolean;
+  start: string;
+  end: string;
+  breakStart?: string;
+  breakEnd?: string;
+}
+
+interface Holiday {
+  date: string;
+  label: string;
+}
+
+interface BusinessHoursData {
+  start: string;
+  end: string;
+  timezone: string;
+  days: number[];
+  schedule?: DaySchedule[];
+  holidays?: Holiday[];
+}
+
 interface ReceptionistConfig {
   enabled: boolean;
   mode: string;
   voice: string;
   greeting: string | null;
   transferNumbers: TransferNumber[];
-  businessHours: { start: string; end: string; timezone: string; days: number[] } | null;
+  businessHours: BusinessHoursData | null;
   dedicatedPhoneNumber: string | null;
   vapiAssistantId: string | null;
   approvalStatus: string | null;
@@ -96,8 +119,6 @@ const MODE_OPTIONS: { id: string; label: string; icon: FeatherIconName; descript
   { id: 'always_on_message', label: 'Always On + Message', icon: 'message-square', description: 'Answer all calls, take a message for you' },
   { id: 'selective', label: 'Selective', icon: 'filter', description: 'AI answers when you choose not to pick up' },
 ];
-
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
@@ -156,11 +177,24 @@ export default function AIReceptionistScreen() {
   const [mode, setMode] = useState('off');
   const [voice, setVoice] = useState('Jess');
   const [greeting, setGreeting] = useState('');
-  const [selectedDays, setSelectedDays] = useState([1, 2, 3, 4, 5]);
-  const [startTime, setStartTime] = useState('08:00');
-  const [endTime, setEndTime] = useState('17:00');
+  const defaultSchedule: DaySchedule[] = [
+    { day: 1, enabled: true, start: '08:00', end: '17:00' },
+    { day: 2, enabled: true, start: '08:00', end: '17:00' },
+    { day: 3, enabled: true, start: '08:00', end: '17:00' },
+    { day: 4, enabled: true, start: '08:00', end: '17:00' },
+    { day: 5, enabled: true, start: '08:00', end: '17:00' },
+    { day: 6, enabled: false, start: '08:00', end: '12:00' },
+    { day: 0, enabled: false, start: '08:00', end: '12:00' },
+  ];
+  const [schedule, setSchedule] = useState<DaySchedule[]>(defaultSchedule);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [timezone, setTimezone] = useState('Australia/Sydney');
   const [transferNumbers, setTransferNumbers] = useState<TransferNumber[]>([]);
+  const [showHolidayPresets, setShowHolidayPresets] = useState(false);
+  const [holidayPresets, setHolidayPresets] = useState<Holiday[]>([]);
+  const [showCustomHoliday, setShowCustomHoliday] = useState(false);
+  const [customHolidayDate, setCustomHolidayDate] = useState('');
+  const [customHolidayLabel, setCustomHolidayLabel] = useState('');
   const [knowledgeBank, setKnowledgeBank] = useState<KnowledgeBankContent>({});
   const [voiceRequests, setVoiceRequests] = useState<VoiceChangeRequest[]>([]);
   const [voiceRequestText, setVoiceRequestText] = useState('');
@@ -223,12 +257,21 @@ export default function AIReceptionistScreen() {
             setProvisioningStatus('Saving your preferences...');
             setProvisioningError(null);
             try {
+              const enabledDaysP = schedule.filter(s => s.enabled).map(s => s.day);
+              const firstEnabledP = schedule.find(s => s.enabled);
               await api.patch('/api/ai-receptionist/config', {
                 mode: mode || 'after_hours',
                 voice,
                 greeting: greeting || null,
                 transferNumbers,
-                businessHours: { start: startTime, end: endTime, timezone, days: selectedDays },
+                businessHours: {
+                  start: firstEnabledP?.start || '08:00',
+                  end: firstEnabledP?.end || '17:00',
+                  timezone,
+                  days: enabledDaysP,
+                  schedule,
+                  holidays,
+                },
               });
               setProvisioningStatus('Setting up your AI assistant...');
               const checkoutRes = await api.post<{ success?: boolean; provisioning?: boolean; url?: string }>('/api/subscription/ai-receptionist-checkout');
@@ -291,9 +334,17 @@ export default function AIReceptionistScreen() {
         setVoice(data.voice || 'Jess');
         setGreeting(data.greeting || '');
         setTransferNumbers(data.transferNumbers || []);
-        if (data.businessHours?.days) setSelectedDays(data.businessHours.days);
-        if (data.businessHours?.start) setStartTime(data.businessHours.start);
-        if (data.businessHours?.end) setEndTime(data.businessHours.end);
+        if (data.businessHours?.schedule && data.businessHours.schedule.length > 0) {
+          setSchedule(data.businessHours.schedule);
+        } else if (data.businessHours?.days) {
+          setSchedule(prev => prev.map(s => ({
+            ...s,
+            enabled: data.businessHours!.days.includes(s.day),
+            start: data.businessHours!.start || s.start,
+            end: data.businessHours!.end || s.end,
+          })));
+        }
+        if (data.businessHours?.holidays) setHolidays(data.businessHours.holidays);
         if (data.businessHours?.timezone) setTimezone(data.businessHours.timezone);
         if (data.knowledgeBank) setKnowledgeBank(data.knowledgeBank);
         if (data.voiceStability != null) setVoiceStability(data.voiceStability);
@@ -365,7 +416,15 @@ export default function AIReceptionistScreen() {
     );
   };
 
-  useEffect(() => { fetchConfig(); fetchVoiceRequests(); fetchRecentCalls(); fetchAnalytics(); }, [fetchConfig, fetchVoiceRequests, fetchRecentCalls, fetchAnalytics]);
+  const fetchHolidayPresets = useCallback(async () => {
+    try {
+      const response = await api.get<Holiday[]>('/api/ai-receptionist/holiday-presets');
+      setHolidayPresets(response.data || []);
+    } catch {
+    }
+  }, []);
+
+  useEffect(() => { fetchConfig(); fetchVoiceRequests(); fetchRecentCalls(); fetchAnalytics(); fetchHolidayPresets(); }, [fetchConfig, fetchVoiceRequests, fetchRecentCalls, fetchAnalytics, fetchHolidayPresets]);
 
   const handleSave = async () => {
     if (!configLoaded) {
@@ -374,12 +433,21 @@ export default function AIReceptionistScreen() {
     }
     setIsSaving(true);
     try {
+      const enabledDays = schedule.filter(s => s.enabled).map(s => s.day);
+      const firstEnabled = schedule.find(s => s.enabled);
       await api.patch('/api/ai-receptionist/config', {
         mode,
         voice,
         greeting: greeting || null,
         transferNumbers,
-        businessHours: { start: startTime, end: endTime, timezone, days: selectedDays },
+        businessHours: {
+          start: firstEnabled?.start || '08:00',
+          end: firstEnabled?.end || '17:00',
+          timezone,
+          days: enabledDays,
+          schedule,
+          holidays,
+        },
         voiceStability,
         voiceClarity,
         voiceSpeed,
@@ -454,8 +522,32 @@ export default function AIReceptionistScreen() {
     }));
   };
 
-  const toggleDay = (dayIndex: number) => {
-    setSelectedDays(prev => prev.includes(dayIndex) ? prev.filter(d => d !== dayIndex) : [...prev, dayIndex]);
+  const toggleDayEnabled = (dayNum: number) => {
+    setSchedule(prev => prev.map(s => s.day === dayNum ? { ...s, enabled: !s.enabled } : s));
+  };
+
+  const updateDayTime = (dayNum: number, field: 'start' | 'end' | 'breakStart' | 'breakEnd', value: string) => {
+    setSchedule(prev => prev.map(s => s.day === dayNum ? { ...s, [field]: value } : s));
+  };
+
+  const toggleDayBreak = (dayNum: number) => {
+    setSchedule(prev => prev.map(s => {
+      if (s.day !== dayNum) return s;
+      if (s.breakStart) {
+        const { breakStart, breakEnd, ...rest } = s;
+        return rest as DaySchedule;
+      }
+      return { ...s, breakStart: '12:00', breakEnd: '13:00' };
+    }));
+  };
+
+  const addHoliday = (date: string, label: string) => {
+    if (holidays.some(h => h.date === date)) return;
+    setHolidays(prev => [...prev, { date, label }].sort((a, b) => a.date.localeCompare(b.date)));
+  };
+
+  const removeHoliday = (date: string) => {
+    setHolidays(prev => prev.filter(h => h.date !== date));
   };
 
   const addTransferNumber = () => {
@@ -1007,48 +1099,91 @@ export default function AIReceptionistScreen() {
 
         <Text style={styles.sectionTitle}>Business Hours</Text>
         <View style={styles.card}>
-          <Text style={styles.cardSubtitle}>Select which days the AI should answer calls</Text>
-          <View style={styles.daysRow}>
-            {DAYS.map((day, i) => {
-              const dayNum = i + 1;
-              const isSelected = selectedDays.includes(dayNum);
-              return (
-                <TouchableOpacity
-                  key={day}
-                  style={[styles.dayButton, {
-                    borderColor: isSelected ? colors.primary : colors.cardBorder,
-                    backgroundColor: isSelected ? colors.primary + '15' : 'transparent',
-                  }]}
-                  onPress={() => toggleDay(dayNum)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.dayText, { color: isSelected ? colors.primary : colors.mutedForeground }]}>{day}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm }}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Start Time</Text>
-              <TextInput
-                style={styles.input}
-                value={startTime}
-                onChangeText={setStartTime}
-                placeholder="08:00"
-                placeholderTextColor={colors.mutedForeground}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>End Time</Text>
-              <TextInput
-                style={styles.input}
-                value={endTime}
-                onChangeText={setEndTime}
-                placeholder="17:00"
-                placeholderTextColor={colors.mutedForeground}
-              />
-            </View>
-          </View>
+          <Text style={styles.cardSubtitle}>Set different hours for each day</Text>
+          {[
+            { day: 1, label: 'Monday' },
+            { day: 2, label: 'Tuesday' },
+            { day: 3, label: 'Wednesday' },
+            { day: 4, label: 'Thursday' },
+            { day: 5, label: 'Friday' },
+            { day: 6, label: 'Saturday' },
+            { day: 0, label: 'Sunday' },
+          ].map(({ day, label }) => {
+            const daySchedule = schedule.find(s => s.day === day);
+            if (!daySchedule) return null;
+            return (
+              <View key={day} style={{ marginBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.cardBorder, paddingBottom: spacing.md }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
+                  <Text style={{ ...typography.body, fontWeight: '600', color: daySchedule.enabled ? colors.foreground : colors.mutedForeground }}>{label}</Text>
+                  <Switch
+                    value={daySchedule.enabled}
+                    onValueChange={() => toggleDayEnabled(day)}
+                    trackColor={{ false: colors.border, true: colors.success }}
+                    thumbColor={'#FFFFFF'}
+                    ios_backgroundColor={colors.border}
+                  />
+                </View>
+                {daySchedule.enabled && (
+                  <>
+                    <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>Open</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={daySchedule.start}
+                          onChangeText={(v) => updateDayTime(day, 'start', v)}
+                          placeholder="08:00"
+                          placeholderTextColor={colors.mutedForeground}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>Close</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={daySchedule.end}
+                          onChangeText={(v) => updateDayTime(day, 'end', v)}
+                          placeholder="17:00"
+                          placeholderTextColor={colors.mutedForeground}
+                        />
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs }}
+                      onPress={() => toggleDayBreak(day)}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name={daySchedule.breakStart ? 'check-square' : 'square'} size={16} color={daySchedule.breakStart ? colors.primary : colors.mutedForeground} />
+                      <Text style={{ ...typography.caption, color: daySchedule.breakStart ? colors.primary : colors.mutedForeground }}>Break window</Text>
+                    </TouchableOpacity>
+                    {daySchedule.breakStart && (
+                      <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.inputLabel}>Break start</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={daySchedule.breakStart}
+                            onChangeText={(v) => updateDayTime(day, 'breakStart', v)}
+                            placeholder="12:00"
+                            placeholderTextColor={colors.mutedForeground}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.inputLabel}>Break end</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={daySchedule.breakEnd || ''}
+                            onChangeText={(v) => updateDayTime(day, 'breakEnd', v)}
+                            placeholder="13:00"
+                            placeholderTextColor={colors.mutedForeground}
+                          />
+                        </View>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+            );
+          })}
           <View style={{ marginTop: spacing.sm }}>
             <Text style={styles.inputLabel}>Timezone</Text>
             <TextInput
@@ -1059,6 +1194,107 @@ export default function AIReceptionistScreen() {
               placeholderTextColor={colors.mutedForeground}
             />
           </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>Holidays / Days Off</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardSubtitle}>Add dates when the AI should answer as if you're closed all day</Text>
+          {holidays.map((h) => (
+            <View key={h.date} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.cardBorder }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...typography.body, color: colors.foreground }}>{h.label}</Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground }}>{h.date}</Text>
+              </View>
+              <TouchableOpacity onPress={() => removeHoliday(h.date)} activeOpacity={0.7}>
+                <Feather name="x" size={18} color={colors.destructive || '#ef4444'} />
+              </TouchableOpacity>
+            </View>
+          ))}
+          <TouchableOpacity
+            style={[styles.addButton, { borderColor: colors.primary + '50', marginTop: spacing.md }]}
+            onPress={() => setShowHolidayPresets(!showHolidayPresets)}
+            activeOpacity={0.7}
+          >
+            <Feather name="calendar" size={16} color={colors.primary} />
+            <Text style={[styles.addButtonText, { color: colors.primary }]}>
+              {showHolidayPresets ? 'Hide Presets' : 'Add Australian Holidays'}
+            </Text>
+          </TouchableOpacity>
+          {showHolidayPresets && holidayPresets.length > 0 && (
+            <View style={{ marginTop: spacing.sm }}>
+              {holidayPresets
+                .filter(p => !holidays.some(h => h.date === p.date))
+                .map((preset) => (
+                  <TouchableOpacity
+                    key={preset.date}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.cardBorder }}
+                    onPress={() => addHoliday(preset.date, preset.label)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...typography.body, color: colors.foreground }}>{preset.label}</Text>
+                      <Text style={{ ...typography.caption, color: colors.mutedForeground }}>{preset.date}</Text>
+                    </View>
+                    <Feather name="plus-circle" size={18} color={colors.primary} />
+                  </TouchableOpacity>
+                ))}
+            </View>
+          )}
+          <TouchableOpacity
+            style={[styles.addButton, { borderColor: colors.primary + '50', marginTop: spacing.sm }]}
+            onPress={() => setShowCustomHoliday(!showCustomHoliday)}
+            activeOpacity={0.7}
+          >
+            <Feather name={showCustomHoliday ? 'chevron-up' : 'plus'} size={16} color={colors.primary} />
+            <Text style={[styles.addButtonText, { color: colors.primary }]}>{showCustomHoliday ? 'Cancel' : 'Add Custom Date'}</Text>
+          </TouchableOpacity>
+          {showCustomHoliday && (
+            <View style={{ marginTop: spacing.sm, gap: spacing.xs }}>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={customHolidayDate}
+                    onChangeText={setCustomHolidayDate}
+                    placeholder="2026-12-25"
+                    placeholderTextColor={colors.mutedForeground}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={customHolidayLabel}
+                    onChangeText={setCustomHolidayLabel}
+                    placeholder="Christmas Day"
+                    placeholderTextColor={colors.mutedForeground}
+                  />
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[styles.addButton, { borderColor: colors.primary + '50' }]}
+                onPress={() => {
+                  if (!customHolidayDate || !/^\d{4}-\d{2}-\d{2}$/.test(customHolidayDate)) {
+                    Alert.alert('Invalid Date', 'Please enter a date in YYYY-MM-DD format.');
+                    return;
+                  }
+                  if (!customHolidayLabel.trim()) {
+                    Alert.alert('Missing Name', 'Please enter a name for this holiday.');
+                    return;
+                  }
+                  addHoliday(customHolidayDate, customHolidayLabel.trim());
+                  setCustomHolidayDate('');
+                  setCustomHolidayLabel('');
+                  setShowCustomHoliday(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Feather name="check" size={16} color={colors.primary} />
+                <Text style={[styles.addButtonText, { color: colors.primary }]}>Add Holiday</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <TouchableOpacity

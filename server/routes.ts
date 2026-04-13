@@ -46989,11 +46989,27 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     priority: z.number().int().min(1).max(99),
   });
 
+  const dayScheduleSchema = z.object({
+    day: z.number().int().min(0).max(6),
+    enabled: z.boolean(),
+    start: z.string().regex(/^\d{2}:\d{2}$/),
+    end: z.string().regex(/^\d{2}:\d{2}$/),
+    breakStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    breakEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  });
+
+  const holidaySchema = z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    label: z.string().min(1).max(100),
+  });
+
   const businessHoursSchema = z.object({
     start: z.string().regex(/^\d{2}:\d{2}$/),
     end: z.string().regex(/^\d{2}:\d{2}$/),
     timezone: z.string().min(1),
     days: z.array(z.number().int().min(0).max(6)),
+    schedule: z.array(dayScheduleSchema).optional(),
+    holidays: z.array(holidaySchema).optional(),
   });
 
   const knowledgeBankSchema = z.object({
@@ -47458,6 +47474,11 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       { id: 'Harry', name: 'Harry', description: 'Soothing Australian male voice', accent: 'Australian' },
       { id: 'Chris', name: 'Chris', description: 'Mature Australian male voice', accent: 'Australian' },
     ]);
+  });
+
+  app.get("/api/ai-receptionist/holiday-presets", requireAuth, async (_req: any, res) => {
+    const { AUSTRALIAN_PUBLIC_HOLIDAYS } = await import('./vapiService');
+    res.json(AUSTRALIAN_PUBLIC_HOLIDAYS);
   });
 
   // ============================================
