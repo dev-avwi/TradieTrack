@@ -41934,7 +41934,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   app.patch("/api/admin/ai-approval/:configId", requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const { configId } = req.params;
-      const { approvalStatus, greeting } = req.body;
+      const { approvalStatus, greeting, voiceStability, voiceClarity, voiceSpeed, voiceStyleExaggeration, voiceSpeakerBoost, voicemailDetectionEnabled, silenceTimeoutSeconds, maxCallDurationSeconds, backgroundSound, mode, voiceName } = req.body;
 
       if (!approvalStatus || !['active', 'disabled', 'pending_approval'].includes(approvalStatus)) {
         return res.status(400).json({ error: 'Invalid approval status' });
@@ -41945,6 +41945,17 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         updatedAt: new Date(),
       };
       if (greeting !== undefined) updates.greeting = greeting;
+      if (voiceStability !== undefined) updates.voiceStability = voiceStability;
+      if (voiceClarity !== undefined) updates.voiceClarity = voiceClarity;
+      if (voiceSpeed !== undefined) updates.voiceSpeed = voiceSpeed;
+      if (voiceStyleExaggeration !== undefined) updates.voiceStyleExaggeration = voiceStyleExaggeration;
+      if (voiceSpeakerBoost !== undefined) updates.voiceSpeakerBoost = voiceSpeakerBoost;
+      if (voicemailDetectionEnabled !== undefined) updates.voicemailDetectionEnabled = voicemailDetectionEnabled;
+      if (silenceTimeoutSeconds !== undefined) updates.silenceTimeoutSeconds = silenceTimeoutSeconds;
+      if (maxCallDurationSeconds !== undefined) updates.maxCallDurationSeconds = maxCallDurationSeconds;
+      if (backgroundSound !== undefined) updates.backgroundSound = backgroundSound;
+      if (mode !== undefined) updates.mode = mode;
+      if (voiceName !== undefined) updates.voiceName = voiceName;
       if (approvalStatus === 'active') updates.enabled = true;
       if (approvalStatus === 'disabled') updates.enabled = false;
 
@@ -41959,10 +41970,30 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
 
       if (approvalStatus === 'active' && updated.userId) {
         try {
-          const { enableAiReceptionist } = await import('./vapiService');
-          const vapiResult = await enableAiReceptionist(updated.userId);
-          if (!vapiResult.success) {
-            logSystemEvent('vapi', 'warning', 'ai_receptionist_activation_partial', `AI Receptionist approved but Vapi activation failed: ${vapiResult.error}`, { configId, userId: updated.userId });
+          const { enableAiReceptionist, updateReceptionistConfig } = await import('./vapiService');
+          if (!updated.vapiAssistantId) {
+            const vapiResult = await enableAiReceptionist(updated.userId);
+            if (!vapiResult.success) {
+              logSystemEvent('vapi', 'warning', 'ai_receptionist_activation_partial', `AI Receptionist approved but Vapi activation failed: ${vapiResult.error}`, { configId, userId: updated.userId });
+            }
+          }
+          if (updated.vapiAssistantId) {
+            const syncUpdates: any = {};
+            if (greeting !== undefined) syncUpdates.greeting = greeting;
+            if (voiceName !== undefined) syncUpdates.voice = voiceName;
+            if (voiceStability !== undefined) syncUpdates.voiceStability = voiceStability;
+            if (voiceClarity !== undefined) syncUpdates.voiceClarity = voiceClarity;
+            if (voiceSpeed !== undefined) syncUpdates.voiceSpeed = voiceSpeed;
+            if (voiceStyleExaggeration !== undefined) syncUpdates.voiceStyleExaggeration = voiceStyleExaggeration;
+            if (voiceSpeakerBoost !== undefined) syncUpdates.voiceSpeakerBoost = voiceSpeakerBoost;
+            if (voicemailDetectionEnabled !== undefined) syncUpdates.voicemailDetectionEnabled = voicemailDetectionEnabled;
+            if (silenceTimeoutSeconds !== undefined) syncUpdates.silenceTimeoutSeconds = silenceTimeoutSeconds;
+            if (maxCallDurationSeconds !== undefined) syncUpdates.maxCallDurationSeconds = maxCallDurationSeconds;
+            if (backgroundSound !== undefined) syncUpdates.backgroundSound = backgroundSound;
+            if (mode !== undefined) syncUpdates.mode = mode;
+            if (Object.keys(syncUpdates).length > 0) {
+              await updateReceptionistConfig(updated.userId, syncUpdates);
+            }
           }
         } catch (vapiErr: any) {
           logSystemEvent('vapi', 'error', 'ai_receptionist_activation_error', `AI Receptionist Vapi activation error: ${vapiErr.message}`, { configId, userId: updated.userId });
@@ -41999,6 +42030,54 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     } catch (error: any) {
       console.error('Error updating AI approval:', error);
       res.status(500).json({ error: 'Failed to update AI receptionist approval' });
+    }
+  });
+
+  app.get("/api/admin/ai-active-assistants", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const allConfigs = await db.select({
+        config: aiReceptionistConfig,
+        userName: users.firstName,
+        userLastName: users.lastName,
+        userEmail: users.email,
+      })
+      .from(aiReceptionistConfig)
+      .leftJoin(users, eq(aiReceptionistConfig.userId, users.id))
+      .where(eq(aiReceptionistConfig.approvalStatus, 'active'))
+      .orderBy(desc(aiReceptionistConfig.updatedAt));
+
+      const result = await Promise.all(allConfigs.map(async (p) => {
+        const settings = await storage.getBusinessSettings(p.config.userId);
+        const calls = await storage.getAiReceptionistCalls(p.config.userId);
+        const totalCalls = calls.length;
+        const completedCalls = calls.filter((c: any) => c.status === 'completed');
+        const totalDuration = completedCalls.reduce((sum: number, c: any) => sum + (c.duration || 0), 0);
+        const avgDuration = completedCalls.length > 0 ? Math.round(totalDuration / completedCalls.length) : 0;
+        const outcomeBreakdown: Record<string, number> = {};
+        for (const call of calls) {
+          const outcome = (call as any).outcome || 'unknown';
+          outcomeBreakdown[outcome] = (outcomeBreakdown[outcome] || 0) + 1;
+        }
+        return {
+          ...p.config,
+          userName: p.userName && p.userLastName ? `${p.userName} ${p.userLastName}` : p.userEmail || 'Unknown',
+          userEmail: p.userEmail,
+          businessName: settings?.businessName || null,
+          businessPhone: settings?.phone || null,
+          tradeType: settings?.industry || null,
+          callStats: {
+            totalCalls,
+            completedCalls: completedCalls.length,
+            avgDuration,
+            outcomeBreakdown,
+          },
+        };
+      }));
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error fetching active AI assistants:', error);
+      res.status(500).json({ error: 'Failed to fetch active AI assistants' });
     }
   });
 
@@ -46885,6 +46964,17 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         approvedAt: config.approvedAt || null,
         knowledgeBank: config.knowledgeBank || null,
         smsNotifications: config.smsNotifications || false,
+        voiceStability: config.voiceStability ?? 0.5,
+        voiceClarity: config.voiceClarity ?? 0.75,
+        voiceSpeed: config.voiceSpeed ?? 1.0,
+        voiceStyleExaggeration: config.voiceStyleExaggeration ?? 0,
+        voiceSpeakerBoost: config.voiceSpeakerBoost ?? false,
+        voicemailDetectionEnabled: config.voicemailDetectionEnabled ?? true,
+        voicemailMessage: config.voicemailMessage || null,
+        silenceTimeoutSeconds: config.silenceTimeoutSeconds ?? 30,
+        maxCallDurationSeconds: config.maxCallDurationSeconds ?? 600,
+        endCallMessage: config.endCallMessage || null,
+        backgroundSound: config.backgroundSound || 'off',
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -46921,6 +47011,17 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     businessHours: businessHoursSchema.nullable().optional(),
     knowledgeBank: knowledgeBankSchema.nullable().optional(),
     smsNotifications: z.boolean().optional(),
+    voiceStability: z.number().min(0).max(1).optional(),
+    voiceClarity: z.number().min(0).max(1).optional(),
+    voiceSpeed: z.number().min(0.25).max(4).optional(),
+    voiceStyleExaggeration: z.number().min(0).max(1).optional(),
+    voiceSpeakerBoost: z.boolean().optional(),
+    voicemailDetectionEnabled: z.boolean().optional(),
+    voicemailMessage: z.string().max(500).optional(),
+    silenceTimeoutSeconds: z.number().min(5).max(120).optional(),
+    maxCallDurationSeconds: z.number().min(60).max(3600).optional(),
+    endCallMessage: z.string().max(500).optional(),
+    backgroundSound: z.enum(['off', 'office', 'cafe']).optional(),
   });
 
   app.post("/api/ai-receptionist/config", requireAuth, ownerOnly(), async (req: any, res) => {
@@ -46994,7 +47095,10 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid config", details: parsed.error.flatten().fieldErrors });
       }
-      const { voice, greeting, mode, transferNumbers, businessHours, knowledgeBank, smsNotifications } = parsed.data;
+      const { voice, greeting, mode, transferNumbers, businessHours, knowledgeBank, smsNotifications,
+        voiceStability, voiceClarity, voiceSpeed, voiceStyleExaggeration, voiceSpeakerBoost,
+        voicemailDetectionEnabled, voicemailMessage, silenceTimeoutSeconds, maxCallDurationSeconds,
+        endCallMessage, backgroundSound } = parsed.data;
 
       const { updateReceptionistConfig } = await import('./vapiService');
       const result = await updateReceptionistConfig(userId, {
@@ -47005,6 +47109,17 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         businessHours,
         knowledgeBank: knowledgeBank === null ? undefined : knowledgeBank,
         smsNotifications,
+        voiceStability,
+        voiceClarity,
+        voiceSpeed,
+        voiceStyleExaggeration,
+        voiceSpeakerBoost,
+        voicemailDetectionEnabled,
+        voicemailMessage,
+        silenceTimeoutSeconds,
+        maxCallDurationSeconds,
+        endCallMessage,
+        backgroundSound,
       });
 
       if (!result.success) {
@@ -47023,6 +47138,17 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         vapiAssistantId: config?.vapiAssistantId || null,
         knowledgeBank: config?.knowledgeBank || null,
         smsNotifications: config?.smsNotifications || false,
+        voiceStability: config?.voiceStability ?? 0.5,
+        voiceClarity: config?.voiceClarity ?? 0.75,
+        voiceSpeed: config?.voiceSpeed ?? 1.0,
+        voiceStyleExaggeration: config?.voiceStyleExaggeration ?? 0,
+        voiceSpeakerBoost: config?.voiceSpeakerBoost ?? false,
+        voicemailDetectionEnabled: config?.voicemailDetectionEnabled ?? true,
+        voicemailMessage: config?.voicemailMessage || null,
+        silenceTimeoutSeconds: config?.silenceTimeoutSeconds ?? 30,
+        maxCallDurationSeconds: config?.maxCallDurationSeconds ?? 600,
+        endCallMessage: config?.endCallMessage || null,
+        backgroundSound: config?.backgroundSound || 'off',
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -47242,6 +47368,87 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('[AI Receptionist] Connectivity test error:', message);
       res.status(500).json({ connected: false, error: 'Connectivity test failed' });
+    }
+  });
+
+  const testCallRateLimit = new Map<string, number>();
+  app.post("/api/ai-receptionist/test-call", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
+    try {
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
+      const lastCall = testCallRateLimit.get(userId);
+      if (lastCall && Date.now() - lastCall < 60000) {
+        return res.status(429).json({ error: 'Please wait at least 60 seconds between test calls' });
+      }
+      const config = await storage.getAiReceptionistConfig(userId);
+      if (!config || !config.vapiAssistantId) {
+        return res.status(400).json({ error: 'AI Receptionist not provisioned' });
+      }
+      const { phoneNumber } = req.body;
+      if (!phoneNumber || !/^\+?\d{8,15}$/.test(phoneNumber.replace(/\s/g, ''))) {
+        return res.status(400).json({ error: 'Valid phone number is required' });
+      }
+      testCallRateLimit.set(userId, Date.now());
+      const { createOutboundCall } = await import('./vapiService');
+      const call = await createOutboundCall(config.vapiAssistantId, phoneNumber);
+      res.json({ success: true, callId: call.id });
+    } catch (error: any) {
+      console.error('[AI Receptionist] Test call error:', error.message);
+      res.status(500).json({ error: 'Failed to initiate test call' });
+    }
+  });
+
+  app.get("/api/ai-receptionist/analytics", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
+    try {
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
+      const calls = await storage.getAiReceptionistCalls(userId);
+      const totalCalls = calls.length;
+      const completedCalls = calls.filter((c: any) => c.status === 'completed');
+      const missedCalls = calls.filter((c: any) => c.outcome === 'missed' || c.status === 'missed');
+      const transferredCalls = calls.filter((c: any) => c.outcome === 'transferred');
+      const leadsCaptures = calls.filter((c: any) => c.outcome === 'message_taken' || c.leadId);
+      const bookedCalls = calls.filter((c: any) => c.outcome === 'booked');
+      const totalDuration = completedCalls.reduce((sum: number, c: any) => sum + (c.duration || 0), 0);
+      const avgDuration = completedCalls.length > 0 ? Math.round(totalDuration / completedCalls.length) : 0;
+
+      const intentBreakdown: Record<string, number> = {};
+      for (const call of calls) {
+        const intent = (call as any).callerIntent || 'unknown';
+        intentBreakdown[intent] = (intentBreakdown[intent] || 0) + 1;
+      }
+
+      const outcomeBreakdown: Record<string, number> = {};
+      for (const call of calls) {
+        const outcome = (call as any).outcome || 'unknown';
+        outcomeBreakdown[outcome] = (outcomeBreakdown[outcome] || 0) + 1;
+      }
+
+      const last7Days = new Date();
+      last7Days.setDate(last7Days.getDate() - 7);
+      const recentCalls = calls.filter((c: any) => new Date(c.createdAt) >= last7Days);
+
+      const dailyVolume: Record<string, number> = {};
+      for (const call of recentCalls) {
+        const day = new Date((call as any).createdAt).toISOString().split('T')[0];
+        dailyVolume[day] = (dailyVolume[day] || 0) + 1;
+      }
+
+      res.json({
+        totalCalls,
+        completedCalls: completedCalls.length,
+        missedCalls: missedCalls.length,
+        transferredCalls: transferredCalls.length,
+        leadsCaptures: leadsCaptures.length,
+        bookedCalls: bookedCalls.length,
+        totalDuration,
+        avgDuration,
+        intentBreakdown,
+        outcomeBreakdown,
+        dailyVolume,
+        recentCallCount: recentCalls.length,
+      });
+    } catch (error: any) {
+      console.error('[AI Receptionist] Analytics error:', error.message);
+      res.status(500).json({ error: 'Failed to fetch analytics' });
     }
   });
 

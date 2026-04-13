@@ -56,6 +56,23 @@ interface ReceptionistConfig {
   vapiAssistantId: string | null;
   approvalStatus: string | null;
   knowledgeBank: KnowledgeBankContent | null;
+  voiceStability: number | null;
+  voiceClarity: number | null;
+  voiceSpeed: number | null;
+  voiceStyleExaggeration: number | null;
+  voiceSpeakerBoost: boolean | null;
+  voicemailDetectionEnabled: boolean | null;
+  voicemailMessage: string | null;
+  silenceTimeoutSeconds: number | null;
+  maxCallDurationSeconds: number | null;
+  endCallMessage: string | null;
+  backgroundSound: string | null;
+}
+
+interface AnalyticsSummary {
+  totalCalls: number;
+  avgDuration: number;
+  outcomeBreakdown: Record<string, number>;
 }
 
 function formatPhoneDisplay(phone: string): string {
@@ -156,6 +173,14 @@ export default function AIReceptionistScreen() {
   const [expandedCallId, setExpandedCallId] = useState<string | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [userChangedEnabled, setUserChangedEnabled] = useState(false);
+  const [voiceStability, setVoiceStability] = useState(0.5);
+  const [voiceClarity, setVoiceClarity] = useState(0.75);
+  const [voiceSpeed, setVoiceSpeed] = useState(1.0);
+  const [voicemailDetectionEnabled, setVoicemailDetectionEnabled] = useState(false);
+  const [silenceTimeoutSeconds, setSilenceTimeoutSeconds] = useState(30);
+  const [maxCallDurationSeconds, setMaxCallDurationSeconds] = useState(300);
+  const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
+  const [isTestingCall, setIsTestingCall] = useState(false);
 
   const pollProvisioningStatus = useCallback(async (maxAttempts = 15) => {
     for (let i = 0; i < maxAttempts; i++) {
@@ -271,6 +296,12 @@ export default function AIReceptionistScreen() {
         if (data.businessHours?.end) setEndTime(data.businessHours.end);
         if (data.businessHours?.timezone) setTimezone(data.businessHours.timezone);
         if (data.knowledgeBank) setKnowledgeBank(data.knowledgeBank);
+        if (data.voiceStability != null) setVoiceStability(data.voiceStability);
+        if (data.voiceClarity != null) setVoiceClarity(data.voiceClarity);
+        if (data.voiceSpeed != null) setVoiceSpeed(data.voiceSpeed);
+        if (data.voicemailDetectionEnabled != null) setVoicemailDetectionEnabled(data.voicemailDetectionEnabled);
+        if (data.silenceTimeoutSeconds != null) setSilenceTimeoutSeconds(data.silenceTimeoutSeconds);
+        if (data.maxCallDurationSeconds != null) setMaxCallDurationSeconds(data.maxCallDurationSeconds);
         setConfigLoaded(true);
         setUserChangedEnabled(false);
       }
@@ -297,7 +328,44 @@ export default function AIReceptionistScreen() {
     }
   }, []);
 
-  useEffect(() => { fetchConfig(); fetchVoiceRequests(); fetchRecentCalls(); }, [fetchConfig, fetchVoiceRequests, fetchRecentCalls]);
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      const response = await api.get<AnalyticsSummary>('/api/ai-receptionist/analytics');
+      if (response.data) setAnalytics(response.data);
+    } catch (e) {
+    }
+  }, []);
+
+  const handleTestCall = async () => {
+    const phone = (businessSettings as any)?.businessPhone || (businessSettings as any)?.phone || (user as any)?.phone;
+    if (!phone) {
+      Alert.alert('No Phone Number', 'Please set a business phone number in your settings first.');
+      return;
+    }
+    Alert.alert(
+      'Test Call',
+      `This will place a test call to ${phone}. Your AI receptionist will call you so you can hear how it sounds.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Call Me',
+          onPress: async () => {
+            setIsTestingCall(true);
+            try {
+              await api.post('/api/ai-receptionist/test-call', { phoneNumber: phone });
+              Alert.alert('Test Call Started', 'You should receive a call shortly from your AI receptionist.');
+            } catch (e: any) {
+              Alert.alert('Error', e?.response?.data?.error || 'Could not initiate test call.');
+            } finally {
+              setIsTestingCall(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  useEffect(() => { fetchConfig(); fetchVoiceRequests(); fetchRecentCalls(); fetchAnalytics(); }, [fetchConfig, fetchVoiceRequests, fetchRecentCalls, fetchAnalytics]);
 
   const handleSave = async () => {
     if (!configLoaded) {
@@ -312,6 +380,12 @@ export default function AIReceptionistScreen() {
         greeting: greeting || null,
         transferNumbers,
         businessHours: { start: startTime, end: endTime, timezone, days: selectedDays },
+        voiceStability,
+        voiceClarity,
+        voiceSpeed,
+        voicemailDetectionEnabled,
+        silenceTimeoutSeconds,
+        maxCallDurationSeconds,
       });
 
       if (userChangedEnabled) {
@@ -422,7 +496,7 @@ export default function AIReceptionistScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => { fetchConfig(); fetchRecentCalls(); }} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => { fetchConfig(); fetchRecentCalls(); fetchAnalytics(); }} tintColor={colors.primary} />}
       >
         <View style={styles.header}>
           <Text style={styles.pageTitle}>AI Receptionist</Text>
@@ -733,6 +807,153 @@ export default function AIReceptionistScreen() {
           </TouchableOpacity>
         ))}
 
+        <Text style={styles.sectionTitle}>Voice Tuning</Text>
+        <View style={styles.card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+            <Feather name="sliders" size={18} color={colors.primary} />
+            <Text style={styles.cardTitle}>Fine-tune Voice</Text>
+          </View>
+
+          <View style={{ marginBottom: spacing.md }}>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.sm }}>Stability ({voiceStability.toFixed(2)})</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <TouchableOpacity
+                onPress={() => setVoiceStability(v => Math.max(0, parseFloat((v - 0.05).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="minus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, height: 4, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
+                <View style={{ width: `${voiceStability * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
+              </View>
+              <TouchableOpacity
+                onPress={() => setVoiceStability(v => Math.min(1, parseFloat((v + 0.05).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="plus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={{ marginBottom: spacing.md }}>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.sm }}>Clarity ({voiceClarity.toFixed(2)})</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <TouchableOpacity
+                onPress={() => setVoiceClarity(v => Math.max(0, parseFloat((v - 0.05).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="minus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, height: 4, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
+                <View style={{ width: `${voiceClarity * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
+              </View>
+              <TouchableOpacity
+                onPress={() => setVoiceClarity(v => Math.min(1, parseFloat((v + 0.05).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="plus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.sm }}>Speed ({voiceSpeed.toFixed(2)}x)</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <TouchableOpacity
+                onPress={() => setVoiceSpeed(v => Math.max(0.25, parseFloat((v - 0.25).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="minus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, height: 4, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
+                <View style={{ width: `${((voiceSpeed - 0.25) / 3.75) * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
+              </View>
+              <TouchableOpacity
+                onPress={() => setVoiceSpeed(v => Math.min(4, parseFloat((v + 0.25).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="plus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>Call Settings</Text>
+        <View style={styles.card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+            <Feather name="settings" size={18} color={colors.primary} />
+            <Text style={styles.cardTitle}>Call Behaviour</Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ ...typography.body, fontWeight: '600', color: colors.foreground }}>Voicemail Detection</Text>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>Detect and handle voicemail systems</Text>
+            </View>
+            <Switch
+              value={voicemailDetectionEnabled}
+              onValueChange={setVoicemailDetectionEnabled}
+              trackColor={{ false: colors.border, true: colors.success }}
+              thumbColor={'#FFFFFF'}
+              ios_backgroundColor={colors.border}
+            />
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Silence Timeout (sec)</Text>
+              <TextInput
+                style={styles.input}
+                value={String(silenceTimeoutSeconds)}
+                onChangeText={(v) => { const n = parseInt(v, 10); if (!isNaN(n) && n > 0) setSilenceTimeoutSeconds(n); else if (v === '') setSilenceTimeoutSeconds(0); }}
+                keyboardType="number-pad"
+                placeholderTextColor={colors.mutedForeground}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Max Duration (sec)</Text>
+              <TextInput
+                style={styles.input}
+                value={String(maxCallDurationSeconds)}
+                onChangeText={(v) => { const n = parseInt(v, 10); if (!isNaN(n) && n > 0) setMaxCallDurationSeconds(n); else if (v === '') setMaxCallDurationSeconds(0); }}
+                keyboardType="number-pad"
+                placeholderTextColor={colors.mutedForeground}
+              />
+            </View>
+          </View>
+        </View>
+
+        {config?.vapiAssistantId && (
+          <View style={styles.card}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+              <Feather name="phone-call" size={18} color={colors.primary} />
+              <Text style={styles.cardTitle}>Test Call</Text>
+            </View>
+            <Text style={styles.cardSubtitle}>Call yourself to hear how the AI receptionist sounds</Text>
+            <TouchableOpacity
+              style={[styles.saveButton, { marginTop: spacing.sm }, isTestingCall && { opacity: 0.7 }]}
+              onPress={handleTestCall}
+              disabled={isTestingCall}
+              activeOpacity={0.8}
+            >
+              {isTestingCall ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                  <Feather name="phone-outgoing" size={16} color="#fff" />
+                  <Text style={styles.saveButtonText}>Call Me</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
         {(mode === 'always_on_transfer' || mode === 'selective') && (
           <>
             <Text style={styles.sectionTitle}>Transfer Numbers</Text>
@@ -968,6 +1189,56 @@ export default function AIReceptionistScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {analytics && analytics.totalCalls > 0 && (
+          <View style={styles.card}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+              <Feather name="bar-chart-2" size={18} color={colors.primary} />
+              <Text style={styles.cardTitle}>Call Analytics</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
+              <View style={{ flex: 1, backgroundColor: colors.muted, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center' }}>
+                <Text style={{ ...typography.statValue, color: colors.foreground }}>{analytics.totalCalls}</Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>Total Calls</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: colors.muted, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center' }}>
+                <Text style={{ ...typography.statValue, color: colors.foreground }}>
+                  {analytics.avgDuration >= 60 ? `${Math.floor(analytics.avgDuration / 60)}m ${analytics.avgDuration % 60}s` : `${analytics.avgDuration}s`}
+                </Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>Avg Duration</Text>
+              </View>
+            </View>
+            {Object.keys(analytics.outcomeBreakdown || {}).length > 0 && (
+              <View style={{ gap: spacing.xs }}>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, fontWeight: '600', marginBottom: spacing.xs }}>Outcomes</Text>
+                {Object.entries(analytics.outcomeBreakdown).map(([outcome, count]) => {
+                  const outcomeLabels: Record<string, string> = {
+                    message_taken: 'Message Taken',
+                    transferred: 'Transferred',
+                    booked: 'Booked',
+                    missed: 'Missed',
+                    unknown: 'Other',
+                  };
+                  const label = outcomeLabels[outcome] || outcome.charAt(0).toUpperCase() + outcome.slice(1);
+                  const pct = analytics.totalCalls > 0 ? Math.round((count / analytics.totalCalls) * 100) : 0;
+                  return (
+                    <View key={outcome} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                          <Text style={{ ...typography.caption, color: colors.foreground }}>{label}</Text>
+                          <Text style={{ ...typography.caption, color: colors.mutedForeground }}>{count} ({pct}%)</Text>
+                        </View>
+                        <View style={{ height: 4, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
+                          <View style={{ width: `${pct}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
 
         {recentCalls.length > 0 && (
           <View style={styles.card}>

@@ -67,12 +67,21 @@ interface KnowledgeBankContent {
   specialInstructions?: string;
 }
 
+interface VoiceTuning {
+  stability?: number;
+  clarity?: number;
+  speed?: number;
+  styleExaggeration?: number;
+  speakerBoost?: boolean;
+}
+
 interface VapiAssistantConfig {
   businessName: string;
   businessPhone?: string;
   tradeType?: string;
   greeting?: string;
   voice?: string;
+  voiceTuning?: VoiceTuning;
   transferNumbers?: Array<{ name: string; phone: string; priority: number }>;
   businessHours?: { start: string; end: string; timezone: string; days: number[] };
   webhookUrl: string;
@@ -80,6 +89,12 @@ interface VapiAssistantConfig {
   teamInfo?: Array<{ name: string; role: string }>;
   knownClientCount?: number;
   knowledgeBank?: KnowledgeBankContent;
+  silenceTimeoutSeconds?: number;
+  maxCallDurationSeconds?: number;
+  endCallMessage?: string;
+  backgroundSound?: string;
+  voicemailDetectionEnabled?: boolean;
+  voicemailMessage?: string;
 }
 
 interface VapiResponse {
@@ -331,14 +346,27 @@ export async function createAssistant(config: VapiAssistantConfig): Promise<Vapi
     voice: {
       provider: voiceConfig.provider,
       voiceId: voiceConfig.voiceId,
+      ...(voiceConfig.provider === '11labs' && config.voiceTuning ? {
+        stability: config.voiceTuning.stability ?? 0.5,
+        similarityBoost: config.voiceTuning.clarity ?? 0.75,
+        speed: config.voiceTuning.speed ?? 1.0,
+        style: config.voiceTuning.styleExaggeration ?? 0,
+        useSpeakerBoost: config.voiceTuning.speakerBoost ?? false,
+      } : {}),
     },
     firstMessage: config.greeting || `G'day, thanks for calling ${config.businessName}. How can I help you today?`,
-    endCallMessage: 'Thanks for calling! Someone from the team will be in touch soon. Have a great day!',
+    endCallMessage: config.endCallMessage || 'Thanks for calling! Someone from the team will be in touch soon. Have a great day!',
     serverUrl: config.webhookUrl,
-    silenceTimeoutSeconds: 30,
-    maxDurationSeconds: 600,
-    backgroundSound: 'off',
+    silenceTimeoutSeconds: config.silenceTimeoutSeconds ?? 30,
+    maxDurationSeconds: config.maxCallDurationSeconds ?? 600,
+    backgroundSound: config.backgroundSound || 'off',
     recordingEnabled: true,
+    ...(config.voicemailDetectionEnabled !== undefined ? {
+      voicemailDetection: {
+        enabled: config.voicemailDetectionEnabled,
+        ...(config.voicemailMessage ? { provider: '11labs', voicemailMessage: config.voicemailMessage } : {}),
+      },
+    } : {}),
     hipaaEnabled: false,
     clientMessages: ['transcript', 'hang', 'tool-calls', 'speech-update', 'metadata', 'conversation-update'],
     serverMessages: ['end-of-call-report', 'status-update', 'hang', 'tool-calls'],
@@ -356,6 +384,32 @@ export async function updateAssistant(assistantId: string, config: Partial<VapiA
     updates.voice = {
       provider: voiceConfig.provider,
       voiceId: voiceConfig.voiceId,
+      ...(voiceConfig.provider === '11labs' && config.voiceTuning ? {
+        stability: config.voiceTuning.stability ?? 0.5,
+        similarityBoost: config.voiceTuning.clarity ?? 0.75,
+        speed: config.voiceTuning.speed ?? 1.0,
+        style: config.voiceTuning.styleExaggeration ?? 0,
+        useSpeakerBoost: config.voiceTuning.speakerBoost ?? false,
+      } : {}),
+    };
+  }
+
+  if (config.silenceTimeoutSeconds !== undefined) {
+    updates.silenceTimeoutSeconds = config.silenceTimeoutSeconds;
+  }
+  if (config.maxCallDurationSeconds !== undefined) {
+    updates.maxDurationSeconds = config.maxCallDurationSeconds;
+  }
+  if (config.endCallMessage) {
+    updates.endCallMessage = config.endCallMessage;
+  }
+  if (config.backgroundSound) {
+    updates.backgroundSound = config.backgroundSound;
+  }
+  if (config.voicemailDetectionEnabled !== undefined) {
+    updates.voicemailDetection = {
+      enabled: config.voicemailDetectionEnabled,
+      ...(config.voicemailMessage ? { provider: '11labs', voicemailMessage: config.voicemailMessage } : {}),
     };
   }
 
@@ -400,6 +454,16 @@ export async function deleteAssistant(assistantId: string): Promise<void> {
 
 export async function getAssistant(assistantId: string): Promise<VapiResponse> {
   return vapiRequest('GET', `/assistant/${assistantId}`);
+}
+
+export async function createOutboundCall(assistantId: string, phoneNumber: string): Promise<VapiResponse> {
+  console.log(`[Vapi] Creating outbound test call to ${phoneNumber} with assistant ${assistantId}`);
+  return vapiRequest('POST', '/call/phone', {
+    assistantId,
+    customer: {
+      number: phoneNumber,
+    },
+  });
 }
 
 export async function listPhoneNumbers(): Promise<any[]> {
@@ -629,6 +693,17 @@ export async function updateReceptionistConfig(userId: string, updates: {
   businessHours?: { start: string; end: string; timezone: string; days: number[] };
   knowledgeBank?: KnowledgeBankContent;
   smsNotifications?: boolean;
+  voiceStability?: number;
+  voiceClarity?: number;
+  voiceSpeed?: number;
+  voiceStyleExaggeration?: number;
+  voiceSpeakerBoost?: boolean;
+  voicemailDetectionEnabled?: boolean;
+  voicemailMessage?: string;
+  silenceTimeoutSeconds?: number;
+  maxCallDurationSeconds?: number;
+  endCallMessage?: string;
+  backgroundSound?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const config = await storage.getAiReceptionistConfig(userId);
@@ -644,10 +719,28 @@ export async function updateReceptionistConfig(userId: string, updates: {
     if (updates.businessHours) configUpdates.businessHours = updates.businessHours;
     if (updates.knowledgeBank !== undefined) configUpdates.knowledgeBank = updates.knowledgeBank;
     if (updates.smsNotifications !== undefined) configUpdates.smsNotifications = updates.smsNotifications;
+    if (updates.voiceStability !== undefined) configUpdates.voiceStability = updates.voiceStability;
+    if (updates.voiceClarity !== undefined) configUpdates.voiceClarity = updates.voiceClarity;
+    if (updates.voiceSpeed !== undefined) configUpdates.voiceSpeed = updates.voiceSpeed;
+    if (updates.voiceStyleExaggeration !== undefined) configUpdates.voiceStyleExaggeration = updates.voiceStyleExaggeration;
+    if (updates.voiceSpeakerBoost !== undefined) configUpdates.voiceSpeakerBoost = updates.voiceSpeakerBoost;
+    if (updates.voicemailDetectionEnabled !== undefined) configUpdates.voicemailDetectionEnabled = updates.voicemailDetectionEnabled;
+    if (updates.voicemailMessage !== undefined) configUpdates.voicemailMessage = updates.voicemailMessage;
+    if (updates.silenceTimeoutSeconds !== undefined) configUpdates.silenceTimeoutSeconds = updates.silenceTimeoutSeconds;
+    if (updates.maxCallDurationSeconds !== undefined) configUpdates.maxCallDurationSeconds = updates.maxCallDurationSeconds;
+    if (updates.endCallMessage !== undefined) configUpdates.endCallMessage = updates.endCallMessage;
+    if (updates.backgroundSound !== undefined) configUpdates.backgroundSound = updates.backgroundSound;
 
     await storage.updateAiReceptionistConfig(userId, configUpdates);
 
-    if (config.vapiAssistantId && (updates.voice || updates.greeting || updates.transferNumbers || updates.businessHours || updates.knowledgeBank)) {
+    const needsVapiSync = updates.voice || updates.greeting || updates.transferNumbers || updates.businessHours || updates.knowledgeBank ||
+      updates.voiceStability !== undefined || updates.voiceClarity !== undefined || updates.voiceSpeed !== undefined ||
+      updates.voiceStyleExaggeration !== undefined || updates.voiceSpeakerBoost !== undefined ||
+      updates.voicemailDetectionEnabled !== undefined || updates.voicemailMessage !== undefined ||
+      updates.silenceTimeoutSeconds !== undefined || updates.maxCallDurationSeconds !== undefined ||
+      updates.endCallMessage !== undefined || updates.backgroundSound !== undefined;
+
+    if (config.vapiAssistantId && needsVapiSync) {
       try {
         const settings = await storage.getBusinessSettings(userId);
         const webhookUrl = getWebhookUrl();
@@ -670,10 +763,19 @@ export async function updateReceptionistConfig(userId: string, updates: {
 
         const resolvedKB = updates.knowledgeBank || (config.knowledgeBank as KnowledgeBankContent | null) || undefined;
 
+        const voiceTuning: VoiceTuning = {
+          stability: updates.voiceStability ?? config.voiceStability ?? 0.5,
+          clarity: updates.voiceClarity ?? config.voiceClarity ?? 0.75,
+          speed: updates.voiceSpeed ?? config.voiceSpeed ?? 1.0,
+          styleExaggeration: updates.voiceStyleExaggeration ?? config.voiceStyleExaggeration ?? 0,
+          speakerBoost: updates.voiceSpeakerBoost ?? config.voiceSpeakerBoost ?? false,
+        };
+
         await updateAssistant(config.vapiAssistantId, {
           businessName: settings?.businessName || '',
           tradeType: settings?.industry || undefined,
           voice: updates.voice || config.voiceName || 'Jess',
+          voiceTuning,
           greeting: updates.greeting || config.greeting || undefined,
           transferNumbers: updates.transferNumbers || (config.transferNumbers as TransferNumber[]) || [],
           businessHours: updates.businessHours || (config.businessHours as BusinessHoursConfig | null) || undefined,
@@ -682,6 +784,12 @@ export async function updateReceptionistConfig(userId: string, updates: {
           teamInfo,
           knownClientCount,
           knowledgeBank: resolvedKB,
+          silenceTimeoutSeconds: updates.silenceTimeoutSeconds ?? config.silenceTimeoutSeconds ?? 30,
+          maxCallDurationSeconds: updates.maxCallDurationSeconds ?? config.maxCallDurationSeconds ?? 600,
+          endCallMessage: updates.endCallMessage ?? config.endCallMessage ?? undefined,
+          backgroundSound: updates.backgroundSound ?? config.backgroundSound ?? 'off',
+          voicemailDetectionEnabled: updates.voicemailDetectionEnabled ?? config.voicemailDetectionEnabled ?? true,
+          voicemailMessage: updates.voicemailMessage ?? config.voicemailMessage ?? undefined,
         });
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'Unknown error';

@@ -43,7 +43,7 @@ Core architectural and design decisions include:
 *   **Weather API**: Open-Meteo
 *   **Routing/ETA**: OSRM (Open Source Routing Machine)
 *   **Tap to Pay (Stripe Terminal)**: `@stripe/stripe-terminal-react-native` SDK
-*   **AI Receptionist (Voice)**: Vapi.ai
+*   **AI Receptionist (Voice)**: Vapi.ai — Enhanced with voice tuning (stability/clarity/speed/style via ElevenLabs), voicemail detection, call timeout settings, test-call endpoint with rate limiting, call analytics aggregation, and admin monitoring panel. Config fields: `voiceStability`, `voiceClarity`, `voiceSpeed`, `voiceStyleExaggeration`, `voiceSpeakerBoost`, `voicemailDetectionEnabled`, `voicemailMessage`, `silenceTimeoutSeconds`, `maxCallDurationSeconds`, `endCallMessage`, `backgroundSound`. Admin can edit active assistants with live Vapi sync.
 *   **Error Tracking**: Sentry
 
 ### Mobile App Conventions

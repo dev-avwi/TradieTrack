@@ -1322,41 +1322,127 @@ interface AiQueueItem {
   businessName: string | null;
   businessPhone: string | null;
   tradeType: string | null;
+  voiceStability: number | null;
+  voiceClarity: number | null;
+  voiceSpeed: number | null;
+  voiceStyleExaggeration: number | null;
+  voiceSpeakerBoost: boolean | null;
+  voicemailDetectionEnabled: boolean | null;
+  silenceTimeoutSeconds: number | null;
+  maxCallDurationSeconds: number | null;
+  backgroundSound: string | null;
+  dedicatedPhoneNumber: string | null;
+  transferNumbers: string[] | null;
+}
+
+interface ActiveAssistant extends AiQueueItem {
+  callStats: {
+    totalCalls: number;
+    completedCalls: number;
+    avgDuration: number;
+    outcomeBreakdown: Record<string, number>;
+  };
+}
+
+function VoiceTuningSlider({ label, value, onChange, min, max, step }: { label: string; value: number; onChange: (v: number) => void; min: number; max: number; step: number }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <span className="text-xs font-mono tabular-nums">{value.toFixed(2)}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
+      />
+    </div>
+  );
 }
 
 function AIApprovalView() {
   const { toast } = useToast();
-  const [editingGreeting, setEditingGreeting] = useState<string | null>(null);
-  const [greetingText, setGreetingText] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{
+    greeting: string;
+    voiceStability: number;
+    voiceClarity: number;
+    voiceSpeed: number;
+    mode: string;
+    voiceName: string;
+  }>({ greeting: '', voiceStability: 0.5, voiceClarity: 0.75, voiceSpeed: 1.0, mode: 'off', voiceName: 'Jess' });
+
+  const [expandedAssistant, setExpandedAssistant] = useState<string | null>(null);
+  const [assistantEditForm, setAssistantEditForm] = useState<{
+    greeting: string;
+    voiceStability: number;
+    voiceClarity: number;
+    voiceSpeed: number;
+    mode: string;
+    voiceName: string;
+  }>({ greeting: '', voiceStability: 0.5, voiceClarity: 0.75, voiceSpeed: 1.0, mode: 'off', voiceName: 'Jess' });
 
   const { data: queue = [], isLoading } = useQuery<AiQueueItem[]>({
     queryKey: ['/api/admin/ai-approval-queue'],
   });
 
+  const { data: activeAssistants = [], isLoading: assistantsLoading } = useQuery<ActiveAssistant[]>({
+    queryKey: ['/api/admin/ai-active-assistants'],
+  });
+
   const approveMutation = useMutation({
-    mutationFn: async ({ configId, approvalStatus, greeting }: { configId: string; approvalStatus: string; greeting?: string }) => {
-      const body: Record<string, string> = { approvalStatus };
-      if (greeting !== undefined) body.greeting = greeting;
+    mutationFn: async (payload: { configId: string; approvalStatus: string; greeting?: string; voiceStability?: number; voiceClarity?: number; voiceSpeed?: number; mode?: string; voiceName?: string }) => {
+      const { configId, ...body } = payload;
       const response = await apiRequest("PATCH", `/api/admin/ai-approval/${configId}`, body);
       if (!response.ok) throw new Error('Failed to update');
       return response.json();
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/ai-approval-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/ai-active-assistants'] });
       toast({
         title: variables.approvalStatus === 'active' ? "Approved & Activated" : "Status Updated",
         description: variables.approvalStatus === 'active' ? "AI Receptionist is now live" : "Status has been updated",
       });
-      setEditingGreeting(null);
+      setEditingId(null);
+      setExpandedAssistant(null);
     },
     onError: (error: Error) => {
       toast({ title: "Failed", description: error.message, variant: "destructive" });
     },
   });
 
+  const startEditing = (item: AiQueueItem) => {
+    setEditingId(item.id);
+    setEditForm({
+      greeting: item.greeting || `G'day, thanks for calling ${item.businessName || 'the business'}. How can I help you today?`,
+      voiceStability: item.voiceStability ?? 0.5,
+      voiceClarity: item.voiceClarity ?? 0.75,
+      voiceSpeed: item.voiceSpeed ?? 1.0,
+      mode: item.mode || 'off',
+      voiceName: item.voiceName || 'Jess',
+    });
+  };
+
+  const startEditingAssistant = (item: ActiveAssistant) => {
+    setExpandedAssistant(item.id);
+    setAssistantEditForm({
+      greeting: item.greeting || '',
+      voiceStability: item.voiceStability ?? 0.5,
+      voiceClarity: item.voiceClarity ?? 0.75,
+      voiceSpeed: item.voiceSpeed ?? 1.0,
+      mode: item.mode || 'off',
+      voiceName: item.voiceName || 'Jess',
+    });
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           testId="card-pending-approvals"
           title="Pending Approvals"
@@ -1373,6 +1459,22 @@ function AIApprovalView() {
           icon={<CheckCircle2 className="h-5 w-5 md:h-6 md:w-6 text-green-600 dark:text-green-400" />}
           iconBgClass="bg-green-100 dark:bg-green-500/20"
         />
+        <KPICard
+          testId="card-active-assistants-count"
+          title="Active Assistants"
+          value={activeAssistants.length}
+          loading={assistantsLoading}
+          icon={<Phone className="h-5 w-5 md:h-6 md:w-6 text-blue-600 dark:text-blue-400" />}
+          iconBgClass="bg-blue-100 dark:bg-blue-500/20"
+        />
+        <KPICard
+          testId="card-total-ai-calls"
+          title="Total AI Calls"
+          value={activeAssistants.reduce((sum, a) => sum + a.callStats.totalCalls, 0)}
+          loading={assistantsLoading}
+          icon={<PhoneIncoming className="h-5 w-5 md:h-6 md:w-6 text-purple-600 dark:text-purple-400" />}
+          iconBgClass="bg-purple-100 dark:bg-purple-500/20"
+        />
       </div>
 
       <Card>
@@ -1380,6 +1482,7 @@ function AIApprovalView() {
           <CardTitle className="text-base md:text-lg flex items-center gap-2">
             <Bot className="h-5 w-5 text-muted-foreground" />
             AI Receptionist Approval Queue
+            {queue.length > 0 && <Badge variant="secondary">{queue.length}</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1419,44 +1522,60 @@ function AIApprovalView() {
                         </Badge>
                       </div>
 
-                      <div className="bg-muted/50 rounded-md p-3">
-                        <p className="text-xs text-muted-foreground mb-1">AI Greeting</p>
-                        {editingGreeting === item.id ? (
-                          <div className="space-y-2">
+                      {editingId === item.id ? (
+                        <div className="space-y-4 bg-muted/50 rounded-md p-4">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">AI Greeting</p>
                             <Input
-                              value={greetingText}
-                              onChange={(e) => setGreetingText(e.target.value)}
+                              value={editForm.greeting}
+                              onChange={(e) => setEditForm(f => ({ ...f, greeting: e.target.value }))}
                               className="text-sm"
                             />
-                            <div className="flex gap-2">
-                              <Button size="sm" onClick={() => {
-                                approveMutation.mutate({ configId: item.id, approvalStatus: 'active', greeting: greetingText });
-                              }}>
-                                Save & Approve
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => setEditingGreeting(null)}>
-                                Cancel
-                              </Button>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Voice Tuning</p>
+                            <div className="grid gap-3 sm:grid-cols-3">
+                              <VoiceTuningSlider label="Stability" value={editForm.voiceStability} onChange={(v) => setEditForm(f => ({ ...f, voiceStability: v }))} min={0} max={1} step={0.05} />
+                              <VoiceTuningSlider label="Clarity" value={editForm.voiceClarity} onChange={(v) => setEditForm(f => ({ ...f, voiceClarity: v }))} min={0} max={1} step={0.05} />
+                              <VoiceTuningSlider label="Speed" value={editForm.voiceSpeed} onChange={(v) => setEditForm(f => ({ ...f, voiceSpeed: v }))} min={0.25} max={4} step={0.25} />
                             </div>
                           </div>
-                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            <Button size="sm" onClick={() => {
+                              approveMutation.mutate({
+                                configId: item.id,
+                                approvalStatus: 'active',
+                                greeting: editForm.greeting,
+                                voiceStability: editForm.voiceStability,
+                                voiceClarity: editForm.voiceClarity,
+                                voiceSpeed: editForm.voiceSpeed,
+                              });
+                            }} disabled={approveMutation.isPending}>
+                              {approveMutation.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                              Save & Approve
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-muted/50 rounded-md p-3">
+                          <p className="text-xs text-muted-foreground mb-1">AI Greeting</p>
                           <p className="text-sm">
                             {item.greeting || `G'day, thanks for calling ${item.businessName || 'the business'}. How can I help you today?`}
                           </p>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            setEditingGreeting(item.id);
-                            setGreetingText(item.greeting || `G'day, thanks for calling ${item.businessName || 'the business'}. How can I help you today?`);
-                          }}
+                          onClick={() => startEditing(item)}
                         >
                           <Edit className="h-3.5 w-3.5 mr-1.5" />
-                          Edit Prompt
+                          Edit & Tune
                         </Button>
                         <Button
                           variant="ghost"
@@ -1477,6 +1596,158 @@ function AIApprovalView() {
                         </Button>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="card-active-assistants">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base md:text-lg flex items-center gap-2">
+            <Activity className="h-5 w-5 text-muted-foreground" />
+            Active Assistants
+            {activeAssistants.length > 0 && <Badge variant="secondary">{activeAssistants.length}</Badge>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {assistantsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : activeAssistants.length === 0 ? (
+            <div className="text-center py-12">
+              <Phone className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+              <p className="text-muted-foreground font-medium">No active assistants</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">Approved AI receptionists will appear here</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {activeAssistants.map((assistant) => (
+                <Card key={assistant.id} className="hover-elevate" data-testid={`active-assistant-${assistant.id}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium">{assistant.businessName || assistant.userName}</p>
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30">
+                            Active
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-0.5">{assistant.userEmail}</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <Badge variant="outline" className="text-xs capitalize">{assistant.mode}</Badge>
+                          <Badge variant="outline" className="text-xs">
+                            <Mic className="h-3 w-3 mr-1" />
+                            {assistant.voiceName || 'Jess'}
+                          </Badge>
+                          {assistant.dedicatedPhoneNumber && (
+                            <Badge variant="outline" className="text-xs">
+                              <Phone className="h-3 w-3 mr-1" />
+                              {assistant.dedicatedPhoneNumber}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        <div className="flex items-center gap-3 text-sm">
+                          <span className="text-muted-foreground">{assistant.callStats.totalCalls} calls</span>
+                          <span className="text-muted-foreground">avg {assistant.callStats.avgDuration}s</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => expandedAssistant === assistant.id ? setExpandedAssistant(null) : startEditingAssistant(assistant)}
+                        >
+                          <Edit className="h-3.5 w-3.5 mr-1.5" />
+                          {expandedAssistant === assistant.id ? 'Collapse' : 'Edit'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {assistant.callStats.totalCalls > 0 && (
+                      <div className="flex flex-wrap gap-3 mt-3 pt-3 border-t">
+                        {Object.entries(assistant.callStats.outcomeBreakdown).map(([outcome, count]) => (
+                          <div key={outcome} className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground capitalize">{outcome.replace(/_/g, ' ')}:</span>
+                            <span className="text-xs font-semibold tabular-nums">{count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {expandedAssistant === assistant.id && (
+                      <div className="mt-4 pt-4 border-t space-y-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Greeting</p>
+                          <Input
+                            value={assistantEditForm.greeting}
+                            onChange={(e) => setAssistantEditForm(f => ({ ...f, greeting: e.target.value }))}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Mode</p>
+                            <Select value={assistantEditForm.mode} onValueChange={(v) => setAssistantEditForm(f => ({ ...f, mode: v }))}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="off">Off</SelectItem>
+                                <SelectItem value="after_hours">After Hours</SelectItem>
+                                <SelectItem value="always_on_transfer">Always On (Transfer)</SelectItem>
+                                <SelectItem value="always_on_message">Always On (Message)</SelectItem>
+                                <SelectItem value="selective">Selective</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Voice</p>
+                            <Input
+                              value={assistantEditForm.voiceName}
+                              onChange={(e) => setAssistantEditForm(f => ({ ...f, voiceName: e.target.value }))}
+                              className="text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-2">Voice Tuning</p>
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <VoiceTuningSlider label="Stability" value={assistantEditForm.voiceStability} onChange={(v) => setAssistantEditForm(f => ({ ...f, voiceStability: v }))} min={0} max={1} step={0.05} />
+                            <VoiceTuningSlider label="Clarity" value={assistantEditForm.voiceClarity} onChange={(v) => setAssistantEditForm(f => ({ ...f, voiceClarity: v }))} min={0} max={1} step={0.05} />
+                            <VoiceTuningSlider label="Speed" value={assistantEditForm.voiceSpeed} onChange={(v) => setAssistantEditForm(f => ({ ...f, voiceSpeed: v }))} min={0.25} max={4} step={0.25} />
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" onClick={() => {
+                            approveMutation.mutate({
+                              configId: assistant.id,
+                              approvalStatus: 'active',
+                              greeting: assistantEditForm.greeting,
+                              voiceStability: assistantEditForm.voiceStability,
+                              voiceClarity: assistantEditForm.voiceClarity,
+                              voiceSpeed: assistantEditForm.voiceSpeed,
+                              mode: assistantEditForm.mode,
+                              voiceName: assistantEditForm.voiceName,
+                            });
+                          }} disabled={approveMutation.isPending}>
+                            {approveMutation.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                            Save Changes
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => {
+                            approveMutation.mutate({ configId: assistant.id, approvalStatus: 'disabled' });
+                          }} disabled={approveMutation.isPending}>
+                            Disable
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setExpandedAssistant(null)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
