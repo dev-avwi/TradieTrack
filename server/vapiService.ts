@@ -2,6 +2,7 @@ import { storage } from './storage';
 import type { BusinessSettings, InsertAiReceptionistCall, InsertAiReceptionistConfig, InsertNotification, AiReceptionistConfig } from '@shared/schema';
 import crypto from 'crypto';
 import { sendSMS } from './twilioClient';
+import { analyzeCallSentiment } from './ai';
 
 interface TransferNumber {
   name: string;
@@ -1392,15 +1393,28 @@ async function handleEndOfCallReport(event: any): Promise<any> {
     : endedReason === 'missed' || endedReason === 'no-answer' ? 'missed'
     : 'message_taken';
 
+  const transcriptText = message.transcript || null;
+  const summaryText = message.summary || null;
+
+  let sentimentResult = { sentiment: 'neutral' as string, sentimentScore: 0.5 };
+  try {
+    sentimentResult = await analyzeCallSentiment(transcriptText, summaryText);
+    console.log(`[Vapi] Sentiment for call ${callId}: ${sentimentResult.sentiment} (${sentimentResult.sentimentScore})`);
+  } catch (e: any) {
+    console.error(`[Vapi] Sentiment analysis error for call ${callId}:`, e.message);
+  }
+
   const updates: Partial<InsertAiReceptionistCall> = {
     status: 'completed',
     duration: message.durationSeconds || call.duration || null,
-    summary: message.summary || null,
-    transcript: message.transcript || null,
+    summary: summaryText,
+    transcript: transcriptText,
     recordingUrl: message.recordingUrl || call.recordingUrl || null,
     endedReason,
     cost: message.cost ? String(message.cost) : null,
     outcome: callOutcome,
+    sentiment: sentimentResult.sentiment,
+    sentimentScore: sentimentResult.sentimentScore,
   };
 
   let callRecord: any;
@@ -1419,6 +1433,9 @@ async function handleEndOfCallReport(event: any): Promise<any> {
       recordingUrl: updates.recordingUrl || null,
       endedReason: updates.endedReason || null,
       cost: updates.cost || null,
+      outcome: updates.outcome || null,
+      sentiment: updates.sentiment || null,
+      sentimentScore: updates.sentimentScore ?? null,
     };
     callRecord = await storage.createAiReceptionistCall(createPayload);
   }

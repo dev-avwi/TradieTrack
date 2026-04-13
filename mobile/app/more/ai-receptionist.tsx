@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert, TextInput, Linking, Platform } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
@@ -42,6 +43,8 @@ interface CallLog {
   recordingUrl: string | null;
   outcome: string | null;
   callerIntent: string | null;
+  sentiment: string | null;
+  sentimentScore: number | null;
   createdAt: string;
 }
 
@@ -219,6 +222,69 @@ export default function AIReceptionistScreen() {
   const [isTestingCall, setIsTestingCall] = useState(false);
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(true);
   const [autoReplyMessage, setAutoReplyMessage] = useState("Thanks for calling {{business_name}}. We got your message and will get back to you shortly. — Sent via JobRunner");
+  const [sentimentFilter, setSentimentFilter] = useState<string>('all');
+  const [sentimentSort, setSentimentSort] = useState(false);
+  const [playingCallId, setPlayingCallId] = useState<string | null>(null);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  const stopAudio = useCallback(async () => {
+    if (soundRef.current) {
+      try {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+      } catch {}
+      soundRef.current = null;
+    }
+    setPlayingCallId(null);
+    setAudioProgress(0);
+    setAudioDuration(0);
+  }, []);
+
+  const playRecording = useCallback(async (callId: string, url: string) => {
+    if (playingCallId === callId) {
+      await stopAudio();
+      return;
+    }
+    await stopAudio();
+    try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: url },
+        { shouldPlay: true },
+        (status) => {
+          if (status.isLoaded) {
+            setAudioProgress(status.positionMillis || 0);
+            setAudioDuration(status.durationMillis || 0);
+            if (status.didJustFinish) {
+              stopAudio();
+            }
+          }
+        }
+      );
+      soundRef.current = sound;
+      setPlayingCallId(callId);
+    } catch (e: any) {
+      Alert.alert('Playback Error', 'Could not play recording. The file may be unavailable.');
+    }
+  }, [playingCallId, stopAudio]);
+
+  useEffect(() => {
+    return () => { stopAudio(); };
+  }, [stopAudio]);
+
+  const filteredCalls = useMemo(() => {
+    let calls = [...recentCalls];
+    if (sentimentFilter !== 'all') {
+      calls = calls.filter(c => c.sentiment === sentimentFilter);
+    }
+    if (sentimentSort) {
+      const order: Record<string, number> = { negative: 0, neutral: 1, positive: 2 };
+      calls.sort((a, b) => (order[a.sentiment || 'neutral'] ?? 1) - (order[b.sentiment || 'neutral'] ?? 1));
+    }
+    return calls;
+  }, [recentCalls, sentimentFilter, sentimentSort]);
 
   const pollProvisioningStatus = useCallback(async (maxAttempts = 15) => {
     for (let i = 0; i < maxAttempts; i++) {
@@ -1520,24 +1586,80 @@ export default function AIReceptionistScreen() {
 
         {recentCalls.length > 0 && (
           <View style={styles.card}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                 <Feather name="phone-incoming" size={18} color={colors.primary} />
                 <Text style={styles.cardTitle}>Recent Calls</Text>
               </View>
               <View style={{ backgroundColor: colors.cardBorder, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2 }}>
-                <Text style={{ ...typography.caption, color: colors.mutedForeground }}>{recentCalls.length} call{recentCalls.length !== 1 ? 's' : ''}</Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground }}>{filteredCalls.length} call{filteredCalls.length !== 1 ? 's' : ''}</Text>
               </View>
             </View>
-            {recentCalls.map((call) => {
+
+            <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md, flexWrap: 'wrap' }}>
+              {['all', 'negative', 'neutral', 'positive'].map((s) => {
+                const isActive = sentimentFilter === s;
+                const filterColors: Record<string, { bg: string; text: string }> = {
+                  all: { bg: colors.primary, text: '#fff' },
+                  negative: { bg: '#ef4444', text: '#fff' },
+                  neutral: { bg: '#6b7280', text: '#fff' },
+                  positive: { bg: '#22c55e', text: '#fff' },
+                };
+                const fc = filterColors[s] || filterColors.all;
+                return (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => setSentimentFilter(s)}
+                    activeOpacity={0.7}
+                    style={{
+                      paddingHorizontal: spacing.md,
+                      paddingVertical: spacing.xs,
+                      borderRadius: radius.full,
+                      backgroundColor: isActive ? fc.bg : 'transparent',
+                      borderWidth: 1,
+                      borderColor: isActive ? fc.bg : colors.cardBorder,
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: isActive ? fc.text : colors.mutedForeground, textTransform: 'capitalize' }}>{s}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <TouchableOpacity
+                onPress={() => setSentimentSort(!sentimentSort)}
+                activeOpacity={0.7}
+                style={{
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.xs,
+                  borderRadius: radius.full,
+                  backgroundColor: sentimentSort ? colors.primary : 'transparent',
+                  borderWidth: 1,
+                  borderColor: sentimentSort ? colors.primary : colors.cardBorder,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <Feather name="alert-triangle" size={12} color={sentimentSort ? '#fff' : colors.mutedForeground} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: sentimentSort ? '#fff' : colors.mutedForeground }}>Urgent First</Text>
+              </TouchableOpacity>
+            </View>
+
+            {filteredCalls.map((call) => {
               const isExpanded = expandedCallId === call.id;
+              const isPlaying = playingCallId === call.id;
               const outcomeColors: Record<string, { bg: string; text: string; label: string }> = {
                 message_taken: { bg: '#dbeafe', text: '#1d4ed8', label: 'Message' },
                 transferred: { bg: '#dcfce7', text: '#15803d', label: 'Transferred' },
                 booked: { bg: '#f3e8ff', text: '#7c3aed', label: 'Booked' },
                 missed: { bg: '#fee2e2', text: '#b91c1c', label: 'Missed' },
               };
+              const sentimentColors: Record<string, { bg: string; text: string; icon: FeatherIconName }> = {
+                positive: { bg: '#dcfce7', text: '#15803d', icon: 'smile' },
+                neutral: { bg: '#f3f4f6', text: '#6b7280', icon: 'minus-circle' },
+                negative: { bg: '#fee2e2', text: '#b91c1c', icon: 'frown' },
+              };
               const oc = outcomeColors[call.outcome || ''] || { bg: colors.cardBorder, text: colors.mutedForeground, label: call.outcome || 'Call' };
+              const sc = sentimentColors[call.sentiment || ''] || sentimentColors.neutral;
               const callDate = new Date(call.createdAt);
               const durationText = call.duration ? `${Math.floor(call.duration / 60)}m ${call.duration % 60}s` : '';
 
@@ -1546,25 +1668,54 @@ export default function AIReceptionistScreen() {
                   key={call.id}
                   activeOpacity={0.7}
                   onPress={() => setExpandedCallId(isExpanded ? null : call.id)}
-                  style={{ borderWidth: 1, borderColor: colors.cardBorder, borderRadius: radius.lg, marginBottom: spacing.sm, overflow: 'hidden' }}
+                  style={{ borderWidth: 1, borderColor: call.sentiment === 'negative' ? '#fca5a5' : colors.cardBorder, borderRadius: radius.lg, marginBottom: spacing.sm, overflow: 'hidden' }}
                 >
                   <View style={{ padding: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
                     <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '600' }} numberOfLines={1}>
-                        {call.callerName || (call.callerPhone ? formatPhoneDisplay(call.callerPhone) : 'Unknown Caller')}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                        <Text style={{ ...typography.body, color: colors.foreground, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+                          {call.callerName || (call.callerPhone ? formatPhoneDisplay(call.callerPhone) : 'Unknown Caller')}
+                        </Text>
+                      </View>
                       <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>
                         {callDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
                         {durationText ? ` \u00B7 ${durationText}` : ''}
                       </Text>
                     </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                      {call.sentiment && (
+                        <View style={{ backgroundColor: sc.bg, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                          <Feather name={sc.icon} size={10} color={sc.text} />
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: sc.text, textTransform: 'capitalize' }}>{call.sentiment}</Text>
+                        </View>
+                      )}
                       <View style={{ backgroundColor: oc.bg, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2 }}>
                         <Text style={{ fontSize: 11, fontWeight: '600', color: oc.text }}>{oc.label}</Text>
                       </View>
+                      {call.recordingUrl && (
+                        <TouchableOpacity
+                          onPress={(e) => { e.stopPropagation?.(); playRecording(call.id, call.recordingUrl!); }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          activeOpacity={0.7}
+                          style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: isPlaying ? colors.primary : colors.cardBorder, alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <Feather name={isPlaying ? 'pause' : 'play'} size={14} color={isPlaying ? '#fff' : colors.foreground} />
+                        </TouchableOpacity>
+                      )}
                       <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.mutedForeground} />
                     </View>
                   </View>
+                  {isPlaying && (
+                    <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.sm }}>
+                      <View style={{ height: 3, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
+                        <View style={{ width: audioDuration > 0 ? `${(audioProgress / audioDuration) * 100}%` : '0%', height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
+                        <Text style={{ fontSize: 10, color: colors.mutedForeground }}>{Math.floor(audioProgress / 1000)}s</Text>
+                        <Text style={{ fontSize: 10, color: colors.mutedForeground }}>{audioDuration > 0 ? `${Math.floor(audioDuration / 1000)}s` : ''}</Text>
+                      </View>
+                    </View>
+                  )}
                   {isExpanded && (
                     <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.md, borderTopWidth: 1, borderTopColor: colors.cardBorder, paddingTop: spacing.md, gap: spacing.sm }}>
                       {call.summary && (
@@ -1578,6 +1729,17 @@ export default function AIReceptionistScreen() {
                           <Text style={{ ...typography.caption, color: colors.mutedForeground, fontWeight: '600', marginBottom: 4 }}>Transcript</Text>
                           <Text style={{ ...typography.body, color: colors.foreground, backgroundColor: colors.card, padding: spacing.sm, borderRadius: radius.md, fontSize: 13 }} numberOfLines={8}>{call.transcript}</Text>
                         </View>
+                      )}
+                      {call.recordingUrl && !isPlaying && (
+                        <TouchableOpacity
+                          onPress={() => playRecording(call.id, call.recordingUrl!)}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs }}
+                        >
+                          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+                            <Feather name="play" size={14} color="#fff" />
+                          </View>
+                          <Text style={{ ...typography.body, color: colors.primary, fontSize: 13 }}>Play Recording</Text>
+                        </TouchableOpacity>
                       )}
                       {call.callerPhone && (
                         <TouchableOpacity

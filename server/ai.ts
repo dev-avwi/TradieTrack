@@ -394,6 +394,49 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   }
 ];
 
+export async function analyzeCallSentiment(transcript: string | null, summary: string | null): Promise<{ sentiment: string; sentimentScore: number }> {
+  const text = transcript || summary;
+  if (!text || text.trim().length < 10) {
+    return { sentiment: 'neutral', sentimentScore: 0.5 };
+  }
+
+  try {
+    const inputText = text.length > 2000 ? text.slice(0, 2000) : text;
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are a sentiment analyser for phone call transcripts at a trades business. Classify the caller's overall sentiment as exactly one of: positive, neutral, or negative. Also provide a confidence score from 0.0 to 1.0. Consider:
+- Positive: happy, thankful, satisfied, friendly, booking work eagerly
+- Neutral: routine enquiry, information gathering, standard business call
+- Negative: angry, frustrated, complaining, upset, threatening, dissatisfied
+
+Respond ONLY with valid JSON: {"sentiment":"positive"|"neutral"|"negative","score":0.0-1.0}`
+        },
+        {
+          role: "user",
+          content: inputText
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 50,
+    });
+
+    const content = response.choices[0]?.message?.content?.trim();
+    if (content) {
+      const parsed = JSON.parse(content);
+      const sentiment = ['positive', 'neutral', 'negative'].includes(parsed.sentiment) ? parsed.sentiment : 'neutral';
+      const score = typeof parsed.score === 'number' ? Math.max(0, Math.min(1, parsed.score)) : 0.5;
+      return { sentiment, sentimentScore: score };
+    }
+  } catch (e: any) {
+    console.error('[AI] Sentiment analysis failed:', e.message);
+  }
+
+  return { sentiment: 'neutral', sentimentScore: 0.5 };
+}
+
 export async function generateAISuggestions(context: BusinessContext): Promise<string[]> {
   try {
     // Role-specific prompts and fallback suggestions

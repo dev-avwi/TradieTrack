@@ -42082,6 +42082,41 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+  app.get("/api/admin/ai-calls", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const sentimentFilter = req.query.sentiment as string;
+      const userId = req.query.userId as string;
+
+      let allCalls: any[] = [];
+      if (userId) {
+        allCalls = await storage.getAiReceptionistCalls(userId, Math.min(limit, 500));
+      } else {
+        const rows = await db
+          .select()
+          .from(aiReceptionistCalls)
+          .orderBy(desc(aiReceptionistCalls.createdAt))
+          .limit(Math.min(limit, 500));
+        allCalls = rows;
+      }
+
+      if (sentimentFilter && ['positive', 'neutral', 'negative'].includes(sentimentFilter)) {
+        allCalls = allCalls.filter((c: any) => c.sentiment === sentimentFilter);
+      }
+
+      const sortBy = req.query.sortBy as string;
+      if (sortBy === 'sentiment') {
+        const sentimentOrder: Record<string, number> = { negative: 0, neutral: 1, positive: 2 };
+        allCalls.sort((a: any, b: any) => (sentimentOrder[a.sentiment || 'neutral'] ?? 1) - (sentimentOrder[b.sentiment || 'neutral'] ?? 1));
+      }
+
+      res.json(allCalls);
+    } catch (error: any) {
+      console.error('Error fetching admin AI calls:', error);
+      res.status(500).json({ error: 'Failed to fetch AI calls' });
+    }
+  });
+
     // ============================================
   // ACCOUNT DELETION (Apple App Store Compliance)
   // ============================================
@@ -47245,7 +47280,19 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;
       const limit = parseInt(req.query.limit as string) || 50;
-      const calls = await storage.getAiReceptionistCalls(userId, Math.min(limit, 200));
+      let calls = await storage.getAiReceptionistCalls(userId, Math.min(limit, 200));
+
+      const sentimentFilter = req.query.sentiment as string;
+      if (sentimentFilter && ['positive', 'neutral', 'negative'].includes(sentimentFilter)) {
+        calls = calls.filter(c => c.sentiment === sentimentFilter);
+      }
+
+      const sortBy = req.query.sortBy as string;
+      if (sortBy === 'sentiment') {
+        const sentimentOrder: Record<string, number> = { negative: 0, neutral: 1, positive: 2 };
+        calls.sort((a, b) => (sentimentOrder[a.sentiment || 'neutral'] ?? 1) - (sentimentOrder[b.sentiment || 'neutral'] ?? 1));
+      }
+
       res.json(calls);
     } catch (error: any) {
       console.error("Get AI receptionist calls error:", error);

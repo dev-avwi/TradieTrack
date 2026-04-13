@@ -145,6 +145,7 @@ const adminRoutes = [
   { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/kanban", label: "Kanban", icon: Kanban },
   { path: "/admin/ai-queue", label: "AI Queue", icon: Bot },
+  { path: "/admin/call-monitor", label: "Calls", icon: PhoneIncoming },
   { path: "/admin/activity", label: "Activity", icon: Activity },
   { path: "/admin/health", label: "Health", icon: HeartPulse },
 ];
@@ -1365,6 +1366,224 @@ function VoiceTuningSlider({ label, value, onChange, min, max, step }: { label: 
   );
 }
 
+interface AdminCallLog {
+  id: string;
+  userId: string;
+  vapiCallId: string;
+  callerPhone: string | null;
+  callerName: string | null;
+  status: string;
+  duration: number | null;
+  summary: string | null;
+  transcript: string | null;
+  recordingUrl: string | null;
+  outcome: string | null;
+  callerIntent: string | null;
+  sentiment: string | null;
+  sentimentScore: number | null;
+  createdAt: string;
+}
+
+function SentimentBadge({ sentiment }: { sentiment: string | null }) {
+  const config: Record<string, { label: string; classes: string }> = {
+    positive: { label: 'Positive', classes: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30' },
+    neutral: { label: 'Neutral', classes: 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-500/10 dark:text-gray-400 dark:border-gray-500/30' },
+    negative: { label: 'Negative', classes: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30' },
+  };
+  const c = config[sentiment || ''] || config.neutral;
+  return (
+    <Badge variant="outline" className={c.classes}>
+      {c.label}
+    </Badge>
+  );
+}
+
+function AudioPlayer({ url }: { url: string }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      const a = new window.Audio(url);
+      a.addEventListener('ended', () => setIsPlaying(false));
+      return a;
+    }
+    return null;
+  }, [url]);
+
+  const toggle = () => {
+    if (!audioRef) return;
+    if (isPlaying) {
+      audioRef.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.play().catch(() => {});
+      setIsPlaying(true);
+    }
+  };
+
+  return (
+    <Button size="icon" variant="ghost" onClick={toggle} data-testid="btn-play-recording">
+      {isPlaying ? <Phone className="h-4 w-4 text-primary animate-pulse" /> : <Phone className="h-4 w-4" />}
+    </Button>
+  );
+}
+
+function CallMonitoringView() {
+  const [sentimentFilter, setSentimentFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("recent");
+
+  const queryParams = new URLSearchParams();
+  queryParams.set('limit', '100');
+  if (sentimentFilter !== 'all') queryParams.set('sentiment', sentimentFilter);
+  if (sortBy === 'sentiment') queryParams.set('sortBy', 'sentiment');
+
+  const { data: calls = [], isLoading } = useQuery<AdminCallLog[]>({
+    queryKey: ['/api/admin/ai-calls', sentimentFilter, sortBy],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/ai-calls?${queryParams.toString()}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch calls');
+      return res.json();
+    },
+  });
+
+  const sentimentCounts = useMemo(() => {
+    const counts = { positive: 0, neutral: 0, negative: 0 };
+    calls.forEach(c => {
+      const s = c.sentiment as keyof typeof counts;
+      if (s && counts[s] !== undefined) counts[s]++;
+    });
+    return counts;
+  }, [calls]);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-3 gap-4">
+        <KPICard
+          testId="card-negative-calls"
+          title="Negative Calls"
+          value={sentimentCounts.negative}
+          loading={isLoading}
+          icon={<AlertTriangle className="h-5 w-5 md:h-6 md:w-6 text-red-600 dark:text-red-400" />}
+          iconBgClass="bg-red-100 dark:bg-red-500/20"
+        />
+        <KPICard
+          testId="card-neutral-calls"
+          title="Neutral Calls"
+          value={sentimentCounts.neutral}
+          loading={isLoading}
+          icon={<Phone className="h-5 w-5 md:h-6 md:w-6 text-gray-600 dark:text-gray-400" />}
+          iconBgClass="bg-gray-100 dark:bg-gray-500/20"
+        />
+        <KPICard
+          testId="card-positive-calls"
+          title="Positive Calls"
+          value={sentimentCounts.positive}
+          loading={isLoading}
+          icon={<CheckCircle2 className="h-5 w-5 md:h-6 md:w-6 text-green-600 dark:text-green-400" />}
+          iconBgClass="bg-green-100 dark:bg-green-500/20"
+        />
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle className="text-base md:text-lg">Call Recordings & Sentiment</CardTitle>
+            <div className="flex items-center gap-2">
+              <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sentiment</SelectItem>
+                  <SelectItem value="negative">Negative</SelectItem>
+                  <SelectItem value="neutral">Neutral</SelectItem>
+                  <SelectItem value="positive">Positive</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent">Most Recent</SelectItem>
+                  <SelectItem value="sentiment">Urgent First</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-0 pb-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="pl-6">Caller</TableHead>
+                  <TableHead className="hidden sm:table-cell">Date</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Sentiment</TableHead>
+                  <TableHead>Outcome</TableHead>
+                  <TableHead className="hidden md:table-cell">Summary</TableHead>
+                  <TableHead className="pr-6">Recording</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                    </TableCell>
+                  </TableRow>
+                ) : calls.length > 0 ? (
+                  calls.map((call) => (
+                    <TableRow key={call.id} data-testid={`row-call-${call.id}`}>
+                      <TableCell className="pl-6 font-medium">
+                        <div>
+                          <p className="truncate max-w-[150px]">{call.callerName || 'Unknown'}</p>
+                          {call.callerPhone && (
+                            <p className="text-xs text-muted-foreground">{call.callerPhone}</p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">
+                        {call.createdAt ? formatDate(call.createdAt) : '-'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {call.duration ? `${Math.floor(call.duration / 60)}m ${call.duration % 60}s` : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <SentimentBadge sentiment={call.sentiment} />
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">{call.outcome || 'unknown'}</Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <p className="text-xs text-muted-foreground truncate max-w-[250px]">{call.summary || '-'}</p>
+                      </TableCell>
+                      <TableCell className="pr-6">
+                        {call.recordingUrl ? (
+                          <AudioPlayer url={call.recordingUrl} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-12">
+                      <Phone className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+                      <p className="text-muted-foreground">No call recordings found</p>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function AIApprovalView() {
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -2517,6 +2736,8 @@ export default function AdminDashboard() {
         return <KanbanView />;
       case '/admin/ai-queue':
         return <AIApprovalView />;
+      case '/admin/call-monitor':
+        return <CallMonitoringView />;
       default:
         return (
           <OverviewView 

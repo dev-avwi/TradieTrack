@@ -4632,6 +4632,8 @@ export const aiReceptionistCalls = pgTable("ai_receptionist_calls", {
   extractedInfo: json("extracted_info"), // {name, email, phone, address, jobType, urgency, notes}
   endedReason: text("ended_reason"), // caller_hangup, assistant_ended, transfer, error
   cost: decimal("cost", { precision: 8, scale: 4 }), // Vapi call cost
+  sentiment: text("sentiment"), // positive, neutral, negative
+  sentimentScore: real("sentiment_score"), // 0.0 to 1.0 confidence
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
