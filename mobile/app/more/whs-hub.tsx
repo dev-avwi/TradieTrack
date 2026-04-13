@@ -75,6 +75,15 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
   statIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   statValue: { fontSize: 16, fontWeight: '700', color: colors.foreground },
   statLabel: { fontSize: 11, color: colors.mutedForeground, marginTop: 1 },
+  actionBanner: { backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.md, marginTop: spacing.md, borderWidth: 1, borderColor: colors.cardBorder },
+  actionBannerHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  actionBannerIcon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  actionBannerTitle: { fontSize: 14, fontWeight: '700', color: colors.foreground },
+  actionItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 7, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  actionItemText: { flex: 1, fontSize: 13, color: colors.foreground },
+  actionMoreText: { fontSize: 12, color: colors.mutedForeground, textAlign: 'center', marginTop: spacing.xs },
+  complianceBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.md, marginTop: spacing.md, borderWidth: 1, borderColor: colors.cardBorder },
+  complianceBannerText: { fontSize: 14, fontWeight: '500', color: '#22c55e' },
   filterScroll: { paddingHorizontal: spacing.lg, gap: spacing.xs, paddingBottom: spacing.sm },
   filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.full, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center', gap: 4 },
   filterChipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
@@ -335,6 +344,27 @@ export default function WhsHubScreen() {
   }
 
   const openIncidents = incidents.filter(r => r.status === 'open').length;
+  const openHazards = hazardReports.filter(h => h.status === 'open').length;
+  const expiredTraining = trainingRecords.filter((r: any) => r.status === 'expired').length;
+  const expiringSoonTraining = trainingRecords.filter((r: any) => r.status === 'expiring_soon').length;
+  const signsNotInstalled = signs.filter(s => !s.isInstalled).length;
+  const ppeFailCount = ppeChecklists.filter((c: any) => !c.allCorrect).length;
+
+  const actionItems = useMemo(() => {
+    const items: { icon: keyof typeof Feather.glyphMap; text: string; color: string; tab: TabKey }[] = [];
+    if (openIncidents > 0) items.push({ icon: 'alert-triangle', text: `${openIncidents} open incident${openIncidents > 1 ? 's' : ''} to resolve`, color: '#ef4444', tab: 'incidents' });
+    if (openHazards > 0) items.push({ icon: 'alert-circle', text: `${openHazards} hazard${openHazards > 1 ? 's' : ''} need attention`, color: '#f97316', tab: 'hazard_reports' });
+    if (expiredTraining > 0) items.push({ icon: 'award', text: `${expiredTraining} expired training record${expiredTraining > 1 ? 's' : ''}`, color: '#ef4444', tab: 'training' });
+    if (expiringSoonTraining > 0) items.push({ icon: 'clock', text: `${expiringSoonTraining} training expiring soon`, color: '#f59e0b', tab: 'training' });
+    if (signsNotInstalled > 0) items.push({ icon: 'eye', text: `${signsNotInstalled} sign${signsNotInstalled > 1 ? 's' : ''} not yet installed`, color: '#3b82f6', tab: 'signage' });
+    if (ppeFailCount > 0) items.push({ icon: 'check-square', text: `${ppeFailCount} incomplete PPE check-in${ppeFailCount > 1 ? 's' : ''}`, color: '#f59e0b', tab: 'ppe' });
+    if (emergencyInfo.length === 0) items.push({ icon: 'phone', text: 'No emergency plan set up', color: '#8b5cf6', tab: 'emergency' });
+    if (jsaDocs.length === 0 && incidents.length + hazardReports.length + environments.length > 0) items.push({ icon: 'clipboard', text: 'No JSAs created for active sites', color: colors.primary, tab: 'jsa' });
+    return items;
+  }, [openIncidents, openHazards, expiredTraining, expiringSoonTraining, signsNotInstalled, ppeFailCount, emergencyInfo.length, jsaDocs.length, incidents.length, hazardReports.length, environments.length, colors.primary]);
+
+  const totalItems = incidents.length + emergencyInfo.length + jsaDocs.length + environments.length + signs.length + hazardReports.length + ppeChecklists.length + trainingRecords.length;
+  const complianceScore = totalItems === 0 ? 0 : Math.round(((totalItems - actionItems.length) / totalItems) * 100);
 
   function renderIncidents() {
     if (incidents.length === 0) {
@@ -1265,20 +1295,52 @@ export default function WhsHubScreen() {
 
               <View style={styles.statsRow}>
                 {[
-                  { icon: 'alert-triangle' as const, value: openIncidents, label: 'Open', color: openIncidents > 0 ? '#ef4444' : colors.success },
-                  { icon: 'phone' as const, value: emergencyInfo.length, label: 'Plans', color: '#8b5cf6' },
-                  { icon: 'clipboard' as const, value: jsaDocs.length, label: 'JSAs', color: colors.primary },
-                  { icon: 'activity' as const, value: incidents.length, label: 'Total', color: colors.info },
+                  { icon: 'alert-triangle' as const, value: openIncidents, label: 'Open', color: openIncidents > 0 ? '#ef4444' : colors.success, tab: 'incidents' as TabKey },
+                  { icon: 'phone' as const, value: emergencyInfo.length, label: 'Plans', color: '#8b5cf6', tab: 'emergency' as TabKey },
+                  { icon: 'clipboard' as const, value: jsaDocs.length, label: 'JSAs', color: colors.primary, tab: 'jsa' as TabKey },
+                  { icon: 'award' as const, value: trainingRecords.length, label: 'Training', color: colors.info, tab: 'training' as TabKey },
                 ].map((stat, idx) => (
-                  <View key={idx} style={styles.statCard}>
+                  <TouchableOpacity key={idx} style={styles.statCard} onPress={() => setActiveTab(stat.tab)} activeOpacity={0.7}>
                     <View style={[styles.statIcon, { backgroundColor: `${stat.color}15` }]}>
                       <Feather name={stat.icon} size={16} color={stat.color} />
                     </View>
                     <Text style={styles.statValue}>{stat.value}</Text>
                     <Text style={styles.statLabel}>{stat.label}</Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
+
+              {actionItems.length > 0 && (
+                <View style={styles.actionBanner}>
+                  <View style={styles.actionBannerHeader}>
+                    <View style={[styles.actionBannerIcon, { backgroundColor: actionItems[0].color + '15' }]}>
+                      <Feather name="alert-circle" size={14} color={actionItems[0].color} />
+                    </View>
+                    <Text style={styles.actionBannerTitle}>
+                      {actionItems.length} item{actionItems.length > 1 ? 's' : ''} need{actionItems.length === 1 ? 's' : ''} attention
+                    </Text>
+                  </View>
+                  {actionItems.slice(0, 3).map((item, idx) => (
+                    <TouchableOpacity key={idx} style={styles.actionItem} onPress={() => setActiveTab(item.tab)} activeOpacity={0.7}>
+                      <Feather name={item.icon} size={13} color={item.color} />
+                      <Text style={styles.actionItemText}>{item.text}</Text>
+                      <Feather name="chevron-right" size={13} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                  ))}
+                  {actionItems.length > 3 && (
+                    <Text style={styles.actionMoreText}>+{actionItems.length - 3} more</Text>
+                  )}
+                </View>
+              )}
+
+              {totalItems > 0 && actionItems.length === 0 && (
+                <View style={styles.complianceBanner}>
+                  <View style={[styles.actionBannerIcon, { backgroundColor: '#22c55e15' }]}>
+                    <Feather name="check-circle" size={14} color="#22c55e" />
+                  </View>
+                  <Text style={styles.complianceBannerText}>All clear — no outstanding safety items</Text>
+                </View>
+              )}
             </View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll} style={{ flexGrow: 0 }}>
