@@ -1852,7 +1852,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 });
 
 export default function JobDetailScreen() {
-  const { id, action } = useLocalSearchParams<{ id: string; action?: string }>();
+  const { id, action: navAction } = useLocalSearchParams<{ id: string; action?: string }>();
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
@@ -2278,16 +2278,16 @@ export default function JobDetailScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (!job || isLoading || !action) return;
+    if (!job || isLoading || !navAction) return;
     const timer = setTimeout(() => {
-      if (action === 'assign') {
+      if (navAction === 'assign') {
         setShowAssignModal(true);
-      } else if (action === 'invoice') {
+      } else if (navAction === 'invoice') {
         router.replace(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`);
       }
     }, 400);
     return () => clearTimeout(timer);
-  }, [job, isLoading, action]);
+  }, [job, isLoading, navAction]);
 
   useEffect(() => {
     if (timerError) {
