@@ -15001,7 +15001,19 @@ Be specific about materials, colors, and features that would be included.`
         jobs = jobs.slice(offset, offset + limitParam);
       }
       
-      res.json(jobs);
+      const clients = await storage.getClients(userContext.effectiveUserId);
+      const clientMap = new Map(clients.map((c: any) => [c.id, c]));
+      const enrichedJobs = jobs.map((job: any) => {
+        const client = job.clientId ? clientMap.get(job.clientId) : null;
+        return {
+          ...job,
+          clientName: client?.name || null,
+          clientEmail: client?.email || null,
+          clientPhone: client?.phone || null,
+        };
+      });
+      
+      res.json(enrichedJobs);
     } catch (error) {
       console.error("Error fetching jobs:", error);
       res.status(500).json({ error: "Failed to fetch jobs" });
