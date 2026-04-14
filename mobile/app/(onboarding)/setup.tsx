@@ -397,7 +397,7 @@ export default function OnboardingSetupScreen() {
         <Text style={styles.welcomeGreeting}>
           {firstName ? `Hey ${firstName}` : 'Welcome'}
         </Text>
-        <Text style={styles.welcomeTitle}>How will you{'\n'}use JobRunner?</Text>
+        <Text style={styles.welcomeTitle}>How will you use JobRunner?</Text>
       </View>
 
       <View style={styles.roleCardsWrap}>
@@ -468,7 +468,7 @@ export default function OnboardingSetupScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Tell us about{'\n'}your business</Text>
+        <Text style={styles.stepTitle}>Tell us about your business</Text>
         <Text style={styles.stepSubtitle}>We'll use this to set up your account</Text>
       </View>
 
@@ -594,7 +594,7 @@ export default function OnboardingSetupScreen() {
   const renderOwnerTeamSize = () => (
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.centeredContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>How big is{'\n'}your team?</Text>
+        <Text style={styles.stepTitle}>How big is your team?</Text>
         <Text style={styles.stepSubtitle}>We'll tailor the experience to your needs</Text>
       </View>
 
@@ -647,7 +647,7 @@ export default function OnboardingSetupScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.centeredContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Enter your{'\n'}invite code</Text>
+        <Text style={styles.stepTitle}>Enter your invite code</Text>
         <Text style={styles.stepSubtitle}>Your employer will have given you a 6-character code</Text>
       </View>
 
@@ -868,7 +868,7 @@ export default function OnboardingSetupScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.centeredContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Connect to{'\n'}a business</Text>
+        <Text style={styles.stepTitle}>Connect to a business</Text>
         <Text style={styles.stepSubtitle}>Enter an invite code from a business you work with</Text>
       </View>
 
@@ -930,7 +930,7 @@ export default function OnboardingSetupScreen() {
   const renderSubPrivacy = () => (
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.centeredContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Your privacy{'\n'}matters</Text>
+        <Text style={styles.stepTitle}>Your privacy matters</Text>
         <Text style={styles.stepSubtitle}>How location sharing works as a subcontractor</Text>
       </View>
 
@@ -987,7 +987,7 @@ export default function OnboardingSetupScreen() {
           </View>
           
           <Text style={styles.doneTitle}>
-            {isWorkerPath ? 'Welcome to\nthe team' : isSubPath ? "You're all\nset" : "You're good\nto go"}
+            {isWorkerPath ? 'Welcome to the team' : isSubPath ? "You're all set" : "You're good to go"}
           </Text>
           <Text style={styles.doneSubtitle}>
             {isWorkerPath 
@@ -1168,21 +1168,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   welcomeHeader: {
-    marginBottom: 36,
+    marginBottom: 28,
   },
   welcomeGreeting: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     color: colors.primary,
-    marginBottom: 8,
-    letterSpacing: 0.2,
+    marginBottom: 6,
   },
   welcomeTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.foreground,
-    lineHeight: 40,
-    letterSpacing: -0.8,
+    lineHeight: 32,
+    letterSpacing: -0.5,
   },
 
   roleCardsWrap: {
@@ -1237,15 +1236,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   stepHeader: {
-    marginBottom: 32,
+    marginBottom: 24,
   },
   stepTitle: {
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: '700',
     color: colors.foreground,
-    lineHeight: 38,
-    letterSpacing: -0.8,
-    marginBottom: 8,
+    lineHeight: 28,
+    letterSpacing: -0.3,
+    marginBottom: 6,
   },
   stepSubtitle: {
     fontSize: 15,
@@ -1268,7 +1267,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   fieldInput: {
-    height: 52,
+    height: 48,
     paddingHorizontal: 16,
     backgroundColor: colors.card,
     borderWidth: 1,
@@ -1339,10 +1338,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.primary + '08',
   },
   teamLabel: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '600',
     color: colors.foreground,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   teamDesc: {
     fontSize: 12,
@@ -1364,9 +1363,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   ctaText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    letterSpacing: -0.2,
   },
 
   skipButton: {
@@ -1384,7 +1382,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 16,
   },
   codeInput: {
-    height: 64,
+    height: 60,
     paddingHorizontal: 20,
     backgroundColor: colors.card,
     borderWidth: 1.5,
@@ -1470,13 +1468,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 28,
   },
   doneTitle: {
-    fontSize: 30,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.foreground,
     textAlign: 'center',
-    lineHeight: 38,
-    letterSpacing: -0.8,
-    marginBottom: 12,
+    lineHeight: 32,
+    letterSpacing: -0.5,
+    marginBottom: 10,
   },
   doneSubtitle: {
     fontSize: 15,
