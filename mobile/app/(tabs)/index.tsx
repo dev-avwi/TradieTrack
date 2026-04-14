@@ -2080,13 +2080,15 @@ function OwnerDashboardScreen() {
     }
   }, [scrollToTopTrigger]);
   
-  const { user, businessSettings, roleInfo, isOwner, isStaff, teamState, fetchTeamState, hasActiveTeam: storeHasActiveTeam } = useAuthStore();
+  const { user, businessSettings, roleInfo, isOwner, isStaff, teamState, fetchTeamState, hasActiveTeam: storeHasActiveTeam, refreshUser } = useAuthStore();
   const { todaysJobs, fetchTodaysJobs, fetchJobs, isLoading: jobsLoading, updateJobStatus } = useJobsStore();
   const { stats, fetchStats, isLoading: statsLoading } = useDashboardStore();
   const { clients, fetchClients } = useClientsStore();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [isClearingDemo, setIsClearingDemo] = useState(false);
+  const [demoBannerDismissed, setDemoBannerDismissed] = useState(false);
   
   // Job Scheduler state for team owners
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
@@ -3019,6 +3021,87 @@ function OwnerDashboardScreen() {
 
       {/* Usage Limit Warning - Free Plan Users */}
       <UsageLimitBanner />
+
+      {/* Demo Data Banner */}
+      {user?.hasDemoData && !demoBannerDismissed && (
+        <View style={[styles.section, { paddingBottom: 0 }]}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colorWithOpacity(colors.info, 0.08),
+            borderRadius: radius.lg,
+            paddingVertical: spacing.sm,
+            paddingLeft: spacing.md,
+            paddingRight: spacing.xs,
+            gap: spacing.sm,
+            borderWidth: 1,
+            borderColor: colorWithOpacity(colors.info, 0.15),
+          }}>
+            <Feather name="box" size={16} color={colors.info} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>
+                Sample data loaded
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 1 }}>
+                Explore the app with demo jobs, clients & invoices.
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert(
+                  'Clear Sample Data?',
+                  'This will remove all sample clients, jobs, quotes, and invoices. This can\'t be undone.',
+                  [
+                    { text: 'Keep It', style: 'cancel' },
+                    {
+                      text: 'Clear Data',
+                      style: 'destructive',
+                      onPress: async () => {
+                        setIsClearingDemo(true);
+                        try {
+                          const response = await api.post('/api/onboarding/clear-demo-data');
+                          if (response.error) {
+                            Alert.alert('Error', response.error);
+                          } else {
+                            await refreshUser();
+                            refreshData();
+                          }
+                        } catch (error: any) {
+                          Alert.alert('Error', error.message || 'Failed to clear sample data');
+                        } finally {
+                          setIsClearingDemo(false);
+                        }
+                      }
+                    }
+                  ]
+                );
+              }}
+              disabled={isClearingDemo}
+              style={{
+                paddingHorizontal: spacing.sm,
+                paddingVertical: spacing.xs,
+                borderRadius: radius.md,
+                backgroundColor: colorWithOpacity(colors.info, 0.12),
+              }}
+              activeOpacity={0.7}
+            >
+              {isClearingDemo ? (
+                <ActivityIndicator size="small" color={colors.info} />
+              ) : (
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.info }}>Clear</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setDemoBannerDismissed(true)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={{ padding: spacing.xs }}
+              activeOpacity={0.7}
+            >
+              <Feather name="x" size={14} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Getting Started Checklist - Show for new owners */}
       {roleResolved && !isStaffUser && !isLoading && (
