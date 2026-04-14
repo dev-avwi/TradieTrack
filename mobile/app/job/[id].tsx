@@ -10795,16 +10795,38 @@ export default function JobDetailScreen() {
                 );
               })}
               {teamMembers.length === 0 && !showMagicLinkInAssign && (
-                <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
+                <View style={{ alignItems: 'center', paddingVertical: spacing.xl, paddingHorizontal: spacing.lg }}>
                   <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${colors.primary}10`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
                     <Feather name="users" size={24} color={colors.mutedForeground} />
                   </View>
                   <Text style={{ ...typography.body, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.xs }}>
-                    No team members found
+                    No team members yet
                   </Text>
-                  <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', paddingHorizontal: spacing.md }}>
-                    Add team members in Settings to assign them to jobs
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, textAlign: 'center', marginBottom: spacing.lg }}>
+                    Invite people to your team so you can assign them to jobs
                   </Text>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: spacing.sm,
+                      backgroundColor: colors.primary,
+                      paddingVertical: spacing.md,
+                      paddingHorizontal: spacing.xl,
+                      borderRadius: radius.lg,
+                    }}
+                    onPress={() => {
+                      setShowAssignModal(false);
+                      router.push('/more/team-management');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="user-plus" size={16} color={colors.primaryForeground} />
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
+                      Add Team Member
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
