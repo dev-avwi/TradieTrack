@@ -1,5 +1,16 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "xEkqH67rkw9JQW3RTReJR"
+uri = "file://attached_assets/jobrunner-play-feature.png"
+type = "image"
+title = "JobRunner Play Store feature graphic"
+
+[[generated]]
+id = "K1VaA1fRde1763QB5Eswr"
+uri = "file://attached_assets/jobrunner-play-icon.png"
+type = "image"
+title = "JobRunner Play Store icon"
 
 [[outputs]]
 id = "wfSsr0MFCGGuCHjKXPJUw"
@@ -48,3 +59,15 @@ id = "fYb_NEAU0_g9MYvDda2GO"
 uri = "file://JOBRUNNER_FULL_AUDIT.md"
 type = "text"
 title = "JobRunner Complete Feature Audit"
+
+[[outputs]]
+id = "UjGYKq31ClTX_MZ6gEKGb"
+uri = "file://attached_assets/jobrunner-play-icon.png"
+type = "image"
+title = "JobRunner - Google Play App Icon (512x512)"
+
+[[outputs]]
+id = "s0B79f0D4o9AmE0yu4ZkO"
+uri = "file://attached_assets/jobrunner-play-feature.png"
+type = "image"
+title = "JobRunner - Google Play Feature Graphic (1024x500)"
