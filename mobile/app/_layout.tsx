@@ -515,7 +515,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
   const isChatScreen = pathname?.includes('/chat') || pathname?.includes('/direct-messages') || pathname?.includes('/sms-conversation') || pathname?.includes('/team-chat');
   const isOnboardingScreen = segments.includes('(onboarding)' as never) || pathname === '/setup';
-  const isAuthScreen = segments.includes('(auth)' as never) || pathname === '/' || pathname === '/index';
+  const firstSegment = segments[0] as string || '';
+  const isAuthScreen = firstSegment === '(auth)' || (firstSegment === '' && !isAuthenticated);
   const showFab = !isChatScreen && !isOnboardingScreen;
   const isTeamOwner = isOwner() && hasActiveTeam();
 
