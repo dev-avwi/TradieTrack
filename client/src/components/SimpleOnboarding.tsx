@@ -549,8 +549,8 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
     try {
       const res = await apiRequest('POST', '/api/stripe-connect/onboard', {});
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
+      if (data.onboardingUrl || data.url) {
+        window.location.href = data.onboardingUrl || data.url;
       } else {
         toast({ variant: "destructive", title: "Could not start Stripe setup", description: "Please try again later." });
       }

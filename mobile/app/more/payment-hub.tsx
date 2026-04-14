@@ -314,11 +314,11 @@ export default function PaymentHubScreen() {
   const handleConnectStripe = useCallback(async () => {
     setIsConnecting(true);
     try {
-      const response = await api.post<{ url?: string }>('/api/stripe-connect/onboard');
+      const response = await api.post<{ url?: string; onboardingUrl?: string }>('/api/stripe-connect/onboard');
       if (response.error) {
         Alert.alert('Error', response.error);
-      } else if (response.data?.url) {
-        const url = response.data.url;
+      } else if (response.data?.url || response.data?.onboardingUrl) {
+        const url = response.data.url || response.data.onboardingUrl!;
         const canOpen = await Linking.canOpenURL(url);
         if (!canOpen) {
           Alert.alert('Error', 'Unable to open Stripe onboarding. Please check your browser settings.');
