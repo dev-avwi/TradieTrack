@@ -8,7 +8,7 @@ packages = ["jq", "glib", "nss", "nspr", "at-spi2-atk", "cups", "libdrm", "libxk
 
 [deployment]
 deploymentTarget = "autoscale"
-build = ["npm", "run", "build"]
+build = ["sh", "-c", "npm run build && npx drizzle-kit push --force"]
 run = ["npm", "run", "start"]
 
 [env]
