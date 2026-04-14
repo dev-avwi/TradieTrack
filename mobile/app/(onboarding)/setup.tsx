@@ -1162,9 +1162,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   centeredContent: {
     flexGrow: 1,
-    justifyContent: 'center',
     paddingHorizontal: 28,
-    paddingVertical: 40,
+    paddingTop: 60,
+    paddingBottom: 40,
   },
 
   welcomeHeader: {
