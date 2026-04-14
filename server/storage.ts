@@ -4323,15 +4323,13 @@ export class PostgresStorage implements IStorage {
   
   // Subscription and usage tracking
   async incrementUserUsage(userId: string, type: 'jobs' | 'invoices' | 'quotes'): Promise<void> {
-    const field = type === 'jobs' 
-      ? users.jobsCreatedThisMonth 
-      : type === 'invoices' 
-        ? users.invoicesCreatedThisMonth 
-        : users.quotesCreatedThisMonth;
-    
-    await db.update(users)
-      .set({ [field.name]: sql`${field} + 1` })
-      .where(eq(users.id, userId));
+    if (type === 'jobs') {
+      await db.update(users).set({ jobsCreatedThisMonth: sql`${users.jobsCreatedThisMonth} + 1` }).where(eq(users.id, userId));
+    } else if (type === 'invoices') {
+      await db.update(users).set({ invoicesCreatedThisMonth: sql`${users.invoicesCreatedThisMonth} + 1` }).where(eq(users.id, userId));
+    } else {
+      await db.update(users).set({ quotesCreatedThisMonth: sql`${users.quotesCreatedThisMonth} + 1` }).where(eq(users.id, userId));
+    }
   }
   
   async resetUserUsage(userId: string): Promise<void> {
