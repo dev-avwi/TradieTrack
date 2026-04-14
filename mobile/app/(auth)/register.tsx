@@ -47,6 +47,23 @@ export default function RegisterScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
 
+  const resolvePostAuthRedirect = async () => {
+    const { user: currentUser, businessSettings: bs, fetchBusinessSettings: fetchBs } = useAuthStore.getState();
+    if (currentUser?.isPlatformAdmin === true) {
+      router.replace('/more/admin' as const);
+      return;
+    }
+    if (!bs) {
+      try { await fetchBs(); } catch {}
+    }
+    const { businessSettings: latestBs } = useAuthStore.getState();
+    if (!latestBs?.onboardingCompleted) {
+      router.replace('/(onboarding)/setup');
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
   // Check if Apple Authentication is available
   // On iOS, always show the button - we'll handle errors when pressed
   useEffect(() => {
@@ -128,31 +145,15 @@ export default function RegisterScreen() {
         const isNewUser = url.searchParams.get('isNewUser') === 'true';
         
         if ((auth === 'success' || auth === 'google_success') && token) {
-          // Save the session token from OAuth
           const api = (await import('../../src/lib/api')).default;
           await api.setToken(token);
-          
-          // Now check auth state from server with the token
           await checkAuth();
-          
-          if (isNewUser) {
-            router.replace('/(onboarding)/setup');
-          } else {
-            const { user: currentUser } = useAuthStore.getState();
-            const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
-            router.replace(isPlatformAdmin ? '/more/admin' as const : '/(tabs)' as const);
-          }
+          await resolvePostAuthRedirect();
         } else if (auth === 'success' || auth === 'google_success') {
-          // No token but auth success - try checkAuth anyway
           await checkAuth();
-          const { isAuthenticated, user: currentUser } = useAuthStore.getState();
+          const { isAuthenticated } = useAuthStore.getState();
           if (isAuthenticated) {
-            if (isNewUser) {
-              router.replace('/(onboarding)/setup' as const);
-            } else {
-              const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
-              router.replace(isPlatformAdmin ? '/more/admin' as const : '/(tabs)' as const);
-            }
+            await resolvePostAuthRedirect();
           } else {
             Alert.alert('Error', 'Failed to complete sign-up. Please try again.');
           }
@@ -222,15 +223,7 @@ export default function RegisterScreen() {
         }
         
         await checkAuth();
-        
-        const isNewUser = response.data?.isNewUser !== false;
-        if (isNewUser) {
-          router.replace('/(onboarding)/setup');
-        } else {
-          const { user: currentUser } = useAuthStore.getState();
-          const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
-          router.replace(isPlatformAdmin ? '/more/admin' as const : '/(tabs)' as const);
-        }
+        await resolvePostAuthRedirect();
       } else {
         if (__DEV__) console.log('🍎 No identity token received from Apple (register)');
         Alert.alert('Error', 'No identity token received from Apple. Please try again.');

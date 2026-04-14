@@ -8,18 +8,13 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Switch,
-  Linking,
   Dimensions
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import api, { API_URL } from '../../src/lib/api';
+import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { validateABN, formatABN } from '../../src/lib/format';
-import { Card, CardContent } from '../../src/components/ui/Card';
-import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -58,7 +53,7 @@ export default function OnboardingSetupScreen() {
   
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const { user, businessSettings, setBusinessSettings, fetchBusinessSettings } = useAuthStore();
+  const { user, fetchBusinessSettings } = useAuthStore();
 
   const [businessData, setBusinessData] = useState({
     teamSize: '',
@@ -120,7 +115,7 @@ export default function OnboardingSetupScreen() {
           if (settings.businessName && settings.tradeType) {
             setSelectedRole('owner');
             if (settings.teamSize) {
-              setOwnerStep('complete');
+              setOwnerStep('teamSize');
             } else {
               setOwnerStep('teamSize');
             }
@@ -383,12 +378,16 @@ export default function OnboardingSetupScreen() {
     return { current: steps.indexOf(subStep) + 1, total: steps.length };
   };
 
+  const getStepLabels = (): string[] => {
+    if (!selectedRole) return ['Start'];
+    if (selectedRole === 'owner') return ['Role', 'Business', 'Trade', 'Team', 'Done'];
+    if (selectedRole === 'worker') return ['Role', 'Code', 'Details', 'Done'];
+    return ['Role', 'Details', 'Connect', 'Privacy', 'Done'];
+  };
+
   const renderRoleSelection = () => (
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="hand-right" size={32} color={colors.primary} />
-        </View>
         <Text style={styles.stepTitle}>How are you joining?</Text>
         <Text style={styles.stepSubtitle}>Choose the option that best describes you</Text>
       </View>
@@ -402,14 +401,14 @@ export default function OnboardingSetupScreen() {
         activeOpacity={0.7}
         testID="role-owner"
       >
-        <View style={[styles.roleIconWrap, { backgroundColor: '#2563eb20' }]}>
-          <Ionicons name="briefcase" size={28} color="#2563eb" />
+        <View style={[styles.roleIconWrap, { backgroundColor: colors.primary + '12' }]}>  
+          <Ionicons name="briefcase" size={24} color={colors.primary} />
         </View>
         <View style={styles.roleCardContent}>
           <Text style={styles.roleCardTitle}>I run a business</Text>
           <Text style={styles.roleCardSubtitle}>Set up your business and start managing jobs</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+        <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -421,14 +420,14 @@ export default function OnboardingSetupScreen() {
         activeOpacity={0.7}
         testID="role-worker"
       >
-        <View style={[styles.roleIconWrap, { backgroundColor: '#E8862E20' }]}>
-          <Ionicons name="people" size={28} color="#E8862E" />
+        <View style={[styles.roleIconWrap, { backgroundColor: '#E8862E12' }]}>
+          <Ionicons name="people" size={24} color="#E8862E" />
         </View>
         <View style={styles.roleCardContent}>
           <Text style={styles.roleCardTitle}>I was invited to a team</Text>
           <Text style={styles.roleCardSubtitle}>Join your employer's business with an invite code</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+        <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -440,24 +439,21 @@ export default function OnboardingSetupScreen() {
         activeOpacity={0.7}
         testID="role-subcontractor"
       >
-        <View style={[styles.roleIconWrap, { backgroundColor: '#22c55e20' }]}>
-          <Ionicons name="construct" size={28} color="#22c55e" />
+        <View style={[styles.roleIconWrap, { backgroundColor: '#22c55e12' }]}>
+          <Ionicons name="construct" size={24} color="#22c55e" />
         </View>
         <View style={styles.roleCardContent}>
           <Text style={styles.roleCardTitle}>I'm a subcontractor</Text>
           <Text style={styles.roleCardSubtitle}>Work for multiple businesses independently</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+        <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
       </TouchableOpacity>
     </ScrollView>
   );
 
   const renderOwnerBusiness = () => (
-    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="business" size={32} color={colors.primary} />
-        </View>
         <Text style={styles.stepTitle}>Business Details</Text>
         <Text style={styles.stepSubtitle}>Tell us about your trade business</Text>
       </View>
@@ -538,9 +534,6 @@ export default function OnboardingSetupScreen() {
   const renderOwnerTrade = () => (
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="construct" size={32} color={colors.primary} />
-        </View>
         <Text style={styles.stepTitle}>Your Trade</Text>
         <Text style={styles.stepSubtitle}>This personalises your demo data and templates</Text>
       </View>
@@ -555,7 +548,7 @@ export default function OnboardingSetupScreen() {
           >
             <Ionicons 
               name={trade.icon} 
-              size={22} 
+              size={20} 
               color={businessData.tradeType === trade.value ? colors.primary : colors.mutedForeground} 
             />
             <Text style={[styles.tradeLabel, businessData.tradeType === trade.value && styles.tradeLabelSelected]}>{trade.label}</Text>
@@ -580,9 +573,6 @@ export default function OnboardingSetupScreen() {
   const renderOwnerTeamSize = () => (
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="people" size={32} color={colors.primary} />
-        </View>
         <Text style={styles.stepTitle}>Team Size</Text>
         <Text style={styles.stepSubtitle}>How many people work in your business?</Text>
       </View>
@@ -599,7 +589,7 @@ export default function OnboardingSetupScreen() {
           >
             <Ionicons 
               name={size.icon} 
-              size={24} 
+              size={22} 
               color={businessData.teamSize === size.value ? colors.primary : colors.mutedForeground} 
             />
             <Text style={[styles.optionLabel, businessData.teamSize === size.value && styles.optionLabelSelected]}>{size.label}</Text>
@@ -628,11 +618,8 @@ export default function OnboardingSetupScreen() {
 
 
   const renderWorkerInviteCode = () => (
-    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <View style={[styles.iconCircle, { backgroundColor: '#E8862E20' }]}>
-          <Ionicons name="key" size={32} color="#E8862E" />
-        </View>
         <Text style={styles.stepTitle}>Enter Invite Code</Text>
         <Text style={styles.stepSubtitle}>Your employer will have given you a 6-character code</Text>
       </View>
@@ -683,11 +670,8 @@ export default function OnboardingSetupScreen() {
   );
 
   const renderWorkerDetails = () => (
-    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <View style={[styles.iconCircle, { backgroundColor: '#E8862E20' }]}>
-          <Ionicons name="person" size={32} color="#E8862E" />
-        </View>
         <Text style={styles.stepTitle}>Your Details</Text>
         <Text style={styles.stepSubtitle}>Quick info so your team knows who you are</Text>
       </View>
@@ -749,11 +733,8 @@ export default function OnboardingSetupScreen() {
   );
 
   const renderSubDetails = () => (
-    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <View style={[styles.iconCircle, { backgroundColor: '#22c55e20' }]}>
-          <Ionicons name="person" size={32} color="#22c55e" />
-        </View>
         <Text style={styles.stepTitle}>Your Details</Text>
         <Text style={styles.stepSubtitle}>Tell us about yourself</Text>
       </View>
@@ -814,7 +795,7 @@ export default function OnboardingSetupScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>ABN (optional — for invoicing)</Text>
+        <Text style={styles.inputLabel}>ABN (optional)</Text>
         <TextInput
           style={styles.input}
           placeholder="12 345 678 901"
@@ -843,11 +824,8 @@ export default function OnboardingSetupScreen() {
   );
 
   const renderSubConnect = () => (
-    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <View style={[styles.iconCircle, { backgroundColor: '#22c55e20' }]}>
-          <Ionicons name="link" size={32} color="#22c55e" />
-        </View>
         <Text style={styles.stepTitle}>Connect to a Business</Text>
         <Text style={styles.stepSubtitle}>Enter an invite code from a business you work with</Text>
       </View>
@@ -895,9 +873,8 @@ export default function OnboardingSetupScreen() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.skipButton} onPress={() => handleSubConnect(true)}>
-        <Text style={styles.skipText}>Skip — I'll wait for an invite</Text>
-        <Ionicons name="arrow-forward" size={18} color={colors.mutedForeground} />
+      <TouchableOpacity style={styles.skipLinkButton} onPress={() => handleSubConnect(true)}>
+        <Text style={styles.skipLinkText}>Skip for now</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -905,17 +882,14 @@ export default function OnboardingSetupScreen() {
   const renderSubPrivacy = () => (
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
-        <View style={[styles.iconCircle, { backgroundColor: '#22c55e20' }]}>
-          <Ionicons name="shield-checkmark" size={32} color="#22c55e" />
-        </View>
         <Text style={styles.stepTitle}>Your Privacy Matters</Text>
         <Text style={styles.stepSubtitle}>How location sharing works for subcontractors</Text>
       </View>
 
       <View style={styles.privacyCard}>
         <View style={styles.privacyItem}>
-          <View style={[styles.privacyIcon, { backgroundColor: '#22c55e20' }]}>
-            <Ionicons name="location" size={20} color="#22c55e" />
+          <View style={[styles.privacyIcon, { backgroundColor: '#22c55e12' }]}>
+            <Ionicons name="location" size={18} color="#22c55e" />
           </View>
           <View style={styles.privacyContent}>
             <Text style={styles.privacyTitle}>Active jobs only</Text>
@@ -924,8 +898,8 @@ export default function OnboardingSetupScreen() {
         </View>
 
         <View style={styles.privacyItem}>
-          <View style={[styles.privacyIcon, { backgroundColor: '#2563eb20' }]}>
-            <Ionicons name="stop-circle" size={20} color="#2563eb" />
+          <View style={[styles.privacyIcon, { backgroundColor: colors.primary + '12' }]}>
+            <Ionicons name="stop-circle" size={18} color={colors.primary} />
           </View>
           <View style={styles.privacyContent}>
             <Text style={styles.privacyTitle}>Tracking stops automatically</Text>
@@ -934,8 +908,8 @@ export default function OnboardingSetupScreen() {
         </View>
 
         <View style={styles.privacyItem}>
-          <View style={[styles.privacyIcon, { backgroundColor: '#8b5cf620' }]}>
-            <Ionicons name="eye-off" size={20} color="#8b5cf6" />
+          <View style={[styles.privacyIcon, { backgroundColor: '#8b5cf612' }]}>
+            <Ionicons name="eye-off" size={18} color="#8b5cf6" />
           </View>
           <View style={styles.privacyContent}>
             <Text style={styles.privacyTitle}>Not tracked between jobs</Text>
@@ -946,7 +920,7 @@ export default function OnboardingSetupScreen() {
 
       <View style={styles.buttonRow}>
         <TouchableOpacity style={styles.primaryButton} onPress={handleSubPrivacyAcknowledge} activeOpacity={0.8}>
-          <Text style={styles.primaryButtonText}>I Understand — Continue</Text>
+          <Text style={styles.primaryButtonText}>I Understand</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -961,7 +935,7 @@ export default function OnboardingSetupScreen() {
         <View style={styles.completeContent}>
           <View style={styles.successBadge}>
             <View style={styles.successBadgeInner}>
-              <Ionicons name="checkmark" size={36} color="#FFFFFF" />
+              <Ionicons name="checkmark" size={32} color="#FFFFFF" />
             </View>
           </View>
           
@@ -984,12 +958,12 @@ export default function OnboardingSetupScreen() {
           {!isWorkerPath && !isSubPath && (
             <View style={styles.checkList}>
               <View style={styles.checkItem}>
-                <View style={styles.checkDot} />
+                <Ionicons name="checkmark-circle" size={18} color={colors.success} />
                 <Text style={styles.checkText}>Business details configured</Text>
               </View>
               {demoDataSeeded && (
                 <View style={styles.checkItem}>
-                  <View style={styles.checkDot} />
+                  <Ionicons name="checkmark-circle" size={18} color={colors.success} />
                   <Text style={styles.checkText}>Sample data loaded</Text>
                 </View>
               )}
@@ -1011,39 +985,18 @@ export default function OnboardingSetupScreen() {
 
   const currentStep = getCurrentStep();
   const { current, total } = getStepCount();
-  const progress = (current / total) * 100;
+  const stepLabels = getStepLabels();
 
   if (isCheckingSettings) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingTextWhite, { color: colors.mutedForeground }]}>Setting up your account...</Text>
+          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Setting up your account...</Text>
         </View>
       </View>
     );
   }
-
-  const getStepLabel = () => {
-    if (currentStep === 'role') return 'Get Started';
-    if (selectedRole === 'owner') {
-      const labels: Record<OwnerStep, string> = { role: 'Role', business: 'Business', trade: 'Trade', teamSize: 'Team Size', complete: 'Done!' };
-      return labels[ownerStep];
-    }
-    if (selectedRole === 'worker') {
-      const labels: Record<WorkerStep, string> = { role: 'Role', inviteCode: 'Invite Code', workerDetails: 'Details', complete: 'Done!' };
-      return labels[workerStep];
-    }
-    const labels: Record<SubcontractorStep, string> = { role: 'Role', subDetails: 'Details', subConnect: 'Connect', privacy: 'Privacy', complete: 'Done!' };
-    return labels[subStep];
-  };
-
-  const getStepColor = () => {
-    if (!selectedRole || currentStep === 'role') return '#2563eb';
-    if (selectedRole === 'owner') return '#2563eb';
-    if (selectedRole === 'worker') return '#E8862E';
-    return '#22c55e';
-  };
 
   const canGoBack = () => {
     if (currentStep === 'role') return false;
@@ -1071,39 +1024,41 @@ export default function OnboardingSetupScreen() {
   };
 
   return (
-    <View style={styles.gradientContainer}>
-      <LinearGradient
-        colors={['#1d4ed8', '#2563eb', '#3b82f6']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
-      >
-        <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 0 }}>
-          <View style={styles.header}>
-            <View style={styles.logoRow}>
-              {canGoBack() && (
-                <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-                  <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
-                </TouchableOpacity>
-              )}
-              <View style={{ flex: 1 }} />
-              {currentStep !== 'complete' && (
-                <Text style={styles.stepIndicator}>Step {current} of {total}</Text>
-              )}
-            </View>
-
-            {currentStep !== 'complete' && (
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBarWhite}>
-                  <View style={[styles.progressFillWhite, { width: `${progress}%` }]} />
-                </View>
-              </View>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      {currentStep !== 'complete' && (
+        <View style={styles.headerBar}>
+          <View style={styles.headerRow}>
+            {canGoBack() ? (
+              <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="chevron-back" size={22} color={colors.foreground} />
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 36 }} />
             )}
+            <Text style={styles.headerTitle}>Set up your account</Text>
+            <View style={{ width: 36 }} />
           </View>
-        </SafeAreaView>
-      </LinearGradient>
 
-      <View style={styles.contentCard}>
+          {total > 1 && (
+            <View style={styles.progressRow}>
+              {stepLabels.map((label, i) => {
+                const isActive = i < current;
+                const isCurrent = i === current - 1;
+                return (
+                  <View key={i} style={styles.progressSegment}>
+                    <View style={[
+                      styles.progressBar,
+                      isActive ? { backgroundColor: colors.primary } : { backgroundColor: colors.border },
+                    ]} />
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      )}
+
+      <View style={styles.contentArea}>
         {currentStep === 'role' && renderRoleSelection()}
         {selectedRole === 'owner' && ownerStep === 'business' && renderOwnerBusiness()}
         {selectedRole === 'owner' && ownerStep === 'trade' && renderOwnerTrade()}
@@ -1115,72 +1070,54 @@ export default function OnboardingSetupScreen() {
         {selectedRole === 'subcontractor' && subStep === 'privacy' && renderSubPrivacy()}
         {currentStep === 'complete' && renderComplete()}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  gradientContainer: {
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  headerGradient: {
-  },
-  header: {
+  headerBar: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  logoRow: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    minHeight: 40,
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  backBtn: {
+  backButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepIndicator: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-  },
-  loadingTextWhite: {
+  headerTitle: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: colors.foreground,
+    letterSpacing: -0.2,
   },
-  progressContainer: {
-    paddingTop: 12,
+  progressRow: {
+    flexDirection: 'row',
+    gap: 4,
   },
-  progressBarWhite: {
-    height: 3,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFillWhite: {
-    height: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
-  contentCard: {
+  progressSegment: {
     flex: 1,
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    marginTop: -12,
-    overflow: 'hidden',
+  },
+  progressBar: {
+    height: 3,
+    borderRadius: 1.5,
+  },
+  contentArea: {
+    flex: 1,
   },
   stepContainer: {
     flex: 1,
@@ -1190,47 +1127,35 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: 40,
   },
   stepHeader: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.primary + '12',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 28,
   },
   stepTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
     color: colors.foreground,
     marginBottom: 6,
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
   },
   stepSubtitle: {
     fontSize: 15,
     color: colors.mutedForeground,
-    textAlign: 'center',
-    paddingHorizontal: 16,
     lineHeight: 22,
   },
   roleCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     gap: 14,
   },
   roleIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1273,7 +1198,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: 10,
     color: colors.foreground,
     fontSize: 15,
-    letterSpacing: 0,
   },
   tradeGrid: {
     flexDirection: 'row',
@@ -1307,22 +1231,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   optionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
     marginBottom: 20,
   },
   optionCard: {
-    width: (Dimensions.get('window').width - 52) / 2,
+    width: (Dimensions.get('window').width - 58) / 2,
     padding: 16,
     backgroundColor: colors.card,
     borderRadius: 12,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: colors.cardBorder,
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   optionCardSelected: {
     borderColor: colors.primary,
-    backgroundColor: colors.primary + '10',
+    backgroundColor: colors.primary + '08',
   },
   optionLabel: {
     fontSize: 16,
@@ -1342,7 +1266,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: colors.primary,
-    paddingVertical: 16,
+    paddingVertical: 15,
     paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
@@ -1354,16 +1278,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    letterSpacing: 0,
   },
-  skipButton: {
-    flexDirection: 'row',
+  skipLinkButton: {
     alignItems: 'center',
-    justifyContent: 'center',
     padding: 12,
-    gap: 8,
   },
-  skipText: {
+  skipLinkText: {
     fontSize: 14,
     color: colors.mutedForeground,
     fontWeight: '500',
@@ -1373,14 +1293,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: 16,
   },
   codeInput: {
-    height: 64,
+    height: 60,
     paddingHorizontal: 20,
     backgroundColor: colors.card,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: colors.cardBorder,
-    borderRadius: 14,
+    borderRadius: 12,
     color: colors.foreground,
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     letterSpacing: 8,
     textAlign: 'center',
@@ -1388,12 +1308,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   codeSpinner: {
     position: 'absolute',
     right: 16,
-    top: 20,
+    top: 18,
   },
   validationSuccess: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.success + '15',
+    backgroundColor: colors.success + '12',
     padding: 14,
     borderRadius: 10,
     gap: 10,
@@ -1408,7 +1328,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   validationError: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.destructive + '15',
+    backgroundColor: colors.destructive + '12',
     padding: 14,
     borderRadius: 10,
     gap: 10,
@@ -1419,108 +1339,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     color: colors.destructive,
   },
-  planCard: {
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-  },
-  planCardSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '08',
-  },
-  planHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  planName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.foreground,
-  },
-  planPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  planPrice: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.foreground,
-  },
-  planPeriod: {
-    fontSize: 14,
-    color: colors.mutedForeground,
-  },
-  planSeatPrice: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    marginBottom: 6,
-    textAlign: 'right',
-  },
-  planDescription: {
-    fontSize: 13,
-    color: colors.mutedForeground,
-    marginBottom: 12,
-  },
-  planFeatures: {
-    gap: 6,
-  },
-  planFeatureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  planFeatureText: {
-    fontSize: 13,
-    color: colors.foreground,
-  },
-  trialBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary + '15',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 6,
-    marginTop: 12,
-  },
-  trialBadgeText: {
-    fontSize: 13,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  startFreeLink: {
-    alignItems: 'center',
-    padding: 8,
-    marginBottom: 4,
-  },
-  startFreeLinkText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: '500',
-    textDecorationLine: 'underline',
-  },
   privacyCard: {
     backgroundColor: colors.card,
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 18,
     marginBottom: 20,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    gap: 20,
+    gap: 18,
   },
   privacyItem: {
     flexDirection: 'row',
-    gap: 14,
+    gap: 12,
   },
   privacyIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -1532,7 +1367,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.foreground,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   privacyText: {
     fontSize: 13,
@@ -1549,18 +1384,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   successBadge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.success + '15',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.success + '12',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
   },
   successBadgeInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: colors.success,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1584,8 +1419,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: 16,
   },
   checkList: {
-    marginTop: 28,
-    gap: 14,
+    marginTop: 24,
+    gap: 12,
     width: '100%',
     backgroundColor: colors.card,
     borderRadius: 12,
@@ -1596,16 +1431,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   checkItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  checkDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.success,
+    gap: 10,
   },
   checkText: {
-    fontSize: 15,
+    fontSize: 14,
     color: colors.foreground,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
 });

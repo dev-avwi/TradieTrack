@@ -512,14 +512,25 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, isOnline, offlineInitialized]);
   
   const pathname = usePathname();
+  const segments = useSegments();
   const isChatScreen = pathname?.includes('/chat') || pathname?.includes('/direct-messages') || pathname?.includes('/sms-conversation') || pathname?.includes('/team-chat');
-  const showFab = !isChatScreen;
+  const isOnboardingScreen = segments.includes('(onboarding)' as never) || pathname === '/setup';
+  const showFab = !isChatScreen && !isOnboardingScreen;
   const isTeamOwner = isOwner() && hasActiveTeam();
 
   // Unauthenticated: render children with safe area padding (no header/nav)
   if (!isAuthenticated) {
     return (
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        {children}
+      </View>
+    );
+  }
+
+  // Onboarding: full-screen without header/nav
+  if (isOnboardingScreen) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         {children}
       </View>
     );
@@ -755,6 +766,7 @@ function RootLayoutContent() {
         >
           <Stack.Screen name="index" options={{ headerShown: false, animation: 'none' }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false, animation: 'none' }} />
+          <Stack.Screen name="(onboarding)" options={{ headerShown: false, animation: 'none' }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: colors.background } }} />
           <Stack.Screen name="job" options={{ headerShown: false }} />
           <Stack.Screen name="more" options={{ headerShown: false }} />

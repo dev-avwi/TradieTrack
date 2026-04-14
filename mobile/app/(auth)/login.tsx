@@ -65,30 +65,30 @@ export default function LoginScreen() {
     checkAppleAuth();
   }, []);
 
-  // Helper function to determine redirect path based on user type
-  const getRedirectPath = (isNewUser: boolean, isPlatformAdmin: boolean) => {
-    // Platform admins go directly to admin dashboard
-    if (isPlatformAdmin) {
-      return '/more/admin' as const;
+  const resolvePostAuthRedirect = async () => {
+    const { user: currentUser, businessSettings: bs, fetchBusinessSettings: fetchBs } = useAuthStore.getState();
+    if (currentUser?.isPlatformAdmin === true) {
+      router.replace('/more/admin' as const);
+      return;
     }
-    // New users go to onboarding, existing users go to dashboard
-    return isNewUser ? '/(onboarding)/setup' as const : '/(tabs)' as const;
+    if (!bs) {
+      try { await fetchBs(); } catch {}
+    }
+    const { businessSettings: latestBs } = useAuthStore.getState();
+    if (!latestBs?.onboardingCompleted) {
+      router.replace('/(onboarding)/setup');
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
   // Handle Google OAuth callback via deep link
   useEffect(() => {
     if (params.auth === 'google_success' || params.auth === 'success') {
-      // Check if this is a new user who needs onboarding
-      const isNewUser = params.isNewUser === 'true';
-      
-      // Refresh auth state after Google login, then check store state
-      checkAuth().then(() => {
-        // Get the current state after checkAuth completes
-        const { isAuthenticated: loggedIn, user: currentUser } = useAuthStore.getState();
+      checkAuth().then(async () => {
+        const { isAuthenticated: loggedIn } = useAuthStore.getState();
         if (loggedIn) {
-          const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
-          const redirectPath = getRedirectPath(isNewUser, isPlatformAdmin);
-          router.replace(redirectPath);
+          await resolvePostAuthRedirect();
         }
       });
     }
@@ -132,11 +132,7 @@ export default function LoginScreen() {
     const success = await login(email.trim(), password);
     
     if (success) {
-      // Check if user is platform admin after successful login
-      const { user: currentUser } = useAuthStore.getState();
-      const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
-      const redirectPath = getRedirectPath(false, isPlatformAdmin);
-      router.replace(redirectPath);
+      await resolvePostAuthRedirect();
     }
   };
 
@@ -163,26 +159,15 @@ export default function LoginScreen() {
         const isNewUser = url.searchParams.get('isNewUser') === 'true';
         
         if ((auth === 'success' || auth === 'google_success') && token) {
-          // Save the session token from OAuth
           const api = (await import('../../src/lib/api')).default;
           await api.setToken(token);
-          
-          // Now check auth state from server with the token
           await checkAuth();
-          
-          // Determine redirect based on user type
-          const { user: currentUser } = useAuthStore.getState();
-          const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
-          const redirectPath = getRedirectPath(isNewUser, isPlatformAdmin);
-          router.replace(redirectPath);
+          await resolvePostAuthRedirect();
         } else if (auth === 'success' || auth === 'google_success') {
-          // No token but auth success - try checkAuth anyway
           await checkAuth();
-          const { isAuthenticated: loggedIn, user: currentUser } = useAuthStore.getState();
+          const { isAuthenticated: loggedIn } = useAuthStore.getState();
           if (loggedIn) {
-            const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
-            const redirectPath = getRedirectPath(isNewUser, isPlatformAdmin);
-            router.replace(redirectPath);
+            await resolvePostAuthRedirect();
           } else {
             Alert.alert('Error', 'Failed to complete sign-in. Please try again.');
           }
@@ -252,12 +237,7 @@ export default function LoginScreen() {
         }
         
         await checkAuth();
-        
-        const { user: currentUser } = useAuthStore.getState();
-        const isPlatformAdmin = currentUser?.isPlatformAdmin === true;
-        const isNewUser = response.data?.isNewUser === true;
-        const redirectPath = getRedirectPath(isNewUser, isPlatformAdmin);
-        router.replace(redirectPath);
+        await resolvePostAuthRedirect();
       } else {
         if (__DEV__) console.log('🍎 No identity token received from Apple');
         Alert.alert('Error', 'No identity token received from Apple. Please try again.');
