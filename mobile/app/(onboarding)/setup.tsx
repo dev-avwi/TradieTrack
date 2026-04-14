@@ -392,7 +392,7 @@ export default function OnboardingSetupScreen() {
   const firstName = user?.firstName || '';
 
   const renderRoleSelection = () => (
-    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.centeredContent} showsVerticalScrollIndicator={false}>
       <View style={styles.welcomeHeader}>
         <Text style={styles.welcomeGreeting}>
           {firstName ? `Hey ${firstName}` : 'Welcome'}
@@ -548,7 +548,7 @@ export default function OnboardingSetupScreen() {
   );
 
   const renderOwnerTrade = () => (
-    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.centeredContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
         <Text style={styles.stepTitle}>What's your trade?</Text>
         <Text style={styles.stepSubtitle}>This personalises your templates and demo data</Text>
@@ -592,7 +592,7 @@ export default function OnboardingSetupScreen() {
   );
 
   const renderOwnerTeamSize = () => (
-    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.centeredContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
         <Text style={styles.stepTitle}>How big is{'\n'}your team?</Text>
         <Text style={styles.stepSubtitle}>We'll tailor the experience to your needs</Text>
@@ -645,7 +645,7 @@ export default function OnboardingSetupScreen() {
 
   const renderWorkerInviteCode = () => (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.centeredContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
         <Text style={styles.stepTitle}>Enter your{'\n'}invite code</Text>
         <Text style={styles.stepSubtitle}>Your employer will have given you a 6-character code</Text>
@@ -866,7 +866,7 @@ export default function OnboardingSetupScreen() {
 
   const renderSubConnect = () => (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.centeredContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
         <Text style={styles.stepTitle}>Connect to{'\n'}a business</Text>
         <Text style={styles.stepSubtitle}>Enter an invite code from a business you work with</Text>
@@ -928,7 +928,7 @@ export default function OnboardingSetupScreen() {
   );
 
   const renderSubPrivacy = () => (
-    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.stepContainer} contentContainerStyle={styles.centeredContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
         <Text style={styles.stepTitle}>Your privacy{'\n'}matters</Text>
         <Text style={styles.stepSubtitle}>How location sharing works as a subcontractor</Text>
@@ -1159,6 +1159,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: 28,
     paddingTop: 12,
     paddingBottom: 40,
+  },
+  centeredContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+    paddingVertical: 40,
   },
 
   welcomeHeader: {
