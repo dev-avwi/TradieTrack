@@ -494,8 +494,9 @@ export default function SubscriptionPage() {
             setPurchasing(false);
           },
           (error) => {
-            console.error('[IAP] Purchase error:', error);
-            Alert.alert('Purchase Failed', 'Something went wrong. Please try again.');
+            console.error('[IAP] Purchase error listener:', JSON.stringify(error, null, 2));
+            const errorMsg = error?.message || error?.code || 'Unknown error';
+            Alert.alert('Purchase Failed', `${errorMsg}\n\nPlease try again.`);
             setPurchasing(false);
           }
         );
@@ -533,8 +534,10 @@ export default function SubscriptionPage() {
       try {
         await purchaseSubscription(productIds[tier]);
       } catch (error: any) {
+        console.error('[IAP] Purchase error details:', JSON.stringify(error, null, 2));
         if (error?.code !== 'E_USER_CANCELLED') {
-          Alert.alert('Purchase Failed', 'Something went wrong. Please try again.');
+          const errorMsg = error?.message || error?.code || 'Unknown error';
+          Alert.alert('Purchase Failed', `${errorMsg}\n\nPlease try again.`);
         }
         setPurchasing(false);
       }
