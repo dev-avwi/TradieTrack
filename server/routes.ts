@@ -16468,6 +16468,28 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  app.get("/api/jobs/:id/safety-status", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const jobId = req.params.id;
+      const job = await storage.getJob(jobId, userContext.effectiveUserId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      const swmsDocs = await db.select().from(swmsDocuments).where(and(eq(swmsDocuments.jobId, jobId), eq(swmsDocuments.userId, userContext.effectiveUserId)));
+      const draftSwms = swmsDocs.filter(s => s.status === 'draft').length;
+      let unsignedSwms = 0;
+      for (const doc of swmsDocs) {
+        if (doc.status === 'draft') continue;
+        const sigResult = await db.select({ count: sql<number>`count(*)` }).from(swmsSignatures).where(eq(swmsSignatures.swmsId, doc.id));
+        if ((sigResult[0]?.count ?? 0) === 0) unsignedSwms++;
+      }
+      res.json({ draftSwms, unsignedSwms, pendingForms: 0, totalSwms: swmsDocs.length });
+    } catch (error: any) {
+      res.json({ draftSwms: 0, unsignedSwms: 0, pendingForms: 0, totalSwms: 0 });
+    }
+  });
+
   app.get("/api/jobs/:id/site-attendance", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);

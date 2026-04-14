@@ -555,30 +555,90 @@ function TimeTrackingWidget() {
     }
   };
 
+  const proceedWithStartJob = async (job: any) => {
+    try {
+      const { default: api } = await import('../../src/lib/api');
+      if (job.status === 'scheduled' || job.status === 'pending') {
+        await api.patch(`/api/jobs/${job.id}/status`, { status: 'in_progress' });
+      }
+      const success = await storeStartTimer(job.id, job.title);
+      if (success) {
+        Alert.alert('Job Started', `Now tracking time for "${job.title}"`);
+        loadDashboardData();
+        loadTodaysJobs();
+      } else {
+        Alert.alert('Error', 'Failed to start timer');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to start job');
+    } finally {
+      setIsStartingTimer(null);
+    }
+  };
+
   const handleStartTimerForJob = async (job: any) => {
     setIsStartingTimer(job.id);
     try {
       const { isOnline } = useOfflineStore.getState();
       
       if (!isOnline) {
-        Alert.alert('Offline', 'Cannot start timer while offline');
+        Alert.alert('Offline', 'Cannot start job while offline');
         setIsStartingTimer(null);
         return;
       }
-      
-      // Use the store's startTimer - it will update activeTimer globally
-      // Pass job.title as description so it shows in the timer widget
-      const success = await storeStartTimer(job.id, job.title);
-      
-      if (success) {
-        Alert.alert('Timer Started', `Tracking time for "${job.title}"`);
-        loadDashboardData();
-      } else {
-        Alert.alert('Error', 'Failed to start timer');
+
+      if (job.status === 'in_progress') {
+        const success = await storeStartTimer(job.id, job.title);
+        if (success) {
+          Alert.alert('Timer Started', `Tracking time for "${job.title}"`);
+          loadDashboardData();
+        } else {
+          Alert.alert('Error', 'Failed to start timer');
+        }
+        setIsStartingTimer(null);
+        return;
       }
+
+      try {
+        const { default: api } = await import('../../src/lib/api');
+        const safetyRes = await api.get(`/api/jobs/${job.id}/safety-status`);
+        const safety = safetyRes.data as any;
+        const hasSafetyIssues = safety && (
+          (safety.pendingForms && safety.pendingForms > 0) ||
+          (safety.draftSwms && safety.draftSwms > 0) ||
+          (safety.unsignedSwms && safety.unsignedSwms > 0)
+        );
+
+        if (hasSafetyIssues) {
+          const warnings: string[] = [];
+          if (safety.pendingForms > 0) warnings.push('Safety forms not completed');
+          if (safety.draftSwms > 0) warnings.push(`${safety.draftSwms} SWMS in draft`);
+          if (safety.unsignedSwms > 0) warnings.push(`${safety.unsignedSwms} SWMS unsigned`);
+
+          Alert.alert(
+            'Safety Check Required',
+            `${warnings.join(', ')}. Complete safety documentation before starting work.\n\nWHS Compliance: SWMS documents are legally required for high-risk construction work.`,
+            [
+              { text: 'View Job', onPress: () => { setIsStartingTimer(null); router.push(`/job/${job.id}`); } },
+              { text: 'Start Anyway', style: 'destructive', onPress: () => proceedWithStartJob(job) },
+              { text: 'Cancel', style: 'cancel', onPress: () => setIsStartingTimer(null) }
+            ]
+          );
+          return;
+        }
+      } catch (e) {
+      }
+
+      Alert.alert(
+        'Start Job',
+        `Start "${job.title}"?\n\nThe job timer will begin automatically.`,
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => setIsStartingTimer(null) },
+          { text: 'Start Job', onPress: () => proceedWithStartJob(job) }
+        ]
+      );
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to start timer');
-    } finally {
+      Alert.alert('Error', 'Failed to start job');
       setIsStartingTimer(null);
     }
   };
@@ -882,7 +942,7 @@ function TimeTrackingWidget() {
         {/* Job list to start timer */}
         {availableJobs.length > 0 && (
           <View style={styles.timerJobListContainer}>
-            <Text style={styles.timerJobListLabel}>Start Timer</Text>
+            <Text style={styles.timerJobListLabel}>Start Job</Text>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
@@ -913,7 +973,7 @@ function TimeTrackingWidget() {
                       )}
                       <View style={styles.timerJobItemAction}>
                         <Feather name="play-circle" size={14} color={colors.primary} />
-                        <Text style={styles.timerJobItemActionText}>Start</Text>
+                        <Text style={styles.timerJobItemActionText}>{job.status === 'in_progress' ? 'Resume' : 'Start Job'}</Text>
                       </View>
                     </>
                   )}

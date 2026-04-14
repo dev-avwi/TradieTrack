@@ -8413,30 +8413,47 @@ Thank you for your prompt attention to this matter.`,
 
   // Worker States
   async getWorkerState(userId: string, businessOwnerId?: string): Promise<WorkerState | undefined> {
-    if (businessOwnerId) {
-      const [result] = await db.select().from(workerStates)
-        .where(and(eq(workerStates.userId, userId), eq(workerStates.businessOwnerId, businessOwnerId)))
-        .limit(1);
+    try {
+      if (businessOwnerId) {
+        const [result] = await db.select().from(workerStates)
+          .where(and(eq(workerStates.userId, userId), eq(workerStates.businessOwnerId, businessOwnerId)))
+          .limit(1);
+        return result;
+      }
+      const [result] = await db.select().from(workerStates).where(eq(workerStates.userId, userId)).limit(1);
       return result;
+    } catch (error: any) {
+      if (error?.message?.includes('does not exist')) return undefined;
+      throw error;
     }
-    const [result] = await db.select().from(workerStates).where(eq(workerStates.userId, userId)).limit(1);
-    return result;
   }
 
   async getWorkerStatesByBusiness(businessOwnerId: string): Promise<WorkerState[]> {
-    return await db.select().from(workerStates).where(eq(workerStates.businessOwnerId, businessOwnerId));
+    try {
+      return await db.select().from(workerStates).where(eq(workerStates.businessOwnerId, businessOwnerId));
+    } catch (error: any) {
+      if (error?.message?.includes('does not exist')) return [];
+      throw error;
+    }
   }
 
   async upsertWorkerState(userId: string, businessOwnerId: string, state: string, jobId?: string | null, note?: string | null): Promise<WorkerState> {
-    const [result] = await db
-      .insert(workerStates)
-      .values({ userId, businessOwnerId, state, jobId: jobId ?? null, note: note ?? null })
-      .onConflictDoUpdate({
-        target: [workerStates.businessOwnerId, workerStates.userId],
-        set: { state, jobId: jobId ?? null, note: note ?? null, updatedAt: new Date() },
-      })
-      .returning();
-    return result;
+    try {
+      const [result] = await db
+        .insert(workerStates)
+        .values({ userId, businessOwnerId, state, jobId: jobId ?? null, note: note ?? null })
+        .onConflictDoUpdate({
+          target: [workerStates.businessOwnerId, workerStates.userId],
+          set: { state, jobId: jobId ?? null, note: note ?? null, updatedAt: new Date() },
+        })
+        .returning();
+      return result;
+    } catch (error: any) {
+      if (error?.message?.includes('does not exist')) {
+        return { id: '', userId, businessOwnerId, state, jobId: jobId ?? null, note: note ?? null, updatedAt: new Date(), createdAt: new Date() } as WorkerState;
+      }
+      throw error;
+    }
   }
 
   async getNumberPortRequests(userId: string): Promise<NumberPortRequest[]> {

@@ -1491,9 +1491,17 @@ export default function TimeTrackingScreen() {
             const rate = getEffectiveRate(e, jobs, userDefaultRate);
             return sum + calculateEarnings(e.duration!, rate);
           }, 0);
+          const uniqueWorkers = teamViewEnabled && isOwnerOrManager ? new Set(timeEntries.map(e => e.userId)).size : 0;
           return (
             <View style={styles.dayTotalRow}>
-              <Text style={styles.dayTotalLabel}>Day Total</Text>
+              <View>
+                <Text style={styles.dayTotalLabel}>{teamViewEnabled && isOwnerOrManager ? 'Team Total' : 'Day Total'}</Text>
+                {uniqueWorkers > 0 && (
+                  <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
+                    {uniqueWorkers} {uniqueWorkers === 1 ? 'worker' : 'workers'}
+                  </Text>
+                )}
+              </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={styles.dayTotalValue}>{formatDurationHM(dayTotalMinutes)}</Text>
                 {dayEarnings > 0 && (
@@ -1521,6 +1529,150 @@ export default function TimeTrackingScreen() {
               No time tracked on this day. Use the timer or add a manual entry.
             </Text>
           </View>
+        ) : teamViewEnabled && isOwnerOrManager ? (
+          (() => {
+            interface WorkerGroup {
+              userId: string;
+              userName: string;
+              userEmail: string;
+              entries: TimeEntry[];
+              totalWorkMinutes: number;
+              totalBreakMinutes: number;
+            }
+
+            const workerMap = new Map<string, WorkerGroup>();
+
+            timeEntries.forEach(entry => {
+              const uid = entry.userId;
+              if (!workerMap.has(uid)) {
+                workerMap.set(uid, {
+                  userId: uid,
+                  userName: entry.userName || entry.userEmail || 'Unknown',
+                  userEmail: entry.userEmail || '',
+                  entries: [],
+                  totalWorkMinutes: 0,
+                  totalBreakMinutes: 0,
+                });
+              }
+              const wg = workerMap.get(uid)!;
+              wg.entries.push(entry);
+              if (entry.isBreak) {
+                wg.totalBreakMinutes += entry.duration || 0;
+              } else {
+                wg.totalWorkMinutes += entry.duration || 0;
+              }
+            });
+
+            const workerGroups = Array.from(workerMap.values()).sort((a, b) => b.totalWorkMinutes - a.totalWorkMinutes);
+
+            return workerGroups.map((wg) => {
+              const sortedEntries = [...wg.entries].sort(
+                (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+              );
+              const totalMinutes = wg.totalWorkMinutes + wg.totalBreakMinutes;
+              const initials = wg.userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+              return (
+                <View key={wg.userId} style={{ backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.cardBorder, marginBottom: spacing.md, overflow: 'hidden' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border + '40' }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary + '20', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary }}>{initials}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }} numberOfLines={1}>{wg.userName}</Text>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
+                        {wg.entries.length} {wg.entries.length === 1 ? 'entry' : 'entries'}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.foreground }}>{formatDurationHM(totalMinutes)}</Text>
+                      {wg.totalBreakMinutes > 0 && (
+                        <Text style={{ fontSize: 10, color: '#f59e0b', fontWeight: '500', marginTop: 1 }}>
+                          {formatDurationHM(wg.totalBreakMinutes)} break
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  {sortedEntries.map((entry, idx) => {
+                    const jobData = jobs.find(j => j.id === entry.jobId);
+                    const jobTitle = jobData?.title || 'Unknown Job';
+                    const startStr = formatTimeShort(entry.startTime);
+                    const endStr = entry.endTime ? formatTimeShort(entry.endTime) : 'Running';
+                    const durationStr = entry.duration ? formatDurationHM(entry.duration) : '--';
+                    const isBreakEntry = entry.isBreak;
+                    const isBillable = entry.isBillable !== false && !isBreakEntry;
+
+                    return (
+                      <View key={entry.id}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: idx < sortedEntries.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border + '30' }}>
+                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isBreakEntry ? '#f59e0b' : colors.primary, marginRight: spacing.sm }} />
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' }}>
+                              <Text style={{ fontSize: 12, color: colors.foreground, fontWeight: '500' }} numberOfLines={1}>
+                                {isBreakEntry ? 'Break' : jobTitle}
+                              </Text>
+                              {isBreakEntry ? (
+                                <View style={{ backgroundColor: '#f59e0b15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                  <Feather name="coffee" size={9} color="#f59e0b" />
+                                </View>
+                              ) : isBillable ? (
+                                <View style={{ backgroundColor: '#22c55e15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                  <Text style={{ fontSize: 9, color: '#22c55e', fontWeight: '600' }}>$</Text>
+                                </View>
+                              ) : null}
+                              {entry.isDisputed && (
+                                <View style={{ backgroundColor: '#ef444415', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                                  <Feather name="alert-triangle" size={8} color="#ef4444" />
+                                  <Text style={{ fontSize: 9, color: '#ef4444', fontWeight: '600' }}>
+                                    {entry.disputeResolvedAt ? 'Resolved' : 'Disputed'}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
+                              {startStr} — {endStr}
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: isBreakEntry ? '#f59e0b' : colors.foreground, marginRight: spacing.sm }}>
+                            {durationStr}
+                          </Text>
+                          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                            {entry.endTime && (
+                              <TouchableOpacity onPress={() => handleOpenEditEntry(entry)} activeOpacity={0.7} hitSlop={8}>
+                                <Feather name="edit-2" size={14} color={colors.primary} />
+                              </TouchableOpacity>
+                            )}
+                            {!entry.isDisputed && !isBreakEntry && (
+                              <TouchableOpacity onPress={() => handleOpenDispute(entry.id)} activeOpacity={0.7} hitSlop={8}>
+                                <Feather name="flag" size={14} color="#f59e0b" />
+                              </TouchableOpacity>
+                            )}
+                            <TouchableOpacity onPress={() => handleDeleteEntry(entry)} activeOpacity={0.7} hitSlop={8}>
+                              <Feather name="trash-2" size={14} color={colors.destructive || '#ef4444'} />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                        {entry.isDisputed && entry.disputeReason && !entry.disputeResolvedAt && (
+                          <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
+                            <Text style={{ fontSize: 11, color: '#ef4444' }} numberOfLines={2}>
+                              Reason: {entry.disputeReason}
+                            </Text>
+                          </View>
+                        )}
+                        {entry.isDisputed && entry.disputeResolution && (
+                          <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
+                            <Text style={{ fontSize: 11, color: '#22c55e' }} numberOfLines={2}>
+                              Resolution: {entry.disputeResolution}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            });
+          })()
         ) : (
           (() => {
             interface GroupedJob {
@@ -1609,11 +1761,6 @@ export default function TimeTrackingScreen() {
                               <Text style={{ fontSize: 12, color: colors.foreground, fontWeight: '500' }}>
                                 {isBreakEntry ? 'Break' : 'Work'}
                               </Text>
-                              {teamViewEnabled && entry.userName && (
-                                <View style={{ backgroundColor: colors.primary + '12', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                                  <Text style={{ fontSize: 9, color: colors.primary, fontWeight: '600' }}>{entry.userName}</Text>
-                                </View>
-                              )}
                               {isBreakEntry ? (
                                 <View style={{ backgroundColor: '#f59e0b15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
                                   <Feather name="coffee" size={9} color="#f59e0b" />

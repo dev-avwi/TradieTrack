@@ -96,8 +96,13 @@ async function processFailedSmsMessages() {
         }).where(eq(smsMessages.id, msg.id));
       }
     }
-  } catch (error) {
-    logger.error('background', 'Failed SMS retry scheduler error', { error });
+  } catch (error: any) {
+    const msg = error?.message || '';
+    if (msg.includes('does not exist') || msg.includes('relation')) {
+      // Table not yet created — skip silently
+    } else {
+      logger.error('background', 'Failed SMS retry scheduler error', { error });
+    }
   } finally {
     isProcessing = false;
   }
@@ -114,8 +119,11 @@ async function recoverStrandedMessages() {
     if (recovered.length > 0) {
       logger.warn('background', `Recovered ${recovered.length} stranded SMS messages from 'retrying' state`);
     }
-  } catch (error) {
-    logger.error('background', 'Failed to recover stranded SMS messages', { error });
+  } catch (error: any) {
+    const m = error?.message || '';
+    if (!m.includes('does not exist') && !m.includes('relation')) {
+      logger.error('background', 'Failed to recover stranded SMS messages', { error });
+    }
   }
 }
 
