@@ -8065,12 +8065,19 @@ Be specific about materials, colors, and features that would be included.`
   // Business Settings Routes
   app.get("/api/business-settings", requireAuth, async (req: any, res) => {
     try {
-      const settings = await storage.getBusinessSettings(req.userId);
+      let settings = await storage.getBusinessSettings(req.userId);
       if (!settings) {
         return res.status(404).json({ error: "Business settings not found" });
       }
-      // Include user's subscription tier in business settings response
       const user = await storage.getUser(req.userId);
+
+      if (!settings.onboardingCompleted && user) {
+        const hasTeam = user.teamOwnerId || user.activeTeamId;
+        const hasBusinessSetup = settings.businessName && settings.tradeType;
+        if (hasTeam || hasBusinessSetup) {
+          settings = await storage.updateBusinessSettings(req.userId, { onboardingCompleted: true });
+        }
+      }
       
       // Auto-detect simpleMode default: if never explicitly set, base on team members
       let simpleMode = settings.simpleMode;

@@ -114,6 +114,21 @@ export default function OnboardingSetupScreen() {
           return;
         }
 
+        const currentUser = useAuthStore.getState().user;
+        const hasTeam = currentUser?.teamOwnerId || currentUser?.activeTeamId;
+        const hasBusinessSetup = settings?.businessName && settings?.tradeType;
+
+        if (hasTeam || hasBusinessSetup) {
+          try {
+            await api.post('/api/onboarding/complete', {});
+            await fetchBusinessSettings();
+            router.replace('/(tabs)');
+            return;
+          } catch (e) {
+            console.error('Auto-complete onboarding failed:', e);
+          }
+        }
+
         if (settings) {
           setBusinessData(prev => ({
             ...prev,
@@ -270,7 +285,14 @@ export default function OnboardingSetupScreen() {
       });
 
       if (response.error) {
-        Alert.alert('Error', response.error);
+        const errorMsg = typeof response.error === 'string' ? response.error : '';
+        if (errorMsg.toLowerCase().includes('already a member')) {
+          await api.post('/api/onboarding/complete', {}).catch(() => {});
+          await fetchBusinessSettings();
+          setWorkerStep('complete');
+          return;
+        }
+        Alert.alert('Error', errorMsg || 'Failed to join team');
         return;
       }
 
@@ -286,7 +308,14 @@ export default function OnboardingSetupScreen() {
       
       setWorkerStep('complete');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to join team');
+      const errorMsg = error?.message || error?.error || '';
+      if (typeof errorMsg === 'string' && errorMsg.toLowerCase().includes('already a member')) {
+        await api.post('/api/onboarding/complete', {}).catch(() => {});
+        await fetchBusinessSettings();
+        setWorkerStep('complete');
+        return;
+      }
+      Alert.alert('Error', errorMsg || 'Failed to join team');
     } finally {
       setIsLoading(false);
     }
