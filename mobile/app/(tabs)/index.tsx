@@ -2010,14 +2010,22 @@ function GettingStartedChecklist() {
   const checkDismissed = async () => {
     try {
       const val = await AsyncStorage.getItem(dismissKey);
-      if (val === 'true') setDismissed(true);
+      if (val) {
+        const dismissedAt = parseInt(val, 10);
+        const oneDayMs = 24 * 60 * 60 * 1000;
+        if (!isNaN(dismissedAt) && Date.now() - dismissedAt < oneDayMs) {
+          setDismissed(true);
+        } else {
+          await AsyncStorage.removeItem(dismissKey);
+        }
+      }
     } catch {}
   };
 
   const handleDismiss = async () => {
     setDismissed(true);
     try {
-      await AsyncStorage.setItem(dismissKey, 'true');
+      await AsyncStorage.setItem(dismissKey, String(Date.now()));
     } catch {}
   };
 
