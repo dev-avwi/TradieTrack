@@ -71,3 +71,15 @@ id = "s0B79f0D4o9AmE0yu4ZkO"
 uri = "file://attached_assets/jobrunner-play-feature.png"
 type = "image"
 title = "JobRunner - Google Play Feature Graphic (1024x500)"
+
+[[outputs]]
+id = "RshfoUmyXI7P-VluHuERh"
+uri = "file://attached_assets/jobrunner-play-icon-512.png"
+type = "image"
+title = "App Icon (512x512) - Your actual JobRunner logo"
+
+[[outputs]]
+id = "jhM5mKMvSBJKUxPerRCfX"
+uri = "file://attached_assets/jobrunner-play-feature-final.png"
+type = "image"
+title = "Feature Graphic (1024x500) - With your logo and branding"
