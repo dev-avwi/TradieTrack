@@ -450,7 +450,7 @@ function MapsPreferenceSection() {
 export default function AppSettingsScreen() {
   const { colors, themeMode, setThemeMode, isDark, brandColor } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, businessSettings } = useAuthStore();
   
   const { 
     isEnabled: locationEnabled, 
@@ -474,10 +474,15 @@ export default function AppSettingsScreen() {
   const [isLoadingColors, setIsLoadingColors] = useState(true);
   const [isSavingColor, setIsSavingColor] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string | null>(user?.themeColor || null);
+  const isSoloOperator = !businessSettings?.teamSize || businessSettings.teamSize === 'solo';
 
   useEffect(() => {
     initializeTracking();
-    loadAvailableColors();
+    if (!isSoloOperator) {
+      loadAvailableColors();
+    } else {
+      setIsLoadingColors(false);
+    }
   }, []);
 
   const loadAvailableColors = useCallback(async () => {
@@ -653,7 +658,8 @@ export default function AppSettingsScreen() {
             </View>
           </View>
 
-          {/* Map Identity Section */}
+          {/* Map Identity Section - only show for team businesses */}
+          {!isSoloOperator && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionIcon, { backgroundColor: colors.infoLight }]}>
@@ -663,9 +669,13 @@ export default function AppSettingsScreen() {
             </View>
             <View style={styles.card}>
               <View style={styles.colorPreview}>
-                <View style={[styles.colorAvatar, { backgroundColor: selectedColor || colors.primary }]}>
-                  <Text style={styles.colorAvatarInitials}>{initials}</Text>
-                </View>
+                {user?.profileImageUrl ? (
+                  <Image source={{ uri: user.profileImageUrl }} style={styles.colorAvatar} />
+                ) : (
+                  <View style={[styles.colorAvatar, { backgroundColor: selectedColor || colors.primary }]}>
+                    <Text style={styles.colorAvatarInitials}>{initials}</Text>
+                  </View>
+                )}
                 <View style={styles.colorInfo}>
                   <Text style={styles.settingTitle}>{user?.firstName} {user?.lastName}</Text>
                   <Text style={styles.settingDescription}>
@@ -712,6 +722,7 @@ export default function AppSettingsScreen() {
               )}
             </View>
           </View>
+          )}
 
           {/* Location Section */}
           <View style={styles.section}>
