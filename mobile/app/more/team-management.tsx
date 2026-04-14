@@ -1512,12 +1512,8 @@ export default function TeamManagementScreen() {
     setIsLoading(false);
   }, []);
   
-  const handleUpgradeToTeam = async () => {
-    Alert.alert(
-      'Team Plan',
-      'Team plan subscriptions are managed through your business account. Contact admin@avwebinnovation.com for assistance.',
-      [{ text: 'OK' }]
-    );
+  const handleUpgradeToTeam = () => {
+    router.push('/more/subscription');
   };
   
   // Use auth store tier as source of truth, fall back to API response
@@ -2242,12 +2238,8 @@ export default function TeamManagementScreen() {
           style={[styles.ctaButton]}
           onPress={handleUpgradeToTeam}
         >
-          <Text style={styles.ctaButtonText}>Learn More</Text>
+          <Text style={styles.ctaButtonText}>Upgrade to Team</Text>
         </TouchableOpacity>
-        
-        <Text style={styles.ctaSubtext}>
-          Upgrade your plan in Subscription settings
-        </Text>
       </View>
 
       <View style={styles.benefitsSection}>
