@@ -129,6 +129,25 @@ export default function OnboardingSetupScreen() {
           }
         }
 
+        try {
+          const invitesRes = await api.get('/api/auth/pending-invites');
+          const invites = invitesRes?.data?.invites;
+          if (invites && invites.length > 0) {
+            const invite = invites[0];
+            try {
+              await api.post('/api/auth/accept-invite', { teamMemberId: invite.id });
+              await api.post('/api/onboarding/complete', {});
+              await fetchBusinessSettings();
+              router.replace('/(tabs)');
+              return;
+            } catch (acceptErr) {
+              console.error('Auto-accept invite failed:', acceptErr);
+            }
+          }
+        } catch (inviteErr) {
+          console.log('Could not check pending invites:', inviteErr);
+        }
+
         if (settings) {
           setBusinessData(prev => ({
             ...prev,

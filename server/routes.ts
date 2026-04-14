@@ -3751,6 +3751,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inviteStatus: 'accepted',
         inviteAcceptedAt: new Date(),
       } as Partial<InsertTeamMember>);
+
+      try {
+        let settings = await storage.getBusinessSettings(effectiveUserId);
+        if (settings && !settings.onboardingCompleted) {
+          await storage.updateBusinessSettings(effectiveUserId, { onboardingCompleted: true });
+        } else if (!settings) {
+          await storage.createBusinessSettings({
+            userId: effectiveUserId,
+            businessName: '',
+            onboardingCompleted: true,
+          });
+        }
+      } catch (e) {
+        console.error('Auto-complete onboarding after invite accept:', e);
+      }
       
       res.json({ success: true });
     } catch (error) {
