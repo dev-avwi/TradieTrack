@@ -521,7 +521,7 @@ export default function SubscriptionPage() {
 
   const handleUpgrade = async (tier: 'pro' | 'team' | 'business') => {
     const tierNames = { pro: 'Pro', team: 'Team', business: 'Business' };
-    const defaultPrices = { pro: '$49', team: '$59', business: '$199' };
+    const defaultPrices = { pro: '$49', team: '$99', business: '$199' };
     const productIds = {
       pro: IAP_PRODUCT_IDS.pro,
       team: IAP_PRODUCT_IDS.team,
