@@ -8,7 +8,10 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Dimensions
+  Dimensions,
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +27,8 @@ type OwnerStep = 'role' | 'business' | 'trade' | 'teamSize' | 'complete';
 type WorkerStep = 'role' | 'inviteCode' | 'workerDetails' | 'complete';
 type SubcontractorStep = 'role' | 'subDetails' | 'subConnect' | 'privacy' | 'complete';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 const tradeTypes = [
   { value: 'electrical', label: 'Electrical', icon: 'flash' as const },
   { value: 'plumbing', label: 'Plumbing', icon: 'water' as const },
@@ -36,10 +41,10 @@ const tradeTypes = [
 ];
 
 const teamSizes = [
-  { value: 'solo', label: 'Just Me', description: 'Solo tradie', icon: 'person' as const },
-  { value: 'small', label: '2-5', description: 'Small team', icon: 'people' as const },
-  { value: 'medium', label: '6-10', description: 'Growing', icon: 'business' as const },
-  { value: 'large', label: '10+', description: 'Large op', icon: 'globe' as const },
+  { value: 'solo', label: 'Just me', description: 'Solo operator', icon: 'person' as const },
+  { value: 'small', label: '2 \u2013 5', description: 'Small crew', icon: 'people' as const },
+  { value: 'medium', label: '6 \u2013 10', description: 'Growing team', icon: 'business' as const },
+  { value: 'large', label: '10+', description: 'Large operation', icon: 'globe' as const },
 ];
 
 
@@ -54,6 +59,16 @@ export default function OnboardingSetupScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const { user, fetchBusinessSettings } = useAuthStore();
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const [businessData, setBusinessData] = useState({
     teamSize: '',
@@ -114,11 +129,7 @@ export default function OnboardingSetupScreen() {
 
           if (settings.businessName && settings.tradeType) {
             setSelectedRole('owner');
-            if (settings.teamSize) {
-              setOwnerStep('teamSize');
-            } else {
-              setOwnerStep('teamSize');
-            }
+            setOwnerStep('teamSize');
           } else if (settings.businessName) {
             setSelectedRole('owner');
             setOwnerStep('trade');
@@ -378,116 +389,119 @@ export default function OnboardingSetupScreen() {
     return { current: steps.indexOf(subStep) + 1, total: steps.length };
   };
 
-  const getStepLabels = (): string[] => {
-    if (!selectedRole) return ['Start'];
-    if (selectedRole === 'owner') return ['Role', 'Business', 'Trade', 'Team', 'Done'];
-    if (selectedRole === 'worker') return ['Role', 'Code', 'Details', 'Done'];
-    return ['Role', 'Details', 'Connect', 'Privacy', 'Done'];
-  };
+  const firstName = user?.firstName || '';
 
   const renderRoleSelection = () => (
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>How are you joining?</Text>
-        <Text style={styles.stepSubtitle}>Choose the option that best describes you</Text>
+      <View style={styles.welcomeHeader}>
+        <Text style={styles.welcomeGreeting}>
+          {firstName ? `Hey ${firstName}` : 'Welcome'}
+        </Text>
+        <Text style={styles.welcomeTitle}>How will you{'\n'}use JobRunner?</Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.roleCard}
-        onPress={() => {
-          setSelectedRole('owner');
-          setOwnerStep('business');
-        }}
-        activeOpacity={0.7}
-        testID="role-owner"
-      >
-        <View style={[styles.roleIconWrap, { backgroundColor: colors.primary + '12' }]}>  
-          <Ionicons name="briefcase" size={24} color={colors.primary} />
-        </View>
-        <View style={styles.roleCardContent}>
-          <Text style={styles.roleCardTitle}>I run a business</Text>
-          <Text style={styles.roleCardSubtitle}>Set up your business and start managing jobs</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      <View style={styles.roleCardsWrap}>
+        <TouchableOpacity
+          style={styles.roleCard}
+          onPress={() => { setSelectedRole('owner'); setOwnerStep('business'); }}
+          activeOpacity={0.7}
+          testID="role-owner"
+        >
+          <View style={styles.roleCardInner}>
+            <View style={[styles.roleIconCircle, { backgroundColor: colors.primary + '14' }]}>
+              <Ionicons name="briefcase" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.roleTextWrap}>
+              <Text style={styles.roleTitle}>I run a business</Text>
+              <Text style={styles.roleDesc}>Set up your business and start managing jobs</Text>
+            </View>
+          </View>
+          <View style={styles.roleArrow}>
+            <Ionicons name="arrow-forward" size={16} color={colors.mutedForeground} />
+          </View>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.roleCard}
-        onPress={() => {
-          setSelectedRole('worker');
-          setWorkerStep('inviteCode');
-        }}
-        activeOpacity={0.7}
-        testID="role-worker"
-      >
-        <View style={[styles.roleIconWrap, { backgroundColor: '#E8862E12' }]}>
-          <Ionicons name="people" size={24} color="#E8862E" />
-        </View>
-        <View style={styles.roleCardContent}>
-          <Text style={styles.roleCardTitle}>I was invited to a team</Text>
-          <Text style={styles.roleCardSubtitle}>Join your employer's business with an invite code</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.roleCard}
+          onPress={() => { setSelectedRole('worker'); setWorkerStep('inviteCode'); }}
+          activeOpacity={0.7}
+          testID="role-worker"
+        >
+          <View style={styles.roleCardInner}>
+            <View style={[styles.roleIconCircle, { backgroundColor: '#f59e0b14' }]}>
+              <Ionicons name="people" size={22} color="#e8862e" />
+            </View>
+            <View style={styles.roleTextWrap}>
+              <Text style={styles.roleTitle}>I was invited to a team</Text>
+              <Text style={styles.roleDesc}>Join your employer's business with an invite code</Text>
+            </View>
+          </View>
+          <View style={styles.roleArrow}>
+            <Ionicons name="arrow-forward" size={16} color={colors.mutedForeground} />
+          </View>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.roleCard}
-        onPress={() => {
-          setSelectedRole('subcontractor');
-          setSubStep('subDetails');
-        }}
-        activeOpacity={0.7}
-        testID="role-subcontractor"
-      >
-        <View style={[styles.roleIconWrap, { backgroundColor: '#22c55e12' }]}>
-          <Ionicons name="construct" size={24} color="#22c55e" />
-        </View>
-        <View style={styles.roleCardContent}>
-          <Text style={styles.roleCardTitle}>I'm a subcontractor</Text>
-          <Text style={styles.roleCardSubtitle}>Work for multiple businesses independently</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.roleCard}
+          onPress={() => { setSelectedRole('subcontractor'); setSubStep('subDetails'); }}
+          activeOpacity={0.7}
+          testID="role-subcontractor"
+        >
+          <View style={styles.roleCardInner}>
+            <View style={[styles.roleIconCircle, { backgroundColor: '#22c55e14' }]}>
+              <Ionicons name="construct" size={22} color="#22c55e" />
+            </View>
+            <View style={styles.roleTextWrap}>
+              <Text style={styles.roleTitle}>I'm a subcontractor</Text>
+              <Text style={styles.roleDesc}>Work for multiple businesses independently</Text>
+            </View>
+          </View>
+          <View style={styles.roleArrow}>
+            <Ionicons name="arrow-forward" size={16} color={colors.mutedForeground} />
+          </View>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 
   const renderOwnerBusiness = () => (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Business Details</Text>
-        <Text style={styles.stepSubtitle}>Tell us about your trade business</Text>
+        <Text style={styles.stepTitle}>Tell us about{'\n'}your business</Text>
+        <Text style={styles.stepSubtitle}>We'll use this to set up your account</Text>
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Business Name *</Text>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>Business name</Text>
         <TextInput
-          style={styles.input}
+          style={styles.fieldInput}
           placeholder="e.g. Smith Electrical"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '80'}
           value={businessData.businessName}
           onChangeText={(text) => setBusinessData(prev => ({ ...prev, businessName: text }))}
           testID="input-business-name"
         />
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Your Name</Text>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>Your name</Text>
         <TextInput
-          style={styles.input}
+          style={styles.fieldInput}
           placeholder="e.g. John Smith"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '80'}
           value={businessData.ownerName}
           onChangeText={(text) => setBusinessData(prev => ({ ...prev, ownerName: text }))}
           testID="input-owner-name"
         />
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Phone (optional)</Text>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>Phone <Text style={styles.fieldOptional}>optional</Text></Text>
         <TextInput
-          style={styles.input}
+          style={styles.fieldInput}
           placeholder="0412 345 678"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '80'}
           value={businessData.phone}
           onChangeText={(text) => setBusinessData(prev => ({ ...prev, phone: text }))}
           keyboardType="phone-pad"
@@ -495,12 +509,12 @@ export default function OnboardingSetupScreen() {
         />
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>ABN (optional)</Text>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>ABN <Text style={styles.fieldOptional}>optional</Text></Text>
         <TextInput
-          style={[styles.input, businessData.abn && !validateABN(businessData.abn).valid ? { borderColor: colors.destructive } : null]}
+          style={[styles.fieldInput, businessData.abn && !validateABN(businessData.abn).valid ? { borderColor: colors.destructive } : null]}
           placeholder="12 345 678 901"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '80'}
           value={formatABN(businessData.abn)}
           onChangeText={(text) => {
             const digits = text.replace(/\s/g, '').replace(/[^0-9]/g, '').slice(0, 11);
@@ -511,60 +525,67 @@ export default function OnboardingSetupScreen() {
           testID="input-abn"
         />
         {businessData.abn.length > 0 && !validateABN(businessData.abn).valid && (
-          <Text style={{ color: colors.destructive, fontSize: 12, marginTop: 4 }}>
+          <Text style={styles.fieldError}>
             {validateABN(businessData.abn).error}
           </Text>
         )}
       </View>
 
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.primaryButton} onPress={() => {
+      <View style={styles.ctaWrap}>
+        <TouchableOpacity style={styles.ctaButton} onPress={() => {
           if (!businessData.businessName.trim()) {
             Alert.alert('Required', 'Please enter your business name');
             return;
           }
           setOwnerStep('trade');
         }} activeOpacity={0.8}>
-          <Text style={styles.primaryButtonText}>Continue</Text>
+          <Text style={styles.ctaText}>Continue</Text>
+          <Ionicons name="arrow-forward" size={18} color="#fff" />
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 
   const renderOwnerTrade = () => (
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Your Trade</Text>
-        <Text style={styles.stepSubtitle}>This personalises your demo data and templates</Text>
+        <Text style={styles.stepTitle}>What's your trade?</Text>
+        <Text style={styles.stepSubtitle}>This personalises your templates and demo data</Text>
       </View>
 
       <View style={styles.tradeGrid}>
-        {tradeTypes.map((trade) => (
-          <TouchableOpacity
-            key={trade.value}
-            style={[styles.tradeOption, businessData.tradeType === trade.value && styles.tradeOptionSelected]}
-            onPress={() => setBusinessData(prev => ({ ...prev, tradeType: trade.value }))}
-            testID={`option-trade-${trade.value}`}
-          >
-            <Ionicons 
-              name={trade.icon} 
-              size={20} 
-              color={businessData.tradeType === trade.value ? colors.primary : colors.mutedForeground} 
-            />
-            <Text style={[styles.tradeLabel, businessData.tradeType === trade.value && styles.tradeLabelSelected]}>{trade.label}</Text>
-          </TouchableOpacity>
-        ))}
+        {tradeTypes.map((trade) => {
+          const selected = businessData.tradeType === trade.value;
+          return (
+            <TouchableOpacity
+              key={trade.value}
+              style={[styles.tradePill, selected && styles.tradePillSelected]}
+              onPress={() => setBusinessData(prev => ({ ...prev, tradeType: trade.value }))}
+              activeOpacity={0.7}
+              testID={`option-trade-${trade.value}`}
+            >
+              <Ionicons 
+                name={trade.icon} 
+                size={18} 
+                color={selected ? colors.primary : colors.mutedForeground} 
+              />
+              <Text style={[styles.tradePillLabel, selected && { color: colors.primary, fontWeight: '600' }]}>{trade.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.primaryButton} onPress={() => {
+      <View style={styles.ctaWrap}>
+        <TouchableOpacity style={styles.ctaButton} onPress={() => {
           if (!businessData.tradeType) {
             Alert.alert('Required', 'Please select your trade type');
             return;
           }
           setOwnerStep('teamSize');
         }} activeOpacity={0.8}>
-          <Text style={styles.primaryButtonText}>Continue</Text>
+          <Text style={styles.ctaText}>Continue</Text>
+          <Ionicons name="arrow-forward" size={18} color="#fff" />
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -573,33 +594,35 @@ export default function OnboardingSetupScreen() {
   const renderOwnerTeamSize = () => (
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Team Size</Text>
-        <Text style={styles.stepSubtitle}>How many people work in your business?</Text>
+        <Text style={styles.stepTitle}>How big is{'\n'}your team?</Text>
+        <Text style={styles.stepSubtitle}>We'll tailor the experience to your needs</Text>
       </View>
 
-      <View style={styles.optionsGrid}>
-        {teamSizes.map((size) => (
-          <TouchableOpacity
-            key={size.value}
-            style={[styles.optionCard, businessData.teamSize === size.value && styles.optionCardSelected]}
-            onPress={() => {
-              setBusinessData(prev => ({ ...prev, teamSize: size.value }));
-            }}
-            testID={`option-team-${size.value}`}
-          >
-            <Ionicons 
-              name={size.icon} 
-              size={22} 
-              color={businessData.teamSize === size.value ? colors.primary : colors.mutedForeground} 
-            />
-            <Text style={[styles.optionLabel, businessData.teamSize === size.value && styles.optionLabelSelected]}>{size.label}</Text>
-            <Text style={styles.optionDescription}>{size.description}</Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.teamGrid}>
+        {teamSizes.map((size) => {
+          const selected = businessData.teamSize === size.value;
+          return (
+            <TouchableOpacity
+              key={size.value}
+              style={[styles.teamCard, selected && styles.teamCardSelected]}
+              onPress={() => setBusinessData(prev => ({ ...prev, teamSize: size.value }))}
+              activeOpacity={0.7}
+              testID={`option-team-${size.value}`}
+            >
+              <Ionicons 
+                name={size.icon} 
+                size={24} 
+                color={selected ? colors.primary : colors.mutedForeground} 
+              />
+              <Text style={[styles.teamLabel, selected && { color: colors.primary }]}>{size.label}</Text>
+              <Text style={styles.teamDesc}>{size.description}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={[styles.primaryButton, isLoading && { opacity: 0.5 }]} onPress={() => {
+      <View style={styles.ctaWrap}>
+        <TouchableOpacity style={[styles.ctaButton, isLoading && { opacity: 0.5 }]} onPress={() => {
           if (!businessData.teamSize) {
             Alert.alert('Required', 'Please select your team size');
             return;
@@ -609,7 +632,10 @@ export default function OnboardingSetupScreen() {
           {isLoading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryButtonText}>Get Started</Text>
+            <>
+              <Text style={styles.ctaText}>Get Started</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </>
           )}
         </TouchableOpacity>
       </View>
@@ -618,17 +644,18 @@ export default function OnboardingSetupScreen() {
 
 
   const renderWorkerInviteCode = () => (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Enter Invite Code</Text>
+        <Text style={styles.stepTitle}>Enter your{'\n'}invite code</Text>
         <Text style={styles.stepSubtitle}>Your employer will have given you a 6-character code</Text>
       </View>
 
-      <View style={styles.codeInputContainer}>
+      <View style={styles.codeInputWrap}>
         <TextInput
           style={styles.codeInput}
           placeholder="e.g. MIKE42"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '60'}
           value={inviteCode}
           onChangeText={(text) => handleInviteCodeChange(text)}
           autoCapitalize="characters"
@@ -641,47 +668,50 @@ export default function OnboardingSetupScreen() {
       </View>
 
       {inviteValidation?.valid && (
-        <View style={styles.validationSuccess}>
+        <View style={styles.validationBox}>
           <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-          <Text style={styles.validationSuccessText}>
-            You're joining <Text style={{ fontWeight: '700' }}>{inviteValidation.businessName}</Text> as a <Text style={{ fontWeight: '700', textTransform: 'capitalize' }}>{inviteValidation.roleType}</Text>
+          <Text style={[styles.validationText, { color: colors.success }]}>
+            Joining <Text style={{ fontWeight: '700' }}>{inviteValidation.businessName}</Text> as <Text style={{ fontWeight: '700', textTransform: 'capitalize' }}>{inviteValidation.roleType}</Text>
           </Text>
         </View>
       )}
 
       {inviteValidation && !inviteValidation.valid && (
-        <View style={styles.validationError}>
+        <View style={[styles.validationBox, { backgroundColor: colors.destructive + '0C' }]}>
           <Ionicons name="alert-circle" size={20} color={colors.destructive} />
-          <Text style={styles.validationErrorText}>{inviteValidation.error}</Text>
+          <Text style={[styles.validationText, { color: colors.destructive }]}>{inviteValidation.error}</Text>
         </View>
       )}
 
-      <View style={styles.buttonRow}>
+      <View style={styles.ctaWrap}>
         <TouchableOpacity
-          style={[styles.primaryButton, (!inviteValidation?.valid) && { opacity: 0.5 }]}
+          style={[styles.ctaButton, (!inviteValidation?.valid) && { opacity: 0.4 }]}
           onPress={() => setWorkerStep('workerDetails')}
           disabled={!inviteValidation?.valid}
           activeOpacity={0.8}
         >
-          <Text style={styles.primaryButtonText}>Continue</Text>
+          <Text style={styles.ctaText}>Continue</Text>
+          <Ionicons name="arrow-forward" size={18} color="#fff" />
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 
   const renderWorkerDetails = () => (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Your Details</Text>
-        <Text style={styles.stepSubtitle}>Quick info so your team knows who you are</Text>
+        <Text style={styles.stepTitle}>A bit about you</Text>
+        <Text style={styles.stepSubtitle}>So your team knows who you are</Text>
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>First Name *</Text>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>First name</Text>
         <TextInput
-          style={styles.input}
+          style={styles.fieldInput}
           placeholder="John"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '80'}
           value={workerName}
           onChangeText={setWorkerName}
           autoCapitalize="words"
@@ -689,12 +719,12 @@ export default function OnboardingSetupScreen() {
         />
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Last Name</Text>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>Last name</Text>
         <TextInput
-          style={styles.input}
+          style={styles.fieldInput}
           placeholder="Smith"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '80'}
           value={workerLastName}
           onChangeText={setWorkerLastName}
           autoCapitalize="words"
@@ -702,12 +732,12 @@ export default function OnboardingSetupScreen() {
         />
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Phone (optional)</Text>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>Phone <Text style={styles.fieldOptional}>optional</Text></Text>
         <TextInput
-          style={styles.input}
+          style={styles.fieldInput}
           placeholder="0412 345 678"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '80'}
           value={workerPhone}
           onChangeText={setWorkerPhone}
           keyboardType="phone-pad"
@@ -715,9 +745,9 @@ export default function OnboardingSetupScreen() {
         />
       </View>
 
-      <View style={styles.buttonRow}>
+      <View style={styles.ctaWrap}>
         <TouchableOpacity
-          style={[styles.primaryButton, isLoading && { opacity: 0.5 }]}
+          style={[styles.ctaButton, isLoading && { opacity: 0.5 }]}
           onPress={handleWorkerRedeem}
           disabled={isLoading}
           activeOpacity={0.8}
@@ -725,26 +755,31 @@ export default function OnboardingSetupScreen() {
           {isLoading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryButtonText}>Join Team</Text>
+            <>
+              <Text style={styles.ctaText}>Join Team</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </>
           )}
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 
   const renderSubDetails = () => (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Your Details</Text>
-        <Text style={styles.stepSubtitle}>Tell us about yourself</Text>
+        <Text style={styles.stepTitle}>Your details</Text>
+        <Text style={styles.stepSubtitle}>Tell us a bit about yourself</Text>
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>First Name *</Text>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>First name</Text>
         <TextInput
-          style={styles.input}
+          style={styles.fieldInput}
           placeholder="John"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '80'}
           value={subName}
           onChangeText={setSubName}
           autoCapitalize="words"
@@ -752,54 +787,54 @@ export default function OnboardingSetupScreen() {
         />
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Last Name</Text>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>Last name</Text>
         <TextInput
-          style={styles.input}
+          style={styles.fieldInput}
           placeholder="Smith"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '80'}
           value={subLastName}
           onChangeText={setSubLastName}
           autoCapitalize="words"
         />
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Phone</Text>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>Phone <Text style={styles.fieldOptional}>optional</Text></Text>
         <TextInput
-          style={styles.input}
+          style={styles.fieldInput}
           placeholder="0412 345 678"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '80'}
           value={subPhone}
           onChangeText={setSubPhone}
           keyboardType="phone-pad"
         />
       </View>
 
-      <Text style={styles.sectionLabel}>Trade Type</Text>
+      <Text style={styles.sectionHeading}>Trade</Text>
       <View style={styles.tradeGrid}>
-        {tradeTypes.map((trade) => (
-          <TouchableOpacity
-            key={trade.value}
-            style={[styles.tradeOption, subTradeType === trade.value && styles.tradeOptionSelected]}
-            onPress={() => setSubTradeType(trade.value)}
-          >
-            <Ionicons 
-              name={trade.icon} 
-              size={18} 
-              color={subTradeType === trade.value ? colors.primary : colors.mutedForeground} 
-            />
-            <Text style={[styles.tradeLabel, subTradeType === trade.value && styles.tradeLabelSelected]}>{trade.label}</Text>
-          </TouchableOpacity>
-        ))}
+        {tradeTypes.map((trade) => {
+          const selected = subTradeType === trade.value;
+          return (
+            <TouchableOpacity
+              key={trade.value}
+              style={[styles.tradePill, selected && styles.tradePillSelected]}
+              onPress={() => setSubTradeType(trade.value)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name={trade.icon} size={18} color={selected ? colors.primary : colors.mutedForeground} />
+              <Text style={[styles.tradePillLabel, selected && { color: colors.primary, fontWeight: '600' }]}>{trade.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>ABN (optional)</Text>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>ABN <Text style={styles.fieldOptional}>optional</Text></Text>
         <TextInput
-          style={styles.input}
+          style={styles.fieldInput}
           placeholder="12 345 678 901"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '80'}
           value={formatABN(subAbn)}
           onChangeText={(text) => {
             const digits = text.replace(/\s/g, '').replace(/[^0-9]/g, '').slice(0, 11);
@@ -810,31 +845,38 @@ export default function OnboardingSetupScreen() {
         />
       </View>
 
-      <View style={styles.buttonRow}>
+      <View style={styles.ctaWrap}>
         <TouchableOpacity
-          style={[styles.primaryButton, isLoading && { opacity: 0.5 }]}
+          style={[styles.ctaButton, isLoading && { opacity: 0.5 }]}
           onPress={handleSubDetailsNext}
           disabled={isLoading}
           activeOpacity={0.8}
         >
-          {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Continue</Text>}
+          {isLoading ? <ActivityIndicator color="#FFFFFF" /> : (
+            <>
+              <Text style={styles.ctaText}>Continue</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 
   const renderSubConnect = () => (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Connect to a Business</Text>
+        <Text style={styles.stepTitle}>Connect to{'\n'}a business</Text>
         <Text style={styles.stepSubtitle}>Enter an invite code from a business you work with</Text>
       </View>
 
-      <View style={styles.codeInputContainer}>
+      <View style={styles.codeInputWrap}>
         <TextInput
           style={styles.codeInput}
           placeholder="e.g. MIKE42"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={colors.mutedForeground + '60'}
           value={subInviteCode}
           onChangeText={(text) => handleInviteCodeChange(text, true)}
           autoCapitalize="characters"
@@ -847,80 +889,87 @@ export default function OnboardingSetupScreen() {
       </View>
 
       {subInviteValidation?.valid && (
-        <View style={styles.validationSuccess}>
+        <View style={styles.validationBox}>
           <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-          <Text style={styles.validationSuccessText}>
-            You'll be connected to <Text style={{ fontWeight: '700' }}>{subInviteValidation.businessName}</Text>
+          <Text style={[styles.validationText, { color: colors.success }]}>
+            Connecting to <Text style={{ fontWeight: '700' }}>{subInviteValidation.businessName}</Text>
           </Text>
         </View>
       )}
 
       {subInviteValidation && !subInviteValidation.valid && (
-        <View style={styles.validationError}>
+        <View style={[styles.validationBox, { backgroundColor: colors.destructive + '0C' }]}>
           <Ionicons name="alert-circle" size={20} color={colors.destructive} />
-          <Text style={styles.validationErrorText}>{subInviteValidation.error}</Text>
+          <Text style={[styles.validationText, { color: colors.destructive }]}>{subInviteValidation.error}</Text>
         </View>
       )}
 
-      <View style={styles.buttonRow}>
+      <View style={styles.ctaWrap}>
         <TouchableOpacity
-          style={[styles.primaryButton, isLoading && { opacity: 0.5 }]}
+          style={[styles.ctaButton, isLoading && { opacity: 0.5 }]}
           onPress={() => handleSubConnect(false)}
           disabled={isLoading || (!subInviteValidation?.valid && subInviteCode.length > 0)}
           activeOpacity={0.8}
         >
-          {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Connect & Continue</Text>}
+          {isLoading ? <ActivityIndicator color="#FFFFFF" /> : (
+            <>
+              <Text style={styles.ctaText}>Connect & Continue</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </>
+          )}
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.skipLinkButton} onPress={() => handleSubConnect(true)}>
-        <Text style={styles.skipLinkText}>Skip for now</Text>
+      <TouchableOpacity style={styles.skipButton} onPress={() => handleSubConnect(true)} activeOpacity={0.6}>
+        <Text style={styles.skipText}>Skip for now</Text>
       </TouchableOpacity>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 
   const renderSubPrivacy = () => (
     <ScrollView style={styles.stepContainer} contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>Your Privacy Matters</Text>
-        <Text style={styles.stepSubtitle}>How location sharing works for subcontractors</Text>
+        <Text style={styles.stepTitle}>Your privacy{'\n'}matters</Text>
+        <Text style={styles.stepSubtitle}>How location sharing works as a subcontractor</Text>
       </View>
 
-      <View style={styles.privacyCard}>
-        <View style={styles.privacyItem}>
-          <View style={[styles.privacyIcon, { backgroundColor: '#22c55e12' }]}>
+      <View style={styles.privacyList}>
+        <View style={styles.privacyRow}>
+          <View style={[styles.privacyDot, { backgroundColor: '#22c55e18' }]}>
             <Ionicons name="location" size={18} color="#22c55e" />
           </View>
-          <View style={styles.privacyContent}>
+          <View style={styles.privacyTextWrap}>
             <Text style={styles.privacyTitle}>Active jobs only</Text>
-            <Text style={styles.privacyText}>Your location is only shared when you're actively working on a job.</Text>
+            <Text style={styles.privacyDesc}>Your location is only shared when you're actively working on a job.</Text>
           </View>
         </View>
 
-        <View style={styles.privacyItem}>
-          <View style={[styles.privacyIcon, { backgroundColor: colors.primary + '12' }]}>
+        <View style={styles.privacyRow}>
+          <View style={[styles.privacyDot, { backgroundColor: colors.primary + '18' }]}>
             <Ionicons name="stop-circle" size={18} color={colors.primary} />
           </View>
-          <View style={styles.privacyContent}>
-            <Text style={styles.privacyTitle}>Tracking stops automatically</Text>
-            <Text style={styles.privacyText}>The moment you complete a job, tracking stops. No exceptions.</Text>
+          <View style={styles.privacyTextWrap}>
+            <Text style={styles.privacyTitle}>Auto-stops</Text>
+            <Text style={styles.privacyDesc}>The moment you complete a job, tracking stops. No exceptions.</Text>
           </View>
         </View>
 
-        <View style={styles.privacyItem}>
-          <View style={[styles.privacyIcon, { backgroundColor: '#8b5cf612' }]}>
+        <View style={styles.privacyRow}>
+          <View style={[styles.privacyDot, { backgroundColor: '#8b5cf618' }]}>
             <Ionicons name="eye-off" size={18} color="#8b5cf6" />
           </View>
-          <View style={styles.privacyContent}>
-            <Text style={styles.privacyTitle}>Not tracked between jobs</Text>
-            <Text style={styles.privacyText}>Businesses cannot see your location between jobs. Your personal time is private.</Text>
+          <View style={styles.privacyTextWrap}>
+            <Text style={styles.privacyTitle}>Private between jobs</Text>
+            <Text style={styles.privacyDesc}>Businesses cannot see your location between jobs. Your personal time stays private.</Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.primaryButton} onPress={handleSubPrivacyAcknowledge} activeOpacity={0.8}>
-          <Text style={styles.primaryButtonText}>I Understand</Text>
+      <View style={styles.ctaWrap}>
+        <TouchableOpacity style={styles.ctaButton} onPress={handleSubPrivacyAcknowledge} activeOpacity={0.8}>
+          <Text style={styles.ctaText}>I Understand</Text>
+          <Ionicons name="arrow-forward" size={18} color="#fff" />
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -931,23 +980,21 @@ export default function OnboardingSetupScreen() {
     const isSubPath = selectedRole === 'subcontractor';
 
     return (
-      <View style={[styles.stepContainer, styles.completeContainer]}>
-        <View style={styles.completeContent}>
-          <View style={styles.successBadge}>
-            <View style={styles.successBadgeInner}>
-              <Ionicons name="checkmark" size={32} color="#FFFFFF" />
-            </View>
+      <View style={[styles.stepContainer, styles.doneContainer]}>
+        <View style={styles.doneContent}>
+          <View style={styles.doneBadge}>
+            <Ionicons name="checkmark" size={36} color="#fff" />
           </View>
           
-          <Text style={styles.completeTitle}>
-            {isWorkerPath ? 'Welcome to the team!' : isSubPath ? "You're all set!" : "You're good to go!"}
+          <Text style={styles.doneTitle}>
+            {isWorkerPath ? 'Welcome to\nthe team' : isSubPath ? "You're all\nset" : "You're good\nto go"}
           </Text>
-          <Text style={styles.completeSubtitle}>
+          <Text style={styles.doneSubtitle}>
             {isWorkerPath 
               ? `You've joined ${inviteValidation?.businessName || 'the team'}. Your assigned jobs will appear on your dashboard.`
               : isSubPath
                 ? subInviteValidation?.valid 
-                  ? `You're connected to ${subInviteValidation.businessName}. Jobs will appear when they're assigned to you.`
+                  ? `Connected to ${subInviteValidation.businessName}. Jobs will appear when assigned.`
                   : 'Your account is ready. When a business assigns you jobs, they\'ll appear here.'
                 : demoDataSeeded 
                   ? "We've loaded sample data so you can explore everything right away."
@@ -956,27 +1003,27 @@ export default function OnboardingSetupScreen() {
           </Text>
 
           {!isWorkerPath && !isSubPath && (
-            <View style={styles.checkList}>
-              <View style={styles.checkItem}>
+            <View style={styles.doneChecks}>
+              <View style={styles.doneCheckRow}>
                 <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-                <Text style={styles.checkText}>Business details configured</Text>
+                <Text style={styles.doneCheckText}>Business details saved</Text>
               </View>
               {demoDataSeeded && (
-                <View style={styles.checkItem}>
+                <View style={styles.doneCheckRow}>
                   <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-                  <Text style={styles.checkText}>Sample data loaded</Text>
+                  <Text style={styles.doneCheckText}>Sample data loaded</Text>
                 </View>
               )}
             </View>
           )}
         </View>
 
-        <View style={styles.completeButtonWrap}>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleComplete} activeOpacity={0.8}>
-            <Text style={styles.primaryButtonText}>
+        <View style={styles.doneButtonWrap}>
+          <TouchableOpacity style={styles.ctaButton} onPress={handleComplete} activeOpacity={0.8}>
+            <Text style={styles.ctaText}>
               {isWorkerPath ? 'View My Jobs' : isSubPath ? 'Get Started' : 'Start Using JobRunner'}
             </Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -985,15 +1032,12 @@ export default function OnboardingSetupScreen() {
 
   const currentStep = getCurrentStep();
   const { current, total } = getStepCount();
-  const stepLabels = getStepLabels();
 
   if (isCheckingSettings) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Setting up your account...</Text>
-        </View>
+      <View style={[styles.loadingWrap, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingLabel, { color: colors.mutedForeground }]}>Setting up...</Text>
       </View>
     );
   }
@@ -1025,51 +1069,50 @@ export default function OnboardingSetupScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-      {currentStep !== 'complete' && (
-        <View style={styles.headerBar}>
-          <View style={styles.headerRow}>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        {currentStep !== 'complete' && (
+          <View style={styles.topBar}>
             {canGoBack() ? (
-              <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="chevron-back" size={22} color={colors.foreground} />
+              <TouchableOpacity onPress={handleBack} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <Ionicons name="chevron-back" size={20} color={colors.foreground} />
               </TouchableOpacity>
             ) : (
-              <View style={{ width: 36 }} />
+              <View style={{ width: 40 }} />
             )}
-            <Text style={styles.headerTitle}>Set up your account</Text>
-            <View style={{ width: 36 }} />
+
+            {total > 1 && (
+              <View style={styles.dotsRow}>
+                {Array.from({ length: total }).map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.dot,
+                      i < current
+                        ? { backgroundColor: colors.primary }
+                        : { backgroundColor: colors.border },
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+
+            <View style={{ width: 40 }} />
           </View>
+        )}
 
-          {total > 1 && (
-            <View style={styles.progressRow}>
-              {stepLabels.map((label, i) => {
-                const isActive = i < current;
-                const isCurrent = i === current - 1;
-                return (
-                  <View key={i} style={styles.progressSegment}>
-                    <View style={[
-                      styles.progressBar,
-                      isActive ? { backgroundColor: colors.primary } : { backgroundColor: colors.border },
-                    ]} />
-                  </View>
-                );
-              })}
-            </View>
-          )}
+        <View style={styles.contentArea}>
+          {currentStep === 'role' && renderRoleSelection()}
+          {selectedRole === 'owner' && ownerStep === 'business' && renderOwnerBusiness()}
+          {selectedRole === 'owner' && ownerStep === 'trade' && renderOwnerTrade()}
+          {selectedRole === 'owner' && ownerStep === 'teamSize' && renderOwnerTeamSize()}
+          {selectedRole === 'worker' && workerStep === 'inviteCode' && renderWorkerInviteCode()}
+          {selectedRole === 'worker' && workerStep === 'workerDetails' && renderWorkerDetails()}
+          {selectedRole === 'subcontractor' && subStep === 'subDetails' && renderSubDetails()}
+          {selectedRole === 'subcontractor' && subStep === 'subConnect' && renderSubConnect()}
+          {selectedRole === 'subcontractor' && subStep === 'privacy' && renderSubPrivacy()}
+          {currentStep === 'complete' && renderComplete()}
         </View>
-      )}
-
-      <View style={styles.contentArea}>
-        {currentStep === 'role' && renderRoleSelection()}
-        {selectedRole === 'owner' && ownerStep === 'business' && renderOwnerBusiness()}
-        {selectedRole === 'owner' && ownerStep === 'trade' && renderOwnerTrade()}
-        {selectedRole === 'owner' && ownerStep === 'teamSize' && renderOwnerTeamSize()}
-        {selectedRole === 'worker' && workerStep === 'inviteCode' && renderWorkerInviteCode()}
-        {selectedRole === 'worker' && workerStep === 'workerDetails' && renderWorkerDetails()}
-        {selectedRole === 'subcontractor' && subStep === 'subDetails' && renderSubDetails()}
-        {selectedRole === 'subcontractor' && subStep === 'subConnect' && renderSubConnect()}
-        {selectedRole === 'subcontractor' && subStep === 'privacy' && renderSubPrivacy()}
-        {currentStep === 'complete' && renderComplete()}
-      </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -1078,372 +1121,394 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  headerBar: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  headerRow: {
+
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.muted,
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.foreground,
-    letterSpacing: -0.2,
-  },
-  progressRow: {
+  dotsRow: {
     flexDirection: 'row',
-    gap: 4,
+    alignItems: 'center',
+    gap: 6,
   },
-  progressSegment: {
-    flex: 1,
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  progressBar: {
-    height: 3,
-    borderRadius: 1.5,
-  },
+
   contentArea: {
     flex: 1,
   },
+
   stepContainer: {
     flex: 1,
   },
   stepContent: {
-    padding: 24,
+    paddingHorizontal: 28,
+    paddingTop: 12,
     paddingBottom: 40,
   },
-  stepHeader: {
-    marginBottom: 28,
+
+  welcomeHeader: {
+    marginBottom: 36,
   },
-  stepTitle: {
-    fontSize: 26,
+  welcomeGreeting: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.primary,
+    marginBottom: 8,
+    letterSpacing: 0.2,
+  },
+  welcomeTitle: {
+    fontSize: 32,
     fontWeight: '700',
     color: colors.foreground,
-    marginBottom: 6,
-    letterSpacing: -0.5,
+    lineHeight: 40,
+    letterSpacing: -0.8,
+  },
+
+  roleCardsWrap: {
+    gap: 12,
+  },
+  roleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  roleCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 14,
+  },
+  roleIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleTextWrap: {
+    flex: 1,
+  },
+  roleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 3,
+    letterSpacing: -0.2,
+  },
+  roleDesc: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    lineHeight: 18,
+  },
+  roleArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+
+  stepHeader: {
+    marginBottom: 32,
+  },
+  stepTitle: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: colors.foreground,
+    lineHeight: 38,
+    letterSpacing: -0.8,
+    marginBottom: 8,
   },
   stepSubtitle: {
     fontSize: 15,
     color: colors.mutedForeground,
     lineHeight: 22,
   },
-  roleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    gap: 14,
+
+  fieldGroup: {
+    marginBottom: 20,
   },
-  roleIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  roleCardContent: {
-    flex: 1,
-  },
-  roleCardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.foreground,
-    marginBottom: 2,
-  },
-  roleCardSubtitle: {
-    fontSize: 13,
-    color: colors.mutedForeground,
-    lineHeight: 18,
-  },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.foreground,
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
+  fieldLabel: {
     fontSize: 14,
     fontWeight: '500',
     color: colors.foreground,
     marginBottom: 8,
   },
-  input: {
-    height: 48,
-    paddingHorizontal: 14,
+  fieldOptional: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: colors.mutedForeground,
+  },
+  fieldInput: {
+    height: 52,
+    paddingHorizontal: 16,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    borderRadius: 10,
+    borderRadius: 12,
     color: colors.foreground,
-    fontSize: 15,
+    fontSize: 16,
   },
+  fieldError: {
+    color: colors.destructive,
+    fontSize: 12,
+    marginTop: 6,
+  },
+
+  sectionHeading: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 12,
+    marginTop: 4,
+  },
+
   tradeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  tradeOption: {
+  tradePill: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 11,
     backgroundColor: colors.card,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: 24,
+    borderWidth: 1.5,
     borderColor: colors.cardBorder,
-    gap: 6,
+    gap: 7,
   },
-  tradeOptionSelected: {
+  tradePillSelected: {
     borderColor: colors.primary,
-    backgroundColor: colors.primary + '10',
+    backgroundColor: colors.primary + '0A',
   },
-  tradeLabel: {
+  tradePillLabel: {
     fontSize: 14,
     color: colors.foreground,
   },
-  tradeLabelSelected: {
-    color: colors.primary,
-    fontWeight: '500',
-  },
-  optionsGrid: {
+
+  teamGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: 24,
   },
-  optionCard: {
-    width: (Dimensions.get('window').width - 58) / 2,
-    padding: 16,
+  teamCard: {
+    width: (SCREEN_WIDTH - 68) / 2,
+    paddingVertical: 20,
+    paddingHorizontal: 14,
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: colors.cardBorder,
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
-  optionCardSelected: {
+  teamCardSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.primary + '08',
   },
-  optionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
+  teamLabel: {
+    fontSize: 18,
+    fontWeight: '700',
     color: colors.foreground,
+    letterSpacing: -0.3,
   },
-  optionLabelSelected: {
-    color: colors.primary,
-  },
-  optionDescription: {
+  teamDesc: {
     fontSize: 12,
     color: colors.mutedForeground,
   },
-  buttonRow: {
+
+  ctaWrap: {
     marginTop: 8,
-    marginBottom: 16,
   },
-  primaryButton: {
+  ctaButton: {
     backgroundColor: colors.primary,
-    paddingVertical: 15,
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    width: '100%',
+    gap: 8,
   },
-  primaryButtonText: {
+  ctaText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    letterSpacing: -0.2,
   },
-  skipLinkButton: {
+
+  skipButton: {
     alignItems: 'center',
-    padding: 12,
+    paddingVertical: 14,
   },
-  skipLinkText: {
+  skipText: {
     fontSize: 14,
     color: colors.mutedForeground,
     fontWeight: '500',
   },
-  codeInputContainer: {
+
+  codeInputWrap: {
     position: 'relative',
     marginBottom: 16,
   },
   codeInput: {
-    height: 60,
+    height: 64,
     paddingHorizontal: 20,
     backgroundColor: colors.card,
     borderWidth: 1.5,
     borderColor: colors.cardBorder,
-    borderRadius: 12,
+    borderRadius: 14,
     color: colors.foreground,
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '700',
-    letterSpacing: 8,
+    letterSpacing: 10,
     textAlign: 'center',
   },
   codeSpinner: {
     position: 'absolute',
-    right: 16,
-    top: 18,
+    right: 18,
+    top: 20,
   },
-  validationSuccess: {
+
+  validationBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.success + '12',
-    padding: 14,
-    borderRadius: 10,
+    backgroundColor: colors.success + '0C',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     gap: 10,
     marginBottom: 16,
   },
-  validationSuccessText: {
+  validationText: {
     flex: 1,
     fontSize: 14,
-    color: colors.success,
     lineHeight: 20,
   },
-  validationError: {
+
+  privacyList: {
+    gap: 20,
+    marginBottom: 32,
+  },
+  privacyRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.destructive + '12',
-    padding: 14,
-    borderRadius: 10,
-    gap: 10,
-    marginBottom: 16,
+    gap: 14,
   },
-  validationErrorText: {
-    flex: 1,
-    fontSize: 14,
-    color: colors.destructive,
-  },
-  privacyCard: {
-    backgroundColor: colors.card,
+  privacyDot: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    padding: 18,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    gap: 18,
-  },
-  privacyItem: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  privacyIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
   },
-  privacyContent: {
+  privacyTextWrap: {
     flex: 1,
   },
   privacyTitle: {
     fontSize: 15,
     fontWeight: '600',
     color: colors.foreground,
-    marginBottom: 3,
+    marginBottom: 4,
   },
-  privacyText: {
+  privacyDesc: {
     fontSize: 13,
     color: colors.mutedForeground,
-    lineHeight: 18,
+    lineHeight: 19,
   },
-  completeContainer: {
+
+  doneContainer: {
     justifyContent: 'space-between',
-    padding: 24,
+    paddingHorizontal: 28,
+    paddingBottom: 24,
+    paddingTop: 48,
   },
-  completeContent: {
+  doneContent: {
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
   },
-  successBadge: {
+  doneBadge: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: colors.success + '12',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  successBadgeInner: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
     backgroundColor: colors.success,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 28,
   },
-  completeTitle: {
-    fontSize: 26,
+  doneTitle: {
+    fontSize: 30,
     fontWeight: '700',
     color: colors.foreground,
     textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: -0.5,
+    lineHeight: 38,
+    letterSpacing: -0.8,
+    marginBottom: 12,
   },
-  completeSubtitle: {
+  doneSubtitle: {
     fontSize: 15,
     color: colors.mutedForeground,
     textAlign: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     lineHeight: 22,
   },
-  completeButtonWrap: {
-    paddingBottom: 16,
-  },
-  checkList: {
-    marginTop: 24,
-    gap: 12,
+  doneChecks: {
+    marginTop: 28,
+    gap: 10,
     width: '100%',
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 14,
+    padding: 18,
     borderWidth: 1,
     borderColor: colors.cardBorder,
   },
-  checkItem: {
+  doneCheckRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  checkText: {
+  doneCheckText: {
     fontSize: 14,
     color: colors.foreground,
   },
-  loadingContainer: {
+  doneButtonWrap: {
+    paddingTop: 16,
+  },
+
+  loadingWrap: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 16,
   },
-  loadingText: {
+  loadingLabel: {
     fontSize: 15,
     fontWeight: '500',
   },
