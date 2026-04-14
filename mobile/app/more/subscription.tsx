@@ -399,6 +399,32 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primary,
     fontWeight: '500' as const,
   },
+  subscriptionLegalSection: {
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.sm,
+  },
+  subscriptionLegalText: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+    lineHeight: 18,
+    textAlign: 'center' as const,
+    marginBottom: spacing.sm,
+  },
+  legalLinksRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+  },
+  legalLink: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '500' as const,
+  },
+  legalSeparator: {
+    ...typography.caption,
+    color: colors.mutedForeground,
+  },
   webNoteCard: {
     flexDirection: 'row',
     backgroundColor: colors.card,
@@ -992,6 +1018,23 @@ export default function SubscriptionPage() {
               <Text style={styles.restoreButtonText}>Restore Purchases</Text>
             )}
           </TouchableOpacity>
+        )}
+
+        {Platform.OS === 'ios' && (
+          <View style={styles.subscriptionLegalSection}>
+            <Text style={styles.subscriptionLegalText}>
+              Subscriptions automatically renew monthly unless cancelled at least 24 hours before the end of the current period. Your Apple ID account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions in your App Store account settings.
+            </Text>
+            <View style={styles.legalLinksRow}>
+              <TouchableOpacity onPress={() => Linking.openURL('https://jobrunner.com.au/terms-of-service')}>
+                <Text style={styles.legalLink}>Terms of Use</Text>
+              </TouchableOpacity>
+              <Text style={styles.legalSeparator}>|</Text>
+              <TouchableOpacity onPress={() => Linking.openURL('https://jobrunner.com.au/privacy-policy')}>
+                <Text style={styles.legalLink}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
         <View style={styles.webNoteCard}>
