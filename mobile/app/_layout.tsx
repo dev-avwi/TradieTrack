@@ -515,11 +515,11 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
   const isChatScreen = pathname?.includes('/chat') || pathname?.includes('/direct-messages') || pathname?.includes('/sms-conversation') || pathname?.includes('/team-chat');
   const isOnboardingScreen = segments.includes('(onboarding)' as never) || pathname === '/setup';
+  const isAuthScreen = segments.includes('(auth)' as never) || pathname === '/' || pathname === '/index';
   const showFab = !isChatScreen && !isOnboardingScreen;
   const isTeamOwner = isOwner() && hasActiveTeam();
 
-  // Unauthenticated: render children with safe area padding (no header/nav)
-  if (!isAuthenticated) {
+  if (!isAuthenticated || isAuthScreen) {
     return (
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         {children}
@@ -527,7 +527,6 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Onboarding: full-screen without header/nav
   if (isOnboardingScreen) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -765,8 +764,8 @@ function RootLayoutContent() {
           }}
         >
           <Stack.Screen name="index" options={{ headerShown: false, animation: 'none' }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false, animation: 'none' }} />
-          <Stack.Screen name="(onboarding)" options={{ headerShown: false, animation: 'none' }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false, animation: 'none', gestureEnabled: false }} />
+          <Stack.Screen name="(onboarding)" options={{ headerShown: false, animation: 'none', gestureEnabled: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: colors.background } }} />
           <Stack.Screen name="job" options={{ headerShown: false }} />
           <Stack.Screen name="more" options={{ headerShown: false }} />

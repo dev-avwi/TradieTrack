@@ -10,9 +10,10 @@ export default function OnboardingLayout() {
         headerShown: false,
         contentStyle: { backgroundColor: colors.background },
         animation: 'slide_from_right',
+        gestureEnabled: false,
       }}
     >
-      <Stack.Screen name="setup" />
+      <Stack.Screen name="setup" options={{ gestureEnabled: false }} />
     </Stack>
   );
 }

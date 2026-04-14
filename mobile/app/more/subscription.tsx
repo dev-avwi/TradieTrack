@@ -496,7 +496,18 @@ export default function SubscriptionPage() {
           (error) => {
             console.error('[IAP] Purchase error listener:', JSON.stringify(error, null, 2));
             const errorMsg = error?.message || error?.code || 'Unknown error';
-            Alert.alert('Purchase Failed', `${errorMsg}\n\nPlease try again.`);
+            if (errorMsg.toLowerCase().includes('invalid') || errorMsg.includes('E_DEVELOPER_ERROR') || errorMsg.includes('E_ITEM_UNAVAILABLE')) {
+              Alert.alert(
+                'Not Available Yet',
+                'This subscription is being finalised in the App Store. Visit jobrunner.com.au/pricing to subscribe now.',
+                [
+                  { text: 'OK', style: 'cancel' },
+                  { text: 'Open Website', onPress: () => Linking.openURL('https://jobrunner.com.au/pricing') },
+                ]
+              );
+            } else {
+              Alert.alert('Purchase Failed', `${errorMsg}\n\nPlease try again.`);
+            }
             setPurchasing(false);
           }
         );
@@ -530,6 +541,18 @@ export default function SubscriptionPage() {
     };
 
     if (Platform.OS === 'ios') {
+      const storePrice = applePrices[tier];
+      if (!storePrice) {
+        Alert.alert(
+          'Coming Soon',
+          `In-app subscriptions for the ${tierNames[tier]} plan are being set up. Visit jobrunner.com.au/pricing to subscribe now, or check back shortly.`,
+          [
+            { text: 'OK', style: 'cancel' },
+            { text: 'Open Website', onPress: () => Linking.openURL('https://jobrunner.com.au/pricing') },
+          ]
+        );
+        return;
+      }
       setPurchasing(true);
       try {
         await purchaseSubscription(productIds[tier]);
@@ -537,7 +560,18 @@ export default function SubscriptionPage() {
         console.error('[IAP] Purchase error details:', JSON.stringify(error, null, 2));
         if (error?.code !== 'E_USER_CANCELLED') {
           const errorMsg = error?.message || error?.code || 'Unknown error';
-          Alert.alert('Purchase Failed', `${errorMsg}\n\nPlease try again.`);
+          if (errorMsg.toLowerCase().includes('invalid') || errorMsg.includes('E_DEVELOPER_ERROR')) {
+            Alert.alert(
+              'Not Available Yet',
+              `This subscription is being finalised in the App Store. Visit jobrunner.com.au/pricing to subscribe now.`,
+              [
+                { text: 'OK', style: 'cancel' },
+                { text: 'Open Website', onPress: () => Linking.openURL('https://jobrunner.com.au/pricing') },
+              ]
+            );
+          } else {
+            Alert.alert('Purchase Failed', `${errorMsg}\n\nPlease try again.`);
+          }
         }
         setPurchasing(false);
       }
@@ -584,6 +618,13 @@ export default function SubscriptionPage() {
     const source = subscriptionStatus?.subscriptionSource;
     if (source === 'apple') {
       await Linking.openURL('https://apps.apple.com/account/subscriptions');
+      return;
+    }
+    if (subscriptionStatus?.isBeta || subscriptionStatus?.betaUser) {
+      Alert.alert(
+        'Founding Member',
+        'As a Founding Member, your plan is managed directly by the JobRunner team. No action needed!\n\nFor any questions, contact admin@avwebinnovation.com'
+      );
       return;
     }
     if (source === 'stripe' || subscriptionStatus?.stripeSubscriptionId) {
