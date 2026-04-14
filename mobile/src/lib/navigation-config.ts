@@ -15,7 +15,9 @@ export interface NavItem {
   hideForTradie?: boolean;
   hideForStaff?: boolean;
   hideInSimpleMode?: boolean;
+  hideForSolo?: boolean;
   requiresProPlan?: boolean;
+  requiresTeamPlan?: boolean;
   showLockedIfNoAccess?: boolean;
   locked?: boolean;
   lockReason?: string;
@@ -144,12 +146,12 @@ export const mainMenuItems: NavItem[] = [
     description: "Team management and live operations",
     color: "primary",
     bgColor: "primary",
-    requiresTeam: false,
-    requiresOwnerOrManager: false,
+    requiresTeamPlan: true,
     hideForStaff: true,
+    hideForSolo: true,
     showInMore: true,
     category: "team",
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
+    allowedRoles: ['owner', 'manager'],
     showLockedIfNoAccess: true,
   },
   {
@@ -329,9 +331,10 @@ export const settingsMenuItems: NavItem[] = [
     description: "Custom branding & theming",
     color: "primary",
     bgColor: "primary",
+    hideForStaff: true,
     showInMore: true,
     category: "settings",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff', 'subcontractor'],
+    allowedRoles: ['owner', 'solo_owner', 'manager'],
   },
   {
     title: "App Settings",
@@ -393,7 +396,7 @@ export const accountMenuItems: NavItem[] = [
     badge: "Plan",
     showInMore: true,
     category: "account",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'office_admin', 'staff_tradie', 'staff', 'subcontractor'],
+    allowedRoles: ['owner', 'solo_owner'],
   },
   {
     title: "Delete Account",
@@ -419,7 +422,7 @@ export const adminMenuItems: NavItem[] = [
     requiresPlatformAdmin: true,
     showInMore: true,
     category: "admin",
-    allowedRoles: ['owner', 'solo_owner', 'manager', 'staff_tradie', 'staff'],
+    allowedRoles: ['owner', 'solo_owner'],
   },
 ];
 
@@ -440,6 +443,7 @@ export interface FilterOptions {
   userRole?: UserRole;
   isPlatformAdmin?: boolean;
   hasProSubscription?: boolean;
+  hasTeamSubscription?: boolean;
   isSimpleMode?: boolean;
 }
 
@@ -466,6 +470,16 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
       continue;
     }
 
+    if (item.hideForSolo && options.isSolo) {
+      if (item.showLockedIfNoAccess) {
+        item.locked = true;
+        item.lockReason = 'Available on the Team plan. Upgrade in Subscription settings.';
+        item.badge = 'Team';
+      } else {
+        continue;
+      }
+    }
+
     if (item.hideInSimpleMode && options.isSimpleMode) {
       if (item.showLockedIfNoAccess) {
         item.locked = true;
@@ -481,6 +495,16 @@ export function filterNavItems(items: NavItem[], options: FilterOptions): NavIte
         item.locked = true;
         item.lockReason = 'Available on the Pro plan. Upgrade in Subscription settings.';
         item.badge = 'Pro';
+      } else {
+        continue;
+      }
+    }
+
+    if (item.requiresTeamPlan && options.hasTeamSubscription === false) {
+      if (item.showLockedIfNoAccess) {
+        item.locked = true;
+        item.lockReason = 'Available on the Team plan. Upgrade in Subscription settings.';
+        item.badge = 'Team';
       } else {
         continue;
       }
@@ -680,9 +704,9 @@ export const sidebarMainItems: SidebarNavItem[] = [
     matchPaths: ['/more/team-operations', '/more/team-management', '/more/dispatch-board'],
     section: 'main',
     hideForStaff: true,
-    requiresTeam: false,
-    requiresOwnerOrManager: false,
-    allowedRoles: ['owner', 'solo_owner', 'manager'],
+    requiresTeam: true,
+    requiresOwnerOrManager: true,
+    allowedRoles: ['owner', 'manager'],
   },
   { 
     id: 'chat',
@@ -837,6 +861,10 @@ export function filterSidebarItems(items: SidebarNavItem[], options: FilterOptio
     }
 
     if (item.requiresProPlan && options.hasProSubscription === false) {
+      return false;
+    }
+
+    if (item.requiresTeam && (!options.isTeam || options.hasTeamSubscription === false)) {
       return false;
     }
     

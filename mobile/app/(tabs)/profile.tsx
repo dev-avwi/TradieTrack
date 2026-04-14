@@ -473,8 +473,9 @@ export default function MoreScreen() {
     userRole: mapRoleToFilterRole(role),
     isPlatformAdmin: user?.isPlatformAdmin || false,
     hasProSubscription,
+    hasTeamSubscription,
     isSimpleMode: businessSettings?.simpleMode || false,
-  }), [canAccessTeamPages, isSolo, isStaff, isSubcontractor, isOwner, isManager, role, user?.isPlatformAdmin, hasProSubscription, businessSettings?.simpleMode]);
+  }), [canAccessTeamPages, isSolo, isStaff, isSubcontractor, isOwner, isManager, role, user?.isPlatformAdmin, hasProSubscription, hasTeamSubscription, businessSettings?.simpleMode]);
 
   const categorizedItems = useMemo(() => 
     getMorePageItemsByCategory(filterOptions), 
@@ -540,11 +541,11 @@ export default function MoreScreen() {
     actions.push({ icon: 'plus-circle', label: 'New Job', route: '/more/create-job', bg: colors.primaryLight, fg: colors.primary });
     actions.push({ icon: 'file-text', label: 'Invoice', route: '/more/invoices', bg: colors.successLight, fg: colors.success });
     actions.push({ icon: 'clock', label: 'Time', route: '/more/time-tracking', bg: colors.infoLight, fg: colors.info });
-    if (isOwner || isManager) {
+    if ((isOwner || isManager) && !isSolo && hasTeamSubscription) {
       actions.push({ icon: 'activity', label: 'Team Ops', route: '/more/team-operations', bg: colors.warningLight, fg: colors.warning });
     }
     return actions;
-  }, [isStaff, isOwner, isManager, colors]);
+  }, [isStaff, isOwner, isManager, isSolo, hasTeamSubscription, colors]);
 
   const renderSectionHeader = (categoryKey: string) => {
     if (activeCategory !== 'all') return null;
