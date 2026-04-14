@@ -874,7 +874,7 @@ export default function SubscriptionPage() {
                     <Text style={styles.comparePlanName}>Pro</Text>
                     <Text style={styles.comparePlanDesc}>For solo tradies ready to grow</Text>
                   </View>
-                  <Text style={styles.comparePlanPrice}>{applePrices.pro || '$49'}<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
+                  <Text style={styles.comparePlanPrice}>$49<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
                 </View>
                 <View style={styles.comparePlanFeatures}>
                   {['Unlimited jobs & invoices', 'AI-powered features', 'Custom templates', 'Email integration', 'Priority support'].map((f, i) => (
@@ -905,7 +905,7 @@ export default function SubscriptionPage() {
                     <Text style={styles.comparePlanName}>Team</Text>
                     <Text style={styles.comparePlanDesc}>For businesses with workers</Text>
                   </View>
-                  <Text style={styles.comparePlanPrice}>{applePrices.team || '$99'}<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
+                  <Text style={styles.comparePlanPrice}>$99<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
                 </View>
                 <View style={styles.comparePlanFeatures}>
                   {['Everything in Pro', 'Up to 5 workers', 'GPS & live tracking', 'Time tracking & timesheets', 'Team chat'].map((f, i) => (
@@ -936,7 +936,7 @@ export default function SubscriptionPage() {
                     <Text style={styles.comparePlanName}>Business</Text>
                     <Text style={styles.comparePlanDesc}>For larger crews</Text>
                   </View>
-                  <Text style={styles.comparePlanPrice}>{applePrices.business || '$199'}<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
+                  <Text style={styles.comparePlanPrice}>$199<Text style={styles.comparePlanPriceUnit}>/mo</Text></Text>
                 </View>
                 <View style={styles.comparePlanFeatures}>
                   {['Everything in Team', 'Up to 15 workers', 'Role-based permissions', 'Advanced reporting', 'Priority support'].map((f, i) => (
