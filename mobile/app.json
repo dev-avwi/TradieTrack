@@ -228,7 +228,8 @@
           "color": "#E8862E"
         }
       ],
-      "./plugins/withIAPStoreFlavor"
+      "./plugins/withIAPStoreFlavor",
+      "./plugins/withIAPKotlinFix"
     ],
     "experiments": {
       "typedRoutes": true
