@@ -41400,6 +41400,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         updatedAt: users.updatedAt,
         isActive: users.isActive,
         emailVerified: users.emailVerified,
+        betaUser: users.betaUser,
+        betaLifetimeAccess: users.betaLifetimeAccess,
       }).from(users).orderBy(desc(users.createdAt));
       
       // Get business settings to check onboarding completion
@@ -41656,6 +41658,51 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       });
     } catch (error: any) {
       console.error('Error getting admin revenue:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/users/:userId", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const targetUserId = req.params.userId;
+      const { subscriptionTier, betaLifetimeAccess, betaUser } = req.body;
+
+      const updateData: Record<string, any> = {};
+      if (subscriptionTier !== undefined) {
+        const validTiers = ['free', 'pro', 'team', 'business', 'trial'];
+        if (!validTiers.includes(subscriptionTier)) {
+          return res.status(400).json({ error: `Invalid tier. Must be one of: ${validTiers.join(', ')}` });
+        }
+        updateData.subscriptionTier = subscriptionTier;
+      }
+      if (betaLifetimeAccess !== undefined) {
+        updateData.betaLifetimeAccess = !!betaLifetimeAccess;
+      }
+      if (betaUser !== undefined) {
+        updateData.betaUser = !!betaUser;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update' });
+      }
+
+      const setClauses = Object.entries(updateData).map(([key, value]) => {
+        const colName = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+        if (typeof value === 'boolean') {
+          return sql.raw(`${colName} = ${value}`);
+        }
+        return sql.raw(`${colName} = '${value}'`);
+      });
+
+      await db.execute(sql`
+        UPDATE users 
+        SET ${sql.join(setClauses, sql.raw(', '))}
+        WHERE id = ${targetUserId}
+      `);
+
+      res.json({ success: true, updated: updateData });
+    } catch (error: any) {
+      console.error('Error updating user:', error);
       res.status(500).json({ error: error.message });
     }
   });

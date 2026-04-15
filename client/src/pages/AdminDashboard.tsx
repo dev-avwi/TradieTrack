@@ -132,6 +132,8 @@ interface AdminUser {
   emailVerified: boolean | null;
   hasCompletedOnboarding: boolean;
   businessName: string | null;
+  betaUser: boolean | null;
+  betaLifetimeAccess: boolean | null;
 }
 
 interface AdminUsersResponse {
@@ -448,6 +450,46 @@ function UsersView({
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [editTier, setEditTier] = useState<string>("free");
+  const [editFoundingMember, setEditFoundingMember] = useState(false);
+
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ userId, data }: { userId: string; data: { subscriptionTier?: string; betaLifetimeAccess?: boolean; betaUser?: boolean } }) => {
+      const response = await apiRequest("PATCH", `/api/admin/users/${userId}`, data);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update user");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "User Updated", description: "Account settings saved successfully." });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setEditingUser(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Update Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const openEditModal = (user: AdminUser) => {
+    setEditingUser(user);
+    setEditTier(user.subscriptionTier || 'free');
+    setEditFoundingMember(user.betaLifetimeAccess === true);
+  };
+
+  const handleSaveUser = () => {
+    if (!editingUser) return;
+    updateUserMutation.mutate({
+      userId: editingUser.id,
+      data: {
+        subscriptionTier: editTier,
+        betaLifetimeAccess: editFoundingMember,
+        betaUser: editFoundingMember,
+      },
+    });
+  };
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -522,7 +564,7 @@ function UsersView({
       
       const matchesTier = 
         tierFilter === "all" || 
-        (user.subscriptionTier || 'free') === tierFilter;
+        (tierFilter === "founder" ? user.betaLifetimeAccess === true : (user.subscriptionTier || 'free') === tierFilter);
       
       const matchesStatus = 
         statusFilter === "all" ||
@@ -557,6 +599,9 @@ function UsersView({
                 <SelectItem value="free">Free</SelectItem>
                 <SelectItem value="trial">Trial</SelectItem>
                 <SelectItem value="pro">Pro</SelectItem>
+                <SelectItem value="team">Team</SelectItem>
+                <SelectItem value="business">Business</SelectItem>
+                <SelectItem value="founder">Founding Members</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -649,9 +694,16 @@ function UsersView({
                         {formatDate(user.createdAt)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getTierBadgeVariant(user.subscriptionTier)} className="capitalize">
-                          {user.subscriptionTier || 'free'}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <Badge variant={getTierBadgeVariant(user.subscriptionTier)} className="capitalize">
+                            {user.subscriptionTier || 'free'}
+                          </Badge>
+                          {user.betaLifetimeAccess && (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30 text-xs">
+                              Founder
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
                         {formatRelativeDate(user.updatedAt)}
@@ -695,6 +747,15 @@ function UsersView({
                       </TableCell>
                       <TableCell className="pr-6 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditModal(user)}
+                            title="Manage account"
+                            data-testid={`button-edit-${user.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -763,6 +824,56 @@ function UsersView({
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!editingUser} onOpenChange={(open) => { if (!open) setEditingUser(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Manage Account</AlertDialogTitle>
+            <AlertDialogDescription>
+              {editingUser?.name} ({editingUser?.email})
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Subscription Tier</label>
+              <Select value={editTier} onValueChange={setEditTier}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="trial">Trial</SelectItem>
+                  <SelectItem value="pro">Pro</SelectItem>
+                  <SelectItem value="team">Team</SelectItem>
+                  <SelectItem value="business">Business</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium">Founding Member</label>
+                <p className="text-xs text-muted-foreground">Lifetime free access, bypasses all limits</p>
+              </div>
+              <Button
+                variant={editFoundingMember ? "default" : "outline"}
+                size="sm"
+                onClick={() => setEditFoundingMember(!editFoundingMember)}
+              >
+                {editFoundingMember ? "Yes" : "No"}
+              </Button>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSaveUser}
+              disabled={updateUserMutation.isPending}
+            >
+              {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
