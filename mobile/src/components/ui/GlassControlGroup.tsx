@@ -1,10 +1,17 @@
 import { ReactNode } from 'react';
-import { View, Pressable, StyleSheet } from 'react-native';
-import {
-  LiquidGlassView,
-  isLiquidGlassSupported,
-} from '@callstack/liquid-glass';
+import { Platform, View, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../../lib/theme';
+
+let LiquidGlassView: any = null;
+let isLiquidGlassSupported = false;
+
+if (Platform.OS === 'ios') {
+  try {
+    const lg = require('@callstack/liquid-glass');
+    LiquidGlassView = lg.LiquidGlassView;
+    isLiquidGlassSupported = lg.isLiquidGlassSupported;
+  } catch (e) {}
+}
 
 interface GlassControlItemProps {
   onPress: () => void;
@@ -39,7 +46,7 @@ export function GlassControlGroup({ items }: GlassControlGroupProps) {
     </View>
   ));
 
-  if (isLiquidGlassSupported) {
+  if (isLiquidGlassSupported && LiquidGlassView) {
     return (
       <LiquidGlassView style={styles.capsule} effect="regular">
         {controls}

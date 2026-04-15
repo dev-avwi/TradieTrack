@@ -1,11 +1,18 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import {
-  LiquidGlassView,
-  isLiquidGlassSupported,
-} from '@callstack/liquid-glass';
 import { useTheme } from '../../lib/theme';
+
+let LiquidGlassView: any = null;
+let isLiquidGlassSupported = false;
+
+if (Platform.OS === 'ios') {
+  try {
+    const lg = require('@callstack/liquid-glass');
+    LiquidGlassView = lg.LiquidGlassView;
+    isLiquidGlassSupported = lg.isLiquidGlassSupported;
+  } catch (e) {}
+}
 
 interface IOSBackButtonProps {
   onPress?: () => void;
@@ -30,7 +37,7 @@ export function IOSBackButton({ onPress, label = 'Back' }: IOSBackButtonProps) {
     </>
   );
 
-  if (isLiquidGlassSupported) {
+  if (isLiquidGlassSupported && LiquidGlassView) {
     return (
       <Pressable
         onPress={handlePress}

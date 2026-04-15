@@ -388,15 +388,15 @@ export function Header({
 const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.create({
   header: {
     backgroundColor: colors.background,
-    paddingTop: isIOS ? topInset : 0,
+    paddingTop: topInset,
     ...shadows.header as object,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     height: HEADER_HEIGHT,
   },
   leftSection: {

@@ -63,4 +63,10 @@ Authenticated endpoints:
 
 Feature toggles are available in both the web client (WebsiteAddon.tsx) and mobile app (custom-website.tsx). Admin dashboard shows enabled features per business in the Users table.
 
+### Android Compatibility
+*   **Liquid Glass**: `@callstack/liquid-glass` imports are conditionally loaded only on iOS via `Platform.OS === 'ios'` + `require()` in `GlassButton.tsx`, `GlassControlGroup.tsx`, and `IOSBackButton.tsx`. This prevents Android crashes from native module linking issues.
+*   **Team Management**: `team-management.tsx` has null-safe access for `member.user?.firstName`, date parsing guards on `ic.expiresAt`, and `ROLE_CONFIG` includes all role keys (`owner`, `admin`, `manager`, `supervisor`, `worker`, `staff`).
+*   **EAS Plugins**: `withIAPStoreFlavor.js` and `withIAPKotlinFix.js` in `mobile/plugins/` fix Android build issues.
+*   **Header**: `paddingTop: topInset` applies on both iOS and Android.
+
 *   **Error Tracking**: Sentry

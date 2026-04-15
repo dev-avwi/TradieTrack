@@ -1394,17 +1394,35 @@ export default function TeamManagementScreen() {
       icon: 'shield',
       description: 'Full access to everything' 
     },
+    admin: { 
+      label: 'Admin', 
+      color: colors.success, 
+      icon: 'user-check',
+      description: 'Manages jobs, team, quotes and invoices' 
+    },
     manager: { 
       label: 'Manager', 
       color: colors.success, 
       icon: 'users',
       description: 'Manages jobs, team, quotes and invoices' 
     },
+    supervisor: { 
+      label: 'Supervisor', 
+      color: colors.info, 
+      icon: 'eye',
+      description: 'Oversees field workers and jobs' 
+    },
     worker: { 
       label: 'Worker', 
       color: colors.info, 
       icon: 'user',
       description: 'Field worker - works on assigned jobs' 
+    },
+    staff: { 
+      label: 'Staff', 
+      color: colors.info, 
+      icon: 'user',
+      description: 'General staff member' 
     },
   }), [colors]);
 
@@ -1826,8 +1844,8 @@ export default function TeamManagementScreen() {
   const handleRemove = async (member: TeamMember) => {
     const userName = member.firstName && member.lastName
       ? `${member.firstName} ${member.lastName}`
-      : member.user 
-        ? `${member.user.firstName} ${member.user.lastName}`
+      : member.user?.firstName
+        ? `${member.user.firstName} ${member.user.lastName || ''}`
         : 'this member';
       
     Alert.alert(
@@ -1952,9 +1970,9 @@ export default function TeamManagementScreen() {
     const statusConfig = STATUS_CONFIG[member.inviteStatus] || STATUS_CONFIG.pending;
     const userName = member.firstName && member.lastName 
       ? `${member.firstName} ${member.lastName}`
-      : member.user 
-        ? `${member.user.firstName} ${member.user.lastName}`
-        : 'Unnamed User';
+      : member.user?.firstName
+        ? `${member.user.firstName} ${member.user.lastName || ''}`
+        : member.email || 'Unnamed User';
     const memberEmail = member.email || member.user?.email || 'No email';
 
     const _unused_getInitials = null;
@@ -2182,10 +2200,10 @@ export default function TeamManagementScreen() {
     if (member.firstName && member.lastName) {
       return `${member.firstName} ${member.lastName}`;
     }
-    if (member.user) {
-      return `${member.user.firstName} ${member.user.lastName}`;
+    if (member.user?.firstName) {
+      return `${member.user.firstName} ${member.user.lastName || ''}`;
     }
-    return 'Unknown';
+    return member.email || 'Unknown';
   };
 
   const getMemberInitials = (member: TeamMember | null) => {
@@ -2347,7 +2365,7 @@ export default function TeamManagementScreen() {
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Active Invite Codes</Text>
               {inviteCodes.filter(c => c.isActive).map((ic) => {
-                const isExpired = new Date() > new Date(ic.expiresAt);
+                const isExpired = ic.expiresAt ? new Date() > new Date(ic.expiresAt) : false;
                 const isExhausted = ic.usedCount >= ic.maxUses;
                 return (
                   <View key={ic.id} style={{ backgroundColor: colors.card, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.cardBorder }}>
@@ -2367,7 +2385,7 @@ export default function TeamManagementScreen() {
                         {ic.usedCount}/{ic.maxUses} uses
                       </Text>
                       <Text style={{ fontSize: 12, color: isExpired ? colors.destructive : colors.mutedForeground }}>
-                        {isExpired ? 'Expired' : `Expires ${new Date(ic.expiresAt).toLocaleDateString()}`}
+                        {isExpired ? 'Expired' : ic.expiresAt ? `Expires ${new Date(ic.expiresAt).toLocaleDateString()}` : 'No expiry'}
                       </Text>
                       {isExhausted && <Text style={{ fontSize: 12, color: colors.warning, fontWeight: '500' }}>Limit reached</Text>}
                     </View>

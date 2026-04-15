@@ -9,11 +9,18 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import {
-  LiquidGlassView,
-  isLiquidGlassSupported,
-} from '@callstack/liquid-glass';
 import { useTheme } from '../../lib/theme';
+
+let LiquidGlassView: any = null;
+let isLiquidGlassSupported = false;
+
+if (Platform.OS === 'ios') {
+  try {
+    const lg = require('@callstack/liquid-glass');
+    LiquidGlassView = lg.LiquidGlassView;
+    isLiquidGlassSupported = lg.isLiquidGlassSupported;
+  } catch (e) {}
+}
 
 function hexToRgba(hex: string, opacity: number): string {
   const cleaned = hex.replace('#', '');
@@ -127,7 +134,7 @@ export function GlassButton({
         ]}
         testID={testID}
       >
-        {isLiquidGlassSupported ? (
+        {isLiquidGlassSupported && LiquidGlassView ? (
           <LiquidGlassView
             style={glassInnerStyle}
             interactive
