@@ -133,6 +133,10 @@ interface VapiAssistantConfig {
   backgroundSound?: string;
   voicemailDetectionEnabled?: boolean;
   voicemailMessage?: string;
+  aiModel?: string;
+  aiMaxTokens?: number;
+  aiTemperature?: number;
+  customInstructions?: string;
 }
 
 interface VapiResponse {
@@ -281,7 +285,7 @@ Workflow:
 5. Use "check_availability" again if they ask about scheduling or availability
 6. Use "capture_lead" to save their details
 7. If they want to book, use "create_booking"
-8. If they insist on speaking with someone, use "transfer_call" (if available)${knowledgeBankSection}`;
+8. If they insist on speaking with someone, use "transfer_call" (if available)${knowledgeBankSection}${config.customInstructions ? `\n\nAdditional Instructions from Business Owner:\n${config.customInstructions}` : ''}`;
 }
 
 function buildToolDefinitions(config: VapiAssistantConfig): any[] {
@@ -400,7 +404,7 @@ export async function createAssistant(config: VapiAssistantConfig): Promise<Vapi
     name: `${config.businessName} AI Receptionist`,
     model: {
       provider: 'openai',
-      model: 'gpt-4o-mini',
+      model: config.aiModel || 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -408,6 +412,8 @@ export async function createAssistant(config: VapiAssistantConfig): Promise<Vapi
         },
       ],
       tools: buildToolDefinitions(config),
+      ...(config.aiMaxTokens ? { maxTokens: config.aiMaxTokens } : {}),
+      ...(config.aiTemperature !== undefined ? { temperature: config.aiTemperature } : {}),
     },
     voice: {
       provider: voiceConfig.provider,
@@ -483,7 +489,7 @@ export async function updateAssistant(assistantId: string, config: Partial<VapiA
     updates.firstMessage = config.greeting;
   }
 
-  if (config.businessName || config.greeting || config.transferNumbers || config.businessHours || config.tradeType || config.services || config.teamInfo || config.knownClientCount || config.knowledgeBank) {
+  if (config.businessName || config.greeting || config.transferNumbers || config.businessHours || config.tradeType || config.services || config.teamInfo || config.knownClientCount || config.knowledgeBank || config.aiModel || config.aiMaxTokens !== undefined || config.aiTemperature !== undefined || config.customInstructions !== undefined) {
     const fullConfig: VapiAssistantConfig = {
       businessName: config.businessName || '',
       tradeType: config.tradeType,
@@ -496,12 +502,15 @@ export async function updateAssistant(assistantId: string, config: Partial<VapiA
       teamInfo: config.teamInfo,
       knownClientCount: config.knownClientCount,
       knowledgeBank: config.knowledgeBank,
+      customInstructions: config.customInstructions,
     };
     updates.model = {
       provider: 'openai',
-      model: 'gpt-4o-mini',
+      model: config.aiModel || 'gpt-4o-mini',
       messages: [{ role: 'system', content: buildSystemPrompt(fullConfig) }],
       tools: buildToolDefinitions(fullConfig),
+      ...(config.aiMaxTokens ? { maxTokens: config.aiMaxTokens } : {}),
+      ...(config.aiTemperature !== undefined ? { temperature: config.aiTemperature } : {}),
     };
   }
 
@@ -651,6 +660,10 @@ export async function enableAiReceptionist(userId: string): Promise<{
       teamInfo,
       knownClientCount,
       knowledgeBank: knowledgeBank || undefined,
+      aiModel: config?.aiModel || 'gpt-4o-mini',
+      aiMaxTokens: config?.aiMaxTokens ?? 250,
+      aiTemperature: config?.aiTemperature ?? 0.5,
+      customInstructions: config?.customInstructions || undefined,
     });
 
     if (config) {
@@ -772,6 +785,10 @@ export async function updateReceptionistConfig(userId: string, updates: {
   backgroundSound?: string;
   autoReplyEnabled?: boolean;
   autoReplyMessage?: string;
+  aiModel?: string;
+  aiMaxTokens?: number;
+  aiTemperature?: number;
+  customInstructions?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const config = await storage.getAiReceptionistConfig(userId);
@@ -800,10 +817,15 @@ export async function updateReceptionistConfig(userId: string, updates: {
     if (updates.backgroundSound !== undefined) configUpdates.backgroundSound = updates.backgroundSound;
     if (updates.autoReplyEnabled !== undefined) configUpdates.autoReplyEnabled = updates.autoReplyEnabled;
     if (updates.autoReplyMessage !== undefined) configUpdates.autoReplyMessage = updates.autoReplyMessage;
+    if (updates.aiModel !== undefined) configUpdates.aiModel = updates.aiModel;
+    if (updates.aiMaxTokens !== undefined) configUpdates.aiMaxTokens = updates.aiMaxTokens;
+    if (updates.aiTemperature !== undefined) configUpdates.aiTemperature = updates.aiTemperature;
+    if (updates.customInstructions !== undefined) configUpdates.customInstructions = updates.customInstructions;
 
     await storage.updateAiReceptionistConfig(userId, configUpdates);
 
     const needsVapiSync = updates.voice || updates.greeting || updates.transferNumbers || updates.businessHours || updates.knowledgeBank ||
+      updates.aiModel !== undefined || updates.aiMaxTokens !== undefined || updates.aiTemperature !== undefined || updates.customInstructions !== undefined ||
       updates.voiceStability !== undefined || updates.voiceClarity !== undefined || updates.voiceSpeed !== undefined ||
       updates.voiceStyleExaggeration !== undefined || updates.voiceSpeakerBoost !== undefined ||
       updates.voicemailDetectionEnabled !== undefined || updates.voicemailMessage !== undefined ||
@@ -860,6 +882,10 @@ export async function updateReceptionistConfig(userId: string, updates: {
           backgroundSound: updates.backgroundSound ?? config.backgroundSound ?? 'off',
           voicemailDetectionEnabled: updates.voicemailDetectionEnabled ?? config.voicemailDetectionEnabled ?? true,
           voicemailMessage: updates.voicemailMessage ?? config.voicemailMessage ?? undefined,
+          aiModel: updates.aiModel ?? config.aiModel ?? 'gpt-4o-mini',
+          aiMaxTokens: updates.aiMaxTokens ?? config.aiMaxTokens ?? 250,
+          aiTemperature: updates.aiTemperature ?? config.aiTemperature ?? 0.5,
+          customInstructions: updates.customInstructions ?? config.customInstructions ?? undefined,
         });
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'Unknown error';
@@ -896,6 +922,10 @@ export async function updateReceptionistConfigById(configId: string, userId: str
   backgroundSound?: string;
   autoReplyEnabled?: boolean;
   autoReplyMessage?: string;
+  aiModel?: string;
+  aiMaxTokens?: number;
+  aiTemperature?: number;
+  customInstructions?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const config = await storage.getAiReceptionistConfigById(configId);
@@ -908,6 +938,7 @@ export async function updateReceptionistConfigById(configId: string, userId: str
     }
 
     const needsVapiSync = updates.voice || updates.greeting || updates.transferNumbers || updates.businessHours || updates.knowledgeBank ||
+      updates.aiModel !== undefined || updates.aiMaxTokens !== undefined || updates.aiTemperature !== undefined || updates.customInstructions !== undefined ||
       updates.voiceStability !== undefined || updates.voiceClarity !== undefined || updates.voiceSpeed !== undefined ||
       updates.voiceStyleExaggeration !== undefined || updates.voiceSpeakerBoost !== undefined ||
       updates.voicemailDetectionEnabled !== undefined || updates.voicemailMessage !== undefined ||
@@ -934,22 +965,34 @@ export async function updateReceptionistConfigById(configId: string, userId: str
         services = [];
       }
 
-      const systemPrompt = buildSmartSystemPrompt({
+      const resolvedModel = updates.aiModel ?? config.aiModel ?? 'gpt-4o-mini';
+      const resolvedMaxTokens = updates.aiMaxTokens ?? config.aiMaxTokens ?? 250;
+      const resolvedTemperature = updates.aiTemperature ?? config.aiTemperature ?? 0.5;
+
+      const resolvedCustomInstructions = updates.customInstructions ?? config.customInstructions ?? undefined;
+
+      const systemPrompt = buildSystemPrompt({
         businessName: settings?.businessName || 'the business',
-        industry: settings?.industry || undefined,
-        mode: updates.mode || config.mode || 'always_on_message',
+        tradeType: settings?.industry || undefined,
+        greeting: updates.greeting || config.greeting || undefined,
+        voice: updates.voice || config.voiceName || 'Jess',
         transferNumbers: updates.transferNumbers || (config.transferNumbers as any) || [],
-        knowledgeBank: updates.knowledgeBank || (config.knowledgeBank as any) || undefined,
-        team: teamInfo,
-        knownClientCount,
+        businessHours: updates.businessHours || (config.businessHours as any) || undefined,
+        webhookUrl,
         services,
+        teamInfo,
+        knownClientCount,
+        knowledgeBank: updates.knowledgeBank || (config.knowledgeBank as any) || undefined,
+        customInstructions: resolvedCustomInstructions || undefined,
       });
 
       const vapiUpdates: any = {
         model: {
           provider: 'openai',
-          model: 'gpt-4o-mini',
+          model: resolvedModel,
           messages: [{ role: 'system', content: systemPrompt }],
+          ...(resolvedMaxTokens ? { maxTokens: resolvedMaxTokens } : {}),
+          ...(resolvedTemperature !== undefined ? { temperature: resolvedTemperature } : {}),
         },
         serverUrl: webhookUrl,
       };

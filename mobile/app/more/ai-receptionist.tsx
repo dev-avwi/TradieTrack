@@ -95,6 +95,10 @@ interface ReceptionistConfig {
   backgroundSound: string | null;
   autoReplyEnabled: boolean;
   autoReplyMessage: string | null;
+  aiModel: string | null;
+  aiMaxTokens: number | null;
+  aiTemperature: number | null;
+  customInstructions: string | null;
 }
 
 interface AnalyticsSummary {
@@ -115,6 +119,13 @@ const VOICE_OPTIONS: { id: string; name: string; accent: string }[] = [
   { id: 'Jess', name: 'Jess', accent: 'Australian Female' },
   { id: 'Harry', name: 'Harry', accent: 'Australian Male' },
   { id: 'Chris', name: 'Chris', accent: 'Australian Male' },
+];
+
+const AI_MODEL_OPTIONS: { id: string; name: string; description: string; estimatedLatency: number }[] = [
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast responses, great for most calls', estimatedLatency: 700 },
+  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fastest responses, basic conversations', estimatedLatency: 500 },
+  { id: 'gpt-4o', name: 'GPT-4o', description: 'Smarter responses, slightly slower', estimatedLatency: 1000 },
+  { id: 'gpt-4.1', name: 'GPT-4.1', description: 'Most capable, higher latency', estimatedLatency: 1300 },
 ];
 
 const MODE_OPTIONS: { id: string; label: string; icon: FeatherIconName; description: string }[] = [
@@ -233,6 +244,10 @@ export default function AIReceptionistScreen() {
   const [isTestingCall, setIsTestingCall] = useState(false);
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(true);
   const [autoReplyMessage, setAutoReplyMessage] = useState("Thanks for calling {{business_name}}. We got your message and will get back to you shortly. — Sent via JobRunner");
+  const [aiModel, setAiModel] = useState('gpt-4o-mini');
+  const [aiMaxTokens, setAiMaxTokens] = useState(250);
+  const [aiTemperature, setAiTemperature] = useState(0.5);
+  const [customInstructions, setCustomInstructions] = useState('');
   const [sentimentFilter, setSentimentFilter] = useState<string>('all');
   const [sentimentSort, setSentimentSort] = useState(false);
   const [playingCallId, setPlayingCallId] = useState<string | null>(null);
@@ -448,6 +463,10 @@ export default function AIReceptionistScreen() {
           backgroundSound: data.backgroundSound || null,
           autoReplyEnabled: data.autoReplyEnabled ?? true,
           autoReplyMessage: data.autoReplyMessage || null,
+          aiModel: data.aiModel || 'gpt-4o-mini',
+          aiMaxTokens: data.aiMaxTokens ?? 250,
+          aiTemperature: data.aiTemperature ?? 0.5,
+          customInstructions: data.customInstructions || null,
         } : data;
         setConfig(mappedConfig);
         setEnabled(mappedConfig.enabled);
@@ -476,6 +495,10 @@ export default function AIReceptionistScreen() {
         if (mappedConfig.maxCallDurationSeconds != null) setMaxCallDurationSeconds(mappedConfig.maxCallDurationSeconds);
         setAutoReplyEnabled(mappedConfig.autoReplyEnabled ?? true);
         if (mappedConfig.autoReplyMessage) setAutoReplyMessage(mappedConfig.autoReplyMessage);
+        if (mappedConfig.aiModel) setAiModel(mappedConfig.aiModel);
+        if (mappedConfig.aiMaxTokens != null) setAiMaxTokens(mappedConfig.aiMaxTokens);
+        if (mappedConfig.aiTemperature != null) setAiTemperature(mappedConfig.aiTemperature);
+        setCustomInstructions(mappedConfig.customInstructions || '');
         setConfigLoaded(true);
         setUserChangedEnabled(false);
       }
@@ -586,6 +609,10 @@ export default function AIReceptionistScreen() {
         maxCallDurationSeconds,
         autoReplyEnabled,
         autoReplyMessage,
+        aiModel,
+        aiMaxTokens,
+        aiTemperature,
+        customInstructions: customInstructions || null,
       });
 
       if (userChangedEnabled) {
@@ -1188,6 +1215,181 @@ export default function AIReceptionistScreen() {
               />
             </View>
           </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>Performance</Text>
+        <View style={styles.card}>
+          {(() => {
+            const modelInfo = AI_MODEL_OPTIONS.find(m => m.id === aiModel) || AI_MODEL_OPTIONS[0];
+            const latency = modelInfo.estimatedLatency;
+            const isGood = latency <= 800;
+            const isOk = latency <= 1000;
+            const latencyColor = isGood ? colors.success : isOk ? '#f59e0b' : '#ef4444';
+            const latencyLabel = isGood ? 'Fast' : isOk ? 'Acceptable' : 'Slow';
+            return (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+                  <Feather name="zap" size={18} color={latencyColor} />
+                  <Text style={styles.cardTitle}>Response Latency</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md }}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs }}>
+                      <Text style={{ fontSize: 28, fontWeight: '800', color: latencyColor }}>{`~${latency}`}</Text>
+                      <Text style={{ ...typography.caption, color: latencyColor, fontWeight: '600' }}>ms</Text>
+                    </View>
+                    <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>Estimated first response time</Text>
+                  </View>
+                  <View style={{ backgroundColor: latencyColor + '18', borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs }}>
+                    <Text style={{ ...typography.caption, fontWeight: '700', color: latencyColor }}>{latencyLabel}</Text>
+                  </View>
+                </View>
+                <View style={{ height: 6, backgroundColor: colors.cardBorder, borderRadius: 3, overflow: 'hidden', marginBottom: spacing.md }}>
+                  <View style={{ width: `${Math.min(100, (latency / 1500) * 100)}%`, height: '100%', backgroundColor: latencyColor, borderRadius: 3 }} />
+                </View>
+                <View style={{ backgroundColor: isGood ? colors.success + '10' : isOk ? '#f59e0b10' : '#ef444410', borderRadius: radius.lg, padding: spacing.sm }}>
+                  <Text style={{ ...typography.caption, color: isGood ? colors.success : isOk ? '#f59e0b' : '#ef4444', lineHeight: 16 }}>
+                    {isGood
+                      ? 'Great! Your AI responds fast enough for natural conversation. Callers won\'t notice any delay.'
+                      : isOk
+                        ? 'Response time is acceptable but could feel slightly delayed. Consider switching to GPT-4o Mini for faster responses.'
+                        : 'Response time is above 1 second. Callers may notice a delay. Switch to GPT-4o Mini or GPT-3.5 Turbo for faster responses.'
+                    }
+                  </Text>
+                </View>
+                <View style={{ marginTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.cardBorder, paddingTop: spacing.md }}>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, fontWeight: '600', marginBottom: spacing.xs }}>Target: under 1000ms</Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, lineHeight: 16 }}>
+                    Latency is how long callers wait for the AI to start speaking after they finish talking. Under 1 second feels natural. You can reduce latency by choosing a faster AI model below.
+                  </Text>
+                </View>
+              </>
+            );
+          })()}
+        </View>
+
+        <Text style={styles.sectionTitle}>AI Brain</Text>
+        <View style={styles.card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+            <Feather name="cpu" size={18} color={colors.primary} />
+            <Text style={styles.cardTitle}>AI Model</Text>
+          </View>
+          <Text style={styles.cardSubtitle}>Choose the AI that powers your receptionist. Faster models respond quicker, smarter models handle complex conversations better.</Text>
+          {AI_MODEL_OPTIONS.map(m => {
+            const isSelected = aiModel === m.id;
+            const latencyColor = m.estimatedLatency <= 800 ? colors.success : m.estimatedLatency <= 1000 ? '#f59e0b' : '#ef4444';
+            return (
+              <TouchableOpacity
+                key={m.id}
+                style={[styles.modeOption, { borderColor: isSelected ? colors.primary : colors.cardBorder, backgroundColor: isSelected ? colors.primary + '08' : colors.card }]}
+                onPress={() => setAiModel(m.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.modeIconContainer, { backgroundColor: isSelected ? colors.primary + '20' : colors.muted }]}>
+                  <Feather name="cpu" size={18} color={isSelected ? colors.primary : colors.mutedForeground} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                    <Text style={styles.modeLabel}>{m.name}</Text>
+                    <View style={{ backgroundColor: latencyColor + '18', borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 1 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: latencyColor }}>~{m.estimatedLatency}ms</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.modeDescription}>{m.description}</Text>
+                </View>
+                {isSelected && <Feather name="check" size={20} color={colors.primary} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={styles.card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+            <Feather name="sliders" size={18} color={colors.primary} />
+            <Text style={styles.cardTitle}>Response Settings</Text>
+          </View>
+
+          <View style={{ marginBottom: spacing.md }}>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.sm }}>
+              Temperature ({aiTemperature.toFixed(2)}) — {aiTemperature <= 0.3 ? 'Very consistent' : aiTemperature <= 0.6 ? 'Balanced' : 'More creative'}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <TouchableOpacity
+                onPress={() => setAiTemperature(v => Math.max(0, parseFloat((v - 0.1).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="minus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, height: 4, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
+                <View style={{ width: `${aiTemperature * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
+              </View>
+              <TouchableOpacity
+                onPress={() => setAiTemperature(v => Math.min(1, parseFloat((v + 0.1).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="plus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs }}>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, fontSize: 10 }}>Consistent</Text>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, fontSize: 10 }}>Creative</Text>
+            </View>
+          </View>
+
+          <View style={{ marginBottom: spacing.md }}>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.sm }}>Max Response Length ({aiMaxTokens} tokens)</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <TouchableOpacity
+                onPress={() => setAiMaxTokens(v => Math.max(50, v - 50))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="minus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, height: 4, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
+                <View style={{ width: `${((aiMaxTokens - 50) / 950) * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
+              </View>
+              <TouchableOpacity
+                onPress={() => setAiMaxTokens(v => Math.min(1000, v + 50))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="plus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs }}>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, fontSize: 10 }}>Shorter (faster)</Text>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, fontSize: 10 }}>Longer (detailed)</Text>
+            </View>
+          </View>
+
+          <Text style={{ ...typography.caption, color: colors.mutedForeground, lineHeight: 16, backgroundColor: colors.muted, padding: spacing.sm, borderRadius: radius.md }}>
+            Lower temperature = more predictable responses. Lower max tokens = faster replies. For a phone receptionist, 200-300 tokens and 0.3-0.5 temperature works best.
+          </Text>
+        </View>
+
+        <View style={styles.card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+            <Feather name="edit-3" size={18} color={colors.primary} />
+            <Text style={styles.cardTitle}>Custom Instructions</Text>
+          </View>
+          <Text style={styles.cardSubtitle}>
+            Add specific instructions for how your AI should handle calls. These are added to the AI's core instructions.
+          </Text>
+          <TextInput
+            style={[styles.textArea, { minHeight: 100 }]}
+            value={customInstructions}
+            onChangeText={setCustomInstructions}
+            placeholder={"e.g. Always ask if they need an emergency plumber.\nNever discuss pricing over the phone.\nIf they mention a leak, treat it as urgent.\nOur service area is Cairns and surrounding suburbs only."}
+            placeholderTextColor={colors.mutedForeground}
+            multiline
+            maxLength={2000}
+          />
+          <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: spacing.xs }}>
+            {customInstructions.length}/2000 characters
+          </Text>
         </View>
 
         {config?.vapiAssistantId && (

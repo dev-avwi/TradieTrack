@@ -47276,6 +47276,10 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         maxCallDurationSeconds: config.maxCallDurationSeconds ?? 600,
         endCallMessage: config.endCallMessage || null,
         backgroundSound: config.backgroundSound || 'off',
+        aiModel: config.aiModel || 'gpt-4o-mini',
+        aiMaxTokens: config.aiMaxTokens ?? 250,
+        aiTemperature: config.aiTemperature ?? 0.5,
+        customInstructions: config.customInstructions || null,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -47387,6 +47391,10 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     maxCallDurationSeconds: z.number().min(60).max(3600).optional(),
     endCallMessage: z.string().max(500).optional(),
     backgroundSound: z.enum(['off', 'office', 'cafe']).optional(),
+    aiModel: z.enum(['gpt-4o-mini', 'gpt-4o', 'gpt-4.1', 'gpt-3.5-turbo']).optional(),
+    aiMaxTokens: z.number().min(50).max(1000).optional(),
+    aiTemperature: z.number().min(0).max(1).optional(),
+    customInstructions: z.string().max(2000).nullable().optional(),
     autoReplyEnabled: z.boolean().optional(),
     autoReplyMessage: z.string().max(500).optional(),
   });
@@ -47465,7 +47473,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       const { voice, greeting, mode, transferNumbers, businessHours, knowledgeBank, smsNotifications,
         voiceStability, voiceClarity, voiceSpeed, voiceStyleExaggeration, voiceSpeakerBoost,
         voicemailDetectionEnabled, voicemailMessage, silenceTimeoutSeconds, maxCallDurationSeconds,
-        endCallMessage, backgroundSound, autoReplyEnabled, autoReplyMessage } = parsed.data;
+        endCallMessage, backgroundSound, aiModel, aiMaxTokens, aiTemperature, customInstructions,
+        autoReplyEnabled, autoReplyMessage } = parsed.data;
 
       const { updateReceptionistConfig } = await import('./vapiService');
       const result = await updateReceptionistConfig(userId, {
@@ -47489,6 +47498,10 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         maxCallDurationSeconds,
         endCallMessage,
         backgroundSound,
+        aiModel,
+        aiMaxTokens,
+        aiTemperature,
+        customInstructions,
       });
 
       if (!result.success) {
@@ -47520,6 +47533,10 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         maxCallDurationSeconds: config?.maxCallDurationSeconds ?? 600,
         endCallMessage: config?.endCallMessage || null,
         backgroundSound: config?.backgroundSound || 'off',
+        aiModel: config?.aiModel || 'gpt-4o-mini',
+        aiMaxTokens: config?.aiMaxTokens ?? 250,
+        aiTemperature: config?.aiTemperature ?? 0.5,
+        customInstructions: config?.customInstructions || null,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -47542,7 +47559,8 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       const { voice, greeting, mode, transferNumbers, businessHours, knowledgeBank, smsNotifications,
         voiceStability, voiceClarity, voiceSpeed, voiceStyleExaggeration, voiceSpeakerBoost,
         voicemailDetectionEnabled, voicemailMessage, silenceTimeoutSeconds, maxCallDurationSeconds,
-        endCallMessage, backgroundSound, autoReplyEnabled, autoReplyMessage } = parsed.data;
+        endCallMessage, backgroundSound, aiModel, aiMaxTokens, aiTemperature, customInstructions,
+        autoReplyEnabled, autoReplyMessage } = parsed.data;
 
       const updateData: any = {};
       if (voice !== undefined) updateData.voiceName = voice;
@@ -47565,6 +47583,10 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       if (maxCallDurationSeconds !== undefined) updateData.maxCallDurationSeconds = maxCallDurationSeconds;
       if (endCallMessage !== undefined) updateData.endCallMessage = endCallMessage;
       if (backgroundSound !== undefined) updateData.backgroundSound = backgroundSound;
+      if (aiModel !== undefined) updateData.aiModel = aiModel;
+      if (aiMaxTokens !== undefined) updateData.aiMaxTokens = aiMaxTokens;
+      if (aiTemperature !== undefined) updateData.aiTemperature = aiTemperature;
+      if (customInstructions !== undefined) updateData.customInstructions = customInstructions;
 
       const updated = await storage.updateAiReceptionistConfigById(req.params.configId, updateData);
 
@@ -47577,7 +47599,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
             smsNotifications, autoReplyEnabled, autoReplyMessage,
             voiceStability, voiceClarity, voiceSpeed, voiceStyleExaggeration, voiceSpeakerBoost,
             voicemailDetectionEnabled, voicemailMessage, silenceTimeoutSeconds, maxCallDurationSeconds,
-            endCallMessage, backgroundSound,
+            endCallMessage, backgroundSound, aiModel, aiMaxTokens, aiTemperature, customInstructions,
           });
         } catch (vapiErr: any) {
           console.error(`[AI Config] VAPI update failed for config ${req.params.configId}:`, vapiErr.message);
