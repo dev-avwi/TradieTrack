@@ -241,6 +241,17 @@ const messageSendLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const generalApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: { error: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req: any) => {
+    return req.path.startsWith('/assets') || req.path.startsWith('/public') || req.path === '/api/health';
+  },
+});
+
 // Database-backed rate limiter using the rate_limits table
 // Falls back to in-memory Maps if DB is unavailable
 const fallbackChatMap = new Map<string, { count: number; resetAt: number }>();
@@ -860,6 +871,8 @@ function validateAustralianCoords(lat: number, lng: number, accuracy?: number): 
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.use('/api/', generalApiLimiter);
+
   app.use((req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
@@ -3233,8 +3246,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Registration endpoint
   app.post("/api/auth/register", authRateLimiter, async (req: any, res) => {
     try {
+      const { password } = req.body;
+      if (!password || typeof password !== 'string' || password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+      }
+      if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+        return res.status(400).json({ error: "Password must contain uppercase, lowercase, and a number" });
+      }
       const userData = insertUserSchema.parse(req.body);
-      // Convert nullable fields to undefined for AuthService
       const cleanUserData = {
         email: userData.email,
         username: userData.username,

@@ -104,8 +104,8 @@ export default function AcceptInviteScreen() {
       return;
     }
     
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    if (password.length < 8 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      Alert.alert('Error', 'Password must be at least 8 characters with uppercase, lowercase, and a number');
       return;
     }
     

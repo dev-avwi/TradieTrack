@@ -255,10 +255,15 @@ if (process.env.DATABASE_URL) {
       },
     },
     crossOriginEmbedderPolicy: false,
-    crossOriginOpenerPolicy: false,
-    crossOriginResourcePolicy: false,
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
     frameguard: isDev ? false : { action: 'sameorigin' },
   }));
+
+  app.use((req, res, next) => {
+    res.setHeader('Permissions-Policy', 'geolocation=(self), microphone=(self), camera=(self), payment=(self)');
+    next();
+  });
 
   // Serve static public assets (logo, etc.) for emails
   app.use('/public', express.static('public'));
