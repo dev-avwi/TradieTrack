@@ -66,7 +66,7 @@
         "appleTeamId": "6557LUX45F"
       },
       "android": {
-        "track": "production",
+        "track": "internal",
         "releaseStatus": "completed"
       }
     }
