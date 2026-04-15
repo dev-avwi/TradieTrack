@@ -826,7 +826,7 @@ function UsersView({
       </Card>
 
       <AlertDialog open={!!editingUser} onOpenChange={(open) => { if (!open) setEditingUser(null); }}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Manage Account</AlertDialogTitle>
             <AlertDialogDescription>
@@ -862,19 +862,255 @@ function UsersView({
                 {editFoundingMember ? "Yes" : "No"}
               </Button>
             </div>
+            <AlertDialogFooter className="pb-0">
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleSaveUser}
+                disabled={updateUserMutation.isPending}
+              >
+                {updateUserMutation.isPending ? "Saving..." : "Save Account"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+            {editingUser && (editTier === 'team' || editTier === 'business' || editingUser.subscriptionTier === 'team' || editingUser.subscriptionTier === 'business') && (
+              <AdminTeamPanel userId={editingUser.id} />
+            )}
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleSaveUser}
-              disabled={updateUserMutation.isPending}
-            >
-              {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+interface TeamMember {
+  id: string;
+  email: string | null;
+  memberId: string | null;
+  roleId: string | null;
+  roleName: string;
+  memberName: string;
+  memberEmail: string | null;
+  inviteStatus: string | null;
+  isActive: boolean | null;
+  hourlyRate: string | null;
+}
+
+interface TeamData {
+  members: TeamMember[];
+  seatCount: number;
+  subscriptionTier: string;
+  roles: { id: string; name: string }[];
+}
+
+function AdminTeamPanel({ userId }: { userId: string }) {
+  const { toast } = useToast();
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRoleId, setInviteRoleId] = useState<string>("none");
+
+  const { data: teamData, isLoading } = useQuery<TeamData>({
+    queryKey: ['/api/admin/users', userId, 'team'],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/users/${userId}/team`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load team');
+      return res.json();
+    },
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: async ({ email, roleId }: { email: string; roleId: string | null }) => {
+      const response = await apiRequest("POST", `/api/admin/users/${userId}/team/invite`, { email, roleId });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to invite");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Invited", description: `Invite sent to ${inviteEmail}` });
+      setInviteEmail("");
+      setInviteRoleId("none");
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users', userId, 'team'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Invite Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async (memberId: string) => {
+      const response = await apiRequest("DELETE", `/api/admin/users/${userId}/team/${memberId}`);
+      if (!response.ok) throw new Error("Failed to remove member");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Removed", description: "Team member removed" });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users', userId, 'team'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Remove Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const seatMutation = useMutation({
+    mutationFn: async (seatCount: number) => {
+      const response = await apiRequest("PATCH", `/api/admin/users/${userId}/team/seats`, { seatCount });
+      if (!response.ok) throw new Error("Failed to update seats");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Updated", description: "Seat count updated" });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users', userId, 'team'] });
+    },
+  });
+
+  const handleInvite = () => {
+    if (!inviteEmail.trim()) return;
+    inviteMutation.mutate({ email: inviteEmail.trim(), roleId: inviteRoleId === "none" ? null : inviteRoleId });
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="p-4">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading team...</span>
+        </div>
+      </Card>
+    );
+  }
+
+  const members = teamData?.members || [];
+  const roles = teamData?.roles || [];
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <CardTitle className="text-base">Team Management</CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              {members.length} member{members.length !== 1 ? 's' : ''}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {teamData?.seatCount || 0} extra seats
+            </Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium whitespace-nowrap">Extra Seats:</label>
+          <Input
+            type="number"
+            min={0}
+            defaultValue={teamData?.seatCount || 0}
+            className="w-20"
+            onBlur={(e) => {
+              const val = parseInt(e.target.value) || 0;
+              if (val !== (teamData?.seatCount || 0)) seatMutation.mutate(val);
+            }}
+          />
+          <span className="text-xs text-muted-foreground">Additional paid seats beyond base plan</span>
+        </div>
+
+        {members.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Name</TableHead>
+                <TableHead className="hidden sm:table-cell">Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {members.map((member) => (
+                <TableRow key={member.id}>
+                  <TableCell className="font-medium text-sm">
+                    <span className="truncate block max-w-[120px]">{member.memberName}</span>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                    <span className="truncate block max-w-[160px]">{member.memberEmail || '-'}</span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs capitalize">{member.roleName}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant="outline"
+                      className={
+                        member.inviteStatus === 'accepted' 
+                          ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30 text-xs"
+                          : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30 text-xs"
+                      }
+                    >
+                      {member.inviteStatus || 'pending'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Remove <strong>{member.memberName}</strong> from this team? They will lose access to all shared jobs and data.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => removeMutation.mutate(member.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-sm text-muted-foreground py-2">No team members yet.</p>
+        )}
+
+        <div className="border-t pt-3 space-y-2">
+          <label className="text-sm font-medium">Add Team Member</label>
+          <div className="flex flex-wrap gap-2">
+            <Input
+              placeholder="worker@email.com"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className="flex-1 min-w-[180px]"
+            />
+            {roles.length > 0 && (
+              <Select value={inviteRoleId} onValueChange={setInviteRoleId}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Role</SelectItem>
+                  {roles.map(r => (
+                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button onClick={handleInvite} disabled={inviteMutation.isPending || !inviteEmail.trim()}>
+              {inviteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+              Add
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

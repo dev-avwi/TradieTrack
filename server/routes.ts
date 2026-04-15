@@ -41707,6 +41707,129 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+  app.get("/api/admin/users/:userId/team", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const targetUserId = req.params.userId;
+      const members = await db.select({
+        id: teamMembers.id,
+        email: teamMembers.email,
+        memberId: teamMembers.memberId,
+        roleId: teamMembers.roleId,
+        inviteStatus: teamMembers.inviteStatus,
+        isActive: teamMembers.isActive,
+        hourlyRate: teamMembers.hourlyRate,
+        inviteSentAt: teamMembers.inviteSentAt,
+        inviteAcceptedAt: teamMembers.inviteAcceptedAt,
+      }).from(teamMembers).where(eq(teamMembers.businessOwnerId, targetUserId));
+
+      const memberUserIds = members.filter(m => m.memberId).map(m => m.memberId!);
+      let memberUsers: Record<string, { firstName: string | null; lastName: string | null; email: string | null }> = {};
+      if (memberUserIds.length > 0) {
+        const userRows = await db.select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+        }).from(users).where(inArray(users.id, memberUserIds));
+        userRows.forEach(u => { memberUsers[u.id] = u; });
+      }
+
+      const roles = await db.select({ id: userRoles.id, name: userRoles.name }).from(userRoles).where(eq(userRoles.businessOwnerId, targetUserId));
+      const roleMap = new Map(roles.map(r => [r.id, r.name]));
+
+      const settings = await db.select({
+        seatCount: businessSettings.seatCount,
+        subscriptionTier: businessSettings.subscriptionTier,
+      }).from(businessSettings).where(eq(businessSettings.userId, targetUserId)).limit(1);
+
+      const ownerUser = await db.select({
+        subscriptionTier: users.subscriptionTier,
+      }).from(users).where(eq(users.id, targetUserId)).limit(1);
+
+      const enriched = members.map(m => ({
+        ...m,
+        roleName: m.roleId ? roleMap.get(m.roleId) || 'Unknown' : 'No Role',
+        memberName: m.memberId && memberUsers[m.memberId]
+          ? [memberUsers[m.memberId].firstName, memberUsers[m.memberId].lastName].filter(Boolean).join(' ') || memberUsers[m.memberId].email
+          : m.email || 'Unknown',
+        memberEmail: m.memberId ? memberUsers[m.memberId]?.email || m.email : m.email,
+      }));
+
+      res.json({
+        members: enriched,
+        seatCount: settings[0]?.seatCount || 0,
+        subscriptionTier: ownerUser[0]?.subscriptionTier || 'free',
+        roles: roles,
+      });
+    } catch (error: any) {
+      console.error('Error getting admin team:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/users/:userId/team/invite", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const businessOwnerId = req.params.userId;
+      const { email, roleId } = req.body;
+
+      if (!email) return res.status(400).json({ error: 'Email is required' });
+
+      const existing = await db.select({ id: teamMembers.id })
+        .from(teamMembers)
+        .where(and(eq(teamMembers.businessOwnerId, businessOwnerId), eq(teamMembers.email, email)))
+        .limit(1);
+
+      if (existing.length > 0) {
+        return res.status(400).json({ error: 'This email already has a team invite' });
+      }
+
+      const inviteToken = crypto.randomUUID();
+      const [newMember] = await db.insert(teamMembers).values({
+        id: crypto.randomUUID(),
+        businessOwnerId,
+        email,
+        roleId: roleId || null,
+        inviteToken,
+        inviteStatus: 'pending',
+        inviteSentAt: new Date(),
+        isActive: true,
+      }).returning();
+
+      res.json({ success: true, member: newMember });
+    } catch (error: any) {
+      console.error('Error admin invite:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/admin/users/:userId/team/:memberId", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { userId: businessOwnerId, memberId } = req.params;
+      await db.delete(teamMembers).where(
+        and(eq(teamMembers.id, memberId), eq(teamMembers.businessOwnerId, businessOwnerId))
+      );
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error admin delete team member:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/users/:userId/team/seats", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const targetUserId = req.params.userId;
+      const { seatCount } = req.body;
+      if (typeof seatCount !== 'number' || seatCount < 0) {
+        return res.status(400).json({ error: 'Invalid seat count' });
+      }
+      await db.update(businessSettings).set({ seatCount }).where(eq(businessSettings.userId, targetUserId));
+      res.json({ success: true, seatCount });
+    } catch (error: any) {
+      console.error('Error updating seats:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Admin delete user - for testing purposes
   app.delete("/api/admin/users/:userId", requireAuth, requireAdmin, async (req: any, res) => {
     try {
