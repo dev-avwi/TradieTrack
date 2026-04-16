@@ -652,14 +652,14 @@ function UsersView({
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="pl-6">Name</TableHead>
+                  <TableHead className="min-w-[120px]">Actions</TableHead>
                   <TableHead className="hidden sm:table-cell">Email</TableHead>
                   <TableHead className="hidden lg:table-cell">Business</TableHead>
                   <TableHead className="hidden xl:table-cell">Trade</TableHead>
                   <TableHead className="hidden md:table-cell">Signup</TableHead>
                   <TableHead>Tier</TableHead>
                   <TableHead className="hidden lg:table-cell">Last Active</TableHead>
-                  <TableHead className="hidden lg:table-cell">Status</TableHead>
-                  <TableHead className="pr-6 text-right min-w-[120px]">Actions</TableHead>
+                  <TableHead className="hidden lg:table-cell pr-6">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -675,78 +675,8 @@ function UsersView({
                       <TableCell className="pl-6 font-medium">
                         <span className="truncate block max-w-[120px]">{user.name}</span>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground">
-                        <span className="truncate block max-w-[180px]">{user.email || '-'}</span>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-muted-foreground">
-                        <span className="truncate block max-w-[140px]">{user.businessName || '-'}</span>
-                      </TableCell>
-                      <TableCell className="hidden xl:table-cell">
-                        {user.tradeType ? (
-                          <Badge variant="outline" className="capitalize text-xs">
-                            {user.tradeType}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
-                        {formatDate(user.createdAt)}
-                      </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap items-center gap-1">
-                          <Badge variant={getTierBadgeVariant(user.subscriptionTier)} className="capitalize">
-                            {user.subscriptionTier || 'free'}
-                          </Badge>
-                          {user.betaLifetimeAccess && (
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30 text-xs">
-                              Founder
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
-                        {formatRelativeDate(user.updatedAt)}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <div className="flex flex-wrap gap-1">
-                          {user.hasCompletedOnboarding ? (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30 text-xs">
-                              Onboarded
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30 text-xs">
-                              Pending
-                            </Badge>
-                          )}
-                          {user.emailVerified && (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30 text-xs hidden xl:inline-flex">
-                              Verified
-                            </Badge>
-                          )}
-                          {(user as any).websiteFeatures && (
-                            <>
-                              {(user as any).websiteFeatures.clickToCall && (
-                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30 text-xs hidden xl:inline-flex">
-                                  Call
-                                </Badge>
-                              )}
-                              {(user as any).websiteFeatures.chatWidget && (
-                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/30 text-xs hidden xl:inline-flex">
-                                  Chat
-                                </Badge>
-                              )}
-                              {(user as any).websiteFeatures.bookingForm && (
-                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30 text-xs hidden xl:inline-flex">
-                                  Booking
-                                </Badge>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="pr-6 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -803,6 +733,76 @@ function UsersView({
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">
+                        <span className="truncate block max-w-[180px]">{user.email || '-'}</span>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground">
+                        <span className="truncate block max-w-[140px]">{user.businessName || '-'}</span>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        {user.tradeType ? (
+                          <Badge variant="outline" className="capitalize text-xs">
+                            {user.tradeType}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
+                        {formatDate(user.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <Badge variant={getTierBadgeVariant(user.subscriptionTier)} className="capitalize">
+                            {user.subscriptionTier || 'free'}
+                          </Badge>
+                          {user.betaLifetimeAccess && (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30 text-xs">
+                              Founder
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
+                        {formatRelativeDate(user.updatedAt)}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell pr-6">
+                        <div className="flex flex-wrap gap-1">
+                          {user.hasCompletedOnboarding ? (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30 text-xs">
+                              Onboarded
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30 text-xs">
+                              Pending
+                            </Badge>
+                          )}
+                          {user.emailVerified && (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30 text-xs hidden xl:inline-flex">
+                              Verified
+                            </Badge>
+                          )}
+                          {(user as any).websiteFeatures && (
+                            <>
+                              {(user as any).websiteFeatures.clickToCall && (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30 text-xs hidden xl:inline-flex">
+                                  Call
+                                </Badge>
+                              )}
+                              {(user as any).websiteFeatures.chatWidget && (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/30 text-xs hidden xl:inline-flex">
+                                  Chat
+                                </Badge>
+                              )}
+                              {(user as any).websiteFeatures.bookingForm && (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30 text-xs hidden xl:inline-flex">
+                                  Booking
+                                </Badge>
+                              )}
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
