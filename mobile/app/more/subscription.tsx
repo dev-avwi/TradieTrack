@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -18,16 +18,14 @@ import { useAuthStore } from '../../src/lib/store';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
 import {
-  initIAP,
-  cleanupIAP,
   fetchSubscriptions,
   purchaseSubscription,
   restorePurchases,
-  setupPurchaseListeners,
   isIAPAvailable,
   IAP_PRODUCT_IDS,
   productIdToTier,
 } from '../../src/lib/iap';
+import { initGlobalIAP } from '../../src/lib/iap-global';
 
 interface SubscriptionStatus {
   tier: 'free' | 'pro' | 'team' | 'business' | 'trial';
@@ -499,63 +497,48 @@ export default function SubscriptionPage() {
   }, [fetchSubscriptionStatus]);
 
   useEffect(() => {
-    if (isIAPAvailable()) {
-      initIAP().then(async () => {
-        setupPurchaseListeners(
-          async (purchase) => {
-            const tier = productIdToTier(purchase.productId);
-            if (tier && purchase.transactionReceipt) {
-              try {
-                await api.post('/api/subscription/verify-apple-receipt', {
-                  receiptData: purchase.transactionReceipt,
-                  productId: purchase.productId,
-                });
-                Alert.alert('Upgrade Successful', `You're now on the ${tier.charAt(0).toUpperCase() + tier.slice(1)} plan.`);
-                fetchSubscriptionStatus();
-              } catch (error) {
-                console.error('[IAP] Failed to verify receipt:', error);
-                Alert.alert('Verification Issue', 'Your purchase was successful but verification failed. Please try restoring your purchase.');
-              }
-            }
-            setPurchasing(false);
-          },
-          (error) => {
-            console.error('[IAP] Purchase error listener:', JSON.stringify(error, null, 2));
-            const errorMsg = error?.message || error?.code || 'Unknown error';
-            if (errorMsg.toLowerCase().includes('invalid') || errorMsg.includes('E_DEVELOPER_ERROR') || errorMsg.includes('E_ITEM_UNAVAILABLE')) {
-              Alert.alert(
-                'Not Available Yet',
-                'This subscription is being finalised in the App Store. Visit jobrunner.com.au/pricing to subscribe now.',
-                [
-                  { text: 'OK', style: 'cancel' },
-                  { text: 'Open Website', onPress: () => Linking.openURL('https://jobrunner.com.au/pricing') },
-                ]
-              );
-            } else {
-              Alert.alert('Purchase Failed', `${errorMsg}\n\nPlease try again.`);
-            }
-            setPurchasing(false);
+    if (!isIAPAvailable()) return;
+
+    let cancelled = false;
+    initGlobalIAP().then(async () => {
+      try {
+        const subs = await fetchSubscriptions();
+        if (cancelled) return;
+        const prices: Record<string, string> = {};
+        subs.forEach((sub) => {
+          const tier = productIdToTier(sub.productId);
+          if (tier && sub.localizedPrice) {
+            prices[tier] = sub.localizedPrice;
           }
-        );
-        try {
-          const subs = await fetchSubscriptions();
-          const prices: Record<string, string> = {};
-          subs.forEach((sub) => {
-            const tier = productIdToTier(sub.productId);
-            if (tier && sub.localizedPrice) {
-              prices[tier] = sub.localizedPrice;
-            }
-          });
-          if (Object.keys(prices).length > 0) {
-            setApplePrices(prices);
-          }
-        } catch (err) {
-          console.log('[IAP] Could not fetch store prices, using defaults');
+        });
+        if (Object.keys(prices).length > 0) {
+          setApplePrices(prices);
         }
-      });
-    }
-    return () => { cleanupIAP(); };
+      } catch (err) {
+        console.log('[IAP] Could not fetch store prices, using defaults');
+      }
+    });
+
+    return () => { cancelled = true; };
   }, []);
+
+  const tierFromAuth = useAuthStore((state) => state.user?.subscriptionTier);
+  const previousTierRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const previous = previousTierRef.current;
+    previousTierRef.current = tierFromAuth;
+    if (previous === undefined) return;
+    if (previous === tierFromAuth) return;
+
+    fetchSubscriptionStatus();
+
+    const upgraded = tierFromAuth && tierFromAuth !== 'free' && tierFromAuth !== 'trial';
+    if (upgraded && purchasing) {
+      const tierLabel = (tierFromAuth || '').toString();
+      Alert.alert('Upgrade Successful', `You're now on the ${tierLabel.charAt(0).toUpperCase() + tierLabel.slice(1)} plan.`);
+    }
+    setPurchasing(false);
+  }, [tierFromAuth]);
 
   const handleUpgrade = async (tier: 'pro' | 'team' | 'business') => {
     const tierNames = { pro: 'Pro', team: 'Team', business: 'Business' };
@@ -626,8 +609,9 @@ export default function SubscriptionPage() {
             receiptData: (latestPurchase as any).transactionReceipt,
             productId: latestPurchase.productId,
           });
+          await useAuthStore.getState().refreshUser();
+          await fetchSubscriptionStatus();
           Alert.alert('Purchases Restored', `Your ${tier.charAt(0).toUpperCase() + tier.slice(1)} plan has been restored.`);
-          fetchSubscriptionStatus();
         }
       } else {
         Alert.alert('No Purchases Found', 'No previous subscriptions were found for this Apple ID.');

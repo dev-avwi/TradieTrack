@@ -23,7 +23,9 @@ interface User {
   themeColor?: string;
   gstEnabled?: boolean;
   isPlatformAdmin?: boolean;
-  subscriptionTier?: 'free' | 'pro' | 'team' | 'trial';
+  subscriptionTier?: 'free' | 'pro' | 'team' | 'business' | 'trial' | 'beta';
+  subscriptionStatus?: string;
+  subscriptionSource?: string;
   trialEndsAt?: string;
   trialStatus?: string;
   hasDemoData?: boolean;

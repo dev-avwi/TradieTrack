@@ -35,6 +35,7 @@ import { MapPreferenceModal } from '../src/components/MapPreferenceModal';
 import { WhatYouMissedPopup } from '../src/components/WhatYouMissedPopup';
 import ErrorBoundary from '../src/components/ErrorBoundary';
 import { CustomAlertProvider } from '../src/components/CustomAlert';
+import { initGlobalIAP } from '../src/lib/iap-global';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -501,6 +502,12 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
       fetchNotifications();
       const interval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      initGlobalIAP();
     }
   }, [isAuthenticated]);
 

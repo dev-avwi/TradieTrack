@@ -573,12 +573,12 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
   const seatCount = (businessSettings as any)?.seatCount || 0;
 
   if (!stripe || !subscriptionId) {
-    const tier = user.subscriptionTier as 'free' | 'pro' | 'team' || 'free';
+    const tier = (user.subscriptionTier as 'free' | 'pro' | 'team' | 'business') || 'free';
     return {
       tier,
       status: tier !== 'free' ? 'active' : 'none',
       stripeCustomerId: businessSettings?.stripeCustomerId || undefined,
-      seatCount: tier === 'team' ? seatCount : undefined,
+      seatCount: (tier === 'team' || tier === 'business') ? seatCount : undefined,
     };
   }
 
@@ -589,9 +589,11 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
     const subscriptionTier = subscription.metadata?.tier || user.subscriptionTier;
     const isActive = subscription.status === 'active' || subscription.status === 'trialing';
     
-    let tier: 'free' | 'pro' | 'team' = 'free';
+    let tier: 'free' | 'pro' | 'team' | 'business' = 'free';
     if (isActive) {
-      tier = subscriptionTier === 'team' ? 'team' : 'pro';
+      if (subscriptionTier === 'business') tier = 'business';
+      else if (subscriptionTier === 'team') tier = 'team';
+      else tier = 'pro';
     }
 
     return {
@@ -601,16 +603,16 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       stripeCustomerId: businessSettings?.stripeCustomerId || undefined,
       stripeSubscriptionId: subscriptionId,
-      seatCount: tier === 'team' ? seatCount : undefined,
+      seatCount: (tier === 'team' || tier === 'business') ? seatCount : undefined,
     };
   } catch (error: any) {
     console.error('Error fetching subscription:', error);
-    const tier = user.subscriptionTier as 'free' | 'pro' | 'team' || 'free';
+    const tier = (user.subscriptionTier as 'free' | 'pro' | 'team' | 'business') || 'free';
     return {
       tier,
       status: 'none',
       stripeCustomerId: businessSettings?.stripeCustomerId || undefined,
-      seatCount: tier === 'team' ? seatCount : undefined,
+      seatCount: (tier === 'team' || tier === 'business') ? seatCount : undefined,
     };
   }
 }
