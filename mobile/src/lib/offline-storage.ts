@@ -2512,25 +2512,72 @@ class OfflineStorageService {
       `UPDATE ${table} SET id = ?, local_id = NULL, pending_sync = 0, sync_action = NULL WHERE local_id = ?`,
       [serverId, localId]
     );
-    
-    if ((result as any).changes > 0) {
-      if (__DEV__) console.log(`[OfflineStorage] Updated ${type} ID from ${localId} to ${serverId}`);
-      return true;
+
+    let updated = (result as any).changes > 0;
+
+    if (!updated) {
+      // Fall back to id if local_id match fails (for backwards compatibility)
+      const fallbackResult = await this.db.runAsync(
+        `UPDATE ${table} SET id = ?, local_id = NULL, pending_sync = 0, sync_action = NULL WHERE id = ?`,
+        [serverId, localId]
+      );
+      updated = (fallbackResult as any).changes > 0;
+      if (updated && __DEV__) console.log(`[OfflineStorage] Updated ${type} ID from ${localId} to ${serverId} (fallback)`);
+    } else if (__DEV__) {
+      console.log(`[OfflineStorage] Updated ${type} ID from ${localId} to ${serverId}`);
     }
-    
-    // Fall back to id if local_id match fails (for backwards compatibility)
-    const fallbackResult = await this.db.runAsync(
-      `UPDATE ${table} SET id = ?, local_id = NULL, pending_sync = 0, sync_action = NULL WHERE id = ?`,
-      [serverId, localId]
-    );
-    
-    if ((fallbackResult as any).changes > 0) {
-      if (__DEV__) console.log(`[OfflineStorage] Updated ${type} ID from ${localId} to ${serverId} (fallback)`);
-      return true;
+
+    if (!updated) {
+      if (__DEV__) console.error(`[OfflineStorage] Failed to update ${type} ID: row not found for localId=${localId}`);
+      return false;
     }
-    
-    if (__DEV__) console.error(`[OfflineStorage] Failed to update ${type} ID: row not found for localId=${localId}`);
-    return false;
+
+    // CASCADE: rewrite foreign-key references in dependent tables AND in any pending sync_queue payloads.
+    // Without this, a time_entry created offline that references local_<jobId> would fail to sync after the
+    // job's id was rewritten to the server id.
+    try {
+      const fkUpdates: Array<{ table: string; column: string }> = [];
+      if (type === 'job') {
+        fkUpdates.push({ table: 'time_entries', column: 'job_id' });
+        fkUpdates.push({ table: 'attachments', column: 'job_id' });
+        fkUpdates.push({ table: 'invoices', column: 'job_id' });
+        fkUpdates.push({ table: 'quotes', column: 'job_id' });
+      } else if (type === 'client') {
+        fkUpdates.push({ table: 'jobs', column: 'client_id' });
+        fkUpdates.push({ table: 'invoices', column: 'client_id' });
+        fkUpdates.push({ table: 'quotes', column: 'client_id' });
+      } else if (type === 'quote') {
+        fkUpdates.push({ table: 'invoices', column: 'quote_id' });
+      }
+
+      for (const fk of fkUpdates) {
+        try {
+          await this.db.runAsync(
+            `UPDATE ${fk.table} SET ${fk.column} = ? WHERE ${fk.column} = ?`,
+            [serverId, localId]
+          );
+        } catch (e) {
+          // Column may not exist in some schema versions — ignore.
+          if (__DEV__) console.warn(`[OfflineStorage] FK cascade skipped for ${fk.table}.${fk.column}:`, (e as any)?.message);
+        }
+      }
+
+      // Rewrite still-pending sync_queue payloads that embed the localId (e.g. POST /time-entries with jobId).
+      // Use a JSON LIKE replace via SQLite's REPLACE() — payloads are JSON strings.
+      try {
+        await this.db.runAsync(
+          `UPDATE sync_queue SET payload = REPLACE(payload, ?, ?) WHERE payload LIKE ?`,
+          [`"${localId}"`, `"${serverId}"`, `%"${localId}"%`]
+        );
+      } catch (e) {
+        if (__DEV__) console.warn(`[OfflineStorage] sync_queue payload rewrite failed:`, (e as any)?.message);
+      }
+    } catch (cascadeErr) {
+      if (__DEV__) console.error('[OfflineStorage] FK cascade error:', cascadeErr);
+      // Don't fail the overall id swap if cascade has issues.
+    }
+
+    return true;
   }
 
   // ============ METADATA & UTILITIES ============

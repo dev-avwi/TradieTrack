@@ -4085,14 +4085,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error("Session save error:", err);
             return res.status(500).json({ error: "Failed to create session" });
           }
-          // Return session token for iOS/Safari fallback where cookies may not work
-          // Include isNewUser flag so frontend shows onboarding
+          // Return session token for iOS/Safari fallback where cookies may not work.
+          // isNewUser must reflect actual onboarding state — not be hardcoded — otherwise
+          // returning users who re-verify their email get bounced back into onboarding.
+          const isNewUser = !(result.user as any)?.onboardingCompleted;
           res.json({ 
             success: true, 
             user: result.user, 
             message: 'Email verified successfully!', 
             sessionToken: req.sessionID,
-            isNewUser: true 
+            isNewUser
           });
         });
       } else {
@@ -33561,12 +33563,16 @@ Respond with JSON in this format:
         accuracy: acc
       };
       
-      if (isNaN(lat) || isNaN(lng) || lat === 0 && lng === 0) {
+      if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
         coordinatesValid = false;
         console.warn('[Geofence] Invalid coordinates (NaN or 0,0):', JSON.stringify(logContext));
-      } else if (lat < AUSTRALIA_LAT_MIN || lat > AUSTRALIA_LAT_MAX || lng < AUSTRALIA_LNG_MIN || lng > AUSTRALIA_LNG_MAX) {
+      } else if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
         coordinatesValid = false;
-        console.warn('[Geofence] Coordinates out of Australia bounds:', JSON.stringify(logContext));
+        console.warn('[Geofence] Coordinates out of valid lat/lng range:', JSON.stringify(logContext));
+      } else if (lat < AUSTRALIA_LAT_MIN || lat > AUSTRALIA_LAT_MAX || lng < AUSTRALIA_LNG_MIN || lng > AUSTRALIA_LNG_MAX) {
+        // Soft warning only — accept events from outside Australia (e.g. NZ tradies, travel near border).
+        // The job's own coordinates are what matter for geofencing accuracy.
+        console.info('[Geofence] Coordinates outside Australia (still accepted):', JSON.stringify(logContext));
       }
       
       if (!isNaN(acc) && acc < 0) {
@@ -33592,10 +33598,25 @@ Respond with JSON in this format:
         }));
         return res.json({ success: true, message: 'Job not found' });
       }
+
+      // Skip alerts for jobs that are no longer active. Owners don't want pings for
+      // archived/cancelled jobs that may still have stale geofences on workers' phones.
+      const inactiveStatuses = ['completed', 'cancelled', 'archived', 'invoiced', 'paid'];
+      if (job.status && inactiveStatuses.includes(String(job.status).toLowerCase())) {
+        console.info('[Geofence] Skipping event for inactive job:', JSON.stringify({
+          ...logContext,
+          jobStatus: job.status
+        }));
+        return res.json({ success: true, message: 'Job is not active', skipped: true });
+      }
       
       // ========== 2. DEDUPE/IDEMPOTENCY CHECK ==========
       // Check for duplicate alert within last 60 seconds for same user+job+action
-      const recentAlerts = await storage.getRecentGeofenceAlerts(userId, jobId, action, 60);
+      // Dedup window: 180s. GPS jitter (especially on the boundary or in low-signal areas)
+      // commonly fires repeated enter/exit pairs within 1-2 minutes. 60s was too aggressive
+      // and produced duplicate notifications to owners. 180s is a safer balance — a worker
+      // who genuinely leaves and comes back within 3 min is rare on a job site.
+      const recentAlerts = await storage.getRecentGeofenceAlerts(userId, jobId, action, 180);
       if (recentAlerts && recentAlerts.length > 0) {
         console.info('[Geofence] Duplicate event suppressed (recent alert exists):', JSON.stringify({
           ...logContext,
