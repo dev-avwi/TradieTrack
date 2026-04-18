@@ -1274,6 +1274,20 @@ export default function JobChatScreen() {
                   </View>
                 )}
               </View>
+              {(msg as any).sendStatus === 'failed' && (
+                <TouchableOpacity
+                  onPress={async () => {
+                    const { offlineStorage } = await import('@/src/lib/offline-storage');
+                    const ok = await offlineStorage.retryFailedChatMessage((msg as any).localId || msg.id);
+                    if (ok) fetchChat();
+                  }}
+                  style={{ marginTop: 4 }}
+                >
+                  <Text style={{ color: colors.destructive, fontSize: 11, fontWeight: '600' }}>
+                    Failed to send · tap to retry
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>

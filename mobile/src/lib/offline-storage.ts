@@ -501,6 +501,23 @@ class OfflineStorageService {
           updated_at INTEGER,
           PRIMARY KEY (channel_type, channel_id)
         );
+
+        -- G1: Geofence enter/exit events captured offline (retried with idempotency)
+        CREATE TABLE IF NOT EXISTS geofence_events_local (
+          id TEXT PRIMARY KEY,
+          job_id TEXT NOT NULL,
+          identifier TEXT,
+          action TEXT NOT NULL,
+          latitude REAL,
+          longitude REAL,
+          accuracy REAL,
+          event_timestamp INTEGER NOT NULL,
+          idempotency_key TEXT NOT NULL UNIQUE,
+          pending_sync INTEGER DEFAULT 1,
+          synced_at INTEGER,
+          cached_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_geofence_events_pending ON geofence_events_local(pending_sync);
       `);
       
       // Run migrations to fix old schemas with NOT NULL constraints
@@ -713,6 +730,15 @@ class OfflineStorageService {
           if (!cols.has(name)) {
             try { await this.db.execAsync(`ALTER TABLE time_entries ADD COLUMN ${name} ${type}`); } catch {}
           }
+        }
+      } catch {}
+
+      // C1: send_status on chat_messages (pending|failed|synced) for failed-send retry UI
+      try {
+        const cmInfo = await this.db.getAllAsync("PRAGMA table_info(chat_messages)");
+        const cmCols = new Set((cmInfo as any[]).map((c: any) => c.name));
+        if (!cmCols.has('send_status')) {
+          try { await this.db.execAsync(`ALTER TABLE chat_messages ADD COLUMN send_status TEXT DEFAULT 'pending'`); } catch {}
         }
       } catch {}
       
@@ -2466,16 +2492,66 @@ class OfflineStorageService {
         }
         const response = await api.post(endpoint, body);
         if (response.error) {
+          // C1: server reachable but rejected the message → mark as 'failed' so UI can offer retry.
+          // Transport/timeout errors throw and are caught below — those stay 'pending' for auto-retry.
           if (__DEV__) console.error('[OfflineStorage] chatMessage sync error:', response.error);
+          if (data.localId && this.db) {
+            try {
+              await this.db.runAsync(
+                `UPDATE chat_messages SET send_status = 'failed' WHERE local_id = ? OR id = ?`,
+                [data.localId, data.localId]
+              );
+            } catch {}
+          }
           return false;
         }
         const serverId = (response.data as any)?.id;
         if (serverId && data.localId) {
           await this.updateLocalIdWithServerId('chatMessage', data.localId, serverId);
         }
+        if (data.localId && this.db) {
+          try {
+            await this.db.runAsync(
+              `UPDATE chat_messages SET send_status = 'synced', pending_sync = 0 WHERE local_id = ?`,
+              [data.localId]
+            );
+          } catch {}
+        }
         return true;
       } catch (err) {
-        if (__DEV__) console.error('[OfflineStorage] chatMessage sync failed:', err);
+        // Transport error — leave send_status as 'pending' for automatic backoff retry
+        if (__DEV__) console.error('[OfflineStorage] chatMessage sync failed (transport):', err);
+        return false;
+      }
+    }
+
+    // G1: Geofence event sync (with idempotency to prevent duplicate SMS / clock-ins)
+    if (type === 'geofenceEvent' && action === 'create') {
+      try {
+        const response = await api.post('/api/geofence-events', {
+          identifier: data.identifier,
+          action: data.action,
+          timestamp: data.timestamp,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          accuracy: data.accuracy,
+          idempotencyKey: data.idempotencyKey,
+        });
+        if (response.error) {
+          if (__DEV__) console.error('[OfflineStorage] geofenceEvent sync error:', response.error);
+          return false;
+        }
+        if (data.localId && this.db) {
+          try {
+            await this.db.runAsync(
+              `UPDATE geofence_events_local SET pending_sync = 0, synced_at = ? WHERE id = ?`,
+              [Date.now(), data.localId]
+            );
+          } catch {}
+        }
+        return true;
+      } catch (err) {
+        if (__DEV__) console.error('[OfflineStorage] geofenceEvent sync failed:', err);
         return false;
       }
     }
@@ -3890,6 +3966,178 @@ class OfflineStorageService {
   }
 
   /**
+   * G1: Queue a geofence enter/exit event captured offline (or after a failed POST).
+   * Server uses idempotencyKey to ensure each physical event fires SMS / clock-in once.
+   */
+  async queueGeofenceEvent(opts: {
+    jobId: string;
+    identifier?: string;
+    action: 'enter' | 'exit';
+    latitude?: number;
+    longitude?: number;
+    accuracy?: number;
+    timestamp?: number;
+  }): Promise<void> {
+    if (!this.db) return;
+    try {
+      const ts = opts.timestamp || Date.now();
+      const idempotencyKey = `geo_${opts.jobId}_${opts.action}_${Math.floor(ts / 1000)}`;
+      const id = `local_geo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const now = Date.now();
+      await this.db.runAsync(
+        `INSERT OR IGNORE INTO geofence_events_local
+         (id, job_id, identifier, action, latitude, longitude, accuracy, event_timestamp, idempotency_key, pending_sync, cached_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+        [
+          id,
+          opts.jobId,
+          opts.identifier || `job_${opts.jobId}`,
+          opts.action,
+          opts.latitude ?? null,
+          opts.longitude ?? null,
+          opts.accuracy ?? null,
+          ts,
+          idempotencyKey,
+          now,
+        ]
+      );
+      const queueItemId = `gq_${id}`;
+      await this.db.runAsync(
+        `INSERT INTO sync_queue (id, type, action, data, created_at, retry_count) VALUES (?, ?, ?, ?, ?, 0)`,
+        [
+          queueItemId,
+          'geofenceEvent',
+          'create',
+          JSON.stringify({
+            localId: id,
+            jobId: opts.jobId,
+            identifier: opts.identifier || `job_${opts.jobId}`,
+            action: opts.action,
+            latitude: opts.latitude ?? null,
+            longitude: opts.longitude ?? null,
+            accuracy: opts.accuracy ?? null,
+            timestamp: new Date(ts).toISOString(),
+            idempotencyKey,
+          }),
+          now,
+        ]
+      );
+      await this.updatePendingSyncCount();
+      if (__DEV__) console.log('[OfflineStorage] Geofence event queued:', opts.action, opts.jobId);
+    } catch (err) {
+      if (__DEV__) console.error('[OfflineStorage] queueGeofenceEvent failed:', err);
+    }
+  }
+
+  /**
+   * T1: Returns the most recent locally-started time entry that hasn't been stopped.
+   * Used by store.fetchActiveTimer to avoid clobbering a pending offline timer with
+   * a (stale or absent) server response when the device reconnects.
+   */
+  async getActiveLocalTimeEntry(): Promise<any | null> {
+    if (!this.db) return null;
+    try {
+      const row = await this.db.getFirstAsync(
+        `SELECT * FROM time_entries
+         WHERE end_time IS NULL AND id LIKE 'local_%' AND pending_sync = 1
+         ORDER BY start_time DESC LIMIT 1`
+      );
+      if (!row) return null;
+      const r: any = row;
+      return {
+        id: r.id,
+        userId: r.user_id,
+        jobId: r.job_id,
+        description: r.description,
+        startTime: r.start_time,
+        endTime: r.end_time,
+        notes: r.notes,
+        clockInLatitude: r.start_lat,
+        clockInLongitude: r.start_lng,
+        pendingSync: true,
+      };
+    } catch (err) {
+      if (__DEV__) console.error('[OfflineStorage] getActiveLocalTimeEntry failed:', err);
+      return null;
+    }
+  }
+
+  /**
+   * C1: Failed-chat-send helpers. A message becomes 'failed' when the server
+   * rejected it (4xx) — transport errors keep it 'pending' for automatic retry.
+   */
+  async getFailedChatMessages(channelType: string, channelId: string): Promise<any[]> {
+    if (!this.db) return [];
+    try {
+      const rows = await this.db.getAllAsync(
+        `SELECT * FROM chat_messages
+         WHERE channel_type = ? AND channel_id = ? AND send_status = 'failed'
+         ORDER BY created_at ASC`,
+        [channelType, channelId]
+      );
+      return (rows as any[]).map(r => ({
+        id: r.id,
+        localId: r.local_id,
+        channelType: r.channel_type,
+        channelId: r.channel_id,
+        senderId: r.sender_id,
+        senderName: r.sender_name,
+        message: r.message,
+        messageType: r.message_type,
+        attachmentUrl: r.attachment_url,
+        createdAt: r.created_at,
+        sendStatus: 'failed' as const,
+      }));
+    } catch (err) {
+      if (__DEV__) console.error('[OfflineStorage] getFailedChatMessages failed:', err);
+      return [];
+    }
+  }
+
+  async retryFailedChatMessage(localId: string): Promise<boolean> {
+    if (!this.db) return false;
+    try {
+      const row: any = await this.db.getFirstAsync(
+        `SELECT * FROM chat_messages WHERE local_id = ? OR id = ? LIMIT 1`,
+        [localId, localId]
+      );
+      if (!row) return false;
+
+      // Reset status, re-queue
+      await this.db.runAsync(
+        `UPDATE chat_messages SET send_status = 'pending', pending_sync = 1 WHERE id = ?`,
+        [row.id]
+      );
+      const queueItemId = `cm_retry_${row.id}_${Date.now()}`;
+      await this.db.runAsync(
+        `INSERT INTO sync_queue (id, type, action, data, created_at, retry_count) VALUES (?, ?, ?, ?, ?, 0)`,
+        [
+          queueItemId,
+          'chatMessage',
+          'create',
+          JSON.stringify({
+            localId: row.local_id || row.id,
+            channelType: row.channel_type,
+            channelId: row.channel_id,
+            message: row.message,
+            messageType: row.message_type,
+            attachmentUrl: row.attachment_url,
+          }),
+          Date.now(),
+        ]
+      );
+      await this.updatePendingSyncCount();
+      // Trigger immediate sync attempt if online
+      const online = useOfflineStore.getState().isOnline;
+      if (online) this.syncPendingChanges().catch(() => {});
+      return true;
+    } catch (err) {
+      if (__DEV__) console.error('[OfflineStorage] retryFailedChatMessage failed:', err);
+      return false;
+    }
+  }
+
+  /**
    * Cache and retrieve WHS JSA documents (read-only list snapshot).
    */
   async cacheJsaDocs(docs: any[]): Promise<void> {
@@ -3932,10 +4180,12 @@ class OfflineStorageService {
         senderId: r.sender_id,
         senderName: r.sender_name,
         message: r.message,
+        content: r.message, // alias for direct-messages UI which uses .content
         messageType: r.message_type,
         attachmentUrl: r.attachment_url,
         createdAt: r.created_at,
         pendingSync: true,
+        sendStatus: (r.send_status as 'pending' | 'failed' | 'synced') || 'pending',
       }));
     } catch (err) {
       if (__DEV__) console.error('[OfflineStorage] getPendingChatMessages failed:', err);

@@ -33545,14 +33545,26 @@ Respond with JSON in this format:
   app.post("/api/geofence-events", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const { identifier, action, timestamp, latitude, longitude, accuracy, address } = req.body;
+      const { identifier, action, timestamp, latitude, longitude, accuracy, address, idempotencyKey } = req.body;
       const eventTimestamp = new Date();
-      
+
       // Parse job ID from identifier (format: job_<jobId>)
       const jobId = identifier?.startsWith('job_') ? identifier.substring(4) : null;
-      
+
       if (!jobId) {
         return res.json({ success: true, message: 'No job ID in identifier' });
+      }
+
+      // G1: Idempotency — if the mobile client sent an idempotencyKey (queued offline event
+      // being retried, or any client-side dedupe), only process this event once. A re-send
+      // returns the original cached response instead of firing duplicate SMS / clock-ins.
+      if (idempotencyKey && typeof idempotencyKey === 'string') {
+        const fullKey = `geofence:${userId}:${idempotencyKey}`;
+        const cached = await getIdempotencyRecord(fullKey);
+        if (cached) {
+          return res.json({ ...cached, idempotent: true });
+        }
+        (req as any)._geofenceIdempotencyKey = fullKey;
       }
       
       // ========== 1. COORDINATE VALIDATION ==========
@@ -33846,20 +33858,60 @@ Respond with JSON in this format:
         }
       }
       
-      res.json({ 
-        success: true, 
+      // G2: Surface geofence enter/exit on the owner's Activity Feed (with dwell time on exit).
+      try {
+        const actor = await storage.getUser(userId);
+        const actorName = actor
+          ? `${actor.firstName || ''} ${actor.lastName || ''}`.trim() || actor.username || actor.email || 'Team member'
+          : 'Team member';
+        const activityType = action === 'enter' ? 'check_in' : 'check_out';
+        const title = action === 'enter'
+          ? `${actorName} arrived at ${job.title || 'job site'}`
+          : `${actorName} left ${job.title || 'job site'}`;
+        await storage.createActivity({
+          businessOwnerId: effectiveUserId,
+          actorUserId: userId,
+          actorName,
+          activityType,
+          entityType: 'job',
+          entityId: jobId,
+          entityTitle: job.title || null,
+          description: title,
+          metadata: {
+            source: 'geofence',
+            latitude: coordinatesValid ? lat : null,
+            longitude: coordinatesValid ? lng : null,
+            ...(action === 'exit' && typeof dwellSeconds === 'number' ? { dwellSeconds } : {}),
+          },
+          isImportant: false,
+        });
+      } catch (afErr) {
+        console.warn('[Geofence] Failed to create activity feed entry (non-fatal):', afErr);
+      }
+
+      const responsePayload = {
+        success: true,
         alertId: alert.id,
         jobTitle: job.title || 'Job site',
         jobId,
         timeEntryAction,
         coordinatesValid,
+        dwellSeconds,
         geofenceSettings: {
           enabled: job.geofenceEnabled,
           autoClockIn: job.geofenceAutoClockIn,
           autoClockOut: job.geofenceAutoClockOut,
           radius: job.geofenceRadius,
         }
-      });
+      };
+
+      // G1: Cache the response under the idempotency key so retries are no-ops.
+      const idemKey = (req as any)._geofenceIdempotencyKey;
+      if (idemKey) {
+        try { await setIdempotencyRecord(idemKey, responsePayload); } catch {}
+      }
+
+      res.json(responsePayload);
     } catch (error: any) {
       console.error('[Geofence] Error handling geofence event:', JSON.stringify({
         timestamp: new Date().toISOString(),

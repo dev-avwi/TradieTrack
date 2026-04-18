@@ -1953,14 +1953,32 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
 
   fetchActiveTimer: async () => {
     set({ isLoading: true, error: null });
-    
+
+    // T1: Always check for a pending local timer first. If one exists, prefer it
+    // — the server hasn't seen it yet (or has a stale entry), and we don't want
+    // the UI to flicker to "no active timer" while the sync queue catches up.
+    const localPending = await offlineStorage.getActiveLocalTimeEntry();
+    if (localPending) {
+      const localTimer: TimeEntry = {
+        id: localPending.id,
+        jobId: localPending.jobId,
+        userId: localPending.userId,
+        description: localPending.description,
+        startTime: localPending.startTime,
+        isBreak: false,
+        pausedDuration: 0,
+      } as any;
+      set({ activeTimer: localTimer, isLoading: false, error: null });
+      return;
+    }
+
     const isOnline = useOfflineStore.getState().isOnline;
-    
+
     if (!isOnline) {
       set({ isLoading: false, error: null });
       return;
     }
-    
+
     try {
       const response = await api.get<TimeEntry>('/api/time-entries/active');
       set({ activeTimer: response.data || null, isLoading: false, error: null });

@@ -553,14 +553,62 @@ class LocationTrackingService {
   }
 
   /**
-   * Handle geofence event from background task
+   * Handle geofence event from background task.
+   * G1: When the device is offline (or the POST fails), queue the event locally with
+   * an idempotency key so it syncs once on reconnect — no lost arrivals/departures.
    */
   handleGeofenceEvent(event: GeofenceEvent): void {
     if (this.onGeofenceEvent) {
       this.onGeofenceEvent(event);
     }
-    
-    api.post('/api/geofence-events', event);
+
+    const jobId = event.identifier?.startsWith('job_') ? event.identifier.substring(4) : null;
+
+    const queueOffline = async () => {
+      if (!jobId) return;
+      try {
+        const { default: offlineStorage } = await import('./offline-storage');
+        await offlineStorage.queueGeofenceEvent({
+          jobId,
+          identifier: event.identifier,
+          action: event.action,
+          latitude: (event as any).latitude,
+          longitude: (event as any).longitude,
+          accuracy: (event as any).accuracy,
+          timestamp: event.timestamp,
+        });
+      } catch (err) {
+        if (__DEV__) console.error('[LocationTracking] Failed to queue geofence event:', err);
+      }
+    };
+
+    (async () => {
+      // Decide online/offline up front; if offline, queue immediately and return.
+      try {
+        const NetInfo = (await import('@react-native-community/netinfo')).default;
+        const net = await NetInfo.fetch();
+        const online = net.isConnected !== false && net.isInternetReachable !== false;
+        if (!online) {
+          await queueOffline();
+          return;
+        }
+      } catch {
+        // NetInfo unavailable → fall through and try POST, queue on failure
+      }
+
+      // Online: try direct POST; on any failure (transport or non-2xx) queue for retry.
+      try {
+        const idempotencyKey = jobId
+          ? `geo_${jobId}_${event.action}_${Math.floor((event.timestamp || Date.now()) / 1000)}`
+          : undefined;
+        const res = await api.post('/api/geofence-events', { ...event, idempotencyKey });
+        if (res.error) {
+          await queueOffline();
+        }
+      } catch {
+        await queueOffline();
+      }
+    })();
   }
 }
 
