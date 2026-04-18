@@ -350,8 +350,10 @@ export function useUserRole() {
   const isPaymentOverdue = subscriptionStatus === 'past_due';
   const isSubscriptionPaused = subscriptionStatus === 'paused';
   const isSubscriptionRestricted = isPaymentOverdue || isSubscriptionPaused;
-  const hasTeamSubscription = !isSubscriptionRestricted && (subscriptionTier === 'team' || subscriptionTier === 'business' || (subscriptionTier as string) === 'beta');
-  const hasProSubscription = !isSubscriptionRestricted && (subscriptionTier === 'pro' || subscriptionTier === 'team' || subscriptionTier === 'business' || (subscriptionTier as string) === 'beta');
+  // During beta, OR for users with lifetime beta access, all paid features are unlocked
+  const hasBetaUnlock = !!(user?.isBeta || user?.betaLifetimeAccess);
+  const hasTeamSubscription = !isSubscriptionRestricted && (hasBetaUnlock || subscriptionTier === 'team' || subscriptionTier === 'business' || (subscriptionTier as string) === 'beta');
+  const hasProSubscription = !isSubscriptionRestricted && (hasBetaUnlock || subscriptionTier === 'pro' || subscriptionTier === 'team' || subscriptionTier === 'business' || (subscriptionTier as string) === 'beta');
   const canUseAIFeatures = hasProSubscription;
   
   // Team access requires both role permission AND team subscription

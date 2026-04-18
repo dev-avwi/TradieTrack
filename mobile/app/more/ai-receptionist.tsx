@@ -194,7 +194,7 @@ export default function AIReceptionistScreen() {
   const { configId: urlConfigId } = useLocalSearchParams<{ configId?: string }>();
   const hasDedicatedNumber = !!businessSettings?.dedicatedPhoneNumber;
   const userTier = user?.subscriptionTier || 'free';
-  const isFreePlan = userTier === 'free' && !user?.betaLifetimeAccess;
+  const isFreePlan = userTier === 'free' && !user?.betaLifetimeAccess && !user?.isBeta;
   const [allConfigs, setAllConfigs] = useState<MultiNumberConfig[]>([]);
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(urlConfigId || null);
   const [config, setConfig] = useState<ReceptionistConfig | null>(null);

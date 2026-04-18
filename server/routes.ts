@@ -3540,6 +3540,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         intendedTier: user.intendedTier,
         isPlatformAdmin: user.isPlatformAdmin ?? (user as any).is_platform_admin ?? false,
         hasDemoData: user.hasDemoData ?? false,
+        betaLifetimeAccess: user.betaLifetimeAccess ?? false,
+        betaUser: (user as any).betaUser ?? false,
+        isBeta: (await import('./freemiumService')).IS_BETA,
       };
       
       // Debug logging for admin users

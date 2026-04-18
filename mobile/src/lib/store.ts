@@ -28,6 +28,9 @@ interface User {
   subscriptionSource?: string;
   trialEndsAt?: string;
   trialStatus?: string;
+  isBeta?: boolean;
+  betaLifetimeAccess?: boolean;
+  betaUser?: boolean;
   hasDemoData?: boolean;
   demoDataIds?: {
     clients: string[];
