@@ -621,6 +621,7 @@ export default function ChatHubScreen() {
   const [smsConversations, setSmsConversations] = useState<SmsConversation[]>([]);
   const [twilioStatus, setTwilioStatus] = useState<TwilioStatus | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<UnreadCounts | null>(null);
+  const [pendingChatCounts, setPendingChatCounts] = useState<Record<string, number>>({});
   const [dmConversations, setDmConversations] = useState<DirectMessageConversation[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [latestJobChats, setLatestJobChats] = useState<Map<string, { message: string; userId: string; createdAt: string | null; isSystemMessage: boolean | null }>>(new Map());
@@ -657,6 +658,11 @@ export default function ChatHubScreen() {
       const latestChatsData = Array.isArray(latestChatsRes.data) ? latestChatsRes.data : [];
       latestChatsData.forEach((c: any) => chatMap.set(c.jobId, c));
       setLatestJobChats(chatMap);
+      try {
+        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const pending = await offlineStorage.getAllPendingChatCounts();
+        setPendingChatCounts(pending || {});
+      } catch {}
     } catch (error) {
       console.error('Error loading data:', error);
       setLoadError('Could not load conversations. Pull down to retry.');
@@ -807,7 +813,7 @@ export default function ChatHubScreen() {
           avatarFallback: job.title.substring(0, 2).toUpperCase(),
           lastMessage,
           lastMessageTime,
-          unreadCount: smsUnread,
+          unreadCount: smsUnread + (pendingChatCounts[`job:${job.id}`] || 0),
           status: job.status,
           data: { ...job, linkedSms },
         });
@@ -850,7 +856,7 @@ export default function ChatHubScreen() {
         subtitle: 'General team discussion',
         avatarFallback: 'TC',
         lastMessage: 'Tap to join team chat',
-        unreadCount: (unreadCounts?.teamChat || 0),
+        unreadCount: (unreadCounts?.teamChat || 0) + Object.entries(pendingChatCounts).filter(([k]) => k.startsWith('team:')).reduce((sum, [, v]) => sum + v, 0),
         data: null,
       });
 
@@ -866,7 +872,7 @@ export default function ChatHubScreen() {
           avatarUserId: String(dm.otherUser.id),
           lastMessage: dm.lastMessage?.content || 'No messages yet',
           lastMessageTime: dm.lastMessage?.createdAt || undefined,
-          unreadCount: dm.unreadCount || 0,
+          unreadCount: (dm.unreadCount || 0) + (pendingChatCounts[`direct:${dm.otherUser.id}`] || 0),
           data: dm,
         });
       });
@@ -916,7 +922,7 @@ export default function ChatHubScreen() {
     }
     
     return items;
-  }, [jobs, clients, smsConversations, dmConversations, teamMembers, activeFilter, searchQuery, unreadCounts, jobStatusFilter, latestJobChats]);
+  }, [jobs, clients, smsConversations, dmConversations, teamMembers, activeFilter, searchQuery, unreadCounts, jobStatusFilter, latestJobChats, pendingChatCounts]);
 
   const handleQuickActionSend = async (item: ConversationItem, actionId: string) => {
     const template = SMS_QUICK_ACTIONS.find(a => a.id === actionId);

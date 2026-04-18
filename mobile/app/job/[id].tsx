@@ -2842,6 +2842,39 @@ export default function JobDetailScreen() {
         if (__DEV__) console.log('Location not available for SWMS signing');
       }
 
+      // Detect offline state and fall back to local form_submissions queue
+      const NetInfo = (await import('@react-native-community/netinfo')).default;
+      const netState = await NetInfo.fetch();
+      const isOnline = netState.isConnected !== false && netState.isInternetReachable !== false;
+
+      if (!isOnline) {
+        try {
+          const { offlineStorage } = await import('@/src/lib/offline-storage');
+          await offlineStorage.saveFormSubmissionOffline({
+            formId: `swms:${signingSwmsId}`,
+            jobId: id as string,
+            submissionData: {
+              swmsId: signingSwmsId,
+              workerName: signWorkerName.trim(),
+              latitude, longitude, address,
+              signedAt: new Date().toISOString(),
+              templateType: 'swms',
+            },
+            signatures: { worker: swmsSignatureData || 'mobile-text-signature' },
+            status: 'pending_sync',
+          });
+          setShowSignSwmsModal(false);
+          setSignWorkerName('');
+          setSwmsSignatureData(null);
+          setSigningSwmsId(null);
+          Alert.alert('Saved offline', 'Your SWMS signature will sync automatically when you reconnect.');
+        } catch (offErr) {
+          Alert.alert('Error', 'Could not save signature offline.');
+        }
+        setIsSigningSwms(false);
+        return;
+      }
+
       const res = await api.post(`/api/swms/${signingSwmsId}/sign`, {
         workerName: signWorkerName.trim(),
         signatureData: swmsSignatureData || 'mobile-text-signature',
@@ -2864,7 +2897,7 @@ export default function JobDetailScreen() {
     } finally {
       setIsSigningSwms(false);
     }
-  }, [signingSwmsId, signWorkerName, swmsSignatureData, loadSwmsDocuments]);
+  }, [signingSwmsId, signWorkerName, swmsSignatureData, loadSwmsDocuments, id]);
 
   const handleDownloadSwmsPdf = useCallback(async (swmsId: string) => {
     try {

@@ -700,6 +700,21 @@ class OfflineStorageService {
         await this.db.execAsync(`ALTER TABLE jobs ADD COLUMN client_name TEXT`);
         if (__DEV__) console.log('[OfflineStorage] Jobs table "client_name" column added successfully');
       }
+
+      // F5: GPS columns on time_entries (best-effort; ignore if already present)
+      try {
+        const teInfo = await this.db.getAllAsync("PRAGMA table_info(time_entries)");
+        const cols = new Set((teInfo as any[]).map((c: any) => c.name));
+        const gpsCols: Array<[string, string]> = [
+          ['start_lat', 'REAL'], ['start_lng', 'REAL'],
+          ['end_lat', 'REAL'], ['end_lng', 'REAL'],
+        ];
+        for (const [name, type] of gpsCols) {
+          if (!cols.has(name)) {
+            try { await this.db.execAsync(`ALTER TABLE time_entries ADD COLUMN ${name} ${type}`); } catch {}
+          }
+        }
+      } catch {}
       
     } catch (error) {
       if (__DEV__) console.error('[OfflineStorage] Migration error:', error);
@@ -1593,12 +1608,30 @@ class OfflineStorageService {
     const now = Date.now();
     const localId = `local_${now}_${Math.random().toString(36).substr(2, 9)}`;
     const startTime = new Date().toISOString();
-    
+
+    // F5: Best-effort GPS capture (5s timeout)
+    let startLat: number | null = null;
+    let startLng: number | null = null;
+    try {
+      const Location = await import('expo-location');
+      const perm = await Location.getForegroundPermissionsAsync();
+      if (perm.status === 'granted') {
+        const loc = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+        ]);
+        if (loc && (loc as any).coords) {
+          startLat = (loc as any).coords.latitude;
+          startLng = (loc as any).coords.longitude;
+        }
+      }
+    } catch {}
+
     await this.db.runAsync(
       `INSERT INTO time_entries 
-       (id, user_id, job_id, description, start_time, end_time, notes, cached_at, pending_sync, sync_action, local_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'create', ?)`,
-      [localId, userId, jobId ?? null, description ?? null, startTime, null, null, now, localId]
+       (id, user_id, job_id, description, start_time, end_time, notes, cached_at, pending_sync, sync_action, local_id, start_lat, start_lng)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'create', ?, ?, ?)`,
+      [localId, userId, jobId ?? null, description ?? null, startTime, null, null, now, localId, startLat, startLng]
     );
     
     const entry: CachedTimeEntry = {
@@ -1615,10 +1648,14 @@ class OfflineStorageService {
       localId,
     };
     
-    await this.addToSyncQueue('timeEntry', 'create', entry);
+    await this.addToSyncQueue('timeEntry', 'create', {
+      ...entry,
+      clockInLatitude: startLat,
+      clockInLongitude: startLng,
+    });
     await this.updatePendingSyncCount();
     
-    if (__DEV__) console.log(`[OfflineStorage] Started time entry offline: ${localId}`);
+    if (__DEV__) console.log(`[OfflineStorage] Started time entry offline: ${localId} gps=${startLat},${startLng}`);
     return entry;
   }
 
@@ -1642,13 +1679,32 @@ class OfflineStorageService {
       if (__DEV__) console.warn(`[OfflineStorage] Time entry ${entryId} not found`);
       return null;
     }
-    
-    // Update the entry with end time
+
+    // F5: Best-effort GPS capture for clock-out
+    let endLat: number | null = null;
+    let endLng: number | null = null;
+    try {
+      const Location = await import('expo-location');
+      const perm = await Location.getForegroundPermissionsAsync();
+      if (perm.status === 'granted') {
+        const loc = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+        ]);
+        if (loc && (loc as any).coords) {
+          endLat = (loc as any).coords.latitude;
+          endLng = (loc as any).coords.longitude;
+        }
+      }
+    } catch {}
+
+    // Update the entry with end time + GPS
     await this.db.runAsync(
       `UPDATE time_entries SET 
-        end_time = ?, cached_at = ?, pending_sync = 1, sync_action = ?
+        end_time = ?, cached_at = ?, pending_sync = 1, sync_action = ?,
+        end_lat = ?, end_lng = ?
        WHERE id = ?`,
-      [endTime, now, 'update', entryId]
+      [endTime, now, 'update', endLat, endLng, entryId]
     );
     
     const entry: CachedTimeEntry = {
@@ -1668,6 +1724,8 @@ class OfflineStorageService {
     await this.addToSyncQueue('timeEntry', 'update', { 
       id: entryId, 
       endTime,
+      clockOutLatitude: endLat,
+      clockOutLongitude: endLng,
       _previousValues: {
         endTime: row.end_time
       }
@@ -2332,9 +2390,36 @@ class OfflineStorageService {
       return this.syncAttachment(action, data);
     }
     
-    // T005: Form submissions sync
+    // T005: Form submissions sync (with F3 SWMS-sign special-case routing)
     if (type === 'formSubmission' && action === 'create') {
       try {
+        // F3: Offline SWMS signatures are stored as form_submissions with formId="swms:<id>"
+        // Route them to the dedicated SWMS sign endpoint instead of /api/form-submissions.
+        if (typeof data.formId === 'string' && data.formId.startsWith('swms:')) {
+          const swmsId = data.formId.slice(5);
+          const sub = data.submissionData || {};
+          const signaturePayload = {
+            workerName: sub.workerName,
+            signatureData: data.signatures?.worker || sub.signatureData || 'mobile-text-signature',
+            latitude: sub.latitude ?? null,
+            longitude: sub.longitude ?? null,
+            address: sub.address ?? null,
+          };
+          const response = await api.post(`/api/swms/${swmsId}/sign`, signaturePayload);
+          if (response.error) {
+            if (__DEV__) console.error('[OfflineStorage] SWMS sign sync error:', response.error);
+            return false;
+          }
+          // Mark local row as synced (no server id swap needed for signature row)
+          if (data.localId && this.db) {
+            await this.db.runAsync(
+              `UPDATE form_submissions_local SET pending_sync = 0, status = 'synced' WHERE local_id = ?`,
+              [data.localId]
+            );
+          }
+          return true;
+        }
+
         const payload: any = {
           formId: data.formId,
           jobId: data.jobId,
@@ -3779,6 +3864,50 @@ class OfflineStorageService {
     } catch (err) {
       try { await this.db.execAsync('ROLLBACK'); } catch {}
       if (__DEV__) console.error('[OfflineStorage] cacheChatMessages failed:', err);
+    }
+  }
+
+  /**
+   * Returns the count of pending-sync messages for every (channelType, channelId).
+   * UI uses this to add badge counts when messages are queued offline.
+   */
+  async getAllPendingChatCounts(): Promise<Record<string, number>> {
+    if (!this.db) return {};
+    try {
+      const rows = await this.db.getAllAsync(
+        `SELECT channel_type, channel_id, COUNT(*) as cnt FROM chat_messages
+         WHERE pending_sync = 1 GROUP BY channel_type, channel_id`
+      );
+      const map: Record<string, number> = {};
+      (rows as any[]).forEach(r => {
+        map[`${r.channel_type}:${r.channel_id}`] = Number(r.cnt) || 0;
+      });
+      return map;
+    } catch (err) {
+      if (__DEV__) console.error('[OfflineStorage] getAllPendingChatCounts failed:', err);
+      return {};
+    }
+  }
+
+  /**
+   * Cache and retrieve WHS JSA documents (read-only list snapshot).
+   */
+  async cacheJsaDocs(docs: any[]): Promise<void> {
+    try {
+      await this.setMetadata('whs_jsa_docs', JSON.stringify(docs || []));
+      await this.setMetadata('whs_jsa_docs_cached_at', String(Date.now()));
+    } catch (err) {
+      if (__DEV__) console.error('[OfflineStorage] cacheJsaDocs failed:', err);
+    }
+  }
+
+  async getJsaDocsOffline(): Promise<any[]> {
+    try {
+      const raw = await this.getMetadata('whs_jsa_docs');
+      if (!raw) return [];
+      return JSON.parse(raw);
+    } catch {
+      return [];
     }
   }
 

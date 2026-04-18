@@ -109,6 +109,15 @@ const activityColors: Record<string, { bg: string; icon: string }> = {
   impersonation_started: { bg: 'hsl(25 90% 55% / 0.1)', icon: 'hsl(25 90% 55%)' },
 };
 
+function formatDwell(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m`;
+  return `${s}s`;
+}
+
 function getNavigationPath(activity: ActivityItem): string | null {
   if (!activity.entityType || !activity.entityId) return null;
   switch (activity.entityType) {
@@ -241,6 +250,9 @@ export default function ActivityFeed({
                       <div className="flex-1 min-w-0 pt-0.5">
                         <p className={`ios-body truncate ${!activity.isRead ? 'font-semibold' : 'font-medium'}`}>
                           {activity.description || activity.entityTitle || activity.activityType.replace(/_/g, ' ')}
+                          {activity.activityType === 'check_out' && typeof activity.metadata?.dwellSeconds === 'number' && activity.metadata.dwellSeconds > 0 && (
+                            <span className="text-muted-foreground font-normal"> · {formatDwell(activity.metadata.dwellSeconds)} on site</span>
+                          )}
                         </p>
                         {activity.actorName && (
                           <p className="ios-caption truncate mt-0.5">

@@ -60,6 +60,8 @@ import {
   Plus,
   Edit,
   Mic,
+  Mail,
+  RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { 
@@ -150,6 +152,7 @@ const adminRoutes = [
   { path: "/admin/call-monitor", label: "Calls", icon: PhoneIncoming },
   { path: "/admin/porting", label: "Porting", icon: PhoneForwarded },
   { path: "/admin/activity", label: "Activity", icon: Activity },
+  { path: "/admin/email-logs", label: "Email Logs", icon: Mail },
   { path: "/admin/health", label: "Health", icon: HeartPulse },
 ];
 
@@ -2771,6 +2774,188 @@ interface CommsStats {
   };
 }
 
+interface EmailLogRow {
+  id: string;
+  recipientEmail: string;
+  subject: string | null;
+  type: string | null;
+  status: string;
+  retryCount: number | null;
+  maxRetries: number | null;
+  permanentlyFailed: boolean | null;
+  errorMessage: string | null;
+  nextRetryAt: string | null;
+  createdAt: string;
+}
+
+const PAGE_SIZE = 50;
+
+function EmailLogsView() {
+  const { toast } = useToast();
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [recipientSearch, setRecipientSearch] = useState('');
+  const [page, setPage] = useState(1);
+
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== 'all') params.set('status', statusFilter);
+    if (recipientSearch.trim()) params.set('recipient', recipientSearch.trim());
+    params.set('limit', String(PAGE_SIZE));
+    params.set('offset', String((page - 1) * PAGE_SIZE));
+    return params.toString();
+  }, [statusFilter, recipientSearch, page]);
+
+  const { data, isLoading, refetch } = useQuery<{ logs: EmailLogRow[]; total: number }>({
+    queryKey: ['/api/admin/email-logs', queryParams],
+    queryFn: async () => {
+      const { getSessionToken } = await import('@/lib/queryClient');
+      const token = getSessionToken();
+      const res = await fetch(`/api/admin/email-logs?${queryParams}`, {
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) throw new Error('Failed to load email logs');
+      const total = parseInt(res.headers.get('X-Total-Count') || '0', 10);
+      const json = await res.json();
+      const logs = Array.isArray(json) ? json : (json.logs || []);
+      return { logs, total };
+    },
+  });
+
+  const retryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/admin/email-logs/${id}/retry`, { method: 'POST' });
+    },
+    onSuccess: () => {
+      toast({ title: 'Queued for retry', description: 'The email will retry on the next scheduler tick.' });
+      refetch();
+    },
+    onError: (err: any) => {
+      toast({ title: 'Retry failed', description: err?.message || 'Could not queue retry.', variant: 'destructive' });
+    },
+  });
+
+  const logs = data?.logs || [];
+
+  const statusBadge = (status: string, permanent: boolean | null) => {
+    if (permanent) return <Badge variant="destructive">permanent</Badge>;
+    switch (status) {
+      case 'sent': return <Badge variant="default" className="bg-green-600 hover:bg-green-600">sent</Badge>;
+      case 'failed': return <Badge variant="destructive">failed</Badge>;
+      case 'pending': return <Badge variant="secondary">pending</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" /> Email Delivery Logs
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3 items-end mb-4">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-xs text-muted-foreground mb-1 block">Search recipient</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  data-testid="input-email-recipient-search"
+                  value={recipientSearch}
+                  onChange={(e) => { setRecipientSearch(e.target.value); setPage(1); }}
+                  placeholder="user@example.com"
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <div className="w-[180px]">
+              <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+                <SelectTrigger data-testid="select-email-status-filter"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="sent">Sent</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="permanently_failed">Permanently Failed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              disabled={isLoading}
+              data-testid="button-email-logs-refresh"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Recipient</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Retries</TableHead>
+                  <TableHead>Last Error</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow><TableCell colSpan={8} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin inline" /></TableCell></TableRow>
+                ) : logs.length === 0 ? (
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No email logs match the current filter.</TableCell></TableRow>
+                ) : logs.map((log) => {
+                  const canRetry = log.status === 'failed' && !log.permanentlyFailed;
+                  return (
+                    <TableRow key={log.id} data-testid={`row-email-log-${log.id}`}>
+                      <TableCell className="text-xs whitespace-nowrap">{formatDate(log.createdAt)}</TableCell>
+                      <TableCell className="text-sm font-medium max-w-[200px] truncate" title={log.recipientEmail}>{log.recipientEmail}</TableCell>
+                      <TableCell className="text-sm max-w-[260px] truncate" title={log.subject || ''}>{log.subject || '-'}</TableCell>
+                      <TableCell className="text-xs"><Badge variant="outline">{log.type || 'unknown'}</Badge></TableCell>
+                      <TableCell>{statusBadge(log.status, log.permanentlyFailed)}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">{log.retryCount ?? 0} / {log.maxRetries ?? 5}</TableCell>
+                      <TableCell className="text-xs max-w-[260px] truncate text-destructive" title={log.errorMessage || ''}>{log.errorMessage || '-'}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={!canRetry || retryMutation.isPending}
+                          onClick={() => retryMutation.mutate(log.id)}
+                          data-testid={`button-retry-email-${log.id}`}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Retry
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-xs text-muted-foreground">{data?.total != null ? `${data.total} total` : ''}</p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Previous</Button>
+              <Button variant="outline" size="sm" disabled={logs.length < PAGE_SIZE} onClick={() => setPage(p => p + 1)}>Next</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function CommunicationsView() {
   const { data: comms, isLoading } = useQuery<CommsStats>({
     queryKey: ['/api/admin/communications'],
@@ -3312,6 +3497,8 @@ export default function AdminDashboard() {
         return <UsersView usersData={usersData} usersLoading={usersLoading} />;
       case '/admin/activity':
         return <ActivityView usersData={usersData} stats={stats} />;
+      case '/admin/email-logs':
+        return <EmailLogsView />;
       case '/admin/health':
         return <HealthView />;
       case '/admin/kanban':

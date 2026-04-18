@@ -213,7 +213,15 @@ export default function WhsHubScreen() {
       ]);
       setIncidents(Array.isArray(incRes.data) ? incRes.data : []);
       setEmergencyInfo(Array.isArray(emRes.data) ? emRes.data : []);
-      setJsaDocs(Array.isArray(jsaRes.data) ? jsaRes.data : []);
+      const jsaList = Array.isArray(jsaRes.data) ? jsaRes.data : [];
+      setJsaDocs(jsaList);
+      // Write-through cache for offline access
+      if (jsaList.length > 0 || !jsaRes.error) {
+        try {
+          const { offlineStorage } = await import('@/src/lib/offline-storage');
+          await offlineStorage.cacheJsaDocs(jsaList);
+        } catch {}
+      }
       setEnvironments(Array.isArray(envRes.data) ? envRes.data : []);
       setSigns(Array.isArray(signRes.data) ? signRes.data : []);
       setHazardReports(Array.isArray(hazRes.data) ? hazRes.data : []);
@@ -223,6 +231,14 @@ export default function WhsHubScreen() {
       setSignTypes(Array.isArray(signTypesRes.data) ? signTypesRes.data : []);
     } catch (e) {
       console.error('Failed to fetch WHS data:', e);
+      // Offline / network failure: hydrate JSA list from cache
+      try {
+        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const cached = await offlineStorage.getJsaDocsOffline();
+        if (Array.isArray(cached) && cached.length > 0) {
+          setJsaDocs(cached);
+        }
+      } catch {}
     } finally {
       setLoading(false);
       setRefreshing(false);
