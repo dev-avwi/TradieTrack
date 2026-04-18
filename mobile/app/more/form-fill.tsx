@@ -423,7 +423,7 @@ export default function FormFillScreen() {
         status: 'submitted' as const,
       };
 
-      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const { offlineStorage, useOfflineStore } = await import('@/lib/offline-storage');
       const isOnline = useOfflineStore.getState().isOnline;
 
       if (!isOnline) {
@@ -452,7 +452,7 @@ export default function FormFillScreen() {
       ]);
     } catch (err) {
       try {
-        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const { offlineStorage } = await import('@/lib/offline-storage');
         await offlineStorage.saveFormSubmissionOffline({
           formId: form.id,
           jobId: jobId || undefined,

@@ -300,7 +300,7 @@ export default function TeamChatScreen() {
   const fetchMessages = useCallback(async (showLoader = true) => {
     if (showLoader) setIsLoading(true);
     try {
-      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const { offlineStorage, useOfflineStore } = await import('@/lib/offline-storage');
       const isOnline = useOfflineStore.getState().isOnline;
       if (!isOnline) {
         const cached = await offlineStorage.getChatMessagesOffline('team', 'team', 200);
@@ -319,7 +319,7 @@ export default function TeamChatScreen() {
     } catch (error) {
       if (__DEV__) console.log('Failed to fetch team chat, falling back to cache:', error);
       try {
-        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const { offlineStorage } = await import('@/lib/offline-storage');
         const cached = await offlineStorage.getChatMessagesOffline('team', 'team', 200);
         if (cached.length > 0) setMessages(cached as any);
       } catch {}
@@ -342,7 +342,7 @@ export default function TeamChatScreen() {
     let unsub: (() => void) | null = null;
     let prevOnline = true;
     (async () => {
-      const { useOfflineStore } = await import('@/src/lib/offline-storage');
+      const { useOfflineStore } = await import('@/lib/offline-storage');
       if (!mounted) return;
       prevOnline = useOfflineStore.getState().isOnline;
       unsub = useOfflineStore.subscribe((state) => {
@@ -368,7 +368,7 @@ export default function TeamChatScreen() {
     setMessageText('');
 
     try {
-      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const { offlineStorage, useOfflineStore } = await import('@/lib/offline-storage');
       const isOnline = useOfflineStore.getState().isOnline;
       if (!isOnline) {
         const optimistic = await offlineStorage.sendChatMessageOffline('team', 'team', text, {
@@ -391,7 +391,7 @@ export default function TeamChatScreen() {
     } catch (error) {
       // Online send failed — queue for later instead of dropping the message.
       try {
-        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const { offlineStorage } = await import('@/lib/offline-storage');
         const optimistic = await offlineStorage.sendChatMessageOffline('team', 'team', text, {
           senderId: user?.id,
           senderName: (user as any)?.firstName || (user as any)?.name || 'You',
@@ -604,7 +604,7 @@ export default function TeamChatScreen() {
                       {(msg as any).sendStatus === 'failed' && (
                         <TouchableOpacity
                           onPress={async () => {
-                            const { offlineStorage } = await import('@/src/lib/offline-storage');
+                            const { offlineStorage } = await import('@/lib/offline-storage');
                             const ok = await offlineStorage.retryFailedChatMessage((msg as any).localId || msg.id);
                             if (ok) fetchMessages(false);
                           }}

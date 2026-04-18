@@ -659,7 +659,7 @@ export default function ChatHubScreen() {
       latestChatsData.forEach((c: any) => chatMap.set(c.jobId, c));
       setLatestJobChats(chatMap);
       try {
-        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const { offlineStorage } = await import('@/lib/offline-storage');
         const pending = await offlineStorage.getAllPendingChatCounts();
         setPendingChatCounts(pending || {});
       } catch {}

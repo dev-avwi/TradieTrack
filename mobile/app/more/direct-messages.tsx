@@ -574,7 +574,7 @@ function ChatView({
 
   const fetchMessages = useCallback(async () => {
     try {
-      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const { offlineStorage, useOfflineStore } = await import('@/lib/offline-storage');
       const isOnline = useOfflineStore.getState().isOnline;
       if (!isOnline) {
         const cached = await offlineStorage.getChatMessagesOffline('dm', selectedUser.id, 200);
@@ -591,7 +591,7 @@ function ChatView({
     } catch (error) {
       if (__DEV__) console.log('Failed to fetch messages, falling back to cache:', error);
       try {
-        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const { offlineStorage } = await import('@/lib/offline-storage');
         const cached = await offlineStorage.getChatMessagesOffline('dm', selectedUser.id, 200);
         if (cached.length > 0) setMessages(cached as any);
       } catch {}
@@ -612,7 +612,7 @@ function ChatView({
     let unsub: (() => void) | null = null;
     let prevOnline = true;
     (async () => {
-      const { useOfflineStore } = await import('@/src/lib/offline-storage');
+      const { useOfflineStore } = await import('@/lib/offline-storage');
       if (!mounted) return;
       prevOnline = useOfflineStore.getState().isOnline;
       unsub = useOfflineStore.subscribe((state) => {
@@ -639,7 +639,7 @@ function ChatView({
     setNewMessage('');
 
     try {
-      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const { offlineStorage, useOfflineStore } = await import('@/lib/offline-storage');
       const isOnline = useOfflineStore.getState().isOnline;
       if (!isOnline) {
         const optimistic = await offlineStorage.sendChatMessageOffline('dm', selectedUser.id, text);
@@ -655,7 +655,7 @@ function ChatView({
       }, 100);
     } catch (error) {
       try {
-        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const { offlineStorage } = await import('@/lib/offline-storage');
         const optimistic = await offlineStorage.sendChatMessageOffline('dm', selectedUser.id, text);
         setMessages(prev => [...prev, optimistic as any]);
       } catch {
@@ -770,7 +770,7 @@ function ChatView({
                   {(message as any).sendStatus === 'failed' && (
                     <TouchableOpacity
                       onPress={async () => {
-                        const { offlineStorage } = await import('@/src/lib/offline-storage');
+                        const { offlineStorage } = await import('@/lib/offline-storage');
                         const ok = await offlineStorage.retryFailedChatMessage((message as any).localId || message.id);
                         if (ok) loadMessages();
                       }}

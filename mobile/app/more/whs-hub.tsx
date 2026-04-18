@@ -218,7 +218,7 @@ export default function WhsHubScreen() {
       // Write-through cache for offline access
       if (jsaList.length > 0 || !jsaRes.error) {
         try {
-          const { offlineStorage } = await import('@/src/lib/offline-storage');
+          const { offlineStorage } = await import('@/lib/offline-storage');
           await offlineStorage.cacheJsaDocs(jsaList);
         } catch {}
       }
@@ -233,7 +233,7 @@ export default function WhsHubScreen() {
       console.error('Failed to fetch WHS data:', e);
       // Offline / network failure: hydrate JSA list from cache
       try {
-        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const { offlineStorage } = await import('@/lib/offline-storage');
         const cached = await offlineStorage.getJsaDocsOffline();
         if (Array.isArray(cached) && cached.length > 0) {
           setJsaDocs(cached);

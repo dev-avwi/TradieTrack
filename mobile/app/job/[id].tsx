@@ -2849,7 +2849,7 @@ export default function JobDetailScreen() {
 
       if (!isOnline) {
         try {
-          const { offlineStorage } = await import('@/src/lib/offline-storage');
+          const { offlineStorage } = await import('@/lib/offline-storage');
           await offlineStorage.saveFormSubmissionOffline({
             formId: `swms:${signingSwmsId}`,
             jobId: id as string,

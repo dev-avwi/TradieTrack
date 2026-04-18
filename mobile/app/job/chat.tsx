@@ -717,7 +717,7 @@ export default function JobChatScreen() {
     let unsub: (() => void) | null = null;
     let prevOnline = true;
     (async () => {
-      const { useOfflineStore } = await import('@/src/lib/offline-storage');
+      const { useOfflineStore } = await import('@/lib/offline-storage');
       if (!mounted) return;
       prevOnline = useOfflineStore.getState().isOnline;
       unsub = useOfflineStore.subscribe((state) => {
@@ -764,7 +764,7 @@ export default function JobChatScreen() {
 
   const loadMessages = async () => {
     try {
-      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const { offlineStorage, useOfflineStore } = await import('@/lib/offline-storage');
       const isOnline = useOfflineStore.getState().isOnline;
       if (!isOnline) {
         const cached = await offlineStorage.getChatMessagesOffline('job', String(jobId), 200);
@@ -784,7 +784,7 @@ export default function JobChatScreen() {
     } catch (error) {
       console.error('Error loading messages:', error);
       try {
-        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const { offlineStorage } = await import('@/lib/offline-storage');
         const cached = await offlineStorage.getChatMessagesOffline('job', String(jobId), 200);
         if (cached.length > 0) setMessages(cached as any);
         else setMessages([]);
@@ -856,7 +856,7 @@ export default function JobChatScreen() {
     setIsSending(true);
     const text = messageText.trim();
     try {
-      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const { offlineStorage, useOfflineStore } = await import('@/lib/offline-storage');
       const isOnline = useOfflineStore.getState().isOnline;
       if (!isOnline) {
         const optimistic = await offlineStorage.sendChatMessageOffline('job', String(jobId), text);
@@ -875,7 +875,7 @@ export default function JobChatScreen() {
       scrollRef.current?.scrollToEnd({ animated: true });
     } catch (error) {
       try {
-        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const { offlineStorage } = await import('@/lib/offline-storage');
         const optimistic = await offlineStorage.sendChatMessageOffline('job', String(jobId), text);
         setMessages(prev => [...prev, optimistic as any]);
         setMessageText('');
@@ -1297,7 +1297,7 @@ export default function JobChatScreen() {
               {(msg as any).sendStatus === 'failed' && (
                 <TouchableOpacity
                   onPress={async () => {
-                    const { offlineStorage } = await import('@/src/lib/offline-storage');
+                    const { offlineStorage } = await import('@/lib/offline-storage');
                     const ok = await offlineStorage.retryFailedChatMessage((msg as any).localId || msg.id);
                     if (ok) fetchChat();
                   }}
