@@ -580,9 +580,16 @@ function TimeTrackingWidget() {
     setIsStartingTimer(job.id);
     try {
       const { isOnline } = useOfflineStore.getState();
-      
+
+      // Offline path: start timer locally and queue for sync. No safety/status checks.
       if (!isOnline) {
-        Alert.alert('Offline', 'Cannot start job while offline');
+        const success = await storeStartTimer(job.id, job.title);
+        if (success) {
+          Alert.alert('Timer Started Offline', `Tracking time for "${job.title}". Will sync when back online.`);
+          loadDashboardData();
+        } else {
+          Alert.alert('Error', 'Failed to start timer');
+        }
         setIsStartingTimer(null);
         return;
       }
@@ -721,14 +728,6 @@ function TimeTrackingWidget() {
     if (!activeTimer) return;
     setIsPausing(true);
     try {
-      const { isOnline } = useOfflineStore.getState();
-      
-      if (!isOnline) {
-        Alert.alert('Offline', 'Cannot take a break while offline');
-        setIsPausing(false);
-        return;
-      }
-      
       const success = await storePauseTimer();
       if (!success) {
         Alert.alert('Error', 'Failed to start break');
@@ -744,13 +743,6 @@ function TimeTrackingWidget() {
     if (!activeTimer) return;
     setIsPausing(true);
     try {
-      const { isOnline } = useOfflineStore.getState();
-      
-      if (!isOnline) {
-        Alert.alert('Offline', 'Cannot resume work while offline');
-        setIsPausing(false);
-        return;
-      }
       
       const success = await storeResumeTimer();
       if (!success) {
@@ -778,13 +770,24 @@ function TimeTrackingWidget() {
             setIsCancelling(true);
             try {
               const { isOnline } = useOfflineStore.getState();
-              
-              if (!isOnline) {
-                Alert.alert('Offline', 'Cannot cancel timer while offline');
+
+              // Local-only timer (never synced) — discard locally so it never reaches the server
+              if (typeof activeTimer.id === 'string' && activeTimer.id.startsWith('local_')) {
+                await offlineStorage.discardLocalTimeEntry(activeTimer.id);
+                useTimeTrackingStore.setState({ activeTimer: null });
+                fetchActiveTimer();
+                Alert.alert('Timer Cancelled', 'Time was not recorded');
+                loadDashboardData();
                 setIsCancelling(false);
                 return;
               }
-              
+
+              if (!isOnline) {
+                Alert.alert('Offline', 'Cannot cancel a synced timer while offline. Stop it instead — you can edit or delete the entry once back online.');
+                setIsCancelling(false);
+                return;
+              }
+
               const { default: api } = await import('../../src/lib/api');
               await api.delete(`/api/time-entries/${activeTimer.id}`);
               

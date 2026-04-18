@@ -1977,6 +1977,35 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
 
   startTimer: async (jobId: string, description?: string, isBreak?: boolean) => {
     set({ isLoading: true, error: null });
+
+    // Offline path: write to local SQLite + queue, no network
+    const isOnline = useOfflineStore.getState().isOnline;
+    if (!isOnline) {
+      try {
+        const userId = useAuthStore.getState().user?.id;
+        if (!userId) {
+          set({ isLoading: false, error: 'Not signed in' });
+          return false;
+        }
+        const desc = description || (isBreak ? 'Taking a break' : 'Working on job');
+        const offlineEntry = await offlineStorage.startTimeEntryOffline(userId, jobId || undefined, desc);
+        const localTimer: TimeEntry = {
+          id: offlineEntry.id,
+          jobId: offlineEntry.jobId,
+          userId: offlineEntry.userId,
+          description: offlineEntry.description || desc,
+          startTime: offlineEntry.startTime,
+          isBreak: !!isBreak,
+          pausedDuration: 0,
+        } as any;
+        set({ activeTimer: localTimer, isLoading: false, error: null });
+        return true;
+      } catch (e: any) {
+        set({ isLoading: false, error: e?.message || 'Failed to start timer offline' });
+        return false;
+      }
+    }
+
     try {
       const response = await api.post<TimeEntry>('/api/time-entries', {
         jobId,
@@ -2047,7 +2076,20 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
 
     const timerId = activeTimer.id;
     set({ isLoading: true, error: null });
-    
+
+    // Offline path or local-only timer (id starts with "local_") -> stop in SQLite + queue
+    const isOnline = useOfflineStore.getState().isOnline;
+    if (!isOnline || (typeof timerId === 'string' && timerId.startsWith('local_'))) {
+      try {
+        await offlineStorage.stopTimeEntryOffline(timerId);
+        set({ activeTimer: null, isLoading: false, error: null });
+        return true;
+      } catch (e: any) {
+        set({ isLoading: false, error: e?.message || 'Failed to stop timer offline' });
+        return false;
+      }
+    }
+
     try {
       await api.post(`/api/time-entries/${timerId}/stop`);
       // Clear active timer immediately on success

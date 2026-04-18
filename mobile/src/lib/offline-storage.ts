@@ -1623,6 +1623,27 @@ class OfflineStorageService {
     return entry;
   }
 
+  /**
+   * Discard a local-only time entry that has never reached the server.
+   * Removes the row from SQLite AND any pending sync_queue items for it.
+   * Safe to call only with ids starting with "local_".
+   */
+  async discardLocalTimeEntry(entryId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    if (!entryId.startsWith('local_')) {
+      if (__DEV__) console.warn(`[OfflineStorage] discardLocalTimeEntry called with non-local id: ${entryId}`);
+      return;
+    }
+    await this.db.runAsync('DELETE FROM time_entries WHERE id = ?', [entryId]);
+    // Remove any queued sync ops for this entry (create/update). Match by JSON id field.
+    await this.db.runAsync(
+      `DELETE FROM sync_queue WHERE entity_type = 'timeEntry' AND (payload LIKE ? OR payload LIKE ?)`,
+      [`%"id":"${entryId}"%`, `%"localId":"${entryId}"%`]
+    );
+    await this.updatePendingSyncCount();
+    if (__DEV__) console.log(`[OfflineStorage] Discarded local time entry: ${entryId}`);
+  }
+
   // ============ ATTACHMENTS ============
 
   async cacheAttachments(attachments: any[]): Promise<void> {
