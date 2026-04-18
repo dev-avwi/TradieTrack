@@ -237,10 +237,37 @@ export default function NotificationPreferencesScreen() {
   const [preferences, setPreferences] = useState<Record<string, boolean>>({});
   const [masterEnabled, setMasterEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const [geofenceSms, setGeofenceSms] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+
   useEffect(() => {
     loadPreferences();
+    (async () => {
+      try {
+        const meRes = await apiClient.get<any>('/api/auth/me');
+        const me = meRes.data;
+        const owner = !!me && (me.role === 'owner' || me.role === 'admin' || me.isOwner === true);
+        setIsOwner(owner);
+        if (owner) {
+          try {
+            const bs = await apiClient.get<any>('/api/business-settings');
+            setGeofenceSms(!!bs.data?.geofenceSmsAlerts);
+          } catch {}
+        }
+      } catch {}
+    })();
   }, []);
+
+  const toggleGeofenceSms = async (value: boolean) => {
+    haptics.toggle(value);
+    setGeofenceSms(value);
+    try {
+      await apiClient.patch('/api/business-settings', { geofenceSmsAlerts: value });
+    } catch (err) {
+      setGeofenceSms(!value); // rollback
+      Alert.alert('Could not save', 'Please try again.');
+    }
+  };
   
   const loadPreferences = async () => {
     try {
@@ -430,6 +457,31 @@ export default function NotificationPreferencesScreen() {
         {renderCategory('payments', 'Payments & Quotes')}
         {renderCategory('team', 'Team')}
         {renderCategory('reminders', 'Reminders & Reports')}
+
+        {isOwner && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>SMS Alerts (Owner)</Text>
+            <View style={styles.prefCard}>
+              <View style={[styles.prefItem, styles.prefItemLast]}>
+                <View style={[styles.prefIconContainer, { backgroundColor: '#10b98120' }]}>
+                  <Feather name="message-square" size={iconSizes.md} color="#10b981" />
+                </View>
+                <View style={styles.prefContent}>
+                  <Text style={styles.prefLabel}>Geofence SMS</Text>
+                  <Text style={styles.prefDesc}>
+                    Send SMS to your phone when team arrive/leave job sites
+                  </Text>
+                </View>
+                <Switch
+                  value={geofenceSms}
+                  onValueChange={toggleGeofenceSms}
+                  trackColor={{ false: colors.muted, true: colors.primary + '80' }}
+                  thumbColor={'#FFFFFF'}
+                />
+              </View>
+            </View>
+          </View>
+        )}
         
         <View style={styles.footer}>
           <Text style={styles.footerText}>

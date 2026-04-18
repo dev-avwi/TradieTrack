@@ -300,10 +300,29 @@ export default function TeamChatScreen() {
   const fetchMessages = useCallback(async (showLoader = true) => {
     if (showLoader) setIsLoading(true);
     try {
-      const response = await api.get('/api/team-chat');
-      setMessages(response.data || []);
+      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const isOnline = useOfflineStore.getState().isOnline;
+      if (!isOnline) {
+        const cached = await offlineStorage.getChatMessagesOffline('team', 'team', 200);
+        setMessages(cached as any);
+        return;
+      }
+      const response = await api.get<any[]>('/api/team-chat');
+      const data = response.data || [];
+      // Write-through cache so we have something to show next time we're offline.
+      offlineStorage.cacheChatMessages('team', 'team', data).catch(() => {});
+      // Merge in pending local messages so optimistic sends don't disappear on poll.
+      const pending = await offlineStorage.getPendingChatMessages('team', 'team');
+      const serverIds = new Set(data.map((m: any) => String(m.id)));
+      const merged = [...data, ...pending.filter((p: any) => !serverIds.has(String(p.id)))];
+      setMessages(merged as any);
     } catch (error) {
-      if (__DEV__) console.log('Failed to fetch team chat:', error);
+      if (__DEV__) console.log('Failed to fetch team chat, falling back to cache:', error);
+      try {
+        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const cached = await offlineStorage.getChatMessagesOffline('team', 'team', 200);
+        if (cached.length > 0) setMessages(cached as any);
+      } catch {}
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -329,17 +348,39 @@ export default function TeamChatScreen() {
     setMessageText('');
 
     try {
-      await api.post('/api/team-chat', {
+      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const isOnline = useOfflineStore.getState().isOnline;
+      if (!isOnline) {
+        const optimistic = await offlineStorage.sendChatMessageOffline('team', 'team', text, {
+          senderId: user?.id,
+          senderName: (user as any)?.firstName || (user as any)?.name || 'You',
+        });
+        setMessages(prev => [...prev, optimistic as any]);
+        setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+        return;
+      }
+      const response = await api.post('/api/team-chat', {
         message: text,
         messageType: 'text',
       });
+      if (response.error) throw new Error(response.error);
       await fetchMessages(false);
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
-      Alert.alert('Error', 'Failed to send message. Please try again.');
-      setMessageText(text);
+      // Online send failed — queue for later instead of dropping the message.
+      try {
+        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const optimistic = await offlineStorage.sendChatMessageOffline('team', 'team', text, {
+          senderId: user?.id,
+          senderName: (user as any)?.firstName || (user as any)?.name || 'You',
+        });
+        setMessages(prev => [...prev, optimistic as any]);
+      } catch {
+        Alert.alert('Error', 'Failed to send message. Please try again.');
+        setMessageText(text);
+      }
     } finally {
       setIsSending(false);
     }

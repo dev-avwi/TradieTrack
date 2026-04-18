@@ -446,6 +446,61 @@ class OfflineStorageService {
           cached_at INTEGER NOT NULL,
           ttl_ms INTEGER NOT NULL
         );
+
+        -- T005: Safety form templates (SWMS / JSA / custom_forms) cached for offline
+        CREATE TABLE IF NOT EXISTS safety_form_templates (
+          id TEXT PRIMARY KEY,
+          name TEXT,
+          form_type TEXT,
+          fields_json TEXT,
+          template_data TEXT,
+          cached_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_safety_form_templates_type ON safety_form_templates(form_type);
+
+        -- T005: Form submissions captured (possibly offline) and queued for sync
+        CREATE TABLE IF NOT EXISTS form_submissions_local (
+          id TEXT PRIMARY KEY,
+          local_id TEXT,
+          form_id TEXT,
+          job_id TEXT,
+          submission_data TEXT,
+          signatures TEXT,
+          status TEXT,
+          cached_at INTEGER NOT NULL,
+          pending_sync INTEGER DEFAULT 0,
+          sync_action TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_form_submissions_local_job ON form_submissions_local(job_id);
+        CREATE INDEX IF NOT EXISTS idx_form_submissions_local_pending ON form_submissions_local(pending_sync);
+
+        -- T006: Cached chat messages across team / job / direct conversations
+        CREATE TABLE IF NOT EXISTS chat_messages (
+          id TEXT PRIMARY KEY,
+          local_id TEXT,
+          channel_type TEXT NOT NULL,
+          channel_id TEXT NOT NULL,
+          sender_id TEXT,
+          sender_name TEXT,
+          message TEXT,
+          message_type TEXT DEFAULT 'text',
+          attachment_url TEXT,
+          created_at TEXT,
+          read_locally INTEGER DEFAULT 0,
+          pending_sync INTEGER DEFAULT 0,
+          sync_action TEXT,
+          cached_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_chat_messages_channel ON chat_messages(channel_type, channel_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_chat_messages_pending ON chat_messages(pending_sync);
+
+        CREATE TABLE IF NOT EXISTS chat_unread (
+          channel_type TEXT NOT NULL,
+          channel_id TEXT NOT NULL,
+          count INTEGER DEFAULT 0,
+          updated_at INTEGER,
+          PRIMARY KEY (channel_type, channel_id)
+        );
       `);
       
       // Run migrations to fix old schemas with NOT NULL constraints
@@ -1813,12 +1868,13 @@ class OfflineStorageService {
     if (!this.db) throw new Error('Database not initialized');
     
     const id = `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const idempotencyKey = `omw_${jobId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = Date.now();
     
     await this.db.runAsync(
       `INSERT INTO sync_queue (id, type, action, data, created_at, retry_count)
        VALUES (?, ?, ?, ?, ?, 0)`,
-      [id, 'job', 'on_my_way', JSON.stringify({ id: jobId }), now]
+      [id, 'job', 'on_my_way', JSON.stringify({ id: jobId, idempotencyKey, queuedAt: now }), now]
     );
     
     await this.updatePendingSyncCount();
@@ -2276,10 +2332,75 @@ class OfflineStorageService {
       return this.syncAttachment(action, data);
     }
     
+    // T005: Form submissions sync
+    if (type === 'formSubmission' && action === 'create') {
+      try {
+        const payload: any = {
+          formId: data.formId,
+          jobId: data.jobId,
+          submissionData: data.submissionData,
+          signatures: data.signatures,
+          status: data.status || 'submitted',
+        };
+        const response = await api.post('/api/form-submissions', payload);
+        if (response.error) {
+          if (__DEV__) console.error('[OfflineStorage] formSubmission sync error:', response.error);
+          return false;
+        }
+        const serverId = (response.data as any)?.id;
+        if (serverId && data.localId) {
+          await this.updateLocalIdWithServerId('formSubmission', data.localId, serverId);
+        }
+        return true;
+      } catch (err) {
+        if (__DEV__) console.error('[OfflineStorage] formSubmission sync failed:', err);
+        return false;
+      }
+    }
+
+    // T006: Chat message sync — endpoint depends on channel type
+    if (type === 'chatMessage' && action === 'create') {
+      try {
+        let endpoint: string;
+        let body: any;
+        if (data.channelType === 'team') {
+          endpoint = '/api/team-chat';
+          body = { message: data.message, messageType: data.messageType || 'text' };
+          if (data.attachmentUrl) body.attachmentUrl = data.attachmentUrl;
+        } else if (data.channelType === 'job') {
+          endpoint = `/api/jobs/${data.channelId}/chat`;
+          body = { message: data.message, messageType: data.messageType || 'text' };
+          if (data.attachmentUrl) body.attachmentUrl = data.attachmentUrl;
+        } else if (data.channelType === 'dm') {
+          endpoint = `/api/direct-messages/${data.channelId}`;
+          body = { content: data.message };
+          if (data.attachmentUrl) body.attachmentUrl = data.attachmentUrl;
+        } else {
+          if (__DEV__) console.error('[OfflineStorage] Unknown chat channelType:', data.channelType);
+          return false;
+        }
+        const response = await api.post(endpoint, body);
+        if (response.error) {
+          if (__DEV__) console.error('[OfflineStorage] chatMessage sync error:', response.error);
+          return false;
+        }
+        const serverId = (response.data as any)?.id;
+        if (serverId && data.localId) {
+          await this.updateLocalIdWithServerId('chatMessage', data.localId, serverId);
+        }
+        return true;
+      } catch (err) {
+        if (__DEV__) console.error('[OfflineStorage] chatMessage sync failed:', err);
+        return false;
+      }
+    }
+
     // Handle special actions
     if (action === 'on_my_way') {
       try {
-        const response = await api.post(`/api/jobs/${data.id}/on-my-way`);
+        const response = await api.post(`/api/jobs/${data.id}/on-my-way`, {
+          idempotencyKey: data.idempotencyKey,
+        });
         if (response.error) {
           if (__DEV__) console.error(`[OfflineStorage] API error for on_my_way:`, response.error);
           return false;
@@ -2502,6 +2623,8 @@ class OfflineStorageService {
       invoice: 'invoices',
       timeEntry: 'time_entries',
       attachment: 'attachments',
+      formSubmission: 'form_submissions_local',
+      chatMessage: 'chat_messages',
     };
     
     const table = tableMap[type];
@@ -3264,17 +3387,19 @@ class OfflineStorageService {
       await this.syncPendingChanges();
       
       // Then download fresh data
-      const [jobsRes, clientsRes, quotesRes, invoicesRes] = await Promise.all([
+      const [jobsRes, clientsRes, quotesRes, invoicesRes, formsRes] = await Promise.all([
         api.get<any[]>('/api/jobs'),
         api.get<any[]>('/api/clients'),
         api.get<any[]>('/api/quotes'),
         api.get<any[]>('/api/invoices'),
+        api.get<any[]>('/api/custom-forms').catch(() => ({ data: null, error: null } as any)),
       ]);
       
       if (jobsRes.data) await this.cacheJobs(jobsRes.data);
       if (clientsRes.data) await this.cacheClients(clientsRes.data);
       if (quotesRes.data) await this.cacheQuotes(quotesRes.data);
       if (invoicesRes.data) await this.cacheInvoices(invoicesRes.data);
+      if (formsRes.data) await this.cacheSafetyFormTemplates(formsRes.data);
       
       useOfflineStore.getState().setLastSyncTime(Date.now());
       if (__DEV__) console.log('[OfflineStorage] Full sync complete');
@@ -3505,6 +3630,263 @@ class OfflineStorageService {
     } catch (error) {
       if (__DEV__) console.error('[OfflineStorage] Failed to invalidate subscription cache:', error);
     }
+  }
+
+  // ============ T005: SAFETY FORMS OFFLINE ============
+
+  async cacheSafetyFormTemplates(templates: any[]): Promise<void> {
+    if (!this.db || !Array.isArray(templates)) return;
+    const now = Date.now();
+    try {
+      await this.db.execAsync('BEGIN TRANSACTION');
+      await this.db.runAsync('DELETE FROM safety_form_templates');
+      for (const t of templates) {
+        await this.db.runAsync(
+          `INSERT OR REPLACE INTO safety_form_templates (id, name, form_type, fields_json, template_data, cached_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            t.id,
+            t.name || t.title || null,
+            t.formType || t.type || 'custom',
+            JSON.stringify(t.fields || t.formFields || []),
+            JSON.stringify(t),
+            now,
+          ]
+        );
+      }
+      await this.db.execAsync('COMMIT');
+      if (__DEV__) console.log(`[OfflineStorage] Cached ${templates.length} safety form templates`);
+    } catch (err) {
+      try { await this.db.execAsync('ROLLBACK'); } catch {}
+      if (__DEV__) console.error('[OfflineStorage] cacheSafetyFormTemplates failed:', err);
+    }
+  }
+
+  async getSafetyFormTemplatesOffline(formType?: string): Promise<any[]> {
+    if (!this.db) return [];
+    try {
+      const rows = formType
+        ? await this.db.getAllAsync(
+            'SELECT template_data FROM safety_form_templates WHERE form_type = ? ORDER BY name',
+            [formType]
+          )
+        : await this.db.getAllAsync('SELECT template_data FROM safety_form_templates ORDER BY name');
+      return (rows as any[]).map(r => {
+        try { return JSON.parse(r.template_data); } catch { return null; }
+      }).filter(Boolean);
+    } catch (err) {
+      if (__DEV__) console.error('[OfflineStorage] getSafetyFormTemplatesOffline failed:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Save a form submission locally and queue it for sync. Used both online (write-through)
+   * and offline. Returns the local id (`local_<random>`) so the caller can update UI state.
+   */
+  async saveFormSubmissionOffline(submission: {
+    formId: string;
+    jobId?: string | null;
+    submissionData: any;
+    signatures?: any;
+    status?: string;
+  }): Promise<string> {
+    if (!this.db) throw new Error('Database not initialized');
+    const localId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const now = Date.now();
+    await this.db.runAsync(
+      `INSERT INTO form_submissions_local (id, local_id, form_id, job_id, submission_data, signatures, status, cached_at, pending_sync, sync_action)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'create')`,
+      [
+        localId,
+        localId,
+        submission.formId,
+        submission.jobId || null,
+        JSON.stringify(submission.submissionData || {}),
+        submission.signatures ? JSON.stringify(submission.signatures) : null,
+        submission.status || 'submitted',
+        now,
+      ]
+    );
+    // Queue for sync
+    const syncId = `sync_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    await this.db.runAsync(
+      `INSERT INTO sync_queue (id, type, action, data, created_at, retry_count) VALUES (?, ?, ?, ?, ?, 0)`,
+      [syncId, 'formSubmission', 'create', JSON.stringify({
+        localId,
+        formId: submission.formId,
+        jobId: submission.jobId || null,
+        submissionData: submission.submissionData || {},
+        signatures: submission.signatures || null,
+        status: submission.status || 'submitted',
+      }), now]
+    );
+    await this.updatePendingSyncCount();
+    if (__DEV__) console.log(`[OfflineStorage] Queued form submission ${localId}`);
+    return localId;
+  }
+
+  async getOfflineFormSubmissions(jobId?: string): Promise<any[]> {
+    if (!this.db) return [];
+    try {
+      const rows = jobId
+        ? await this.db.getAllAsync(
+            'SELECT * FROM form_submissions_local WHERE job_id = ? ORDER BY cached_at DESC',
+            [jobId]
+          )
+        : await this.db.getAllAsync('SELECT * FROM form_submissions_local ORDER BY cached_at DESC');
+      return (rows as any[]).map(r => ({
+        ...r,
+        submissionData: r.submission_data ? JSON.parse(r.submission_data) : {},
+        signatures: r.signatures ? JSON.parse(r.signatures) : null,
+        pendingSync: r.pending_sync === 1,
+      }));
+    } catch (err) {
+      if (__DEV__) console.error('[OfflineStorage] getOfflineFormSubmissions failed:', err);
+      return [];
+    }
+  }
+
+  // ============ T006: CHAT OFFLINE ============
+
+  async cacheChatMessages(channelType: string, channelId: string, messages: any[]): Promise<void> {
+    if (!this.db || !Array.isArray(messages)) return;
+    const now = Date.now();
+    try {
+      await this.db.execAsync('BEGIN TRANSACTION');
+      for (const m of messages) {
+        // Don't overwrite an in-flight pending_sync row by id collision.
+        await this.db.runAsync(
+          `INSERT OR REPLACE INTO chat_messages
+            (id, local_id, channel_type, channel_id, sender_id, sender_name, message,
+             message_type, attachment_url, created_at, read_locally, pending_sync, sync_action, cached_at)
+           VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, NULL, ?)`,
+          [
+            m.id,
+            channelType,
+            channelId,
+            m.senderId || m.userId || null,
+            m.senderName || m.userName || null,
+            m.message || m.body || m.content || '',
+            m.messageType || m.type || 'text',
+            m.attachmentUrl || null,
+            m.createdAt || new Date().toISOString(),
+            now,
+          ]
+        );
+      }
+      await this.db.execAsync('COMMIT');
+    } catch (err) {
+      try { await this.db.execAsync('ROLLBACK'); } catch {}
+      if (__DEV__) console.error('[OfflineStorage] cacheChatMessages failed:', err);
+    }
+  }
+
+  /**
+   * Returns only locally-created messages still pending sync for a channel.
+   * UI can append these to the server-fetched list to avoid optimistic-message loss
+   * during 3-5s polling overwrites.
+   */
+  async getPendingChatMessages(channelType: string, channelId: string): Promise<any[]> {
+    if (!this.db) return [];
+    try {
+      const rows = await this.db.getAllAsync(
+        `SELECT * FROM chat_messages WHERE channel_type = ? AND channel_id = ? AND pending_sync = 1
+         ORDER BY created_at ASC`,
+        [channelType, channelId]
+      );
+      return (rows as any[]).map(r => ({
+        id: r.id,
+        localId: r.local_id,
+        channelType: r.channel_type,
+        channelId: r.channel_id,
+        senderId: r.sender_id,
+        senderName: r.sender_name,
+        message: r.message,
+        messageType: r.message_type,
+        attachmentUrl: r.attachment_url,
+        createdAt: r.created_at,
+        pendingSync: true,
+      }));
+    } catch (err) {
+      if (__DEV__) console.error('[OfflineStorage] getPendingChatMessages failed:', err);
+      return [];
+    }
+  }
+
+  async getChatMessagesOffline(channelType: string, channelId: string, limit = 100): Promise<any[]> {
+    if (!this.db) return [];
+    try {
+      const rows = await this.db.getAllAsync(
+        `SELECT * FROM chat_messages WHERE channel_type = ? AND channel_id = ?
+         ORDER BY created_at ASC LIMIT ?`,
+        [channelType, channelId, limit]
+      );
+      return (rows as any[]).map(r => ({
+        id: r.id,
+        localId: r.local_id,
+        channelType: r.channel_type,
+        channelId: r.channel_id,
+        senderId: r.sender_id,
+        senderName: r.sender_name,
+        message: r.message,
+        messageType: r.message_type,
+        attachmentUrl: r.attachment_url,
+        createdAt: r.created_at,
+        pendingSync: r.pending_sync === 1,
+      }));
+    } catch (err) {
+      if (__DEV__) console.error('[OfflineStorage] getChatMessagesOffline failed:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Optimistically save a chat message locally and queue it for sync.
+   * Returns the local message row (with `local_<random>` id) so the UI can render immediately.
+   */
+  async sendChatMessageOffline(
+    channelType: 'team' | 'job' | 'dm',
+    channelId: string,
+    message: string,
+    extras: { senderId?: string; senderName?: string; messageType?: string; attachmentUrl?: string } = {}
+  ): Promise<any> {
+    if (!this.db) throw new Error('Database not initialized');
+    const localId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const now = Date.now();
+    const createdAt = new Date(now).toISOString();
+    await this.db.runAsync(
+      `INSERT INTO chat_messages
+        (id, local_id, channel_type, channel_id, sender_id, sender_name, message,
+         message_type, attachment_url, created_at, read_locally, pending_sync, sync_action, cached_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 'create', ?)`,
+      [
+        localId, localId, channelType, channelId,
+        extras.senderId || null, extras.senderName || null,
+        message, extras.messageType || 'text', extras.attachmentUrl || null,
+        createdAt, now,
+      ]
+    );
+    const syncId = `sync_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    await this.db.runAsync(
+      `INSERT INTO sync_queue (id, type, action, data, created_at, retry_count) VALUES (?, ?, ?, ?, ?, 0)`,
+      [syncId, 'chatMessage', 'create', JSON.stringify({
+        localId,
+        channelType,
+        channelId,
+        message,
+        messageType: extras.messageType || 'text',
+        attachmentUrl: extras.attachmentUrl || null,
+      }), now]
+    );
+    await this.updatePendingSyncCount();
+    return {
+      id: localId, localId, channelType, channelId,
+      senderId: extras.senderId, senderName: extras.senderName,
+      message, messageType: extras.messageType || 'text',
+      attachmentUrl: extras.attachmentUrl || null,
+      createdAt, pendingSync: true,
+    };
   }
 }
 

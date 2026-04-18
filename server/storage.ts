@@ -818,6 +818,8 @@ export interface IStorage {
   getUnreadGeofenceAlertsCount(businessOwnerId: string): Promise<number>;
   markGeofenceAlertAsRead(alertId: string): Promise<void>;
   getRecentGeofenceAlerts(userId: string, jobId: string, alertType: string, withinSeconds: number): Promise<any[]>;
+  getLastArrivalAlert(userId: string, jobId: string, beforeTs: Date): Promise<any | undefined>;
+  updateGeofenceAlertDwell(alertId: string, dwellSeconds: number): Promise<void>;
 
   // Team-level time tracking methods
   getActiveTimeEntryForJob(jobId: string): Promise<TimeEntry | undefined>;
@@ -4652,6 +4654,25 @@ export class PostgresStorage implements IStorage {
         gte(geofenceAlerts.createdAt, since)
       ))
       .orderBy(desc(geofenceAlerts.createdAt));
+  }
+
+  async getLastArrivalAlert(userId: string, jobId: string, beforeTs: Date): Promise<GeofenceAlert | undefined> {
+    const [row] = await db.select().from(geofenceAlerts)
+      .where(and(
+        eq(geofenceAlerts.userId, userId),
+        eq(geofenceAlerts.jobId, jobId),
+        eq(geofenceAlerts.alertType, 'arrival'),
+        lte(geofenceAlerts.createdAt, beforeTs)
+      ))
+      .orderBy(desc(geofenceAlerts.createdAt))
+      .limit(1);
+    return row;
+  }
+
+  async updateGeofenceAlertDwell(alertId: string, dwellSeconds: number): Promise<void> {
+    await db.update(geofenceAlerts)
+      .set({ dwellSeconds })
+      .where(eq(geofenceAlerts.id, alertId));
   }
 
   // GPS Signal Loss Logging

@@ -17919,6 +17919,16 @@ Be specific about materials, colors, and features that would be included.`
   app.post("/api/jobs/:id/on-my-way", requireAuth, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
+
+      // Idempotency: dedupe replays from offline queue.
+      const idempotencyKey: string | undefined = req.body?.idempotencyKey || req.headers['idempotency-key'];
+      if (idempotencyKey) {
+        const cached = await getIdempotencyRecord(`onmyway:${req.params.id}:${idempotencyKey}`);
+        if (cached) {
+          return res.json({ ...cached, idempotentReplay: true });
+        }
+      }
+
       const job = await storage.getJob(req.params.id, userContext.effectiveUserId);
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
@@ -18149,14 +18159,18 @@ Be specific about materials, colors, and features that would be included.`
         });
       }
 
-      res.json({ 
-        success: true, 
+      const responsePayload = {
+        success: true,
         message: 'On My Way notification sent',
         trackingUrl,
         estimatedMinutes,
         distanceKm,
         etaSource
-      });
+      };
+      if (idempotencyKey) {
+        await setIdempotencyRecord(`onmyway:${req.params.id}:${idempotencyKey}`, responsePayload);
+      }
+      res.json(responsePayload);
     } catch (error: any) {
       console.error("Error sending on-my-way notification:", error);
       res.status(500).json({ error: error.message || "Failed to send notification" });
@@ -33650,6 +33664,29 @@ Respond with JSON in this format:
         alertId: alert.id
       }));
 
+      // Compute dwell-time on exit by looking up the matching arrival.
+      let dwellSeconds: number | null = null;
+      let dwellLabel = '';
+      if (action === 'exit') {
+        try {
+          const lastArrival = await storage.getLastArrivalAlert(userId, jobId, eventTimestamp);
+          if (lastArrival?.createdAt) {
+            const diff = Math.floor(
+              (eventTimestamp.getTime() - new Date(lastArrival.createdAt).getTime()) / 1000
+            );
+            if (diff > 0 && diff < 24 * 60 * 60) { // sanity-cap: 24h
+              dwellSeconds = diff;
+              await storage.updateGeofenceAlertDwell(alert.id, diff);
+              const h = Math.floor(diff / 3600);
+              const m = Math.floor((diff % 3600) / 60);
+              dwellLabel = h > 0 ? `${h}h ${m}m on site` : `${m}m on site`;
+            }
+          }
+        } catch (e) {
+          console.warn('[Geofence] Failed to compute dwell-time:', e);
+        }
+      }
+
       try {
         const { broadcastGeofenceAlert } = await import('./websocket');
         broadcastGeofenceAlert(effectiveUserId, {
@@ -33658,6 +33695,7 @@ Respond with JSON in this format:
           userId,
           jobId: job.id,
           jobTitle: job.title,
+          dwellSeconds,
         });
       } catch {}
 
@@ -33668,11 +33706,31 @@ Respond with JSON in this format:
         if (action === 'enter') {
           await notifyGeofenceCheckIn(storage, effectiveUserId, job, { firstName: memberName });
         } else {
-          await notifyGeofenceCheckOut(storage, effectiveUserId, job, { firstName: memberName }, '');
+          await notifyGeofenceCheckOut(storage, effectiveUserId, job, { firstName: memberName }, dwellLabel);
         }
         // Send push notification to business owner (if worker is not the owner)
         if (userId !== effectiveUserId) {
           await notifyGeofenceEvent(effectiveUserId, memberName, job.title || 'Job', job.id, action === 'enter' ? 'checkin' : 'checkout');
+        }
+
+        // T002: Optional SMS to owner on arrival/departure (opt-in).
+        try {
+          if (userId !== effectiveUserId) {
+            const settings = await storage.getBusinessSettings(effectiveUserId);
+            if (settings?.geofenceSmsAlerts) {
+              const owner = await storage.getUser(effectiveUserId);
+              const ownerPhone = owner?.phone || settings.phone;
+              if (ownerPhone) {
+                const tplKey = action === 'enter' ? 'geofenceArrival' : 'geofenceDeparture';
+                const args = action === 'enter'
+                  ? [memberName, job.title || 'Job']
+                  : [memberName, job.title || 'Job', dwellLabel || ''];
+                await notifyOwnerViaSms(ownerPhone, tplKey as any, ...args);
+              }
+            }
+          }
+        } catch (smsErr) {
+          console.warn('[Geofence] Owner SMS failed (non-fatal):', smsErr);
         }
       } catch (e) { console.error('Failed to create geofence notification:', e); }
       
@@ -41604,6 +41662,61 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     } catch (error) {
       logger.error('api', 'Failed to fetch error logs', { error });
       res.status(500).json({ error: 'Failed to fetch error logs' });
+    }
+  });
+
+  // Email delivery logs (T004) — list with filters/pagination
+  app.get("/api/admin/email-logs", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { emailDeliveryLogs } = await import('../shared/schema');
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+      const offset = parseInt(req.query.offset as string) || 0;
+      const status = req.query.status as string;
+      const recipient = req.query.recipient as string;
+
+      const conditions: any[] = [];
+      if (status) conditions.push(eq(emailDeliveryLogs.status, status));
+      if (recipient) conditions.push(eq(emailDeliveryLogs.recipientEmail, recipient));
+
+      const [rows, countResult] = await Promise.all([
+        db.select().from(emailDeliveryLogs)
+          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          .orderBy(desc(emailDeliveryLogs.createdAt))
+          .limit(limit)
+          .offset(offset),
+        db.select({ count: sql<number>`count(*)::int` }).from(emailDeliveryLogs)
+          .where(conditions.length > 0 ? and(...conditions) : undefined),
+      ]);
+      res.setHeader('X-Total-Count', String(countResult[0]?.count ?? 0));
+      // Strip large payloadJson for list view
+      const sanitized = rows.map(r => ({ ...r, payloadJson: r.payloadJson ? '<omitted>' : null }));
+      res.json(sanitized);
+    } catch (error) {
+      logger.error('api', 'Failed to fetch email logs', { error });
+      res.status(500).json({ error: 'Failed to fetch email logs' });
+    }
+  });
+
+  // Force-retry a specific failed email
+  app.post("/api/admin/email-logs/:id/retry", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { emailDeliveryLogs } = await import('../shared/schema');
+      // Reset row so the retry worker picks it up immediately
+      const [updated] = await db.update(emailDeliveryLogs).set({
+        status: 'failed',
+        permanentlyFailed: false,
+        nextRetryAt: new Date(),
+      }).where(eq(emailDeliveryLogs.id, req.params.id)).returning();
+      if (!updated) return res.status(404).json({ error: 'Email log not found' });
+      // Trigger one cycle immediately
+      try {
+        const { processFailedEmailMessages } = await import('./retryScheduler');
+        processFailedEmailMessages().catch(() => {});
+      } catch {}
+      res.json({ success: true, log: updated });
+    } catch (error) {
+      logger.error('api', 'Failed to force-retry email', { error });
+      res.status(500).json({ error: 'Failed to retry email' });
     }
   });
 

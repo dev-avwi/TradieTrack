@@ -744,14 +744,33 @@ export default function JobChatScreen() {
 
   const loadMessages = async () => {
     try {
+      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const isOnline = useOfflineStore.getState().isOnline;
+      if (!isOnline) {
+        const cached = await offlineStorage.getChatMessagesOffline('job', String(jobId), 200);
+        setMessages(cached as any);
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 100);
+        return;
+      }
       const response = await api.get<JobChatMessage[]>(`/api/jobs/${jobId}/chat`);
       if (response.data) {
-        setMessages(response.data);
+        offlineStorage.cacheChatMessages('job', String(jobId), response.data).catch(() => {});
+        const pending = await offlineStorage.getPendingChatMessages('job', String(jobId));
+        const serverIds = new Set(response.data.map((m: any) => String(m.id)));
+        const merged = [...response.data, ...pending.filter((p: any) => !serverIds.has(String(p.id)))];
+        setMessages(merged as any);
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 100);
       }
     } catch (error) {
       console.error('Error loading messages:', error);
-      setMessages([]);
+      try {
+        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const cached = await offlineStorage.getChatMessagesOffline('job', String(jobId), 200);
+        if (cached.length > 0) setMessages(cached as any);
+        else setMessages([]);
+      } catch {
+        setMessages([]);
+      }
     }
   };
 
@@ -815,16 +834,34 @@ export default function JobChatScreen() {
     if (!messageText.trim() || isSending) return;
 
     setIsSending(true);
+    const text = messageText.trim();
     try {
-      await api.post(`/api/jobs/${jobId}/chat`, {
-        message: messageText.trim(),
+      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const isOnline = useOfflineStore.getState().isOnline;
+      if (!isOnline) {
+        const optimistic = await offlineStorage.sendChatMessageOffline('job', String(jobId), text);
+        setMessages(prev => [...prev, optimistic as any]);
+        setMessageText('');
+        scrollRef.current?.scrollToEnd({ animated: true });
+        return;
+      }
+      const response = await api.post(`/api/jobs/${jobId}/chat`, {
+        message: text,
         messageType: 'text',
       });
+      if (response.error) throw new Error(response.error);
       setMessageText('');
       await loadMessages();
       scrollRef.current?.scrollToEnd({ animated: true });
     } catch (error) {
-      Alert.alert('Error', 'Failed to send message. Please try again.');
+      try {
+        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const optimistic = await offlineStorage.sendChatMessageOffline('job', String(jobId), text);
+        setMessages(prev => [...prev, optimistic as any]);
+        setMessageText('');
+      } catch {
+        Alert.alert('Error', 'Failed to send message. Please try again.');
+      }
     } finally {
       setIsSending(false);
     }

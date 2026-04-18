@@ -496,6 +496,7 @@ export const businessSettings = pgTable("business_settings", {
   themeMode: text("theme_mode").default('system'), // 'light', 'dark', 'system' - synced across all devices
   // SMS Configuration
   smsMode: text("sms_mode").default('standard'), // 'standard' (shared number) or 'ai_receptionist' (dedicated number with AI)
+  geofenceSmsAlerts: boolean("geofence_sms_alerts").default(false), // Send SMS to owner on worker arrival/departure
   dedicatedPhoneNumber: text("dedicated_phone_number"), // Dedicated Twilio number for AI Receptionist (E.164 format)
   archivedPhoneNumber: text("archived_phone_number"), // Archived dedicated number (kept on Twilio, can be re-acquired)
   // Vapi AI Receptionist Configuration
@@ -1886,6 +1887,7 @@ export const geofenceAlerts = pgTable("geofence_alerts", {
   address: text("address"),
   distanceFromSite: decimal("distance_from_site", { precision: 10, scale: 2 }), // meters
   isRead: boolean("is_read").default(false),
+  dwellSeconds: integer("dwell_seconds"), // For 'departure' alerts: seconds spent on site since the matching arrival.
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -2735,11 +2737,11 @@ export type EmailIntegration = typeof emailIntegrations.$inferSelect;
 // Email delivery logs - Track sent emails
 export const emailDeliveryLogs = pgTable("email_delivery_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
   emailIntegrationId: varchar("email_integration_id").references(() => emailIntegrations.id, { onDelete: 'set null' }),
   recipientEmail: text("recipient_email").notNull(),
   subject: text("subject").notNull(),
-  type: text("type").notNull(), // 'quote', 'invoice', 'receipt', 'reminder'
+  type: text("type"), // 'quote', 'invoice', 'receipt', 'reminder', 'system'
   relatedId: varchar("related_id"), // quote_id or invoice_id
   status: text("status").default('pending'), // 'pending', 'sent', 'delivered', 'failed', 'opened'
   sentVia: text("sent_via"), // 'gmail', 'outlook', 'smtp', 'sendgrid'
@@ -2748,6 +2750,12 @@ export const emailDeliveryLogs = pgTable("email_delivery_logs", {
   sentAt: timestamp("sent_at"),
   deliveredAt: timestamp("delivered_at"),
   openedAt: timestamp("opened_at"),
+  // Retry / dead-letter fields used by retryScheduler.processFailedEmailMessages
+  retryCount: integer("retry_count").default(0),
+  maxRetries: integer("max_retries").default(5),
+  nextRetryAt: timestamp("next_retry_at"),
+  permanentlyFailed: boolean("permanently_failed").default(false),
+  payloadJson: jsonb("payload_json"), // Snapshot of {to, html, text, attachments} for retries
   createdAt: timestamp("created_at").defaultNow(),
 });
 

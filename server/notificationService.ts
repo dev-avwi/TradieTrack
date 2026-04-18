@@ -390,6 +390,12 @@ const ownerSmsTemplates = {
     `Job completed! ${workerName} finished "${jobTitle}"`,
   teamMemberJoined: (memberName: string, role: string) =>
     `New team member: ${memberName} joined as ${role}`,
+  geofenceArrival: (workerName: string, jobTitle: string) =>
+    `${workerName} arrived on site for "${jobTitle}"`,
+  geofenceDeparture: (workerName: string, jobTitle: string, durationStr: string) =>
+    durationStr
+      ? `${workerName} left "${jobTitle}" (${durationStr})`
+      : `${workerName} left "${jobTitle}"`,
 };
 
 export async function notifyOwnerViaSms(

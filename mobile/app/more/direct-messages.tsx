@@ -574,10 +574,27 @@ function ChatView({
 
   const fetchMessages = useCallback(async () => {
     try {
-      const response = await api.get(`/api/direct-messages/${selectedUser.id}`);
-      setMessages(response.data || []);
+      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const isOnline = useOfflineStore.getState().isOnline;
+      if (!isOnline) {
+        const cached = await offlineStorage.getChatMessagesOffline('dm', selectedUser.id, 200);
+        setMessages(cached as any);
+        return;
+      }
+      const response = await api.get<any[]>(`/api/direct-messages/${selectedUser.id}`);
+      const data = response.data || [];
+      offlineStorage.cacheChatMessages('dm', selectedUser.id, data).catch(() => {});
+      const pending = await offlineStorage.getPendingChatMessages('dm', selectedUser.id);
+      const serverIds = new Set(data.map((m: any) => String(m.id)));
+      const merged = [...data, ...pending.filter((p: any) => !serverIds.has(String(p.id)))];
+      setMessages(merged as any);
     } catch (error) {
-      if (__DEV__) console.log('Failed to fetch messages:', error);
+      if (__DEV__) console.log('Failed to fetch messages, falling back to cache:', error);
+      try {
+        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const cached = await offlineStorage.getChatMessagesOffline('dm', selectedUser.id, 200);
+        if (cached.length > 0) setMessages(cached as any);
+      } catch {}
     } finally {
       setIsLoading(false);
     }
@@ -603,13 +620,28 @@ function ChatView({
     setNewMessage('');
 
     try {
-      await api.post(`/api/direct-messages/${selectedUser.id}`, { content: text });
+      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const isOnline = useOfflineStore.getState().isOnline;
+      if (!isOnline) {
+        const optimistic = await offlineStorage.sendChatMessageOffline('dm', selectedUser.id, text);
+        setMessages(prev => [...prev, optimistic as any]);
+        setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+        return;
+      }
+      const response = await api.post(`/api/direct-messages/${selectedUser.id}`, { content: text });
+      if (response.error) throw new Error(response.error);
       await fetchMessages();
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
-      setNewMessage(text);
+      try {
+        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        const optimistic = await offlineStorage.sendChatMessageOffline('dm', selectedUser.id, text);
+        setMessages(prev => [...prev, optimistic as any]);
+      } catch {
+        setNewMessage(text);
+      }
     } finally {
       setIsSending(false);
     }

@@ -420,19 +420,51 @@ export default function FormFillScreen() {
         formId: form.id,
         jobId: jobId || undefined,
         submissionData: formData,
-        status: 'submitted',
+        status: 'submitted' as const,
       };
+
+      const { offlineStorage, useOfflineStore } = await import('@/src/lib/offline-storage');
+      const isOnline = useOfflineStore.getState().isOnline;
+
+      if (!isOnline) {
+        await offlineStorage.saveFormSubmissionOffline(payload);
+        Alert.alert('Saved offline', 'Form will be submitted when you reconnect.', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+        return;
+      }
 
       const res = await api.post(`/api/custom-forms/${form.id}/submit`, payload);
       if (res.error) {
-        Alert.alert('Error', res.error);
+        // Network/server failure — fall back to offline queue so the form isn't lost.
+        try {
+          await offlineStorage.saveFormSubmissionOffline(payload);
+          Alert.alert('Saved offline', 'Submission queued. Will retry automatically.', [
+            { text: 'OK', onPress: () => router.back() },
+          ]);
+        } catch {
+          Alert.alert('Error', res.error);
+        }
         return;
       }
       Alert.alert('Success', 'Form submitted successfully.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (err) {
-      Alert.alert('Error', 'Failed to submit form.');
+      try {
+        const { offlineStorage } = await import('@/src/lib/offline-storage');
+        await offlineStorage.saveFormSubmissionOffline({
+          formId: form.id,
+          jobId: jobId || undefined,
+          submissionData: formData,
+          status: 'submitted',
+        });
+        Alert.alert('Saved offline', 'Submission queued. Will retry automatically.', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      } catch {
+        Alert.alert('Error', 'Failed to submit form.');
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -159,6 +159,7 @@ interface GeofenceAlert {
   userAvatar?: string | null;
   jobTitle: string;
   alertType: 'arrival' | 'departure' | 'late' | 'speed_warning';
+  dwellSeconds?: number | null;
   address?: string | null;
   createdAt: string;
   isRead: boolean;
@@ -2128,6 +2129,16 @@ export default function MapScreen() {
                         <Text style={{ fontWeight: '600' }}>{firstName}</Text>
                         <Text style={{ color: colors.mutedForeground }}> {actionText} </Text>
                         <Text style={{ fontWeight: '500' }}>{alert.jobTitle || 'job site'}</Text>
+                        {alert.alertType === 'departure' && alert.dwellSeconds && alert.dwellSeconds > 0 && (
+                          <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>
+                            {` · ${(() => {
+                              const s = alert.dwellSeconds!;
+                              const h = Math.floor(s / 3600);
+                              const m = Math.floor((s % 3600) / 60);
+                              return h > 0 ? `${h}h ${m}m on site` : `${m}m on site`;
+                            })()}`}
+                          </Text>
+                        )}
                         {alert.count > 1 && (
                           <Text style={{ color: colors.mutedForeground, fontSize: 11 }}> ({alert.count}x)</Text>
                         )}

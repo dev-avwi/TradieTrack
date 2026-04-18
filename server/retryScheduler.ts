@@ -1,13 +1,16 @@
 import { db } from "./storage";
-import { smsMessages, smsConversations } from "@shared/schema";
+import { smsMessages, smsConversations, emailDeliveryLogs } from "@shared/schema";
 import { eq, and, lte, lt, sql, isNotNull } from "drizzle-orm";
 import { sendSMS } from "./twilioClient";
 import { logger } from "./logger";
+import { sendViaSendGrid, scheduleEmailRetry, isPermanentEmailFailure } from "./emailService";
 
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAYS_MS = [60_000, 300_000, 900_000]; // 1min, 5min, 15min
 
 let isProcessing = false;
+let isProcessingEmail = false;
+let emailCycleCounter = 0;
 
 export function scheduleRetry(retryCount: number): Date {
   const delayMs = RETRY_DELAYS_MS[Math.min(retryCount, RETRY_DELAYS_MS.length - 1)];
@@ -127,13 +130,116 @@ async function recoverStrandedMessages() {
   }
 }
 
+export async function processFailedEmailMessages() {
+  if (isProcessingEmail) return;
+  isProcessingEmail = true;
+  try {
+    const now = new Date();
+    const failed = await db
+      .select()
+      .from(emailDeliveryLogs)
+      .where(and(
+        eq(emailDeliveryLogs.status, 'failed'),
+        eq(emailDeliveryLogs.permanentlyFailed, false),
+        isNotNull(emailDeliveryLogs.nextRetryAt),
+        lte(emailDeliveryLogs.nextRetryAt, now),
+        lt(sql`coalesce(${emailDeliveryLogs.retryCount}, 0)`, sql`coalesce(${emailDeliveryLogs.maxRetries}, 5)`),
+      ))
+      .limit(10);
+
+    if (failed.length === 0) return;
+    logger.info('background', `Processing ${failed.length} failed emails for retry`);
+
+    for (const row of failed) {
+      const currentRetry = (row.retryCount ?? 0) + 1;
+      const claimed = await db.update(emailDeliveryLogs).set({
+        status: 'retrying' as any,
+        retryCount: currentRetry,
+      }).where(and(
+        eq(emailDeliveryLogs.id, row.id),
+        eq(emailDeliveryLogs.status, 'failed'),
+      )).returning({ id: emailDeliveryLogs.id });
+      if (claimed.length === 0) continue;
+
+      const payload: any = row.payloadJson;
+      if (!payload || !payload.to) {
+        await db.update(emailDeliveryLogs).set({
+          status: 'failed',
+          permanentlyFailed: true,
+          errorMessage: 'Missing payload for retry',
+          nextRetryAt: null,
+        }).where(eq(emailDeliveryLogs.id, row.id));
+        continue;
+      }
+
+      try {
+        // Restore base64 attachments to Buffer for SendGrid
+        if (Array.isArray(payload.attachments)) {
+          payload.attachments = payload.attachments.map((a: any) =>
+            a.content ? { ...a, content: Buffer.from(a.content, 'base64') } : a,
+          );
+        }
+        await sendViaSendGrid(payload);
+        await db.update(emailDeliveryLogs).set({
+          status: 'sent',
+          sentVia: 'sendgrid',
+          sentAt: new Date(),
+          errorMessage: null,
+          nextRetryAt: null,
+          payloadJson: null, // free up storage on success
+        }).where(eq(emailDeliveryLogs.id, row.id));
+        logger.info('background', `Email retry #${currentRetry} succeeded`, { metadata: { id: row.id } });
+      } catch (err: any) {
+        const permanent = isPermanentEmailFailure(err);
+        const max = row.maxRetries ?? 5;
+        const nextRetryAt = (!permanent && currentRetry < max) ? scheduleEmailRetry(currentRetry) : null;
+        await db.update(emailDeliveryLogs).set({
+          status: 'failed',
+          nextRetryAt,
+          errorMessage: err?.message || 'Retry failed',
+          permanentlyFailed: permanent || currentRetry >= max,
+        }).where(eq(emailDeliveryLogs.id, row.id));
+        if (permanent || currentRetry >= max) {
+          logger.warn('background', `Email permanently failed`, {
+            metadata: { id: row.id, error: err?.message, retries: currentRetry },
+          });
+        }
+      }
+    }
+  } catch (err: any) {
+    const m = err?.message || '';
+    if (!m.includes('does not exist') && !m.includes('relation')) {
+      logger.error('background', 'Email retry scheduler error', { error: err });
+    }
+  } finally {
+    isProcessingEmail = false;
+  }
+}
+
+async function recoverStrandedEmails() {
+  try {
+    const recovered = await db.update(emailDeliveryLogs).set({
+      status: 'failed',
+    }).where(eq(emailDeliveryLogs.status, 'retrying' as any)).returning({ id: emailDeliveryLogs.id });
+    if (recovered.length > 0) {
+      logger.warn('background', `Recovered ${recovered.length} stranded emails from 'retrying' state`);
+    }
+  } catch {}
+}
+
 let retryInterval: NodeJS.Timeout | null = null;
 
 export async function startRetryScheduler() {
   if (retryInterval) return;
   await recoverStrandedMessages();
-  retryInterval = setInterval(processFailedSmsMessages, 60_000);
-  logger.info('background', 'SMS retry scheduler started (60s interval)');
+  await recoverStrandedEmails();
+  retryInterval = setInterval(async () => {
+    await processFailedSmsMessages();
+    // Process emails every 5 cycles (≈5min) to avoid hammering provider.
+    emailCycleCounter = (emailCycleCounter + 1) % 5;
+    if (emailCycleCounter === 0) await processFailedEmailMessages();
+  }, 60_000);
+  logger.info('background', 'Retry scheduler started — SMS each 60s, emails each 5min');
 }
 
 export function stopRetryScheduler() {

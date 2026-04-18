@@ -5233,11 +5233,21 @@ export default function JobDetailScreen() {
     const { isOnline } = useOfflineStore.getState();
     
     if (!isOnline) {
-      Alert.alert(
-        'No Connection',
-        'Sending "On My Way" notifications requires an internet connection. Please try again when online.',
-        [{ text: 'OK' }]
-      );
+      try {
+        await offlineStorage.queueOnMyWayNotification(job.id);
+        setJob((prev: any) => prev ? { ...prev, workerStatus: 'on_my_way' } : prev);
+        Alert.alert(
+          'Queued',
+          'You\'re offline — the "On My Way" SMS will be sent automatically as soon as you reconnect.',
+          [{ text: 'OK' }]
+        );
+      } catch (queueErr) {
+        Alert.alert(
+          'Could not queue',
+          'Failed to save "On My Way" for later. Please try again when online.',
+          [{ text: 'OK' }]
+        );
+      }
       return;
     }
     

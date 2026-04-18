@@ -70,11 +70,82 @@ export async function sendViaSendGrid(emailData: any): Promise<void> {
   }
 }
 
+// Backoff schedule for failed email retries (1m, 5m, 15m, 1h, 6h)
+const EMAIL_RETRY_DELAYS_MS = [60_000, 300_000, 900_000, 3_600_000, 21_600_000];
+export function scheduleEmailRetry(retryCount: number): Date {
+  const idx = Math.min(retryCount, EMAIL_RETRY_DELAYS_MS.length - 1);
+  return new Date(Date.now() + EMAIL_RETRY_DELAYS_MS[idx]);
+}
+
+// Detect non-retryable provider failures (invalid email, bounce, etc.).
+export function isPermanentEmailFailure(err: any): boolean {
+  const code = err?.code || err?.response?.statusCode;
+  if (code === 400 || code === 401 || code === 403 || code === 422) return true;
+  const message = String(err?.message || '').toLowerCase();
+  if (message.includes('invalid email') || message.includes('does not exist') || message.includes('bounce')) {
+    return true;
+  }
+  return false;
+}
+
+async function logEmailDelivery(
+  emailData: any,
+  status: 'sent' | 'failed',
+  sentVia: string | null,
+  errorMessage: string | null,
+  permanentlyFailed = false,
+): Promise<void> {
+  try {
+    const { db } = await import('./storage');
+    const { emailDeliveryLogs } = await import('../shared/schema');
+    const recipient = Array.isArray(emailData.to) ? emailData.to[0] : emailData.to;
+    await db.insert(emailDeliveryLogs).values({
+      userId: emailData._meta?.userId || null,
+      recipientEmail: recipient,
+      subject: emailData.subject || '(no subject)',
+      type: emailData._meta?.type || 'system',
+      relatedId: emailData._meta?.relatedId || null,
+      status,
+      sentVia,
+      errorMessage,
+      sentAt: status === 'sent' ? new Date() : null,
+      permanentlyFailed,
+      nextRetryAt: status === 'failed' && !permanentlyFailed ? scheduleEmailRetry(0) : null,
+      payloadJson: status === 'failed' && !permanentlyFailed ? sanitizePayloadForRetry(emailData) : null,
+    });
+  } catch (logErr: any) {
+    console.warn('[Email] Failed to log delivery (non-fatal):', logErr?.message);
+  }
+}
+
+function sanitizePayloadForRetry(emailData: any): any {
+  // Skip massive attachments to keep DB row sane.
+  const { attachments, _meta, ...rest } = emailData;
+  return {
+    ...rest,
+    _meta,
+    attachments: attachments?.map((a: any) => ({
+      filename: a.filename || a.fileName,
+      contentType: a.type || a.contentType,
+      // store base64 only if reasonably small (<256kb)
+      content: a.content && String(a.content).length < 256_000
+        ? (Buffer.isBuffer(a.content) ? a.content.toString('base64') : a.content)
+        : null,
+    })) || [],
+  };
+}
+
 export async function sendSystemEmail(emailData: any): Promise<void> {
+  let lastError: any = null;
+  let permanentSendGrid = false;
+
   try {
     await sendViaSendGrid(emailData);
+    await logEmailDelivery(emailData, 'sent', 'sendgrid', null);
     return;
   } catch (sgError: any) {
+    lastError = sgError;
+    permanentSendGrid = isPermanentEmailFailure(sgError);
     console.warn(`⚠️ SendGrid failed for system email to ${emailData.to}, trying Gmail fallback: ${sgError.message}`);
   }
 
@@ -99,15 +170,27 @@ export async function sendSystemEmail(emailData: any): Promise<void> {
       const result = await sendViaGmailAPI(gmailOptions);
       if (result.success) {
         console.log(`✅ System email sent via Gmail fallback to ${emailData.to}`);
+        await logEmailDelivery(emailData, 'sent', 'gmail', null);
         return;
       }
       throw new Error(result.error || 'Gmail send failed');
     } catch (gmailError: any) {
+      lastError = gmailError;
       console.error(`❌ Gmail fallback also failed: ${gmailError.message}`);
     }
   }
 
-  throw new Error('All email sending methods failed for system email');
+  // Both providers failed — log + queue for retry.
+  const permanent = permanentSendGrid && isPermanentEmailFailure(lastError);
+  await logEmailDelivery(
+    emailData,
+    'failed',
+    null,
+    String(lastError?.message || 'Unknown email failure'),
+    permanent,
+  );
+
+  throw new Error(`All email sending methods failed for system email: ${lastError?.message || 'unknown'}`);
 }
 
 const initializeSendGrid = () => {
