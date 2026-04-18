@@ -41259,13 +41259,22 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
   app.post("/api/form-submissions", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      
+      const idempotencyKey: string | undefined = req.body?.idempotencyKey || req.headers['idempotency-key'];
+      if (idempotencyKey) {
+        const cached = await getIdempotencyRecord(`formsub:${userId}:${idempotencyKey}`);
+        if (cached) return res.status(201).json({ ...cached, idempotentReplay: true });
+      }
+
+      const { idempotencyKey: _ik, ...payload } = req.body || {};
       const submission = await storage.createFormSubmission({
-        ...req.body,
+        ...payload,
         submittedBy: userId,
         submittedAt: new Date(),
       });
-      
+
+      if (idempotencyKey) {
+        await setIdempotencyRecord(`formsub:${userId}:${idempotencyKey}`, submission, 60 * 60 * 24);
+      }
       res.status(201).json(submission);
     } catch (error: any) {
       console.error('Error creating form submission:', error);
@@ -46144,8 +46153,14 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         if (!teamCheck.rows || teamCheck.rows.length === 0) return res.status(403).json({ error: 'Not authorized to sign this SWMS' });
       }
 
-      const { workerName, signatureData, latitude, longitude, address, workerUserId } = req.body;
+      const { workerName, signatureData, latitude, longitude, address, workerUserId, idempotencyKey } = req.body;
       if (!workerName || !signatureData) return res.status(400).json({ error: 'Worker name and signature are required' });
+
+      const idemKey: string | undefined = idempotencyKey || req.headers['idempotency-key'];
+      if (idemKey) {
+        const cached = await getIdempotencyRecord(`swmssign:${req.params.id}:${idemKey}`);
+        if (cached) return res.json({ ...cached, idempotentReplay: true });
+      }
 
       const [sig] = await db.insert(swmsSignatures).values({
         swmsId: req.params.id,
@@ -46157,6 +46172,10 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         longitude: longitude || null,
         address: address || null,
       }).returning();
+
+      if (idemKey) {
+        await setIdempotencyRecord(`swmssign:${req.params.id}:${idemKey}`, sig, 60 * 60 * 24);
+      }
 
       if (doc.status === 'draft') {
         await db.update(swmsDocuments)
