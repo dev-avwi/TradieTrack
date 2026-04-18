@@ -335,6 +335,26 @@ export default function TeamChatScreen() {
     return () => clearInterval(interval);
   }, [fetchMessages]);
 
+  // Reconnect-replay: when the device comes back online, fire an immediate fetch
+  // so the user doesn't wait up to 5s for the next poll tick.
+  useEffect(() => {
+    let mounted = true;
+    let unsub: (() => void) | null = null;
+    let prevOnline = true;
+    (async () => {
+      const { useOfflineStore } = await import('@/src/lib/offline-storage');
+      if (!mounted) return;
+      prevOnline = useOfflineStore.getState().isOnline;
+      unsub = useOfflineStore.subscribe((state) => {
+        if (!prevOnline && state.isOnline) {
+          fetchMessages(false);
+        }
+        prevOnline = state.isOnline;
+      });
+    })();
+    return () => { mounted = false; if (unsub) unsub(); };
+  }, [fetchMessages]);
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchMessages(false);

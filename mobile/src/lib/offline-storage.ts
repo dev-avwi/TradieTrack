@@ -18,6 +18,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import api from './api';
 
@@ -2393,7 +2394,21 @@ class OfflineStorageService {
       
       await this.updatePendingSyncCount();
       useOfflineStore.getState().setLastSyncTime(Date.now());
-      
+
+      // Periodically purge old synced offline rows (chat messages, form submissions,
+      // geofence events) to keep the local SQLite file from growing forever.
+      // Throttled so it only runs at most once per hour.
+      try {
+        const lastPurgeStr = await AsyncStorage.getItem('jobrunner_last_purge_at');
+        const lastPurge = lastPurgeStr ? parseInt(lastPurgeStr, 10) : 0;
+        if (Date.now() - lastPurge > 60 * 60 * 1000) {
+          await this.purgeSyncedOfflineRows();
+          await AsyncStorage.setItem('jobrunner_last_purge_at', String(Date.now()));
+        }
+      } catch (purgeErr) {
+        if (__DEV__) console.warn('[OfflineStorage] Purge skipped:', purgeErr);
+      }
+
       if (__DEV__) console.log(`[OfflineStorage] Sync complete: ${synced} synced, ${failed} failed`);
       return { success: failed === 0, synced, failed };
     } catch (error: any) {
@@ -4027,6 +4042,50 @@ class OfflineStorageService {
     } catch (err) {
       if (__DEV__) console.error('[OfflineStorage] queueGeofenceEvent failed:', err);
     }
+  }
+
+  /**
+   * Purge old, fully-synced offline rows so the local SQLite file doesn't grow forever.
+   * Touches: chat_messages, form_submissions_local, geofence_events_local, time_entries.
+   * Only deletes rows where pending_sync = 0 AND older than the retention window.
+   */
+  async purgeSyncedOfflineRows(retentionDays: number = 30): Promise<{ chat: number; forms: number; geofence: number; timeEntries: number }> {
+    const result = { chat: 0, forms: 0, geofence: 0, timeEntries: 0 };
+    if (!this.db) return result;
+    const cutoffMs = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+    const cutoffIso = new Date(cutoffMs).toISOString();
+    const exec = async (sqlText: string, params: any[], key: keyof typeof result) => {
+      try {
+        const res: any = await this.db!.runAsync(sqlText, params);
+        result[key] = res?.changes ?? 0;
+      } catch (e) {
+        if (__DEV__) console.warn('[OfflineStorage] purge step failed', key, e);
+      }
+    };
+    await exec(
+      `DELETE FROM chat_messages WHERE pending_sync = 0 AND created_at < ?`,
+      [cutoffIso],
+      'chat'
+    );
+    // form_submissions_local stores submissions; only purge synced ones
+    await exec(
+      `DELETE FROM form_submissions_local WHERE pending_sync = 0 AND submitted_at < ?`,
+      [cutoffIso],
+      'forms'
+    );
+    await exec(
+      `DELETE FROM geofence_events_local WHERE pending_sync = 0 AND timestamp < ?`,
+      [cutoffMs],
+      'geofence'
+    );
+    // Synced & ended time entries with a server-assigned id (no 'local_' prefix)
+    await exec(
+      `DELETE FROM time_entries WHERE pending_sync = 0 AND end_time IS NOT NULL AND end_time < ? AND id NOT LIKE 'local_%'`,
+      [cutoffIso],
+      'timeEntries'
+    );
+    if (__DEV__) console.log('[OfflineStorage] Purged synced rows older than', retentionDays, 'days:', result);
+    return result;
   }
 
   /**

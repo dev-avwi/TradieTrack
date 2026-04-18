@@ -35975,8 +35975,14 @@ Respond with JSON in this format:
         return res.status(404).json({ error: 'Job not found or access denied' });
       }
       
-      const messages = await storage.getJobChatMessages(jobId);
-      
+      const allMessages = await storage.getJobChatMessages(jobId);
+
+      // Replay-on-reconnect: if client sends ?since=<iso>, return only newer messages.
+      const since = typeof req.query.since === 'string' ? new Date(req.query.since) : null;
+      const messages = since && !isNaN(since.getTime())
+        ? allMessages.filter(m => m.createdAt && new Date(m.createdAt as any).getTime() > since.getTime())
+        : allMessages;
+
       // Enrich messages with user info
       const enrichedMessages = await Promise.all(
         messages.map(async (msg) => {
@@ -37114,11 +37120,15 @@ Respond with JSON in this format:
         return res.status(403).json({ error: 'Cannot access messages outside your business' });
       }
       
-      const messages = await storage.getDirectMessages(userId, recipientId);
-      
+      const allMessages = await storage.getDirectMessages(userId, recipientId);
+      const since = typeof req.query.since === 'string' ? new Date(req.query.since) : null;
+      const messages = since && !isNaN(since.getTime())
+        ? allMessages.filter(m => m.createdAt && new Date(m.createdAt as any).getTime() > since.getTime())
+        : allMessages;
+
       // Mark messages as read
       await storage.markDirectMessagesAsRead(userId, recipientId);
-      
+
       res.json(messages);
     } catch (error: any) {
       console.error('Error fetching direct messages:', error);
@@ -37243,8 +37253,12 @@ Respond with JSON in this format:
         return res.status(403).json({ error: 'No team chat access' });
       }
       
-      const messages = await storage.getTeamChatMessages(context.businessOwnerId);
-      
+      const allMessages = await storage.getTeamChatMessages(context.businessOwnerId);
+      const since = typeof req.query.since === 'string' ? new Date(req.query.since) : null;
+      const messages = since && !isNaN(since.getTime())
+        ? allMessages.filter(m => m.createdAt && new Date(m.createdAt as any).getTime() > since.getTime())
+        : allMessages;
+
       // Enrich messages with user info
       const enrichedMessages = await Promise.all(
         messages.map(async (msg) => {
@@ -41769,6 +41783,32 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     } catch (error) {
       logger.error('api', 'Failed to force-retry email', { error });
       res.status(500).json({ error: 'Failed to retry email' });
+    }
+  });
+
+  // Bulk retry: requeue every permanently-failed (or failed) email so the worker picks them up.
+  app.post("/api/admin/email-logs/retry-all", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { emailDeliveryLogs } = await import('../shared/schema');
+      // Default scope: permanently-failed only. Pass `?scope=failed` to also include status='failed' rows.
+      const scope = (req.query.scope as string) || 'permanent';
+      const whereClause = scope === 'failed'
+        ? eq(emailDeliveryLogs.status, 'failed')
+        : eq(emailDeliveryLogs.permanentlyFailed, true);
+      const updated = await db.update(emailDeliveryLogs).set({
+        status: 'failed',
+        permanentlyFailed: false,
+        retryCount: 0,
+        nextRetryAt: new Date(),
+      }).where(whereClause).returning({ id: emailDeliveryLogs.id });
+      try {
+        const { processFailedEmailMessages } = await import('./retryScheduler');
+        processFailedEmailMessages().catch(() => {});
+      } catch {}
+      res.json({ success: true, requeued: updated.length });
+    } catch (error: any) {
+      logger.error('api', 'Failed to bulk-retry emails', { error });
+      res.status(500).json({ error: 'Failed to bulk retry' });
     }
   });
 

@@ -2835,6 +2835,22 @@ function EmailLogsView() {
     },
   });
 
+  const retryAllMutation = useMutation({
+    mutationFn: async (scope: 'permanent' | 'failed') => {
+      return apiRequest(`/api/admin/email-logs/retry-all?scope=${scope}`, { method: 'POST' });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: 'Bulk retry queued',
+        description: `${data?.requeued ?? 0} email(s) re-queued for delivery.`,
+      });
+      refetch();
+    },
+    onError: (err: any) => {
+      toast({ title: 'Bulk retry failed', description: err?.message || 'Could not bulk retry.', variant: 'destructive' });
+    },
+  });
+
   const logs = data?.logs || [];
 
   const statusBadge = (status: string, permanent: boolean | null) => {
@@ -2891,6 +2907,19 @@ function EmailLogsView() {
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => {
+                if (confirm('Re-queue every permanently-failed email for delivery?')) {
+                  retryAllMutation.mutate('permanent');
+                }
+              }}
+              disabled={retryAllMutation.isPending}
+              data-testid="button-email-logs-retry-all"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${retryAllMutation.isPending ? 'animate-spin' : ''}`} />
+              Retry All Failed
             </Button>
           </div>
 

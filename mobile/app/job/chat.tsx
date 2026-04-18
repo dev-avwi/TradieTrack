@@ -711,6 +711,26 @@ export default function JobChatScreen() {
     return () => clearInterval(interval);
   }, [jobId]);
 
+  // Reconnect-replay: when the device comes back online, fetch immediately.
+  useEffect(() => {
+    let mounted = true;
+    let unsub: (() => void) | null = null;
+    let prevOnline = true;
+    (async () => {
+      const { useOfflineStore } = await import('@/src/lib/offline-storage');
+      if (!mounted) return;
+      prevOnline = useOfflineStore.getState().isOnline;
+      unsub = useOfflineStore.subscribe((state) => {
+        if (!prevOnline && state.isOnline) {
+          loadMessages();
+          loadSmsMessages();
+        }
+        prevOnline = state.isOnline;
+      });
+    })();
+    return () => { mounted = false; if (unsub) unsub(); };
+  }, [jobId]);
+
   const loadData = async () => {
     setIsLoading(true);
     await Promise.all([loadJob(), loadMessages(), loadParticipants(), loadSmsMessages()]);

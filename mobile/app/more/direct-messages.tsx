@@ -606,6 +606,25 @@ function ChatView({
     return () => clearInterval(interval);
   }, [fetchMessages]);
 
+  // Reconnect-replay: when the device comes back online, fetch immediately.
+  useEffect(() => {
+    let mounted = true;
+    let unsub: (() => void) | null = null;
+    let prevOnline = true;
+    (async () => {
+      const { useOfflineStore } = await import('@/src/lib/offline-storage');
+      if (!mounted) return;
+      prevOnline = useOfflineStore.getState().isOnline;
+      unsub = useOfflineStore.subscribe((state) => {
+        if (!prevOnline && state.isOnline) {
+          fetchMessages();
+        }
+        prevOnline = state.isOnline;
+      });
+    })();
+    return () => { mounted = false; if (unsub) unsub(); };
+  }, [fetchMessages]);
+
   useEffect(() => {
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: false });
