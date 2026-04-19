@@ -122,10 +122,10 @@ const VOICE_OPTIONS: { id: string; name: string; accent: string }[] = [
 ];
 
 const AI_MODEL_OPTIONS: { id: string; name: string; description: string; estimatedLatency: number }[] = [
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast responses, great for most calls', estimatedLatency: 700 },
-  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fastest responses, basic conversations', estimatedLatency: 500 },
-  { id: 'gpt-4o', name: 'GPT-4o', description: 'Smarter responses, slightly slower', estimatedLatency: 1000 },
-  { id: 'gpt-4.1', name: 'GPT-4.1', description: 'Most capable, higher latency', estimatedLatency: 1300 },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast responses, great for most calls', estimatedLatency: 1600 },
+  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fastest responses, basic conversations', estimatedLatency: 1300 },
+  { id: 'gpt-4o', name: 'GPT-4o', description: 'Smarter responses, slightly slower', estimatedLatency: 1900 },
+  { id: 'gpt-4.1', name: 'GPT-4.1', description: 'Most capable, higher latency', estimatedLatency: 2200 },
 ];
 
 const MODE_OPTIONS: { id: string; label: string; icon: FeatherIconName; description: string }[] = [
@@ -1222,8 +1222,8 @@ export default function AIReceptionistScreen() {
           {(() => {
             const modelInfo = AI_MODEL_OPTIONS.find(m => m.id === aiModel) || AI_MODEL_OPTIONS[0];
             const latency = modelInfo.estimatedLatency;
-            const isGood = latency <= 800;
-            const isOk = latency <= 1000;
+            const isGood = latency <= 1500;
+            const isOk = latency <= 2000;
             const latencyColor = isGood ? colors.success : isOk ? '#f59e0b' : '#ef4444';
             const latencyLabel = isGood ? 'Fast' : isOk ? 'Acceptable' : 'Slow';
             return (
@@ -1245,22 +1245,22 @@ export default function AIReceptionistScreen() {
                   </View>
                 </View>
                 <View style={{ height: 6, backgroundColor: colors.cardBorder, borderRadius: 3, overflow: 'hidden', marginBottom: spacing.md }}>
-                  <View style={{ width: `${Math.min(100, (latency / 1500) * 100)}%`, height: '100%', backgroundColor: latencyColor, borderRadius: 3 }} />
+                  <View style={{ width: `${Math.min(100, (latency / 2500) * 100)}%`, height: '100%', backgroundColor: latencyColor, borderRadius: 3 }} />
                 </View>
                 <View style={{ backgroundColor: isGood ? colors.success + '10' : isOk ? '#f59e0b10' : '#ef444410', borderRadius: radius.lg, padding: spacing.sm }}>
                   <Text style={{ ...typography.caption, color: isGood ? colors.success : isOk ? '#f59e0b' : '#ef4444', lineHeight: 16 }}>
                     {isGood
-                      ? 'Great! Your AI responds fast enough for natural conversation. Callers won\'t notice any delay.'
+                      ? 'Great! Your AI responds fast enough for natural conversation. Callers won\'t notice much delay.'
                       : isOk
-                        ? 'Response time is acceptable but could feel slightly delayed. Consider switching to GPT-4o Mini for faster responses.'
-                        : 'Response time is above 1 second. Callers may notice a delay. Switch to GPT-4o Mini or GPT-3.5 Turbo for faster responses.'
+                        ? 'Response time is acceptable but callers may notice a slight pause. Consider switching to GPT-4o Mini for faster responses.'
+                        : 'Response time is above 2 seconds. Callers will notice a delay. Switch to GPT-4o Mini or GPT-3.5 Turbo for faster responses.'
                     }
                   </Text>
                 </View>
                 <View style={{ marginTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.cardBorder, paddingTop: spacing.md }}>
-                  <Text style={{ ...typography.caption, color: colors.mutedForeground, fontWeight: '600', marginBottom: spacing.xs }}>Target: under 1000ms</Text>
+                  <Text style={{ ...typography.caption, color: colors.mutedForeground, fontWeight: '600', marginBottom: spacing.xs }}>Target: under 1500ms total turn time</Text>
                   <Text style={{ ...typography.caption, color: colors.mutedForeground, lineHeight: 16 }}>
-                    Latency is how long callers wait for the AI to start speaking after they finish talking. Under 1 second feels natural. You can reduce latency by choosing a faster AI model below.
+                    This is the typical total turn time — how long callers wait between finishing their sentence and the AI starting to reply. It includes speech recognition, AI thinking, and voice generation. Anything under 1.5 seconds feels natural on a phone call.
                   </Text>
                 </View>
               </>

@@ -180,6 +180,64 @@ async function vapiRequest(method: string, path: string, body?: any): Promise<an
   return response.json();
 }
 
+// Common Australian suburbs and place names that off-the-shelf STT systems
+// frequently mishear. These get passed to Deepgram as keyterms so callers
+// saying "Mooroobool" or "Cairns" actually get transcribed correctly.
+const AUSTRALIAN_PLACE_KEYTERMS = [
+  'Cairns', 'Mooroobool', 'Manunda', 'Edmonton', 'Edge Hill', 'Bungalow',
+  'Westcourt', 'Parramatta Park', 'Manoora', 'Earlville', 'Whitfield',
+  'Trinity Beach', 'Smithfield', 'Redlynch', 'Brinsmead', 'Mount Sheridan',
+  'Gordonvale', 'Babinda', 'Innisfail', 'Atherton', 'Mareeba', 'Kuranda',
+  'Port Douglas', 'Mossman', 'Daintree', 'Townsville', 'Mackay',
+  'Brisbane', 'Sydney', 'Melbourne', 'Perth', 'Adelaide', 'Darwin',
+  'Hobart', 'Canberra', 'Gold Coast', 'Sunshine Coast', 'Newcastle',
+  'Wollongong', 'Geelong', 'Toowoomba', 'Ballarat', 'Bendigo',
+];
+
+const TRADE_KEYTERMS = [
+  'tradie', 'sparkie', 'chippy', 'plumber', 'electrician', 'carpenter',
+  'plasterer', 'tiler', 'roofer', 'concreter', 'landscaper', 'painter',
+  'fencer', 'gyprocker', 'glazier', 'locksmith', 'arborist',
+  'callout', 'quote', 'invoice', 'job', 'site', 'reno',
+];
+
+function buildTranscriberConfig(config: VapiAssistantConfig): any {
+  const keyterms = new Set<string>([...AUSTRALIAN_PLACE_KEYTERMS, ...TRADE_KEYTERMS]);
+
+  // Boost the business name itself
+  if (config.businessName) {
+    config.businessName.split(/\s+/).forEach(w => {
+      if (w.length > 2) keyterms.add(w);
+    });
+  }
+  // Boost team member names so callers saying "Ayden" don't get "Aiden"
+  if (config.teamInfo) {
+    for (const t of config.teamInfo) {
+      if (t.name) {
+        t.name.split(/\s+/).forEach(n => {
+          if (n.length > 1) keyterms.add(n);
+        });
+      }
+    }
+  }
+  // Boost configured services
+  if (config.services) {
+    for (const s of config.services) {
+      s.split(/\s+/).forEach(w => {
+        if (w.length > 2) keyterms.add(w);
+      });
+    }
+  }
+
+  return {
+    provider: 'deepgram',
+    model: 'nova-3',
+    language: 'en-AU',
+    smartFormat: true,
+    keyterm: Array.from(keyterms).slice(0, 100),
+  };
+}
+
 function buildSystemPrompt(config: VapiAssistantConfig): string {
   const businessName = config.businessName || 'the business';
   const tradeType = config.tradeType || 'trades';
@@ -269,6 +327,12 @@ Important guidelines:
 - Never make commitments about pricing, availability, or scheduling — say "I'll make sure the team gets back to you"
 - If asked about business hours, refer to: ${hoursDescription}
 - At the end of the call, confirm you've captured their details and let them know someone will be in touch
+
+Confirming names, addresses & phone numbers (CRITICAL):
+- For caller names that are unusual or could be spelled multiple ways (e.g. Ayden vs Aiden, Stephen vs Steven, Catherine vs Kathryn), ALWAYS politely ask them to spell it: "Just to make sure I have that right, can you spell your first name for me?"
+- For Australian suburbs and place names, repeat them back phonetically and ask them to confirm: "Mooroobool — that's M-O-O-R-O-O-B-O-O-L, in Cairns. Is that right?" If you're not certain you heard the suburb correctly, ask them to spell it.
+- For phone numbers, always read the digits back grouped (e.g. "0458 300 051") and ask them to confirm before saving.
+- If a tool call appears to fail, do NOT tell the caller "there was a system issue" — instead say something natural like "let me just take that down" and continue. Always reassure them their details have been captured.
 
 Available tools:
 1. "capture_lead" - Save the caller's contact details and reason for calling. Use this after collecting their information.
@@ -426,6 +490,7 @@ export async function createAssistant(config: VapiAssistantConfig): Promise<Vapi
         useSpeakerBoost: config.voiceTuning.speakerBoost ?? false,
       } : {}),
     },
+    transcriber: buildTranscriberConfig(config),
     firstMessage: config.greeting || `G'day, thanks for calling ${config.businessName}. How can I help you today?`,
     endCallMessage: config.endCallMessage || 'Thanks for calling! Someone from the team will be in touch soon. Have a great day!',
     serverUrl: config.webhookUrl,
@@ -1857,47 +1922,85 @@ async function sendSupportLineNotifications(
 async function handleToolCalls(event: any): Promise<any> {
   const message = event.message || event;
   const call = message.call;
-  if (!call) return { ok: true };
-
-  const assistantId = call.assistantId;
-  if (!assistantId) return { ok: true };
-
-  const lookupResult = await findBusinessAndConfigByVapiAssistant(assistantId);
-  if (!lookupResult) return { ok: true };
-  const { business, config: matchedConfig } = lookupResult;
-
-  let existingCall = await storage.getAiReceptionistCallByVapiId(call.id);
-  if (!existingCall) {
-    const calledNumber = call.phoneNumber?.number || matchedConfig?.dedicatedPhoneNumber || null;
-    existingCall = await storage.createAiReceptionistCall({
-      userId: business.userId,
-      vapiCallId: call.id,
-      callerPhone: call.customer?.number || null,
-      status: 'in_progress',
-      phoneNumberId: matchedConfig?.id || null,
-      calledNumber,
-    });
-  }
-
   const toolCalls = message.toolCallList || message.toolCalls || [];
-  const results: Array<{ toolCallId: string; result: string }> = [];
-  const callerPhone = call.customer?.number || existingCall.callerPhone || undefined;
 
-  for (const toolCall of toolCalls) {
-    const toolName = toolCall.function?.name || toolCall.name;
-    const toolArgs = toolCall.function?.arguments
-      ? (typeof toolCall.function.arguments === 'string' ? JSON.parse(toolCall.function.arguments) : toolCall.function.arguments)
-      : toolCall.arguments || {};
+  // Helper: build a synthetic "ok" response per tool-call so VAPI never sees
+  // an empty/failed result — even if our backend has a problem, the assistant
+  // can keep the conversation going gracefully.
+  const fallbackResults = (msg: string) => toolCalls.map((tc: any) => ({
+    toolCallId: tc.id,
+    result: msg,
+  }));
 
-    const result = await handleToolCall(toolName, toolArgs, business.userId, existingCall.id, callerPhone);
+  try {
+    if (!call) return { results: fallbackResults("I've noted that. One moment.") };
 
-    results.push({
-      toolCallId: toolCall.id,
-      result: typeof result === 'string' ? result : JSON.stringify(result),
-    });
+    const assistantId = call.assistantId;
+    if (!assistantId) return { results: fallbackResults("I've noted that. One moment.") };
+
+    const lookupResult = await findBusinessAndConfigByVapiAssistant(assistantId);
+    if (!lookupResult) {
+      console.warn(`[Vapi Webhook] No business found for assistant ${assistantId} during tool-call — returning soft-success`);
+      return { results: fallbackResults("I've taken note of that. Someone from the team will follow up.") };
+    }
+    const { business, config: matchedConfig } = lookupResult;
+
+    let existingCall = await storage.getAiReceptionistCallByVapiId(call.id);
+    if (!existingCall) {
+      try {
+        const calledNumber = call.phoneNumber?.number || matchedConfig?.dedicatedPhoneNumber || null;
+        existingCall = await storage.createAiReceptionistCall({
+          userId: business.userId,
+          vapiCallId: call.id,
+          callerPhone: call.customer?.number || null,
+          status: 'in_progress',
+          phoneNumberId: matchedConfig?.id || null,
+          calledNumber,
+        });
+      } catch (createErr: any) {
+        console.error(`[Vapi Webhook] Failed to create AI receptionist call record for ${call.id}:`, createErr?.message || createErr);
+      }
+    }
+
+    const results: Array<{ toolCallId: string; result: string }> = [];
+    const callerPhone = call.customer?.number || existingCall?.callerPhone || undefined;
+
+    for (const toolCall of toolCalls) {
+      const toolName = toolCall.function?.name || toolCall.name;
+      let toolArgs: Record<string, unknown> = {};
+      try {
+        toolArgs = toolCall.function?.arguments
+          ? (typeof toolCall.function.arguments === 'string' ? JSON.parse(toolCall.function.arguments) : toolCall.function.arguments)
+          : toolCall.arguments || {};
+      } catch (parseErr) {
+        console.error(`[Vapi Webhook] Failed to parse tool args for ${toolName}:`, parseErr);
+      }
+
+      let result: any;
+      try {
+        result = await handleToolCall(
+          toolName,
+          toolArgs,
+          business.userId,
+          existingCall?.id || call.id,
+          callerPhone,
+        );
+      } catch (toolErr: any) {
+        console.error(`[Vapi Webhook] Tool "${toolName}" threw — returning soft-success to caller:`, toolErr?.message || toolErr);
+        result = { result: "I've noted that down. Someone from the team will be in touch." };
+      }
+
+      results.push({
+        toolCallId: toolCall.id,
+        result: typeof result === 'string' ? result : (result?.result ?? JSON.stringify(result)),
+      });
+    }
+
+    return { results };
+  } catch (outerErr: any) {
+    console.error('[Vapi Webhook] handleToolCalls outer failure — returning soft-success:', outerErr?.message || outerErr);
+    return { results: fallbackResults("I've noted that. Someone from the team will follow up shortly.") };
   }
-
-  return { results };
 }
 
 async function handleHang(event: any): Promise<any> {
