@@ -320,6 +320,7 @@ export const users = pgTable("users", {
   subscriptionSource: text("subscription_source"), // 'stripe', 'apple', 'beta'
   appleProductId: text("apple_product_id"), // Apple IAP product ID if subscribed via Apple
   appleReceiptData: text("apple_receipt_data"), // Latest Apple receipt for server-side validation
+  appleOriginalTransactionId: text("apple_original_transaction_id"), // Stable Apple transaction ID for webhook lookups
   // Usage tracking
   jobsCreatedThisMonth: integer("jobs_created_this_month").default(0),
   invoicesCreatedThisMonth: integer("invoices_created_this_month").default(0),

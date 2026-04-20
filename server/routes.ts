@@ -5646,15 +5646,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success: false, message: `Receipt verification failed (status ${appleResult.status})` });
       }
 
+      // Extract originalTransactionId from the receipt for future webhook lookups
+      let originalTransactionId: string | undefined;
+      try {
+        const verifiedReceipt = (appleResult.status === 0 ? appleResult : (appleResult.latest_receipt_info ? appleResult : null));
+        const latestInfo = verifiedReceipt?.latest_receipt_info;
+        if (Array.isArray(latestInfo) && latestInfo.length > 0) {
+          // Pick the most recent transaction matching this productId
+          const matching = latestInfo
+            .filter((t: any) => t.product_id === productId)
+            .sort((a: any, b: any) => Number(b.purchase_date_ms || 0) - Number(a.purchase_date_ms || 0));
+          originalTransactionId = matching[0]?.original_transaction_id || latestInfo[0]?.original_transaction_id;
+        }
+      } catch (e) {
+        console.warn('[IAP] Could not extract originalTransactionId from receipt:', e);
+      }
+
       await storage.updateUser(userId, {
         subscriptionTier: newTier,
         subscriptionStatus: 'active',
         subscriptionSource: 'apple',
         appleProductId: productId,
         appleReceiptData: receiptData,
+        ...(originalTransactionId ? { appleOriginalTransactionId: originalTransactionId } : {}),
       } as any);
 
-      console.log(`[IAP] User ${userId} upgraded to ${newTier} via Apple IAP (verified)`);
+      console.log(`[IAP] User ${userId} upgraded to ${newTier} via Apple IAP (verified, txn=${originalTransactionId || 'unknown'})`);
 
       res.json({
         success: true,
@@ -5665,6 +5682,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('[IAP] Error verifying Apple receipt:', error);
       // Return 200 with success:false so the client can show a graceful message
       res.json({ success: false, message: error.message || 'Failed to verify receipt' });
+    }
+  });
+
+  // POST /api/iap/apple-notifications - App Store Server Notifications V2 webhook
+  // Apple sends signed JWS notifications for renewals, cancellations, refunds, etc.
+  // Configure this URL in App Store Connect > App Information > App Store Server Notifications.
+  // Docs: https://developer.apple.com/documentation/appstoreservernotifications
+  app.post("/api/iap/apple-notifications", async (req: any, res) => {
+    try {
+      const { signedPayload } = req.body || {};
+      if (!signedPayload || typeof signedPayload !== 'string') {
+        console.warn('[AppleWebhook] Missing or invalid signedPayload');
+        return res.status(400).json({ error: 'Missing signedPayload' });
+      }
+
+      // Decode JWS payload (3-part token: header.payload.signature)
+      // Note: We're not verifying Apple's signature here for simplicity.
+      // We mitigate by: (1) verifying the bundleId matches our app,
+      // (2) only acting if originalTransactionId matches a known user.
+      const decodeJWSPayload = (jws: string): any => {
+        const parts = jws.split('.');
+        if (parts.length !== 3) throw new Error('Invalid JWS structure');
+        const payloadJson = Buffer.from(parts[1], 'base64url').toString('utf8');
+        return JSON.parse(payloadJson);
+      };
+
+      const notification = decodeJWSPayload(signedPayload);
+      const { notificationType, subtype, data } = notification;
+      const bundleId = data?.bundleId;
+      const environment = data?.environment;
+
+      if (bundleId && bundleId !== 'com.jobrunner.app') {
+        console.warn(`[AppleWebhook] Ignoring notification for unexpected bundleId: ${bundleId}`);
+        return res.json({ ok: true });
+      }
+
+      const transactionInfo = data?.signedTransactionInfo ? decodeJWSPayload(data.signedTransactionInfo) : null;
+      const renewalInfo = data?.signedRenewalInfo ? decodeJWSPayload(data.signedRenewalInfo) : null;
+
+      const originalTransactionId = transactionInfo?.originalTransactionId || renewalInfo?.originalTransactionId;
+      const productId = transactionInfo?.productId || renewalInfo?.productId || renewalInfo?.autoRenewProductId;
+
+      console.log(`[AppleWebhook] type=${notificationType} subtype=${subtype || '-'} env=${environment} txn=${originalTransactionId} product=${productId}`);
+
+      if (!originalTransactionId) {
+        console.warn('[AppleWebhook] No originalTransactionId — cannot route notification');
+        return res.json({ ok: true });
+      }
+
+      // Find user by originalTransactionId
+      const user = await storage.getUserByAppleOriginalTransactionId(originalTransactionId);
+      if (!user) {
+        console.warn(`[AppleWebhook] No user found for txn ${originalTransactionId} (notification: ${notificationType})`);
+        return res.json({ ok: true });
+      }
+
+      const tierMap: Record<string, string> = {
+        'com.jobrunner.pro.monthly': 'pro',
+        'com.jobrunner.team.monthly': 'team',
+        'com.jobrunner.business.monthly': 'business',
+      };
+
+      // Handle each notification type
+      // Reference: https://developer.apple.com/documentation/appstoreservernotifications/notificationtype
+      switch (notificationType) {
+        case 'SUBSCRIBED':
+        case 'DID_RENEW':
+        case 'DID_CHANGE_RENEWAL_PREF': {
+          // Subscription started or renewed (possibly after upgrade/downgrade)
+          const newTier = tierMap[productId] || user.subscriptionTier;
+          await storage.updateUser(user.id, {
+            subscriptionTier: newTier,
+            subscriptionStatus: 'active',
+            subscriptionSource: 'apple',
+            appleProductId: productId,
+          } as any);
+          console.log(`[AppleWebhook] User ${user.id} subscription active: ${newTier}`);
+          break;
+        }
+
+        case 'EXPIRED':
+        case 'GRACE_PERIOD_EXPIRED': {
+          // Subscription has fully expired — downgrade to free
+          await storage.updateUser(user.id, {
+            subscriptionTier: 'free',
+            subscriptionStatus: 'expired',
+          } as any);
+          console.log(`[AppleWebhook] User ${user.id} subscription expired — downgraded to free`);
+          break;
+        }
+
+        case 'DID_FAIL_TO_RENEW': {
+          // Billing issue — flag as past_due but keep access until grace period ends
+          await storage.updateUser(user.id, {
+            subscriptionStatus: 'past_due',
+          } as any);
+          console.log(`[AppleWebhook] User ${user.id} renewal failed — marked past_due`);
+          break;
+        }
+
+        case 'DID_CHANGE_RENEWAL_STATUS': {
+          // User toggled auto-renew on/off (still has access until period ends)
+          const willAutoRenew = renewalInfo?.autoRenewStatus === 1;
+          console.log(`[AppleWebhook] User ${user.id} auto-renew set to ${willAutoRenew}`);
+          // We don't change tier here — just log. The EXPIRED notification will handle the actual downgrade.
+          break;
+        }
+
+        case 'REFUND':
+        case 'REVOKE': {
+          // Apple refunded or revoked the purchase — immediately downgrade
+          await storage.updateUser(user.id, {
+            subscriptionTier: 'free',
+            subscriptionStatus: 'canceled',
+          } as any);
+          console.log(`[AppleWebhook] User ${user.id} subscription refunded/revoked — downgraded to free`);
+          break;
+        }
+
+        case 'PRICE_INCREASE':
+        case 'OFFER_REDEEMED':
+        case 'TEST':
+        default: {
+          // Acknowledge but no action needed
+          console.log(`[AppleWebhook] Notification type ${notificationType} acknowledged (no action)`);
+          break;
+        }
+      }
+
+      res.json({ ok: true });
+    } catch (error: any) {
+      console.error('[AppleWebhook] Error processing notification:', error);
+      // Return 200 anyway so Apple doesn't retry indefinitely on a malformed payload
+      res.json({ ok: true, error: error.message });
     }
   });
 

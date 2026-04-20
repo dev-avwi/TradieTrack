@@ -418,6 +418,7 @@ export interface IStorage {
   getUserByPasswordResetToken(token: string): Promise<User | undefined>;
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
   getUserByAppleId(appleId: string): Promise<User | undefined>;
+  getUserByAppleOriginalTransactionId(originalTransactionId: string): Promise<User | undefined>;
   getUserByXeroId(xeroId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
@@ -1380,6 +1381,15 @@ export class PostgresStorage implements IStorage {
       .select()
       .from(users)
       .where(eq(users.appleId, appleId))
+      .limit(1);
+    return result[0];
+  }
+
+  async getUserByAppleOriginalTransactionId(originalTransactionId: string): Promise<User | undefined> {
+    const result = await db
+      .select()
+      .from(users)
+      .where(eq(users.appleOriginalTransactionId, originalTransactionId))
       .limit(1);
     return result[0];
   }
