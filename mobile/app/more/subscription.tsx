@@ -462,8 +462,21 @@ export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [managingSubscription, setManagingSubscription] = useState(false);
-  const [purchasing, setPurchasing] = useState(false);
+  const [purchasingTier, setPurchasingTier] = useState<'pro' | 'team' | 'business' | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const purchaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearPurchaseTimeout = useCallback(() => {
+    if (purchaseTimeoutRef.current) {
+      clearTimeout(purchaseTimeoutRef.current);
+      purchaseTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => clearPurchaseTimeout();
+  }, [clearPurchaseTimeout]);
+
   const [applePrices, setApplePrices] = useState<Record<string, string>>({});
 
   const fetchSubscriptionStatus = useCallback(async () => {
@@ -533,11 +546,12 @@ export default function SubscriptionPage() {
     fetchSubscriptionStatus();
 
     const upgraded = tierFromAuth && tierFromAuth !== 'free' && tierFromAuth !== 'trial';
-    if (upgraded && purchasing) {
+    if (upgraded && purchasingTier) {
       const tierLabel = (tierFromAuth || '').toString();
       Alert.alert('Upgrade Successful', `You're now on the ${tierLabel.charAt(0).toUpperCase() + tierLabel.slice(1)} plan.`);
     }
-    setPurchasing(false);
+    clearPurchaseTimeout();
+    setPurchasingTier(null);
   }, [tierFromAuth]);
 
   const handleUpgrade = async (tier: 'pro' | 'team' | 'business') => {
@@ -562,11 +576,32 @@ export default function SubscriptionPage() {
         );
         return;
       }
-      setPurchasing(true);
+      setPurchasingTier(tier);
+
+      // Safety net: if Apple's purchase callback never reaches us (network issue,
+      // sandbox glitch, app backgrounded), clear the spinner after 90s and let the
+      // user check status / restore. Without this, the button spins forever and
+      // App Review flags it as broken.
+      clearPurchaseTimeout();
+      purchaseTimeoutRef.current = setTimeout(async () => {
+        purchaseTimeoutRef.current = null;
+        // First refresh in case the purchase succeeded but the listener missed it
+        try { await useAuthStore.getState().refreshUser(); } catch {}
+        await fetchSubscriptionStatus();
+        setPurchasingTier(null);
+        Alert.alert(
+          'Still Processing',
+          'The App Store is taking longer than usual. If you completed the purchase, tap "Restore Purchases" below to activate your plan, or check back in a moment.',
+          [{ text: 'OK' }]
+        );
+      }, 90000);
+
       try {
         await purchaseSubscription(productIds[tier]);
       } catch (error: any) {
         console.error('[IAP] Purchase error details:', JSON.stringify(error, null, 2));
+        clearPurchaseTimeout();
+        setPurchasingTier(null);
         if (error?.code !== 'E_USER_CANCELLED') {
           const errorMsg = error?.message || error?.code || 'Unknown error';
           if (errorMsg.toLowerCase().includes('invalid') || errorMsg.includes('E_DEVELOPER_ERROR')) {
@@ -582,7 +617,6 @@ export default function SubscriptionPage() {
             Alert.alert('Purchase Failed', `${errorMsg}\n\nPlease try again.`);
           }
         }
-        setPurchasing(false);
       }
     } else if (Platform.OS === 'android') {
       const price = applePrices[tier] || defaultPrices[tier];
@@ -869,12 +903,12 @@ export default function SubscriptionPage() {
                   ))}
                 </View>
                 <TouchableOpacity 
-                  style={[styles.upgradePlanButton, { backgroundColor: '#2563EB' }, purchasing && { opacity: 0.6 }]}
+                  style={[styles.upgradePlanButton, { backgroundColor: '#2563EB' }, purchasingTier !== null && { opacity: 0.6 }]}
                   onPress={() => handleUpgrade('pro')}
                   activeOpacity={0.8}
-                  disabled={purchasing}
+                  disabled={purchasingTier !== null}
                 >
-                  {purchasing ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Pro</Text>}
+                  {purchasingTier === 'pro' ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Pro</Text>}
                 </TouchableOpacity>
               </View>
             )}
@@ -900,12 +934,12 @@ export default function SubscriptionPage() {
                   ))}
                 </View>
                 <TouchableOpacity 
-                  style={[styles.upgradePlanButton, { backgroundColor: '#7C3AED' }, purchasing && { opacity: 0.6 }]}
+                  style={[styles.upgradePlanButton, { backgroundColor: '#7C3AED' }, purchasingTier !== null && { opacity: 0.6 }]}
                   onPress={() => handleUpgrade('team')}
                   activeOpacity={0.8}
-                  disabled={purchasing}
+                  disabled={purchasingTier !== null}
                 >
-                  {purchasing ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Team</Text>}
+                  {purchasingTier === 'team' ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Team</Text>}
                 </TouchableOpacity>
               </View>
             )}
@@ -931,12 +965,12 @@ export default function SubscriptionPage() {
                   ))}
                 </View>
                 <TouchableOpacity 
-                  style={[styles.upgradePlanButton, { backgroundColor: '#059669' }, purchasing && { opacity: 0.6 }]}
+                  style={[styles.upgradePlanButton, { backgroundColor: '#059669' }, purchasingTier !== null && { opacity: 0.6 }]}
                   onPress={() => handleUpgrade('business')}
                   activeOpacity={0.8}
-                  disabled={purchasing}
+                  disabled={purchasingTier !== null}
                 >
-                  {purchasing ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Business</Text>}
+                  {purchasingTier === 'business' ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Business</Text>}
                 </TouchableOpacity>
               </View>
             )}
