@@ -181,12 +181,22 @@ export async function getUserContext(userId: string): Promise<UserContext> {
       
       const isTrialActive = ownerTrialStatus === 'active' && ownerTrialEndsAt && new Date(ownerTrialEndsAt) > new Date();
       
+      // Tiers that include team member seats. Pro is single-user, so a worker
+      // belonging to an owner who is on Pro should also be locked out.
+      const teamCapableTiers = new Set(['team', 'business', 'beta']);
+      const ownerHasTeamPlan = !!ownerTier && teamCapableTiers.has(ownerTier);
+      const ownerHasBetaUnlock = !!(ownerUser.isBeta || ownerUser.betaLifetimeAccess);
+
       if (subscriptionStatus === 'canceled' && !isTrialActive) {
         ownerSubscriptionValid = false;
         ownerSubscriptionError = 'Business subscription has been canceled';
       } else if (!isTrialActive && (ownerTier === 'free' || !ownerTier)) {
         ownerSubscriptionValid = false;
         ownerSubscriptionError = 'Business does not have an active subscription';
+      } else if (!isTrialActive && !ownerHasTeamPlan && !ownerHasBetaUnlock) {
+        // Owner downgraded to a tier (e.g. Pro) that does not include team seats.
+        ownerSubscriptionValid = false;
+        ownerSubscriptionError = "Business owner's plan no longer includes team access";
       }
       
       ownerBusinessName = ownerBusinessSettings?.businessName || (ownerUser.firstName ? `${ownerUser.firstName} ${ownerUser.lastName || ''}`.trim() : undefined);

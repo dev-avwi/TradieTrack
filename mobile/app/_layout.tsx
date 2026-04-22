@@ -486,11 +486,58 @@ function useIsTablet() {
   return tablet;
 }
 
+function OwnerSubscriptionLapsedScreen({ businessName, onSignOut }: { businessName?: string; onSignOut: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 24 }]}>
+      <View style={{ maxWidth: 360, alignItems: 'center' }}>
+        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+          <Image
+            source={require('../assets/icon.png')}
+            style={{ width: 32, height: 32, opacity: 0.4 }}
+            resizeMode="contain"
+          />
+        </View>
+        <View style={{ alignItems: 'center', marginBottom: 24 }}>
+          <View style={{ marginBottom: 12 }}>
+            <Animated.Text style={{ fontSize: 20, fontWeight: '600', color: colors.foreground, textAlign: 'center' }}>
+              Subscription Inactive
+            </Animated.Text>
+          </View>
+          <Animated.Text style={{ fontSize: 15, color: colors.mutedForeground, textAlign: 'center', lineHeight: 22 }}>
+            {businessName
+              ? `${businessName}'s JobRunner subscription is no longer active.`
+              : "Your employer's JobRunner subscription is no longer active."}
+          </Animated.Text>
+          <Animated.Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: 'center', marginTop: 12, lineHeight: 20 }}>
+            Please contact the business owner to restore access.
+          </Animated.Text>
+        </View>
+        <View
+          onTouchEnd={onSignOut}
+          style={{
+            paddingVertical: 12,
+            paddingHorizontal: 24,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.background,
+          }}
+        >
+          <Animated.Text style={{ color: colors.foreground, fontSize: 14, fontWeight: '500' }}>
+            Sign Out
+          </Animated.Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const { fetchNotifications } = useNotificationsStore();
-  const { isAuthenticated, isOwner, isStaff, hasActiveTeam } = useAuthStore();
+  const { isAuthenticated, isOwner, isStaff, hasActiveTeam, user, logout } = useAuthStore();
   const { colors } = useTheme();
   const { isOnline, isInitialized: offlineInitialized } = useOfflineStore();
   const isTabletDevice = useIsTablet();
@@ -539,6 +586,21 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {children}
+      </View>
+    );
+  }
+
+  // Worker whose business owner has cancelled / lapsed their subscription:
+  // block all app access and show a clear termination screen. Mirrors the
+  // web behaviour in client/src/App.tsx and matches the server's
+  // 'subscription_lapsed' 403 returned by the permissions middleware.
+  if (user && user.isOwner === false && user.ownerSubscriptionValid === false) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <OwnerSubscriptionLapsedScreen
+          businessName={user.ownerBusinessName}
+          onSignOut={() => { logout(); }}
+        />
       </View>
     );
   }

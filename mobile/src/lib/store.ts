@@ -26,6 +26,12 @@ interface User {
   subscriptionTier?: 'free' | 'pro' | 'team' | 'business' | 'trial' | 'beta';
   subscriptionStatus?: string;
   subscriptionSource?: string;
+  isOwner?: boolean;
+  isWorker?: boolean;
+  businessOwnerId?: string | null;
+  ownerSubscriptionValid?: boolean;
+  ownerSubscriptionError?: string;
+  ownerBusinessName?: string;
   trialEndsAt?: string;
   trialStatus?: string;
   isBeta?: boolean;
