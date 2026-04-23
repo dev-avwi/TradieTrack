@@ -873,7 +873,7 @@ export default function SubscriptionPage() {
           </Text>
         )}
 
-        {(currentTier === 'free' || currentTier === 'pro' || currentTier === 'team') && (
+        {!isBeta && (currentTier === 'free' || currentTier === 'pro' || currentTier === 'team') && (
           <View style={styles.comparePlansSection}>
             <Text style={styles.comparePlansTitle}>
               {currentTier === 'free' ? 'Upgrade Your Plan' : 'Available Upgrades'}

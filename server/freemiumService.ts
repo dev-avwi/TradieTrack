@@ -5,8 +5,14 @@ import { sql } from "drizzle-orm";
 export const IS_BETA = true;
 
 // Beta configuration
+// NOTE: maxLifetimeUsers set to 0 to prevent new signups (including Apple App Review
+// sandbox testers) from being auto-granted Founding Member / lifetime access. Without
+// this, fresh reviewer accounts get free Pro Lifetime instantly and can never test the
+// IAP flow — which caused App Store rejection 2.1.0 in April 2026.
+// To grant lifetime access to a real founding member, do it manually via the Admin
+// Dashboard (toggle Founding Member on the user's profile).
 export const BETA_CONFIG = {
-  maxLifetimeUsers: 15,         // First 15 users get lifetime free (expanded for early bird signups)
+  maxLifetimeUsers: 0,
   requiresTestimonialConsent: true,
   betaEndDate: null as Date | null, // Set to a date to auto-end beta
 };
