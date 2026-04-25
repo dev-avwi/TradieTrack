@@ -3275,19 +3275,6 @@ export default function CollectScreen() {
           <Text style={styles.sectionLabel}>Payment Methods</Text>
 
           <PaymentMethodCard
-            icon={<Feather name="radio" size={24} color={colors.mutedForeground} />}
-            title="Tap to Pay"
-            description="Accept contactless card payments on your iPhone. Coming soon in a future update."
-            badge="Coming Soon"
-            badgeVariant="warning"
-            onPress={() => {
-              Alert.alert('Coming Soon', 'Tap to Pay will be available in a future update. Use QR Code or Payment Link to collect payments now.');
-            }}
-            disabled={false}
-            colors={colors}
-          />
-
-          <PaymentMethodCard
             icon={<Feather name="grid" size={24} color={colors.primary} />}
             title="QR Code"
             description="Customer scans and pays online ~1.95% + $0.30"
