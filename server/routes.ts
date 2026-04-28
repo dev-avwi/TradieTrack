@@ -14,7 +14,7 @@ import { loginSchema, insertUserSchema, type SafeUser, requestLoginCodeSchema, v
 import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmail, sendPasswordResetEmail, sendTeamInviteEmail, sendJobAssignmentEmail, sendJobCompletionNotificationEmail, sendWelcomeEmail } from "./emailService";
 import { FreemiumService } from "./freemiumService";
 import { DEMO_USER, VISITOR_USER } from "./demoData";
-import { ownerOnly, ownerOrManagerOnly, requirePermission, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, getWorkerPermissionContext, sanitizeClientData } from "./permissions";
+import { ownerOnly, ownerOrManagerOnly, requirePermission, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, getWorkerPermissionContext, sanitizeClientData, requireTeamPlan, ownerHasTeamCapability } from "./permissions";
 import { logTeamActivity } from "./activityService";
 import {
   insertBusinessSettingsSchema,
@@ -30922,7 +30922,7 @@ Respond with JSON in this format:
   });
 
   // Invite a new team member
-  app.post("/api/team/members/invite", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+  app.post("/api/team/members/invite", requireAuth, ownerOrManagerOnly(), requireTeamPlan(), async (req: any, res) => {
     try {
       const userId = req.userContext?.effectiveUserId || req.userId!;
       
@@ -31021,7 +31021,7 @@ Respond with JSON in this format:
   });
 
   // Resend invite to a team member
-  app.post("/api/team/members/:id/resend-invite", requireAuth, async (req: any, res) => {
+  app.post("/api/team/members/:id/resend-invite", requireAuth, requireTeamPlan(), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const memberId = req.params.id;
@@ -31161,7 +31161,7 @@ Respond with JSON in this format:
     return code;
   }
 
-  app.post("/api/team/invite-codes", requireAuth, ownerOnly(), async (req: any, res) => {
+  app.post("/api/team/invite-codes", requireAuth, ownerOnly(), requireTeamPlan(), async (req: any, res) => {
     try {
       const userId = req.userContext?.effectiveUserId || req.userId!;
       const { roleType } = req.body;
@@ -31305,6 +31305,20 @@ Respond with JSON in this format:
 
       if (inviteCode.usedCount >= inviteCode.maxUses) {
         return res.status(400).json({ error: 'This invite code has reached its usage limit' });
+      }
+
+      // Verify the inviting business owner currently has an active Team /
+      // Business plan. Without this check a worker could redeem a code from
+      // an owner who has since downgraded or cancelled, then immediately get
+      // locked out by the global subscription gate after joining.
+      const inviteOwner = await storage.getUser(inviteCode.businessOwnerId);
+      const inviteOwnerSettings = await storage.getBusinessSettings(inviteCode.businessOwnerId);
+      if (!ownerHasTeamCapability(inviteOwner, inviteOwnerSettings)) {
+        return res.status(403).json({
+          error: 'team_plan_required',
+          message:
+            "This business doesn't currently have an active Team subscription. Please contact the business owner to renew their plan before joining.",
+        });
       }
 
       const existingMembers = await storage.getTeamMembers(inviteCode.businessOwnerId);
@@ -31468,7 +31482,22 @@ Respond with JSON in this format:
       if (teamMember.inviteStatus !== 'pending') {
         return res.status(400).json({ success: false, error: 'This invitation has already been used' });
       }
-      
+
+      // Verify the inviting business owner currently has an active Team /
+      // Business plan. Without this check the invitee could accept an invite
+      // from an owner who has since downgraded or cancelled, then immediately
+      // get locked out by the global subscription gate after joining.
+      const inviteOwner = await storage.getUser(teamMember.businessOwnerId);
+      const inviteOwnerSettings = await storage.getBusinessSettings(teamMember.businessOwnerId);
+      if (!ownerHasTeamCapability(inviteOwner, inviteOwnerSettings)) {
+        return res.status(403).json({
+          success: false,
+          error: 'team_plan_required',
+          message:
+            "This business doesn't currently have an active Team subscription. Please contact the business owner to renew their plan before joining.",
+        });
+      }
+
       let user: any;
       let isNewUser = false;
       

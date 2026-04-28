@@ -351,6 +351,9 @@ export async function createDemoUserAndData() {
       await storage.updateUser(demoUser.id, {
         phone: DEMO_USER.phone,
         emailVerified: true,
+        // Demo seed provisions team members + invite codes, so the demo
+        // owner must be on a team-capable tier.
+        subscriptionTier: 'team',
       } as any);
       console.log('✅ Demo user created:', demoUser.email);
     } else {
@@ -363,7 +366,12 @@ export async function createDemoUserAndData() {
         firstName,
         lastName,
         emailVerified: true,
-        isActive: true
+        isActive: true,
+        // Demo seed provisions 15 team members + invite codes, so the demo
+        // owner must be on a tier that includes team-member seats. Without
+        // this, the team-plan gate (requireTeamPlan) blocks the demo from
+        // showcasing team features.
+        subscriptionTier: 'team',
       } as any);
       console.log('ℹ️ Demo user already exists:', demoUser.email);
       console.log('✅ Demo user password reset to default');

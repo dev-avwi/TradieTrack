@@ -287,6 +287,100 @@ export function createPermissionMiddleware(requiredPermission: Permission | Perm
   };
 }
 
+// Predicate: does this owner currently have a plan that includes team-member
+// seats? Mirrors the logic used in getUserContext to decide
+// `ownerSubscriptionValid` for staff. Returns true when the owner can use
+// team features (Team / Business / Beta plans, active trial, or beta unlock).
+//
+// Inputs are the raw owner User record and their BusinessSettings row so the
+// caller can avoid extra DB lookups when they already have these in scope.
+export function ownerHasTeamCapability(
+  owner: any,
+  businessSettings: any,
+): boolean {
+  if (!owner) return false;
+
+  const tier = owner.subscriptionTier as string | undefined;
+  const trialStatus = owner.trialStatus as string | undefined;
+  const trialEndsAt = owner.trialEndsAt as Date | string | null | undefined;
+  const subscriptionStatus = businessSettings?.subscriptionStatus as
+    | string
+    | undefined;
+
+  const isTrialActive =
+    trialStatus === 'active' &&
+    !!trialEndsAt &&
+    new Date(trialEndsAt) > new Date();
+
+  // Tiers that include team-member seats. Pro is single-user — a Pro owner
+  // cannot generate invite codes or invite team members.
+  const teamCapableTiers = new Set(['team', 'business', 'beta']);
+  const hasTeamPlan = !!tier && teamCapableTiers.has(tier);
+  const hasBetaUnlock = !!(owner.isBeta || owner.betaLifetimeAccess);
+
+  // Mirror the exact ordering used in getUserContext (lines 190-200) so
+  // a worker who would be marked `ownerSubscriptionValid=false` after
+  // joining is also rejected at invite/redeem/accept time.
+  // Beta unlock only saves the "downgraded to non-team tier" case — it
+  // does NOT save canceled subscriptions or no-tier-at-all accounts.
+  if (subscriptionStatus === 'canceled' && !isTrialActive) return false;
+  if (!isTrialActive && (tier === 'free' || !tier)) return false;
+  if (!isTrialActive && !hasTeamPlan && !hasBetaUnlock) return false;
+
+  return true;
+}
+
+// Middleware: gate routes behind the owner's "team plan" entitlement.
+// Use this on team-invite endpoints (generating invite codes, inviting
+// members, resending invites) so a Free or Pro owner cannot generate codes
+// that would later be rejected at redemption time.
+export function requireTeamPlan() {
+  return async (req: any, res: any, next: any) => {
+    try {
+      if (!req.userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const userContext = req.userContext || (await getUserContext(req.userId));
+      req.userContext = userContext;
+      req.effectiveUserId = userContext.effectiveUserId;
+
+      // Resolve the owner record (the requester themselves if they're the
+      // owner, otherwise the business owner the team member belongs to).
+      const ownerId = userContext.isOwner
+        ? userContext.userId
+        : userContext.businessOwnerId;
+
+      if (!ownerId) {
+        return res.status(403).json({
+          error: 'team_plan_required',
+          message:
+            'This action requires an active Team or Business plan subscription.',
+        });
+      }
+
+      const [owner, businessSettings] = await Promise.all([
+        storage.getUser(ownerId),
+        storage.getBusinessSettings(ownerId),
+      ]);
+
+      if (!ownerHasTeamCapability(owner, businessSettings)) {
+        return res.status(403).json({
+          error: 'team_plan_required',
+          message:
+            'Inviting team members requires a Team or Business plan. Upgrade your subscription to add team members.',
+          upgradeUrl: '/pricing',
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Team plan check error:', error);
+      return res.status(500).json({ error: 'Permission check failed' });
+    }
+  };
+}
+
 export function ownerOnly() {
   return async (req: any, res: any, next: any) => {
     try {

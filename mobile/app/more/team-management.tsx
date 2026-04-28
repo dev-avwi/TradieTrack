@@ -1541,7 +1541,7 @@ export default function TeamManagementScreen() {
   const currentTier = rawAuthTier || subscriptionStatus?.tier || 'free';
   // Trust the server tier (or beta override) only — don't infer plan from member count,
   // otherwise downgraded users see team UI but get 403s when they try to use it.
-  const hasTeamPlan = currentTier === 'team' || BETA_MODE;
+  const hasTeamPlan = currentTier === 'team' || currentTier === 'business' || currentTier === 'beta' || BETA_MODE;
   // Surfaces a banner for users who have members but no longer have a team plan.
   const hasOrphanedTeam = !hasTeamPlan && teamMembers.length > 0;
   const teamPrice = TEAM_BASE_PRICE + (seatCount * TEAM_SEAT_PRICE);
