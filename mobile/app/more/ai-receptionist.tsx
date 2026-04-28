@@ -1076,146 +1076,6 @@ export default function AIReceptionistScreen() {
           </TouchableOpacity>
         ))}
 
-        <Text style={styles.sectionTitle}>Voice</Text>
-        {VOICE_OPTIONS.map(v => (
-          <TouchableOpacity
-            key={v.id}
-            style={[styles.voiceOption, { borderColor: voice === v.id ? colors.primary : colors.cardBorder, backgroundColor: voice === v.id ? colors.primary + '08' : colors.card }]}
-            onPress={() => setVoice(v.id)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.modeIconContainer, { backgroundColor: voice === v.id ? colors.primary + '20' : colors.muted }]}>
-              <Feather name="mic" size={18} color={voice === v.id ? colors.primary : colors.mutedForeground} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.voiceName}>{v.name}</Text>
-              <Text style={styles.voiceAccent}>{v.accent}</Text>
-            </View>
-            {voice === v.id && <Feather name="check" size={20} color={colors.primary} />}
-          </TouchableOpacity>
-        ))}
-
-        <Text style={styles.sectionTitle}>Voice Tuning</Text>
-        <View style={styles.card}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
-            <Feather name="sliders" size={18} color={colors.primary} />
-            <Text style={styles.cardTitle}>Fine-tune Voice</Text>
-          </View>
-
-          <View style={{ marginBottom: spacing.md }}>
-            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.sm }}>Stability ({voiceStability.toFixed(2)})</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <TouchableOpacity
-                onPress={() => setVoiceStability(v => Math.max(0, parseFloat((v - 0.05).toFixed(2))))}
-                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
-                activeOpacity={0.7}
-              >
-                <Feather name="minus" size={16} color={colors.foreground} />
-              </TouchableOpacity>
-              <View style={{ flex: 1, height: 4, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
-                <View style={{ width: `${voiceStability * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
-              </View>
-              <TouchableOpacity
-                onPress={() => setVoiceStability(v => Math.min(1, parseFloat((v + 0.05).toFixed(2))))}
-                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
-                activeOpacity={0.7}
-              >
-                <Feather name="plus" size={16} color={colors.foreground} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={{ marginBottom: spacing.md }}>
-            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.sm }}>Clarity ({voiceClarity.toFixed(2)})</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <TouchableOpacity
-                onPress={() => setVoiceClarity(v => Math.max(0, parseFloat((v - 0.05).toFixed(2))))}
-                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
-                activeOpacity={0.7}
-              >
-                <Feather name="minus" size={16} color={colors.foreground} />
-              </TouchableOpacity>
-              <View style={{ flex: 1, height: 4, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
-                <View style={{ width: `${voiceClarity * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
-              </View>
-              <TouchableOpacity
-                onPress={() => setVoiceClarity(v => Math.min(1, parseFloat((v + 0.05).toFixed(2))))}
-                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
-                activeOpacity={0.7}
-              >
-                <Feather name="plus" size={16} color={colors.foreground} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View>
-            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.sm }}>Speed ({voiceSpeed.toFixed(2)}x)</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <TouchableOpacity
-                onPress={() => setVoiceSpeed(v => Math.max(0.25, parseFloat((v - 0.25).toFixed(2))))}
-                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
-                activeOpacity={0.7}
-              >
-                <Feather name="minus" size={16} color={colors.foreground} />
-              </TouchableOpacity>
-              <View style={{ flex: 1, height: 4, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
-                <View style={{ width: `${((voiceSpeed - 0.25) / 3.75) * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
-              </View>
-              <TouchableOpacity
-                onPress={() => setVoiceSpeed(v => Math.min(4, parseFloat((v + 0.25).toFixed(2))))}
-                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
-                activeOpacity={0.7}
-              >
-                <Feather name="plus" size={16} color={colors.foreground} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>Call Settings</Text>
-        <View style={styles.card}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
-            <Feather name="settings" size={18} color={colors.primary} />
-            <Text style={styles.cardTitle}>Call Behaviour</Text>
-          </View>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ ...typography.body, fontWeight: '600', color: colors.foreground }}>Voicemail Detection</Text>
-              <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>Detect and handle voicemail systems</Text>
-            </View>
-            <Switch
-              value={voicemailDetectionEnabled}
-              onValueChange={setVoicemailDetectionEnabled}
-              trackColor={{ false: colors.border, true: colors.success }}
-              thumbColor={'#FFFFFF'}
-              ios_backgroundColor={colors.border}
-            />
-          </View>
-
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Silence Timeout (sec)</Text>
-              <TextInput
-                style={styles.input}
-                value={String(silenceTimeoutSeconds)}
-                onChangeText={(v) => { const n = parseInt(v, 10); if (!isNaN(n) && n > 0) setSilenceTimeoutSeconds(n); else if (v === '') setSilenceTimeoutSeconds(0); }}
-                keyboardType="number-pad"
-                placeholderTextColor={colors.mutedForeground}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Max Duration (sec)</Text>
-              <TextInput
-                style={styles.input}
-                value={String(maxCallDurationSeconds)}
-                onChangeText={(v) => { const n = parseInt(v, 10); if (!isNaN(n) && n > 0) setMaxCallDurationSeconds(n); else if (v === '') setMaxCallDurationSeconds(0); }}
-                keyboardType="number-pad"
-                placeholderTextColor={colors.mutedForeground}
-              />
-            </View>
-          </View>
-        </View>
 
         <Text style={styles.sectionTitle}>Performance</Text>
         <View style={styles.card}>
@@ -1416,6 +1276,147 @@ export default function AIReceptionistScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        <Text style={styles.sectionTitle}>Voice</Text>
+        {VOICE_OPTIONS.map(v => (
+          <TouchableOpacity
+            key={v.id}
+            style={[styles.voiceOption, { borderColor: voice === v.id ? colors.primary : colors.cardBorder, backgroundColor: voice === v.id ? colors.primary + '08' : colors.card }]}
+            onPress={() => setVoice(v.id)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.modeIconContainer, { backgroundColor: voice === v.id ? colors.primary + '20' : colors.muted }]}>
+              <Feather name="mic" size={18} color={voice === v.id ? colors.primary : colors.mutedForeground} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.voiceName}>{v.name}</Text>
+              <Text style={styles.voiceAccent}>{v.accent}</Text>
+            </View>
+            {voice === v.id && <Feather name="check" size={20} color={colors.primary} />}
+          </TouchableOpacity>
+        ))}
+
+        <Text style={styles.sectionTitle}>Voice Tuning</Text>
+        <View style={styles.card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+            <Feather name="sliders" size={18} color={colors.primary} />
+            <Text style={styles.cardTitle}>Fine-tune Voice</Text>
+          </View>
+
+          <View style={{ marginBottom: spacing.md }}>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.sm }}>Stability ({voiceStability.toFixed(2)})</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <TouchableOpacity
+                onPress={() => setVoiceStability(v => Math.max(0, parseFloat((v - 0.05).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="minus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, height: 4, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
+                <View style={{ width: `${voiceStability * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
+              </View>
+              <TouchableOpacity
+                onPress={() => setVoiceStability(v => Math.min(1, parseFloat((v + 0.05).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="plus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={{ marginBottom: spacing.md }}>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.sm }}>Clarity ({voiceClarity.toFixed(2)})</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <TouchableOpacity
+                onPress={() => setVoiceClarity(v => Math.max(0, parseFloat((v - 0.05).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="minus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, height: 4, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
+                <View style={{ width: `${voiceClarity * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
+              </View>
+              <TouchableOpacity
+                onPress={() => setVoiceClarity(v => Math.min(1, parseFloat((v + 0.05).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="plus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View>
+            <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.sm }}>Speed ({voiceSpeed.toFixed(2)}x)</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <TouchableOpacity
+                onPress={() => setVoiceSpeed(v => Math.max(0.25, parseFloat((v - 0.25).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="minus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, height: 4, backgroundColor: colors.cardBorder, borderRadius: 2, overflow: 'hidden' }}>
+                <View style={{ width: `${((voiceSpeed - 0.25) / 3.75) * 100}%`, height: '100%', backgroundColor: colors.primary, borderRadius: 2 }} />
+              </View>
+              <TouchableOpacity
+                onPress={() => setVoiceSpeed(v => Math.min(4, parseFloat((v + 0.25).toFixed(2))))}
+                style={{ width: 36, height: 36, borderRadius: radius.lg, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Feather name="plus" size={16} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>Call Settings</Text>
+        <View style={styles.card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+            <Feather name="settings" size={18} color={colors.primary} />
+            <Text style={styles.cardTitle}>Call Behaviour</Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ ...typography.body, fontWeight: '600', color: colors.foreground }}>Voicemail Detection</Text>
+              <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>Detect and handle voicemail systems</Text>
+            </View>
+            <Switch
+              value={voicemailDetectionEnabled}
+              onValueChange={setVoicemailDetectionEnabled}
+              trackColor={{ false: colors.border, true: colors.success }}
+              thumbColor={'#FFFFFF'}
+              ios_backgroundColor={colors.border}
+            />
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Silence Timeout (sec)</Text>
+              <TextInput
+                style={styles.input}
+                value={String(silenceTimeoutSeconds)}
+                onChangeText={(v) => { const n = parseInt(v, 10); if (!isNaN(n) && n > 0) setSilenceTimeoutSeconds(n); else if (v === '') setSilenceTimeoutSeconds(0); }}
+                keyboardType="number-pad"
+                placeholderTextColor={colors.mutedForeground}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Max Duration (sec)</Text>
+              <TextInput
+                style={styles.input}
+                value={String(maxCallDurationSeconds)}
+                onChangeText={(v) => { const n = parseInt(v, 10); if (!isNaN(n) && n > 0) setMaxCallDurationSeconds(n); else if (v === '') setMaxCallDurationSeconds(0); }}
+                keyboardType="number-pad"
+                placeholderTextColor={colors.mutedForeground}
+              />
+            </View>
+          </View>
+        </View>
 
         {(mode === 'always_on_transfer' || mode === 'selective') && (
           <>

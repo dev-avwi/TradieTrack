@@ -38284,8 +38284,51 @@ Respond with JSON in this format:
   app.get("/api/sms/conversations/:id/messages", requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
+
+      // Authorization: ensure the conversation belongs to the caller's business
+      // before returning any message data. Prevents IDOR — a worker or other
+      // tenant guessing/exfiltrating UUIDs to read another business's threads.
+      const conversation = await storage.getSmsConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext?.effectiveUserId || req.userId;
+      if ((conversation as any).businessOwnerId !== effectiveUserId) {
+        return res.status(403).json({ error: 'Not authorized to access this conversation' });
+      }
+
       const messages = await storage.getSmsMessages(id);
-      res.json(messages);
+
+      // Enrich outbound messages with sender display name so the mobile UI
+      // can color-code which team member sent each message.
+      const senderIds = Array.from(
+        new Set(
+          messages
+            .filter((m: any) => m.direction === 'outbound' && m.senderUserId)
+            .map((m: any) => m.senderUserId as string)
+        )
+      );
+      const senderMap: Record<string, string> = {};
+      if (senderIds.length > 0) {
+        await Promise.all(
+          senderIds.map(async (uid) => {
+            try {
+              const u: any = await storage.getUser(uid);
+              if (u) {
+                senderMap[uid] =
+                  u.firstName || u.name || u.username || u.email || 'Team';
+              }
+            } catch {}
+          })
+        );
+      }
+      const enriched = messages.map((m: any) =>
+        m.senderUserId
+          ? { ...m, senderName: senderMap[m.senderUserId] || null }
+          : m
+      );
+      res.json(enriched);
     } catch (error: any) {
       console.error('Error fetching SMS messages:', error);
       res.status(500).json({ error: error.message });

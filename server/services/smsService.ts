@@ -198,6 +198,27 @@ export async function sendSmsToClient(options: SendSmsOptions): Promise<SmsMessa
         }
       }
     }
+
+    // Sender attribution: when a team member (non-owner) sends from the shared
+    // business number, optionally prepend "From [Name]: " so the client knows
+    // which person on the team they're chatting with. Owner-sent messages stay
+    // as-is. Controlled by businessSettings.smsSenderAttribution.
+    const attributionMode = (settings as any)?.smsSenderAttribution || 'off';
+    if (
+      attributionMode === 'name_prefix' &&
+      options.senderUserId &&
+      options.senderUserId !== options.businessOwnerId
+    ) {
+      const sender = await storage.getUser(options.senderUserId);
+      const displayName =
+        (sender as any)?.firstName ||
+        (sender as any)?.name ||
+        (sender as any)?.username ||
+        null;
+      if (displayName && !brandedMessage.toLowerCase().startsWith(`from ${String(displayName).toLowerCase()}:`)) {
+        brandedMessage = `From ${displayName}: ${brandedMessage}`;
+      }
+    }
   } catch {
   }
   

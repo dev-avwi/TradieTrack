@@ -94,6 +94,38 @@ export default function PhoneNumbersPage() {
   const currentNumber = businessSettings?.dedicatedPhoneNumber;
   const archivedNumber = (businessSettings as any)?.archivedPhoneNumber || null;
 
+  // Sender attribution: when multiple workers share one business number,
+  // optionally tag each outbound SMS with "From [WorkerName]: " so the client
+  // can tell who they're chatting with. 'off' (default) keeps the unified
+  // business identity. 'per_worker' (dedicated number per worker) is on
+  // the roadmap but not yet provisioned.
+  const attributionMode = ((businessSettings as any)?.smsSenderAttribution || 'off') as
+    | 'off'
+    | 'name_prefix'
+    | 'per_worker';
+  const [savingAttribution, setSavingAttribution] = useState(false);
+  const updateAttribution = useCallback(
+    async (mode: 'off' | 'name_prefix') => {
+      if (mode === attributionMode) return;
+      setSavingAttribution(true);
+      try {
+        const res = await api.patch('/api/business-settings', {
+          smsSenderAttribution: mode,
+        });
+        if (res.error) {
+          Alert.alert('Could not save', res.error);
+        } else {
+          await fetchBusinessSettings();
+        }
+      } catch (e: any) {
+        Alert.alert('Could not save', e?.message || 'Please try again.');
+      } finally {
+        setSavingAttribution(false);
+      }
+    },
+    [attributionMode, fetchBusinessSettings]
+  );
+
   useEffect(() => {
     if (archivedNumber && !currentNumber) {
       setLastOwnedNumber(archivedNumber);
@@ -404,6 +436,113 @@ export default function PhoneNumbersPage() {
           <Text style={{ fontSize: 12, color: colors.info, flex: 1, lineHeight: 17 }}>
             Beta access — phone number setup is currently free during the beta period. Standard pricing ($10/mo) applies after launch.
           </Text>
+        </View>
+
+        {/* SMS Sender Attribution — for teams sharing one business number */}
+        <View
+          style={{
+            backgroundColor: colors.card,
+            borderRadius: radius.lg,
+            padding: spacing.md,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: colors.border,
+            marginBottom: spacing.lg,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: 4 }}>
+            <Feather name="users" size={14} color={colors.foreground} />
+            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.foreground }}>
+              Team SMS attribution
+            </Text>
+          </View>
+          <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 17, marginBottom: spacing.md }}>
+            When several workers reply from one shared business number, choose how clients see who sent each message.
+          </Text>
+
+          {[
+            {
+              key: 'off' as const,
+              title: 'One business identity',
+              desc: 'Every reply looks like it comes from your business — clean and consistent. (Default)',
+            },
+            {
+              key: 'name_prefix' as const,
+              title: 'Tag with worker name',
+              desc: 'Prepend "From [Name]: " when a team member replies, so clients know who they\'re chatting with.',
+            },
+          ].map((opt) => {
+            const selected = attributionMode === opt.key;
+            return (
+              <TouchableOpacity
+                key={opt.key}
+                onPress={() => updateAttribution(opt.key)}
+                disabled={savingAttribution}
+                activeOpacity={0.7}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  gap: spacing.sm,
+                  padding: spacing.sm,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: selected ? colors.primary : colors.border,
+                  backgroundColor: selected ? `${colors.primary}10` : 'transparent',
+                  marginBottom: spacing.xs,
+                  opacity: savingAttribution ? 0.6 : 1,
+                }}
+              >
+                <View
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    borderWidth: 2,
+                    borderColor: selected ? colors.primary : colors.border,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginTop: 2,
+                  }}
+                >
+                  {selected && (
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary }} />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground, marginBottom: 2 }}>
+                    {opt.title}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 17 }}>
+                    {opt.desc}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Roadmap teaser for Phase B */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: spacing.sm,
+              padding: spacing.sm,
+              borderRadius: radius.md,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: colors.border,
+              backgroundColor: `${colors.muted}40`,
+              marginTop: 2,
+            }}
+          >
+            <Feather name="clock" size={14} color={colors.mutedForeground} style={{ marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground, marginBottom: 2 }}>
+                Per-worker numbers — coming soon
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 17 }}>
+                Give each worker their own dedicated SMS number, with replies routed back to the right person automatically.
+              </Text>
+            </View>
+          </View>
         </View>
 
         {aiConfigs.length > 0 ? (

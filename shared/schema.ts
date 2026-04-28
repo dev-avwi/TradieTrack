@@ -500,6 +500,11 @@ export const businessSettings = pgTable("business_settings", {
   geofenceSmsAlerts: boolean("geofence_sms_alerts").default(false), // Send SMS to owner on worker arrival/departure
   dedicatedPhoneNumber: text("dedicated_phone_number"), // Dedicated Twilio number for AI Receptionist (E.164 format)
   archivedPhoneNumber: text("archived_phone_number"), // Archived dedicated number (kept on Twilio, can be re-acquired)
+  // Sender attribution for outbound SMS sent by team members
+  // 'off'         = no prefix; client sees one shared identity
+  // 'name_prefix' = prepend "From [WorkerName]: " when a team member sends from the shared business number
+  // 'per_worker'  = (future) each worker sends from their own dedicated number
+  smsSenderAttribution: text("sms_sender_attribution").default('off'),
   // Vapi AI Receptionist Configuration
   vapiAssistantId: text("vapi_assistant_id"), // Vapi assistant ID for this business
   vapiPhoneNumberId: text("vapi_phone_number_id"), // Vapi phone number ID

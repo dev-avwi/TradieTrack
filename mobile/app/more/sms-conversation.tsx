@@ -46,6 +46,30 @@ interface SmsMessage {
   fromNumber?: string;
   toNumber?: string;
   mediaUrls?: string[] | null;
+  senderUserId?: string | null;
+  senderName?: string | null;
+}
+
+// Stable palette for color-coding outbound senders (multiple team members)
+const SENDER_PALETTE = [
+  '#2563eb', // blue
+  '#0d9488', // teal
+  '#9333ea', // purple
+  '#ea580c', // orange
+  '#16a34a', // green
+  '#db2777', // pink
+  '#0891b2', // cyan
+  '#ca8a04', // amber
+];
+
+function colorForSender(userId?: string | null): string | null {
+  if (!userId) return null;
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) | 0;
+  }
+  const idx = Math.abs(hash) % SENDER_PALETTE.length;
+  return SENDER_PALETTE[idx];
 }
 
 function buildQuickReplies(clientFirstName: string, senderName: string) {
@@ -493,7 +517,19 @@ export default function SmsConversationScreen() {
               const msgDate = new Date(msg.createdAt).toDateString();
               const prevDate = index > 0 ? new Date(messages[index - 1].createdAt).toDateString() : null;
               const showDateSep = index === 0 || msgDate !== prevDate;
-              
+
+              // Color-code outbound messages by sender so multi-sender
+              // conversations stay readable. Falls back to the default primary
+              // bubble color when there's no senderUserId on the record.
+              const senderTint = isOutbound ? colorForSender(msg.senderUserId) : null;
+              const prevMsg = index > 0 ? messages[index - 1] : null;
+              const showSenderLabel =
+                isOutbound &&
+                !!msg.senderName &&
+                (!prevMsg ||
+                  prevMsg.direction !== 'outbound' ||
+                  prevMsg.senderUserId !== msg.senderUserId);
+
               return (
                 <View key={msg.id}>
                   {showDateSep && (
@@ -503,8 +539,28 @@ export default function SmsConversationScreen() {
                       </Text>
                     </View>
                   )}
+                  {showSenderLabel && (
+                    <Text
+                      style={{
+                        alignSelf: 'flex-end',
+                        fontSize: 11,
+                        fontWeight: '600',
+                        color: senderTint || colors.mutedForeground,
+                        marginRight: spacing.sm,
+                        marginBottom: 2,
+                      }}
+                    >
+                      {msg.senderName}
+                    </Text>
+                  )}
                   <View style={[styles.messageRow, isOutbound ? styles.messageRowOutbound : styles.messageRowInbound]}>
-                    <View style={[styles.bubble, isOutbound ? styles.bubbleOutbound : styles.bubbleInbound]}>
+                    <View
+                      style={[
+                        styles.bubble,
+                        isOutbound ? styles.bubbleOutbound : styles.bubbleInbound,
+                        senderTint ? { backgroundColor: senderTint } : null,
+                      ]}
+                    >
                       {msg.mediaUrls && Array.isArray(msg.mediaUrls) && msg.mediaUrls.length > 0 && (
                         <View style={{ marginBottom: msg.body ? 6 : 0 }}>
                           {msg.mediaUrls.map((url: string, i: number) => (
