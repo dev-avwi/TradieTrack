@@ -10,7 +10,9 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
-  Alert
+  Alert,
+  Image,
+  Linking,
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -18,6 +20,7 @@ import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { TeamAvatar } from '../../src/components/TeamAvatar';
+import { promptForAttachment, uploadChatAttachment, resolveAttachmentUrl } from '../../src/lib/chat-attachments';
 
 interface TeamChatMessage {
   id: string;
@@ -360,6 +363,22 @@ export default function TeamChatScreen() {
     fetchMessages(false);
   };
 
+  const handleAttachment = async () => {
+    if (isSending) return;
+    const asset = await promptForAttachment();
+    if (!asset) return;
+    setIsSending(true);
+    try {
+      await uploadChatAttachment('/api/team-chat/upload', asset, {});
+      await fetchMessages(false);
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch (e: any) {
+      Alert.alert('Upload failed', e?.message || 'Could not send the attachment. Please try again.');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!messageText.trim() || isSending) return;
 
@@ -587,13 +606,65 @@ export default function TeamChatScreen() {
                           <Text style={styles.pinnedBadgeText}>Pinned</Text>
                         </View>
                       )}
-                      
-                      <Text style={[
-                        styles.messageText,
-                        isCurrentUser && styles.messageTextUser
-                      ]}>
-                        {msg.message}
-                      </Text>
+
+                      {msg.attachmentUrl && msg.messageType === 'image' && (
+                        <TouchableOpacity
+                          activeOpacity={0.85}
+                          onPress={() => {
+                            const u = resolveAttachmentUrl(msg.attachmentUrl);
+                            if (u) Linking.openURL(u);
+                          }}
+                          style={{ marginBottom: msg.message ? 6 : 0 }}
+                        >
+                          <Image
+                            source={{ uri: resolveAttachmentUrl(msg.attachmentUrl) || '' }}
+                            style={{ width: 220, height: 220, borderRadius: 8, backgroundColor: colors.cardBorder }}
+                            resizeMode="cover"
+                          />
+                        </TouchableOpacity>
+                      )}
+
+                      {msg.attachmentUrl && msg.messageType !== 'image' && (
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            const u = resolveAttachmentUrl(msg.attachmentUrl);
+                            if (u) Linking.openURL(u);
+                          }}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 8,
+                            paddingVertical: 8,
+                            paddingHorizontal: 10,
+                            borderRadius: 8,
+                            backgroundColor: isCurrentUser ? 'rgba(255,255,255,0.15)' : colors.cardBorder,
+                            marginBottom: msg.message ? 6 : 0,
+                          }}
+                        >
+                          <Feather name="file" size={16} color={isCurrentUser ? colors.primaryForeground : colors.foreground} />
+                          <Text
+                            numberOfLines={1}
+                            style={{
+                              flex: 1,
+                              fontSize: 13,
+                              fontWeight: '600',
+                              color: isCurrentUser ? colors.primaryForeground : colors.foreground,
+                            }}
+                          >
+                            {msg.attachmentName || 'Attachment'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {!!msg.message && msg.message !== msg.attachmentName && (
+                        <Text style={[
+                          styles.messageText,
+                          isCurrentUser && styles.messageTextUser
+                        ]}>
+                          {msg.message}
+                        </Text>
+                      )}
                       
                       <Text style={[
                         styles.messageTime,
@@ -661,6 +732,21 @@ export default function TeamChatScreen() {
         </ScrollView>
 
         <View style={styles.inputContainer}>
+          <TouchableOpacity
+            onPress={handleAttachment}
+            disabled={isSending}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: isSending ? 0.5 : 1,
+            }}
+            accessibilityLabel="Attach photo"
+          >
+            <Feather name="paperclip" size={20} color={colors.mutedForeground} />
+          </TouchableOpacity>
           <TextInput
             value={messageText}
             onChangeText={setMessageText}

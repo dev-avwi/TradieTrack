@@ -9,7 +9,10 @@ import {
   Platform,
   StyleSheet,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  Alert,
+  Image,
+  Linking,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -17,6 +20,7 @@ import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { TeamAvatar } from '../../src/components/TeamAvatar';
+import { promptForAttachment, uploadChatAttachment, resolveAttachmentUrl } from '../../src/lib/chat-attachments';
 
 interface User {
   id: string;
@@ -31,6 +35,8 @@ interface DirectMessage {
   senderId: string;
   recipientId: string;
   content: string;
+  attachmentUrl?: string | null;
+  attachmentType?: string | null;
   isRead?: boolean;
   createdAt: string;
 }
@@ -640,6 +646,22 @@ function ChatView({
     }, 100);
   }, [messages]);
 
+  const handleAttachment = async () => {
+    if (isSending) return;
+    const asset = await promptForAttachment();
+    if (!asset) return;
+    setIsSending(true);
+    try {
+      await uploadChatAttachment(`/api/direct-messages/${selectedUser.id}/upload`, asset, {});
+      await fetchMessages();
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch (e: any) {
+      Alert.alert('Upload failed', e?.message || 'Could not send the attachment. Please try again.');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const handleSend = async () => {
     if (!newMessage.trim() || isSending) return;
     
@@ -752,12 +774,62 @@ function ChatView({
                   styles.messageBubble,
                   isOwn ? styles.messageBubbleOwn : styles.messageBubbleOther
                 ]}>
-                  <Text style={[
-                    styles.messageText,
-                    isOwn && styles.messageTextOwn
-                  ]}>
-                    {message.content}
-                  </Text>
+                  {message.attachmentUrl && message.attachmentType === 'image' && (
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        const u = resolveAttachmentUrl(message.attachmentUrl);
+                        if (u) Linking.openURL(u);
+                      }}
+                      style={{ marginBottom: message.content && message.content !== (message as any).attachmentName ? 6 : 0 }}
+                    >
+                      <Image
+                        source={{ uri: resolveAttachmentUrl(message.attachmentUrl) || '' }}
+                        style={{ width: 220, height: 220, borderRadius: 8, backgroundColor: colors.cardBorder }}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  )}
+                  {message.attachmentUrl && message.attachmentType !== 'image' && (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        const u = resolveAttachmentUrl(message.attachmentUrl);
+                        if (u) Linking.openURL(u);
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 8,
+                        paddingVertical: 8,
+                        paddingHorizontal: 10,
+                        borderRadius: 8,
+                        backgroundColor: isOwn ? 'rgba(255,255,255,0.15)' : colors.cardBorder,
+                        marginBottom: 6,
+                      }}
+                    >
+                      <Feather name="file" size={16} color={isOwn ? colors.primaryForeground : colors.foreground} />
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          flex: 1,
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: isOwn ? colors.primaryForeground : colors.foreground,
+                        }}
+                      >
+                        {message.content || 'Attachment'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {!!message.content && !(message.attachmentUrl && message.attachmentType !== 'image') && (
+                    <Text style={[
+                      styles.messageText,
+                      isOwn && styles.messageTextOwn
+                    ]}>
+                      {message.content}
+                    </Text>
+                  )}
                   <Text style={[
                     styles.messageTime,
                     isOwn && styles.messageTimeOwn
@@ -798,6 +870,21 @@ function ChatView({
       </ScrollView>
 
       <View style={styles.inputContainer}>
+        <TouchableOpacity
+          onPress={handleAttachment}
+          disabled={isSending}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: isSending ? 0.5 : 1,
+          }}
+          accessibilityLabel="Attach photo"
+        >
+          <Feather name="paperclip" size={20} color={colors.mutedForeground} />
+        </TouchableOpacity>
         <TextInput
           value={newMessage}
           onChangeText={setNewMessage}

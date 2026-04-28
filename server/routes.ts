@@ -28122,11 +28122,107 @@ Respond with JSON in this format:
     }
   });
 
-  // Object Storage Routes for logo uploads
+  // Resolve the requesting user from session cookie or bearer token. Returns
+  // null if unauthenticated (does not 401) — used for routes that have mixed
+  // public/private content keyed by path prefix.
+  const resolveOptionalUser = async (req: any): Promise<string | null> => {
+    let userId: string | undefined = req.session?.userId;
+    if (!userId) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const sessionToken = authHeader.substring(7);
+        try {
+          const result = await db.execute(
+            sql`SELECT sess FROM session WHERE sid = ${sessionToken} AND expire > NOW()`
+          );
+          if (result.rows && result.rows.length > 0) {
+            const sessionData = result.rows[0].sess as any;
+            userId = sessionData?.userId;
+          }
+        } catch {}
+      }
+    }
+    return userId || null;
+  };
+
+  // Object Storage Routes for logo uploads + chat attachments. Logos / generic
+  // uploads remain accessible (existing behavior) but chat-attachment paths
+  // require auth + ownership checks to prevent any-URL leakage of private files.
   app.get("/objects/:objectPath(*)", async (req, res) => {
     const objectStorageService = new ObjectStorageService();
     try {
-      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      // entityId is the part after `/objects/`. Upload routes generate paths like
+      // `/objects//.private/dm-attachments/...` (uploadFile() prefixes "/objects/"
+      // on filenames that themselves start with "/"). Canonicalize: decode once,
+      // strip leading slashes, and collapse duplicate slashes so the ACL prefix
+      // check cannot be bypassed via /objects//.private/... or %2F variants.
+      let entityId = req.path.replace(/^\/objects\//, '');
+      try { entityId = decodeURIComponent(entityId); } catch {}
+      entityId = entityId.replace(/^\/+/, '').replace(/\/{2,}/g, '/');
+
+      const isDmAttachment = entityId.startsWith('.private/dm-attachments/');
+      const isTeamChatAttachment = entityId.startsWith('.private/team-chat-attachments/');
+      const isJobChatAttachment = entityId.startsWith('.private/chat-attachments/');
+
+      if (isDmAttachment || isTeamChatAttachment || isJobChatAttachment) {
+        const userId = await resolveOptionalUser(req);
+        if (!userId) {
+          return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        // Path layout per upload routes:
+        //   .private/dm-attachments/{senderId}/{recipientId}/{ts}_{name}
+        //   .private/team-chat-attachments/{businessOwnerId}/{senderId}/{ts}_{name}
+        //   .private/chat-attachments/{userId}/{jobId}/{ts}_{name}
+        const segments = entityId.split('/');
+        // segments: [".private", "<kind>-attachments", "<owner>", "<ctx>", ...rest]
+
+        const requester = await storage.getUser(userId);
+        if (!requester) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+        const requesterBusiness = requester.businessOwnerId || userId;
+
+        let allowed = false;
+
+        if (isDmAttachment) {
+          const senderId = segments[2];
+          const recipientId = segments[3];
+          if (userId === senderId || userId === recipientId) {
+            allowed = true;
+          } else {
+            // Same business owner can also view (admin/owner viewing team DMs).
+            const [sender, recipient] = await Promise.all([
+              storage.getUser(senderId),
+              storage.getUser(recipientId),
+            ]);
+            const senderBusiness = sender?.businessOwnerId || senderId;
+            const recipientBusiness = recipient?.businessOwnerId || recipientId;
+            allowed = requesterBusiness === senderBusiness && requesterBusiness === recipientBusiness;
+          }
+        } else if (isTeamChatAttachment) {
+          const businessOwnerId = segments[2];
+          allowed = requesterBusiness === businessOwnerId || userId === businessOwnerId;
+        } else if (isJobChatAttachment) {
+          const ownerInPath = segments[2];
+          if (userId === ownerInPath) {
+            allowed = true;
+          } else {
+            const owner = await storage.getUser(ownerInPath);
+            const ownerBusiness = owner?.businessOwnerId || ownerInPath;
+            allowed = requesterBusiness === ownerBusiness;
+          }
+        }
+
+        if (!allowed) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+      }
+
+      // Fetch the same canonical path we authorized (defense against confused-deputy
+      // where ACL evaluates one representation but storage resolves another).
+      const canonicalObjectPath = `/objects/${entityId}`;
+      const objectFile = await objectStorageService.getObjectEntityFile(canonicalObjectPath);
       objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
       console.error("Error accessing object:", error);
@@ -37432,6 +37528,78 @@ Respond with JSON in this format:
     }
   });
 
+  // Upload attachment for a Direct Message (photo / file). Sends the file to object
+  // storage, then creates the DM row pointing at it. Mirrors job-chat upload pattern.
+  const dmUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
+  });
+  app.post("/api/direct-messages/:recipientId/upload", requireAuth, dmUpload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const { recipientId } = req.params;
+      const file = req.file;
+      const { content } = req.body;
+
+      if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+      const sender = await storage.getUser(userId);
+      const recipient = await storage.getUser(recipientId);
+      if (!sender || !recipient) return res.status(404).json({ error: 'User not found' });
+
+      const businessOwnerId = sender.businessOwnerId || userId;
+      const recipientBusiness = recipient.businessOwnerId || recipientId;
+      if (businessOwnerId !== recipientBusiness) {
+        return res.status(403).json({ error: 'Cannot send messages outside your business' });
+      }
+
+      const attachmentType = file.mimetype.startsWith('image/') ? 'image'
+        : file.mimetype.startsWith('video/') ? 'video' : 'file';
+
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const timestamp = Date.now();
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `/.private/dm-attachments/${userId}/${recipientId}/${timestamp}_${safeName}`;
+      const attachmentUrl = await objectStorageService.uploadFile(fileName, file.buffer, file.mimetype);
+      if (!attachmentUrl) return res.status(500).json({ error: 'Failed to upload attachment' });
+
+      const message = await storage.createDirectMessage({
+        senderId: userId,
+        recipientId,
+        content: content?.trim() || file.originalname,
+        attachmentUrl,
+        attachmentType,
+      } as any);
+
+      const { broadcastDirectChatMessage } = await import('./websocket');
+      broadcastDirectChatMessage([userId, recipientId], {
+        chatType: 'direct',
+        messageId: message.id,
+        senderId: userId,
+        senderName: sender?.name || sender?.firstName || 'User',
+        recipientId,
+        preview: content?.trim() || 'Sent an attachment',
+      });
+
+      const dmSenderName = `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || sender.email || 'User';
+      try {
+        await notifyChatMessage(storage, recipientId, dmSenderName, content?.trim() || 'Sent an attachment', message.id);
+      } catch (e) {
+        console.error('[Notification] Error creating DM notification:', e);
+      }
+
+      res.json({
+        ...message,
+        senderName: dmSenderName,
+        senderAvatar: sender.profileImageUrl,
+      });
+    } catch (error: any) {
+      console.error('Error uploading DM attachment:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get unread DM count
   app.get("/api/direct-messages/unread/count", requireAuth, async (req: any, res) => {
     try {
@@ -37578,7 +37746,83 @@ Respond with JSON in this format:
       res.status(500).json({ error: error.message });
     }
   });
-  
+
+  // Upload attachment for Team Chat (photo / file). Mirrors job-chat upload.
+  const teamChatUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
+  });
+  app.post("/api/team-chat/upload", requireAuth, teamChatUpload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const file = req.file;
+      const { message: msgText } = req.body;
+
+      if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+      const context = await getTeamChatContext(userId);
+      if (!context.hasAccess || !context.businessOwnerId) {
+        return res.status(403).json({ error: 'No team chat access' });
+      }
+
+      const messageType = file.mimetype.startsWith('image/') ? 'image'
+        : file.mimetype.startsWith('video/') ? 'video' : 'file';
+
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const timestamp = Date.now();
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `/.private/team-chat-attachments/${context.businessOwnerId}/${userId}/${timestamp}_${safeName}`;
+      const attachmentUrl = await objectStorageService.uploadFile(fileName, file.buffer, file.mimetype);
+      if (!attachmentUrl) return res.status(500).json({ error: 'Failed to upload attachment' });
+
+      const validatedData = insertTeamChatSchema.parse({
+        businessOwnerId: context.businessOwnerId,
+        senderId: userId,
+        message: msgText?.trim() || file.originalname,
+        messageType,
+        attachmentUrl,
+        attachmentName: file.originalname,
+      });
+      const message = await storage.createTeamChatMessage(validatedData);
+
+      const user = await storage.getUser(userId);
+      const senderName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown';
+
+      const { broadcastChatMessage } = await import('./websocket');
+      broadcastChatMessage(context.businessOwnerId, {
+        chatType: 'team',
+        messageId: message.id,
+        senderId: userId,
+        senderName,
+        preview: msgText?.trim() || 'Sent an attachment',
+      });
+
+      // Notify owner + all active team members except sender (mirrors text-message handler).
+      try {
+        const messagePreview = msgText?.trim() || 'Sent an attachment';
+        const teamMembers = await storage.getTeamMembers(context.businessOwnerId);
+        if (context.businessOwnerId !== userId) {
+          await notifyTeamMessage(context.businessOwnerId, senderName, messagePreview, 'team');
+          await notifyChatMessage(storage, context.businessOwnerId, senderName, messagePreview, message.id);
+        }
+        for (const member of teamMembers) {
+          if (member.memberId !== userId && member.inviteStatus === 'accepted' && member.isActive) {
+            await notifyTeamMessage(member.memberId, senderName, messagePreview, 'team');
+            await notifyChatMessage(storage, member.memberId, senderName, messagePreview, message.id);
+          }
+        }
+      } catch (pushError) {
+        console.error('[PushNotification] Error sending team chat attachment notification:', pushError);
+      }
+
+      res.json({ ...message, senderName, senderAvatar: user?.profileImageUrl });
+    } catch (error: any) {
+      console.error('Error uploading team chat attachment:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get unread count for team chat
   app.get("/api/team-chat/unread", requireAuth, async (req: any, res) => {
     try {
