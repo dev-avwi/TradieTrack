@@ -118,18 +118,25 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   },
 
   markAllAsRead: async () => {
+    // Optimistic: clear badge & mark all read in UI FIRST, then fire the request.
+    // This makes the "Mark all read" tap feel instant. We only roll back on failure
+    // IF nobody else has touched the store in the meantime — checked via reference
+    // identity on the notifications array (any state mutation creates a new array).
+    const previous = get().notifications;
+    const previousUnread = get().unreadCount;
+    const optimistic = previous.map(n => ({ ...n, read: true }));
+    set({ notifications: optimistic, unreadCount: 0 });
+    get().updateBadgeCount();
     try {
-      // Use batch endpoint to mark all as read in one request
       await api.patch('/api/notifications/read-all');
-      const notifications = get().notifications.map(n => ({ ...n, read: true }));
-      set({ notifications, unreadCount: 0 });
-      get().updateBadgeCount();
     } catch (error: any) {
       if (__DEV__) console.error('Failed to mark all notifications as read:', error);
-      // Optimistically update UI anyway
-      const notifications = get().notifications.map(n => ({ ...n, read: true }));
-      set({ notifications, unreadCount: 0 });
-      get().updateBadgeCount();
+      // Concurrency-safe rollback: only restore previous state if our optimistic
+      // array is still the current one. If a newer fetch landed, leave it alone.
+      if (get().notifications === optimistic) {
+        set({ notifications: previous, unreadCount: previousUnread });
+        get().updateBadgeCount();
+      }
     }
   },
 

@@ -333,6 +333,38 @@ export default function SmsConversationScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [messageText, setMessageText] = useState('');
+
+  // SMS character / segment counter — Twilio bills per segment, so a stray emoji or 161-char
+  // body can quietly triple the cost. We compute GSM-7 vs UCS-2 and show segments in real time.
+  const smsInfo = useMemo(() => {
+    const text = messageText;
+    if (text.length === 0) return { chars: 0, segments: 0, encoding: 'GSM-7' as 'GSM-7' | 'UCS-2', remaining: 160 };
+    // GSM 03.38 basic + extension tables.
+    const GSM_BASIC = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ\x1bÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+    const GSM_EXTENDED = "\f^{}\\[~]|€";
+    let isGsm = true;
+    let gsmCharCount = 0;
+    for (const c of text) {
+      if (GSM_BASIC.includes(c)) {
+        gsmCharCount += 1;
+      } else if (GSM_EXTENDED.includes(c)) {
+        gsmCharCount += 2;
+      } else {
+        isGsm = false;
+        break;
+      }
+    }
+    if (isGsm) {
+      const segments = gsmCharCount <= 160 ? 1 : Math.ceil(gsmCharCount / 153);
+      const cap = segments === 1 ? 160 : segments * 153;
+      return { chars: gsmCharCount, segments, encoding: 'GSM-7' as const, remaining: cap - gsmCharCount };
+    }
+    // UCS-2: count code units (matches what Twilio counts).
+    const ucs2Count = text.length;
+    const segments = ucs2Count <= 70 ? 1 : Math.ceil(ucs2Count / 67);
+    const cap = segments === 1 ? 70 : segments * 67;
+    return { chars: ucs2Count, segments, encoding: 'UCS-2' as const, remaining: cap - ucs2Count };
+  }, [messageText]);
   const [isSending, setIsSending] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
 
@@ -353,14 +385,20 @@ export default function SmsConversationScreen() {
     }
   }, [id]);
 
+  // Single overlap guard — covers polling AND every other caller (refresh, send, quick-reply).
+  const smsFetchInFlightRef = useRef(false);
+
   useEffect(() => {
     loadMessages();
     api.post(`/api/sms/conversations/${id}/read`).catch(() => {});
-    const interval = setInterval(loadMessages, 5000);
+    // 15s polling (was 5s — drained battery + ran up cellular costs on site).
+    const interval = setInterval(() => { loadMessages(); }, 15000);
     return () => clearInterval(interval);
   }, [id]);
 
   const loadMessages = async () => {
+    if (smsFetchInFlightRef.current) return;
+    smsFetchInFlightRef.current = true;
     try {
       const response = await api.get<SmsMessage[]>(`/api/sms/conversations/${id}/messages`);
       if (response.data) {
@@ -372,6 +410,7 @@ export default function SmsConversationScreen() {
       setMessages([]);
     } finally {
       setIsLoading(false);
+      smsFetchInFlightRef.current = false;
     }
   };
 
@@ -680,6 +719,34 @@ export default function SmsConversationScreen() {
                 multiline
                 returnKeyType="default"
               />
+              {smsInfo.chars > 0 && (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'flex-end',
+                    paddingHorizontal: spacing.md,
+                    paddingBottom: 4,
+                    gap: 6,
+                  }}
+                  pointerEvents="none"
+                >
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      fontWeight: '600',
+                      color:
+                        smsInfo.segments >= 3
+                          ? '#ef4444'
+                          : smsInfo.segments === 2
+                            ? '#f59e0b'
+                            : colors.mutedForeground,
+                    }}
+                  >
+                    {smsInfo.chars} chars · {smsInfo.segments} segment{smsInfo.segments === 1 ? '' : 's'}
+                    {smsInfo.encoding === 'UCS-2' ? ' (Unicode)' : ''}
+                  </Text>
+                </View>
+              )}
             </View>
 
             <TouchableOpacity

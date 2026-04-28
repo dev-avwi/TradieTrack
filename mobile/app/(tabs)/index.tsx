@@ -518,9 +518,11 @@ function TimeTrackingWidget() {
   useEffect(() => {
     loadDashboardData();
     loadTodaysJobs();
-    // Refresh dashboard data every 15 seconds
-    const interval = setInterval(loadDashboardData, 15000);
-    
+    // Refresh dashboard data every 90 seconds (was 15s — drained battery / mobile data on site).
+    // On-focus refresh via useFocusEffect + foreground refresh via AppState below cover most cases;
+    // this interval is a long-stop only.
+    const interval = setInterval(loadDashboardData, 90000);
+
     // Auto-refresh when app comes to foreground
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
@@ -531,7 +533,7 @@ function TimeTrackingWidget() {
       }
       appStateRef.current = nextAppState;
     });
-    
+
     return () => {
       clearInterval(interval);
       subscription.remove();

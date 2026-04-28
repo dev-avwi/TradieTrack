@@ -572,7 +572,13 @@ function ChatView({
   const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // Single overlap guard — covers the polling loop AND every other caller (send, reconnect, etc).
+  // Stable across renders via ref.
+  const dmFetchInFlightRef = useRef(false);
+
   const fetchMessages = useCallback(async () => {
+    if (dmFetchInFlightRef.current) return;
+    dmFetchInFlightRef.current = true;
     try {
       const { offlineStorage, useOfflineStore } = await import('@/lib/offline-storage');
       const isOnline = useOfflineStore.getState().isOnline;
@@ -597,12 +603,15 @@ function ChatView({
       } catch {}
     } finally {
       setIsLoading(false);
+      dmFetchInFlightRef.current = false;
     }
   }, [selectedUser.id]);
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(() => fetchMessages(), 3000);
+    // 10s polling (was 3s — drained battery and stacked overlapping requests on slow networks).
+    // Overlap guard now lives inside fetchMessages itself, so every call site is protected.
+    const interval = setInterval(() => { fetchMessages(); }, 10000);
     return () => clearInterval(interval);
   }, [fetchMessages]);
 
@@ -772,7 +781,7 @@ function ChatView({
                       onPress={async () => {
                         const { offlineStorage } = await import('@/lib/offline-storage');
                         const ok = await offlineStorage.retryFailedChatMessage((message as any).localId || message.id);
-                        if (ok) loadMessages();
+                        if (ok) fetchMessages();
                       }}
                       style={{ marginTop: 4 }}
                     >
