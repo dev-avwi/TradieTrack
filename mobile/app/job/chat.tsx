@@ -1285,11 +1285,18 @@ export default function JobChatScreen() {
                 <Text style={[styles.messageTime, timeStyle]}>
                   {formatTime(msg.createdAt)}
                 </Text>
-                {isSms && (
+                {isSms ? (
                   <View style={[styles.smsTypeBadge, own && { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
                     <Feather name="smartphone" size={8} color={badgeIconColor} />
                     <Text style={[styles.smsTypeBadgeText, { color: badgeIconColor }]}>
-                      SMS
+                      SMS · CLIENT
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={[styles.smsTypeBadge, own && { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+                    <Feather name="lock" size={8} color={badgeIconColor} />
+                    <Text style={[styles.smsTypeBadgeText, { color: badgeIconColor }]}>
+                      INTERNAL
                     </Text>
                   </View>
                 )}

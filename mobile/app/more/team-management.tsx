@@ -1534,11 +1534,16 @@ export default function TeamManagementScreen() {
     router.push('/more/subscription');
   };
   
-  // Use auth store tier as source of truth, fall back to API response
-  const currentTier = userSubscriptionTier || subscriptionStatus?.tier || 'free';
-  // Show team interface if user has team plan OR if they already have team members
-  // This ensures users with existing teams (like demo accounts) can manage them
-  const hasTeamPlan = currentTier === 'team' || BETA_MODE || teamMembers.length > 0;
+  // Resolve tier with a real fallback chain: prefer the auth-store value when set,
+  // then live billing status, then default to 'free'. Note: `userSubscriptionTier`
+  // already coalesces to 'free', so we re-read the raw user value for the chain.
+  const rawAuthTier = user?.subscriptionTier;
+  const currentTier = rawAuthTier || subscriptionStatus?.tier || 'free';
+  // Trust the server tier (or beta override) only — don't infer plan from member count,
+  // otherwise downgraded users see team UI but get 403s when they try to use it.
+  const hasTeamPlan = currentTier === 'team' || BETA_MODE;
+  // Surfaces a banner for users who have members but no longer have a team plan.
+  const hasOrphanedTeam = !hasTeamPlan && teamMembers.length > 0;
   const teamPrice = TEAM_BASE_PRICE + (seatCount * TEAM_SEAT_PRICE);
 
   useEffect(() => {
@@ -2236,6 +2241,25 @@ export default function TeamManagementScreen() {
         </View>
       </View>
 
+      {hasOrphanedTeam && (
+        <View
+          style={[
+            styles.earlyAccessBanner,
+            { backgroundColor: '#f59e0b15', borderColor: '#f59e0b40', borderWidth: 1 },
+          ]}
+        >
+          <Feather name="alert-triangle" size={24} color="#f59e0b" />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.earlyAccessBannerText, { color: '#b45309' }]}>
+              Your plan no longer includes team features
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 2 }}>
+              You still have {teamMembers.length} team member{teamMembers.length === 1 ? '' : 's'} on file. Re-subscribe below to manage them again.
+            </Text>
+          </View>
+        </View>
+      )}
+
       <View style={styles.upgradeHeader}>
         <View style={styles.upgradeIcon}>
           <Feather name="users" size={40} color={colors.primary} />
@@ -2300,7 +2324,7 @@ export default function TeamManagementScreen() {
                 </Text>
               </View>
             )}
-            
+
             <View style={styles.header}>
               <TouchableOpacity testID="button-back" onPress={() => router.back()} style={styles.backButton}>
                 <Feather name="arrow-left" size={24} color={colors.foreground} />

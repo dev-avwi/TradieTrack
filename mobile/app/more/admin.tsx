@@ -150,20 +150,10 @@ export default function AdminDashboard() {
       if (healthRes.data) {
         setHealth(healthRes.data);
       } else {
-        setHealth({
-          api: { status: 'healthy', latency: 45 },
-          database: { status: 'healthy', latency: 12 },
-          backgroundJobs: { status: 'healthy', pending: 0 },
-          storage: { status: 'healthy', used: '2.4 GB' },
-        });
+        setHealth(null);
       }
     } catch {
-      setHealth({
-        api: { status: 'healthy', latency: 45 },
-        database: { status: 'healthy', latency: 12 },
-        backgroundJobs: { status: 'healthy', pending: 0 },
-        storage: { status: 'healthy', used: '2.4 GB' },
-      });
+      setHealth(null);
     } finally {
       setHealthLoading(false);
     }
@@ -609,6 +599,39 @@ export default function AdminDashboard() {
             </Card>
           ))}
         </View>
+      ) : health === null ? (
+        <Card>
+          <CardContent style={{ padding: 16, gap: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={[styles.healthIconBg, { backgroundColor: '#ef444415' }]}>
+                <Feather name="alert-triangle" size={22} color="#ef4444" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.healthName, { color: colors.foreground }]}>Couldn't reach health endpoint</Text>
+                <Text style={[styles.healthDetail, { color: colors.mutedForeground }]}>
+                  /api/admin/health did not respond. Status of services is unknown — check server logs.
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={fetchHealthData}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 8,
+                backgroundColor: colors.muted,
+                alignSelf: 'flex-start',
+              }}
+              activeOpacity={0.7}
+            >
+              <Feather name="refresh-cw" size={14} color={colors.foreground} />
+              <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 13 }}>Retry</Text>
+            </TouchableOpacity>
+          </CardContent>
+        </Card>
       ) : (
         <View style={{ gap: 12 }}>
           {[
@@ -628,8 +651,10 @@ export default function AdminDashboard() {
                     {item.key === 'storage' 
                       ? `Used: ${(item.data as any)?.used || 'N/A'}`
                       : item.key === 'jobs'
-                        ? `Pending: ${(item.data as any)?.pending || 0}`
-                        : `Latency: ${(item.data as any)?.latency || 0}ms`
+                        ? `Pending: ${(item.data as any)?.pending ?? '—'}`
+                        : (item.data as any)?.latency != null
+                          ? `Latency: ${(item.data as any).latency}ms`
+                          : 'Latency: —'
                     }
                   </Text>
                 </View>
@@ -645,22 +670,12 @@ export default function AdminDashboard() {
         </View>
       )}
 
-      <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Performance</Text>
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Active Sessions</Text>
       <View style={styles.performanceGrid}>
-        {[
-          { label: 'Avg Response', value: '45ms' },
-          { label: 'Error Rate', value: '0.1%', color: colors.success },
-          { label: 'Active Sessions', value: String(stats?.kpis.activeUsers || 0) },
-          { label: 'DB Connections', value: '12/100' },
-        ].map((item, idx) => (
-          <View 
-            key={idx} 
-            style={[styles.performanceCard, { backgroundColor: colors.muted, borderColor: colors.border }]}
-          >
-            <Text style={[styles.performanceLabel, { color: colors.mutedForeground }]}>{item.label}</Text>
-            <Text style={[styles.performanceValue, { color: item.color || colors.foreground }]}>{item.value}</Text>
-          </View>
-        ))}
+        <View style={[styles.performanceCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+          <Text style={[styles.performanceLabel, { color: colors.mutedForeground }]}>Active Users</Text>
+          <Text style={[styles.performanceValue, { color: colors.foreground }]}>{String(stats?.kpis.activeUsers || 0)}</Text>
+        </View>
       </View>
     </>
   );

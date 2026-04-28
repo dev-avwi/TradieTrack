@@ -382,7 +382,22 @@ export default function WhsHubScreen() {
   }, [openIncidents, openHazards, expiredTraining, expiringSoonTraining, signsNotInstalled, ppeFailCount, emergencyInfo.length, jsaDocs.length, incidents.length, hazardReports.length, environments.length, colors.primary]);
 
   const totalItems = incidents.length + emergencyInfo.length + jsaDocs.length + environments.length + signs.length + hazardReports.length + ppeChecklists.length + trainingRecords.length;
-  const complianceScore = totalItems === 0 ? 0 : Math.round(((totalItems - actionItems.length) / totalItems) * 100);
+  // Compliance baseline: count distinct "setup" categories with at least one entry.
+  // Reactive categories (incidents, hazardReports) are excluded — having zero of those is good, not a setup gap.
+  const setupCategoriesPopulated = [
+    emergencyInfo.length > 0,
+    jsaDocs.length > 0,
+    trainingRecords.length > 0,
+    ppeChecklists.length > 0,
+    signs.length > 0,
+    environments.length > 0,
+  ].filter(Boolean).length;
+  const SETUP_CATEGORIES_TOTAL = 6;
+  const MIN_SETUP_FOR_SCORE = 3;
+  const hasComplianceBaseline = setupCategoriesPopulated >= MIN_SETUP_FOR_SCORE;
+  const complianceScore = !hasComplianceBaseline
+    ? null
+    : (totalItems === 0 ? 0 : Math.round(((totalItems - actionItems.length) / totalItems) * 100));
 
   function renderIncidents() {
     if (incidents.length === 0) {
@@ -1347,12 +1362,30 @@ export default function WhsHubScreen() {
                 </View>
               )}
 
-              {totalItems > 0 && actionItems.length === 0 && (
+              {!hasComplianceBaseline && (
+                <View style={[styles.actionBanner, { borderColor: '#f59e0b40' }]}>
+                  <View style={styles.actionBannerHeader}>
+                    <View style={[styles.actionBannerIcon, { backgroundColor: '#f59e0b15' }]}>
+                      <Feather name="alert-circle" size={14} color="#f59e0b" />
+                    </View>
+                    <Text style={styles.actionBannerTitle}>
+                      Setup needed — {setupCategoriesPopulated}/{SETUP_CATEGORIES_TOTAL} safety categories started
+                    </Text>
+                  </View>
+                  <Text style={[styles.actionItemText, { paddingHorizontal: spacing.sm, paddingTop: 4 }]}>
+                    Compliance score will appear once you've added at least {MIN_SETUP_FOR_SCORE} categories (emergency plans, training, JSAs, PPE, signage, or sites).
+                  </Text>
+                </View>
+              )}
+
+              {hasComplianceBaseline && actionItems.length === 0 && (
                 <View style={styles.complianceBanner}>
                   <View style={[styles.actionBannerIcon, { backgroundColor: '#22c55e15' }]}>
                     <Feather name="check-circle" size={14} color="#22c55e" />
                   </View>
-                  <Text style={styles.complianceBannerText}>All clear — no outstanding safety items</Text>
+                  <Text style={styles.complianceBannerText}>
+                    All clear — {complianceScore}% compliant, no outstanding items
+                  </Text>
                 </View>
               )}
             </View>

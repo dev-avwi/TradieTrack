@@ -1066,12 +1066,14 @@ export default function SettingsScreen() {
   const [usageInfo, setUsageInfo] = useState<any>(null);
 
   // AI settings state
+  // NOTE: defaults are FALSE so we don't lie about AI being on before we've confirmed
+  // (a) the user's tier supports it and (b) any saved preference has been loaded.
   const AI_SETTINGS_KEY = '@jobrunner/ai_settings';
   const [aiSettings, setAiSettings] = useState({
-    aiEnabled: true,
-    aiPhotoAnalysis: true,
-    aiAutoCategorizephotos: true,
-    aiSuggestions: true,
+    aiEnabled: false,
+    aiPhotoAnalysis: false,
+    aiAutoCategorizephotos: false,
+    aiSuggestions: false,
   });
 
   // Data export state
@@ -1256,25 +1258,61 @@ export default function SettingsScreen() {
     }
   }, []);
 
-  // AI settings handlers
+  // AI settings handlers — gate by tier so we don't show toggles "on" for users without AI.
   const loadAiSettings = useCallback(async () => {
     try {
+      const tier = (user?.subscriptionTier || 'free') as string;
+      const tierAllowsAi = tier === 'pro' || tier === 'team' || tier === 'trial';
       const stored = await AsyncStorage.getItem('@jobrunner/ai_settings');
       if (stored) {
-        setAiSettings(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        // If the user's tier doesn't allow AI, force everything off regardless of saved prefs.
+        if (!tierAllowsAi) {
+          setAiSettings({
+            aiEnabled: false,
+            aiPhotoAnalysis: false,
+            aiAutoCategorizephotos: false,
+            aiSuggestions: false,
+          });
+        } else {
+          setAiSettings(parsed);
+        }
+      } else if (tierAllowsAi) {
+        // No saved prefs but tier supports AI → opt-in by default.
+        setAiSettings({
+          aiEnabled: true,
+          aiPhotoAnalysis: true,
+          aiAutoCategorizephotos: true,
+          aiSuggestions: true,
+        });
       }
+      // else: tier doesn't allow AI, leave defaults (all false).
     } catch (error) {
       console.error('Failed to load AI settings:', error);
     }
-  }, []);
+  }, [user?.subscriptionTier]);
+
+  // Tier check derived from auth — used by both the toggle handler and UI gating.
+  const aiTierAllowed = (() => {
+    const t = (user?.subscriptionTier || 'free') as string;
+    return t === 'pro' || t === 'team' || t === 'trial';
+  })();
 
   const updateAiSetting = useCallback((key: string, value: boolean) => {
+    // Tier guard: block flipping AI on for tiers that don't include it.
+    if (!aiTierAllowed && value === true) {
+      Alert.alert(
+        'AI not included on your plan',
+        'AI features are available on Pro, Trial, and Team plans. Upgrade to enable them.',
+      );
+      return;
+    }
     setAiSettings(prev => {
       const updated = { ...prev, [key]: value };
       AsyncStorage.setItem('@jobrunner/ai_settings', JSON.stringify(updated));
       return updated;
     });
-  }, []);
+  }, [aiTierAllowed]);
 
   // Password change
   const handleChangePassword = useCallback(async () => {
@@ -2661,7 +2699,16 @@ export default function SettingsScreen() {
                   <Text style={styles.subscriptionTitle}>AI Features</Text>
                 </View>
 
-                <View style={styles.notificationToggleRow}>
+                {!aiTierAllowed && (
+                  <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#f59e0b10', borderRadius: 8, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Feather name="lock" size={14} color="#b45309" />
+                    <Text style={{ flex: 1, fontSize: 12, color: '#b45309' }}>
+                      AI features require Pro, Trial, or Team. Upgrade to enable.
+                    </Text>
+                  </View>
+                )}
+
+                <View style={[styles.notificationToggleRow, !aiTierAllowed && { opacity: 0.5 }]}>
                   <View style={styles.notificationToggleLeft}>
                     <View style={[styles.notificationToggleIcon, { backgroundColor: '#8b5cf620' }]}>
                       <Feather name="zap" size={16} color="#8b5cf6" />
@@ -2674,6 +2721,7 @@ export default function SettingsScreen() {
                   <Switch
                     value={aiSettings.aiEnabled}
                     onValueChange={(value) => updateAiSetting('aiEnabled', value)}
+                    disabled={!aiTierAllowed}
                     trackColor={{ false: colors.border, true: colors.success }}
                     thumbColor={'#FFFFFF'}
                     ios_backgroundColor={colors.border}
