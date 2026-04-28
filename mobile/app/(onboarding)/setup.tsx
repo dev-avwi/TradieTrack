@@ -1116,7 +1116,7 @@ export default function OnboardingSetupScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'right', 'bottom', 'left']}>
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
         {currentStep !== 'complete' && (
           <View style={styles.topBar}>
