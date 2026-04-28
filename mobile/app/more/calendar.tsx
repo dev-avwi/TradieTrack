@@ -15,7 +15,7 @@ import { useJobsStore, useClientsStore } from '../../src/lib/store';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, usePageShell } from '../../src/lib/design-tokens';
-import { isTablet } from '../../src/lib/device';
+import { useIsTablet } from '../../src/lib/device';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -470,7 +470,7 @@ const createStyles = (colors: ThemeColors, isTabletDevice: boolean = false, resp
 
 export default function CalendarScreen() {
   const { colors } = useTheme();
-  const isTabletDevice = isTablet();
+  const isTabletDevice = useIsTablet();
   const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors, isTabletDevice, responsiveShell.paddingHorizontal), [colors, isTabletDevice, responsiveShell.paddingHorizontal]);
   

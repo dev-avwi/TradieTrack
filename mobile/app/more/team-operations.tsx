@@ -24,7 +24,7 @@ import { TeamAvatar } from '../../src/components/TeamAvatar';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { formatDistanceToNow, format, isAfter } from 'date-fns';
-import { isTablet, useContentWidth } from '../../src/lib/device';
+import { useIsTablet, useContentWidth } from '../../src/lib/device';
 import { useUserRole } from '../../src/hooks/use-user-role';
 
 const DARK_MAP_STYLE: MapStyleElement[] = [
@@ -207,7 +207,7 @@ export default function TeamOperationsScreen() {
   const insets = useSafeAreaInsets();
   const responsiveShell = usePageShell();
   const contentWidth = useContentWidth();
-  const isTabletDevice = isTablet();
+  const isTabletDevice = useIsTablet();
   const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal, isTabletDevice), [colors, contentWidth, responsiveShell.paddingHorizontal, isTabletDevice]);
   const { user } = useAuthStore();
   const mapRef = useRef<MapView | null>(null);

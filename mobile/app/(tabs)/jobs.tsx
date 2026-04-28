@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useContentWidth, isTablet } from '../../src/lib/device';
+import { useContentWidth, useIsTablet } from '../../src/lib/device';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore, useAuthStore } from '../../src/lib/store';
 import { api } from '../../src/lib/api';
@@ -293,7 +293,7 @@ function JobCard({
 export default function JobsScreen() {
   const { colors } = useTheme();
   const contentWidth = useContentWidth();
-  const isTabletDevice = isTablet();
+  const isTabletDevice = useIsTablet();
   const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
   const scrollRef = useRef<FlatList | null>(null);

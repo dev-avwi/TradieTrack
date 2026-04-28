@@ -2,6 +2,16 @@ import { Platform, Dimensions } from 'react-native';
 import { useState, useEffect } from 'react';
 
 const IPAD_WIDTH_THRESHOLD = 768;
+// Tablet detection threshold (drives sidebar navigation, grid columns, etc.).
+// Kept at 744 so iPad mini qualifies but unfolded foldables (~600pt) still
+// use phone navigation — sidebar would feel cramped on a Z Fold inner display.
+const TABLET_MIN_DIMENSION = 744;
+// Wide-content threshold — purely for content-column centring on Android
+// foldables. Lower than the tablet threshold so a Z Fold (unfolded ~600pt)
+// gets a centred reading column without flipping to sidebar navigation.
+export const WIDE_CONTENT_THRESHOLD = 600;
+// Maximum reading width for primary content columns on wide screens.
+export const OPTIMAL_CONTENT_MAX_WIDTH = 720;
 
 export function isTablet(): boolean {
   // Check Platform.isPad first (most reliable for iOS)
@@ -19,11 +29,28 @@ export function isTablet(): boolean {
     Math.min(screenWidth, screenHeight),
     Math.min(windowWidth, windowHeight)
   );
-  
-  // Lower threshold to 744 to catch iPad mini
-  const isLargeScreen = effectiveWidth >= 744;
-  
+
+  // Detect via min-dimension threshold. On a Z Fold while folded the inner
+  // display is not active so window.width returns the small outer width — we
+  // correctly fall back to phone layout. When unfolded both screen and window
+  // dimensions report the inner display.
+  const isLargeScreen = effectiveWidth >= TABLET_MIN_DIMENSION;
+
   return isLargeScreen;
+}
+
+// Reactive version of isTablet() — subscribes to Dimensions changes so layouts
+// update live when a foldable opens/closes (Z Fold, Pixel Fold, Surface Duo)
+// or when the window is resized in split-screen mode on Android/iPad.
+export function useIsTablet(): boolean {
+  const [tablet, setTablet] = useState<boolean>(() => isTablet());
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', () => {
+      setTablet(isTablet());
+    });
+    return () => sub.remove();
+  }, []);
+  return tablet;
 }
 
 export function isIPad(): boolean {
@@ -113,31 +140,54 @@ export function useContentWidth(): number {
   return contentWidth;
 }
 
-// Hook for responsive layout values on iPad
-// Returns scaling factors for iPad-optimized layouts - uses FULL WIDTH
+// Hook for responsive layout values across phones, tablets, and foldables.
+// Returns sizing/padding/grid hints that adapt live to dimension changes
+// (orientation flip, Z Fold open/close, iPad split-view resize).
+//
+// Note on iPad parity: the wide-content reading column treatment
+// (`optimalContentWidth`) only applies on Android wide displays. iPad layouts
+// keep their full-canvas behaviour so dashboards/tables aren't constrained.
 export function useResponsiveLayout() {
   const isPad = isIPad();
+  const isTabletDevice = useIsTablet();
   const orientation = useOrientation();
   const contentWidth = useContentWidth();
-  
+  const isAndroid = Platform.OS === 'android';
+
   const isIPadPortrait = isPad && orientation === 'portrait';
-  
-  // Use FULL content width - no max width constraint on iPad portrait
-  // Only applies slightly larger padding for better touch targets
-  const horizontalPadding = isPad ? 20 : 16;
-  
+  // Wide-content treatment is Android-only — covers Android tablets, unfolded
+  // Samsung Z Fold inner display, Pixel Fold, and Surface Duo. iPad keeps the
+  // edge-to-edge experience that shipped previously.
+  const isWideScreen = isAndroid && contentWidth >= WIDE_CONTENT_THRESHOLD;
+  const isLargeScreen = isPad || isTabletDevice;
+
+  // Larger touch targets on tablet-class devices.
+  const horizontalPadding = isLargeScreen ? 20 : 16;
+
+  // Cap reading-line width on Android wide displays so primary content (text
+  // columns, forms, chat threads, settings rows) stays comfortable rather
+  // than spanning the full width of an unfolded Z Fold (~600pt).
+  const optimalContentWidth = isWideScreen
+    ? Math.min(contentWidth, OPTIMAL_CONTENT_MAX_WIDTH)
+    : contentWidth;
+
   return {
     isPad,
     isIPadPortrait,
+    isTablet: isTabletDevice,
+    isLargeScreen,
+    isWideScreen,
     orientation,
     contentWidth,
-    optimalContentWidth: contentWidth, // Full width, no constraint
+    optimalContentWidth,
     horizontalPadding,
-    // Scale factor for larger touch targets on iPad
-    touchScale: isPad ? 1.15 : 1,
-    // Font scale for better readability on iPad
-    fontScale: isPad ? 1.1 : 1,
-    // Grid columns - iPad can show more columns
-    gridColumns: isIPadPortrait ? 2 : (isPad ? 3 : 2),
+    // Scale factor for larger touch targets on tablet-class devices.
+    touchScale: isLargeScreen ? 1.15 : 1,
+    // Font scale for better readability on tablet-class devices.
+    fontScale: isLargeScreen ? 1.1 : 1,
+    // Grid columns - tablets / foldables can show more columns.
+    gridColumns: isLargeScreen
+      ? (orientation === 'landscape' ? 3 : 2)
+      : 2,
   };
 }

@@ -4,10 +4,16 @@
 
 import { StyleSheet, Platform, Dimensions } from 'react-native';
 import { useMemo } from 'react';
-import { isIPad, useOrientation } from './device';
+import { isIPad, useOrientation, useIsTablet, useContentWidth } from './device';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isIOS = Platform.OS === 'ios';
+
+// Optimal reading-line width for primary content columns. Anything wider than
+// this on tablets / unfolded foldables (Z Fold, Pixel Fold, Surface Duo) gets
+// extra symmetric horizontal padding so the column stays comfortably narrow
+// and centered instead of stretching from edge to edge.
+const OPTIMAL_CONTENT_WIDTH = 720;
 
 // Header height for Liquid Glass effect calculations
 export const HEADER_HEIGHT = 56;
@@ -35,31 +41,53 @@ export const pageShell = {
   sectionGap: spacing.lg,        // 16px - tighter section spacing
 } as const;
 
-// iPad-responsive page shell hook
-// Returns appropriate padding - uses FULL WIDTH on iPad portrait (edge-to-edge)
+// Responsive page shell hook.
+// - iPad: preserves the original full-width layout with iPad padding (no
+//   regression — power-user screens like dispatch board / dashboards keep
+//   the wide canvas they had before).
+// - Android tablets and unfolded foldables (Samsung Z Fold, Pixel Fold,
+//   Surface Duo): grows horizontal padding so content centres within an
+//   OPTIMAL_CONTENT_WIDTH column, so primary content stays readable instead
+//   of stretching to the edges of the inner display.
+// - Phones: unchanged.
+// Updates live on orientation flip and fold/unfold via Dimensions listeners.
 export function usePageShell() {
   const isPad = isIPad();
+  const isTabletDevice = useIsTablet();
   const orientation = useOrientation();
-  
+  const contentWidth = useContentWidth();
+  const isAndroid = Platform.OS === 'android';
+
   return useMemo(() => {
     const isIPadPortrait = isPad && orientation === 'portrait';
-    
-    // iPad portrait: use FULL screen width with slightly larger padding for better touch targets
-    // iPad landscape with sidebar: normal padding
-    // Phone: standard phone padding
-    const horizontalPadding = isPad ? spacing.xl : spacing.lg; // 20px on iPad, 16px on phone
-    
+    const isLargeScreen = isPad || isTabletDevice;
+
+    // Base padding mirrors the legacy behaviour — bigger touch padding on
+    // tablet-class devices, regular phone padding everywhere else.
+    const baseHorizontal = isLargeScreen ? spacing.xl : spacing.lg;
+
+    // Centring pad applies ONLY on Android wide displays (tablets / unfolded
+    // foldables). iPad layouts are intentionally unchanged so dashboards and
+    // tables keep their full canvas.
+    const isWideAndroid =
+      isAndroid && contentWidth >= OPTIMAL_CONTENT_WIDTH;
+    const overflow = Math.max(0, contentWidth - OPTIMAL_CONTENT_WIDTH);
+    const centeringPad = isWideAndroid ? Math.floor(overflow / 2) : 0;
+    const horizontalPadding = baseHorizontal + centeringPad;
+
     return {
       paddingHorizontal: horizontalPadding,
-      paddingTop: isPad ? spacing.lg : spacing.md,
-      paddingBottom: isPad ? spacing.xl : spacing.lg,
-      sectionGap: isPad ? spacing.xl : spacing.lg,
-      cardGap: isPad ? spacing.md : spacing.sm,
-      // Whether we should use iPad-optimized layout
+      paddingTop: isLargeScreen ? spacing.lg : spacing.md,
+      paddingBottom: isLargeScreen ? spacing.xl : spacing.lg,
+      sectionGap: isLargeScreen ? spacing.xl : spacing.lg,
+      cardGap: isLargeScreen ? spacing.md : spacing.sm,
+      // Whether we should use iPad-optimized layout (legacy field — kept for
+      // backwards compatibility with existing call sites).
       isIPadPortrait,
       isPad,
+      isLargeScreen,
     };
-  }, [isPad, orientation]);
+  }, [isPad, isTabletDevice, orientation, contentWidth, isAndroid]);
 }
 
 // Bottom tab bar clearance - use this ONLY on screens that have bottom tabs visible

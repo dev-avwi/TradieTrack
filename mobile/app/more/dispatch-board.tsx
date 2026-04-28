@@ -28,7 +28,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography, shadows, usePageShell } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
-import { isTablet, useContentWidth } from '../../src/lib/device';
+import { useIsTablet, useContentWidth } from '../../src/lib/device';
 import { format, isToday, parseISO, isBefore, startOfDay } from 'date-fns';
 import { getAvatarColor } from '../../src/lib/avatar-colors';
 import { TeamAvatar } from '../../src/components/TeamAvatar';
@@ -115,7 +115,7 @@ export default function DispatchBoardScreen() {
   const { colors, isDark } = useTheme();
   const responsiveShell = usePageShell();
   const contentWidth = useContentWidth();
-  const isTabletDevice = isTablet();
+  const isTabletDevice = useIsTablet();
   const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal, isTabletDevice, isDark), [colors, contentWidth, responsiveShell.paddingHorizontal, isTabletDevice, isDark]);
   const { user } = useAuthStore();
 

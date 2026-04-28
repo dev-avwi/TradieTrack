@@ -15,7 +15,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, usePageShell } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { format, formatDistanceToNow } from 'date-fns';
-import { useContentWidth, isTablet } from '../../src/lib/device';
+import { useContentWidth, useIsTablet } from '../../src/lib/device';
 
 const CARD_GAP = spacing.sm;
 
@@ -130,7 +130,7 @@ const getPaymentMethodLabel = (method: string) => {
 export default function DocumentsScreen() {
   const { colors } = useTheme();
   const contentWidth = useContentWidth();
-  const isTabletDevice = isTablet();
+  const isTabletDevice = useIsTablet();
   const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
   
