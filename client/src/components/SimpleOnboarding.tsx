@@ -243,7 +243,13 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
       toast({ title: 'Welcome!', description: `You've joined ${redeemData.businessName || 'the team'}` });
       onComplete();
     } catch (error: any) {
-      toast({ title: 'Error', description: error.message || 'Failed to join team', variant: 'destructive' });
+      const raw = error?.message || '';
+      // Strip our protocol prefixes (team_plan_required:, session_expired:, etc.)
+      // so the toast shows the user-friendly text instead of the internal code.
+      const friendly = raw.startsWith('team_plan_required:')
+        ? raw.replace(/^team_plan_required:\s*/, '')
+        : raw || 'Failed to join team';
+      toast({ title: raw.startsWith('team_plan_required:') ? "Owner's plan inactive" : 'Error', description: friendly, variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }

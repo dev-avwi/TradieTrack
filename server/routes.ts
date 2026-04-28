@@ -31315,9 +31315,10 @@ Respond with JSON in this format:
       const inviteOwnerSettings = await storage.getBusinessSettings(inviteCode.businessOwnerId);
       if (!ownerHasTeamCapability(inviteOwner, inviteOwnerSettings)) {
         return res.status(403).json({
-          error: 'team_plan_required',
-          message:
+          error:
             "This business doesn't currently have an active Team subscription. Please contact the business owner to renew their plan before joining.",
+          code: 'team_plan_required',
+          requiresTeamPlan: true,
         });
       }
 
@@ -31492,9 +31493,10 @@ Respond with JSON in this format:
       if (!ownerHasTeamCapability(inviteOwner, inviteOwnerSettings)) {
         return res.status(403).json({
           success: false,
-          error: 'team_plan_required',
-          message:
+          error:
             "This business doesn't currently have an active Team subscription. Please contact the business owner to renew their plan before joining.",
+          code: 'team_plan_required',
+          requiresTeamPlan: true,
         });
       }
 

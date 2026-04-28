@@ -174,9 +174,14 @@ export default function AcceptInvite() {
         setAcceptStatus('error');
         setErrorMessage(data.error || 'Failed to accept invitation');
       }
-    } catch (error) {
+    } catch (error: any) {
       setAcceptStatus('error');
-      setErrorMessage('Failed to accept invitation. Please try again.');
+      const raw = error?.message || '';
+      if (raw.startsWith('team_plan_required:')) {
+        setErrorMessage(raw.replace(/^team_plan_required:\s*/, ''));
+      } else {
+        setErrorMessage('Failed to accept invitation. Please try again.');
+      }
     }
   };
 
@@ -231,9 +236,14 @@ export default function AcceptInvite() {
         setAcceptStatus('error');
         setErrorMessage(data.error || 'Failed to accept invitation');
       }
-    } catch (error) {
+    } catch (error: any) {
       setAcceptStatus('error');
-      setErrorMessage('Failed to create account. Please try again.');
+      const raw = error?.message || '';
+      if (raw.startsWith('team_plan_required:')) {
+        setErrorMessage(raw.replace(/^team_plan_required:\s*/, ''));
+      } else {
+        setErrorMessage('Failed to create account. Please try again.');
+      }
     }
   };
 

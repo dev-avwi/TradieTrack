@@ -146,8 +146,13 @@ async function throwIfResNotOk(res: Response) {
         if (parsed.isDemo) {
           throw new Error(`demo_readonly: ${parsed.error}`);
         }
+        // Subscription/plan gating (e.g. team_plan_required) — surface the
+        // friendly error to the user without clearing their session.
+        if (parsed.requiresTeamPlan || parsed.code === 'team_plan_required') {
+          throw new Error(`team_plan_required: ${parsed.error || 'A Team or Business plan is required for this action.'}`);
+        }
       } catch (e) {
-        if (e instanceof Error && e.message.startsWith('demo_readonly:')) throw e;
+        if (e instanceof Error && (e.message.startsWith('demo_readonly:') || e.message.startsWith('team_plan_required:'))) throw e;
       }
       clearSessionToken();
       throw new Error(`session_expired: Your session has expired. Please log in again.`);

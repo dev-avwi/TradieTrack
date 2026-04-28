@@ -185,7 +185,7 @@ export async function getUserContext(userId: string): Promise<UserContext> {
       // belonging to an owner who is on Pro should also be locked out.
       const teamCapableTiers = new Set(['team', 'business', 'beta']);
       const ownerHasTeamPlan = !!ownerTier && teamCapableTiers.has(ownerTier);
-      const ownerHasBetaUnlock = !!(ownerUser.isBeta || ownerUser.betaLifetimeAccess);
+      const ownerHasBetaUnlock = !!(ownerUser.betaUser || ownerUser.betaLifetimeAccess);
 
       if (subscriptionStatus === 'canceled' && !isTrialActive) {
         ownerSubscriptionValid = false;
@@ -316,7 +316,7 @@ export function ownerHasTeamCapability(
   // cannot generate invite codes or invite team members.
   const teamCapableTiers = new Set(['team', 'business', 'beta']);
   const hasTeamPlan = !!tier && teamCapableTiers.has(tier);
-  const hasBetaUnlock = !!(owner.isBeta || owner.betaLifetimeAccess);
+  const hasBetaUnlock = !!(owner.betaUser || owner.betaLifetimeAccess);
 
   // Mirror the exact ordering used in getUserContext (lines 190-200) so
   // a worker who would be marked `ownerSubscriptionValid=false` after
@@ -353,9 +353,9 @@ export function requireTeamPlan() {
 
       if (!ownerId) {
         return res.status(403).json({
-          error: 'team_plan_required',
-          message:
-            'This action requires an active Team or Business plan subscription.',
+          error: 'This action requires an active Team or Business plan subscription.',
+          code: 'team_plan_required',
+          requiresTeamPlan: true,
         });
       }
 
@@ -366,9 +366,10 @@ export function requireTeamPlan() {
 
       if (!ownerHasTeamCapability(owner, businessSettings)) {
         return res.status(403).json({
-          error: 'team_plan_required',
-          message:
+          error:
             'Inviting team members requires a Team or Business plan. Upgrade your subscription to add team members.',
+          code: 'team_plan_required',
+          requiresTeamPlan: true,
           upgradeUrl: '/pricing',
         });
       }
