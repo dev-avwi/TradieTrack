@@ -81,18 +81,23 @@ async function getCredentials() {
   
   if (directSecretKey && directPublishableKey) {
     const usingTestKeys = directSecretKey.startsWith('sk_test_') || directPublishableKey.startsWith('pk_test_');
-    isTestMode = usingTestKeys;
-    
-    if (usingTestKeys) {
-      console.log('⚠️ Using Stripe TEST MODE keys (env var fallback)');
+    const isProductionDeployment = process.env.REPLIT_DEPLOYMENT === '1' || process.env.NODE_ENV === 'production';
+
+    if (!usingTestKeys && !isProductionDeployment) {
+      console.log('🛑 Refusing to use Stripe LIVE MODE keys outside of production deployment. Falling through to test/mock credentials to prevent stale webhook pollution.');
     } else {
-      console.log('✅ Using Stripe LIVE MODE keys (env var fallback)');
+      isTestMode = usingTestKeys;
+      if (usingTestKeys) {
+        console.log('⚠️ Using Stripe TEST MODE keys (env var fallback)');
+      } else {
+        console.log('✅ Using Stripe LIVE MODE keys (env var fallback)');
+      }
+      cachedCredentials = {
+        publishableKey: directPublishableKey,
+        secretKey: directSecretKey,
+      };
+      return cachedCredentials;
     }
-    cachedCredentials = {
-      publishableKey: directPublishableKey,
-      secretKey: directSecretKey,
-    };
-    return cachedCredentials;
   }
 
   // Priority 3: Check for testing keys (only as fallback for e2e tests)
@@ -185,6 +190,14 @@ export async function initializeStripe(): Promise<{ stripe: Stripe | null; webho
     const customDomain = domains.find(d => !d.endsWith('.replit.app') && !d.endsWith('.replit.dev') && !d.endsWith('.repl.co'));
     const webhookDomain = process.env.APP_DOMAIN || customDomain || domains[0] || 'localhost:5000';
     const webhookBaseUrl = `https://${webhookDomain}`;
+
+    const isProductionDeployment = process.env.REPLIT_DEPLOYMENT === '1' || process.env.NODE_ENV === 'production';
+    const isEphemeralDomain = webhookDomain.endsWith('.replit.dev') || webhookDomain.endsWith('.repl.co') || webhookDomain.startsWith('localhost');
+    if (!isProductionDeployment || isEphemeralDomain) {
+      console.log(`🛑 Skipping Stripe webhook registration — running on non-production or ephemeral URL (${webhookDomain}). This prevents accumulating stale webhooks in your Stripe dashboard.`);
+      return { stripe, webhookUuid: null };
+    }
+
     const { webhook, uuid } = await sync.findOrCreateManagedWebhook(
       `${webhookBaseUrl}/api/stripe/webhook`,
       {
