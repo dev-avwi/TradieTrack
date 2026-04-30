@@ -45,6 +45,7 @@ import {
   insertUserRoleSchema,
   insertTeamMemberSchema,
   type InsertTeamMember,
+  ROLE_PRESETS,
   insertStaffScheduleSchema,
   insertLocationTrackingSchema,
   insertRouteSchema,
@@ -5673,6 +5674,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error revoking subcontractor token:', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Upgrade a magic-link sub to a full account-sub team member.
+  // Body: { tokenId: string, email: string, firstName?: string, lastName?: string,
+  //         hourlyRate?: number, roleId?: string }
+  // - Looks up the sub token by id (must belong to caller)
+  // - Re-uses contact name/phone from the token, prefers caller-supplied firstName/lastName
+  // - Creates a team_members row with the Subcontractor role (or caller-supplied roleId)
+  // - Sends a standard team invite (email + SMS if phone available)
+  app.post("/api/subcontractors/upgrade-to-account", requireAuth, ownerOrManagerOnly(), requireTeamPlan(), async (req: any, res) => {
+    try {
+      const userId = req.userContext?.effectiveUserId || req.userId!;
+      const { tokenId, email, firstName, lastName, hourlyRate, roleId: roleIdInput } = req.body || {};
+
+      if (!tokenId || typeof tokenId !== 'string') {
+        return res.status(400).json({ error: 'tokenId is required' });
+      }
+      if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: 'A valid email is required to invite an account sub.' });
+      }
+
+      // Look up the token and confirm ownership
+      const [tokenRow] = await db.select()
+        .from(subcontractorTokens)
+        .where(and(
+          eq(subcontractorTokens.id, tokenId),
+          eq(subcontractorTokens.userId, userId),
+        ))
+        .limit(1);
+      if (!tokenRow) {
+        return res.status(404).json({ error: 'Subcontractor link not found.' });
+      }
+
+      // Resolve a Subcontractor role for this owner. Allow caller-supplied roleId,
+      // otherwise look one up by name (case-insensitive), and only fall back to
+      // creating a fresh Subcontractor role if none exists.
+      let roleId: string | undefined = (typeof roleIdInput === 'string' && roleIdInput.trim()) ? roleIdInput.trim() : undefined;
+      if (!roleId) {
+        const allRoles = await storage.getUserRoles();
+        const subRole = allRoles.find((r: any) => (r.name || '').toLowerCase() === 'subcontractor');
+        if (subRole) {
+          roleId = subRole.id;
+        } else {
+          const created = await storage.createUserRole({
+            name: 'Subcontractor',
+            description: ROLE_PRESETS.subcontractor.description,
+            permissions: ROLE_PRESETS.subcontractor.permissions as any,
+          } as any);
+          roleId = created.id;
+        }
+      }
+
+      // Idempotency: if a team_member already exists for this email under this owner, return it.
+      const existingMembers = await storage.getTeamMembers(userId);
+      const dupe = existingMembers.find((m: any) =>
+        (m.email || '').toLowerCase() === email.toLowerCase()
+      );
+      if (dupe) {
+        return res.json({ ...dupe, alreadyExisted: true });
+      }
+
+      const inviteToken = randomBytes(16).toString('hex');
+      const resolvedFirst = (firstName && String(firstName).trim()) || (tokenRow.contactName ? String(tokenRow.contactName).split(' ')[0] : null);
+      const resolvedLast = (lastName && String(lastName).trim()) || (tokenRow.contactName ? String(tokenRow.contactName).split(' ').slice(1).join(' ') || null : null);
+
+      const newMember = await storage.createTeamMember({
+        businessOwnerId: userId,
+        roleId: roleId!,
+        email: String(email).trim(),
+        firstName: resolvedFirst || null,
+        lastName: resolvedLast || null,
+        phone: tokenRow.contactPhone || null,
+        inviteToken,
+        inviteSentAt: new Date(),
+        inviteStatus: 'pending',
+        hourlyRate: hourlyRate !== undefined && hourlyRate !== null && hourlyRate !== ''
+          ? String(hourlyRate)
+          : (tokenRow.hourlyRate ?? null),
+      } as any);
+
+      const owner = await AuthService.getUserById(userId);
+      const businessSettings = await storage.getBusinessSettings(userId);
+      const baseUrl = getProductionBaseUrl(req);
+      const businessNameStr = businessSettings?.businessName || 'A JobRunner business';
+      const inviteeName = [resolvedFirst, resolvedLast].filter(Boolean).join(' ') || null;
+
+      try {
+        await sendTeamInviteEmail(
+          email,
+          inviteeName,
+          owner?.firstName || 'The business owner',
+          businessNameStr,
+          'Subcontractor',
+          inviteToken,
+          baseUrl
+        );
+      } catch (emailErr) {
+        console.error('Failed to send upgrade invite email:', emailErr);
+      }
+
+      let smsSent = false;
+      if (tokenRow.contactPhone) {
+        try {
+          const smartLink = `${baseUrl}/open-app/accept-invite/${inviteToken}`;
+          const firstWord = inviteeName ? ' ' + inviteeName.split(' ')[0] : '';
+          const smsBody = `G'day${firstWord}! ${businessNameStr} has upgraded your JobRunner access. Tap to set up your account: ${smartLink}`;
+          const r = await sendSMS({ to: tokenRow.contactPhone, message: smsBody });
+          smsSent = r.success;
+        } catch (smsErr) {
+          console.error('Failed to send upgrade invite SMS:', smsErr);
+        }
+      }
+
+      try {
+        const { broadcastTeamMemberChange } = await import('./websocket');
+        broadcastTeamMemberChange(userId, 'invited', newMember.id);
+      } catch {}
+
+      res.json({ ...newMember, smsSent, upgradedFromTokenId: tokenId });
+    } catch (error: any) {
+      console.error('Error upgrading subcontractor to account:', error);
+      res.status(500).json({ error: 'Failed to upgrade subcontractor' });
     }
   });
 

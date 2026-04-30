@@ -102,7 +102,6 @@ const PayrollReports = React.lazy(() => import("@/pages/PayrollReports"));
 const ClientPortal = React.lazy(() => import("@/pages/ClientPortal"));
 const ClientPortalHub = React.lazy(() => import("@/pages/ClientPortalHub"));
 const JobPortal = React.lazy(() => import("@/pages/JobPortal"));
-const TeamGroups = React.lazy(() => import("@/pages/TeamGroups"));
 const PaymentHub = React.lazy(() => import("@/pages/PaymentHub"));
 const ExpensesPage = React.lazy(() => import("@/pages/ExpensesPage"));
 const WorkPage = React.lazy(() => import("@/pages/WorkPage"));
@@ -868,10 +867,6 @@ function Router({
       
       <Route path="/leads" component={() => (
         <Leads />
-      )} />
-      
-      <Route path="/team-groups" component={() => (
-        <TeamGroups />
       )} />
       
       <Route path="/custom-forms">

@@ -1,30 +1,43 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import {
   Users, Plus, Filter, Sparkles, ArrowUpRight, MoreHorizontal,
   ChevronDown, Mail, ArrowRight, UserPlus, Link2, ShieldCheck,
   Search, Loader2, Lock, Crown, AlertCircle, MessageSquare,
-  Phone, MapPin, Clock, CheckCircle2, RefreshCw, X
+  Phone, MapPin, Clock, CheckCircle2, RefreshCw, X, Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+  SheetFooter,
 } from "@/components/ui/sheet";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSeparator, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useFeatureAccess } from "@/hooks/use-subscription";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import SendMagicLinkSheet from "@/components/subs/SendMagicLinkSheet";
+
+interface RoleOption {
+  id: string;
+  name: string;
+  description?: string;
+}
 
 type TabKey = "members" | "subcontractors";
 type SubFilter = "all" | "active" | "pending" | "off" | "inactive";
@@ -165,6 +178,8 @@ export default function TeamPage() {
   const [sendLinkOpen, setSendLinkOpen] = useState(false);
   const [inviteMemberOpen, setInviteMemberOpen] = useState(false);
   const [inviteAccountSubOpen, setInviteAccountSubOpen] = useState(false);
+  const [upgradeSubOpen, setUpgradeSubOpen] = useState(false);
+  const [upgradeSubTarget, setUpgradeSubTarget] = useState<SubcontractorRow | null>(null);
 
   const isFree = subscriptionTier === "free";
   const isPro = subscriptionTier === "pro" || subscriptionTier === "trial";
@@ -282,6 +297,14 @@ export default function TeamPage() {
             </p>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLocation("/team-operations")}
+              data-testid="button-team-live-ops"
+            >
+              <Activity className="w-3.5 h-3.5 text-success" /> Live operations
+            </Button>
             <Button variant="outline" size="sm" data-testid="button-team-filters">
               <Filter className="w-3.5 h-3.5" /> Filters
             </Button>
@@ -452,6 +475,15 @@ export default function TeamPage() {
               rows={filteredSubs}
               loading={subsQuery.isLoading}
               onSendNew={() => handleAddChoice("magic_link")}
+              onUpgrade={(sub) => {
+                if (!hasTeamPlan) {
+                  toast({ title: "Team Plan needed", description: "Upgrading subs to accounts needs a Team plan." });
+                  setLocation("/pricing");
+                  return;
+                }
+                setUpgradeSubTarget(sub);
+                setUpgradeSubOpen(true);
+              }}
             />
           )}
         </div>
@@ -503,54 +535,372 @@ export default function TeamPage() {
         }}
       />
 
-      {/* Invite Member Sheet (defers to existing invite flow) */}
-      <Sheet open={inviteMemberOpen} onOpenChange={setInviteMemberOpen}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Invite a team member</SheetTitle>
-            <SheetDescription>
-              Permanent staff with email login & role-based access. $29/seat per month.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Member invitations are now handled in the team admin flow. We'll redirect you there.
-            </p>
-            <Button
-              className="w-full"
-              onClick={() => { setInviteMemberOpen(false); setLocation("/team-operations"); }}
-              data-testid="button-go-to-invite-flow"
-            >
-              Open invite flow
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Invite Member Sheet — real form */}
+      <InviteMemberSheet
+        open={inviteMemberOpen}
+        onOpenChange={setInviteMemberOpen}
+        mode="member"
+      />
 
-      {/* Account Sub Invite Sheet (placeholder — same redirect for now) */}
-      <Sheet open={inviteAccountSubOpen} onOpenChange={setInviteAccountSubOpen}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Add an account subcontractor</SheetTitle>
-            <SheetDescription>
-              Invite a sub who'll have their own dashboard and can submit invoices to you.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-4 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Account subs use the standard team-invite flow with role <b>Subcontractor</b>.
-            </p>
-            <Button
-              className="w-full"
-              onClick={() => { setInviteAccountSubOpen(false); setLocation("/team-operations"); }}
-              data-testid="button-go-to-account-sub-flow"
-            >
-              Open invite flow
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Account Sub Invite Sheet — real form, role pre-selected to Subcontractor */}
+      <InviteMemberSheet
+        open={inviteAccountSubOpen}
+        onOpenChange={setInviteAccountSubOpen}
+        mode="account_sub"
+      />
+
+      {/* Upgrade magic-link → account sub */}
+      <UpgradeSubSheet
+        open={upgradeSubOpen}
+        onOpenChange={setUpgradeSubOpen}
+        sub={upgradeSubTarget}
+      />
     </div>
+  );
+}
+
+function InviteMemberSheet({
+  open, onOpenChange, mode,
+}: { open: boolean; onOpenChange: (v: boolean) => void; mode: "member" | "account_sub" }) {
+  const { toast } = useToast();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("");
+  const [roleId, setRoleId] = useState("");
+
+  const { data: roles = [], isLoading: rolesLoading } = useQuery<RoleOption[]>({
+    queryKey: ["/api/team/roles"],
+    enabled: open,
+  });
+
+  // For account_sub: only show Subcontractor role; pre-select it.
+  // For member: show every non-Subcontractor role.
+  const filteredRoles = useMemo(() => {
+    if (mode === "account_sub") {
+      return roles.filter((r) => (r.name || "").toLowerCase() === "subcontractor");
+    }
+    return roles.filter((r) => (r.name || "").toLowerCase() !== "subcontractor");
+  }, [roles, mode]);
+
+  // Auto-select the only sensible role when sheet opens
+  useMemo(() => {
+    if (!open) return;
+    if (roleId) return;
+    if (mode === "account_sub" && filteredRoles.length === 1) {
+      setRoleId(filteredRoles[0].id);
+    }
+  }, [open, mode, filteredRoles, roleId]);
+
+  const inviteMutation = useMutation({
+    mutationFn: async () => {
+      const body: any = {
+        email: email.trim(),
+        firstName: firstName.trim() || undefined,
+        lastName: lastName.trim() || undefined,
+        phone: phone.trim() || undefined,
+        roleId,
+      };
+      const rate = parseFloat(hourlyRate);
+      if (!isNaN(rate) && rate > 0) body.hourlyRate = String(rate);
+      const res = await apiRequest("POST", "/api/team/members/invite", body);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/subcontractors"] });
+      toast({
+        title: "Invitation sent",
+        description: `${email} has been invited.`,
+      });
+      onOpenChange(false);
+      setFirstName(""); setLastName(""); setEmail(""); setPhone(""); setHourlyRate(""); setRoleId("");
+    },
+    onError: (err: any) => {
+      const raw = err?.message || "";
+      let msg = raw;
+      if (raw.startsWith("team_plan_required:")) msg = raw.replace(/^team_plan_required:\s*/, "");
+      toast({
+        title: "Could not send invite",
+        description: msg || "Please check the details and try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      toast({ title: "Email required", variant: "destructive" });
+      return;
+    }
+    if (!roleId) {
+      toast({ title: "Role required", variant: "destructive" });
+      return;
+    }
+    inviteMutation.mutate();
+  };
+
+  const isAccountSub = mode === "account_sub";
+  const title = isAccountSub ? "Add an account subcontractor" : "Invite a team member";
+  const desc = isAccountSub
+    ? "Invite a sub who'll have their own login and can submit invoices to you. $29/seat per month."
+    : "Permanent staff with email login & role-based access. $29/seat per month.";
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="sm:max-w-md flex flex-col" data-testid={`sheet-${mode}-invite`}>
+        <SheetHeader>
+          <SheetTitle>{title}</SheetTitle>
+          <SheetDescription>{desc}</SheetDescription>
+        </SheetHeader>
+        <form onSubmit={handleSubmit} className="mt-4 flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor={`${mode}-fn`}>First name</Label>
+              <Input
+                id={`${mode}-fn`}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Jamie"
+                data-testid={`input-${mode}-firstname`}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`${mode}-ln`}>Last name</Label>
+              <Input
+                id={`${mode}-ln`}
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Doe"
+                data-testid={`input-${mode}-lastname`}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`${mode}-email`}>Email <span className="text-destructive">*</span></Label>
+            <Input
+              id={`${mode}-email`}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="jamie@example.com"
+              required
+              data-testid={`input-${mode}-email`}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`${mode}-phone`}>Phone (optional)</Label>
+            <Input
+              id={`${mode}-phone`}
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="0400 000 000"
+              data-testid={`input-${mode}-phone`}
+            />
+            <p className="text-[11.5px] text-muted-foreground">If provided, we'll also SMS the invite link.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`${mode}-role`}>Role <span className="text-destructive">*</span></Label>
+            <Select value={roleId} onValueChange={setRoleId} disabled={isAccountSub && filteredRoles.length === 1}>
+              <SelectTrigger id={`${mode}-role`} data-testid={`select-${mode}-role`}>
+                <SelectValue placeholder={rolesLoading ? "Loading roles…" : "Choose a role"} />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredRoles.length === 0 && !rolesLoading && (
+                  <SelectItem value="__none" disabled>No roles available</SelectItem>
+                )}
+                {filteredRoles.map((r) => (
+                  <SelectItem key={r.id} value={r.id} data-testid={`role-option-${r.name.toLowerCase()}`}>
+                    {r.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isAccountSub && (
+              <p className="text-[11.5px] text-muted-foreground">
+                Account subs are always assigned the Subcontractor role.
+              </p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`${mode}-rate`}>Hourly rate (optional)</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+              <Input
+                id={`${mode}-rate`}
+                type="number"
+                min="0"
+                step="0.01"
+                value={hourlyRate}
+                onChange={(e) => setHourlyRate(e.target.value)}
+                placeholder="0.00"
+                className="pl-7"
+                data-testid={`input-${mode}-rate`}
+              />
+            </div>
+          </div>
+          <SheetFooter className="mt-auto pt-4 flex-row gap-2 justify-end">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid={`button-${mode}-cancel`}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={inviteMutation.isPending} data-testid={`button-${mode}-submit`}>
+              {inviteMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Send invitation
+            </Button>
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function UpgradeSubSheet({
+  open, onOpenChange, sub,
+}: { open: boolean; onOpenChange: (v: boolean) => void; sub: SubcontractorRow | null }) {
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("");
+
+  // Pre-fill from the existing sub each time the sheet opens
+  useMemo(() => {
+    if (!open || !sub) return;
+    setEmail(sub.contactEmail || "");
+    const parts = (sub.name || "").trim().split(/\s+/);
+    setFirstName(parts[0] || "");
+    setLastName(parts.slice(1).join(" ") || "");
+    setHourlyRate("");
+  }, [open, sub]);
+
+  const upgradeMutation = useMutation({
+    mutationFn: async () => {
+      if (!sub) throw new Error("No sub selected");
+      const body: any = {
+        tokenId: sub.id,
+        email: email.trim(),
+        firstName: firstName.trim() || undefined,
+        lastName: lastName.trim() || undefined,
+      };
+      const rate = parseFloat(hourlyRate);
+      if (!isNaN(rate) && rate > 0) body.hourlyRate = String(rate);
+      const res = await apiRequest("POST", "/api/subcontractors/upgrade-to-account", body);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/subcontractors"] });
+      toast({
+        title: data?.alreadyExisted ? "Already an account sub" : "Upgrade invite sent",
+        description: data?.alreadyExisted
+          ? "This person is already a team member — re-using their existing record."
+          : `${email} has been invited to create a JobRunner account.`,
+      });
+      onOpenChange(false);
+    },
+    onError: (err: any) => {
+      const raw = err?.message || "";
+      let msg = raw;
+      if (raw.startsWith("team_plan_required:")) msg = raw.replace(/^team_plan_required:\s*/, "");
+      toast({
+        title: "Could not upgrade subcontractor",
+        description: msg || "Please check the details and try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      toast({ title: "Email required to send the account invite", variant: "destructive" });
+      return;
+    }
+    upgradeMutation.mutate();
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="sm:max-w-md flex flex-col" data-testid="sheet-upgrade-sub">
+        <SheetHeader>
+          <SheetTitle>Upgrade to account sub</SheetTitle>
+          <SheetDescription>
+            Convert this magic-link sub into a full account-subcontractor with their own login,
+            dashboard and invoicing. We'll re-use their existing details.
+          </SheetDescription>
+        </SheetHeader>
+        {sub && (
+          <div className="mt-3 p-3 bg-muted/40 rounded-md text-[12.5px]">
+            <div className="font-semibold">{sub.name}</div>
+            <div className="text-muted-foreground">{sub.contactPhone || sub.contactEmail || "—"}</div>
+          </div>
+        )}
+        <form onSubmit={handleSubmit} className="mt-4 flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="upgrade-fn">First name</Label>
+              <Input
+                id="upgrade-fn"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                data-testid="input-upgrade-firstname"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="upgrade-ln">Last name</Label>
+              <Input
+                id="upgrade-ln"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                data-testid="input-upgrade-lastname"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="upgrade-email">Email <span className="text-destructive">*</span></Label>
+            <Input
+              id="upgrade-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="sub@example.com"
+              required
+              data-testid="input-upgrade-email"
+            />
+            <p className="text-[11.5px] text-muted-foreground">Required so we can send the account-setup link.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="upgrade-rate">Hourly rate (optional)</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+              <Input
+                id="upgrade-rate"
+                type="number"
+                min="0"
+                step="0.01"
+                value={hourlyRate}
+                onChange={(e) => setHourlyRate(e.target.value)}
+                placeholder="0.00"
+                className="pl-7"
+                data-testid="input-upgrade-rate"
+              />
+            </div>
+          </div>
+          <SheetFooter className="mt-auto pt-4 flex-row gap-2 justify-end">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="button-upgrade-cancel">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={upgradeMutation.isPending} data-testid="button-upgrade-submit">
+              {upgradeMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Send upgrade invite
+            </Button>
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -682,8 +1032,13 @@ function MembersTable({
 }
 
 function SubcontractorsTable({
-  rows, loading, onSendNew,
-}: { rows: SubcontractorRow[]; loading: boolean; onSendNew: () => void }) {
+  rows, loading, onSendNew, onUpgrade,
+}: {
+  rows: SubcontractorRow[];
+  loading: boolean;
+  onSendNew: () => void;
+  onUpgrade: (sub: SubcontractorRow) => void;
+}) {
   if (loading) {
     return (
       <Card>
@@ -762,7 +1117,35 @@ function SubcontractorsTable({
             <div className="text-[12.5px] text-muted-foreground tabular-nums">{timeAgo(s.lastActivity)}</div>
             <div className="text-[12.5px] tabular-nums font-medium">{s.jobsCount ?? 0}</div>
             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex justify-end">
-              <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="w-4 h-4" /></Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={(e) => e.stopPropagation()}
+                    data-testid={`button-sub-row-actions-${s.id}`}
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {s.kind === "magic_link" && (
+                    <DropdownMenuItem
+                      onSelect={(e) => { e.preventDefault(); onUpgrade(s); }}
+                      data-testid={`action-upgrade-sub-${s.id}`}
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Upgrade to account sub
+                    </DropdownMenuItem>
+                  )}
+                  {s.kind !== "magic_link" && (
+                    <DropdownMenuItem disabled>
+                      Already an account sub
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         );
