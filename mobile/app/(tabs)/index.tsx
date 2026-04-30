@@ -433,7 +433,11 @@ function ActivityFeed({
     );
   }
 
-  if (activities.length === 0) {
+  // Belt-and-braces: never trust the prop is an array. If a caller passes an
+  // error object or null, treat as empty instead of crashing the dashboard.
+  const safeActivities = Array.isArray(activities) ? activities : [];
+
+  if (safeActivities.length === 0) {
     return (
       <View style={styles.activityEmpty}>
         <Feather name="activity" size={sizes.emptyIconSm} color={colors.mutedForeground} />
@@ -444,7 +448,7 @@ function ActivityFeed({
 
   return (
     <View style={styles.activityList}>
-      {activities.slice(0, 5).map((activity, index) => {
+      {safeActivities.slice(0, 5).map((activity, index) => {
         const isClickable = activity.navigationPath || activity.entityId;
         
         return (
@@ -2257,8 +2261,13 @@ function OwnerDashboardScreen() {
     try {
       const { default: api } = await import('../../src/lib/api');
       const response = await api.get<any[]>('/api/activity/recent/5');
-      if (response.data) {
+      // Guard: api wrapper sets `data` even on errors (line 161 of api.ts) so we
+      // must verify it's an array before storing — otherwise ActivityFeed crashes
+      // calling .slice() on a {error: "..."} object. Sentry: 847b667a67774bef.
+      if (Array.isArray(response.data)) {
         setActivities(response.data);
+      } else {
+        setActivities([]);
       }
     } catch (error) {
       if (__DEV__) console.log('Error fetching activities:', error);
