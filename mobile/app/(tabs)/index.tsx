@@ -2564,7 +2564,7 @@ function OwnerDashboardScreen() {
     try {
       const { default: api } = await import('../../src/lib/api');
       const response = await api.get<any[]>('/api/jobs/my-jobs');
-      if (response.data) {
+      if (Array.isArray(response.data)) {
         setMyAllJobs(response.data);
       }
     } catch (error) {

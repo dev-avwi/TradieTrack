@@ -171,7 +171,7 @@ export default function QuoteDetailScreen() {
     const fetchPhotos = async () => {
       try {
         const response = await api.get<any[]>(`/api/jobs/${quote.jobId}/photos`);
-        if (response.data) setJobPhotos(response.data);
+        if (Array.isArray(response.data)) setJobPhotos(response.data);
       } catch (e) {
         setJobPhotos([]);
       }

@@ -401,7 +401,7 @@ export default function SmsConversationScreen() {
     smsFetchInFlightRef.current = true;
     try {
       const response = await api.get<SmsMessage[]>(`/api/sms/conversations/${id}/messages`);
-      if (response.data) {
+      if (Array.isArray(response.data)) {
         setMessages(response.data);
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 100);
       }

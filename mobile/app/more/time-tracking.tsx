@@ -814,7 +814,7 @@ export default function TimeTrackingScreen() {
       const dateStr = targetDate.toISOString().split('T')[0];
       const teamParam = teamViewEnabled && isOwnerOrManager ? '&teamView=true' : '';
       const response = await api.get<any[]>(`/api/time-entries?startDate=${dateStr}&endDate=${dateStr}${teamParam}`);
-      if (response.data) {
+      if (Array.isArray(response.data)) {
         setTimeEntries(response.data);
       }
     } catch (error) {

@@ -3651,7 +3651,7 @@ export default function JobDetailScreen() {
   const loadPhotos = async () => {
     try {
       const response = await api.get<JobPhoto[]>(`/api/jobs/${id}/photos`);
-      if (response.data) {
+      if (Array.isArray(response.data)) {
         setPhotos(response.data);
       }
     } catch (error) {
@@ -3663,7 +3663,7 @@ export default function JobDetailScreen() {
   const loadVoiceNotes = async () => {
     try {
       const response = await api.get<VoiceNote[]>(`/api/jobs/${id}/voice-notes`);
-      if (response.data) {
+      if (Array.isArray(response.data)) {
         setVoiceNotes(response.data);
       }
     } catch (error) {
@@ -3894,7 +3894,7 @@ export default function JobDetailScreen() {
   const loadSignatures = async () => {
     try {
       const response = await api.get<DigitalSignature[]>(`/api/jobs/${id}/signatures`);
-      if (response.data) {
+      if (Array.isArray(response.data)) {
         setSignatures(response.data);
       }
     } catch (error) {
@@ -4036,7 +4036,7 @@ export default function JobDetailScreen() {
   const loadTimeEntries = async () => {
     try {
       const response = await api.get<CompletedTimeEntry[]>(`/api/time-entries?jobId=${id}&teamView=true`);
-      if (response.data) {
+      if (Array.isArray(response.data)) {
         setTimeEntries(response.data);
       }
     } catch (error) {

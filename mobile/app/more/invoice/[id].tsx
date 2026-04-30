@@ -198,7 +198,7 @@ export default function InvoiceDetailScreen() {
     const fetchPhotos = async () => {
       try {
         const response = await api.get<any[]>(`/api/jobs/${invoice.jobId}/photos`);
-        if (response.data) setJobPhotos(response.data);
+        if (Array.isArray(response.data)) setJobPhotos(response.data);
       } catch (e) {
         setJobPhotos([]);
       }

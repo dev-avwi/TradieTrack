@@ -707,7 +707,7 @@ export default function CreateJobScreen() {
     setLoadingTeam(true);
     try {
       const response = await api.get<any[]>('/api/team/members');
-      if (response.data) {
+      if (Array.isArray(response.data)) {
         setTeamMembers(response.data);
       }
     } catch (error) {
