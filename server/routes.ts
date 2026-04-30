@@ -507,8 +507,41 @@ function formatRelativeTime(date: Date | string): string {
   }
 }
 
-// Helper function to resolve job.assignedTo to a valid user ID
-// The assignedTo field can contain either a user ID or a team member record ID
+/**
+ * Normalize an Australian phone number to E.164 (+61...).
+ * Returns null if the input doesn't look like a valid AU mobile or landline.
+ * Examples:
+ *   "0400 000 000" → "+61400000000"
+ *   "+61400000000" → "+61400000000"
+ *   "61400000000"  → "+61400000000"
+ *   "(02) 1234 5678" → "+61212345678"
+ */
+function normalizeAuPhone(input: string | null | undefined): string | null {
+  if (!input) return null;
+  // Strip everything except digits and a leading +
+  const cleaned = String(input).trim().replace(/[^\d+]/g, '');
+  if (!cleaned) return null;
+  // Already E.164 with +61
+  if (cleaned.startsWith('+61')) {
+    const rest = cleaned.slice(3);
+    if (rest.length >= 8 && rest.length <= 10) return '+61' + rest;
+    return null;
+  }
+  // 61... without plus
+  if (cleaned.startsWith('61') && cleaned.length >= 10 && cleaned.length <= 12) {
+    return '+' + cleaned;
+  }
+  // 0... domestic (most common case)
+  if (cleaned.startsWith('0') && cleaned.length === 10) {
+    return '+61' + cleaned.slice(1);
+  }
+  // Bare 9 digits (someone dropped the leading 0) — treat as mobile/landline
+  if (/^[2-9]\d{8}$/.test(cleaned)) {
+    return '+61' + cleaned;
+  }
+  return null;
+}
+
 async function resolveAssigneeUserId(assignedTo: string | null | undefined, businessOwnerId: string): Promise<string | null> {
   if (!assignedTo) return null;
   
@@ -2960,6 +2993,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // recipients to recognise themselves while preventing PII leakage.
       const contactNameFirstChar = (tokenRecord.contactName || '').trim().charAt(0).toUpperCase();
 
+      // SECURITY: We intentionally DO NOT expose the recipient's first name
+      // here, even when the token is auto-linked to an existing JR user.
+      // Doing so would let anyone holding the token URL enumerate whether a
+      // phone belongs to a JR user and learn that user's first name without
+      // ever proving identity. The personalized "Welcome back, X" greeting
+      // is shown only AFTER the recipient passes the code/session gate, via
+      // the authenticated /api/m/:token/account-status endpoint.
       res.json({
         status: tokenRecord.status,
         revoked: !!tokenRecord.revokedAt,
@@ -3168,6 +3208,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error verifying magic link code:', error);
       res.status(500).json({ error: 'Verification failed' });
+    }
+  });
+
+  // T008: GET /api/m/:token/account-status — does this recipient already
+  // have a JR account, or is the token already linked to one?
+  // Requires a valid sub session — only callable from inside the unlocked
+  // sub web view, so we know the recipient has confirmed identity.
+  app.get("/api/m/:token/account-status", async (req, res) => {
+    try {
+      const v = await validateSubSession(req);
+      if (!v.ok) return res.status(v.status).json(v.body);
+      const { tokenRecord } = v;
+
+      // Already linked on this token
+      const linkedUserId = (tokenRecord as any).recipientUserId as string | null;
+      if (linkedUserId) {
+        const user = await storage.getUserById(linkedUserId);
+        return res.json({
+          hasAccount: true,
+          alreadyLinked: true,
+          firstName: user?.firstName || null,
+        });
+      }
+
+      // Not linked on this token — see if their phone matches an existing user
+      const normalized = normalizeAuPhone(tokenRecord.contactPhone);
+      if (!normalized) {
+        return res.json({ hasAccount: false, alreadyLinked: false });
+      }
+      const existing = await storage.getUserByPhoneNormalized(normalized);
+      if (existing) {
+        return res.json({
+          hasAccount: true,
+          alreadyLinked: false,
+          firstName: existing.firstName || null,
+        });
+      }
+      return res.json({ hasAccount: false, alreadyLinked: false });
+    } catch (error: any) {
+      console.error('Error checking magic-link account status:', error);
+      res.status(500).json({ error: 'Status check failed' });
+    }
+  });
+
+  // T008: POST /api/m/:token/save-account — link or create a sub account.
+  // Requires a valid sub session.
+  // Body: { firstName?: string, lastName?: string, tradeType?: string }
+  // - If recipient phone matches an existing user → link recipientUserId,
+  //   ignore firstName/lastName/tradeType (existing profile wins).
+  // - If no existing user → firstName REQUIRED, create new free-tier user
+  //   with phone/phoneNormalized populated, link recipientUserId.
+  // Also retroactively links every other unrevoked token sent to the same
+  // phone, so future links from any contractor skip the name-gate.
+  app.post("/api/m/:token/save-account", async (req, res) => {
+    try {
+      const v = await validateSubSession(req);
+      if (!v.ok) return res.status(v.status).json(v.body);
+      const { tokenRecord } = v;
+
+      const normalized = normalizeAuPhone(tokenRecord.contactPhone);
+      if (!normalized) {
+        return res.status(400).json({ error: 'This link has no valid phone number to attach.' });
+      }
+
+      let user = await storage.getUserByPhoneNormalized(normalized);
+      let mode: 'linked' | 'created' = 'linked';
+
+      if (!user) {
+        const { firstName, lastName, tradeType } = req.body || {};
+        const trimmedFirst = String(firstName || '').trim();
+        if (!trimmedFirst) {
+          return res.status(400).json({ error: 'First name is required to create your account.' });
+        }
+        // Generate a placeholder username from the phone (no email required —
+        // sub accounts can be email-less, they sign in via magic links).
+        const usernameSeed = `sub_${normalized.replace(/\D/g, '')}_${Date.now().toString(36)}`;
+        try {
+          user = await storage.createUser({
+            username: usernameSeed,
+            firstName: trimmedFirst,
+            lastName: String(lastName || '').trim() || null,
+            phone: tokenRecord.contactPhone || normalized,
+            phoneNormalized: normalized,
+            tradeType: tradeType ? String(tradeType).trim() : null,
+            subscriptionTier: 'free',
+            isActive: true,
+          } as any);
+          mode = 'created';
+        } catch (e: any) {
+          // Race: someone else created the same phone account in parallel.
+          // Fall back to lookup.
+          user = await storage.getUserByPhoneNormalized(normalized);
+          if (!user) {
+            console.error('Failed to create sub account:', e);
+            return res.status(500).json({ error: 'Could not create your account. Please try again.' });
+          }
+        }
+      }
+
+      // Link THIS token to the user (and mark name confirmed in case it wasn't).
+      await storage.setSubcontractorTokenRecipient(tokenRecord.id, user.id, /*alsoMarkNameConfirmed*/ true);
+
+      // Retroactively link every other unrevoked, unexpired token sent to the
+      // same phone so future opens skip the name-gate.
+      try {
+        await db.update(subcontractorTokens)
+          .set({ recipientUserId: user.id, nameConfirmedAt: sql`COALESCE(${subcontractorTokens.nameConfirmedAt}, NOW())` })
+          .where(and(
+            eq(subcontractorTokens.contactPhone, tokenRecord.contactPhone || ''),
+            isNull(subcontractorTokens.recipientUserId),
+            isNull(subcontractorTokens.revokedAt),
+          ));
+      } catch (e) {
+        console.error('Failed retroactive link of sibling tokens:', e);
+      }
+
+      await storage.createSubcontractorEvent({
+        tokenId: tokenRecord.id,
+        jobId: tokenRecord.jobId,
+        eventType: mode === 'created' ? 'SUBBIE_ACCOUNT_CREATED' : 'SUBBIE_ACCOUNT_LINKED',
+        eventData: { userId: user.id },
+      });
+
+      return res.json({
+        success: true,
+        mode,
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          tradeType: user.tradeType,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error saving sub account:', error);
+      res.status(500).json({ error: 'Save failed' });
     }
   });
 
@@ -5308,6 +5484,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .where(eq(subcontractorTokens.id, created.id));
         } catch (e) {
           console.error('Failed to persist code hash on subcontractor token:', e);
+        }
+      }
+
+      // T008: Auto-link known phones. If the recipient phone matches an
+      // existing JR user (any role: tradie, owner, sub), pre-set recipientUserId
+      // AND nameConfirmedAt so the recipient skips the "Are you Jake?" gate.
+      // The 4-digit code (if requireCode=true) is still required.
+      let recipientLinkedFirstName: string | null = null;
+      if (contactPhone) {
+        try {
+          const normalized = normalizeAuPhone(contactPhone);
+          if (normalized) {
+            const existing = await storage.getUserByPhoneNormalized(normalized);
+            if (existing) {
+              await storage.setSubcontractorTokenRecipient(created.id, existing.id, /*alsoMarkNameConfirmed*/ true);
+              recipientLinkedFirstName = existing.firstName || null;
+            }
+          }
+        } catch (e) {
+          console.error('Failed to auto-link recipient by phone:', e);
         }
       }
 

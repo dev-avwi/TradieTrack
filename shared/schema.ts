@@ -305,6 +305,8 @@ export const users = pgTable("users", {
   googleId: varchar("google_id").unique(), // For Google OAuth linkage
   appleId: varchar("apple_id").unique(), // For Apple Sign In linkage
   xeroId: varchar("xero_id").unique(), // For Xero Sign In linkage
+  phone: varchar("phone", { length: 32 }), // Display-formatted phone (e.g. "0400 000 000")
+  phoneNormalized: varchar("phone_normalized", { length: 20 }), // E.164 normalized for lookup (e.g. "+61400000000")
   firstName: varchar("first_name"), // From Replit Auth claims
   lastName: varchar("last_name"), // From Replit Auth claims
   profileImageUrl: varchar("profile_image_url"), // From Replit Auth claims
@@ -4154,10 +4156,11 @@ export const subcontractorTokens = pgTable("subcontractor_tokens", {
   lastOpenedFromIp: varchar("last_opened_from_ip", { length: 64 }),
   openCount: integer("open_count").default(0),
   revokedReason: varchar("revoked_reason", { length: 40 }),
+  recipientUserId: varchar("recipient_user_id").references(() => users.id, { onDelete: 'set null' }), // Linked sub user (set after they save an account, OR pre-set if phone matches existing user)
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertSubcontractorTokenSchema = createInsertSchema(subcontractorTokens).omit({ id: true, createdAt: true, lastAccessedAt: true, acceptedAt: true, revokedAt: true, codeHash: true, codeAttempts: true, codeIssuedAt: true, nameConfirmedAt: true, lastOpenedFromCity: true, lastOpenedFromIp: true, openCount: true, revokedReason: true });
+export const insertSubcontractorTokenSchema = createInsertSchema(subcontractorTokens).omit({ id: true, createdAt: true, lastAccessedAt: true, acceptedAt: true, revokedAt: true, codeHash: true, codeAttempts: true, codeIssuedAt: true, nameConfirmedAt: true, lastOpenedFromCity: true, lastOpenedFromIp: true, openCount: true, revokedReason: true, recipientUserId: true });
 export type InsertSubcontractorToken = z.infer<typeof insertSubcontractorTokenSchema>;
 export type SubcontractorToken = typeof subcontractorTokens.$inferSelect;
 

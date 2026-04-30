@@ -55,6 +55,13 @@ export default function MagicLinkLanding() {
           await handleConfirm(true, /*silent*/ true, data as Preview);
           return;
         }
+        // Already known recipient AND code required → skip the name-gate
+        // and jump straight to code entry.
+        if (data.nameConfirmed && data.requiresCode) {
+          setPhase("code-entry");
+          setTimeout(() => codeInputRef.current?.focus(), 50);
+          return;
+        }
         setPhase("name-gate");
       } catch (e: any) {
         if (cancelled) return;

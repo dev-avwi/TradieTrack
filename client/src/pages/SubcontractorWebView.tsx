@@ -11,6 +11,7 @@ import {
   Clock, AlertCircle, Briefcase
 } from "lucide-react";
 import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
+import SaveAccountSheet from "@/components/subs/SaveAccountSheet";
 
 interface SubcontractorWebViewProps {
   token: string;
@@ -103,6 +104,15 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
   const [photoCaption, setPhotoCaption] = useState('');
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [dismissedAppBanner, setDismissedAppBanner] = useState(false);
+  const [showSaveAccount, setShowSaveAccount] = useState(false);
+  const [accountSaved, setAccountSaved] = useState<null | "linked" | "created">(null);
+  const [accountDismissed, setAccountDismissed] = useState(false);
+  const [accountStatusLoaded, setAccountStatusLoaded] = useState(false);
+  const [accountStatusInfo, setAccountStatusInfo] = useState<{
+    hasAccount: boolean;
+    alreadyLinked: boolean;
+    firstName?: string | null;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -131,6 +141,32 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
       }
     };
   }, [viewState, sessionToken]);
+
+  // T008: load account-link status once we hit the dashboard so we know
+  // whether to show the "Save your account" CTA.
+  useEffect(() => {
+    if (viewState !== 'dashboard' || !sessionToken || accountStatusLoaded) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/m/${token}/account-status`, {
+          headers: { 'Authorization': `Bearer ${sessionToken}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        setAccountStatusInfo(data);
+        setAccountStatusLoaded(true);
+        if (data.alreadyLinked) {
+          // Already linked — treat as "saved" so we don't nag with the CTA.
+          setAccountSaved('linked');
+        }
+      } catch {
+        // silent
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [viewState, sessionToken, token, accountStatusLoaded]);
 
   const startLocationPing = () => {
     if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
@@ -815,6 +851,62 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
                     </div>
                   )}
 
+                  {currentStatus === 'done' && accountStatusLoaded && !accountSaved && !accountDismissed && (
+                    <div className="rounded-md border border-[#2563EB]/30 bg-gradient-to-br from-[#2563EB]/5 to-[#2563EB]/10 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-md bg-[#2563EB] flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <Shield className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-slate-900">
+                            {accountStatusInfo?.hasAccount && accountStatusInfo?.firstName
+                              ? `Welcome back, ${accountStatusInfo.firstName}`
+                              : "Save your spot — 30 seconds"}
+                          </h4>
+                          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                            {accountStatusInfo?.hasAccount
+                              ? `Link ${jobData.business?.companyName || 'this contractor'} to your account. Future job links from them skip the name confirm.`
+                              : "Get a free JobRunner account so the next job link opens instantly — no name confirm, just tap and go."}
+                          </p>
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              className="bg-[#2563EB] hover:bg-[#2563EB]"
+                              onClick={() => setShowSaveAccount(true)}
+                              data-testid="button-open-save-account"
+                            >
+                              {accountStatusInfo?.hasAccount ? "Link contractor" : "Create free account"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setAccountDismissed(true)}
+                              data-testid="button-dismiss-save-account"
+                            >
+                              Not now
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentStatus === 'done' && accountSaved === 'created' && (
+                    <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-emerald-900">Account ready</h4>
+                          <p className="text-xs text-emerald-800/80 mt-1">
+                            Next job link from any contractor will open straight to the job.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {jobData.completedJobCount >= 3 && !dismissedAppBanner && (
                     <div className="bg-[#2563EB]/5 border border-[#2563EB]/20 rounded-md p-4">
                       <div className="flex items-start gap-3">
@@ -1017,6 +1109,22 @@ export default function SubcontractorWebView({ token }: SubcontractorWebViewProp
         </div>
 
         <Footer />
+
+        {sessionToken && (
+          <SaveAccountSheet
+            open={showSaveAccount}
+            onOpenChange={setShowSaveAccount}
+            token={token}
+            sessionToken={sessionToken}
+            businessName={jobData?.business?.companyName}
+            onSaved={(mode) => {
+              setAccountSaved(mode);
+              setAccountStatusInfo((prev) =>
+                prev ? { ...prev, alreadyLinked: true, hasAccount: true } : prev,
+              );
+            }}
+          />
+        )}
       </div>
     );
   }

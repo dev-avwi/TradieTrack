@@ -420,6 +420,8 @@ export interface IStorage {
   getUserByAppleId(appleId: string): Promise<User | undefined>;
   getUserByAppleOriginalTransactionId(originalTransactionId: string): Promise<User | undefined>;
   getUserByXeroId(xeroId: string): Promise<User | undefined>;
+  getUserByPhoneNormalized(phoneNormalized: string): Promise<User | undefined>;
+  setSubcontractorTokenRecipient(tokenId: string, recipientUserId: string, alsoMarkNameConfirmed?: boolean): Promise<void>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   updateUserJobCount(id: string, count: number): Promise<User | undefined>;
@@ -1401,6 +1403,25 @@ export class PostgresStorage implements IStorage {
       .where(eq(users.xeroId, xeroId))
       .limit(1);
     return result[0];
+  }
+
+  async getUserByPhoneNormalized(phoneNormalized: string): Promise<User | undefined> {
+    if (!phoneNormalized) return undefined;
+    const result = await db
+      .select()
+      .from(users)
+      .where(eq(users.phoneNormalized, phoneNormalized))
+      .limit(1);
+    return result[0];
+  }
+
+  async setSubcontractorTokenRecipient(tokenId: string, recipientUserId: string, alsoMarkNameConfirmed = false): Promise<void> {
+    const updates: any = { recipientUserId };
+    if (alsoMarkNameConfirmed) updates.nameConfirmedAt = new Date();
+    await db
+      .update(subcontractorTokens)
+      .set(updates)
+      .where(eq(subcontractorTokens.id, tokenId));
   }
 
   async linkXeroAccount(userId: string, xeroId: string): Promise<void> {
