@@ -4144,10 +4144,20 @@ export const subcontractorTokens = pgTable("subcontractor_tokens", {
   lastAccessedAt: timestamp("last_accessed_at"),
   etaMinutes: integer("eta_minutes"),
   hourlyRate: varchar("hourly_rate", { length: 20 }),
+  // Wrong-number / verification hardening
+  requireCode: boolean("require_code").default(false),
+  codeHash: varchar("code_hash", { length: 255 }),
+  codeAttempts: integer("code_attempts").default(0),
+  codeIssuedAt: timestamp("code_issued_at"),
+  nameConfirmedAt: timestamp("name_confirmed_at"),
+  lastOpenedFromCity: varchar("last_opened_from_city", { length: 120 }),
+  lastOpenedFromIp: varchar("last_opened_from_ip", { length: 64 }),
+  openCount: integer("open_count").default(0),
+  revokedReason: varchar("revoked_reason", { length: 40 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertSubcontractorTokenSchema = createInsertSchema(subcontractorTokens).omit({ id: true, createdAt: true, lastAccessedAt: true, acceptedAt: true, revokedAt: true });
+export const insertSubcontractorTokenSchema = createInsertSchema(subcontractorTokens).omit({ id: true, createdAt: true, lastAccessedAt: true, acceptedAt: true, revokedAt: true, codeHash: true, codeAttempts: true, codeIssuedAt: true, nameConfirmedAt: true, lastOpenedFromCity: true, lastOpenedFromIp: true, openCount: true, revokedReason: true });
 export type InsertSubcontractorToken = z.infer<typeof insertSubcontractorTokenSchema>;
 export type SubcontractorToken = typeof subcontractorTokens.$inferSelect;
 

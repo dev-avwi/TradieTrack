@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/node";
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { randomBytes, randomUUID, createHash } from "crypto";
+import { randomBytes, randomUUID, createHash, randomInt } from "crypto";
 import { z } from "zod";
 import multer from "multer";
 import jwt from "jsonwebtoken";
@@ -2399,6 +2399,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // SUBCONTRACTOR WEB VIEW ROUTES (Public)
   // ============================================
 
+  // Centralised auth check for sub web-view endpoints. Validates that the
+  // session exists, is unexpired, matches the token in the URL, AND that the
+  // token itself has not been revoked/expired since the session was issued.
+  // Returns either { ok: true, session, tokenRecord } or { ok: false, status, body }.
+  async function validateSubSession(req: Request): Promise<
+    | { ok: true; session: any; tokenRecord: any }
+    | { ok: false; status: number; body: { error: string } }
+  > {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return { ok: false, status: 401, body: { error: 'Auth required' } };
+    }
+    const sessionToken = authHeader.substring(7);
+    const session = await storage.getSubcontractorSessionByToken(sessionToken);
+    if (!session) return { ok: false, status: 401, body: { error: 'Invalid session' } };
+    if (new Date() > session.expiresAt) {
+      await storage.deleteSubcontractorSession(sessionToken);
+      return { ok: false, status: 401, body: { error: 'Session expired' } };
+    }
+    const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+    if (!tokenRecord || session.tokenId !== tokenRecord.id) {
+      return { ok: false, status: 403, body: { error: 'Access denied' } };
+    }
+    if (tokenRecord.revokedAt) {
+      await storage.deleteSubcontractorSession(sessionToken);
+      return { ok: false, status: 410, body: { error: 'This link has been revoked' } };
+    }
+    if (tokenRecord.expiresAt && new Date() > tokenRecord.expiresAt) {
+      await storage.deleteSubcontractorSession(sessionToken);
+      return { ok: false, status: 410, body: { error: 'This link has expired' } };
+    }
+    return { ok: true, session, tokenRecord };
+  }
+
   app.get("/api/subcontractor/:token/info", async (req, res) => {
     try {
       const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
@@ -2406,9 +2440,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (tokenRecord.revokedAt) return res.status(410).json({ error: 'This link has been revoked' });
       if (tokenRecord.expiresAt && new Date() > tokenRecord.expiresAt) return res.status(410).json({ error: 'This link has expired' });
 
-      const job = await storage.getJob(tokenRecord.jobId, tokenRecord.userId);
       const businessSettings = await storage.getBusinessSettings(tokenRecord.userId);
+      const businessName = businessSettings?.companyName || businessSettings?.businessName || 'Business';
 
+      // SECURITY: For tokens issued under the new magic-link flow (requireCode
+      // OR a name-gate that hasn't been completed), this legacy info endpoint
+      // must NOT return PII. A wrong-number recipient could otherwise swap
+      // /m/:token → /s/:token and bypass the name gate.
+      const requiresCode = !!(tokenRecord as any).requireCode;
+      const nameConfirmed = !!(tokenRecord as any).nameConfirmedAt;
+      const piiLocked = requiresCode || !nameConfirmed;
+
+      if (piiLocked) {
+        return res.json({
+          status: tokenRecord.status,
+          contactName: null,
+          job: { title: 'Job', address: null, scheduledAt: null },
+          business: { companyName: businessName, phone: null },
+          requiresOtp: true,
+          piiLocked: true,
+        });
+      }
+
+      const job = await storage.getJob(tokenRecord.jobId, tokenRecord.userId);
       res.json({
         status: tokenRecord.status,
         contactName: tokenRecord.contactName,
@@ -2418,7 +2472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           scheduledAt: job?.scheduledAt,
         },
         business: {
-          companyName: businessSettings?.companyName || businessSettings?.businessName || 'Business',
+          companyName: businessName,
           phone: businessSettings?.phone,
         },
         requiresOtp: true,
@@ -2439,8 +2493,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (tokenRecord.revokedAt) return res.status(410).json({ error: 'Link revoked' });
       if (tokenRecord.expiresAt && new Date() > tokenRecord.expiresAt) return res.status(410).json({ error: 'Link expired' });
 
+      // SECURITY: Tokens issued under the new magic-link flow must be verified
+      // through /api/m/:token/* — not the legacy phone-OTP endpoint, which
+      // would otherwise let a wrong-number recipient submit their own phone,
+      // receive an SMS code, and bypass the name/code gate.
+      const requiresCode = !!(tokenRecord as any).requireCode;
+      const nameConfirmed = !!(tokenRecord as any).nameConfirmedAt;
+      if (requiresCode || !nameConfirmed) {
+        return res.status(403).json({ error: 'This link must be opened from the original SMS.' });
+      }
+
       const { formatPhoneNumber } = await import('./services/smsService');
       const normalizedPhone = formatPhoneNumber(phone);
+
+      // SECURITY: If the token was created with a contactPhone, the requester
+      // MUST be that phone. Without this check the legacy flow would issue a
+      // session to any phone number.
+      if (tokenRecord.contactPhone) {
+        const tokenPhone = formatPhoneNumber(tokenRecord.contactPhone);
+        if (normalizedPhone !== tokenPhone) {
+          return res.status(403).json({ error: 'This link is not for that phone number.' });
+        }
+      }
 
       const recentCount = await storage.countRecentVerificationCodes(normalizedPhone, 60 * 60 * 1000);
       if (recentCount >= 3) return res.status(429).json({ error: 'Too many requests. Try again later.' });
@@ -2474,9 +2548,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
       if (!tokenRecord) return res.status(404).json({ error: 'Token not found' });
+      if (tokenRecord.revokedAt) return res.status(410).json({ error: 'Link revoked' });
+      if (tokenRecord.expiresAt && new Date() > tokenRecord.expiresAt) return res.status(410).json({ error: 'Link expired' });
+
+      // SECURITY: Same gate as request-code — magic-link tokens must verify
+      // through /api/m/:token/verify, not this legacy SMS-OTP path.
+      const requiresCode = !!(tokenRecord as any).requireCode;
+      const nameConfirmed = !!(tokenRecord as any).nameConfirmedAt;
+      if (requiresCode || !nameConfirmed) {
+        return res.status(403).json({ error: 'This link must be opened from the original SMS.' });
+      }
 
       const { formatPhoneNumber } = await import('./services/smsService');
       const normalizedPhone = formatPhoneNumber(phone);
+
+      // SECURITY: Submitted phone must match the token's contactPhone. Without
+      // this, anyone who can guess/sniff a 6-digit SMS code from any phone
+      // could bind their phone to the token and gain a session.
+      if (tokenRecord.contactPhone) {
+        const tokenPhone = formatPhoneNumber(tokenRecord.contactPhone);
+        if (normalizedPhone !== tokenPhone) {
+          return res.status(403).json({ error: 'This link is not for that phone number.' });
+        }
+      }
 
       const verificationRecord = await storage.getPortalVerificationCode(normalizedPhone, code);
       if (!verificationRecord) return res.status(400).json({ error: 'Invalid code' });
@@ -2513,23 +2607,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/subcontractor/:token/data", async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Authorization required' });
-      }
-      const sessionToken = authHeader.substring(7);
-
-      const session = await storage.getSubcontractorSessionByToken(sessionToken);
-      if (!session) return res.status(401).json({ error: 'Invalid session' });
-      if (new Date() > session.expiresAt) {
-        await storage.deleteSubcontractorSession(sessionToken);
-        return res.status(401).json({ error: 'Session expired' });
-      }
-
-      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
-      if (!tokenRecord || session.tokenId !== tokenRecord.id) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
+      const v = await validateSubSession(req);
+      if (!v.ok) return res.status(v.status).json(v.body);
+      const { tokenRecord } = v;
 
       await storage.updateSubcontractorTokenAccess(tokenRecord.id);
 
@@ -2606,13 +2686,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/subcontractor/:token/accept", async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required' });
-      const session = await storage.getSubcontractorSessionByToken(authHeader.substring(7));
-      if (!session) return res.status(401).json({ error: 'Invalid session' });
-
-      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
-      if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
+      const v = await validateSubSession(req);
+      if (!v.ok) return res.status(v.status).json(v.body);
+      const { tokenRecord } = v;
 
       await storage.updateSubcontractorTokenStatus(tokenRecord.id, 'accepted', new Date());
       await storage.createSubcontractorEvent({
@@ -2631,13 +2707,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/subcontractor/:token/decline", async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required' });
-      const session = await storage.getSubcontractorSessionByToken(authHeader.substring(7));
-      if (!session) return res.status(401).json({ error: 'Invalid session' });
-
-      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
-      if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
+      const v = await validateSubSession(req);
+      if (!v.ok) return res.status(v.status).json(v.body);
+      const { tokenRecord } = v;
 
       await storage.updateSubcontractorTokenStatus(tokenRecord.id, 'declined');
       await storage.createSubcontractorEvent({
@@ -2656,13 +2728,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/subcontractor/:token/status", async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required' });
-      const session = await storage.getSubcontractorSessionByToken(authHeader.substring(7));
-      if (!session) return res.status(401).json({ error: 'Invalid session' });
-
-      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
-      if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
+      const v = await validateSubSession(req);
+      if (!v.ok) return res.status(v.status).json(v.body);
+      const { tokenRecord } = v;
       if (tokenRecord.status !== 'accepted') return res.status(400).json({ error: 'Must accept job first' });
 
       const { status, latitude, longitude, etaMinutes } = req.body;
@@ -2721,13 +2789,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/subcontractor/:token/notes", async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required' });
-      const session = await storage.getSubcontractorSessionByToken(authHeader.substring(7));
-      if (!session) return res.status(401).json({ error: 'Invalid session' });
-
-      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
-      if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
+      const v = await validateSubSession(req);
+      if (!v.ok) return res.status(v.status).json(v.body);
+      const { tokenRecord } = v;
       if (!(tokenRecord.permissions as string[])?.includes('add_notes')) return res.status(403).json({ error: 'No permission' });
 
       const { content } = req.body;
@@ -2749,13 +2813,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/subcontractor/:token/photos", async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required' });
-      const session = await storage.getSubcontractorSessionByToken(authHeader.substring(7));
-      if (!session) return res.status(401).json({ error: 'Invalid session' });
-
-      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
-      if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
+      const v = await validateSubSession(req);
+      if (!v.ok) return res.status(v.status).json(v.body);
+      const { tokenRecord } = v;
       if (!(tokenRecord.permissions as string[])?.includes('add_photos')) return res.status(403).json({ error: 'No permission to add photos' });
 
       const { fileName, fileBase64, mimeType, category, caption } = req.body;
@@ -2793,13 +2853,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/subcontractor/:token/location", async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Auth required' });
-      const session = await storage.getSubcontractorSessionByToken(authHeader.substring(7));
-      if (!session) return res.status(401).json({ error: 'Invalid session' });
-
-      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
-      if (!tokenRecord || session.tokenId !== tokenRecord.id) return res.status(403).json({ error: 'Access denied' });
+      const v = await validateSubSession(req);
+      if (!v.ok) return res.status(v.status).json(v.body);
+      const { tokenRecord } = v;
 
       const { latitude, longitude, accuracyMeters } = req.body;
       if (!latitude || !longitude) return res.status(400).json({ error: 'Location required' });
@@ -2839,6 +2895,307 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error logging out subcontractor:', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================
+  // MAGIC LINK FLOW (/m/:token) — premium name-gate + optional code
+  // PII-free preview, name-confirmation gate, hashed 4-digit code,
+  // 3-attempt auto-revoke. Lives alongside the legacy /s/:token flow.
+  // ============================================================
+
+  // In-memory rate limiter for /api/m/:token/verify. Per-token+IP key.
+  // Allows 5 attempts per 5 minutes — combined with the SQL-enforced
+  // 3-attempt-then-revoke this gives defence in depth against brute force.
+  const magicLinkVerifyBuckets = new Map<string, { count: number; resetAt: number }>();
+  function magicLinkVerifyAttempts(key: string): boolean {
+    const now = Date.now();
+    const WINDOW_MS = 5 * 60 * 1000;
+    const MAX = 5;
+    const bucket = magicLinkVerifyBuckets.get(key);
+    if (!bucket || bucket.resetAt < now) {
+      magicLinkVerifyBuckets.set(key, { count: 1, resetAt: now + WINDOW_MS });
+      return true;
+    }
+    if (bucket.count >= MAX) return false;
+    bucket.count += 1;
+    return true;
+  }
+
+  // GET /api/m/:token/preview — returns minimal info for name-gate.
+  // No customer name, no address, no job title. Just contractor business name
+  // and the first character of the contact name (so the sub can identify
+  // themselves without leaking their full name to whoever is holding the phone).
+  app.get("/api/m/:token/preview", async (req, res) => {
+    try {
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord) return res.status(404).json({ error: 'Link not found' });
+      if (tokenRecord.revokedAt) return res.status(410).json({ error: 'This link has been revoked' });
+      if (tokenRecord.expiresAt && new Date() > tokenRecord.expiresAt) {
+        return res.status(410).json({ error: 'This link has expired' });
+      }
+
+      // Track open (best-effort, no failures bubble up)
+      try {
+        const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+          || req.socket.remoteAddress
+          || null;
+        await db.update(subcontractorTokens)
+          .set({
+            openCount: sql`COALESCE(${subcontractorTokens.openCount}, 0) + 1`,
+            lastOpenedFromIp: ip,
+            lastAccessedAt: new Date(),
+          })
+          .where(eq(subcontractorTokens.id, tokenRecord.id));
+      } catch (e) {
+        console.error('Failed to log magic link open:', e);
+      }
+
+      const businessSettings = await storage.getBusinessSettings(tokenRecord.userId);
+      const businessName = businessSettings?.companyName || businessSettings?.businessName || 'A contractor';
+      // PII-FREE: only the first character of the contact name is exposed
+      // pre-confirmation. The full first name is intentionally NOT returned —
+      // a wrong-number recipient should not see "are you Jake?" before they
+      // confirm. They see "are you J?" which is enough for legitimate
+      // recipients to recognise themselves while preventing PII leakage.
+      const contactNameFirstChar = (tokenRecord.contactName || '').trim().charAt(0).toUpperCase();
+
+      res.json({
+        status: tokenRecord.status,
+        revoked: !!tokenRecord.revokedAt,
+        nameConfirmed: !!(tokenRecord as any).nameConfirmedAt,
+        requiresCode: !!(tokenRecord as any).requireCode,
+        contactNameFirstChar,
+        business: {
+          companyName: businessName,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error fetching magic link preview:', error);
+      res.status(500).json({ error: 'Failed to load link' });
+    }
+  });
+
+  // POST /api/m/:token/confirm — name-gate response.
+  // body: { confirm: true } → if no code required, returns sessionToken; else { requiresCode: true }
+  // body: { confirm: false } → revokes the link and notifies the contractor.
+  app.post("/api/m/:token/confirm", async (req, res) => {
+    try {
+      const { confirm } = req.body || {};
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord) return res.status(404).json({ error: 'Link not found' });
+      if (tokenRecord.revokedAt) return res.status(410).json({ error: 'This link has been revoked' });
+      if (tokenRecord.expiresAt && new Date() > tokenRecord.expiresAt) {
+        return res.status(410).json({ error: 'This link has expired' });
+      }
+
+      if (confirm === false) {
+        // Wrong number — revoke immediately and emit an event so the contractor sees it.
+        await storage.revokeSubcontractorToken(tokenRecord.id);
+        try {
+          await db.update(subcontractorTokens)
+            .set({ revokedReason: 'wrong_number_self_reported' })
+            .where(eq(subcontractorTokens.id, tokenRecord.id));
+        } catch (e) {
+          console.error('Failed to set revoke reason:', e);
+        }
+        await storage.createSubcontractorEvent({
+          tokenId: tokenRecord.id,
+          jobId: tokenRecord.jobId,
+          eventType: 'SUBBIE_WRONG_NUMBER',
+          eventData: { reportedAt: new Date().toISOString() },
+        });
+        return res.json({ revoked: true });
+      }
+
+      if (confirm !== true) {
+        return res.status(400).json({ error: 'confirm must be true or false' });
+      }
+
+      // Mark name as confirmed
+      try {
+        await db.update(subcontractorTokens)
+          .set({ nameConfirmedAt: new Date() })
+          .where(eq(subcontractorTokens.id, tokenRecord.id));
+      } catch (e) {
+        console.error('Failed to mark name confirmed:', e);
+      }
+
+      const requiresCode = !!(tokenRecord as any).requireCode;
+      if (requiresCode) {
+        return res.json({ requiresCode: true });
+      }
+
+      // No code required — issue a session immediately.
+      const sessionToken = randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await storage.createSubcontractorSession(
+        tokenRecord.id,
+        sessionToken,
+        tokenRecord.contactPhone || '',
+        expiresAt
+      );
+      await storage.updateSubcontractorTokenAccess(tokenRecord.id);
+      await storage.createSubcontractorEvent({
+        tokenId: tokenRecord.id,
+        jobId: tokenRecord.jobId,
+        eventType: 'SUBBIE_NAME_CONFIRMED',
+        eventData: {},
+      });
+      return res.json({ requiresCode: false, sessionToken, expiresAt: expiresAt.toISOString() });
+    } catch (error: any) {
+      console.error('Error confirming magic link:', error);
+      res.status(500).json({ error: 'Confirmation failed' });
+    }
+  });
+
+  // POST /api/m/:token/verify — verify the 4-digit code.
+  // SECURITY:
+  //   - Atomic SQL increment under WHERE code_attempts < 3 AND revoked_at IS NULL
+  //     prevents TOCTOU brute-force when multiple parallel requests are sent.
+  //   - Code expires after CODE_TTL_MS (default 30 minutes from issuance).
+  //   - Rate-limited per token + IP via the in-memory map below.
+  app.post("/api/m/:token/verify", async (req, res) => {
+    try {
+      const { code } = req.body || {};
+      if (!code || typeof code !== 'string') {
+        return res.status(400).json({ error: 'Code required' });
+      }
+
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+        || req.socket.remoteAddress
+        || 'unknown';
+      const rateKey = `${req.params.token}:${ip}`;
+      if (!magicLinkVerifyAttempts(rateKey)) {
+        return res.status(429).json({ error: 'Too many attempts. Try again in a moment.' });
+      }
+
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord) return res.status(404).json({ error: 'Link not found' });
+      if (tokenRecord.revokedAt) return res.status(410).json({ error: 'This link has been revoked' });
+      if (tokenRecord.expiresAt && new Date() > tokenRecord.expiresAt) {
+        return res.status(410).json({ error: 'This link has expired' });
+      }
+
+      const requiresCode = !!(tokenRecord as any).requireCode;
+      const storedHash = (tokenRecord as any).codeHash as string | null;
+      const codeIssuedAt = (tokenRecord as any).codeIssuedAt as Date | null;
+      if (!requiresCode || !storedHash) {
+        return res.status(400).json({ error: 'No code is required for this link' });
+      }
+
+      // Enforce code expiry — 30 minutes from issuance.
+      // FAIL CLOSED: a missing codeIssuedAt is treated as expired so that a
+      // bad data state can't leave codes valid forever.
+      const CODE_TTL_MS = 30 * 60 * 1000;
+      if (!codeIssuedAt || (Date.now() - new Date(codeIssuedAt).getTime()) > CODE_TTL_MS) {
+        return res.status(410).json({ error: 'This code has expired. Ask the contractor to send a fresh link.' });
+      }
+
+      const submittedHash = createHash('sha256').update(String(code).trim()).digest('hex');
+      const isMatch = submittedHash === storedHash;
+
+      if (!isMatch) {
+        // Atomic increment: only if attempts < 3 and not revoked.
+        // RETURNING gives us the post-update value so we know if this was the
+        // attempt that maxed out.
+        const updated = await db.update(subcontractorTokens)
+          .set({ codeAttempts: sql`COALESCE(${subcontractorTokens.codeAttempts}, 0) + 1` })
+          .where(and(
+            eq(subcontractorTokens.id, tokenRecord.id),
+            isNull(subcontractorTokens.revokedAt),
+            lt(subcontractorTokens.codeAttempts, 3),
+          ))
+          .returning({ codeAttempts: subcontractorTokens.codeAttempts });
+
+        if (updated.length === 0) {
+          // Either already revoked or already maxed out by a parallel request.
+          if (!tokenRecord.revokedAt) {
+            await db.update(subcontractorTokens)
+              .set({ revokedAt: new Date(), revokedReason: 'too_many_code_attempts' })
+              .where(and(
+                eq(subcontractorTokens.id, tokenRecord.id),
+                isNull(subcontractorTokens.revokedAt),
+              ));
+            await storage.createSubcontractorEvent({
+              tokenId: tokenRecord.id,
+              jobId: tokenRecord.jobId,
+              eventType: 'SUBBIE_LINK_AUTO_REVOKED',
+              eventData: { reason: 'too_many_code_attempts' },
+            });
+          }
+          return res.status(429).json({ error: 'Too many attempts. The contractor has been notified.', autoRevoked: true });
+        }
+
+        const newAttempts = updated[0].codeAttempts ?? 0;
+        if (newAttempts >= 3) {
+          // We just hit the cap with this request — atomically revoke.
+          await db.update(subcontractorTokens)
+            .set({ revokedAt: new Date(), revokedReason: 'too_many_code_attempts' })
+            .where(and(
+              eq(subcontractorTokens.id, tokenRecord.id),
+              isNull(subcontractorTokens.revokedAt),
+            ));
+          await storage.createSubcontractorEvent({
+            tokenId: tokenRecord.id,
+            jobId: tokenRecord.jobId,
+            eventType: 'SUBBIE_LINK_AUTO_REVOKED',
+            eventData: { reason: 'too_many_code_attempts' },
+          });
+          return res.status(429).json({ error: 'Too many attempts. The contractor has been notified.', autoRevoked: true });
+        }
+        return res.status(400).json({ error: 'Wrong code', attemptsRemaining: 3 - newAttempts });
+      }
+
+      // Code accepted — issue a session and emit event.
+      const sessionToken = randomBytes(32).toString('hex');
+      const sessionExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await storage.createSubcontractorSession(
+        tokenRecord.id,
+        sessionToken,
+        tokenRecord.contactPhone || '',
+        sessionExpiresAt
+      );
+      await storage.updateSubcontractorTokenAccess(tokenRecord.id);
+      await storage.createSubcontractorEvent({
+        tokenId: tokenRecord.id,
+        jobId: tokenRecord.jobId,
+        eventType: 'SUBBIE_VERIFIED',
+        eventData: { method: 'magic_link_code' },
+      });
+
+      res.json({ sessionToken, expiresAt: sessionExpiresAt.toISOString() });
+    } catch (error: any) {
+      console.error('Error verifying magic link code:', error);
+      res.status(500).json({ error: 'Verification failed' });
+    }
+  });
+
+  // POST /api/m/:token/revoke — sub voluntarily revokes their own access.
+  app.post("/api/m/:token/revoke", async (req, res) => {
+    try {
+      const tokenRecord = await storage.getSubcontractorTokenByToken(req.params.token);
+      if (!tokenRecord) return res.status(404).json({ error: 'Link not found' });
+      if (!tokenRecord.revokedAt) {
+        await storage.revokeSubcontractorToken(tokenRecord.id);
+        try {
+          await db.update(subcontractorTokens)
+            .set({ revokedReason: 'sub_self_revoked' })
+            .where(eq(subcontractorTokens.id, tokenRecord.id));
+        } catch (e) {
+          console.error('Failed to set revoke reason:', e);
+        }
+        await storage.createSubcontractorEvent({
+          tokenId: tokenRecord.id,
+          jobId: tokenRecord.jobId,
+          eventType: 'SUBBIE_LINK_REVOKED',
+          eventData: { revokedBy: 'sub' },
+        });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error revoking magic link:', error);
+      res.status(500).json({ error: 'Revoke failed' });
     }
   });
 
@@ -4903,7 +5260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.userId!;
       const { jobId } = req.params;
-      const { contactPhone, contactName, contactEmail, permissions, expiresAt, sendViaSms, sendViaEmail, hourlyRate } = req.body;
+      const { contactPhone, contactName, contactEmail, permissions, expiresAt, sendViaSms, sendViaEmail, hourlyRate, requireCode } = req.body;
 
       const job = await storage.getJob(jobId, userId);
       if (!job) return res.status(404).json({ error: 'Job not found' });
@@ -4912,6 +5269,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const businessName = businessSettings?.companyName || 'Your contractor';
 
       const token = randomBytes(32).toString('hex');
+
+      // If contractor opted into wrong-number defence, generate a 4-digit code,
+      // hash it, and only return the plaintext to the contractor in the response
+      // (NEVER send it via the same SMS — that defeats the purpose).
+      let plaintextCode: string | null = null;
+      let codeHash: string | null = null;
+      let codeIssuedAt: Date | null = null;
+      if (requireCode) {
+        // Use crypto-grade RNG (not Math.random) so the 4-digit code can't be
+        // predicted from prior values.
+        plaintextCode = String(randomInt(0, 10000)).padStart(4, '0');
+        codeHash = createHash('sha256').update(plaintextCode).digest('hex');
+        codeIssuedAt = new Date();
+      }
+
       const tokenData = {
         jobId,
         userId,
@@ -4923,18 +5295,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'pending',
         hourlyRate: hourlyRate !== undefined && hourlyRate !== null ? String(hourlyRate) : null,
         expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-      };
+        requireCode: !!requireCode,
+      } as any;
 
       const created = await storage.createSubcontractorToken(tokenData);
+
+      // If we generated a code, persist the hash on the token record
+      if (codeHash) {
+        try {
+          await db.update(subcontractorTokens)
+            .set({ codeHash, codeIssuedAt, codeAttempts: 0 })
+            .where(eq(subcontractorTokens.id, created.id));
+        } catch (e) {
+          console.error('Failed to persist code hash on subcontractor token:', e);
+        }
+      }
+
       const baseUrl = getProductionBaseUrl(req);
-      const webLink = `${baseUrl}/s/${created.token}`;
+      // /m/:token = the new premium landing flow with name-gate. /s/:token kept as legacy alias.
+      const webLink = `${baseUrl}/m/${created.token}`;
 
       const sendResults: { sms?: boolean; email?: boolean } = {};
       const recipientName = contactName || 'there';
 
       if (sendViaSms && contactPhone) {
         try {
-          const smsMessage = `Hi ${recipientName}, ${businessName} has invited you to work on a job: "${job.title}". View details and respond here: ${webLink}`;
+          // PII-FREE template. No name, no business, no job title (job titles often
+          // contain customer addresses). The name-confirm gate on the landing page
+          // handles "is this for you?" without leaking anything via SMS.
+          const smsMessage = `JobRunner: A contractor has sent you a job. Tap to view: ${webLink}`;
           const { sendSMS: twilioSend } = await import('./twilioClient');
           const smsResult = await twilioSend({
             to: contactPhone,
@@ -4952,21 +5341,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const { sendEmail: emailSend } = await import('./emailService');
           await emailSend({
             to: contactEmail,
-            subject: `Job Invitation from ${escapeHtml(businessName)}`,
+            subject: `JobRunner: A contractor has sent you a job`,
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #1a1a2e;">You're Invited to a Job</h2>
-                <p>Hi ${recipientName},</p>
-                <p><strong>${escapeHtml(businessName)}</strong> has invited you to work on the following job:</p>
-                <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0;">
-                  <p style="margin: 0 0 8px;"><strong>Job:</strong> ${job.title}</p>
-                  ${job.address ? `<p style="margin: 0;"><strong>Location:</strong> ${job.address}</p>` : ''}
-                </div>
-                <p>Click the button below to view the job details and accept the invitation:</p>
+                <h2 style="color: #1a1a2e;">You've been sent a job</h2>
+                <p>A contractor has sent you a job through JobRunner. Tap the button below to confirm it's for you and view the details.</p>
                 <div style="text-align: center; margin: 24px 0;">
-                  <a href="${webLink}" style="background: #3b82f6; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">View Job Details</a>
+                  <a href="${webLink}" style="background: #3b82f6; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">Open job</a>
                 </div>
-                <p style="color: #6b7280; font-size: 14px;">If you have any questions, please contact ${escapeHtml(businessName)} directly.</p>
+                <p style="color: #6b7280; font-size: 14px;">If this wasn't meant for you, you'll be able to say so on the next screen — no job details will be revealed.</p>
               </div>
             `,
           });
@@ -4977,7 +5360,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ ...created, webLink, sendResults });
+      // verificationCode is returned ONCE in this response so the contractor
+      // can read it out-of-band to the sub. We never store the plaintext.
+      res.json({
+        ...created,
+        webLink,
+        sendResults,
+        verificationCode: plaintextCode || undefined,
+        requireCode: !!requireCode,
+      });
     } catch (error: any) {
       console.error('Error creating subcontractor token:', error);
       res.status(500).json({ error: error.message });
@@ -5026,6 +5417,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error getting subcontractor tokens:', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Merged subs list for the Team page (Subcontractors tab).
+  // Currently dedupes magic-link tokens by phone/email; account_sub +
+  // connected_business kinds will join here later.
+  app.get("/api/subcontractors", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const tokens = await db.select()
+        .from(subcontractorTokens)
+        .where(eq(subcontractorTokens.userId, userId))
+        .orderBy(desc(subcontractorTokens.createdAt));
+
+      const byKey = new Map<string, any>();
+      for (const t of tokens) {
+        const key = (t.contactPhone || t.contactEmail || t.id).toLowerCase();
+        const existing = byKey.get(key);
+        if (!existing) {
+          byKey.set(key, {
+            id: t.id,
+            kind: 'magic_link' as const,
+            name: t.contactName || 'Unnamed sub',
+            contactPhone: t.contactPhone || null,
+            contactEmail: t.contactEmail || null,
+            status: t.revokedAt ? 'revoked' : (t.status || 'pending'),
+            lastActivity: (t.lastAccessedAt || t.createdAt)?.toISOString?.() || null,
+            jobsCount: 1,
+            trade: null,
+            businessName: null,
+          });
+        } else {
+          existing.jobsCount += 1;
+          const existingTime = existing.lastActivity ? new Date(existing.lastActivity).getTime() : 0;
+          const candidateTime = (t.lastAccessedAt || t.createdAt)?.getTime?.() || 0;
+          if (candidateTime > existingTime) {
+            existing.lastActivity = (t.lastAccessedAt || t.createdAt)?.toISOString?.() || null;
+            existing.status = t.revokedAt ? 'revoked' : (t.status || 'pending');
+          }
+        }
+      }
+
+      res.json(Array.from(byKey.values()));
+    } catch (error: any) {
+      console.error('Error listing subcontractors:', error);
+      res.status(500).json({ error: 'Failed to list subcontractors' });
     }
   });
 
@@ -31830,24 +32267,47 @@ Respond with JSON in this format:
     }
   });
 
-  // Create a permission request (from invited team member or team member)
-  app.post("/api/team/permission-requests", async (req: any, res) => {
+  // Create a permission request (from authenticated team member only)
+  app.post("/api/team/permission-requests", requireAuth, async (req: any, res) => {
     try {
-      const { teamMemberId, businessOwnerId, requestedPermissions, reason } = req.body;
-      
-      if (!teamMemberId || !businessOwnerId || !requestedPermissions || !Array.isArray(requestedPermissions)) {
+      const requestingUserId = req.userId!;
+      const { teamMemberId, requestedPermissions, reason } = req.body;
+
+      if (!teamMemberId || !requestedPermissions || !Array.isArray(requestedPermissions)) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
-      
+
       if (requestedPermissions.length === 0) {
         return res.status(400).json({ error: 'Please select at least one permission to request' });
       }
-      
-      // Verify the team member exists
-      const teamMember = await storage.getTeamMember(teamMemberId, businessOwnerId);
-      if (!teamMember) {
+
+      // Resolve the requesting team-member record from authenticated identity
+      // rather than trusting `businessOwnerId` from the request body.
+      const requestingUser = await storage.getUser(requestingUserId);
+      if (!requestingUser) {
+        return res.status(403).json({ error: 'Authentication required' });
+      }
+
+      const candidateRecords = await db
+        .select()
+        .from(teamMembers)
+        .where(eq(teamMembers.id, teamMemberId))
+        .limit(1);
+      const teamMemberRecord = candidateRecords[0];
+
+      if (!teamMemberRecord) {
         return res.status(404).json({ error: 'Team member not found' });
       }
+
+      const ownerOk =
+        teamMemberRecord.userId === requestingUserId ||
+        (requestingUser.email && teamMemberRecord.email === requestingUser.email);
+      if (!ownerOk) {
+        return res.status(403).json({ error: 'You can only request permissions for yourself' });
+      }
+
+      const businessOwnerId = teamMemberRecord.businessOwnerId;
+      const teamMember = teamMemberRecord;
       
       // Create the permission request
       const request = await storage.createPermissionRequest({

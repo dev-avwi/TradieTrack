@@ -74,6 +74,8 @@ const JobInvite = React.lazy(() => import("@/pages/JobInvite"));
 const OpenApp = React.lazy(() => import("@/pages/OpenApp"));
 const TimeTrackingPage = React.lazy(() => import("@/pages/TimeTracking"));
 const TeamOperations = React.lazy(() => import("@/pages/TeamOperations"));
+const Team = React.lazy(() => import("@/pages/Team"));
+const MagicLinkLanding = React.lazy(() => import("@/pages/MagicLinkLanding"));
 const PaymentPage = React.lazy(() => import("@/pages/PaymentPage"));
 const PrivacyPolicy = React.lazy(() => import("@/pages/PrivacyPolicy"));
 const TermsOfService = React.lazy(() => import("@/pages/TermsOfService"));
@@ -742,14 +744,22 @@ function Router({
       
       <Route path="/audit-log" component={TimeEditAuditLog} />
       
-      <Route path="/team">
-        <Redirect to="/team-operations" />
-      </Route>
-      
+      <Route path="/team" component={() => (
+        <Team />
+      )} />
+
       <Route path="/team-dashboard">
-        <Redirect to="/team-operations" />
+        <Redirect to="/team" />
       </Route>
-      
+
+      <Route path="/team-management">
+        <Redirect to="/team" />
+      </Route>
+
+      <Route path="/team-groups">
+        <Redirect to="/team" />
+      </Route>
+
       <Route path="/team-operations">
         <FeatureGate requiredTier="team" featureName="Team Operations" description="Manage your team's schedule, dispatch jobs, and track progress in real time.">
           <TeamOperations />
@@ -1745,6 +1755,7 @@ function App() {
               <Route path="/job-portal/:token" component={JobPortal} />
               <Route path="/p/:token" component={JobPortal} />
               <Route path="/s/:token">{(params) => <SubcontractorWebView token={params.token} />}</Route>
+              <Route path="/m/:token">{(params) => <MagicLinkLanding token={params.token} />}</Route>
               <Route path="/track/:token">{(params) => <TrackArrival token={params.token} />}</Route>
               <Route path="/receipt/:token">{(params) => <PublicReceiptRedirect token={params.token} />}</Route>
               <Route path="/privacy" component={PrivacyPolicy} />
