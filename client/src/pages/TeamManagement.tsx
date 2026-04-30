@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -610,6 +611,13 @@ interface Job {
 
 export default function TeamManagement() {
   const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
+  const ownerTier = (user as any)?.subscriptionTier || 'free';
+  // Treat the auth-loading window as "capable" so paid owners don't see the
+  // "Team plan required" hint flash before /api/auth/me resolves.
+  const ownerHasTeamCapability = authLoading || !user
+    ? true
+    : ownerTier === 'team' || ownerTier === 'business' || (user as any)?.betaUser === true || (user as any)?.betaLifetimeAccess === true;
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const [permissionsMember, setPermissionsMember] = useState<TeamMember | null>(null);
@@ -868,18 +876,28 @@ export default function TeamManagement() {
     declined: teamMembers?.filter(m => m.inviteStatus === 'declined').length || 0,
   };
 
-  // Filter team members based on search and status
-  const filteredMembers = teamMembers?.filter(member => {
+  // Filter team members based on search and status, sort pending invitations
+  // to the top so the owner sees what needs action first.
+  const statusSortRank: Record<string, number> = { pending: 0, accepted: 1, declined: 2 };
+  const filteredMembers = (teamMembers?.filter(member => {
     // Search filter
-    const matchesSearch = searchQuery === "" || 
+    const matchesSearch = searchQuery === "" ||
       `${member.firstName} ${member.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.email?.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     // Status filter
     const matchesStatus = statusFilter === "all" || member.inviteStatus === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
-  }) || [];
+  }) || []).slice().sort((a, b) => {
+    const ra = statusSortRank[a.inviteStatus ?? ''] ?? 9;
+    const rb = statusSortRank[b.inviteStatus ?? ''] ?? 9;
+    if (ra !== rb) return ra - rb;
+    // Within the same status, newest first.
+    const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return db - da;
+  });
 
   const getStatusBadge = (member: TeamMember) => {
     if (member.inviteStatus === 'accepted') {
@@ -949,13 +967,23 @@ export default function TeamManagement() {
             <SettingsIcon className="h-4 w-4 mr-2" />
             Manage Roles
           </Button>
-          <Button
-            onClick={() => setInviteDialogOpen(true)}
-            data-testid="button-invite-member"
-          >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Invite Team Member
-          </Button>
+          <div className="flex flex-col items-stretch gap-1">
+            <Button
+              onClick={() => setInviteDialogOpen(true)}
+              data-testid="button-invite-member"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite Team Member
+            </Button>
+            {!ownerHasTeamCapability && (
+              <p
+                className="text-xs text-amber-600 dark:text-amber-400 text-center"
+                data-testid="text-team-plan-required-hint"
+              >
+                Team plan required to invite
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

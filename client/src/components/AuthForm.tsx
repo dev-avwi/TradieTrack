@@ -62,7 +62,6 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
   // Registration form state
   const [registerData, setRegisterData] = useState({
     email: '',
-    username: '',
     password: '',
     confirmPassword: '',
     firstName: '',
@@ -523,18 +522,6 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
                     onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
                     required
                     data-testid="input-register-email"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="register-username">Username *</Label>
-                  <Input
-                    id="register-username"
-                    placeholder="johnsmith"
-                    value={registerData.username}
-                    onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
-                    required
-                    data-testid="input-register-username"
                   />
                 </div>
                 

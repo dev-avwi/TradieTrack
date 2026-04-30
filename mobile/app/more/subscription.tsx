@@ -622,9 +622,37 @@ export default function SubscriptionPage() {
       const price = applePrices[tier] || defaultPrices[tier];
       Alert.alert(
         `Upgrade to ${tierNames[tier]}`,
-        `${price}/month. Visit jobrunner.com.au to subscribe.`,
+        `${price}/month. Pay securely on the web — we'll email you a link or open it now.`,
         [
           { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Email Me a Link',
+            onPress: async () => {
+              setPurchasingTier(tier);
+              try {
+                const response = await api.post<{ success?: boolean; message?: string; error?: string; betaAccess?: boolean }>(
+                  '/api/subscription/email-payment-link',
+                  { tier }
+                );
+                if (response.data?.betaAccess) {
+                  await useAuthStore.getState().refreshUser();
+                  await fetchSubscriptionStatus();
+                  Alert.alert('Activated', response.data.message || 'Plan activated.');
+                } else if (response.data?.success) {
+                  Alert.alert(
+                    'Check Your Email',
+                    response.data.message || `We've emailed you a secure link to finish your upgrade.`
+                  );
+                } else {
+                  Alert.alert('Couldn\'t Send Link', response.error || response.data?.error || 'Please try again or open the website.');
+                }
+              } catch (err: any) {
+                Alert.alert('Error', err?.message || 'Failed to email payment link.');
+              } finally {
+                setPurchasingTier(null);
+              }
+            },
+          },
           { text: 'Open Website', onPress: () => Linking.openURL('https://jobrunner.com.au/pricing') },
         ]
       );

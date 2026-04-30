@@ -870,6 +870,35 @@ function validateAustralianCoords(lat: number, lng: number, accuracy?: number): 
   return { valid: true };
 }
 
+// Dedup helper: avoid spamming an owner with the same team_join_blocked
+// notification when a worker repeatedly retries an invite or token. We treat
+// notifications for the same (relatedType, relatedId) within the last hour as
+// duplicates.
+async function wasRecentlyNotifiedTeamJoinBlocked(
+  ownerId: string,
+  relatedType: 'invite_code' | 'team_member',
+  relatedId: string,
+): Promise<boolean> {
+  try {
+    const recent = await storage.getNotifications(ownerId);
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    return recent.some((n: any) =>
+      n.type === 'team_join_blocked' &&
+      n.relatedType === relatedType &&
+      n.relatedId === relatedId &&
+      n.createdAt && new Date(n.createdAt).getTime() > oneHourAgo
+    );
+  } catch {
+    return false;
+  }
+}
+
+// In-memory rate limit for the email-payment-link endpoint. One outbound
+// checkout email per user per 60 seconds is plenty — guards against accidental
+// double-taps and cheap abuse from authenticated accounts.
+const emailPaymentLinkCooldown = new Map<string, number>();
+const EMAIL_PAYMENT_LINK_COOLDOWN_MS = 60 * 1000;
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/', generalApiLimiter);
 
@@ -3253,7 +3282,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
         return res.status(400).json({ error: "Password must contain uppercase, lowercase, and a number" });
       }
-      const userData = insertUserSchema.parse(req.body);
+      // Auto-generate username from email if not provided (web signup no longer
+      // collects username — see AuthForm.tsx). Mirrors the OAuth flow in auth.ts.
+      const rawBody = req.body || {};
+      if (!rawBody.username && typeof rawBody.email === 'string' && rawBody.email.includes('@')) {
+        const emailLocal = rawBody.email.toLowerCase().trim().split('@')[0]
+          .replace(/[^a-z0-9_]/g, '_')
+          .slice(0, 20) || 'user';
+        rawBody.username = `${emailLocal}_${Math.random().toString(36).substring(2, 8)}`;
+      }
+      const userData = insertUserSchema.parse(rawBody);
       const cleanUserData = {
         email: userData.email,
         username: userData.username,
@@ -5183,6 +5221,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error creating checkout session:', error);
       res.status(500).json({ error: error.message || 'Failed to create checkout session' });
+    }
+  });
+
+  // POST /api/subscription/email-payment-link - Creates a Stripe checkout
+  // session and emails it to the user. Used by the Android app where
+  // Google Play billing isn't wired up yet — gives the user a clean way to
+  // upgrade by tapping the link in their email on a desktop browser.
+  app.post("/api/subscription/email-payment-link", requireAuth, async (req: any, res) => {
+    try {
+      const { IS_BETA } = await import('./freemiumService');
+      const userId = req.userId!;
+      const { tier, seats } = req.body;
+
+      // Only Pro and Team are wired up for self-serve checkout. Business is
+      // sales-led and goes through a separate flow — accepting it here would
+      // silently send the user to the Pro pricing.
+      if (!tier || !['pro', 'team'].includes(tier)) {
+        return res.status(400).json({
+          error: 'Invalid tier. Self-serve checkout supports "pro" or "team". For Business, contact support.',
+        });
+      }
+
+      // Per-user cooldown to prevent accidental double-taps and basic abuse.
+      const lastSent = emailPaymentLinkCooldown.get(userId);
+      if (lastSent && Date.now() - lastSent < EMAIL_PAYMENT_LINK_COOLDOWN_MS) {
+        const waitSec = Math.ceil((EMAIL_PAYMENT_LINK_COOLDOWN_MS - (Date.now() - lastSent)) / 1000);
+        return res.status(429).json({
+          error: `Please wait ${waitSec}s before requesting another payment link.`,
+        });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.email) {
+        return res.status(400).json({ error: 'User email is required for checkout' });
+      }
+
+      // BETA: short-circuit and grant directly so user doesn't need to pay.
+      if (IS_BETA) {
+        const subscriptionTier = tier as 'pro' | 'team';
+        await storage.updateUser(userId, {
+          subscriptionTier,
+          betaUser: true,
+          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        });
+        emailPaymentLinkCooldown.set(userId, Date.now());
+        return res.json({
+          success: true,
+          betaAccess: true,
+          message: `${tier.charAt(0).toUpperCase() + tier.slice(1)} access granted free during beta — no payment needed.`,
+        });
+      }
+
+      const { createSubscriptionCheckout, createTeamSubscriptionCheckout } = await import('./billingService');
+      const { getProductionBaseUrl } = await import('./urlHelper');
+      // Use the canonical app URL rather than trusting Host/X-Forwarded-Proto
+      // headers — these are emailed links and host-header spoofing could
+      // otherwise redirect the user post-checkout to an attacker domain.
+      const baseUrl = getProductionBaseUrl();
+
+      let result;
+      if (tier === 'team') {
+        const seatCount = Math.max(0, Math.min(50, parseInt(seats) || 0));
+        result = await createTeamSubscriptionCheckout(
+          userId,
+          user.email,
+          `${baseUrl}/settings?tab=billing&success=true`,
+          `${baseUrl}/settings?tab=billing&canceled=true`,
+          seatCount
+        );
+      } else {
+        result = await createSubscriptionCheckout(
+          userId,
+          user.email,
+          `${baseUrl}/settings?tab=billing&success=true`,
+          `${baseUrl}/settings?tab=billing&canceled=true`
+        );
+      }
+
+      if (!result.success || !result.sessionUrl) {
+        return res.status(400).json({ error: result.error || 'Failed to create checkout session' });
+      }
+
+      // Email the link to the user.
+      try {
+        const { sendSystemEmail } = await import('./emailService');
+        const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+        const firstName = user.firstName || 'there';
+        await sendSystemEmail({
+          to: user.email,
+          subject: `Your JobRunner ${tierLabel} upgrade link`,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #111;">
+              <h2 style="margin: 0 0 16px 0;">G'day ${firstName},</h2>
+              <p style="font-size: 16px; line-height: 1.5;">Here's your secure link to upgrade JobRunner to the <strong>${tierLabel}</strong> plan. Open it on any device to finish payment.</p>
+              <p style="margin: 32px 0; text-align: center;">
+                <a href="${result.sessionUrl}" style="background: #f97316; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">Continue to checkout</a>
+              </p>
+              <p style="font-size: 13px; color: #666; line-height: 1.5;">This link expires in 24 hours. If you didn't request this, ignore this email — nothing will be charged.</p>
+              <p style="font-size: 13px; color: #666; word-break: break-all;">Or copy this URL: ${result.sessionUrl}</p>
+            </div>
+          `,
+          text: `G'day ${firstName},\n\nHere's your link to upgrade JobRunner to the ${tierLabel} plan:\n${result.sessionUrl}\n\nThis link expires in 24 hours.`,
+        });
+      } catch (emailErr) {
+        console.error('[email-payment-link] Failed to send email:', emailErr);
+        return res.status(500).json({ error: 'Created checkout but failed to send email. Please try again.' });
+      }
+
+      res.json({
+        success: true,
+        message: `We've emailed an upgrade link to ${user.email}. Check your inbox to finish.`,
+      });
+    } catch (error: any) {
+      console.error('Error creating email payment link:', error);
+      res.status(500).json({ error: error.message || 'Failed to create payment link' });
     }
   });
 
@@ -31314,6 +31467,42 @@ Respond with JSON in this format:
       const inviteOwner = await storage.getUser(inviteCode.businessOwnerId);
       const inviteOwnerSettings = await storage.getBusinessSettings(inviteCode.businessOwnerId);
       if (!ownerHasTeamCapability(inviteOwner, inviteOwnerSettings)) {
+        // Notify the owner so they know a worker hit the wall and can upgrade.
+        try {
+          const recentlyNotified = await wasRecentlyNotifiedTeamJoinBlocked(
+            inviteCode.businessOwnerId,
+            'invite_code',
+            inviteCode.id,
+          );
+          if (!recentlyNotified) {
+            const blockedUser = await storage.getUser(userId);
+            const blockedName = [blockedUser?.firstName, blockedUser?.lastName]
+              .filter(Boolean)
+              .join(' ') || blockedUser?.email || 'A worker';
+            await storage.createNotification({
+              userId: inviteCode.businessOwnerId,
+              type: 'team_join_blocked',
+              title: "A worker couldn't join your team",
+              message: `${blockedName} tried to join with your invite code but your current plan doesn't include team members. Upgrade to Team to let them in.`,
+              relatedId: inviteCode.id,
+              relatedType: 'invite_code',
+              priority: 'urgent',
+              actionUrl: '/subscribe',
+              actionLabel: 'Upgrade to Team',
+            });
+            const { sendPushNotification } = await import('./pushNotifications');
+            await sendPushNotification({
+              userId: inviteCode.businessOwnerId,
+              type: 'team_join_blocked',
+              title: "A worker couldn't join your team",
+              body: `${blockedName} tried to join — upgrade to Team to let them in.`,
+              data: { type: 'team_join_blocked', actionUrl: '/subscribe' },
+              skipInAppNotification: true,
+            });
+          }
+        } catch (notifyErr) {
+          console.error('[team_join_blocked] Failed to notify owner:', notifyErr);
+        }
         return res.status(403).json({
           error:
             "This business doesn't currently have an active Team subscription. Please contact the business owner to renew their plan before joining.",
@@ -31491,6 +31680,41 @@ Respond with JSON in this format:
       const inviteOwner = await storage.getUser(teamMember.businessOwnerId);
       const inviteOwnerSettings = await storage.getBusinessSettings(teamMember.businessOwnerId);
       if (!ownerHasTeamCapability(inviteOwner, inviteOwnerSettings)) {
+        // Notify the owner so they know a worker hit the wall and can upgrade.
+        try {
+          const recentlyNotified = await wasRecentlyNotifiedTeamJoinBlocked(
+            teamMember.businessOwnerId,
+            'team_member',
+            teamMember.id,
+          );
+          if (!recentlyNotified) {
+            const blockedName = [teamMember.firstName, teamMember.lastName]
+              .filter(Boolean)
+              .join(' ') || teamMember.email || 'A worker';
+            await storage.createNotification({
+              userId: teamMember.businessOwnerId,
+              type: 'team_join_blocked',
+              title: "A worker couldn't join your team",
+              message: `${blockedName} tried to accept your team invitation but your current plan doesn't include team members. Upgrade to Team to let them in.`,
+              relatedId: teamMember.id,
+              relatedType: 'team_member',
+              priority: 'urgent',
+              actionUrl: '/subscribe',
+              actionLabel: 'Upgrade to Team',
+            });
+            const { sendPushNotification } = await import('./pushNotifications');
+            await sendPushNotification({
+              userId: teamMember.businessOwnerId,
+              type: 'team_join_blocked',
+              title: "A worker couldn't join your team",
+              body: `${blockedName} tried to join — upgrade to Team to let them in.`,
+              data: { type: 'team_join_blocked', actionUrl: '/subscribe' },
+              skipInAppNotification: true,
+            });
+          }
+        } catch (notifyErr) {
+          console.error('[team_join_blocked] Failed to notify owner:', notifyErr);
+        }
         return res.status(403).json({
           success: false,
           error:

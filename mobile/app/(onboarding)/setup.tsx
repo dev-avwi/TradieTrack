@@ -225,12 +225,13 @@ export default function OnboardingSetupScreen() {
       return false;
     }
 
+    // ABN is optional and validated softly — show inline error in the field
+    // (see fieldHint render around line ~575) but do NOT block onboarding.
+    // Tradies in the bush often skip ABN at signup and add it later in settings.
+    let cleanedAbn: string | null = null;
     if (businessData.abn) {
       const abnResult = validateABN(businessData.abn);
-      if (!abnResult.valid) {
-        Alert.alert('Invalid ABN', abnResult.error || 'Please enter a valid 11-digit ABN');
-        return false;
-      }
+      cleanedAbn = abnResult.valid ? businessData.abn : null;
     }
 
     setIsLoading(true);
@@ -239,7 +240,7 @@ export default function OnboardingSetupScreen() {
         teamSize: businessData.teamSize || 'solo',
         businessName: businessData.businessName,
         tradeType: businessData.tradeType,
-        abn: businessData.abn || null,
+        abn: cleanedAbn,
         phone: businessData.phone || null,
         gstEnabled: businessData.gstEnabled,
         defaultHourlyRate: Number(businessData.defaultHourlyRate) || 120,
@@ -253,6 +254,14 @@ export default function OnboardingSetupScreen() {
         await api.post('/api/business-settings', settingsPayload);
       }
       await fetchBusinessSettings();
+      // Soft warning: ABN entered but invalid — saved without it.
+      if (businessData.abn && cleanedAbn === null) {
+        Alert.alert(
+          'ABN saved as blank',
+          "We couldn't validate that ABN, so we've left it empty for now. You can add or fix it later in Settings → Business.",
+          [{ text: 'OK' }]
+        );
+      }
       return true;
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to save settings');
