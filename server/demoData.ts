@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { storage, db } from './storage';
-import { activityLogs, inviteCodes, userRoles } from '@shared/schema';
+import { activityLogs, inviteCodes, userRoles, subcontractorTokens } from '@shared/schema';
 import { tradeCatalog } from '../shared/tradeCatalog';
 import { eq, and, sql } from 'drizzle-orm';
 
@@ -1849,6 +1849,77 @@ export async function createDemoSubcontractorsAndInviteCodes() {
           isActive: true,
         });
         console.log(`✅ Created invite code: ${dc.code} (${dc.roleType})`);
+      }
+    }
+
+    const demoJobs = await storage.getJobs(demoUser.id);
+    if (demoJobs.length >= 1) {
+      const existingTokens = await db.select()
+        .from(subcontractorTokens)
+        .where(eq(subcontractorTokens.userId, demoUser.id));
+
+      const magicLinkSeed = [
+        {
+          contactName: 'Bruno Walsh',
+          contactPhone: '+61412888001',
+          contactEmail: 'bruno.walsh@example.com.au',
+          status: 'pending',
+          jobIndex: 0,
+          lastAccessedHoursAgo: null,
+          createdHoursAgo: 6,
+        },
+        {
+          contactName: 'Tara Mitchell',
+          contactPhone: '+61412888002',
+          contactEmail: 'tara.mitchell@example.com.au',
+          status: 'accepted',
+          jobIndex: Math.min(1, demoJobs.length - 1),
+          lastAccessedHoursAgo: 2,
+          createdHoursAgo: 48,
+        },
+        {
+          contactName: 'Jordan Reilly',
+          contactPhone: '+61412888003',
+          contactEmail: 'jordan.reilly@example.com.au',
+          status: 'accepted',
+          jobIndex: Math.min(2, demoJobs.length - 1),
+          lastAccessedHoursAgo: 72,
+          createdHoursAgo: 168,
+        },
+      ];
+
+      for (const m of magicLinkSeed) {
+        const already = existingTokens.find(
+          (t: any) => (t.contactPhone || '').toLowerCase() === m.contactPhone.toLowerCase()
+        );
+        if (already) continue;
+
+        const job = demoJobs[m.jobIndex];
+        if (!job) continue;
+
+        const now = Date.now();
+        const createdAt = new Date(now - m.createdHoursAgo * 60 * 60 * 1000);
+        const lastAccessedAt = m.lastAccessedHoursAgo != null
+          ? new Date(now - m.lastAccessedHoursAgo * 60 * 60 * 1000)
+          : null;
+        const expiresAt = new Date(now + 30 * 24 * 60 * 60 * 1000);
+        const acceptedAt = m.status === 'accepted' ? createdAt : null;
+        const tokenStr = crypto.randomBytes(32).toString('hex');
+
+        await db.insert(subcontractorTokens).values({
+          jobId: job.id,
+          userId: demoUser.id,
+          token: tokenStr,
+          contactName: m.contactName,
+          contactPhone: m.contactPhone,
+          contactEmail: m.contactEmail,
+          status: m.status,
+          createdAt,
+          acceptedAt,
+          lastAccessedAt,
+          expiresAt,
+        } as any);
+        console.log(`✅ Created demo magic-link sub: ${m.contactName} (${m.status})`);
       }
     }
 

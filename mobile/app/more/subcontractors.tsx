@@ -441,7 +441,7 @@ export default function SubcontractorsScreen() {
               {!search && (
                 <TouchableOpacity
                   style={styles.retryButton}
-                  onPress={() => router.push('/jobs')}
+                  onPress={() => router.push('/(tabs)/jobs' as any)}
                   accessibilityLabel="Go to jobs"
                   accessibilityRole="button"
                   testID="button-go-to-jobs"
