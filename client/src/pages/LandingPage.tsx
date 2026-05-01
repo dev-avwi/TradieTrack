@@ -207,7 +207,7 @@ export default function LandingPage() {
           ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100" 
           : "bg-white/80 backdrop-blur-sm"
       }`}>
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
+        <div className="max-w-7xl mx-auto px-5 lg:px-12">
           <div className="flex items-center justify-between h-16 lg:h-18">
             {/* Logo */}
             <button 
