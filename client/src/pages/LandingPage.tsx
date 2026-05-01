@@ -207,7 +207,7 @@ export default function LandingPage() {
           ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100" 
           : "bg-white/80 backdrop-blur-sm"
       }`}>
-        <div className="max-w-6xl mx-auto px-5 lg:px-8">
+        <div className="w-full px-5 lg:px-10">
           <div className="flex items-center justify-between h-16 lg:h-18">
             {/* Logo - Click to scroll to top */}
             <button 
