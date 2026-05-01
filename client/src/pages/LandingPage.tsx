@@ -438,9 +438,9 @@ export default function LandingPage() {
             {/* Left: Content */}
             <div className="text-center lg:text-left animate-fade-in lg:max-w-[640px]">
               {/* Early Access Badge */}
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-brand/5 to-brand-accent/5 border border-brand/10 rounded-full px-4 py-2 mb-8">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-brand/5 to-brand-accent/5 border border-brand/10 rounded-full px-5 py-2.5 mb-8">
                 <Sparkles className="w-4 h-4 text-brand-accent" />
-                <span className="text-sm font-semibold text-gray-700">Free for early users</span>
+                <span className="text-[15px] font-semibold text-gray-700">Free for early users</span>
               </div>
 
               {/* Main Headline */}
@@ -450,7 +450,7 @@ export default function LandingPage() {
               </h1>
 
               {/* Subheadline */}
-              <p className="text-lg lg:text-xl text-gray-600 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
+              <p className="text-xl lg:text-[1.375rem] text-gray-600 leading-relaxed mb-10 max-w-xl mx-auto lg:mx-0">
                 Jobs, quotes, invoices, and payments — all in one place. Track progress, get paid faster, and keep your whole team on the same page from quote to completion.
               </p>
 
@@ -459,7 +459,7 @@ export default function LandingPage() {
                 <Link href="/auth?mode=signup">
                   <Button 
                     size="lg" 
-                    className="w-full sm:w-auto bg-brand-accent text-white font-semibold h-12 px-7 text-base rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all" 
+                    className="w-full sm:w-auto bg-brand-accent text-white font-semibold h-14 px-8 text-lg rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all" 
                     data-testid="hero-start-trial"
                     onClick={() => trackEvent('cta_click', { location: 'hero', button: 'get_started_free' })}
                   >
@@ -470,7 +470,7 @@ export default function LandingPage() {
                 <Button 
                   size="lg" 
                   variant="outline" 
-                  className="w-full sm:w-auto h-12 px-7 text-base font-medium rounded-lg border-gray-300 hover:bg-gray-50 hover:scale-[1.02] transition-all" 
+                  className="w-full sm:w-auto h-14 px-8 text-lg font-medium rounded-lg border-gray-300 hover:bg-gray-50 hover:scale-[1.02] transition-all" 
                   data-testid="hero-try-demo"
                   onClick={() => {
                     trackEvent('cta_click', { location: 'hero', button: 'try_demo' });
@@ -480,12 +480,12 @@ export default function LandingPage() {
                 >
                   {isDemoLoading ? (
                     <>
-                      <Sparkles className="mr-2 h-4 w-4 animate-spin" />
+                      <Sparkles className="mr-2 h-5 w-5 animate-spin" />
                       Loading Demo...
                     </>
                   ) : (
                     <>
-                      <Play className="mr-2 h-4 w-4" />
+                      <Play className="mr-2 h-5 w-5" />
                       Try the Demo
                     </>
                   )}
@@ -493,12 +493,12 @@ export default function LandingPage() {
               </div>
 
               {/* Early Access note */}
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-full px-4 py-2">
-                <span className="flex h-2 w-2 relative">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-full px-5 py-2.5">
+                <span className="flex h-2.5 w-2.5 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-accent"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-accent"></span>
                 </span>
-                <span className="text-sm font-medium text-orange-700">
+                <span className="text-[15px] font-medium text-orange-700">
                   {betaStatus && betaStatus.spotsRemaining > 0 ? `Early Access: ${betaStatus.spotsRemaining} of ${betaStatus.maxLifetimeSpots} founding member spots remaining` : 'Early Access: First 10 users get lifetime free access'}
                 </span>
               </div>
@@ -506,7 +506,7 @@ export default function LandingPage() {
 
             {/* Right: Hero Video */}
             <div className="relative flex justify-center lg:justify-end animate-fade-in-up lg:-mt-8">
-              <div className="relative w-full max-w-[580px] sm:max-w-[640px] lg:max-w-[680px] animate-float">
+              <div className="relative w-full max-w-[600px] sm:max-w-[680px] lg:max-w-[740px] animate-float">
                 {/* Raw video — soft radial fade so the off-white background dissolves into the page */}
                 <video
                   src="/videos/hero-demo-muted.mp4"
