@@ -2794,23 +2794,18 @@ export default function Settings({
 function BillingTabContent() {
   const { toast } = useToast();
   const { data: businessSettings } = useBusinessSettings();
-  const [selectedPlan, setSelectedPlan] = useState<'pro' | 'team'>('pro');
-  const [seatCount, setSeatCount] = useState(1);
-  
+
   // Currency formatter
   const formatPrice = (cents: number) => Math.round(cents / 100);
-  
-  // Pricing in dollars (converted from cents in schema)
-  const proMonthly = formatPrice(PRICING.pro.monthly); // $39
-  const teamBase = formatPrice(PRICING.team.baseMonthly); // $49
-  const seatPrice = formatPrice(PRICING.team.seatMonthly); // $29
-  
-  // Calculate team price (base + additional seats)
-  const teamPrice = teamBase + (seatCount * seatPrice);
-  
+
+  // Flat pricing in dollars (matches Apple IAP)
+  const proMonthly = formatPrice(PRICING.pro.monthly); // $49
+  const teamMonthly = formatPrice(PRICING.team.monthly); // $99
+  const businessMonthly = formatPrice(PRICING.business.monthly); // $199
+
   // Fetch billing status
   const { data: billingStatus, isLoading: billingLoading } = useQuery<{
-    tier: 'free' | 'pro' | 'team';
+    tier: 'free' | 'pro' | 'team' | 'business';
     status: 'active' | 'past_due' | 'canceled' | 'none' | 'trialing';
     currentPeriodEnd?: string;
     cancelAtPeriodEnd?: boolean;
@@ -2853,10 +2848,10 @@ function BillingTabContent() {
     }
   });
 
-  // Create Team checkout session mutation
+  // Create Team checkout session mutation (flat $99/mo)
   const createTeamCheckoutMutation = useMutation({
-    mutationFn: async (seats: number) => {
-      const res = await apiRequest("POST", "/api/billing/checkout/team", { seatCount: seats });
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/billing/checkout/team");
       return res.json();
     },
     onSuccess: (data: { url?: string; sessionId?: string }) => {
@@ -2873,16 +2868,25 @@ function BillingTabContent() {
     }
   });
 
-  // Handle upgrade based on selected plan
-  const handleUpgrade = () => {
-    if (selectedPlan === 'team') {
-      createTeamCheckoutMutation.mutate(seatCount);
-    } else {
-      createProCheckoutMutation.mutate();
+  // Create Business checkout session mutation (flat $199/mo)
+  const createBusinessCheckoutMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/billing/checkout/business");
+      return res.json();
+    },
+    onSuccess: (data: { url?: string; sessionId?: string }) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upgrade Failed",
+        description: error.message || "Could not start checkout. Please try again.",
+        variant: "destructive",
+      });
     }
-  };
-  
-  const isCheckoutPending = createProCheckoutMutation.isPending || createTeamCheckoutMutation.isPending;
+  });
 
   // Cancel subscription mutation
   const cancelMutation = useMutation({
@@ -2948,23 +2952,45 @@ function BillingTabContent() {
     }
   });
 
-  // Upgrade Pro to Team with trial mutation
+  // Upgrade Pro to Team with trial mutation (flat $99/mo)
   const upgradeToTeamMutation = useMutation({
-    mutationFn: async (seats: number) => {
-      const res = await apiRequest("POST", "/api/subscription/upgrade-to-team", { seats });
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/subscription/upgrade-to-team");
       return res.json();
     },
     onSuccess: (data: { success?: boolean; message?: string; trialEndsAt?: string }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/status'] });
       toast({
         title: "Upgraded to Team!",
-        description: data.message || "Team features are now unlocked - free for Early Access members!",
+        description: data.message || "Team features are now unlocked. Your trial has started.",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Upgrade Failed",
         description: error.message || "Could not upgrade to Team plan.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Upgrade to Business with trial mutation (flat $199/mo)
+  const upgradeToBusinessMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/subscription/upgrade-to-business");
+      return res.json();
+    },
+    onSuccess: (data: { success?: boolean; message?: string; trialEndsAt?: string }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/status'] });
+      toast({
+        title: "Upgraded to Business!",
+        description: data.message || "Business features are now unlocked.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upgrade Failed",
+        description: error.message || "Could not upgrade to Business plan.",
         variant: "destructive",
       });
     }
@@ -2994,11 +3020,11 @@ function BillingTabContent() {
 
   const isPro = billingStatus?.tier === 'pro';
   const isTeam = billingStatus?.tier === 'team';
-  const hasPaidPlan = isPro || isTeam;
+  const isBusiness = billingStatus?.tier === 'business';
+  const hasPaidPlan = isPro || isTeam || isBusiness;
   const isTrialing = billingStatus?.status === 'trialing';
   const isCanceled = billingStatus?.cancelAtPeriodEnd === true;
   const periodEnd = billingStatus?.currentPeriodEnd ? new Date(billingStatus.currentPeriodEnd) : null;
-  const currentSeatCount = billingStatus?.seatCount || 0;
   
   // For trials, use trialEndDate from business settings (more accurate than currentPeriodEnd)
   const trialEndDate = businessSettings?.trialEndDate 
@@ -3032,17 +3058,19 @@ function BillingTabContent() {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold">
-                      {isTeam ? 'Team Plan' : isPro ? 'Pro Plan' : 'Free Plan'}
+                      {isBusiness ? 'Business Plan' : isTeam ? 'Team Plan' : isPro ? 'Pro Plan' : 'Free Plan'}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {hasPaidPlan 
-                        ? isTrialing 
-                          ? 'Early Access active - all Pro features unlocked' 
-                          : isCanceled 
-                            ? 'Cancels at period end' 
-                            : isTeam 
-                              ? `$${formatPrice(PRICING.team.baseMonthly + (currentSeatCount * PRICING.team.seatMonthly))}/month (${currentSeatCount + 1} users)` 
-                              : `$${proMonthly}/month` 
+                      {hasPaidPlan
+                        ? isTrialing
+                          ? 'Trial active — all paid features unlocked'
+                          : isCanceled
+                            ? 'Cancels at period end'
+                            : isBusiness
+                              ? `$${businessMonthly}/month (up to 15 team members)`
+                              : isTeam
+                                ? `$${teamMonthly}/month (up to 5 team members)`
+                                : `$${proMonthly}/month`
                         : 'Limited features'}
                     </p>
                   </div>
@@ -3053,7 +3081,7 @@ function BillingTabContent() {
                       variant="default" 
                       style={{ backgroundColor: isTrialing ? 'hsl(var(--success))' : isCanceled ? 'hsl(var(--muted-foreground))' : 'hsl(var(--success))' }}
                     >
-                      {isTrialing ? 'Early Access' : isCanceled ? 'Canceling' : 'Active'}
+                      {isTrialing ? 'Trial' : isCanceled ? 'Canceling' : 'Active'}
                     </Badge>
                   ) : (
                     <Badge variant="secondary">Free</Badge>
@@ -3066,16 +3094,59 @@ function BillingTabContent() {
                 </div>
               </div>
 
-              {/* Early Access - All features included free */}
+              {/* Free tier - upgrade prompt */}
               {!hasPaidPlan && (
-                <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-700">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-green-600" />
-                    <span className="font-medium text-green-700 dark:text-green-300">Early Access — All Features Included Free</span>
+                <div className="p-4 rounded-lg bg-muted/40 border">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Crown className="h-4 w-4 text-amber-500" />
+                    <span className="font-medium">Upgrade to unlock more</span>
                   </div>
-                  <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                    As a founding member, you have full access to every feature at no cost during Early Access.
+                  <p className="text-sm text-muted-foreground mb-3">
+                    You're on the free plan. Upgrade for unlimited jobs, invoices, clients and team features.
                   </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => createProCheckoutMutation.mutate()}
+                      disabled={createProCheckoutMutation.isPending}
+                      data-testid="button-upgrade-free-to-pro"
+                    >
+                      {createProCheckoutMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Crown className="h-4 w-4 mr-2" />
+                      )}
+                      Upgrade to Pro (${proMonthly}/mo)
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => createTeamCheckoutMutation.mutate()}
+                      disabled={createTeamCheckoutMutation.isPending}
+                      data-testid="button-upgrade-free-to-team"
+                    >
+                      {createTeamCheckoutMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Users className="h-4 w-4 mr-2" />
+                      )}
+                      Team (${teamMonthly}/mo)
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => createBusinessCheckoutMutation.mutate()}
+                      disabled={createBusinessCheckoutMutation.isPending}
+                      data-testid="button-upgrade-free-to-business"
+                    >
+                      {createBusinessCheckoutMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Crown className="h-4 w-4 mr-2" />
+                      )}
+                      Business (${businessMonthly}/mo)
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -3104,15 +3175,15 @@ function BillingTabContent() {
                 </div>
               )}
 
-              {/* Early Access Banner */}
+              {/* Trial Banner */}
               {isTrialing && (
                 <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-700">
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-green-600" />
-                    <span className="font-medium text-green-700 dark:text-green-300">Early Access active - all Pro features unlocked!</span>
+                    <span className="font-medium text-green-700 dark:text-green-300">Trial active — all Pro features unlocked</span>
                   </div>
                   <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                    You're a founding member. Provide a testimonial to secure lifetime free access.
+                    Add a payment method before your trial ends to keep using the paid features.
                   </p>
                 </div>
               )}
@@ -3125,7 +3196,7 @@ function BillingTabContent() {
                     {isPro && (
                       <Button
                         variant="outline"
-                        onClick={() => upgradeToTeamMutation.mutate(seatCount)}
+                        onClick={() => upgradeToTeamMutation.mutate()}
                         disabled={upgradeToTeamMutation.isPending}
                         data-testid="button-upgrade-to-team"
                       >
@@ -3134,7 +3205,22 @@ function BillingTabContent() {
                         ) : (
                           <Users className="h-4 w-4 mr-2" />
                         )}
-                        Enable Team Mode (Free)
+                        Upgrade to Team (${teamMonthly}/mo)
+                      </Button>
+                    )}
+                    {(isPro || isTeam) && (
+                      <Button
+                        variant="outline"
+                        onClick={() => upgradeToBusinessMutation.mutate()}
+                        disabled={upgradeToBusinessMutation.isPending}
+                        data-testid="button-upgrade-to-business"
+                      >
+                        {upgradeToBusinessMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Crown className="h-4 w-4 mr-2" />
+                        )}
+                        Upgrade to Business (${businessMonthly}/mo)
                       </Button>
                     )}
                     {isTeam && (
@@ -3153,7 +3239,7 @@ function BillingTabContent() {
                       </Button>
                     )}
                   </div>
-                  {isTeam && (
+                  {(isTeam || isBusiness) && (
                     <p className="text-xs text-muted-foreground">
                       Downgrading will remove team member access. They can still use the free tier.
                     </p>
@@ -3164,16 +3250,7 @@ function BillingTabContent() {
               {/* Actions */}
               <Separator />
               <div className="flex flex-wrap gap-3">
-                {!hasPaidPlan ? (
-                  <Button
-                    disabled
-                    variant="outline"
-                    data-testid="button-upgrade"
-                  >
-                    <Crown className="h-4 w-4 mr-2" />
-                    Included Free During Early Access
-                  </Button>
-                ) : isCanceled ? (
+                {!hasPaidPlan ? null : isCanceled ? (
                   <Button
                     onClick={() => resumeMutation.mutate()}
                     disabled={resumeMutation.isPending}

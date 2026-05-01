@@ -1433,8 +1433,8 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
             <span className="text-primary font-bold text-sm">1</span>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900 dark:text-white">Early Access Unlocked</h4>
-            <p className="text-sm text-muted-foreground">Full Team features included - no credit card required</p>
+            <h4 className="font-medium text-gray-900 dark:text-white">Free trial started</h4>
+            <p className="text-sm text-muted-foreground">All Team features unlocked — add a payment method before the trial ends to keep them.</p>
           </div>
         </div>
         
@@ -1630,10 +1630,10 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 max-w-sm mx-auto">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Gift className="h-5 w-5 text-green-600" />
-              <span className="font-semibold text-green-900 dark:text-green-100">Team Early Access Active</span>
+              <span className="font-semibold text-green-900 dark:text-green-100">Team Plan Active</span>
             </div>
             <p className="text-sm text-green-700 dark:text-green-300 mb-3">
-              You're the Team Owner! All Team features unlocked as a founding member.
+              You're the Team Owner! All Team features are unlocked.
             </p>
             <a href="/team" className="text-sm font-medium text-green-600 hover:text-green-700 dark:text-green-400">
               Go to Team Management →
@@ -1648,7 +1648,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
               <span className="font-semibold text-blue-900 dark:text-blue-100">Pro Features Unlocked</span>
             </div>
             <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-              All Pro features included free during Early Access - unlimited jobs, invoices, and AI!
+              You're on a free trial — unlimited jobs, invoices and AI while it's active.
             </p>
             <a href="/subscription" className="text-sm font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400">
               View Plans →
@@ -1685,7 +1685,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
               <span className="font-semibold text-blue-900 dark:text-blue-100">Want Unlimited Access?</span>
             </div>
             <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-              All Pro features are unlocked during Early Access!
+              Upgrade to Pro for unlimited jobs, invoices, clients and AI assistant.
             </p>
             <a href="/subscription" className="text-sm font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400">
               View Plans →

@@ -1,8 +1,9 @@
 import { storage, db } from "./storage";
 import { sql } from "drizzle-orm";
 
-// Beta mode - set to true during beta phase (first 10 users get lifetime free with testimonial)
-export const IS_BETA = true;
+// Beta mode - flipped to false: paid Stripe checkout flow now active for all new signups.
+// Founding Member / lifetime access is granted manually via the Admin Dashboard.
+export const IS_BETA = false;
 
 // Beta configuration
 // NOTE: maxLifetimeUsers set to 0 to prevent new signups (including Apple App Review
@@ -416,6 +417,53 @@ export class FreemiumService {
     } catch (error) {
       console.error('Error checking feature access:', error);
       return false;
+    }
+  }
+
+  /**
+   * Check if a free-tier user is allowed to create a new client. Paid tiers
+   * (pro/team/business), beta lifetime users, and beta mode get unlimited
+   * clients. Free users are capped at SUBSCRIPTION_LIMITS.free.maxClients.
+   */
+  static async canUserCreateClient(userId: string): Promise<{ canCreate: boolean; reason?: string; current?: number; limit?: number }> {
+    try {
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return { canCreate: false, reason: 'User not found' };
+      }
+
+      if (IS_BETA || user.betaLifetimeAccess) {
+        return { canCreate: true };
+      }
+
+      const tier = user.subscriptionTier || 'free';
+      if (tier === 'pro' || tier === 'team' || tier === 'business') {
+        return { canCreate: true };
+      }
+
+      const limits = SUBSCRIPTION_LIMITS[tier];
+      const maxClients = limits.maxClients;
+      if (maxClients === -1) {
+        return { canCreate: true };
+      }
+
+      const clients = await storage.getClients(userId);
+      const current = clients.length;
+      if (current >= maxClients) {
+        return {
+          canCreate: false,
+          reason: `You've reached the free-tier limit of ${maxClients} clients. Upgrade to Pro for unlimited clients.`,
+          current,
+          limit: maxClients,
+        };
+      }
+
+      return { canCreate: true, current, limit: maxClients };
+    } catch (error) {
+      console.error('Error checking client creation limit:', error);
+      // Fail open so a transient DB hiccup doesn't block client creation —
+      // the limit is a soft monetization guardrail, not a security boundary.
+      return { canCreate: true };
     }
   }
 

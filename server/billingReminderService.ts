@@ -20,17 +20,15 @@ const getBaseUrl = () => {
   return getProductionBaseUrl();
 };
 
-function calculateAmount(subscriptionTier: string, seatCount: number = 0): number {
+function calculateAmount(subscriptionTier: string, _seatCount: number = 0): number {
   if (subscriptionTier === 'pro') {
     return PRICING.pro.monthly / 100;
   }
   if (subscriptionTier === 'team') {
-    const baseAmount = PRICING.team.baseMonthly / 100;
-    const seatsAmount = (seatCount * PRICING.team.seatMonthly) / 100;
-    return baseAmount + seatsAmount;
+    return PRICING.team.monthly / 100;
   }
   if (subscriptionTier === 'business') {
-    return 19999 / 100;
+    return PRICING.business.monthly / 100;
   }
   return 0;
 }

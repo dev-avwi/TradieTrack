@@ -11,7 +11,7 @@ export interface CheckoutSessionResult {
 }
 
 export interface SubscriptionStatus {
-  tier: 'free' | 'pro' | 'team' | 'trial';
+  tier: 'free' | 'pro' | 'team' | 'business' | 'trial';
   status: 'active' | 'past_due' | 'canceled' | 'none';
   currentPeriodEnd?: Date;
   cancelAtPeriodEnd?: boolean;
@@ -108,75 +108,74 @@ async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
   return price.id;
 }
 
-// Get or create Team base price ($59/month) and seat price ($29/month)
-async function getOrCreateTeamPrices(stripe: Stripe): Promise<{ basePriceId: string; seatPriceId: string }> {
-  // Try to find existing prices
+// Get or create flat Team monthly price ($99/month, includes up to 5 workers)
+async function getOrCreateTeamPrice(stripe: Stripe): Promise<string> {
   const prices = await stripe.prices.list({
-    lookup_keys: ['jobrunner_team_base_monthly', 'jobrunner_team_seat_monthly'],
+    lookup_keys: ['jobrunner_team_flat_monthly'],
     active: true,
-    limit: 10,
+    limit: 1,
   });
 
-  let basePriceId = prices.data.find(p => p.lookup_key === 'jobrunner_team_base_monthly')?.id;
-  let seatPriceId = prices.data.find(p => p.lookup_key === 'jobrunner_team_seat_monthly')?.id;
-
-  // Get or create Team base product
-  if (!basePriceId) {
-    const products = await stripe.products.list({ active: true, limit: 100 });
-    let baseProduct = products.data.find(p => p.name === PRICING.team.baseName && p.active);
-
-    if (!baseProduct) {
-      baseProduct = await stripe.products.create({
-        name: PRICING.team.baseName,
-        description: PRICING.team.description,
-        metadata: {
-          platform: 'jobrunner',
-          tier: 'team',
-          type: 'base',
-        },
-      });
-    }
-
-    const basePrice = await stripe.prices.create({
-      product: baseProduct.id,
-      unit_amount: PRICING.team.baseMonthly,
-      currency: 'aud',
-      recurring: { interval: 'month' },
-      lookup_key: 'jobrunner_team_base_monthly',
-      metadata: { tier: 'team', type: 'base' },
-    });
-    basePriceId = basePrice.id;
+  if (prices.data.length > 0) {
+    return prices.data[0].id;
   }
 
-  // Get or create Team seat product
-  if (!seatPriceId) {
-    const products = await stripe.products.list({ active: true, limit: 100 });
-    let seatProduct = products.data.find(p => p.name === PRICING.team.seatName && p.active);
+  const products = await stripe.products.list({ active: true, limit: 100 });
+  let product = products.data.find(p => p.name === PRICING.team.name && p.active);
 
-    if (!seatProduct) {
-      seatProduct = await stripe.products.create({
-        name: PRICING.team.seatName,
-        description: 'Additional team member for JobRunner Team plan',
-        metadata: {
-          platform: 'jobrunner',
-          tier: 'team',
-          type: 'seat',
-        },
-      });
-    }
-
-    const seatPrice = await stripe.prices.create({
-      product: seatProduct.id,
-      unit_amount: PRICING.team.seatMonthly,
-      currency: 'aud',
-      recurring: { interval: 'month' },
-      lookup_key: 'jobrunner_team_seat_monthly',
-      metadata: { tier: 'team', type: 'seat' },
+  if (!product) {
+    product = await stripe.products.create({
+      name: PRICING.team.name,
+      description: PRICING.team.description,
+      metadata: { platform: 'jobrunner', tier: 'team' },
     });
-    seatPriceId = seatPrice.id;
   }
 
-  return { basePriceId, seatPriceId };
+  const price = await stripe.prices.create({
+    product: product.id,
+    unit_amount: PRICING.team.monthly,
+    currency: 'aud',
+    recurring: { interval: 'month' },
+    lookup_key: 'jobrunner_team_flat_monthly',
+    metadata: { tier: 'team' },
+  });
+
+  return price.id;
+}
+
+// Get or create flat Business monthly price ($199/month, includes up to 15 workers)
+async function getOrCreateBusinessPrice(stripe: Stripe): Promise<string> {
+  const prices = await stripe.prices.list({
+    lookup_keys: ['jobrunner_business_flat_monthly'],
+    active: true,
+    limit: 1,
+  });
+
+  if (prices.data.length > 0) {
+    return prices.data[0].id;
+  }
+
+  const products = await stripe.products.list({ active: true, limit: 100 });
+  let product = products.data.find(p => p.name === PRICING.business.name && p.active);
+
+  if (!product) {
+    product = await stripe.products.create({
+      name: PRICING.business.name,
+      description: PRICING.business.description,
+      metadata: { platform: 'jobrunner', tier: 'business' },
+    });
+  }
+
+  const price = await stripe.prices.create({
+    product: product.id,
+    unit_amount: PRICING.business.monthly,
+    currency: 'aud',
+    recurring: { interval: 'month' },
+    lookup_key: 'jobrunner_business_flat_monthly',
+    metadata: { tier: 'business' },
+  });
+
+  return price.id;
 }
 
 export async function createSubscriptionCheckout(
@@ -245,15 +244,54 @@ export async function createSubscriptionCheckout(
   }
 }
 
-// Create Team subscription checkout with base + additional seats
+// Create Team subscription checkout (flat $99/mo, includes up to 5 workers)
 export async function createTeamSubscriptionCheckout(
   userId: string,
   email: string,
   successUrl: string,
   cancelUrl: string,
-  additionalSeats: number = 0,
   businessName?: string,
   trialDays: number = 7
+): Promise<CheckoutSessionResult> {
+  return createFlatTierCheckout(
+    userId,
+    email,
+    successUrl,
+    cancelUrl,
+    'team',
+    businessName,
+    trialDays,
+  );
+}
+
+// Create Business subscription checkout (flat $199/mo, includes up to 15 workers)
+export async function createBusinessSubscriptionCheckout(
+  userId: string,
+  email: string,
+  successUrl: string,
+  cancelUrl: string,
+  businessName?: string,
+  trialDays: number = 7
+): Promise<CheckoutSessionResult> {
+  return createFlatTierCheckout(
+    userId,
+    email,
+    successUrl,
+    cancelUrl,
+    'business',
+    businessName,
+    trialDays,
+  );
+}
+
+async function createFlatTierCheckout(
+  userId: string,
+  email: string,
+  successUrl: string,
+  cancelUrl: string,
+  tier: 'team' | 'business',
+  businessName?: string,
+  trialDays: number = 7,
 ): Promise<CheckoutSessionResult> {
   const stripe = await getUncachableStripeClient();
   if (!stripe) {
@@ -262,30 +300,14 @@ export async function createTeamSubscriptionCheckout(
 
   try {
     const customerId = await getOrCreateStripeCustomer(stripe, userId, email, businessName);
-    const { basePriceId, seatPriceId } = await getOrCreateTeamPrices(stripe);
-
-    // Build line items: base + seats (if any)
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
-      { price: basePriceId, quantity: 1 },
-    ];
-
-    // Add seat line item only if additional seats > 0
-    if (additionalSeats > 0) {
-      lineItems.push({
-        price: seatPriceId,
-        quantity: additionalSeats,
-        adjustable_quantity: {
-          enabled: true,
-          minimum: 0,
-          maximum: 50,
-        },
-      });
-    }
+    const priceId = tier === 'business'
+      ? await getOrCreateBusinessPrice(stripe)
+      : await getOrCreateTeamPrice(stripe);
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_collection: 'always',
-      line_items: lineItems,
+      line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
       success_url: successUrl,
       cancel_url: cancelUrl,
@@ -298,8 +320,7 @@ export async function createTeamSubscriptionCheckout(
       subscription_data: {
         metadata: {
           userId,
-          tier: 'team',
-          seatCount: String(additionalSeats),
+          tier,
           platform: 'jobrunner',
         },
         trial_period_days: trialDays,
@@ -312,8 +333,7 @@ export async function createTeamSubscriptionCheckout(
       metadata: {
         userId,
         type: 'subscription',
-        tier: 'team',
-        seatCount: String(additionalSeats),
+        tier,
       },
     });
 
@@ -323,7 +343,7 @@ export async function createTeamSubscriptionCheckout(
       sessionUrl: session.url || undefined,
     };
   } catch (error: any) {
-    console.error('Error creating team subscription checkout:', error);
+    console.error(`Error creating ${tier} subscription checkout:`, error);
     return { success: false, error: error.message || 'Failed to create checkout session' };
   }
 }
@@ -341,7 +361,7 @@ export async function createTrialSubscription(
   userId: string,
   email: string,
   paymentMethodId: string,
-  tier: 'pro' | 'team' = 'pro',
+  tier: 'pro' | 'team' | 'business' = 'pro',
   businessName?: string
 ): Promise<TrialSubscriptionResult> {
   const stripe = await getUncachableStripeClient();
@@ -366,9 +386,10 @@ export async function createTrialSubscription(
 
     // Get the price ID based on tier
     let priceId: string;
-    if (tier === 'team') {
-      const { basePriceId } = await getOrCreateTeamPrices(stripe);
-      priceId = basePriceId;
+    if (tier === 'business') {
+      priceId = await getOrCreateBusinessPrice(stripe);
+    } else if (tier === 'team') {
+      priceId = await getOrCreateTeamPrice(stripe);
     } else {
       priceId = await getOrCreateProPrice(stripe);
     }
@@ -896,8 +917,8 @@ export async function initializeStripeProducts(): Promise<{
   success: boolean;
   products: {
     pro?: { productId: string; priceId: string };
-    teamBase?: { productId: string; priceId: string };
-    teamSeat?: { productId: string; priceId: string };
+    team?: { productId: string; priceId: string };
+    business?: { productId: string; priceId: string };
   };
   error?: string;
 }> {
@@ -909,11 +930,10 @@ export async function initializeStripeProducts(): Promise<{
   try {
     const products: {
       pro?: { productId: string; priceId: string };
-      teamBase?: { productId: string; priceId: string };
-      teamSeat?: { productId: string; priceId: string };
+      team?: { productId: string; priceId: string };
+      business?: { productId: string; priceId: string };
     } = {};
 
-    // Create Pro product and price
     const proPriceId = await getOrCreateProPrice(stripe);
     const proPrice = await stripe.prices.retrieve(proPriceId);
     products.pro = {
@@ -921,19 +941,18 @@ export async function initializeStripeProducts(): Promise<{
       priceId: proPriceId,
     };
 
-    // Create Team products and prices
-    const { basePriceId, seatPriceId } = await getOrCreateTeamPrices(stripe);
-    
-    const basePrice = await stripe.prices.retrieve(basePriceId);
-    products.teamBase = {
-      productId: typeof basePrice.product === 'string' ? basePrice.product : basePrice.product.id,
-      priceId: basePriceId,
+    const teamPriceId = await getOrCreateTeamPrice(stripe);
+    const teamPrice = await stripe.prices.retrieve(teamPriceId);
+    products.team = {
+      productId: typeof teamPrice.product === 'string' ? teamPrice.product : teamPrice.product.id,
+      priceId: teamPriceId,
     };
 
-    const seatPrice = await stripe.prices.retrieve(seatPriceId);
-    products.teamSeat = {
-      productId: typeof seatPrice.product === 'string' ? seatPrice.product : seatPrice.product.id,
-      priceId: seatPriceId,
+    const businessPriceId = await getOrCreateBusinessPrice(stripe);
+    const businessPrice = await stripe.prices.retrieve(businessPriceId);
+    products.business = {
+      productId: typeof businessPrice.product === 'string' ? businessPrice.product : businessPrice.product.id,
+      priceId: businessPriceId,
     };
 
     console.log('✅ Stripe products initialized:', products);
@@ -944,75 +963,21 @@ export async function initializeStripeProducts(): Promise<{
   }
 }
 
-// Fix Team base price - creates new price at $59/month and archives any old incorrect prices
+// DEPRECATED: Old per-seat Team pricing has been replaced with flat $99/mo Team
+// and $199/mo Business tiers. New checkouts use jobrunner_team_flat_monthly /
+// jobrunner_business_flat_monthly lookup keys via initializeStripeProducts().
+// This stub is kept so the existing /api/admin/fix-team-base-price route still
+// returns something sensible and doesn't 500.
 export async function fixTeamBasePrice(): Promise<{
   success: boolean;
   oldPrice?: { id: string; amount: number };
   newPrice?: { id: string; amount: number };
   error?: string;
 }> {
-  const stripe = await getUncachableStripeClient();
-  if (!stripe) {
-    return { success: false, error: 'Stripe not configured' };
-  }
-
-  try {
-    // Find the Team base product
-    const products = await stripe.products.list({ active: true, limit: 100 });
-    const teamBaseProduct = products.data.find(p => p.name === PRICING.team.baseName && p.active);
-    
-    if (!teamBaseProduct) {
-      return { success: false, error: 'Team base product not found - run init-stripe-products first' };
-    }
-
-    // Get all prices for this product
-    const prices = await stripe.prices.list({ 
-      product: teamBaseProduct.id,
-      active: true,
-      limit: 100 
-    });
-
-    // Find price with wrong amount ($49 = 4900 cents)
-    const wrongPrice = prices.data.find(p => p.unit_amount === 4900);
-    const correctPrice = prices.data.find(p => p.unit_amount === PRICING.team.baseMonthly);
-
-    if (!wrongPrice && correctPrice) {
-      return { 
-        success: true, 
-        newPrice: { id: correctPrice.id, amount: correctPrice.unit_amount || 0 },
-        error: 'Price is already correct at $59/month' 
-      };
-    }
-
-    if (!wrongPrice) {
-      return { success: false, error: 'No $49 price found to fix' };
-    }
-
-    // Create new price at correct amount ($59 = 5900 cents)
-    const newPrice = await stripe.prices.create({
-      product: teamBaseProduct.id,
-      unit_amount: PRICING.team.baseMonthly, // 5900 = $59
-      currency: 'aud',
-      recurring: { interval: 'month' },
-      lookup_key: 'jobrunner_team_base_monthly',
-      transfer_lookup_key: true,
-      metadata: { tier: 'team', type: 'base' },
-    });
-
-    // Archive the old price
-    await stripe.prices.update(wrongPrice.id, { active: false });
-
-    console.log(`✅ Fixed Team base price: archived ${wrongPrice.id} ($49), created ${newPrice.id} ($59)`);
-
-    return {
-      success: true,
-      oldPrice: { id: wrongPrice.id, amount: 4900 },
-      newPrice: { id: newPrice.id, amount: PRICING.team.baseMonthly },
-    };
-  } catch (error: any) {
-    console.error('Failed to fix Team base price:', error);
-    return { success: false, error: error.message };
-  }
+  return {
+    success: false,
+    error: 'Team is now flat $99/month — per-seat migration no longer applies. Run init-stripe-products to create the new flat Team and Business prices.',
+  };
 }
 
 export interface UpgradeToTeamResult {
@@ -1109,20 +1074,31 @@ export async function downgradeTeamToPro(userId: string): Promise<DowngradeToPro
 }
 
 /**
- * Upgrades a Pro subscription to Team with a trial period.
- * 
- * Seat count semantics:
- * - seats = 0: Just the owner (Team base price includes 1 user, no additional seat line items)
- * - seats = 1: Owner + 1 additional team member (adds 1 seat line item)
- * - seats = N: Owner + N additional team members (adds N seat line items)
- * 
- * The Team base price ($59/mo) always includes the owner seat.
- * Additional seats are $29/mo each.
+ * Upgrades a Pro subscription to flat Team ($99/mo, includes up to 5 workers)
+ * with a trial period.
  */
 export async function upgradeProToTeamTrial(
   userId: string,
-  seats: number = 0, // Default to 0 = just owner, no additional seats
   trialDays: number = 7
+): Promise<UpgradeToTeamResult> {
+  return upgradeProToFlatTierTrial(userId, 'team', trialDays);
+}
+
+/**
+ * Upgrades a Pro or Team subscription to flat Business ($199/mo, includes up to
+ * 15 workers) with a trial period.
+ */
+export async function upgradeProToBusinessTrial(
+  userId: string,
+  trialDays: number = 7
+): Promise<UpgradeToTeamResult> {
+  return upgradeProToFlatTierTrial(userId, 'business', trialDays);
+}
+
+async function upgradeProToFlatTierTrial(
+  userId: string,
+  targetTier: 'team' | 'business',
+  trialDays: number,
 ): Promise<UpgradeToTeamResult> {
   const stripe = await getUncachableStripeClient();
   if (!stripe) {
@@ -1131,7 +1107,7 @@ export async function upgradeProToTeamTrial(
 
   try {
     const businessSettings = await storage.getBusinessSettings(userId);
-    
+
     if (!businessSettings?.stripeSubscriptionId) {
       return { success: false, error: 'No active subscription found to upgrade' };
     }
@@ -1141,49 +1117,39 @@ export async function upgradeProToTeamTrial(
     }
 
     const currentSubscription = await stripe.subscriptions.retrieve(businessSettings.stripeSubscriptionId);
-    
+
     if (currentSubscription.status !== 'active' && currentSubscription.status !== 'trialing') {
       return { success: false, error: 'Current subscription is not active' };
     }
 
     const currentTier = currentSubscription.metadata?.tier || 'pro';
-    if (currentTier === 'team') {
-      return { success: false, error: 'Already on Team plan' };
+    if (currentTier === targetTier) {
+      return { success: false, error: `Already on ${targetTier === 'team' ? 'Team' : 'Business'} plan` };
     }
 
-    const { basePriceId, seatPriceId } = await getOrCreateTeamPrices(stripe);
+    const newPriceId = targetTier === 'business'
+      ? await getOrCreateBusinessPrice(stripe)
+      : await getOrCreateTeamPrice(stripe);
 
     const trialEndTimestamp = Math.floor(Date.now() / 1000) + (trialDays * 24 * 60 * 60);
 
-    // Build subscription items:
-    // - Replace current Pro item with Team base (includes owner)
-    // - Only add seat line items if additional seats > 0
-    const subscriptionItems: Stripe.SubscriptionUpdateParams.Item[] = [
-      {
-        id: currentSubscription.items.data[0].id,
-        price: basePriceId,
-      },
-    ];
-
-    // Add additional seat line items only if seats > 0
-    // seats represents ADDITIONAL members beyond the owner
-    if (seats > 0) {
-      subscriptionItems.push({
-        price: seatPriceId,
-        quantity: seats,
-      });
-    }
+    // Replace ALL existing items (handles legacy multi-line per-seat subs too)
+    // with a single flat-tier line item.
+    const itemUpdates: Stripe.SubscriptionUpdateParams.Item[] = currentSubscription.items.data.map(item => ({
+      id: item.id,
+      deleted: true,
+    }));
+    itemUpdates.push({ price: newPriceId, quantity: 1 });
 
     const updatedSubscription = await stripe.subscriptions.update(
       businessSettings.stripeSubscriptionId,
       {
-        items: subscriptionItems,
+        items: itemUpdates,
         trial_end: trialEndTimestamp,
         proration_behavior: 'none',
         metadata: {
           ...currentSubscription.metadata,
-          tier: 'team',
-          seatCount: String(seats), // Additional seats beyond owner
+          tier: targetTier,
           upgradedFromPro: 'true',
           upgradeTrialStart: new Date().toISOString(),
         },
@@ -1193,14 +1159,14 @@ export async function upgradeProToTeamTrial(
     const trialEndsAt = new Date(trialEndTimestamp * 1000);
 
     await storage.updateUser(userId, {
-      subscriptionTier: 'team',
+      subscriptionTier: targetTier,
       trialStatus: 'active',
       trialStartedAt: new Date(),
       trialEndsAt: trialEndsAt,
     });
 
     await storage.updateBusinessSettings(userId, {
-      subscriptionTier: 'team',
+      subscriptionTier: targetTier,
       subscriptionStatus: updatedSubscription.status,
       trialStartDate: new Date(),
       trialEndDate: trialEndsAt,
@@ -1212,7 +1178,7 @@ export async function upgradeProToTeamTrial(
       trialEndsAt,
     };
   } catch (error: any) {
-    console.error('Error upgrading to team trial:', error);
+    console.error(`Error upgrading to ${targetTier} trial:`, error);
     return { success: false, error: error.message || 'Failed to upgrade subscription' };
   }
 }

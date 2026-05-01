@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,8 +18,6 @@ import {
   ChevronRight,
   Calendar,
   ArrowRight,
-  Minus,
-  Plus,
   Zap,
   ExternalLink,
   Gift,
@@ -40,7 +37,7 @@ import { Separator } from "@/components/ui/separator";
 import { useLocation } from "wouter";
 
 interface SubscriptionStatus {
-  tier: 'free' | 'trial' | 'pro' | 'team';
+  tier: 'free' | 'trial' | 'pro' | 'team' | 'business';
   status: string;
   trialEndsAt: string | null;
   nextBillingDate: string | null;
@@ -107,18 +104,36 @@ const tiers = [
   {
     id: 'team',
     name: 'Team',
-    price: 59,
-    seatPrice: 29,
-    description: 'For businesses with employees',
+    price: 99,
+    description: 'For small teams up to 5 workers',
     features: [
       { text: 'Everything in Pro', included: true },
-      { text: 'Team management', included: true },
-      { text: 'Role-based permissions', included: true },
+      { text: 'Up to 5 team members', included: true },
+      { text: 'Team management & permissions', included: true },
       { text: 'Staff scheduling', included: true },
       { text: 'Time tracking', included: true },
       { text: 'GPS job tracking', included: true },
       { text: 'Team chat', included: true },
       { text: 'Priority support', included: true },
+    ],
+    cta: 'Start 7-Day Free Trial',
+    isContactSales: false,
+    popular: false,
+  },
+  {
+    id: 'business',
+    name: 'Business',
+    price: 199,
+    description: 'For growing businesses up to 15 workers',
+    features: [
+      { text: 'Everything in Team', included: true },
+      { text: 'Up to 15 team members', included: true },
+      { text: 'Advanced reporting & analytics', included: true },
+      { text: 'Multi-crew dispatch', included: true },
+      { text: 'Bulk operations', included: true },
+      { text: 'API access', included: true },
+      { text: 'White-glove onboarding', included: true },
+      { text: 'Dedicated account manager', included: true },
     ],
     cta: 'Start 7-Day Free Trial',
     isContactSales: false,
@@ -131,7 +146,6 @@ const handleContactSales = () => {
 };
 
 export default function SubscriptionPage() {
-  const [teamSeats, setTeamSeats] = useState(2);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -140,11 +154,8 @@ export default function SubscriptionPage() {
   });
 
   const createCheckoutMutation = useMutation({
-    mutationFn: async ({ tier, seats }: { tier: string; seats?: number }) => {
-      const response = await apiRequest('POST', '/api/subscription/create-checkout', { 
-        tier, 
-        seats: tier === 'team' ? seats : undefined 
-      });
+    mutationFn: async ({ tier }: { tier: string }) => {
+      const response = await apiRequest('POST', '/api/subscription/create-checkout', { tier });
       return response.json();
     },
     onSuccess: (data: { url?: string; betaAccess?: boolean; message?: string; tier?: string }) => {
@@ -217,7 +228,7 @@ export default function SubscriptionPage() {
   });
 
   const handleStartTrial = (tier: string) => {
-    createCheckoutMutation.mutate({ tier, seats: tier === 'team' ? teamSeats : undefined });
+    createCheckoutMutation.mutate({ tier });
   };
 
   const formatDate = (dateString: string | null) => {
@@ -234,7 +245,7 @@ export default function SubscriptionPage() {
     return status.tier === tierId || (tierId === 'free' && status.tier === 'free');
   };
 
-  const hasActiveSubscription = status && (status.tier === 'pro' || status.tier === 'team' || status.tier === 'trial');
+  const hasActiveSubscription = status && (status.tier === 'pro' || status.tier === 'team' || status.tier === 'business' || status.tier === 'trial');
   const hasPaidPlan = hasActiveSubscription || status?.isBeta;
 
   if (statusLoading) {
@@ -299,7 +310,9 @@ export default function SubscriptionPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="p-3 rounded-lg bg-muted/50">
                 <div className="flex items-center gap-2 mb-1">
-                  {(status?.tier === 'team') ? (
+                  {(status?.tier === 'business') ? (
+                    <Crown className="w-4 h-4 text-primary" />
+                  ) : (status?.tier === 'team') ? (
                     <Users className="w-4 h-4 text-primary" />
                   ) : (status?.tier === 'pro' || status?.tier === 'trial') ? (
                     <Crown className="w-4 h-4 text-primary" />
@@ -401,7 +414,7 @@ export default function SubscriptionPage() {
         </Card>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {tiers.map((tier) => (
             <Card 
               key={tier.id}
@@ -420,6 +433,7 @@ export default function SubscriptionPage() {
                   {tier.id === 'free' && <Zap className="w-5 h-5 text-muted-foreground" />}
                   {tier.id === 'pro' && <Crown className="w-5 h-5 text-primary" />}
                   {tier.id === 'team' && <Users className="w-5 h-5 text-primary" />}
+                  {tier.id === 'business' && <Crown className="w-5 h-5 text-primary" />}
                   <CardTitle className="text-xl">{tier.name}</CardTitle>
                 </div>
                 <p className="text-sm text-muted-foreground">{tier.description}</p>
@@ -428,59 +442,14 @@ export default function SubscriptionPage() {
                     <span className="text-4xl font-bold">${tier.price}</span>
                     <span className="text-muted-foreground">/month</span>
                   </div>
-                  {tier.id === 'team' && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      + ${tier.seatPrice}/seat for team members
-                    </p>
-                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Team Seats Selector */}
-                {tier.id === 'team' && !isCurrentTier('team') && (
-                  <div className="p-4 bg-muted/50 rounded-lg space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Team seats</span>
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setTeamSeats(Math.max(0, teamSeats - 1))}
-                          disabled={teamSeats <= 0}
-                          data-testid="button-decrease-seats"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </Button>
-                        <span className="w-8 text-center font-semibold" data-testid="text-seat-count">
-                          {teamSeats}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setTeamSeats(Math.min(50, teamSeats + 1))}
-                          disabled={teamSeats >= 50}
-                          data-testid="button-increase-seats"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Total monthly</span>
-                      <span className="font-semibold">
-                        ${tier.price + (teamSeats * (tier.seatPrice || 0))} AUD
-                      </span>
-                    </div>
-                  </div>
-                )}
-
                 {(() => {
                   const isCurrent = isCurrentTier(tier.id);
                   const isFoundingMember = status?.betaLifetimeAccess;
-                  const userTierRank = { free: 0, trial: 1, pro: 2, team: 3, business: 3 }[status?.tier || 'free'] ?? 0;
-                  const thisTierRank = { free: 0, trial: 1, pro: 2, team: 3, business: 3 }[tier.id] ?? 0;
+                  const userTierRank = { free: 0, trial: 1, pro: 2, team: 3, business: 4 }[status?.tier || 'free'] ?? 0;
+                  const thisTierRank = { free: 0, trial: 1, pro: 2, team: 3, business: 4 }[tier.id] ?? 0;
                   const isDowngrade = thisTierRank < userTierRank;
                   const isUpgrade = thisTierRank > userTierRank;
 

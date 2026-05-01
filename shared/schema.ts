@@ -73,7 +73,7 @@ export const TIER_LIMITS = {
   },
 } as const;
 
-// Pricing in cents (AUD)
+// Pricing in cents (AUD) - flat per-tier (matches Apple IAP)
 export const PRICING = {
   pro: {
     monthly: 4900, // $49/month
@@ -81,11 +81,14 @@ export const PRICING = {
     description: 'Unlimited jobs, quotes, and invoices for solo tradies',
   },
   team: {
-    baseMonthly: 5900, // $59/month base
-    seatMonthly: 2900, // $29/month per seat
-    baseName: 'JobRunner Team',
-    seatName: 'JobRunner Team Seat',
-    description: 'Everything in Pro plus team management for growing businesses',
+    monthly: 9900, // $99/month flat (up to 5 workers)
+    name: 'JobRunner Team',
+    description: 'Everything in Pro plus team management for up to 5 workers',
+  },
+  business: {
+    monthly: 19900, // $199/month flat (up to 15 workers)
+    name: 'JobRunner Business',
+    description: 'Everything in Team plus advanced reporting for up to 15 workers',
   },
   addons: {
     aiReceptionist: {

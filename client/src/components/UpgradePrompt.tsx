@@ -10,7 +10,7 @@ interface UpgradePromptProps {
   trigger?: "job-limit" | "logo-upload" | "branding" | "ai-features" | "team-members";
   onClose?: () => void;
   compact?: boolean;
-  targetTier?: 'pro' | 'team';
+  targetTier?: 'pro' | 'team' | 'business';
 }
 
 const triggerMessages: Record<string, { title: string; description: string }> = {
@@ -47,12 +47,33 @@ const proFeatures = [
 
 const teamFeatures = [
   "Everything in Pro",
-  "Team member management",
-  "Role-based permissions",
+  "Up to 5 team members",
+  "Team management & permissions",
   "Staff scheduling & dispatch",
   "GPS job tracking",
   "Team chat & collaboration",
 ];
+
+const businessFeatures = [
+  "Everything in Team",
+  "Up to 15 team members",
+  "Advanced reporting & analytics",
+  "Multi-crew dispatch",
+  "API access",
+  "Dedicated account manager",
+];
+
+const TIER_PRICE: Record<'pro' | 'team' | 'business', number> = {
+  pro: 49,
+  team: 99,
+  business: 199,
+};
+
+const TIER_LABEL: Record<'pro' | 'team' | 'business', string> = {
+  pro: 'Pro',
+  team: 'Team',
+  business: 'Business',
+};
 
 export default function UpgradePrompt({ 
   trigger = "job-limit", 
@@ -107,10 +128,12 @@ export default function UpgradePrompt({
     );
   }
 
-  const effectiveTier = targetTier || (trigger === 'team-members' ? 'team' : 'pro');
+  const effectiveTier: 'pro' | 'team' | 'business' = targetTier || (trigger === 'team-members' ? 'team' : 'pro');
   const msg = triggerMessages[trigger];
-  const features = effectiveTier === 'team' ? teamFeatures : proFeatures;
+  const features = effectiveTier === 'business' ? businessFeatures : effectiveTier === 'team' ? teamFeatures : proFeatures;
   const TierIcon = effectiveTier === 'team' ? Users : Crown;
+  const tierLabel = TIER_LABEL[effectiveTier];
+  const tierPrice = TIER_PRICE[effectiveTier];
 
   if (compact) {
     return (
@@ -145,18 +168,18 @@ export default function UpgradePrompt({
         <Card className="relative border-primary/30 shadow-lg">
           <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
             <Badge className="bg-primary text-primary-foreground">
-              {effectiveTier === 'team' ? 'Team Plan' : 'Pro Plan'}
+              {tierLabel} Plan
             </Badge>
           </div>
 
           <CardHeader className="text-center pt-8">
             <CardTitle className="flex items-center justify-center space-x-2">
               <TierIcon className="h-5 w-5 text-primary" />
-              <span>Unlock {effectiveTier === 'team' ? 'Team' : 'Pro'} Features</span>
+              <span>Unlock {tierLabel} Features</span>
             </CardTitle>
             <div className="space-y-1">
               <div className="text-3xl font-bold">
-                ${effectiveTier === 'team' ? '49' : '39'}
+                ${tierPrice}
                 <span className="text-base font-normal text-muted-foreground">/mo</span>
               </div>
               <p className="text-sm text-muted-foreground">7-day free trial included</p>

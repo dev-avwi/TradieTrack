@@ -423,16 +423,12 @@ export default function AuthFlow({ onLoginSuccess, onNeedOnboarding }: AuthFlowP
                 transition={{ duration: 0.2 }}
               >
                 <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-                  {authMode === 'login' ? 'Welcome back!' : 'Join Early Access'}
+                  {authMode === 'login' ? 'Welcome back!' : 'Get started free'}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400 text-lg">
                   {authMode === 'login' 
                     ? 'Sign in to manage your trade business' 
-                    : betaStatus && betaStatus.spotsRemaining > 0
-                      ? `${betaStatus.spotsRemaining} of ${betaStatus.maxLifetimeSpots} founding member spots remaining!`
-                      : betaStatus && betaStatus.spotsRemaining <= 0
-                        ? 'Founding member spots filled! Sign up for a free trial instead.'
-                        : 'First 10 users get lifetime free access!'}
+                    : 'Free plan available — no credit card required.'}
                 </p>
               </motion.div>
             </AnimatePresence>

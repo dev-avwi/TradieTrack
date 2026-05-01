@@ -5330,7 +5330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return next();
     }
     const tier = req.user?.subscriptionTier;
-    if (tier === 'pro' || tier === 'team' || tier === 'beta') {
+    if (tier === 'pro' || tier === 'team' || tier === 'business' || tier === 'beta') {
       return next();
     }
     return res.status(403).json({ error: "This feature requires a Pro subscription" });
@@ -5924,7 +5924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // BETA MODE: Skip Stripe, grant free access immediately
       if (IS_BETA) {
         // Update user subscription tier directly (no Stripe)
-        const subscriptionTier = tier as 'pro' | 'team';
+        const subscriptionTier = tier as 'pro' | 'team' | 'business';
         await storage.updateUser(userId, { 
           subscriptionTier,
           betaUser: true,
@@ -5944,30 +5944,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // PRODUCTION MODE: Use Stripe checkout
-      const { createSubscriptionCheckout, createTeamSubscriptionCheckout } = await import('./billingService');
+      const {
+        createSubscriptionCheckout,
+        createTeamSubscriptionCheckout,
+        createBusinessSubscriptionCheckout,
+      } = await import('./billingService');
       
       // Get base URL for success/cancel redirects
       const protocol = req.headers['x-forwarded-proto'] || 'https';
       const host = req.headers.host;
       const baseUrl = `${protocol}://${host}`;
       
+      const successUrl = `${baseUrl}/settings?tab=billing&success=true`;
+      const cancelUrl = `${baseUrl}/settings?tab=billing&canceled=true`;
+
       let result;
-      if (tier === 'team') {
-        const seatCount = Math.max(0, Math.min(50, parseInt(seats) || 0));
-        result = await createTeamSubscriptionCheckout(
-          userId,
-          user.email,
-          `${baseUrl}/settings?tab=billing&success=true`,
-          `${baseUrl}/settings?tab=billing&canceled=true`,
-          seatCount
-        );
+      if (tier === 'business') {
+        result = await createBusinessSubscriptionCheckout(userId, user.email, successUrl, cancelUrl);
+      } else if (tier === 'team') {
+        result = await createTeamSubscriptionCheckout(userId, user.email, successUrl, cancelUrl);
       } else {
-        result = await createSubscriptionCheckout(
-          userId,
-          user.email,
-          `${baseUrl}/settings?tab=billing&success=true`,
-          `${baseUrl}/settings?tab=billing&canceled=true`
-        );
+        result = await createSubscriptionCheckout(userId, user.email, successUrl, cancelUrl);
       }
       
       if (!result.success) {
@@ -5991,12 +5988,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.userId!;
       const { tier, seats } = req.body;
 
-      // Only Pro and Team are wired up for self-serve checkout. Business is
-      // sales-led and goes through a separate flow — accepting it here would
-      // silently send the user to the Pro pricing.
-      if (!tier || !['pro', 'team'].includes(tier)) {
+      // All three tiers are now self-serve via Stripe checkout
+      // (matches Apple IAP — Pro $49 / Team $99 / Business $199 flat).
+      if (!tier || !['pro', 'team', 'business'].includes(tier)) {
         return res.status(400).json({
-          error: 'Invalid tier. Self-serve checkout supports "pro" or "team". For Business, contact support.',
+          error: 'Invalid tier. Must be "pro", "team", or "business".',
         });
       }
 
@@ -6016,7 +6012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // BETA: short-circuit and grant directly so user doesn't need to pay.
       if (IS_BETA) {
-        const subscriptionTier = tier as 'pro' | 'team';
+        const subscriptionTier = tier as 'pro' | 'team' | 'business';
         await storage.updateUser(userId, {
           subscriptionTier,
           betaUser: true,
@@ -6030,30 +6026,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { createSubscriptionCheckout, createTeamSubscriptionCheckout } = await import('./billingService');
+      const {
+        createSubscriptionCheckout,
+        createTeamSubscriptionCheckout,
+        createBusinessSubscriptionCheckout,
+      } = await import('./billingService');
       const { getProductionBaseUrl } = await import('./urlHelper');
       // Use the canonical app URL rather than trusting Host/X-Forwarded-Proto
       // headers — these are emailed links and host-header spoofing could
       // otherwise redirect the user post-checkout to an attacker domain.
       const baseUrl = getProductionBaseUrl();
+      const successUrl = `${baseUrl}/settings?tab=billing&success=true`;
+      const cancelUrl = `${baseUrl}/settings?tab=billing&canceled=true`;
 
       let result;
-      if (tier === 'team') {
-        const seatCount = Math.max(0, Math.min(50, parseInt(seats) || 0));
-        result = await createTeamSubscriptionCheckout(
-          userId,
-          user.email,
-          `${baseUrl}/settings?tab=billing&success=true`,
-          `${baseUrl}/settings?tab=billing&canceled=true`,
-          seatCount
-        );
+      if (tier === 'business') {
+        result = await createBusinessSubscriptionCheckout(userId, user.email, successUrl, cancelUrl);
+      } else if (tier === 'team') {
+        result = await createTeamSubscriptionCheckout(userId, user.email, successUrl, cancelUrl);
       } else {
-        result = await createSubscriptionCheckout(
-          userId,
-          user.email,
-          `${baseUrl}/settings?tab=billing&success=true`,
-          `${baseUrl}/settings?tab=billing&canceled=true`
-        );
+        result = await createSubscriptionCheckout(userId, user.email, successUrl, cancelUrl);
       }
 
       if (!result.success || !result.sessionUrl) {
@@ -6374,18 +6366,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/subscription/upgrade-to-team - Upgrades Pro subscription to Team with trial
+  // POST /api/subscription/upgrade-to-team - Upgrades Pro subscription to flat Team ($99/mo) with trial
   app.post("/api/subscription/upgrade-to-team", requireAuth, async (req: any, res) => {
     try {
       const { upgradeProToTeamTrial } = await import('./billingService');
       const userId = req.userId!;
-      const { seats = 1 } = req.body;
 
-      if (typeof seats !== 'number' || seats < 0 || seats > 50) {
-        return res.status(400).json({ success: false, message: 'Invalid seat count (0-50)' });
-      }
-
-      const result = await upgradeProToTeamTrial(userId, seats);
+      const result = await upgradeProToTeamTrial(userId);
 
       if (!result.success) {
         return res.status(400).json({ success: false, message: result.error });
@@ -6399,6 +6386,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error upgrading to team:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to upgrade subscription' });
+    }
+  });
+
+  // POST /api/subscription/upgrade-to-business - Upgrades to flat Business ($199/mo) with trial
+  app.post("/api/subscription/upgrade-to-business", requireAuth, async (req: any, res) => {
+    try {
+      const { upgradeProToBusinessTrial } = await import('./billingService');
+      const userId = req.userId!;
+
+      const result = await upgradeProToBusinessTrial(userId);
+
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.error });
+      }
+
+      res.json({
+        success: true,
+        message: 'Your subscription has been upgraded to Business with a 7-day trial.',
+        trialEndsAt: result.trialEndsAt,
+        subscriptionId: result.subscriptionId,
+      });
+    } catch (error: any) {
+      console.error('Error upgrading to business:', error);
       res.status(500).json({ success: false, message: error.message || 'Failed to upgrade subscription' });
     }
   });
@@ -12452,7 +12463,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  // Admin endpoint to fix Team base price from $49 to $59
+  // Admin endpoint to fix Team base price (legacy — flat pricing now)
   app.post("/api/admin/fix-team-price", requireAuth, async (req: any, res) => {
     const user = await storage.getUser(req.userId);
     if (!user?.isPlatformAdmin) return res.status(403).json({ error: 'Admin access required' });
@@ -12470,7 +12481,7 @@ Be specific about materials, colors, and features that would be included.`
       
       res.json({
         success: true,
-        message: 'Team base price fixed from $49 to $59/month',
+        message: 'Team base price set to $99/month flat',
         oldPrice: result.oldPrice,
         newPrice: result.newPrice
       });
@@ -14512,6 +14523,18 @@ Be specific about materials, colors, and features that would be included.`
         const cached = await getIdempotencyRecord(idempKey);
         if (cached) return res.status(201).json(cached);
       }
+
+      // Enforce free-tier client cap (paid tiers + beta lifetime are unlimited).
+      const limitCheck = await FreemiumService.canUserCreateClient(effectiveUserId);
+      if (!limitCheck.canCreate) {
+        return res.status(402).json({
+          error: limitCheck.reason || 'Client limit reached',
+          type: 'SUBSCRIPTION_LIMIT',
+          current: limitCheck.current,
+          limit: limitCheck.limit,
+        });
+      }
+
       const data = insertClientSchema.parse(body);
       const client = await storage.createClient({ ...data, userId: effectiveUserId });
       if (idempKey) {
@@ -33464,7 +33487,7 @@ Respond with JSON in this format:
   
   // ===== STRIPE CONNECT ROUTES =====
   // Two-layer payment architecture:
-  // Layer 1: Platform subscriptions (JobRunner charges tradies $49/month Pro, $59/month Team)
+  // Layer 1: Platform subscriptions (JobRunner charges tradies $49/month Pro, $99/month Team flat, $199/month Business flat)
   // Layer 2: Customer payments (clients pay tradies, with platform application_fee)
   
   // Create or get Stripe Connect Express account for tradie (owner only)
@@ -41258,43 +41281,73 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  // Create Team subscription checkout (with seats)
+  // Create Team subscription checkout (flat $99/mo, includes up to 5 workers)
   app.post("/api/billing/checkout/team", requireAuth, async (req: any, res) => {
     try {
       const { createTeamSubscriptionCheckout, getPublishableKey } = await import('./billingService');
       const user = await storage.getUser(req.userId!);
-      const { seatCount = 0 } = req.body;
-      
-      // Validate seat count
-      const seats = Math.max(0, Math.min(50, parseInt(seatCount) || 0));
-      
+
       // Get base URL for success/cancel redirects
       const protocol = req.headers['x-forwarded-proto'] || 'https';
       const host = req.headers.host;
       const baseUrl = `${protocol}://${host}`;
-      
+
       const result = await createTeamSubscriptionCheckout(
         req.userId!,
         user?.email || '',
         `${baseUrl}/settings?tab=billing&success=true`,
         `${baseUrl}/settings?tab=billing&canceled=true`,
-        seats
       );
-      
+
       if (!result.success) {
         return res.status(400).json({ error: result.error });
       }
-      
+
       const publishableKey = await getPublishableKey();
-      res.json({ 
+      res.json({
         success: true,
-        sessionId: result.sessionId, 
+        sessionId: result.sessionId,
         sessionUrl: result.sessionUrl,
         url: result.sessionUrl,
-        publishableKey 
+        publishableKey,
       });
     } catch (error: any) {
       console.error('Error creating team checkout session:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create Business subscription checkout (flat $199/mo, includes up to 15 workers)
+  app.post("/api/billing/checkout/business", requireAuth, async (req: any, res) => {
+    try {
+      const { createBusinessSubscriptionCheckout, getPublishableKey } = await import('./billingService');
+      const user = await storage.getUser(req.userId!);
+
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers.host;
+      const baseUrl = `${protocol}://${host}`;
+
+      const result = await createBusinessSubscriptionCheckout(
+        req.userId!,
+        user?.email || '',
+        `${baseUrl}/settings?tab=billing&success=true`,
+        `${baseUrl}/settings?tab=billing&canceled=true`,
+      );
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const publishableKey = await getPublishableKey();
+      res.json({
+        success: true,
+        sessionId: result.sessionId,
+        sessionUrl: result.sessionUrl,
+        url: result.sessionUrl,
+        publishableKey,
+      });
+    } catch (error: any) {
+      console.error('Error creating business checkout session:', error);
       res.status(500).json({ error: error.message });
     }
   });

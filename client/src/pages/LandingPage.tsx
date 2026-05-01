@@ -437,10 +437,10 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Left: Content */}
             <div className="text-center lg:text-left animate-fade-in">
-              {/* Early Access Badge */}
+              {/* Tagline Badge */}
               <div className="inline-flex items-center gap-2 bg-gradient-to-r from-brand/5 to-brand-accent/5 border border-brand/10 rounded-full px-5 py-2.5 mb-8">
                 <Sparkles className="w-4 h-4 text-brand-accent" />
-                <span className="text-[15px] font-semibold text-gray-700">Free for early users</span>
+                <span className="text-[15px] font-semibold text-gray-700">Start free — upgrade anytime</span>
               </div>
 
               {/* Main Headline */}
@@ -492,14 +492,14 @@ export default function LandingPage() {
                 </Button>
               </div>
 
-              {/* Early Access note */}
+              {/* Free tier note */}
               <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-full px-5 py-2.5">
                 <span className="flex h-2.5 w-2.5 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-accent"></span>
                 </span>
                 <span className="text-[15px] font-medium text-orange-700">
-                  {betaStatus && betaStatus.spotsRemaining > 0 ? `Early Access: ${betaStatus.spotsRemaining} of ${betaStatus.maxLifetimeSpots} founding member spots remaining` : 'Early Access: First 10 users get lifetime free access'}
+                  Free plan available — no credit card required
                 </span>
               </div>
             </div>
@@ -830,7 +830,7 @@ export default function LandingPage() {
             </p>
           </AnimatedSection>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
             {/* Free Plan */}
             <AnimatedSection delay={0}>
               <PricingCard
@@ -882,12 +882,12 @@ export default function LandingPage() {
             <AnimatedSection delay={300}>
               <PricingCard
                 name="Team"
-                price="$59"
-                period="/month + $29/seat"
+                price="$99"
+                period="/month flat"
                 description="Full power for growing businesses"
                 features={[
                   "Everything in Pro",
-                  "Unlimited team members",
+                  "Up to 5 team members",
                   "Live team tracking",
                   "Team chat & messaging",
                   "Role-based access",
@@ -899,6 +899,29 @@ export default function LandingPage() {
                 buttonText="Get Started Free"
                 buttonVariant="default"
                 href="/auth?mode=signup&plan=team"
+              />
+            </AnimatedSection>
+
+            {/* Business Plan */}
+            <AnimatedSection delay={450}>
+              <PricingCard
+                name="Business"
+                price="$199"
+                period="/month flat"
+                description="Advanced tools for established operators"
+                features={[
+                  "Everything in Team",
+                  "Up to 15 team members",
+                  "Premium integrations",
+                  "Advanced automations",
+                  "Dedicated account support",
+                  "Priority onboarding",
+                  "Custom workflows",
+                  "Higher API limits"
+                ]}
+                buttonText="Get Started Free"
+                buttonVariant="default"
+                href="/auth?mode=signup&plan=business"
               />
             </AnimatedSection>
           </div>
@@ -979,10 +1002,10 @@ export default function LandingPage() {
           <AnimatedSection delay={500} className="text-center mt-10">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-full px-5 py-2.5 mb-4">
               <span className="text-sm font-semibold text-green-700">
-                {betaStatus && betaStatus.spotsRemaining > 0 ? `Early Access: ${betaStatus.spotsRemaining} founding member spots remaining — free in exchange for a testimonial` : 'All features included for Early Access members. Get started free today.'}
+                Start free today. Upgrade when you're ready — cancel anytime.
               </span>
             </div>
-            <p className="text-sm text-gray-500">All features included during Early Access. No credit card required.</p>
+            <p className="text-sm text-gray-500">No credit card required to get started.</p>
           </AnimatedSection>
         </div>
       </section>
@@ -1088,7 +1111,7 @@ export default function LandingPage() {
             Ready to simplify your business?
           </h2>
           <p className="text-lg lg:text-xl text-blue-100 mb-10 max-w-xl mx-auto">
-            Join our growing community of Australian trade professionals. Free for Early Access members — founding members get lifetime access!
+            Join thousands of Australian trade professionals running their business on JobRunner. Start free in under a minute.
           </p>
           <Link href="/auth?mode=signup">
             <Button 
@@ -1102,7 +1125,7 @@ export default function LandingPage() {
             </Button>
           </Link>
           <p className="text-sm text-blue-200 mt-5">
-            No credit card required. Just agree to provide a testimonial.
+            No credit card required. Cancel anytime.
           </p>
         </AnimatedSection>
       </section>
