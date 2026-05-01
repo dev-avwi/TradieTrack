@@ -433,7 +433,7 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="pt-20 lg:pt-20 pb-16 lg:pb-24 px-5 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1500px] mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
             {/* Left: Content */}
             <div className="text-center lg:text-left animate-fade-in">
@@ -536,7 +536,7 @@ export default function LandingPage() {
 
       {/* Social Proof Bar */}
       <section className="py-10 border-y border-gray-100 bg-gray-50/50">
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
+        <div className="max-w-[1500px] mx-auto px-5 lg:px-8">
           <AnimatedSection>
             <p className="text-center text-sm text-gray-500 mb-6">Built for trade businesses across Australia</p>
             <div className="flex flex-wrap justify-center items-center gap-6 lg:gap-12">
@@ -556,7 +556,7 @@ export default function LandingPage() {
 
       {/* Work From Anywhere - Mockup Showcase with Toggle */}
       <section className="py-20 lg:py-28 bg-gradient-to-b from-white to-gray-50/50">
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
+        <div className="max-w-[1500px] mx-auto px-5 lg:px-8">
           <AnimatedSection className="text-center mb-12 lg:mb-16">
             <span className="inline-block text-sm font-semibold text-brand uppercase tracking-wider mb-4">Work From Anywhere</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
@@ -666,7 +666,7 @@ export default function LandingPage() {
 
       {/* Features Section */}
       <section id="features" className="py-20 lg:py-28 scroll-mt-20">
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
+        <div className="max-w-[1500px] mx-auto px-5 lg:px-8">
           {/* Section Header */}
           <AnimatedSection className="text-center mb-16 lg:mb-20">
             <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-4">Features</span>
@@ -777,7 +777,7 @@ export default function LandingPage() {
 
       {/* How It Works */}
       <section id="how-it-works" className="py-20 lg:py-28 bg-gray-50 scroll-mt-20">
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
+        <div className="max-w-[1500px] mx-auto px-5 lg:px-8">
           <AnimatedSection className="text-center mb-16">
             <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-4">How It Works</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
@@ -819,7 +819,7 @@ export default function LandingPage() {
 
       {/* Pricing Section */}
       <section id="pricing" className="py-20 lg:py-28 scroll-mt-20">
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
+        <div className="max-w-[1500px] mx-auto px-5 lg:px-8">
           <AnimatedSection className="text-center mb-16">
             <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-4">Pricing</span>
             <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
@@ -1109,7 +1109,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="bg-gray-900 text-gray-400 py-12 lg:py-16">
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
+        <div className="max-w-[1500px] mx-auto px-5 lg:px-8">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
             <div>
               <button 
