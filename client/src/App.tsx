@@ -107,6 +107,7 @@ const ExpensesPage = React.lazy(() => import("@/pages/ExpensesPage"));
 const WorkPage = React.lazy(() => import("@/pages/WorkPage"));
 const AdminDashboard = React.lazy(() => import("@/pages/AdminDashboard"));
 const LandingPage = React.lazy(() => import("@/pages/LandingPage"));
+const DemoPage = React.lazy(() => import("@/pages/Demo"));
 const SubscriptionPage = React.lazy(() => import("@/pages/SubscriptionPage"));
 const TemplatesHub = React.lazy(() => import("@/pages/TemplatesHub"));
 const DocumentsHub = React.lazy(() => import("@/pages/DocumentsHub"));
@@ -519,6 +520,9 @@ function Router({
       </div>
     }>
       <Switch location={location}>
+      {/* Public demo entry (also reachable when already signed in - swaps to demo session) */}
+      <Route path="/demo" component={() => <DemoPage />} />
+
       {/* Work page - unified job workflow view */}
       <Route path="/work" component={() => (
         <WorkPage 
@@ -1450,6 +1454,10 @@ function AppLayout() {
     // Show password reset page without authentication
     if (location.startsWith('/reset-password')) {
       return <ResetPassword />;
+    }
+    // Public demo entry — auto-logs into the demo workspace
+    if (location === '/demo' || location.startsWith('/demo?') || location.startsWith('/demo/')) {
+      return <DemoPage />;
     }
     // Show landing page for all other routes when not authenticated
     return <LandingPage />;
