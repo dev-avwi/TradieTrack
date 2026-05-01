@@ -105,6 +105,10 @@ import {
   Car,
   MessageSquare,
   RotateCcw,
+  ArrowUpRight,
+  Filter,
+  Sparkles,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   Sheet,
@@ -433,53 +437,16 @@ function LiveOpsTab() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 p-4 sm:p-5">
-        <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-1">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}>
-              <Users className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl sm:text-2xl font-bold">{acceptedMembers.length}</p>
-              <p className="ios-caption truncate">Team</p>
-            </div>
-          </div>
-          <div className="feed-card card-accent p-4 flex items-center gap-3 sm:col-span-1 animate-fade-up stagger-delay-2">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-green-100 dark:bg-green-900/30">
-              <Circle className="h-5 w-5 text-green-600 fill-green-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{onlineCount}</p>
-              <p className="ios-caption truncate">Online</p>
-            </div>
-          </div>
-          <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-blue-100 dark:bg-blue-900/30">
-              <Wrench className="h-5 w-5 text-blue-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl sm:text-2xl font-bold">{onJobCount}</p>
-              <p className="ios-caption truncate">On Job</p>
-            </div>
-          </div>
-          <div className="feed-card p-4 flex items-center gap-3 animate-fade-up stagger-delay-4">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-orange-100 dark:bg-orange-900/30">
-              <Briefcase className="h-5 w-5 text-orange-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl sm:text-2xl font-bold">{unassignedJobs.length}</p>
-              <p className="ios-caption truncate">Unassigned</p>
-            </div>
-          </div>
-        </div>
-        <Button onClick={() => setInviteDialogOpen(true)} className="shrink-0" data-testid="button-add-team-member">
-          <UserPlus className="h-4 w-4 mr-2" />
+      {/* Inline action bar — page-level header already shows the live stats */}
+      <div className="flex items-center justify-end gap-2 px-4 sm:px-5 pt-3 pb-1">
+        <Button onClick={() => setInviteDialogOpen(true)} size="sm" data-testid="button-add-team-member">
+          <UserPlus className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Add Member</span>
           <span className="sm:hidden">Add</span>
         </Button>
       </div>
 
-      <div className="flex-1 overflow-auto p-4 sm:p-5 pt-0 sm:pt-0 section-gap">
+      <div className="flex-1 overflow-auto p-4 sm:p-5 pt-2 sm:pt-2 section-gap">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div className="space-y-4">
             <Collapsible open={statusBoardOpen} onOpenChange={setStatusBoardOpen}>
@@ -4098,80 +4065,211 @@ function PerformanceTab() {
   );
 }
 
+function MiniSpark({ color = "hsl(217 91% 53%)" }: { color?: string }) {
+  return (
+    <svg viewBox="0 0 60 24" className="w-12 h-4">
+      <polyline
+        points="0,18 10,14 20,16 30,8 40,11 50,5 60,7"
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  delta,
+  deltaPositive,
+  sparkColor,
+  testId,
+}: {
+  label: string;
+  value: string | number;
+  delta?: string;
+  deltaPositive?: boolean;
+  sparkColor?: string;
+  testId?: string;
+}) {
+  return (
+    <Card className="flex-1 min-w-[140px]" data-testid={testId}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold truncate">
+            {label}
+          </div>
+          {delta && (
+            <span
+              className={`text-[10px] font-semibold flex items-center gap-0.5 whitespace-nowrap ${
+                deltaPositive ? "text-success" : "text-muted-foreground"
+              }`}
+            >
+              <ArrowUpRight className="w-2.5 h-2.5" />
+              {delta}
+            </span>
+          )}
+        </div>
+        <div className="mt-1.5 flex items-baseline gap-2">
+          <div className="text-[26px] font-bold tracking-tight tabular-nums">{value}</div>
+          <MiniSpark color={sparkColor} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function TeamOperations() {
   const { isOwner, isManager } = useAppMode();
   const canManageTeam = isOwner || isManager;
-  const [activeTab, setActiveTab] = useState("live");
+  const [activeTab, setActiveTab] = useState<"live" | "admin" | "scheduling" | "performance">("live");
+
+  // Lightweight stats for the header strip
+  const { data: presence = [] } = useQuery<TeamPresenceData[]>({ queryKey: ["/api/team/presence"] });
+  const { data: members = [] } = useQuery<TeamMemberData[]>({ queryKey: ["/api/team/members"] });
+  const { data: allJobs = [] } = useQuery<JobData[]>({ queryKey: ["/api/jobs"] });
+
+  const accepted = members.filter((m) => m.inviteStatus === "accepted");
+  const onlineCount = presence.filter((p) => p.status === "online" || p.status === "on_job").length;
+  const onJobCount = presence.filter((p) => p.status === "on_job").length;
+  // Match the historical LiveOps definition: actionable unassigned jobs only
+  const unassignedCount = allJobs.filter(
+    (j) => !j.assignedTo && (j.status === "pending" || j.status === "scheduled"),
+  ).length;
+
+  const tabs = [
+    { id: "live" as const, label: "Live Ops", short: "Live", icon: Activity, gated: false },
+    { id: "admin" as const, label: "Team Admin", short: "Admin", icon: Users, gated: !canManageTeam },
+    { id: "scheduling" as const, label: "Scheduling", short: "Schedule", icon: CalendarDays, gated: false },
+    { id: "performance" as const, label: "Performance", short: "Stats", icon: TrendingUp, gated: false },
+  ].filter((t) => !t.gated);
 
   return (
-    <div className="flex flex-col h-full">
-      <header className="flex items-center justify-between gap-4 px-4 sm:px-5 pt-5 pb-4">
-        <div className="min-w-0">
-          <h1 className="ios-title">Team Management</h1>
-          <p className="ios-caption mt-0.5">Manage your team, availability, and performance</p>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => {
-            queryClient.invalidateQueries({ queryKey: ["/api/team/presence"] });
-            queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
-            queryClient.invalidateQueries({ queryKey: ["/api/activity-feed"] });
-          }}
-          data-testid="button-refresh-all"
-        >
-          <RefreshCw className="h-4 w-4" />
-        </Button>
-      </header>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="px-4 sm:px-5 pb-3">
-          <div className="feed-card p-1 flex overflow-x-auto no-scrollbar">
-            <TabsList className="h-auto bg-transparent p-0 w-full">
-              <TabsTrigger value="live" className="flex-1 gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm" data-testid="tab-live-ops">
-                <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Live Ops</span>
-                <span className="sm:hidden">Live</span>
-              </TabsTrigger>
-              {canManageTeam && (
-                <TabsTrigger value="admin" className="flex-1 gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm" data-testid="tab-team-admin">
-                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Team Admin</span>
-                  <span className="sm:hidden">Admin</span>
-                </TabsTrigger>
-              )}
-              <TabsTrigger value="scheduling" className="flex-1 gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm" data-testid="tab-scheduling">
-                <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Scheduling</span>
-                <span className="sm:hidden">Schedule</span>
-              </TabsTrigger>
-              <TabsTrigger value="performance" className="flex-1 gap-1.5 text-xs sm:text-sm px-3 py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm" data-testid="tab-performance">
-                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Performance</span>
-                <span className="sm:hidden">Stats</span>
-              </TabsTrigger>
-            </TabsList>
+    <Tabs
+      value={activeTab}
+      onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+      className="flex flex-col h-full min-h-0"
+      data-testid="page-team-operations"
+    >
+      <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-3 max-w-[1400px] mx-auto w-full shrink-0">
+        {/* Page header */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-2xl font-bold tracking-tight" data-testid="text-team-ops-title">
+                Team Operations
+              </h1>
+              <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-success/10 text-success flex items-center gap-1">
+                <span className="w-1 h-1 rounded-full bg-success animate-pulse" />
+                {onlineCount} active now
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Live presence, dispatch, scheduling and performance — your control center.
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button variant="outline" size="sm" data-testid="button-team-ops-filters">
+              <Filter className="w-3.5 h-3.5" /> Filters
+            </Button>
+            <Button variant="outline" size="sm" data-testid="button-team-ops-insights">
+              <Sparkles className="w-3.5 h-3.5 text-purple-500" /> Insights
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ["/api/team/presence"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/activity-feed"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+              }}
+              data-testid="button-refresh-all"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Refresh
+            </Button>
           </div>
         </div>
 
-        <TabsContent value="live" className="flex-1 m-0">
+        {/* Stat strip */}
+        <div className="flex gap-3 mb-6 flex-wrap">
+          <StatCard
+            label="Team size"
+            value={accepted.length}
+            delta={accepted.length > 0 ? "All accepted" : "No members yet"}
+            deltaPositive={accepted.length > 0}
+            testId="stat-team-size"
+          />
+          <StatCard
+            label="Online now"
+            value={onlineCount}
+            delta={onlineCount > 0 ? "Live" : "Nobody on"}
+            deltaPositive={onlineCount > 0}
+            sparkColor="hsl(145 65% 42%)"
+            testId="stat-online"
+          />
+          <StatCard
+            label="On a job"
+            value={onJobCount}
+            delta={onJobCount > 0 ? "Working" : "Idle"}
+            deltaPositive={onJobCount > 0}
+            sparkColor="hsl(217 91% 53%)"
+            testId="stat-on-job"
+          />
+          <StatCard
+            label="Unassigned"
+            value={unassignedCount}
+            delta={unassignedCount === 0 ? "All assigned" : "Needs attention"}
+            deltaPositive={unassignedCount === 0}
+            sparkColor="hsl(35 90% 50%)"
+            testId="stat-unassigned"
+          />
+        </div>
+
+        {/* Underline tab bar — sits in the shrink-0 header section */}
+        <div className="border-b flex items-center flex-wrap gap-y-1">
+          {tabs.map(({ id, label, short, icon: Icon }) => {
+            const active = activeTab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                data-testid={`tab-${id}`}
+                className={`flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold border-b-2 -mb-px transition-colors ${
+                  active
+                    ? "text-foreground border-foreground"
+                    : "text-muted-foreground border-transparent hover:text-foreground"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{label}</span>
+                <span className="sm:hidden">{short}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tab content — flex-1 region; each tab keeps its own internal scroll */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        <TabsContent value="live" className="m-0 flex-1 min-h-0 data-[state=inactive]:hidden">
           <LiveOpsTab />
         </TabsContent>
-
         {canManageTeam && (
-          <TabsContent value="admin" className="flex-1 m-0">
+          <TabsContent value="admin" className="m-0 flex-1 min-h-0 data-[state=inactive]:hidden">
             <TeamAdminTab />
           </TabsContent>
         )}
-
-        <TabsContent value="scheduling" className="flex-1 m-0">
+        <TabsContent value="scheduling" className="m-0 flex-1 min-h-0 data-[state=inactive]:hidden">
           <SchedulingTab />
         </TabsContent>
-
-        <TabsContent value="performance" className="flex-1 m-0">
+        <TabsContent value="performance" className="m-0 flex-1 min-h-0 data-[state=inactive]:hidden">
           <PerformanceTab />
         </TabsContent>
-      </Tabs>
-    </div>
+      </div>
+    </Tabs>
   );
 }
