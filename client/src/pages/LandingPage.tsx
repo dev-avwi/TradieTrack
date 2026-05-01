@@ -208,7 +208,7 @@ export default function LandingPage() {
           : "bg-white/80 backdrop-blur-sm"
       }`}>
         <div className="max-w-7xl mx-auto px-5 lg:px-12">
-          <div className="flex items-center justify-between h-16 lg:h-18">
+          <div className="flex items-center justify-between h-16 lg:h-20">
             {/* Logo */}
             <button 
               onClick={scrollToTop}
@@ -218,9 +218,9 @@ export default function LandingPage() {
               <img 
                 src={jobrunnerLogo} 
                 alt="JobRunner" 
-                className="h-8 w-auto"
+                className="h-9 w-auto"
               />
-              <span className="text-xl font-bold tracking-tight"><span className="text-brand">Job</span><span className="text-brand-accent">Runner</span></span>
+              <span className="text-2xl font-bold tracking-tight"><span className="text-brand">Job</span><span className="text-brand-accent">Runner</span></span>
             </button>
 
             {/* Desktop Navigation */}
@@ -228,7 +228,7 @@ export default function LandingPage() {
               <a 
                 href="#features" 
                 onClick={(e) => scrollToSection(e, "features")}
-                className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" 
+                className="text-base text-gray-600 hover:text-gray-900 font-medium transition-colors" 
                 data-testid="nav-features"
               >
                 Features
@@ -236,7 +236,7 @@ export default function LandingPage() {
               <a 
                 href="#how-it-works" 
                 onClick={(e) => scrollToSection(e, "how-it-works")}
-                className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" 
+                className="text-base text-gray-600 hover:text-gray-900 font-medium transition-colors" 
                 data-testid="nav-how-it-works"
               >
                 How It Works
@@ -244,7 +244,7 @@ export default function LandingPage() {
               <a 
                 href="#pricing" 
                 onClick={(e) => scrollToSection(e, "pricing")}
-                className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" 
+                className="text-base text-gray-600 hover:text-gray-900 font-medium transition-colors" 
                 data-testid="nav-pricing"
               >
                 Pricing
@@ -252,12 +252,12 @@ export default function LandingPage() {
               <a 
                 href="#download" 
                 onClick={(e) => scrollToSection(e, "download")}
-                className="text-[15px] text-gray-600 hover:text-gray-900 font-medium transition-colors" 
+                className="text-base text-gray-600 hover:text-gray-900 font-medium transition-colors" 
                 data-testid="nav-download"
               >
                 Download
               </a>
-              <Link href="/portal" className="text-[15px] text-brand hover:text-brand/80 font-medium transition-colors" data-testid="nav-client-portal">
+              <Link href="/portal" className="text-base text-brand hover:text-brand/80 font-medium transition-colors" data-testid="nav-client-portal">
                 Client Portal
               </Link>
             </div>
@@ -267,20 +267,20 @@ export default function LandingPage() {
               <a 
                 href="tel:+61485013994" 
                 title="Call us — 0485 013 994"
-                className="inline-flex items-center justify-center w-9 h-9 rounded-md text-brand hover:text-brand-accent hover:bg-brand/5 transition-colors"
+                className="inline-flex items-center justify-center w-10 h-10 rounded-md text-brand hover:text-brand-accent hover:bg-brand/5 transition-colors"
                 onClick={() => trackEvent('cta_click', { location: 'nav', button: 'call_support' })}
               >
-                <Phone className="w-4 h-4" />
+                <Phone className="w-[18px] h-[18px]" />
               </a>
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
                 <Link href="/auth?mode=login">
-                  <Button variant="ghost" className="text-[15px] font-medium h-9 px-4 rounded-md hover:bg-white hover:shadow-sm transition-all" data-testid="nav-login">
+                  <Button variant="ghost" className="text-base font-medium h-10 px-5 rounded-md hover:bg-white hover:shadow-sm transition-all" data-testid="nav-login">
                     Log In
                   </Button>
                 </Link>
                 <Link href="/auth?mode=signup">
                   <Button 
-                    className="bg-brand-accent text-white text-[15px] font-semibold h-9 px-5 rounded-md shadow-sm transition-all" 
+                    className="bg-brand-accent text-white text-base font-semibold h-10 px-5 rounded-md shadow-sm transition-all" 
                     data-testid="nav-get-started"
                     onClick={() => trackEvent('cta_click', { location: 'nav', button: 'get_started_free' })}
                   >
