@@ -83,3 +83,15 @@ id = "jhM5mKMvSBJKUxPerRCfX"
 uri = "file://attached_assets/jobrunner-play-feature-final.png"
 type = "image"
 title = "Feature Graphic (1024x500) - With your logo and branding"
+
+[[outputs]]
+id = "X5OAGjndb-HG4YBk4LEva"
+uri = "file://client/public/videos/hero-demo.mp4"
+type = "video"
+title = "Hero section video (with audio)"
+
+[[outputs]]
+id = "kL8ZS7ONF5KxJx42wp8L5"
+uri = "file://client/public/videos/hero-demo-muted.mp4"
+type = "video"
+title = "Hero section video (muted, used on site)"
