@@ -207,25 +207,24 @@ export default function LandingPage() {
           ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100" 
           : "bg-white/80 backdrop-blur-sm"
       }`}>
-        <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
+        <div className="max-w-7xl mx-auto px-5 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-18">
-            {/* Left cluster: Logo + Nav links grouped together (matches prod) */}
-            <div className="flex items-center gap-10">
-              <button 
-                onClick={scrollToTop}
-                className="flex items-center gap-3 hover:opacity-80 transition-opacity" 
-                data-testid="nav-logo"
-              >
-                <img 
-                  src={jobrunnerLogo} 
-                  alt="JobRunner" 
-                  className="h-8 w-auto"
-                />
-                <span className="text-xl font-bold tracking-tight"><span className="text-brand">Job</span><span className="text-brand-accent">Runner</span></span>
-              </button>
+            {/* Logo */}
+            <button 
+              onClick={scrollToTop}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity" 
+              data-testid="nav-logo"
+            >
+              <img 
+                src={jobrunnerLogo} 
+                alt="JobRunner" 
+                className="h-8 w-auto"
+              />
+              <span className="text-xl font-bold tracking-tight"><span className="text-brand">Job</span><span className="text-brand-accent">Runner</span></span>
+            </button>
 
-              {/* Desktop Navigation */}
-              <div className="hidden lg:flex items-center gap-8">
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center gap-8">
               <a 
                 href="#features" 
                 onClick={(e) => scrollToSection(e, "features")}
@@ -261,7 +260,6 @@ export default function LandingPage() {
               <Link href="/portal" className="text-[15px] text-brand hover:text-brand/80 font-medium transition-colors" data-testid="nav-client-portal">
                 Client Portal
               </Link>
-              </div>
             </div>
 
             {/* Desktop CTA - Call, Login, Get Started grouped together */}
