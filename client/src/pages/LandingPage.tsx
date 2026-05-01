@@ -87,7 +87,6 @@ import { SiApple, SiGoogleplay } from "react-icons/si";
 import jobrunnerLogo from "@assets/jobrunner-logo-cropped.png";
 
 // App screenshots for phone mockups
-import dashboardScreenshot from "@assets/appstore_screenshots/01_dashboard.png";
 import jobsListScreenshot from "@assets/appstore_screenshots/02_jobs_list.png";
 import scheduleScreenshot from "@assets/appstore_screenshots/04_schedule.png";
 import jobMapScreenshot from "@assets/appstore_screenshots/05_job_map.png";
@@ -505,35 +504,37 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Right: Phone Mockup */}
+            {/* Right: Hero Video */}
             <div className="relative flex justify-center lg:justify-end animate-fade-in-up lg:mt-16">
-              <div className="relative w-[280px] sm:w-[300px] animate-float">
-                {/* Mobile App Label */}
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md border border-gray-200 z-30">
-                  <Smartphone className="w-4 h-4 text-brand" />
-                  <span className="text-xs font-semibold text-gray-700">Mobile App Preview</span>
+              <div className="relative w-full max-w-[420px] sm:max-w-[460px] animate-float">
+                {/* See It In Action Label */}
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md border border-gray-200 z-30">
+                  <Play className="w-3.5 h-3.5 text-brand fill-brand" />
+                  <span className="text-xs font-semibold text-gray-700">See It In Action</span>
                 </div>
-                
-                {/* Phone Frame */}
-                <div 
-                  className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-2xl shadow-gray-400/30 hover:shadow-gray-400/40 transition-shadow duration-500 will-change-auto"
+
+                {/* Video Frame */}
+                <div
+                  className="relative bg-gray-900 rounded-3xl p-[6px] shadow-2xl shadow-gray-400/30 hover:shadow-gray-400/40 transition-shadow duration-500 will-change-auto"
                   style={{ transform: 'translateZ(0)' }}
                 >
-                  {/* Dynamic Island */}
-                  <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-20 h-5 bg-black rounded-full z-20"></div>
-                  
-                  {/* Screen - Dashboard Screenshot */}
-                  <div className="relative bg-white rounded-[2.25rem] overflow-hidden">
-                    <img 
-                      src={dashboardScreenshot} 
-                      alt="JobRunner Dashboard"
-                      className="w-full h-auto"
+                  <div className="relative bg-black rounded-[1.4rem] overflow-hidden aspect-square">
+                    <video
+                      src="/videos/hero-demo-muted.mp4"
+                      poster="/videos/hero-demo-poster.jpg"
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-full object-cover"
+                      data-testid="hero-video"
                     />
                   </div>
                 </div>
 
                 {/* Decorative gradient blob */}
-                <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-gradient-to-br from-brand/10 via-brand-accent/5 to-transparent rounded-full blur-3xl opacity-60"></div>
+                <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[460px] h-[460px] bg-gradient-to-br from-brand/10 via-brand-accent/5 to-transparent rounded-full blur-3xl opacity-60"></div>
               </div>
             </div>
           </div>
