@@ -249,6 +249,9 @@ if (process.env.DATABASE_URL) {
           ...(isDev ? ["'unsafe-inline'", "ws://localhost:*", "ws://127.0.0.1:*"] : []),
         ],
         frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
+        frameAncestors: isDev
+          ? ["'self'", "https://*.replit.dev", "https://*.replit.com", "https://replit.com"]
+          : ["'self'"],
         imgSrc: ["'self'", "data:", "blob:", "https://*.basemaps.cartocdn.com", "https://maps.gstatic.com", "https://*.googleusercontent.com", "https://*.replit.dev"],
         workerSrc: ["'self'", "blob:"],
         mediaSrc: ["'self'", "blob:"],
