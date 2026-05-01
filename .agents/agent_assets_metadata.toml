@@ -95,3 +95,9 @@ id = "kL8ZS7ONF5KxJx42wp8L5"
 uri = "file://client/public/videos/hero-demo-muted.mp4"
 type = "video"
 title = "Hero section video (muted, used on site)"
+
+[[outputs]]
+id = "_n_d-0exCELn9qlV1adnz"
+uri = "file://exports/hero-demo-app-preview-886x1920.mp4"
+type = "video"
+title = "Hero video (886 × 1920, 30s — App Store ready)"
