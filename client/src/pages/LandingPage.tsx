@@ -434,7 +434,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="pt-20 lg:pt-20 pb-16 lg:pb-24 px-5 lg:px-8">
         <div className="max-w-[1600px] mx-auto">
-          <div className="grid lg:grid-cols-[minmax(0,520px)_minmax(0,1fr)] gap-12 lg:gap-20 items-center">
+          <div className="grid lg:grid-cols-[minmax(0,600px)_minmax(0,1fr)] gap-12 lg:gap-20 items-center">
             {/* Left: Content */}
             <div className="text-center lg:text-left animate-fade-in">
               {/* Early Access Badge */}
@@ -444,7 +444,7 @@ export default function LandingPage() {
               </div>
 
               {/* Main Headline */}
-              <h1 className="text-[2.75rem] sm:text-[3.75rem] lg:text-[4.75rem] font-extrabold leading-[1.02] tracking-tight mb-6">
+              <h1 className="text-[2.75rem] sm:text-[3.5rem] lg:text-[4rem] font-extrabold leading-[1.05] tracking-tight mb-6">
                 Built for how jobs{" "}
                 <span className="text-brand">actually run.</span>
               </h1>
