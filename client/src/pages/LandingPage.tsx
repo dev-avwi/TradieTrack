@@ -505,8 +505,8 @@ export default function LandingPage() {
             </div>
 
             {/* Right: Hero Video */}
-            <div className="relative flex justify-center lg:justify-end animate-fade-in-up lg:mt-16">
-              <div className="relative w-full max-w-[460px] sm:max-w-[500px] animate-float">
+            <div className="relative flex justify-center lg:justify-end animate-fade-in-up lg:-mt-8">
+              <div className="relative w-full max-w-[520px] sm:max-w-[580px] animate-float">
                 {/* Raw video — soft radial fade so the off-white background dissolves into the page */}
                 <video
                   src="/videos/hero-demo-muted.mp4"
