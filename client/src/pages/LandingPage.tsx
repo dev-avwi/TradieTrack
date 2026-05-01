@@ -507,13 +507,7 @@ export default function LandingPage() {
             {/* Right: Hero Video */}
             <div className="relative flex justify-center lg:justify-end animate-fade-in-up lg:mt-16">
               <div className="relative w-full max-w-[460px] sm:max-w-[500px] animate-float">
-                {/* See It In Action Label */}
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md border border-gray-200 z-30">
-                  <Play className="w-3.5 h-3.5 text-brand fill-brand" />
-                  <span className="text-xs font-semibold text-gray-700">See It In Action</span>
-                </div>
-
-                {/* Raw video — no frame */}
+                {/* Raw video — soft radial fade so the off-white background dissolves into the page */}
                 <video
                   src="/videos/hero-demo-muted.mp4"
                   poster="/videos/hero-demo-poster.jpg"
@@ -523,6 +517,12 @@ export default function LandingPage() {
                   playsInline
                   preload="metadata"
                   className="w-full h-auto aspect-square object-cover"
+                  style={{
+                    WebkitMaskImage:
+                      'radial-gradient(ellipse 70% 85% at center, black 55%, transparent 95%)',
+                    maskImage:
+                      'radial-gradient(ellipse 70% 85% at center, black 55%, transparent 95%)',
+                  }}
                   data-testid="hero-video"
                 />
 
