@@ -5336,6 +5336,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.status(403).json({ error: "This feature requires a Pro subscription" });
   };
 
+  // Paid-tier gate that resolves the *owner's* tier so team members under a
+  // Team/Business owner can still send SMS. Free-tier owners (and their team)
+  // are blocked with a 402 so the client can prompt an upgrade.
+  const requirePaidTierForSms = async (req: any, res: any, next: any) => {
+    try {
+      const { IS_BETA } = require('./freemiumService');
+      if (IS_BETA) return next();
+
+      const userContext = await getUserContext(req.userId);
+      const ownerId = userContext?.effectiveUserId || req.userId;
+      // Make the resolved owner id available to downstream handlers that
+      // fall back to `req.effectiveUserId || req.userId` for owner-scoped
+      // queries (e.g. jobs/receipts SMS routes).
+      req.effectiveUserId = ownerId;
+      const owner = await storage.getUser(ownerId);
+      if (!owner) {
+        return res.status(404).json({ error: 'Account not found' });
+      }
+      if (owner.betaLifetimeAccess) return next();
+
+      const tier = owner.subscriptionTier;
+      if (tier === 'pro' || tier === 'team' || tier === 'business' || tier === 'beta') {
+        return next();
+      }
+
+      return res.status(402).json({
+        error: 'SMS sending requires a Pro plan or higher. Upgrade to send SMS to clients.',
+        type: 'SUBSCRIPTION_LIMIT',
+        feature: 'sms',
+      });
+    } catch (err) {
+      console.error('requirePaidTierForSms error:', err);
+      return res.status(500).json({ error: 'Failed to verify SMS access' });
+    }
+  };
+
   // Middleware to restrict endpoints to development mode only
   const requireDevelopment = (req: any, res: any, next: any) => {
     if (!isDevelopment) {
@@ -21363,7 +21399,7 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  app.post("/api/jobs/:id/share-portal-sms", requireAuth, async (req: any, res) => {
+  app.post("/api/jobs/:id/share-portal-sms", requireAuth, requirePaidTierForSms, async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;
       const job = await storage.getJob(req.params.id, effectiveUserId);
@@ -22788,7 +22824,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Send quote via SMS
-  app.post("/api/quotes/:id/send-sms", requireAuth, messageSendLimiter, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
+  app.post("/api/quotes/:id/send-sms", requireAuth, requirePaidTierForSms, messageSendLimiter, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { sendSmsToClient } = await import('./services/smsService');
@@ -24021,7 +24057,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Send invoice via SMS
-  app.post("/api/invoices/:id/send-sms", requireAuth, messageSendLimiter, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+  app.post("/api/invoices/:id/send-sms", requireAuth, requirePaidTierForSms, messageSendLimiter, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { sendSmsToClient } = await import('./services/smsService');
@@ -26668,7 +26704,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Share payment request via SMS
-  app.post("/api/payment-requests/:id/send-sms", requireAuth, messageSendLimiter, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+  app.post("/api/payment-requests/:id/send-sms", requireAuth, requirePaidTierForSms, messageSendLimiter, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { phone } = req.body;
@@ -27660,7 +27696,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Send receipt via SMS
-  app.post("/api/receipts/:id/send-sms", requireAuth, messageSendLimiter, async (req: any, res) => {
+  app.post("/api/receipts/:id/send-sms", requireAuth, requirePaidTierForSms, messageSendLimiter, async (req: any, res) => {
     try {
       const effectiveUserId = req.effectiveUserId || req.userId;
       const { sendSmsToClient } = await import('./services/smsService');
@@ -39793,7 +39829,7 @@ Respond with JSON in this format:
   });
   
   // Send SMS/MMS to a client
-  app.post("/api/sms/send", requireAuth, messageSendLimiter, async (req: any, res) => {
+  app.post("/api/sms/send", requireAuth, requirePaidTierForSms, messageSendLimiter, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { clientId, clientPhone, clientName, jobId, message, mediaUrls } = req.body;
@@ -39884,7 +39920,7 @@ Respond with JSON in this format:
   });
   
   // Send quick action SMS (includes "On My Way" automation)
-  app.post("/api/sms/quick-action", requireAuth, async (req: any, res) => {
+  app.post("/api/sms/quick-action", requireAuth, requirePaidTierForSms, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const { conversationId, actionType, jobTitle, estimatedTime, jobId } = req.body;
