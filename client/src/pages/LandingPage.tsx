@@ -506,35 +506,28 @@ export default function LandingPage() {
 
             {/* Right: Hero Video */}
             <div className="relative flex justify-center lg:justify-end animate-fade-in-up lg:mt-16">
-              <div className="relative w-full max-w-[420px] sm:max-w-[460px] animate-float">
+              <div className="relative w-full max-w-[460px] sm:max-w-[500px] animate-float">
                 {/* See It In Action Label */}
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md border border-gray-200 z-30">
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md border border-gray-200 z-30">
                   <Play className="w-3.5 h-3.5 text-brand fill-brand" />
                   <span className="text-xs font-semibold text-gray-700">See It In Action</span>
                 </div>
 
-                {/* Video Frame */}
-                <div
-                  className="relative bg-gray-900 rounded-3xl p-[6px] shadow-2xl shadow-gray-400/30 hover:shadow-gray-400/40 transition-shadow duration-500 will-change-auto"
-                  style={{ transform: 'translateZ(0)' }}
-                >
-                  <div className="relative bg-black rounded-[1.4rem] overflow-hidden aspect-square">
-                    <video
-                      src="/videos/hero-demo-muted.mp4"
-                      poster="/videos/hero-demo-poster.jpg"
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      preload="metadata"
-                      className="w-full h-full object-cover"
-                      data-testid="hero-video"
-                    />
-                  </div>
-                </div>
+                {/* Raw video — no frame */}
+                <video
+                  src="/videos/hero-demo-muted.mp4"
+                  poster="/videos/hero-demo-poster.jpg"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="metadata"
+                  className="w-full h-auto aspect-square object-cover"
+                  data-testid="hero-video"
+                />
 
                 {/* Decorative gradient blob */}
-                <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[460px] h-[460px] bg-gradient-to-br from-brand/10 via-brand-accent/5 to-transparent rounded-full blur-3xl opacity-60"></div>
+                <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-br from-brand/10 via-brand-accent/5 to-transparent rounded-full blur-3xl opacity-60"></div>
               </div>
             </div>
           </div>
