@@ -1,0 +1,848 @@
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  StyleSheet,
+  Alert,
+  TextInput,
+  ActivityIndicator,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Linking,
+} from 'react-native';
+import { router, Stack, useFocusEffect } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import { useTheme, ThemeColors } from '../../src/lib/theme';
+import api from '../../src/lib/api';
+import { useAuthStore } from '../../src/lib/store';
+import { TeamAvatar } from '../../src/components/TeamAvatar';
+
+interface Subcontractor {
+  id: string;
+  kind: 'magic_link';
+  name: string;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  status: 'pending' | 'active' | 'revoked' | string;
+  lastActivity: string | null;
+  jobsCount: number;
+  trade: string | null;
+  businessName: string | null;
+}
+
+const formatLastActivity = (iso: string | null): string => {
+  if (!iso) return 'No activity';
+  const then = new Date(iso).getTime();
+  if (isNaN(then)) return 'No activity';
+  const diff = Date.now() - then;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+};
+
+export default function SubcontractorsScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { user } = useAuthStore();
+
+  const [subs, setSubs] = useState<Subcontractor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+
+  const [serverTier, setServerTier] = useState<string>('');
+  const [serverTrialActive, setServerTrialActive] = useState(false);
+
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeTarget, setUpgradeTarget] = useState<Subcontractor | null>(null);
+  const [upgradeFirstName, setUpgradeFirstName] = useState('');
+  const [upgradeLastName, setUpgradeLastName] = useState('');
+  const [upgradeEmail, setUpgradeEmail] = useState('');
+  const [upgradeRate, setUpgradeRate] = useState('');
+  const [isUpgrading, setIsUpgrading] = useState(false);
+
+  // Server status takes priority — local user.subscriptionTier can be stale.
+  // Mirrors server/permissions.ts ownerHasTeamCapability(): team/business/beta
+  // tier OR an active trial OR beta unlock all qualify.
+  const effectiveTier = serverTier || user?.subscriptionTier || 'free';
+  const hasTeamPlan =
+    effectiveTier === 'team' ||
+    effectiveTier === 'business' ||
+    effectiveTier === 'beta' ||
+    serverTrialActive;
+
+  const fetchSubs = useCallback(async () => {
+    try {
+      const res = await api.get<Subcontractor[]>('/api/subcontractors');
+      if (res.isOffline) {
+        setIsOffline(true);
+        setFetchError(null);
+      } else if (res.error) {
+        setFetchError(res.error);
+        setIsOffline(false);
+      } else if (Array.isArray(res.data)) {
+        setSubs(res.data);
+        setFetchError(null);
+        setIsOffline(false);
+      }
+    } catch (e) {
+      if (__DEV__) console.warn('fetchSubs error:', e);
+      setFetchError('Could not load subcontractors. Pull to retry.');
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  const fetchTier = useCallback(async () => {
+    const res = await api.getSubscriptionStatus();
+    if (res.data?.tier) setServerTier(res.data.tier);
+    const trialEnds = res.data?.trialEndsAt;
+    const status = res.data?.status;
+    setServerTrialActive(
+      (status === 'trialing' || status === 'trial') &&
+        !!trialEnds &&
+        new Date(trialEnds).getTime() > Date.now(),
+    );
+  }, []);
+
+  useEffect(() => {
+    fetchSubs();
+    fetchTier();
+  }, [fetchSubs, fetchTier]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchSubs();
+    }, [fetchSubs]),
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchSubs();
+  }, [fetchSubs]);
+
+  const filteredSubs = useMemo(() => {
+    if (!search.trim()) return subs;
+    const q = search.toLowerCase();
+    return subs.filter(
+      (s) =>
+        (s.name || '').toLowerCase().includes(q) ||
+        (s.contactPhone || '').toLowerCase().includes(q) ||
+        (s.contactEmail || '').toLowerCase().includes(q),
+    );
+  }, [subs, search]);
+
+  const counts = useMemo(() => {
+    let active = 0;
+    let pending = 0;
+    let revoked = 0;
+    for (const s of subs) {
+      if (s.status === 'active') active++;
+      else if (s.status === 'revoked') revoked++;
+      else pending++;
+    }
+    return { total: subs.length, active, pending, revoked };
+  }, [subs]);
+
+  const openUpgrade = (sub: Subcontractor) => {
+    if (sub.status === 'revoked') {
+      Alert.alert(
+        'Sub revoked',
+        'This subcontractor was revoked. Send them a fresh magic-link invite first.',
+      );
+      return;
+    }
+    if (!hasTeamPlan) {
+      Alert.alert(
+        'Team Plan needed',
+        'Upgrading subcontractors to full accounts requires a Team plan.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'View Plans', onPress: () => router.push('/more/subscription') },
+        ],
+      );
+      return;
+    }
+    setUpgradeTarget(sub);
+    const parts = (sub.name || '').trim().split(/\s+/);
+    setUpgradeFirstName(parts[0] || '');
+    setUpgradeLastName(parts.slice(1).join(' ') || '');
+    setUpgradeEmail(sub.contactEmail || '');
+    setUpgradeRate('');
+    setUpgradeOpen(true);
+  };
+
+  const handleUpgrade = async () => {
+    if (!upgradeTarget) return;
+    const email = upgradeEmail.trim();
+    if (!email) {
+      Alert.alert('Email required', 'Please enter an email for the account login.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      Alert.alert('Invalid email', 'Please enter a valid email address.');
+      return;
+    }
+
+    setIsUpgrading(true);
+    const body: any = {
+      tokenId: upgradeTarget.id,
+      email,
+    };
+    if (upgradeFirstName.trim()) body.firstName = upgradeFirstName.trim();
+    if (upgradeLastName.trim()) body.lastName = upgradeLastName.trim();
+    const rate = parseFloat(upgradeRate);
+    if (!isNaN(rate) && rate > 0) body.hourlyRate = String(rate);
+
+    const res = await api.post<any>('/api/subcontractors/upgrade-to-account', body);
+    setIsUpgrading(false);
+
+    if (res.isOffline) {
+      Alert.alert(
+        "You're offline",
+        "We can't send the invite right now. Try again when you're back on Wi-Fi or data.",
+      );
+      return;
+    }
+    if (res.error) {
+      let msg = res.error;
+      if (typeof msg === 'string' && msg.startsWith('team_plan_required:')) {
+        msg = msg.replace(/^team_plan_required:\s*/, '');
+      }
+      Alert.alert('Could not upgrade', msg || 'Please check the details and try again.');
+      return;
+    }
+
+    const alreadyExisted = res.data?.alreadyExisted;
+    const smsSent = res.data?.smsSent;
+    Alert.alert(
+      alreadyExisted ? 'Already an account sub' : 'Upgrade invite sent',
+      alreadyExisted
+        ? 'This person is already a team member — re-using their existing record.'
+        : `${email} has been invited to create a JobRunner account.${
+            smsSent ? ' SMS also sent.' : ''
+          }`,
+    );
+    setUpgradeOpen(false);
+    fetchSubs();
+  };
+
+  const renderStatusBadge = (status: string) => {
+    let color = colors.warning ?? '#f59e0b';
+    let label = 'Pending';
+    if (status === 'active') {
+      color = colors.success ?? '#16a34a';
+      label = 'Active';
+    } else if (status === 'revoked') {
+      color = colors.destructive ?? '#dc2626';
+      label = 'Revoked';
+    }
+    return (
+      <View style={[styles.statusBadge, { backgroundColor: color + '22' }]}>
+        <View style={[styles.statusDot, { backgroundColor: color }]} />
+        <Text style={[styles.statusText, { color }]}>{label}</Text>
+      </View>
+    );
+  };
+
+  const renderSub = (sub: Subcontractor) => (
+    <View key={sub.id} style={styles.subCard}>
+      <View style={styles.subRow}>
+        <TeamAvatar name={sub.name} email={sub.contactEmail || undefined} size={44} />
+        <View style={styles.subInfo}>
+          <Text style={styles.subName} numberOfLines={1}>
+            {sub.name || 'Unnamed sub'}
+          </Text>
+          <Text style={styles.subContact} numberOfLines={1}>
+            {sub.contactPhone || sub.contactEmail || 'No contact details'}
+          </Text>
+          <View style={styles.subMetaRow}>
+            {renderStatusBadge(sub.status)}
+            <Text style={styles.subMetaText}>
+              {sub.jobsCount} {sub.jobsCount === 1 ? 'job' : 'jobs'}
+            </Text>
+            <Text style={styles.subMetaText}>•</Text>
+            <Text style={styles.subMetaText}>{formatLastActivity(sub.lastActivity)}</Text>
+          </View>
+        </View>
+      </View>
+      <View style={styles.subActions}>
+        {sub.contactPhone && (
+          <TouchableOpacity
+            style={styles.iconAction}
+            onPress={async () => {
+              const tel = `tel:${(sub.contactPhone || '').replace(/[^\d+]/g, '')}`;
+              try {
+                const ok = await Linking.canOpenURL(tel);
+                if (ok) {
+                  Linking.openURL(tel);
+                } else {
+                  Alert.alert('Can\'t make calls', sub.contactPhone || '');
+                }
+              } catch {
+                Alert.alert('Can\'t make calls', sub.contactPhone || '');
+              }
+            }}
+            accessibilityLabel={`Call ${sub.name}`}
+            accessibilityRole="button"
+            testID={`button-call-sub-${sub.id}`}
+          >
+            <Feather name="phone" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        )}
+        {sub.kind === 'magic_link' && (
+          <TouchableOpacity
+            style={[styles.upgradeButton, !hasTeamPlan && styles.upgradeButtonDisabled]}
+            onPress={() => openUpgrade(sub)}
+            accessibilityLabel={`Upgrade ${sub.name} to a full account`}
+            accessibilityRole="button"
+            accessibilityHint={
+              hasTeamPlan
+                ? 'Sends them an invite to create their own login.'
+                : 'Requires a Team plan.'
+            }
+            testID={`button-upgrade-sub-${sub.id}`}
+          >
+            <Feather name="arrow-up-circle" size={14} color="#FFFFFF" />
+            <Text style={styles.upgradeButtonText}>Upgrade</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            testID="button-subs-back"
+          >
+            <Feather name="arrow-left" size={24} color={colors.foreground} />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Subcontractors</Text>
+            <Text style={styles.headerSubtitle}>
+              {counts.total} {counts.total === 1 ? 'sub' : 'subs'}
+              {counts.active > 0 ? ` • ${counts.active} active` : ''}
+            </Text>
+          </View>
+        </View>
+
+        {!hasTeamPlan && counts.total > 0 && (
+          <View style={styles.gateBanner}>
+            <Feather name="lock" size={16} color={colors.warning ?? '#f59e0b'} />
+            <Text style={styles.gateBannerText}>
+              Team plan required to upgrade subs to full accounts.
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/more/subscription')}>
+              <Text style={styles.gateBannerCta}>View plans</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.searchWrap}>
+          <Feather name="search" size={16} color={colors.mutedForeground} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name, phone, or email"
+            placeholderTextColor={colors.mutedForeground}
+            value={search}
+            onChangeText={setSearch}
+            autoCorrect={false}
+            autoCapitalize="none"
+            testID="input-search-subs"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
+        >
+          {isLoading ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Loading subcontractors…</Text>
+            </View>
+          ) : isOffline ? (
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyIcon}>
+                <Feather name="wifi-off" size={36} color={colors.mutedForeground} />
+              </View>
+              <Text style={styles.emptyTitle}>You're offline</Text>
+              <Text style={styles.emptyDesc}>
+                We can't load your subs right now. Pull down to retry once you're back on.
+              </Text>
+            </View>
+          ) : fetchError ? (
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyIcon}>
+                <Feather name="alert-triangle" size={36} color={colors.destructive} />
+              </View>
+              <Text style={styles.emptyTitle}>Couldn't load subs</Text>
+              <Text style={styles.emptyDesc}>{fetchError}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => {
+                  setIsLoading(true);
+                  fetchSubs();
+                }}
+                accessibilityLabel="Retry loading subcontractors"
+                accessibilityRole="button"
+                testID="button-subs-retry"
+              >
+                <Feather name="refresh-cw" size={14} color="#FFFFFF" />
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : filteredSubs.length === 0 ? (
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyIcon}>
+                <Feather name="users" size={36} color={colors.mutedForeground} />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {search ? 'No subs match your search' : 'No subcontractors yet'}
+              </Text>
+              <Text style={styles.emptyDesc}>
+                {search
+                  ? 'Try a different name, phone, or email.'
+                  : 'Open any job and tap Add Sub to send a magic-link invite. They\'ll show up here once they accept.'}
+              </Text>
+              {!search && (
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={() => router.push('/jobs')}
+                  accessibilityLabel="Go to jobs"
+                  accessibilityRole="button"
+                  testID="button-go-to-jobs"
+                >
+                  <Feather name="briefcase" size={14} color="#FFFFFF" />
+                  <Text style={styles.retryButtonText}>Open Jobs</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <View style={styles.list}>{filteredSubs.map(renderSub)}</View>
+          )}
+        </ScrollView>
+
+        <Modal
+          visible={upgradeOpen}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setUpgradeOpen(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Upgrade to full account</Text>
+                <TouchableOpacity onPress={() => setUpgradeOpen(false)}>
+                  <Feather name="x" size={22} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.modalDesc}>
+                Convert this magic-link sub into a full team member with their own login,
+                dashboard and invoicing. We'll re-use their existing details.
+              </Text>
+
+              {upgradeTarget && (
+                <View style={styles.targetCard}>
+                  <TeamAvatar
+                    name={upgradeTarget.name}
+                    email={upgradeTarget.contactEmail || undefined}
+                    size={36}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.targetName}>{upgradeTarget.name}</Text>
+                    <Text style={styles.targetContact}>
+                      {upgradeTarget.contactPhone ||
+                        upgradeTarget.contactEmail ||
+                        '—'}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <ScrollView
+                style={styles.formScroll}
+                contentContainerStyle={styles.formContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View style={styles.formRow}>
+                  <View style={styles.formCol}>
+                    <Text style={styles.formLabel}>First name</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      value={upgradeFirstName}
+                      onChangeText={setUpgradeFirstName}
+                      autoCapitalize="words"
+                      placeholder="First"
+                      placeholderTextColor={colors.mutedForeground}
+                      testID="input-upgrade-firstname"
+                    />
+                  </View>
+                  <View style={styles.formCol}>
+                    <Text style={styles.formLabel}>Last name</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      value={upgradeLastName}
+                      onChangeText={setUpgradeLastName}
+                      autoCapitalize="words"
+                      placeholder="Last"
+                      placeholderTextColor={colors.mutedForeground}
+                      testID="input-upgrade-lastname"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.formField}>
+                  <Text style={styles.formLabel}>
+                    Email <Text style={{ color: colors.destructive ?? '#dc2626' }}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={upgradeEmail}
+                    onChangeText={setUpgradeEmail}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
+                    placeholder="name@example.com"
+                    placeholderTextColor={colors.mutedForeground}
+                    testID="input-upgrade-email"
+                  />
+                </View>
+
+                <View style={styles.formField}>
+                  <Text style={styles.formLabel}>Hourly rate (optional)</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={upgradeRate}
+                    onChangeText={setUpgradeRate}
+                    keyboardType="decimal-pad"
+                    placeholder="e.g. 65"
+                    placeholderTextColor={colors.mutedForeground}
+                    testID="input-upgrade-rate"
+                  />
+                </View>
+
+                <Text style={styles.helperText}>
+                  We'll email an account-setup link
+                  {upgradeTarget?.contactPhone ? ' and SMS them too' : ''}.
+                </Text>
+              </ScrollView>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalBtnGhost]}
+                  onPress={() => setUpgradeOpen(false)}
+                  testID="button-upgrade-cancel"
+                >
+                  <Text style={styles.modalBtnGhostText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.modalBtn,
+                    styles.modalBtnPrimary,
+                    isUpgrading && styles.modalBtnDisabled,
+                  ]}
+                  disabled={isUpgrading}
+                  onPress={handleUpgrade}
+                  testID="button-upgrade-submit"
+                >
+                  {isUpgrading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Feather name="arrow-up-circle" size={16} color="#FFFFFF" />
+                      <Text style={styles.modalBtnPrimaryText}>Send invite</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+      </View>
+    </>
+  );
+}
+
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 12,
+      gap: 12,
+    },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.card,
+    },
+    headerContent: { flex: 1 },
+    headerTitle: { fontSize: 22, fontWeight: '700', color: colors.foreground },
+    headerSubtitle: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },
+
+    gateBanner: {
+      marginHorizontal: 16,
+      marginBottom: 8,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: (colors.warning ?? '#f59e0b') + '15',
+      borderWidth: 1,
+      borderColor: (colors.warning ?? '#f59e0b') + '40',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    gateBannerText: { flex: 1, fontSize: 13, color: colors.foreground },
+    gateBannerCta: { fontSize: 13, fontWeight: '600', color: colors.primary },
+
+    searchWrap: {
+      marginHorizontal: 16,
+      marginBottom: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.card,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.foreground,
+      padding: 0,
+    },
+
+    scrollView: { flex: 1 },
+    scrollContent: { paddingBottom: 32 },
+
+    loadingWrap: { paddingVertical: 60, alignItems: 'center', gap: 12 },
+    loadingText: { color: colors.mutedForeground, fontSize: 13 },
+
+    emptyWrap: { paddingHorizontal: 32, paddingVertical: 60, alignItems: 'center' },
+    emptyIcon: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: colors.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    emptyTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.foreground,
+      marginBottom: 6,
+      textAlign: 'center',
+    },
+    emptyDesc: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+      lineHeight: 18,
+    },
+    retryButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 8,
+      marginTop: 16,
+    },
+    retryButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
+
+    list: { paddingHorizontal: 16, gap: 10 },
+    subCard: {
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      gap: 12,
+    },
+    subRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    subInfo: { flex: 1, gap: 3 },
+    subName: { fontSize: 15, fontWeight: '600', color: colors.foreground },
+    subContact: { fontSize: 13, color: colors.mutedForeground },
+    subMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginTop: 2,
+    },
+    subMetaText: { fontSize: 12, color: colors.mutedForeground },
+
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+    },
+    statusDot: { width: 6, height: 6, borderRadius: 3 },
+    statusText: { fontSize: 11, fontWeight: '600' },
+
+    subActions: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'flex-end' },
+    iconAction: {
+      width: 36,
+      height: 36,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    upgradeButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 8,
+      backgroundColor: colors.primary,
+    },
+    upgradeButtonDisabled: { opacity: 0.55 },
+    upgradeButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
+
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    modalSheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 24,
+      maxHeight: '88%',
+    },
+    modalHandle: {
+      width: 38,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.cardBorder,
+      alignSelf: 'center',
+      marginBottom: 12,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 6,
+    },
+    modalTitle: { fontSize: 18, fontWeight: '700', color: colors.foreground },
+    modalDesc: { fontSize: 13, color: colors.mutedForeground, marginBottom: 16, lineHeight: 18 },
+
+    targetCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 12,
+      backgroundColor: colors.card,
+      borderRadius: 10,
+      marginBottom: 16,
+    },
+    targetName: { fontSize: 14, fontWeight: '600', color: colors.foreground },
+    targetContact: { fontSize: 12, color: colors.mutedForeground, marginTop: 2 },
+
+    formScroll: { maxHeight: 360 },
+    formContent: { gap: 14, paddingBottom: 4 },
+    formRow: { flexDirection: 'row', gap: 12 },
+    formCol: { flex: 1, gap: 6 },
+    formField: { gap: 6 },
+    formLabel: { fontSize: 13, fontWeight: '500', color: colors.foreground },
+    formInput: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: colors.foreground,
+    },
+    helperText: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      lineHeight: 16,
+      marginTop: 4,
+    },
+
+    modalActions: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 18,
+    },
+    modalBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 13,
+      borderRadius: 10,
+    },
+    modalBtnGhost: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    modalBtnGhostText: { color: colors.foreground, fontSize: 14, fontWeight: '600' },
+    modalBtnPrimary: { backgroundColor: colors.primary },
+    modalBtnDisabled: { opacity: 0.6 },
+    modalBtnPrimaryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  });

@@ -2419,6 +2419,39 @@ export default function TeamManagementScreen() {
             </View>
           )}
 
+          <TouchableOpacity
+            testID="button-manage-subcontractors"
+            onPress={() => router.push('/more/subcontractors')}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              padding: 14,
+              marginTop: 16,
+              backgroundColor: colors.card,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.cardBorder,
+            }}
+          >
+            <View style={{
+              width: 40, height: 40, borderRadius: 20,
+              backgroundColor: '#22c55e22',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Feather name="users" size={20} color="#22c55e" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>
+                Manage Subcontractors
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                See your subs and upgrade them to full accounts
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+          </TouchableOpacity>
+
           {/* Subcontractor Invoices Section - Business Owner Only */}
           {currentUserIsOwner && <SubcontractorInvoicesSection colors={colors} />}
 
