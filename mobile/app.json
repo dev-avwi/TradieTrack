@@ -21,7 +21,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jobrunner.app",
-      "buildNumber": "30",
+      "buildNumber": "31",
       "usesAppleSignIn": true,
       "config": {
         "usesNonExemptEncryption": false
@@ -142,7 +142,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.jobrunner.app",
-      "versionCode": 29,
+      "versionCode": 30,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
