@@ -180,6 +180,50 @@ if (process.env.DATABASE_URL) {
   );
   console.log('✅ Vapi webhook route configured');
 
+  // SendGrid Event Webhook — tracks delivered/open/click/bounce events for sent emails.
+  // Must be registered BEFORE express.json() so we receive the raw Buffer needed
+  // for ECDSA signature verification (signed payload = timestamp + raw_body).
+  app.post(
+    '/api/webhooks/sendgrid',
+    express.raw({ type: 'application/json' }),
+    async (req, res) => {
+      try {
+        const { verifySendGridWebhook, processSendGridEvents } = await import('./sendgridWebhook');
+        const signature = req.headers['x-twilio-email-event-webhook-signature'] as string | undefined;
+        const timestamp = req.headers['x-twilio-email-event-webhook-timestamp'] as string | undefined;
+
+        if (!Buffer.isBuffer(req.body)) {
+          console.error('[SendGrid Webhook] req.body is not a Buffer');
+          return res.status(400).json({ error: 'Invalid body' });
+        }
+
+        if (!verifySendGridWebhook(req.body, signature, timestamp)) {
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+
+        let events: any[] = [];
+        try {
+          const parsed = JSON.parse(req.body.toString('utf8'));
+          events = Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          return res.status(400).json({ error: 'Invalid JSON' });
+        }
+
+        // Acknowledge first so SendGrid doesn't retry on slow processing.
+        res.status(200).json({ received: events.length });
+        processSendGridEvents(events).catch(err =>
+          console.error('[SendGrid Webhook] Processing error:', err?.message)
+        );
+      } catch (error: any) {
+        console.error('[SendGrid Webhook] Error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Webhook processing error' });
+        }
+      }
+    }
+  );
+  console.log('✅ SendGrid webhook route configured');
+
   app.post(
     '/api/webhooks/xero',
     express.raw({ type: 'application/json' }),

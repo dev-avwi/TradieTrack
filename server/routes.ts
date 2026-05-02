@@ -22282,6 +22282,54 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // Quotes Routes (team-aware: use effectiveUserId for proper data scoping)
+  // Email delivery tracking — fetch open/click/bounce stats for a related entity (quote, invoice, etc.)
+  // Used by the UI to surface "Opened ✓", "Clicked", "Bounced" badges next to sent items.
+  // Owner/manager only — these rows can include recipient emails and bounce reasons that
+  // workers/subcontractors should not see. Returns a sanitized projection (no payloadJson,
+  // no errorMessage, no internal retry state).
+  app.get("/api/email-delivery-logs", requireAuth, ownerOrManagerOnly(), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { type, relatedId } = req.query as { type?: string; relatedId?: string };
+      const { db } = await import('./storage');
+      const { emailDeliveryLogs } = await import('@shared/schema');
+      const { and, eq, desc } = await import('drizzle-orm');
+
+      const conditions = [eq(emailDeliveryLogs.userId, userContext.effectiveUserId)];
+      if (type) conditions.push(eq(emailDeliveryLogs.type, type));
+      if (relatedId) conditions.push(eq(emailDeliveryLogs.relatedId, relatedId));
+
+      const rows = await db
+        .select({
+          id: emailDeliveryLogs.id,
+          recipientEmail: emailDeliveryLogs.recipientEmail,
+          subject: emailDeliveryLogs.subject,
+          type: emailDeliveryLogs.type,
+          relatedId: emailDeliveryLogs.relatedId,
+          status: emailDeliveryLogs.status,
+          sentVia: emailDeliveryLogs.sentVia,
+          sentAt: emailDeliveryLogs.sentAt,
+          deliveredAt: emailDeliveryLogs.deliveredAt,
+          openedAt: emailDeliveryLogs.openedAt,
+          clickedAt: emailDeliveryLogs.clickedAt,
+          bouncedAt: emailDeliveryLogs.bouncedAt,
+          bounceReason: emailDeliveryLogs.bounceReason,
+          lastEventType: emailDeliveryLogs.lastEventType,
+          lastEventAt: emailDeliveryLogs.lastEventAt,
+          openCount: emailDeliveryLogs.openCount,
+          clickCount: emailDeliveryLogs.clickCount,
+        })
+        .from(emailDeliveryLogs)
+        .where(and(...conditions))
+        .orderBy(desc(emailDeliveryLogs.sentAt))
+        .limit(200);
+      res.json(rows);
+    } catch (error: any) {
+      console.error("Error fetching email delivery logs:", error);
+      res.status(500).json({ error: "Failed to fetch email delivery logs" });
+    }
+  });
+
   app.get("/api/quotes", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);

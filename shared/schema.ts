@@ -2761,6 +2761,13 @@ export const emailDeliveryLogs = pgTable("email_delivery_logs", {
   sentAt: timestamp("sent_at"),
   deliveredAt: timestamp("delivered_at"),
   openedAt: timestamp("opened_at"),
+  clickedAt: timestamp("clicked_at"),
+  bouncedAt: timestamp("bounced_at"),
+  bounceReason: text("bounce_reason"),
+  lastEventType: text("last_event_type"), // Most recent SendGrid event ('delivered', 'open', 'click', 'bounce', 'dropped', 'spamreport', 'unsubscribe')
+  lastEventAt: timestamp("last_event_at"),
+  openCount: integer("open_count").default(0),
+  clickCount: integer("click_count").default(0),
   // Retry / dead-letter fields used by retryScheduler.processFailedEmailMessages
   retryCount: integer("retry_count").default(0),
   maxRetries: integer("max_retries").default(5),

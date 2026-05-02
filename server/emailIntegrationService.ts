@@ -217,7 +217,10 @@ export async function sendEmailViaIntegration(options: SendEmailOptions): Promis
     // 3. Try SendGrid platform email FIRST (properly displays business name in From header)
     // Gmail connector has OAuth limitations that prevent custom From name display
     console.log('Using SendGrid platform email (supports custom From name)');
-    const sendgridResult = await sendViaPlatform({ to, subject, html, text, fromName, attachments });
+    const sendgridResult = await sendViaPlatform({
+      to, subject, html, text, fromName, attachments,
+      _meta: { deliveryLogId: logEntry.id, userId, type, relatedId },
+    });
     if (sendgridResult.success) {
       return sendgridResult;
     }
@@ -440,7 +443,15 @@ async function sendViaOutlook(
 
 // Send email via platform (SendGrid)
 async function sendViaPlatform(
-  options: { to: string; subject: string; html: string; text?: string; fromName?: string; attachments?: Array<{ filename: string; content: Buffer | string; contentType?: string }> }
+  options: {
+    to: string;
+    subject: string;
+    html: string;
+    text?: string;
+    fromName?: string;
+    attachments?: Array<{ filename: string; content: Buffer | string; contentType?: string }>;
+    _meta?: { deliveryLogId?: string; userId?: string; type?: string; relatedId?: string };
+  }
 ): Promise<EmailResult> {
   try {
     // If attachments are provided, use sendEmailWithAttachment
@@ -452,18 +463,20 @@ async function sendViaPlatform(
         contentType: att.contentType || 'application/pdf',
       }));
       
-      await sendEmailWithAttachment({
+      const attResult = await sendEmailWithAttachment({
         to: options.to,
         subject: options.subject,
         html: options.html,
         fromName: options.fromName,
         attachments: formattedAttachments,
+        _meta: options._meta,
       });
       
       console.log(`✅ SendGrid email with ${formattedAttachments.length} attachment(s) sent to ${options.to}`);
       
       return {
         success: true,
+        messageId: attResult.messageId || undefined,
         sentVia: 'sendgrid',
       };
     }
@@ -475,6 +488,7 @@ async function sendViaPlatform(
       html: options.html,
       text: options.text,
       fromName: options.fromName,
+      _meta: options._meta,
     });
 
     return {

@@ -48,20 +48,49 @@ async function ensureSendGridReady(): Promise<boolean> {
   }
 }
 
-export async function sendViaSendGrid(emailData: any): Promise<void> {
+export async function sendViaSendGrid(emailData: any): Promise<{ messageId: string | null }> {
   await ensureSendGridReady();
   if (!emailData.from?.email) {
     emailData.from = { email: PLATFORM_FROM_EMAIL, name: PLATFORM_FROM_NAME };
   }
+  // Enable open + click tracking by default so the SendGrid event webhook
+  // can populate openedAt/clickedAt/etc on email_delivery_logs.
+  // Callers can override by setting trackingSettings explicitly (e.g. for
+  // emails that should not have wrapped links like password reset codes).
   if (!emailData.trackingSettings) {
     emailData.trackingSettings = {
-      clickTracking: { enable: false, enableText: false },
+      clickTracking: { enable: true, enableText: false },
+      openTracking: { enable: true },
       subscriptionTracking: { enable: false },
     };
   }
+  // Plumb _meta through as SendGrid customArgs + categories so the event
+  // webhook can correlate events back to email_delivery_logs without
+  // depending on the SendGrid X-Message-Id alone.
+  const meta = emailData._meta;
+  if (meta) {
+    emailData.customArgs = {
+      ...(emailData.customArgs || {}),
+      ...(meta.deliveryLogId ? { delivery_log_id: String(meta.deliveryLogId) } : {}),
+      ...(meta.userId ? { user_id: String(meta.userId) } : {}),
+      ...(meta.type ? { type: String(meta.type) } : {}),
+      ...(meta.relatedId ? { related_id: String(meta.relatedId) } : {}),
+    };
+    if (meta.type) {
+      const cats: string[] = Array.isArray(emailData.categories) ? emailData.categories : [];
+      emailData.categories = Array.from(new Set([...cats, String(meta.type)]));
+    }
+  }
+  // SendGrid will reject unknown top-level fields — strip _meta before sending.
+  const { _meta: _omit, ...sendData } = emailData;
   console.log(`[SendGrid] Sending from: ${emailData.from?.email} (name: "${emailData.from?.name}") to: ${emailData.to}`);
   try {
-    await sgMail.send(emailData);
+    const response = await sgMail.send(sendData as any);
+    // sgMail.send returns [ClientResponse, {}] — pull X-Message-Id header
+    const first: any = Array.isArray(response) ? response[0] : response;
+    const headerVal = first?.headers?.['x-message-id'] ?? first?.headers?.['X-Message-Id'];
+    const messageId = Array.isArray(headerVal) ? headerVal[0] : (headerVal || null);
+    return { messageId: messageId ? String(messageId) : null };
   } catch (err: any) {
     const statusCode = err?.code || err?.response?.statusCode;
     const body = err?.response?.body;
@@ -94,11 +123,33 @@ async function logEmailDelivery(
   sentVia: string | null,
   errorMessage: string | null,
   permanentlyFailed = false,
+  messageId: string | null = null,
 ): Promise<void> {
   try {
     const { db } = await import('./storage');
     const { emailDeliveryLogs } = await import('../shared/schema');
+    const { eq } = await import('drizzle-orm');
     const recipient = Array.isArray(emailData.to) ? emailData.to[0] : emailData.to;
+    // If the caller already created a log row (and passed its id via _meta.deliveryLogId),
+    // update it instead of inserting a duplicate. This keeps the SendGrid customArgs
+    // delivery_log_id in sync with the row the webhook will look up.
+    const existingId = emailData._meta?.deliveryLogId;
+    if (existingId) {
+      const updates: Record<string, any> = {
+        status,
+        sentVia: sentVia ?? undefined,
+        errorMessage,
+        sentAt: status === 'sent' ? new Date() : null,
+        permanentlyFailed,
+      };
+      if (messageId) updates.messageId = messageId;
+      if (status === 'failed' && !permanentlyFailed) {
+        updates.nextRetryAt = scheduleEmailRetry(0);
+        updates.payloadJson = sanitizePayloadForRetry(emailData);
+      }
+      await db.update(emailDeliveryLogs).set(updates).where(eq(emailDeliveryLogs.id, existingId));
+      return;
+    }
     await db.insert(emailDeliveryLogs).values({
       userId: emailData._meta?.userId || null,
       recipientEmail: recipient,
@@ -107,6 +158,7 @@ async function logEmailDelivery(
       relatedId: emailData._meta?.relatedId || null,
       status,
       sentVia,
+      messageId: messageId || undefined,
       errorMessage,
       sentAt: status === 'sent' ? new Date() : null,
       permanentlyFailed,
@@ -135,14 +187,14 @@ function sanitizePayloadForRetry(emailData: any): any {
   };
 }
 
-export async function sendSystemEmail(emailData: any): Promise<void> {
+export async function sendSystemEmail(emailData: any): Promise<{ messageId: string | null; sentVia: string | null }> {
   let lastError: any = null;
   let permanentSendGrid = false;
 
   try {
-    await sendViaSendGrid(emailData);
-    await logEmailDelivery(emailData, 'sent', 'sendgrid', null);
-    return;
+    const sgResult = await sendViaSendGrid(emailData);
+    await logEmailDelivery(emailData, 'sent', 'sendgrid', null, false, sgResult.messageId);
+    return { messageId: sgResult.messageId, sentVia: 'sendgrid' };
   } catch (sgError: any) {
     lastError = sgError;
     permanentSendGrid = isPermanentEmailFailure(sgError);
@@ -170,8 +222,8 @@ export async function sendSystemEmail(emailData: any): Promise<void> {
       const result = await sendViaGmailAPI(gmailOptions);
       if (result.success) {
         console.log(`✅ System email sent via Gmail fallback to ${emailData.to}`);
-        await logEmailDelivery(emailData, 'sent', 'gmail', null);
-        return;
+        await logEmailDelivery(emailData, 'sent', 'gmail', null, false, result.messageId || null);
+        return { messageId: result.messageId || null, sentVia: 'gmail' };
       }
       throw new Error(result.error || 'Gmail send failed');
     } catch (gmailError: any) {
@@ -1211,6 +1263,13 @@ const createEmailVerificationEmail = (user: any, verificationToken: string) => {
 };
 
 // Generic email interface for notification service
+export interface EmailMeta {
+  deliveryLogId?: string;
+  userId?: string;
+  type?: string;
+  relatedId?: string;
+}
+
 export interface EmailOptions {
   to: string;
   subject: string;
@@ -1218,6 +1277,7 @@ export interface EmailOptions {
   html?: string;
   replyTo?: string;
   fromName?: string; // Custom sender name (e.g., business name)
+  _meta?: EmailMeta; // Tracking metadata - propagates to SendGrid customArgs
 }
 
 export interface EmailResult {
@@ -1229,7 +1289,7 @@ export interface EmailResult {
 
 // Send a generic email - used by notification service
 export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => {
-  const { to, subject, text, html, replyTo, fromName } = options;
+  const { to, subject, text, html, replyTo, fromName, _meta } = options;
   
   const sendGridReady = await ensureSendGridReady();
   if (!sendGridReady) {
@@ -1242,18 +1302,19 @@ export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => 
   const senderName = fromName || PLATFORM_FROM_NAME;
   const fromEmail = PLATFORM_FROM_EMAIL;
   
-  const emailData = {
+  const emailData: any = {
     to,
     from: { email: fromEmail, name: senderName },
     subject,
     text: plainText,
     html: html || text || plainText,
-    replyTo: replyTo || undefined
+    replyTo: replyTo || undefined,
+    _meta,
   };
 
   try {
-    await sendSystemEmail(emailData);
-    return { success: true, messageId: `sg_${Date.now()}` };
+    const result = await sendSystemEmail(emailData);
+    return { success: true, messageId: result.messageId || undefined };
   } catch (error: any) {
     if (error.response) {
       console.error('Email send error - Status:', error.code);
@@ -2072,9 +2133,10 @@ interface EmailWithAttachmentParams {
     content: Buffer;
     contentType: string;
   }>;
+  _meta?: EmailMeta; // Tracking metadata - propagates to SendGrid customArgs
 }
 
-export async function sendEmailWithAttachment(params: EmailWithAttachmentParams): Promise<void> {
+export async function sendEmailWithAttachment(params: EmailWithAttachmentParams): Promise<{ messageId: string | null }> {
   const fromEmail = PLATFORM_FROM_EMAIL;
   
   const emailData: any = {
@@ -2086,6 +2148,7 @@ export async function sendEmailWithAttachment(params: EmailWithAttachmentParams)
     replyTo: params.replyTo || PLATFORM_REPLY_TO_EMAIL,
     subject: params.subject,
     html: params.html,
+    _meta: params._meta,
   };
   
   if (params.attachments && params.attachments.length > 0) {
@@ -2098,8 +2161,9 @@ export async function sendEmailWithAttachment(params: EmailWithAttachmentParams)
   }
   
   try {
-    await sendSystemEmail(emailData);
+    const result = await sendSystemEmail(emailData);
     console.log('✅ Email with attachment sent to:', params.to);
+    return { messageId: result.messageId };
   } catch (error: any) {
     console.error('❌ Failed to send email with attachment:', error);
     throw new Error(error.message || 'Failed to send email');

@@ -35,7 +35,18 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import type { ActivityLog } from "@shared/schema";
+import type { ActivityLog, EmailDeliveryLog } from "@shared/schema";
+import { formatDistanceToNow } from "date-fns";
+
+interface EmailTracking {
+  status: string | null;
+  openedAt: Date | null;
+  clickedAt: Date | null;
+  bouncedAt: Date | null;
+  bounceReason: string | null;
+  openCount: number;
+  clickCount: number;
+}
 
 interface CommunicationItem {
   id: string;
@@ -61,6 +72,7 @@ interface CommunicationItem {
     provider?: string;
     messageId?: string;
   };
+  tracking?: EmailTracking;
 }
 
 function StatusIcon({ status }: { status: string }) {
@@ -130,7 +142,47 @@ function CommunicationCard({
               {item.subject && (
                 <p className="text-sm font-medium mt-1 truncate">{item.subject}</p>
               )}
-              
+
+              {item.tracking && (
+                <div className="flex flex-wrap items-center gap-1 mt-1">
+                  {item.tracking.clickedAt && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs gap-1 bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800"
+                      data-testid={`badge-clicked-${item.id}`}
+                    >
+                      <ArrowUpRight className="h-3 w-3" />
+                      Clicked{item.tracking.clickCount > 1 ? ` ×${item.tracking.clickCount}` : ''}
+                    </Badge>
+                  )}
+                  {item.tracking.openedAt && !item.tracking.clickedAt && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs gap-1 bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-800"
+                      data-testid={`badge-opened-${item.id}`}
+                    >
+                      <Eye className="h-3 w-3" />
+                      Opened{item.tracking.openCount > 1 ? ` ×${item.tracking.openCount}` : ''}
+                    </Badge>
+                  )}
+                  {item.tracking.bouncedAt && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs gap-1 bg-red-50 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-200 dark:border-red-800"
+                      data-testid={`badge-bounced-${item.id}`}
+                    >
+                      <AlertCircle className="h-3 w-3" />
+                      Bounced
+                    </Badge>
+                  )}
+                  {(item.tracking.openedAt || item.tracking.clickedAt) && (
+                    <span className="text-[11px] text-muted-foreground" data-testid={`text-tracking-time-${item.id}`}>
+                      {formatDistanceToNow(item.tracking.clickedAt ?? item.tracking.openedAt!, { addSuffix: true })}
+                    </span>
+                  )}
+                </div>
+              )}
+
               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.body}</p>
               
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -420,7 +472,39 @@ export default function CommunicationsHub() {
   const { data: activityLogs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery<ActivityLog[]>({
     queryKey: ['/api/activity/recent/200'],
   });
-  
+
+  // Email open/click/bounce tracking — populated by the SendGrid event webhook.
+  // Refetches every 30s so the user sees newly-opened emails without a manual refresh.
+  const { data: emailTrackingLogs = [], refetch: refetchTracking } = useQuery<EmailDeliveryLog[]>({
+    queryKey: ['/api/email-delivery-logs'],
+    refetchInterval: 30000,
+  });
+
+  // Build a lookup map: "type-relatedId" -> tracking summary so we can attach
+  // badges to email cards without an extra request per item.
+  const trackingByRelated = new Map<string, EmailTracking>();
+  for (const log of emailTrackingLogs) {
+    if (!log.type || !log.relatedId) continue;
+    const key = `${log.type}-${log.relatedId}`;
+    const existing = trackingByRelated.get(key);
+    // Keep the most-engaged log if there are multiple sends for the same entity.
+    if (
+      !existing ||
+      (log.clickedAt && !existing.clickedAt) ||
+      (log.openedAt && !existing.openedAt && !existing.clickedAt)
+    ) {
+      trackingByRelated.set(key, {
+        status: log.status,
+        openedAt: log.openedAt ? new Date(log.openedAt) : null,
+        clickedAt: log.clickedAt ? new Date(log.clickedAt) : null,
+        bouncedAt: log.bouncedAt ? new Date(log.bouncedAt) : null,
+        bounceReason: log.bounceReason,
+        openCount: log.openCount ?? 0,
+        clickCount: log.clickCount ?? 0,
+      });
+    }
+  }
+
   const isLoading = smsLoading || logsLoading;
   
   const communications: CommunicationItem[] = [];
@@ -487,6 +571,10 @@ export default function CommunicationsHub() {
         
         const isSms = metadata.deliveryMethod === 'sms';
         
+        // Look up SendGrid tracking for this entity (only for emails)
+        const trackingKey = !isSms && entityType && log.entityId ? `${entityType}-${log.entityId}` : null;
+        const tracking = trackingKey ? trackingByRelated.get(trackingKey) : undefined;
+
         communications.push({
           id: isSms ? `sms-activity-${log.id}` : `email-${log.id}`,
           type: isSms ? 'sms' : 'email',
@@ -505,6 +593,7 @@ export default function CommunicationsHub() {
           hasAttachment,
           attachmentType,
           metadata,
+          tracking,
         });
       });
   }
@@ -589,6 +678,7 @@ export default function CommunicationsHub() {
   const handleRefresh = () => {
     refetchSms();
     refetchLogs();
+    refetchTracking();
   };
   
   return (
