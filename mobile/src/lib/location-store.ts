@@ -105,15 +105,29 @@ export const useLocationStore = create<LocationStore>()(
         }
 
         const { permissionGranted } = get();
-        
+
         if (!permissionGranted) {
           const granted = await locationTracking.requestForegroundPermission();
           set({ permissionGranted: granted });
-          
+
           if (!granted) {
             set({ errorMessage: 'Location permission not granted' });
             return false;
           }
+        }
+
+        // After foreground is granted, request background so live team tracking
+        // continues to work when the screen is off / app is in the background.
+        // This is gated behind the prominent disclosure screen
+        // (mobile/app/more/location-permission.tsx) which explains background
+        // use to the user BEFORE this OS prompt fires (Google Play requirement).
+        try {
+          const bgGranted = await locationTracking.requestBackgroundPermission();
+          if (!bgGranted && __DEV__) {
+            console.log('[LocationStore] Background permission denied — running foreground only');
+          }
+        } catch (err: any) {
+          if (__DEV__) console.log('[LocationStore] Background request error:', err?.message);
         }
 
         // Register callbacks BEFORE starting tracking so we receive status updates

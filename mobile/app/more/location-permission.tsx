@@ -274,9 +274,11 @@ export default function LocationPermissionScreen() {
           <View style={styles.heroIcon}>
             <Feather name="map-pin" size={36} color={colors.info} />
           </View>
-          <Text style={styles.heroTitle}>Enable Location Services</Text>
+          <Text style={styles.heroTitle}>Enable Background Location</Text>
           <Text style={styles.heroSubtitle}>
-            Get the most out of JobRunner with intelligent location features
+            JobRunner needs to access your location, including in the background
+            (when the app is closed or not in use), so your team and clients
+            always know where you are.
           </Text>
         </View>
         
@@ -293,31 +295,31 @@ export default function LocationPermissionScreen() {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Why We Need Location Access</Text>
           <View style={styles.featureList}>
-            <FeatureItem 
+            <FeatureItem
               icon="users"
-              title="Team Tracking"
-              description="See where your team members are in real-time to coordinate jobs efficiently."
+              title="Live team tracking (background)"
+              description="Your location is shared with your business owner's dispatch board so they can see all field workers on a live map, even when the app is closed and your phone is in your pocket while you drive between jobs."
               colors={colors}
               styles={styles}
             />
-            <FeatureItem 
-              icon="zap"
-              title="Automatic Clock-In"
-              description="Geofence auto clock-in when you arrive at job sites - no more forgetting to start the timer."
-              colors={colors}
-              styles={styles}
-            />
-            <FeatureItem 
+            <FeatureItem
               icon="navigation"
-              title="Live ETA for Clients"
-              description="Share your live arrival time with clients so they know exactly when to expect you."
+              title='"On My Way" ETA alerts (background)'
+              description="JobRunner uses your background location to automatically send accurate arrival ETAs by SMS to the next client, so they know exactly when to expect you — without you having to message them."
               colors={colors}
               styles={styles}
             />
-            <FeatureItem 
+            <FeatureItem
+              icon="zap"
+              title="Automatic clock-in at job sites"
+              description="Geofences detect when you arrive and leave a job site so your timer starts and stops automatically, even when the app isn't open."
+              colors={colors}
+              styles={styles}
+            />
+            <FeatureItem
               icon="map"
-              title="Route Optimization"
-              description="Get smart route suggestions to minimize travel time between jobs."
+              title="Route optimization"
+              description="Smart route suggestions to minimise travel time between jobs across your day."
               colors={colors}
               styles={styles}
             />
@@ -327,7 +329,10 @@ export default function LocationPermissionScreen() {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Your Privacy Matters</Text>
           <Text style={styles.paragraph}>
-            Your location data is only used for the features above and is never sold or shared with third parties.
+            Your location data is only shared with your business owner / dispatcher
+            (so they can see your live position on their team map) and used to send
+            ETA alerts to the specific client whose job you are travelling to.
+            It is never sold or shared with any other third parties.
           </Text>
           
           <View style={styles.privacyNote}>
@@ -356,6 +361,22 @@ export default function LocationPermissionScreen() {
                 For automatic clock-in and team tracking to work when the app is in the background, 
                 iOS requires "Always Allow" location permission. You can change this setting at any 
                 time in your device's Settings app.
+              </Text>
+            </View>
+          )}
+
+          {Platform.OS === 'android' && (
+            <View style={styles.permissionExplainer}>
+              <Text style={styles.permissionExplainerTitle}>
+                About "Allow all the time"
+              </Text>
+              <Text style={styles.permissionExplainerText}>
+                When you tap Enable Location below, Android will first ask if you
+                want to share your location while using the app. After you accept,
+                you'll see a second prompt to "Allow all the time" — please pick
+                this so live team tracking and arrival ETAs keep working when your
+                phone is in your pocket and the app is closed. You can change this
+                in your phone's Settings at any time.
               </Text>
             </View>
           )}
