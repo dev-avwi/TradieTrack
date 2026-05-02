@@ -11099,10 +11099,11 @@ Be specific about materials, colors, and features that would be included.`
 
     const userId = req.userId;
 
-    const safe = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+    const safe = async (fn: () => Promise<any>, fallback: any): Promise<any> => {
       try {
         return await fn();
       } catch (err: any) {
+        console.error('[Integrations status] sub-query failed:', err?.message || err);
         return fallback;
       }
     };
@@ -11127,12 +11128,11 @@ Be specific about materials, colors, and features that would be included.`
       if (!quickbooksService.isQuickbooksConfigured()) {
         return { configured: false, connected: false, message: "QuickBooks integration is coming soon" };
       }
-      const status = await quickbooksService.getConnectionStatus(userId);
-      return status;
+      return await quickbooksService.getConnectionStatus(userId);
     }, { configured: false, connected: false, error: "Failed to load QuickBooks status" });
 
     const googleCalendarP = safe(async () => {
-      const { isGoogleCalendarConnected, getCalendarInfo, isGoogleCalendarConfigured } = await import('./googleCalendarClient');
+      const { getCalendarInfo, isGoogleCalendarConfigured } = await import('./googleCalendarClient');
       if (!isGoogleCalendarConfigured()) {
         return { configured: false, connected: false, message: "Google Calendar integration is coming soon" };
       }

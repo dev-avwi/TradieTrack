@@ -187,6 +187,7 @@ function IncidentReportsTab() {
     mutationFn: (data: any) => apiRequest("POST", "/api/whs/incidents", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       setShowForm(false);
       resetForm();
       toast({ title: "Incident report created" });
@@ -197,6 +198,7 @@ function IncidentReportsTab() {
     mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/whs/incidents/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       setShowForm(false);
       setEditingId(null);
       resetForm();
@@ -208,6 +210,7 @@ function IncidentReportsTab() {
     mutationFn: (id: string) => apiRequest("DELETE", `/api/whs/incidents/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       toast({ title: "Incident report deleted" });
     },
   });
@@ -584,6 +587,7 @@ function EmergencyInfoTab() {
     mutationFn: (data: any) => apiRequest("POST", "/api/whs/emergency-info", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/emergency-info"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       setShowForm(false);
       toast({ title: "Emergency info saved" });
     },
@@ -593,6 +597,7 @@ function EmergencyInfoTab() {
     mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/whs/emergency-info/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/emergency-info"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       setShowForm(false);
       setEditingId(null);
       toast({ title: "Emergency info updated" });
@@ -603,6 +608,7 @@ function EmergencyInfoTab() {
     mutationFn: (id: string) => apiRequest("DELETE", `/api/whs/emergency-info/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/emergency-info"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       toast({ title: "Emergency info deleted" });
     },
   });
@@ -789,6 +795,7 @@ function JsaTab() {
     mutationFn: (data: any) => apiRequest("POST", "/api/whs/jsa", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/jsa"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       setShowForm(false);
       toast({ title: "JSA created" });
     },
@@ -798,6 +805,7 @@ function JsaTab() {
     mutationFn: (id: string) => apiRequest("DELETE", `/api/whs/jsa/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/jsa"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       toast({ title: "JSA deleted" });
     },
   });
@@ -1060,6 +1068,7 @@ function PpeChecklistTab() {
     mutationFn: (data: any) => apiRequest("POST", "/api/whs/ppe-checklists", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/ppe-checklists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       toast({ title: "PPE checklist saved" });
       resetForm();
     },
@@ -1069,6 +1078,7 @@ function PpeChecklistTab() {
     mutationFn: (id: string) => apiRequest("DELETE", `/api/whs/ppe-checklists/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/ppe-checklists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       toast({ title: "Checklist deleted" });
     },
   });
@@ -1324,6 +1334,7 @@ function TrainingRecordsTab() {
     mutationFn: (data: any) => apiRequest("POST", "/api/whs/training-records", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/training-records"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       toast({ title: "Training record added" });
       resetForm();
     },
@@ -1333,6 +1344,7 @@ function TrainingRecordsTab() {
     mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/whs/training-records/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/training-records"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       toast({ title: "Training record updated" });
       resetForm();
     },
@@ -1342,6 +1354,7 @@ function TrainingRecordsTab() {
     mutationFn: (id: string) => apiRequest("DELETE", `/api/whs/training-records/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/training-records"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       toast({ title: "Training record deleted" });
     },
   });
@@ -1637,6 +1650,7 @@ function HazardReportsTab() {
     mutationFn: (data: any) => apiRequest("POST", "/api/whs/hazard-reports", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/hazard-reports"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       toast({ title: "Hazard report created" });
       resetForm();
     },
@@ -1646,6 +1660,7 @@ function HazardReportsTab() {
     mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/whs/hazard-reports/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/hazard-reports"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       toast({ title: "Hazard report updated" });
       resetForm();
     },
@@ -1655,6 +1670,7 @@ function HazardReportsTab() {
     mutationFn: (id: string) => apiRequest("DELETE", `/api/whs/hazard-reports/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whs/hazard-reports"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
       toast({ title: "Hazard report deleted" });
     },
   });
@@ -2283,6 +2299,7 @@ function SwmsDocumentsTab() {
               onClose={() => {
                 setEditingSwms(null);
                 queryClient.invalidateQueries({ queryKey: ["/api/swms"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
                 if (expandedSwms) {
                   queryClient.invalidateQueries({ queryKey: ["/api/swms", expandedSwms] });
                 }
@@ -2324,6 +2341,7 @@ function SwmsDocumentsTab() {
                 setNewSwmsJob(null);
                 setShowNewSwmsJobPicker(false);
                 queryClient.invalidateQueries({ queryKey: ["/api/swms"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/whs/summary"] });
               }}
             />
           </DialogContent>
