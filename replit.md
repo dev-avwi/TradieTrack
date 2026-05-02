@@ -33,6 +33,7 @@ Core architectural and design decisions include:
 *   **Track My Arrival**: Public job portal displaying assigned workers with profile images and polished SMS templates for status updates, including delayed notifications and anti-spam measures for frequent status changes.
 *   **Website Addon Interactive Features**: Provides toggleable interactive features for business websites including Click-to-Call, an AI Chat Widget (powered by the same AI as the receptionist), and a Booking Form that creates leads. These features have public API endpoints for interaction and authenticated endpoints for management.
 *   **Android Compatibility**: Specific considerations for Android build processes and UI components have been implemented to ensure cross-platform functionality.
+*   **Aggregate API Endpoints (Performance)**: Heavy pages use single aggregate endpoints to avoid request waterfalls — `GET /api/integrations/status` returns all five provider statuses (Xero, MYOB, QuickBooks, Google Calendar, Outlook) in parallel for the Integrations page, and `GET /api/whs/summary` returns all seven WHS lists (incidents, emergency info, JSAs, hazard reports, PPE checklists, training records, SWMS docs with batched hazard/signature counts) in parallel for the WHS Hub overview. Both fan out internally via Promise.all with per-call resilience fallbacks. Sub-tab mutations in WhsHub also invalidate `/api/whs/summary` to keep overview counts in sync.
 
 ### External Dependencies
 *   **Database**: PostgreSQL (Neon serverless)
