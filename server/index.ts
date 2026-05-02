@@ -296,7 +296,7 @@ if (process.env.DATABASE_URL) {
         frameAncestors: isDev
           ? ["'self'", "https://*.replit.dev", "https://*.replit.com", "https://replit.com"]
           : ["'self'"],
-        imgSrc: ["'self'", "data:", "blob:", "https://*.basemaps.cartocdn.com", "https://maps.gstatic.com", "https://*.googleusercontent.com", "https://*.replit.dev"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
         workerSrc: ["'self'", "blob:"],
         mediaSrc: ["'self'", "blob:"],
       },

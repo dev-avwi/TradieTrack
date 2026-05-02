@@ -370,8 +370,23 @@ export async function handleWorkerStatusChange(params: WorkerStatusParams): Prom
         const lastSms = await storage.getLastSmsNotification(assignmentId, status);
         const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
+        // Cross-status anti-spam: don't send "in_progress" SMS if "arrived" SMS was sent
+        // in the last 30 minutes — workers often press Arrived → Start Work back-to-back,
+        // and the client doesn't need two near-identical updates.
+        let crossStatusBlocked = false;
+        if (status === 'in_progress') {
+          const recentArrived = await storage.getLastSmsNotification(assignmentId, 'arrived');
+          const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+          if (recentArrived && new Date(recentArrived.sentAt) > thirtyMinutesAgo) {
+            crossStatusBlocked = true;
+            console.log(`[WorkerStatus] Cross-status anti-spam: in_progress SMS blocked for assignment ${assignmentId}, arrived SMS sent at ${recentArrived.sentAt}`);
+          }
+        }
+
         if (lastSms && new Date(lastSms.sentAt) > tenMinutesAgo) {
           console.log(`[WorkerStatus] Anti-spam: ${status} SMS blocked for assignment ${assignmentId}, last sent ${lastSms.sentAt}`);
+        } else if (crossStatusBlocked) {
+          // Skip — already logged above
         } else if (!lastSms || new Date(lastSms.sentAt) <= tenMinutesAgo) {
           try {
             await sendSmsToClient({
@@ -454,7 +469,10 @@ export async function handleDelayedNotification(params: {
   if (!portalToken) portalToken = await storage.getActiveJobPortalToken(jobId);
   const portalUrl = portalToken ? `${baseUrl}/p/${portalToken.token}` : '';
 
-  const smsBody = `JobRunner — ${businessName}: ${workerName} is delayed ~${newEtaMinutes} mins. Track here: ${portalUrl}`;
+  const ownerPhone = business?.phone || '';
+  const contactSuffix = ownerPhone ? ` Questions? Call ${ownerPhone}.` : '';
+  const trackSuffix = portalUrl ? ` Track live: ${portalUrl}.` : '';
+  const smsBody = `${businessName}: Apologies — ${workerName} is running ~${newEtaMinutes} mins late.${trackSuffix}${contactSuffix}`;
 
   const lastSms = await storage.getLastSmsNotification(assignmentId, 'delayed');
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);

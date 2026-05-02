@@ -28,6 +28,43 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+function WorkerAvatar({
+  photoUrl,
+  name,
+  initials,
+  bgColor,
+  bgClass,
+  textClass = "text-sm",
+}: {
+  photoUrl?: string | null;
+  name: string;
+  initials: string;
+  bgColor?: string;
+  bgClass?: string;
+  textClass?: string;
+}) {
+  const [errored, setErrored] = useState(false);
+  if (photoUrl && !errored) {
+    return (
+      <img
+        src={photoUrl}
+        alt={name}
+        loading="lazy"
+        className="w-12 h-12 rounded-full object-cover shadow-md"
+        onError={() => setErrored(true)}
+      />
+    );
+  }
+  return (
+    <div
+      className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold ${textClass} shadow-md ${bgClass ?? ''}`}
+      style={bgColor ? { backgroundColor: bgColor } : undefined}
+    >
+      {initials}
+    </div>
+  );
+}
+
 interface TimelineEvent {
   stage: string;
   label: string;
@@ -70,7 +107,7 @@ interface JobPortalData {
     logo?: string;
     abn?: string;
   };
-  worker: { firstName: string; lastName: string; phone?: string } | null;
+  worker: { firstName: string; lastName: string; phone?: string; photoUrl?: string | null } | null;
   client: { name: string; phone?: string; phoneLast4?: string } | null;
   documents: {
     quotes: Array<{ id: number; title: string; status: string; total: string; token: string; createdAt: string }>;
@@ -110,6 +147,7 @@ interface PortalAssignment {
   worker: {
     name: string;
     phone: string | null;
+    photoUrl?: string | null;
   };
 }
 
@@ -1296,10 +1334,13 @@ export default function JobPortal() {
                   return (
                     <div key={a.id} className="flex items-center gap-3">
                       <div className="relative flex-shrink-0">
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md"
-                          style={{ backgroundColor: color }}>
-                          {initials}
-                        </div>
+                        <WorkerAvatar
+                          photoUrl={a.worker.photoUrl}
+                          name={a.worker.name}
+                          initials={initials}
+                          bgColor={color}
+                          textClass="text-sm"
+                        />
                         {isActive && (
                           <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white" />
                         )}
@@ -1369,9 +1410,13 @@ export default function JobPortal() {
               <div className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="relative flex-shrink-0">
-                    <div className="w-12 h-12 rounded-full bg-brand flex items-center justify-center text-white font-semibold text-base shadow-md">
-                      {worker.firstName?.[0]}{worker.lastName?.[0]}
-                    </div>
+                    <WorkerAvatar
+                      photoUrl={worker.photoUrl}
+                      name={`${worker.firstName} ${worker.lastName}`}
+                      initials={`${worker.firstName?.[0] ?? ''}${worker.lastName?.[0] ?? ''}`.toUpperCase()}
+                      bgClass="bg-brand"
+                      textClass="text-base"
+                    />
                     {job.workerStatus && ['on_my_way', 'arrived', 'in_progress'].includes(job.workerStatus) && (
                       <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white" />
                     )}

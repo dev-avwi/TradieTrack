@@ -21596,6 +21596,7 @@ Be specific about materials, colors, and features that would be included.`
             firstName: showName ? (assignment.workerDisplayNameSnapshot?.split(' ')[0] || worker?.firstName || null) : null,
             lastName: showName ? (assignment.workerDisplayNameSnapshot?.split(' ').slice(1).join(' ') || worker?.lastName || null) : null,
             phone: showPhone ? (assignment.workerPhoneSnapshot || worker?.phone || null) : (businessSettingsData?.phone || null),
+            photoUrl: showName ? (worker?.profileImageUrl || null) : null,
           };
         }
       }
@@ -21619,6 +21620,7 @@ Be specific about materials, colors, and features that would be included.`
           worker: {
             name: showName ? (a.workerDisplayNameSnapshot || (worker ? `${worker.firstName || ''} ${worker.lastName || ''}`.trim() : 'Worker')) : 'Support Crew',
             phone: showPhone ? (a.workerPhoneSnapshot || worker?.phone || null) : null,
+            photoUrl: showName ? (worker?.profileImageUrl || null) : null,
           },
         };
       }));
@@ -21628,10 +21630,18 @@ Be specific about materials, colors, and features that would be included.`
         const teamMembersList = await storage.getTeamMembers(portalToken.userId);
         const assigned = teamMembersList.find((m: any) => m.id === job.assignedTo || m.memberId === job.assignedTo);
         if (assigned) {
+          let assignedPhotoUrl: string | null = null;
+          if (assigned.memberId) {
+            try {
+              const linkedUser = await storage.getUser(assigned.memberId);
+              assignedPhotoUrl = linkedUser?.profileImageUrl || null;
+            } catch {}
+          }
           workerInfo = {
             firstName: assigned.firstName,
             lastName: assigned.lastName,
             phone: businessSettingsData?.phone || null,
+            photoUrl: assignedPhotoUrl,
           };
         }
       }
@@ -21640,6 +21650,7 @@ Be specific about materials, colors, and features that would be included.`
           firstName: businessOwner.firstName,
           lastName: businessOwner.lastName,
           phone: businessSettingsData?.phone || null,
+          photoUrl: businessOwner.profileImageUrl || null,
         };
       }
       
