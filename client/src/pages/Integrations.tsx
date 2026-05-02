@@ -249,9 +249,22 @@ export default function Integrations() {
     },
   });
 
-  const { data: xeroStatus, refetch: refetchXero } = useQuery<XeroStatus>({
-    queryKey: ['/api/integrations/xero/status'],
+  // Aggregate status query — fetches all 5 provider statuses in a single
+  // server round-trip (was 5 parallel requests). Individual refetch* callbacks
+  // below all alias to refetching this aggregate so mutations still work.
+  const { data: allIntegrationsStatus, refetch: refetchAllIntegrations } = useQuery<{
+    xero: XeroStatus;
+    myob: MyobStatus;
+    quickbooks: QuickBooksStatus;
+    googleCalendar: GoogleCalendarStatus;
+    outlook: OutlookStatus;
+  }>({
+    queryKey: ['/api/integrations/status'],
+    staleTime: 30_000,
   });
+
+  const xeroStatus = allIntegrationsStatus?.xero;
+  const refetchXero = refetchAllIntegrations;
 
   const connectXeroMutation = useMutation({
     mutationFn: async () => {
@@ -396,9 +409,8 @@ export default function Integrations() {
     },
   });
 
-  const { data: myobStatus, refetch: refetchMyob } = useQuery<MyobStatus>({
-    queryKey: ['/api/integrations/myob/status'],
-  });
+  const myobStatus = allIntegrationsStatus?.myob;
+  const refetchMyob = refetchAllIntegrations;
 
   const connectMyobMutation = useMutation({
     mutationFn: async () => {
@@ -542,9 +554,8 @@ export default function Integrations() {
   });
 
   const [quickbooksSyncError, setQuickbooksSyncError] = useState<string | undefined>();
-  const { data: quickbooksStatus, refetch: refetchQuickbooks } = useQuery<QuickBooksStatus>({
-    queryKey: ['/api/integrations/quickbooks/status'],
-  });
+  const quickbooksStatus = allIntegrationsStatus?.quickbooks;
+  const refetchQuickbooks = refetchAllIntegrations;
 
   const connectQuickbooksMutation = useMutation({
     mutationFn: async () => {
@@ -696,11 +707,8 @@ export default function Integrations() {
     },
   });
 
-  const { data: googleCalendarStatus, refetch: refetchGoogleCalendar } = useQuery<GoogleCalendarStatus>({
-    queryKey: ['/api/integrations/google-calendar/status'],
-    staleTime: 0,
-    gcTime: 0,
-  });
+  const googleCalendarStatus = allIntegrationsStatus?.googleCalendar;
+  const refetchGoogleCalendar = refetchAllIntegrations;
 
   const connectGoogleCalendarMutation = useMutation({
     mutationFn: async () => {
@@ -762,11 +770,8 @@ export default function Integrations() {
     },
   });
 
-  const { data: outlookStatus, refetch: refetchOutlook } = useQuery<OutlookStatus>({
-    queryKey: ['/api/integrations/outlook/status'],
-    staleTime: 0,
-    gcTime: 0,
-  });
+  const outlookStatus = allIntegrationsStatus?.outlook;
+  const refetchOutlook = refetchAllIntegrations;
 
   const connectOutlookMutation = useMutation({
     mutationFn: async () => {

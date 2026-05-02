@@ -11086,6 +11086,74 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Aggregate status for the Integrations page — runs all provider status
+  // checks in parallel server-side instead of 5 separate round-trips. Each
+  // sub-result is wrapped in allSettled so one slow/failing provider can't
+  // block the rest. Frontend should prefer this over the individual
+  // /api/integrations/<provider>/status endpoints (which remain for
+  // refetch-after-action use cases).
+  app.get("/api/integrations/status", requireAuth, async (req: any, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+
+    const userId = req.userId;
+
+    const safe = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+      try {
+        return await fn();
+      } catch (err: any) {
+        return fallback;
+      }
+    };
+
+    const xeroP = safe(async () => {
+      if (!xeroService.isXeroConfigured()) {
+        return { configured: false, connected: false, message: "Xero integration is coming soon" };
+      }
+      const status = await xeroService.getConnectionStatus(userId);
+      return { configured: true, ...status };
+    }, { configured: false, connected: false, error: "Failed to load Xero status" });
+
+    const myobP = safe(async () => {
+      if (!myobService.isMyobConfigured()) {
+        return { configured: false, connected: false, message: "MYOB integration is coming soon" };
+      }
+      const status = await myobService.getConnectionStatus(userId);
+      return { configured: true, ...status };
+    }, { configured: false, connected: false, error: "Failed to load MYOB status" });
+
+    const quickbooksP = safe(async () => {
+      if (!quickbooksService.isQuickbooksConfigured()) {
+        return { configured: false, connected: false, message: "QuickBooks integration is coming soon" };
+      }
+      const status = await quickbooksService.getConnectionStatus(userId);
+      return status;
+    }, { configured: false, connected: false, error: "Failed to load QuickBooks status" });
+
+    const googleCalendarP = safe(async () => {
+      const { isGoogleCalendarConnected, getCalendarInfo, isGoogleCalendarConfigured } = await import('./googleCalendarClient');
+      if (!isGoogleCalendarConfigured()) {
+        return { configured: false, connected: false, message: "Google Calendar integration is coming soon" };
+      }
+      const userContext = await getUserContext(userId);
+      const calendarInfo = await getCalendarInfo(userContext.effectiveUserId);
+      return { configured: true, connected: calendarInfo?.connected || false, email: calendarInfo?.email };
+    }, { configured: false, connected: false, error: "Failed to load Google Calendar status" });
+
+    const outlookP = safe(async () => {
+      const { getConnectionInfo } = await import('./outlookClient');
+      const userContext = await getUserContext(userId);
+      return await getConnectionInfo(userContext.effectiveUserId);
+    }, { configured: false, connected: false, error: "Failed to load Outlook status" });
+
+    const [xero, myob, quickbooks, googleCalendar, outlook] = await Promise.all([
+      xeroP, myobP, quickbooksP, googleCalendarP, outlookP,
+    ]);
+
+    res.json({ xero, myob, quickbooks, googleCalendar, outlook });
+  });
+
   app.get("/api/integrations/xero/status", requireAuth, async (req: any, res) => {
     try {
       const configured = xeroService.isXeroConfigured();
@@ -48413,6 +48481,81 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     } catch (error) {
       console.error("Get team performance summary error:", error);
       res.status(500).json({ error: "Failed to fetch team performance summary" });
+    }
+  });
+
+  // ============================================
+  // WHS - Aggregate Summary (used by WhsHub overview/sidebar counts)
+  // Returns all 7 lists the WHS hub needs in a single round-trip.
+  // Each query is wrapped so a single failure doesn't 500 the whole page.
+  // ============================================
+  app.get("/api/whs/summary", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
+    try {
+      const userId = req.userId!;
+      const userContext = await getUserContext(userId);
+      const swmsUserId = userContext.effectiveUserId;
+
+      const safe = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+        try { return await fn(); } catch (e: any) {
+          console.error('[WHS summary] sub-query failed:', e?.message || e);
+          return fallback;
+        }
+      };
+
+      const [incidents, emergencyInfo, jsaDocs, hazardReports, ppeChecklists, trainingRecords, swmsRaw] = await Promise.all([
+        safe(() => storage.getIncidentReports(userId), [] as any[]),
+        safe(() => storage.getSiteEmergencyInfo(userId), [] as any[]),
+        safe(() => storage.getJsaDocuments(userId), [] as any[]),
+        safe(() => storage.getHazardReports(userId), [] as any[]),
+        safe(() => storage.getPpeChecklists(userId), [] as any[]),
+        safe(() => storage.getTrainingRecords(userId), [] as any[]),
+        safe(async () => {
+          return await db.select().from(swmsDocuments)
+            .where(eq(swmsDocuments.userId, swmsUserId))
+            .orderBy(desc(swmsDocuments.createdAt));
+        }, [] as any[]),
+      ]);
+
+      // Compute hazard counts for SWMS in a single grouped query (vs N+1).
+      let swmsDocs: any[] = swmsRaw;
+      if (swmsRaw.length > 0) {
+        try {
+          const swmsIds = swmsRaw.map((d: any) => d.id);
+          const hazardCounts = await db
+            .select({ swmsId: swmsHazards.swmsId, count: sql<number>`count(*)` })
+            .from(swmsHazards)
+            .where(inArray(swmsHazards.swmsId, swmsIds))
+            .groupBy(swmsHazards.swmsId);
+          const sigCounts = await db
+            .select({ swmsId: swmsSignatures.swmsId, count: sql<number>`count(*)` })
+            .from(swmsSignatures)
+            .where(inArray(swmsSignatures.swmsId, swmsIds))
+            .groupBy(swmsSignatures.swmsId);
+          const hMap = new Map(hazardCounts.map(r => [r.swmsId, Number(r.count)]));
+          const sMap = new Map(sigCounts.map(r => [r.swmsId, Number(r.count)]));
+          swmsDocs = swmsRaw.map((d: any) => ({
+            ...d,
+            hazardCount: hMap.get(d.id) || 0,
+            signatureCount: sMap.get(d.id) || 0,
+          }));
+        } catch (e: any) {
+          console.error('[WHS summary] SWMS count enrichment failed:', e?.message || e);
+          swmsDocs = swmsRaw.map((d: any) => ({ ...d, hazardCount: 0, signatureCount: 0 }));
+        }
+      }
+
+      res.json({
+        incidents,
+        emergencyInfo,
+        jsaDocs,
+        hazardReports,
+        ppeChecklists,
+        trainingRecords,
+        swmsDocs,
+      });
+    } catch (error: any) {
+      console.error('Get WHS summary error:', error);
+      res.status(500).json({ error: 'Failed to fetch WHS summary' });
     }
   });
 

@@ -2338,13 +2338,29 @@ export default function WhsHub() {
   const [activeSection, setActiveSection] = useState<string>("overview");
   const [overviewPreviewSwmsId, setOverviewPreviewSwmsId] = useState<string | null>(null);
 
-  const { data: incidents = [] } = useQuery<any[]>({ queryKey: ["/api/whs/incidents"] });
-  const { data: emergencyInfo = [] } = useQuery<any[]>({ queryKey: ["/api/whs/emergency-info"] });
-  const { data: jsaDocs = [] } = useQuery<any[]>({ queryKey: ["/api/whs/jsa"] });
-  const { data: hazardReports = [] } = useQuery<any[]>({ queryKey: ["/api/whs/hazard-reports"] });
-  const { data: ppeChecklists = [] } = useQuery<any[]>({ queryKey: ["/api/whs/ppe-checklists"] });
-  const { data: trainingRecords = [] } = useQuery<any[]>({ queryKey: ["/api/whs/training-records"] });
-  const { data: swmsDocs = [] } = useQuery<any[]>({ queryKey: ["/api/swms"] });
+  // Aggregate query: fetches all 7 lists used by the overview/sidebar in a
+  // single round-trip (was 7 parallel requests). Sub-tab components still
+  // use their own queries to fetch full per-section detail when activated.
+  const { data: whsSummary } = useQuery<{
+    incidents: any[];
+    emergencyInfo: any[];
+    jsaDocs: any[];
+    hazardReports: any[];
+    ppeChecklists: any[];
+    trainingRecords: any[];
+    swmsDocs: any[];
+  }>({
+    queryKey: ["/api/whs/summary"],
+    staleTime: 30_000,
+  });
+
+  const incidents = whsSummary?.incidents ?? [];
+  const emergencyInfo = whsSummary?.emergencyInfo ?? [];
+  const jsaDocs = whsSummary?.jsaDocs ?? [];
+  const hazardReports = whsSummary?.hazardReports ?? [];
+  const ppeChecklists = whsSummary?.ppeChecklists ?? [];
+  const trainingRecords = whsSummary?.trainingRecords ?? [];
+  const swmsDocs = whsSummary?.swmsDocs ?? [];
 
   const openIncidents = incidents.filter((r: any) => r.status === "open").length;
   const openHazards = hazardReports.filter((r: any) => r.status === "open").length;
