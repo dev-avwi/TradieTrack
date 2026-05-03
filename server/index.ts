@@ -187,17 +187,19 @@ if (process.env.DATABASE_URL) {
     '/api/webhooks/sendgrid',
     express.raw({ type: 'application/json' }),
     async (req, res) => {
+      const startedAt = Date.now();
       try {
         const { verifySendGridWebhook, processSendGridEvents } = await import('./sendgridWebhook');
         const signature = req.headers['x-twilio-email-event-webhook-signature'] as string | undefined;
         const timestamp = req.headers['x-twilio-email-event-webhook-timestamp'] as string | undefined;
 
         if (!Buffer.isBuffer(req.body)) {
-          console.error('[SendGrid Webhook] req.body is not a Buffer');
+          console.warn(JSON.stringify({ provider: 'sendgrid', signatureValid: false, eventType: null, latencyMs: Date.now() - startedAt, error: 'body_not_buffer' }));
           return res.status(400).json({ error: 'Invalid body' });
         }
 
         if (!verifySendGridWebhook(req.body, signature, timestamp)) {
+          console.warn(JSON.stringify({ provider: 'sendgrid', signatureValid: false, eventType: null, latencyMs: Date.now() - startedAt }));
           return res.status(401).json({ error: 'Invalid signature' });
         }
 
@@ -206,9 +208,11 @@ if (process.env.DATABASE_URL) {
           const parsed = JSON.parse(req.body.toString('utf8'));
           events = Array.isArray(parsed) ? parsed : [parsed];
         } catch {
+          console.warn(JSON.stringify({ provider: 'sendgrid', signatureValid: true, eventType: null, latencyMs: Date.now() - startedAt, error: 'invalid_json' }));
           return res.status(400).json({ error: 'Invalid JSON' });
         }
 
+        console.log(JSON.stringify({ provider: 'sendgrid', signatureValid: true, eventType: 'batch', count: events.length, latencyMs: Date.now() - startedAt }));
         // Acknowledge first so SendGrid doesn't retry on slow processing.
         res.status(200).json({ received: events.length });
         processSendGridEvents(events).catch(err =>
@@ -228,17 +232,20 @@ if (process.env.DATABASE_URL) {
     '/api/webhooks/xero',
     express.raw({ type: 'application/json' }),
     async (req, res) => {
+      const startedAt = Date.now();
       try {
         const xeroService = await import('./xeroService');
         const signature = req.headers['x-xero-signature'] as string;
 
         if (!Buffer.isBuffer(req.body)) {
+          console.warn(JSON.stringify({ provider: 'xero', signatureValid: false, eventType: null, latencyMs: Date.now() - startedAt, error: 'body_not_buffer' }));
           return res.status(401).send();
         }
 
         const rawBody = req.body.toString('utf8');
 
         if (!signature || !xeroService.verifyWebhookSignature(rawBody, signature)) {
+          console.warn(JSON.stringify({ provider: 'xero', signatureValid: false, eventType: null, latencyMs: Date.now() - startedAt }));
           return res.status(401).send();
         }
 
@@ -246,6 +253,7 @@ if (process.env.DATABASE_URL) {
 
         const payload = JSON.parse(rawBody);
         const events = payload.events || [];
+        console.log(JSON.stringify({ provider: 'xero', signatureValid: true, eventType: 'batch', count: events.length, latencyMs: Date.now() - startedAt }));
         for (const event of events) {
           xeroService.processWebhookEvent({
             tenantId: event.tenantId,
@@ -263,6 +271,85 @@ if (process.env.DATABASE_URL) {
     }
   );
   console.log('✅ Xero webhook route configured');
+
+  // Apple App Store Server Notifications V2 webhook.
+  // Registered BEFORE express.json() so the raw JWS body is captured. The JWS
+  // itself is self-signed (x5c chain anchored to Apple Root CA G3) so we don't
+  // need a separate HMAC, but we still gate every side effect behind a fresh
+  // verification of the outer + nested JWS payloads. Forged or unsigned
+  // requests get a fast 401 before any storage call.
+  app.post(
+    '/api/iap/apple-notifications',
+    express.raw({ type: '*/*', limit: '1mb' }),
+    async (req, res) => {
+      const startedAt = Date.now();
+      const log = (fields: Record<string, unknown>) =>
+        console.log(JSON.stringify({ provider: 'apple_iap', latencyMs: Date.now() - startedAt, ...fields }));
+
+      const expectedBundleId = process.env.APPLE_IAP_BUNDLE_ID;
+      if (!expectedBundleId) {
+        log({ signatureValid: false, eventType: null, error: 'APPLE_IAP_BUNDLE_ID_not_set' });
+        return res.status(401).json({ error: 'Webhook verification not configured' });
+      }
+
+      let signedPayload: string | undefined;
+      try {
+        const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';
+        const parsed = raw ? JSON.parse(raw) : {};
+        signedPayload = parsed?.signedPayload;
+      } catch {
+        log({ signatureValid: false, eventType: null, error: 'malformed_json' });
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+
+      if (!signedPayload || typeof signedPayload !== 'string') {
+        log({ signatureValid: false, eventType: null, error: 'missing_signedPayload' });
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+
+      const { verifyAppleJws, verifyAppleNestedJws } = await import('./appleIapVerify');
+      const outer = verifyAppleJws(signedPayload, expectedBundleId);
+      if (!outer.valid || !outer.payload) {
+        log({ signatureValid: false, eventType: null, error: outer.error });
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+
+      const notification = outer.payload;
+      const { notificationType, subtype, data } = notification;
+
+      let transactionInfo: any = null;
+      if (data?.signedTransactionInfo) {
+        const r = verifyAppleNestedJws(data.signedTransactionInfo, expectedBundleId);
+        if (!r.valid) {
+          log({ signatureValid: false, eventType: notificationType, error: `tx:${r.error}` });
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+        transactionInfo = r.payload;
+      }
+      let renewalInfo: any = null;
+      if (data?.signedRenewalInfo) {
+        const r = verifyAppleNestedJws(data.signedRenewalInfo, expectedBundleId);
+        if (!r.valid) {
+          log({ signatureValid: false, eventType: notificationType, error: `renew:${r.error}` });
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+        renewalInfo = r.payload;
+      }
+
+      try {
+        const { applyAppleNotification } = await import('./appleIapWebhook');
+        await applyAppleNotification({ notification, transactionInfo, renewalInfo });
+        log({ signatureValid: true, eventType: notificationType, subtype: subtype || null });
+        res.json({ ok: true });
+      } catch (error: any) {
+        console.error('[AppleWebhook] Error processing notification:', error);
+        log({ signatureValid: true, eventType: notificationType, error: error?.message });
+        // Apple retries on non-2xx; only fail-closed for signature problems.
+        res.json({ ok: true, error: error?.message });
+      }
+    },
+  );
+  console.log('✅ Apple IAP webhook route configured');
 
   // Now apply JSON middleware for all other routes
   // Increase limit to 10MB for voice note and photo uploads (base64 encoded)
