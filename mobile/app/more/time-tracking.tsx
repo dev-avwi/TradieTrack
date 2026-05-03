@@ -16,9 +16,10 @@ import {
   Switch
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Stack, useFocusEffect } from 'expo-router';
+import { Stack, useFocusEffect, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/store';
+import { useUserRole } from '../../src/hooks/use-user-role';
 import api from '../../src/lib/api';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes } from '../../src/lib/design-tokens';
@@ -781,6 +782,7 @@ export default function TimeTrackingScreen() {
   const [teamViewEnabled, setTeamViewEnabled] = useState(false);
   const { user } = useAuthStore();
   const isOwnerOrManager = user?.isOwner === true || user?.roleName === 'MANAGER' || user?.roleName === 'ADMIN';
+  const { hasTeamSubscription } = useUserRole();
 
   const [showAddEntryModal, setShowAddEntryModal] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
@@ -1439,7 +1441,7 @@ export default function TimeTrackingScreen() {
 
     return (
       <View style={{ gap: spacing.md }}>
-        {isOwnerOrManager && (
+        {isOwnerOrManager && hasTeamSubscription && (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.cardBorder }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
               <Feather name={teamViewEnabled ? 'users' : 'user'} size={16} color={teamViewEnabled ? colors.primary : colors.mutedForeground} />
@@ -1457,6 +1459,29 @@ export default function TimeTrackingScreen() {
               ios_backgroundColor={colors.border}
             />
           </View>
+        )}
+        {isOwnerOrManager && !hasTeamSubscription && (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push('/more/subscription')}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.cardBorder, opacity: 0.85 }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+              <Feather name="lock" size={16} color={colors.mutedForeground} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...typography.body, fontWeight: '600', color: colors.foreground }}>
+                  Team Timesheets
+                </Text>
+                <Text style={{ ...typography.caption, color: colors.mutedForeground, marginTop: 2 }}>
+                  Review & approve crew hours — Team plan
+                </Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary + '20', paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.sm }}>
+              <Text style={{ ...typography.caption, fontWeight: '600', color: colors.primary }}>Team</Text>
+              <Feather name="chevron-right" size={14} color={colors.primary} />
+            </View>
+          </TouchableOpacity>
         )}
 
         <View style={styles.sheetDateHeader}>
