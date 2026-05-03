@@ -578,14 +578,9 @@ export default function SubscriptionPage() {
       }
       setPurchasingTier(tier);
 
-      // Safety net: if Apple's purchase callback never reaches us (network issue,
-      // sandbox glitch, app backgrounded), clear the spinner after 90s and let the
-      // user check status / restore. Without this, the button spins forever and
-      // App Review flags it as broken.
       clearPurchaseTimeout();
       purchaseTimeoutRef.current = setTimeout(async () => {
         purchaseTimeoutRef.current = null;
-        // First refresh in case the purchase succeeded but the listener missed it
         try { await useAuthStore.getState().refreshUser(); } catch {}
         await fetchSubscriptionStatus();
         setPurchasingTier(null);
@@ -686,10 +681,20 @@ export default function SubscriptionPage() {
     }
   };
 
+  const openPlatformManageSubscription = async () => {
+    if (Platform.OS === 'ios') {
+      await Linking.openURL('https://apps.apple.com/account/subscriptions');
+    } else if (Platform.OS === 'android') {
+      // Generic Play Store subscription management — works whether or not the
+      // user has an active sub for this app.
+      await Linking.openURL('https://play.google.com/store/account/subscriptions');
+    }
+  };
+
   const handleManageBilling = async () => {
     const source = subscriptionStatus?.subscriptionSource;
     if (source === 'apple') {
-      await Linking.openURL('https://apps.apple.com/account/subscriptions');
+      await openPlatformManageSubscription();
       return;
     }
     if (subscriptionStatus?.isBeta || subscriptionStatus?.betaUser) {
@@ -1051,12 +1056,15 @@ export default function SubscriptionPage() {
           </TouchableOpacity>
         </View>
 
-        {Platform.OS === 'ios' && (
+        {/* Restore Purchases — required by Apple guideline 3.1.1.
+            Surfaced on Android too so subscribers who reinstall can recover. */}
+        {Platform.OS !== 'web' && (
           <TouchableOpacity
             style={styles.restoreButton}
             onPress={handleRestorePurchases}
             disabled={restoring}
             activeOpacity={0.8}
+            testID="button-restore-purchases"
           >
             {restoring ? (
               <ActivityIndicator color={colors.primary} size="small" />
@@ -1066,17 +1074,35 @@ export default function SubscriptionPage() {
           </TouchableOpacity>
         )}
 
-        {Platform.OS === 'ios' && (
+        {/* Manage Subscription deep-link — required by Apple guideline 3.1.2.
+            Always visible (not just for active subs) so reviewers can verify
+            the link works on a fresh account. */}
+        {Platform.OS !== 'web' && (
+          <TouchableOpacity
+            style={styles.restoreButton}
+            onPress={openPlatformManageSubscription}
+            activeOpacity={0.8}
+            testID="button-manage-subscription"
+          >
+            <Text style={styles.restoreButtonText}>
+              {Platform.OS === 'ios' ? 'Manage Subscription in App Store' : 'Manage Subscription in Play Store'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Auto-renewal disclosure + Terms / Privacy / EULA links — required by
+            Apple guideline 3.1.2 and Play subscription content policy. */}
+        {Platform.OS !== 'web' && (
           <View style={styles.subscriptionLegalSection}>
             <Text style={styles.subscriptionLegalText}>
-              Subscriptions automatically renew monthly unless cancelled at least 24 hours before the end of the current period. Your Apple ID account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions in your App Store account settings.
+              Subscriptions automatically renew monthly unless cancelled at least 24 hours before the end of the current period. Your {Platform.OS === 'ios' ? 'Apple ID' : 'Google'} account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions in your {Platform.OS === 'ios' ? 'App Store' : 'Play Store'} account settings.
             </Text>
             <View style={styles.legalLinksRow}>
-              <TouchableOpacity onPress={() => Linking.openURL('https://jobrunner.com.au/terms-of-service')}>
-                <Text style={styles.legalLink}>Terms of Use</Text>
+              <TouchableOpacity onPress={() => Linking.openURL('https://jobrunner.com.au/terms-of-service')} testID="link-terms">
+                <Text style={styles.legalLink}>Terms of Use (EULA)</Text>
               </TouchableOpacity>
               <Text style={styles.legalSeparator}>|</Text>
-              <TouchableOpacity onPress={() => Linking.openURL('https://jobrunner.com.au/privacy-policy')}>
+              <TouchableOpacity onPress={() => Linking.openURL('https://jobrunner.com.au/privacy-policy')} testID="link-privacy">
                 <Text style={styles.legalLink}>Privacy Policy</Text>
               </TouchableOpacity>
             </View>

@@ -363,7 +363,13 @@ export default function DeleteAccountScreen() {
         <Text style={styles.legalNote}>
           By deleting your account, you acknowledge that this action is irreversible. 
           For more information about how we handle your data, please review our{' '}
-          <Text style={styles.privacyLink} onPress={navigateToPrivacy}>Privacy Policy</Text>.
+          <Text style={styles.privacyLink} onPress={navigateToPrivacy}>Privacy Policy</Text>
+          {' '}and{' '}
+          <Text
+            style={styles.privacyLink}
+            onPress={() => router.push('/more/terms-of-service')}
+            testID="link-terms"
+          >Terms of Service</Text>.
         </Text>
       </ScrollView>
     </>

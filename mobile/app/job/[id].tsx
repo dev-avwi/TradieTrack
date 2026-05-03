@@ -38,6 +38,7 @@ import * as Location from 'expo-location';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import api, { API_URL } from '../../src/lib/api';
+import { maybeRequestReview } from '../../src/lib/store-review';
 import { locationTracking } from '../../src/lib/location-tracking';
 import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/store';
 import { Button } from '../../src/components/ui/Button';
@@ -5352,6 +5353,7 @@ export default function JobDetailScreen() {
       if (success) {
         setJob({ ...job, status: 'done' });
         setShowCompletionModal(false);
+        maybeRequestReview('job_completed').catch(() => {});
         
         // Fetch next scheduled job for today
         try {

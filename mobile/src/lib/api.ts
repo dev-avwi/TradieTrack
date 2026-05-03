@@ -1,36 +1,67 @@
 import * as SecureStore from 'expo-secure-store';
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { useOfflineStore } from './offline-storage';
+import { getExpoExtras, getDevHostUri } from './expo-extra';
 
-// Automatic API URL detection
-// - Development (Expo): Uses Replit dev URL
-// - Production (App Store): Uses production domain
+const FORBIDDEN_PROD_HOST_PATTERNS = [
+  /\.replit\.dev/i,
+  /\.repl\.co/i,
+  /localhost/i,
+  /^127\./,
+  /^10\./,
+  /^192\.168\./,
+  /^http:\/\//i,
+];
+
+function assertProdHostAllowed(url: string): void {
+  for (const pattern of FORBIDDEN_PROD_HOST_PATTERNS) {
+    if (pattern.test(url)) {
+      throw new Error(
+        `[API] Refusing to start: configured API URL "${url}" is not a valid production host. Set EXPO_PUBLIC_API_URL in the matching eas.json profile.`
+      );
+    }
+  }
+}
+
 const getApiBaseUrl = (): string => {
-  // Explicit environment variable takes priority
-  if (Constants.expoConfig?.extra?.apiUrl) {
-    return Constants.expoConfig.extra.apiUrl;
+  const extras = getExpoExtras();
+  const fromExtra = extras.apiUrl;
+  const fromEnv = process.env.EXPO_PUBLIC_API_URL;
+  const explicit = (typeof fromExtra === 'string' && fromExtra.length > 0)
+    ? fromExtra
+    : (typeof fromEnv === 'string' && fromEnv.length > 0 ? fromEnv : undefined);
+
+  if (!__DEV__) {
+    if (!explicit) {
+      throw new Error(
+        '[API] No API base URL configured for this build. Set EXPO_PUBLIC_API_URL in the matching eas.json profile.'
+      );
+    }
+    assertProdHostAllowed(explicit);
+    return explicit;
   }
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+
+  if (explicit) return explicit;
+
+  const devOverride = process.env.EXPO_PUBLIC_DEV_API_URL || extras.devApiUrl;
+  if (typeof devOverride === 'string' && devOverride.length > 0) {
+    return devOverride;
   }
-  
-  // Auto-detect based on __DEV__ flag (set by React Native/Expo)
-  if (__DEV__) {
-    // Development mode - use Replit dev server
-    // This URL is the current Replit workspace
-    return 'https://ff735932-1a5e-42dc-89e5-b025f7feea5d-00-3hwzylsjthmgp.worf.replit.dev';
+
+  const hostUri = getDevHostUri();
+  if (typeof hostUri === 'string' && hostUri.length > 0) {
+    const host = hostUri.split(':')[0];
+    if (host && host !== 'localhost') {
+      return `http://${host}:5000`;
+    }
   }
-  
-  // Production builds use the production domain
-  return 'https://jobrunner.com.au';
+  return Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
 };
 
 const API_BASE_URL = getApiBaseUrl();
 
-// Log mode only in development (don't expose URLs in production logs)
 if (__DEV__) {
-  if (__DEV__) console.log(`[API] Development mode, connecting to dev server`);
+  console.log(`[API] base url = ${API_BASE_URL}`);
 }
 
 export const API_URL = API_BASE_URL;

@@ -26,6 +26,7 @@ import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { MobileSendModal } from '../../../src/components/MobileSendModal';
 import { API_URL, api } from '../../../src/lib/api';
+import { maybeRequestReview } from '../../../src/lib/store-review';
 import { getEmailPreference, setEmailPreference, EmailAppPreference } from '../../../src/lib/email-preference';
 import { format } from 'date-fns';
 
@@ -896,6 +897,7 @@ ${businessName}`;
               if (response.ok) {
                 await loadData();
                 Alert.alert('Payment Recorded', 'On-site payment has been recorded successfully');
+                maybeRequestReview('invoice_paid_on_site').catch(() => {});
               } else {
                 const error = await response.json();
                 Alert.alert('Error', error.error || 'Failed to record payment');

@@ -461,6 +461,18 @@ export const adminMenuItems: NavItem[] = [
     category: "admin",
     allowedRoles: ['owner', 'solo_owner'],
   },
+  {
+    title: "API & IAP Debug",
+    url: "/more/api-debug",
+    icon: "terminal",
+    description: "Resolved API host, build profile, IAP state",
+    color: "muted",
+    bgColor: "muted",
+    requiresPlatformAdmin: true,
+    showInMore: true,
+    category: "admin",
+    allowedRoles: ['owner', 'solo_owner'],
+  },
 ];
 
 export const moreNavItem: NavItem = {

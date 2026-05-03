@@ -14,8 +14,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
   ],
-  extra: {
-    ...config.extra,
-    apiUrl: process.env.EXPO_PUBLIC_API_URL || config.extra?.apiUrl,
-  },
+  extra: (() => {
+    const profile = process.env.EAS_BUILD_PROFILE || process.env.APP_VARIANT;
+    const isReleaseProfile =
+      profile === 'production'
+      || profile === 'preview'
+      || process.env.NODE_ENV === 'production';
+    const { apiUrl: _staticApiUrl, devApiUrl: _staticDevApiUrl, ...restExtra } =
+      (config.extra ?? {}) as Record<string, unknown>;
+    return {
+      ...restExtra,
+      apiUrl: process.env.EXPO_PUBLIC_API_URL || undefined,
+      devApiUrl: process.env.EXPO_PUBLIC_DEV_API_URL || undefined,
+      easProfile: profile || (isReleaseProfile ? 'production' : 'development'),
+    };
+  })(),
 });
