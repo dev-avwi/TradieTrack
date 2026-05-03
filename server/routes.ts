@@ -75,6 +75,7 @@ import {
   // Job notes schema
   insertJobNoteSchema,
   insertJobMaterialSchema,
+  jobMaterials,
   // Service reminders schema
   insertServiceReminderSchema,
   // Equipment schemas
@@ -25595,118 +25596,1000 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
-  // Unified dashboard endpoint - single call for web/mobile consistency
-  // Unified dashboard — optimized with SQL aggregation for stats and targeted queries for lists
+  // Unified dashboard endpoint — single aggregate call collapsing 10 fan-out requests.
+  // Each section runs in parallel via safe() and returns either data or { error: "..." }
+  // so a partial failure never breaks the whole dashboard mount (always 200).
+  // Response shape: { user, businessSettings, kpis, jobsToday, teamPresence,
+  //   unassignedJobs, allJobs, activityFeed, integrationsHealth, subscriptionUsage }
   app.get("/api/dashboard/unified", requireAuth, async (req: any, res) => {
+    const userId = req.userId as string;
+
+    const safe = async <T,>(label: string, fn: () => Promise<T>): Promise<T | { error: string }> => {
+      try {
+        return await fn();
+      } catch (err: any) {
+        logger.error('api', `[unified-dashboard] ${label} failed`, { error: err?.message, userId });
+        return { error: err?.message || `Failed to load ${label}` };
+      }
+    };
+
     try {
-      const userContext = await getUserContext(req.userId);
+      const userContext = await getUserContext(userId);
       const uid = userContext.effectiveUserId;
       const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
-      const isOwner = userContext.isOwner;
-      const canManageTeam = hasViewAll;
       const isStaffView = !hasViewAll && !!userContext.teamMemberId;
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
       const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-      const jobsTodayConditions: any[] = [
-        eq(jobs.userId, uid),
-        isNull(jobs.archivedAt),
-        gte(jobs.scheduledAt, today),
-        lt(jobs.scheduledAt, tomorrow),
-      ];
-      if (isStaffView && userContext.teamMemberId) {
-        jobsTodayConditions.push(eq(jobs.assignedTo, userContext.teamMemberId));
-      }
+      const [
+        userResult,
+        businessSettingsResult,
+        kpisResult,
+        jobsTodayResult,
+        teamPresenceResult,
+        allJobsResult,
+        activityFeedResult,
+        integrationsHealthResult,
+        subscriptionUsageResult,
+      ] = await Promise.all([
+        // ---- user (mirrors /api/auth/me safe payload) ----
+        safe('user', async () => {
+          const user = await AuthService.getUserById(userId);
+          if (!user) throw new Error('User not found');
+          const { IS_BETA } = await import('./freemiumService');
+          const safeUser: any = {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            username: user.username,
+            profileImageUrl: user.profileImageUrl,
+            tradeType: user.tradeType,
+            isActive: user.isActive,
+            emailVerified: user.emailVerified,
+            subscriptionTier: user.subscriptionTier,
+            jobsCreatedThisMonth: user.jobsCreatedThisMonth,
+            emailVerificationExpiresAt: user.emailVerificationExpiresAt,
+            subscriptionResetDate: user.subscriptionResetDate,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            googleId: user.googleId,
+            invoicesCreatedThisMonth: user.invoicesCreatedThisMonth,
+            quotesCreatedThisMonth: user.quotesCreatedThisMonth,
+            usageResetDate: user.usageResetDate,
+            trialStatus: user.trialStatus,
+            trialEndsAt: user.trialEndsAt,
+            trialUsedAt: user.trialUsedAt,
+            intendedTier: user.intendedTier,
+            isPlatformAdmin: user.isPlatformAdmin ?? (user as any).is_platform_admin ?? false,
+            hasDemoData: user.hasDemoData ?? false,
+            betaLifetimeAccess: user.betaLifetimeAccess ?? false,
+            betaUser: (user as any).betaUser ?? false,
+            isBeta: IS_BETA,
+          };
+          const wpc = await getWorkerPermissionContext(userId);
+          const response: any = {
+            ...safeUser,
+            workerPermissions: wpc.permissions,
+            isOwner: wpc.isOwner,
+            isWorker: wpc.isWorker,
+            teamMemberId: wpc.teamMemberId,
+            businessOwnerId: wpc.businessOwnerId,
+          };
+          if (!userContext.isOwner) {
+            response.ownerSubscriptionValid = userContext.ownerSubscriptionValid;
+            response.ownerSubscriptionError = userContext.ownerSubscriptionError;
+            response.ownerBusinessName = userContext.ownerBusinessName;
+          }
+          return response;
+        }),
 
-      const [todaysJobs, unpaidResult, quotesResult, earningsResult, teamMembers, activities] = await Promise.all([
-        db.select().from(jobs).where(and(...jobsTodayConditions)).orderBy(asc(jobs.scheduledAt)).limit(20),
-        isStaffView ? Promise.resolve([{ count: 0, total: 0 }]) :
-          db.select({
-            count: sql<number>`count(*)::int`,
-            total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
-          }).from(invoices).where(and(
-            eq(invoices.userId, uid),
-            isNull(invoices.archivedAt),
-            ne(invoices.status, 'paid'),
-            ne(invoices.status, 'draft'),
-          )),
-        isStaffView ? Promise.resolve([{ count: 0 }]) :
-          db.select({ count: sql<number>`count(*)::int` }).from(quotes).where(and(
-            eq(quotes.userId, uid),
-            isNull(quotes.archivedAt),
-            eq(quotes.status, 'sent'),
-          )),
-        isStaffView ? Promise.resolve([{ total: 0 }]) :
-          db.select({
-            total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
-          }).from(invoices).where(and(
-            eq(invoices.userId, uid),
-            eq(invoices.status, 'paid'),
-            gte(invoices.paidAt, currentMonth),
-          )),
-        canManageTeam ? storage.getTeamMembers(uid) : Promise.resolve([]),
-        storage.getActivityLogs(uid, 5),
+        // ---- businessSettings (mirrors /api/business-settings) ----
+        safe('businessSettings', async () => {
+          let settings = await storage.getBusinessSettings(userId);
+          if (!settings) return null;
+          const user = await storage.getUser(userId);
+          if (!settings.onboardingCompleted && user) {
+            const hasTeam = user.teamOwnerId || user.activeTeamId;
+            const hasBusinessSetup = settings.businessName && settings.tradeType;
+            if (hasTeam || hasBusinessSetup) {
+              settings = (await storage.updateBusinessSettings(userId, { onboardingCompleted: true })) || settings;
+            }
+          }
+          let simpleMode: boolean | null | undefined = settings.simpleMode;
+          if (simpleMode === null || simpleMode === undefined) {
+            try {
+              const tm = await storage.getTeamMembers(userId);
+              const accepted = tm.filter((m: any) => m.inviteStatus === 'accepted');
+              simpleMode = accepted.length === 0;
+            } catch {
+              simpleMode = true;
+            }
+          }
+          const ua = req.headers['user-agent'] || '';
+          const isMobileApp = ua.includes('Expo') || ua.includes('ReactNative') || req.headers['x-mobile-app'] === 'true';
+          const responseData: any = {
+            ...settings,
+            simpleMode,
+            logoUrl: resolveBrowserLogoUrl(settings.logoUrl, isMobileApp),
+            subscriptionTier: user?.subscriptionTier || 'free',
+            tradeType: user?.tradeType || 'general',
+          };
+          if (req.isDemo) {
+            responseData.businessName = 'Cairns Pro Plumbing';
+            responseData.companyName = 'Cairns Pro Plumbing Pty Ltd';
+          }
+          return responseData;
+        }),
+
+        // ---- kpis (mirrors /api/dashboard/kpis) ----
+        safe('kpis', async () => {
+          const jobsTodayConditions: any[] = [
+            eq(jobs.userId, uid),
+            isNull(jobs.archivedAt),
+            gte(jobs.scheduledAt, today),
+            lt(jobs.scheduledAt, tomorrow),
+          ];
+          if (isStaffView && userContext.teamMemberId) {
+            jobsTodayConditions.push(eq(jobs.assignedTo, userContext.teamMemberId));
+          }
+          const activeJobsConditions: any[] = [
+            eq(jobs.userId, uid),
+            isNull(jobs.archivedAt),
+            eq(jobs.status, 'in_progress'),
+          ];
+          if (isStaffView && userContext.teamMemberId) {
+            activeJobsConditions.push(eq(jobs.assignedTo, userContext.teamMemberId));
+          }
+          const [
+            jt, aj, unpaid, quotesAwaiting, weekly, monthly, toInvoice,
+          ] = await Promise.all([
+            db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(and(...jobsTodayConditions)),
+            db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(and(...activeJobsConditions)),
+            isStaffView ? Promise.resolve([{ count: 0, total: 0 }]) :
+              db.select({
+                count: sql<number>`count(*)::int`,
+                total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+              }).from(invoices).where(and(
+                eq(invoices.userId, uid),
+                isNull(invoices.archivedAt),
+                ne(invoices.status, 'paid'),
+                ne(invoices.status, 'draft'),
+              )),
+            isStaffView ? Promise.resolve([{ count: 0 }]) :
+              db.select({ count: sql<number>`count(*)::int` }).from(quotes).where(and(
+                eq(quotes.userId, uid),
+                isNull(quotes.archivedAt),
+                eq(quotes.status, 'sent'),
+              )),
+            isStaffView ? Promise.resolve([{ total: 0 }]) :
+              db.select({
+                total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+              }).from(invoices).where(and(
+                eq(invoices.userId, uid),
+                isNull(invoices.archivedAt),
+                eq(invoices.status, 'paid'),
+                gte(invoices.paidAt, startOfWeek),
+              )),
+            isStaffView ? Promise.resolve([{ total: 0 }]) :
+              db.select({
+                total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+              }).from(invoices).where(and(
+                eq(invoices.userId, uid),
+                isNull(invoices.archivedAt),
+                eq(invoices.status, 'paid'),
+                gte(invoices.paidAt, currentMonth),
+              )),
+            isStaffView ? Promise.resolve([{ count: 0 }]) :
+              db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(and(
+                eq(jobs.userId, uid),
+                isNull(jobs.archivedAt),
+                eq(jobs.status, 'done'),
+                sql`${jobs.id} NOT IN (SELECT job_id FROM invoices WHERE job_id IS NOT NULL AND user_id = ${uid} AND archived_at IS NULL)`,
+              )),
+          ]);
+          return {
+            jobsToday: jt[0]?.count ?? 0,
+            unpaidInvoicesCount: unpaid[0]?.count ?? 0,
+            unpaidInvoicesTotal: Number(unpaid[0]?.total ?? 0),
+            quotesAwaiting: quotesAwaiting[0]?.count ?? 0,
+            monthlyEarnings: Number(monthly[0]?.total ?? 0),
+            weeklyEarnings: Number(weekly[0]?.total ?? 0),
+            jobsToInvoice: toInvoice[0]?.count ?? 0,
+            activeJobs: aj[0]?.count ?? 0,
+          };
+        }),
+
+        // ---- jobsToday (mirrors /api/jobs/today) ----
+        safe('jobsToday', async () => {
+          let allJ = await storage.getJobs(uid);
+          const allClients = await storage.getClients(uid);
+          if (!hasViewAll && userContext.teamMemberId) {
+            allJ = allJ.filter((j: any) =>
+              j.assignedTo === userContext.teamMemberId ||
+              j.assignedTo === userContext.userId
+            );
+          }
+          return allJ
+            .filter((j: any) => {
+              if (!j.scheduledAt) return false;
+              const d = new Date(j.scheduledAt);
+              return d >= today && d < tomorrow;
+            })
+            .map((j: any) => {
+              const client = allClients.find((c: any) => c.id === j.clientId);
+              return {
+                ...j,
+                clientName: client?.name || 'Unknown Client',
+                clientPhone: client?.phone || null,
+                clientEmail: client?.email || null,
+              };
+            })
+            .sort((a: any, b: any) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime());
+        }),
+
+        // ---- teamPresence (mirrors /api/team/presence) ----
+        safe('teamPresence', async () => {
+          const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+          const businessOwnerId = teamMembership?.businessOwnerId || userId;
+          const tms = await storage.getTeamMembers(businessOwnerId);
+          const memberIds = new Set<string>([businessOwnerId]);
+          tms.forEach((m: any) => { if (m.memberId) memberIds.add(m.memberId); });
+          const allMemberIds = Array.from(memberIds);
+          const presenceWithUserInfo = await Promise.all(
+            allMemberIds.map(async (memberId) => {
+              const u = await storage.getUser(memberId);
+              if (!u) return null;
+              const tradieStatus = await storage.getTradieStatus(memberId);
+              const latestLocation = await storage.getLatestLocationForUser(memberId);
+              const presence = await storage.getPresenceByUserId(memberId);
+              let activityStatus: string = 'offline';
+              const lastActivity = tradieStatus?.lastSeenAt || latestLocation?.timestamp;
+              if (lastActivity) {
+                const minsSince = (Date.now() - new Date(lastActivity).getTime()) / (1000 * 60);
+                if (minsSince < 15) activityStatus = (tradieStatus?.activityStatus || 'online');
+                else if (minsSince < 60) activityStatus = 'idle';
+              }
+              let destinationJobTitle: string | null = null;
+              if (activityStatus === 'travelling' && tradieStatus?.currentJobId) {
+                try {
+                  const destJob = await storage.getJob(tradieStatus.currentJobId, businessOwnerId);
+                  if (destJob) destinationJobTitle = destJob.title || null;
+                } catch {}
+              }
+              return {
+                id: presence?.id || memberId,
+                userId: memberId,
+                businessOwnerId,
+                status: activityStatus,
+                statusMessage: tradieStatus?.statusMessage || presence?.statusMessage || null,
+                currentJobId: tradieStatus?.currentJobId || presence?.currentJobId || null,
+                destinationJobTitle,
+                lastLocationLat: tradieStatus?.currentLatitude || (latestLocation?.latitude ? parseFloat(latestLocation.latitude) : null),
+                lastLocationLng: tradieStatus?.currentLongitude || (latestLocation?.longitude ? parseFloat(latestLocation.longitude) : null),
+                lastLocationUpdatedAt: tradieStatus?.lastSeenAt || latestLocation?.timestamp || null,
+                lastSeenAt: tradieStatus?.lastSeenAt || presence?.lastSeenAt || null,
+                user: {
+                  id: u.id,
+                  firstName: u.firstName,
+                  lastName: u.lastName,
+                  email: u.email,
+                  profileImageUrl: u.profileImageUrl,
+                  themeColor: u.themeColor,
+                },
+              };
+            })
+          );
+          return presenceWithUserInfo.filter(Boolean);
+        }),
+
+        // ---- allJobs (mirrors /api/jobs default) — also used to derive unassignedJobs slice ----
+        safe('allJobs', async () => {
+          let list = await storage.getJobs(uid, false);
+          if (!hasViewAll && userContext.teamMemberId) {
+            list = list.filter((j: any) =>
+              j.assignedTo === userContext.teamMemberId ||
+              j.assignedTo === userContext.userId
+            );
+          }
+          const allClients = await storage.getClients(uid);
+          const clientMap = new Map(allClients.map((c: any) => [c.id, c]));
+          return list.map((j: any) => {
+            const client = j.clientId ? clientMap.get(j.clientId) : null;
+            return {
+              ...j,
+              clientName: client?.name || null,
+              clientEmail: client?.email || null,
+              clientPhone: client?.phone || null,
+            };
+          });
+        }),
+
+        // ---- activityFeed (mirrors /api/activity-feed?limit=5 — dashboard default) ----
+        safe('activityFeed', async () => {
+          const teamMembership = await storage.getTeamMembershipByMemberId(userId);
+          const businessOwnerId = teamMembership?.businessOwnerId || userId;
+          const activities = await storage.getActivityFeed(businessOwnerId, 5);
+          return activities.filter((a: any) => {
+            if (a.description && typeof a.description === 'string' && a.description.includes('provisioning failed')) return false;
+            return true;
+          });
+        }),
+
+        // ---- integrationsHealth (slim shape — only fields ActivityFeed reads) ----
+        safe('integrationsHealth', async () => {
+          let emailReady = false;
+          try {
+            const { getSendGridCredentials } = await import('./emailService');
+            const creds = await getSendGridCredentials();
+            if (creds.apiKey) emailReady = true;
+          } catch {}
+          if (!emailReady) {
+            try {
+              const { isGmailConnected } = await import('./gmailClient');
+              if (await isGmailConnected()) emailReady = true;
+            } catch {}
+          }
+          if (!emailReady) {
+            try {
+              const { isOutlookConnected } = await import('./outlookClient');
+              if (await isOutlookConnected(userId)) emailReady = true;
+            } catch {}
+          }
+          let smsReady = false;
+          try {
+            const tw = await checkTwilioAvailability();
+            smsReady = tw.verified === true;
+          } catch {}
+          return {
+            services: {
+              email: { status: emailReady ? 'ready' : 'not_connected' },
+              sms: { status: smsReady ? 'ready' : 'not_connected' },
+            },
+          };
+        }),
+
+        // ---- subscriptionUsage (mirrors /api/subscription/usage) ----
+        safe('subscriptionUsage', async () => {
+          const { IS_BETA } = await import('./freemiumService');
+          const usageInfo = await FreemiumService.getFullUsageInfo(userId);
+          const u = await storage.getUser(userId);
+          const bs = await storage.getBusinessSettings(userId);
+          return {
+            ...usageInfo,
+            subscriptionTier: u?.subscriptionTier || 'free',
+            subscriptionStatus: bs?.subscriptionStatus || 'none',
+            betaLifetimeAccess: u?.betaLifetimeAccess || false,
+            isBeta: IS_BETA,
+          };
+        }),
       ]);
 
-      const clientIds = [...new Set(todaysJobs.map(j => j.clientId))];
-      let todaysJobsClients: any[] = [];
-      if (clientIds.length > 0) {
-        todaysJobsClients = await db.select().from(clients).where(inArray(clients.id, clientIds));
-      }
-      const clientMap = new Map(todaysJobsClients.map(c => [c.id, c]));
-
-      let unassignedJobs: any[] = [];
-      if (canManageTeam && teamMembers.length > 0) {
-        unassignedJobs = await db.select().from(jobs).where(and(
-          eq(jobs.userId, uid),
-          isNull(jobs.archivedAt),
-          isNull(jobs.assignedTo),
-          ne(jobs.status, 'done'),
-          ne(jobs.status, 'invoiced'),
-        )).orderBy(desc(jobs.createdAt)).limit(10);
-
-        const unassignedClientIds = [...new Set(unassignedJobs.map(j => j.clientId).filter(id => !clientMap.has(id)))];
-        if (unassignedClientIds.length > 0) {
-          const extraClients = await db.select().from(clients).where(inArray(clients.id, unassignedClientIds));
-          extraClients.forEach(c => clientMap.set(c.id, c));
-        }
+      // Derive unassignedJobs slice from allJobs (no extra DB hit)
+      let unassignedJobsResult: any = { error: 'Unable to compute unassigned jobs' };
+      if (Array.isArray(allJobsResult)) {
+        unassignedJobsResult = allJobsResult.filter((j: any) =>
+          !j.assignedTo &&
+          j.status !== 'done' &&
+          j.status !== 'invoiced'
+        );
+      } else if (allJobsResult && typeof allJobsResult === 'object' && 'error' in allJobsResult) {
+        unassignedJobsResult = { error: allJobsResult.error };
       }
 
-      const activeTeamMembers = teamMembers.filter(m => m.status === 'active');
+      // Second wave — owner/manager dashboard slices, staff dashboard slices,
+      // role/team metadata, and full integrations health. All wrapped in safe()
+      // so each section degrades independently to { error }.
+      const isOwnerOrManager = userContext.isOwner || userContext.permissions.includes(PERMISSIONS.MANAGE_TEAM);
+      const allJobsArr: any[] = Array.isArray(allJobsResult) ? allJobsResult : [];
+
+      const [
+        cashflowResult,
+        profitSnapshotResult,
+        actionCenterResult,
+        teamMyRoleResult,
+        teamMembersResult,
+        integrationsHealthFullResult,
+        myJobsResult,
+        availableJobsResult,
+        activeTimeEntryResult,
+        timeTrackingDashboardResult,
+      ] = await Promise.all([
+        // ---- cashflow (owner/manager only) ----
+        safe('cashflow', async () => {
+          if (!isOwnerOrManager) return { error: 'Access denied - owners and managers only' };
+          const now = new Date();
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+          const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+          const openStatuses = ['sent', 'viewed'];
+          const [
+            outstandingResult, overdueResult, dueThisWeekResult,
+            collectedThisMonthResult, collectedLastMonthResult,
+            overdueInvoiceRows, revenueByWeekResult,
+          ] = await Promise.all([
+            db.select({ total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric` }).from(invoices).where(and(
+              eq(invoices.userId, uid), isNull(invoices.archivedAt), inArray(invoices.status, openStatuses),
+            )),
+            db.select({
+              count: sql<number>`count(*)::int`,
+              total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+            }).from(invoices).where(and(
+              eq(invoices.userId, uid), isNull(invoices.archivedAt), inArray(invoices.status, openStatuses),
+              isNotNull(invoices.dueDate), lte(invoices.dueDate, now),
+            )),
+            db.select({
+              count: sql<number>`count(*)::int`,
+              total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric`,
+            }).from(invoices).where(and(
+              eq(invoices.userId, uid), isNull(invoices.archivedAt), inArray(invoices.status, openStatuses),
+              isNotNull(invoices.dueDate), gte(invoices.dueDate, now), lte(invoices.dueDate, oneWeekFromNow),
+            )),
+            db.select({ total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric` }).from(invoices).where(and(
+              eq(invoices.userId, uid), eq(invoices.status, 'paid'), gte(invoices.paidAt, startOfMonth),
+            )),
+            db.select({ total: sql<number>`coalesce(sum(${invoices.total}), 0)::numeric` }).from(invoices).where(and(
+              eq(invoices.userId, uid), eq(invoices.status, 'paid'),
+              gte(invoices.paidAt, startOfLastMonth), lte(invoices.paidAt, endOfLastMonth),
+            )),
+            db.select({
+              id: invoices.id, number: invoices.number, total: invoices.total, dueDate: invoices.dueDate,
+            }).from(invoices).where(and(
+              eq(invoices.userId, uid), isNull(invoices.archivedAt), inArray(invoices.status, openStatuses),
+              isNotNull(invoices.dueDate), lte(invoices.dueDate, now),
+            )).orderBy(asc(invoices.dueDate)).limit(5),
+            db.select({
+              week: sql<string>`to_char(date_trunc('week', ${invoices.paidAt}), 'DD Mon')`,
+              amount: sql<number>`coalesce(sum(${invoices.total}), 0)::int`,
+            }).from(invoices).where(and(
+              eq(invoices.userId, uid), eq(invoices.status, 'paid'),
+              gte(invoices.paidAt, new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000)),
+            )).groupBy(sql`date_trunc('week', ${invoices.paidAt})`).orderBy(sql`date_trunc('week', ${invoices.paidAt})`),
+          ]);
+          const overdueInvoicesList = overdueInvoiceRows.map((inv: any) => ({
+            id: inv.id, number: inv.number, clientName: 'Unknown',
+            total: Number(inv.total), dueDate: inv.dueDate,
+            daysOverdue: inv.dueDate ? Math.floor((now.getTime() - new Date(inv.dueDate).getTime()) / (1000 * 60 * 60 * 24)) : 0,
+          }));
+          const collectedThisMonth = Number(collectedThisMonthResult[0]?.total ?? 0);
+          const collectedLastMonth = Number(collectedLastMonthResult[0]?.total ?? 0);
+          return {
+            outstandingTotal: Math.round(Number(outstandingResult[0]?.total ?? 0)),
+            overdueTotal: Math.round(Number(overdueResult[0]?.total ?? 0)),
+            overdueCount: overdueResult[0]?.count ?? 0,
+            overdueInvoices: overdueInvoicesList,
+            dueThisWeek: Math.round(Number(dueThisWeekResult[0]?.total ?? 0)),
+            dueThisWeekCount: dueThisWeekResult[0]?.count ?? 0,
+            collectedThisMonth: Math.round(collectedThisMonth),
+            collectedLastMonth: Math.round(collectedLastMonth),
+            collectedTrend: collectedLastMonth > 0 ? Math.round(((collectedThisMonth - collectedLastMonth) / collectedLastMonth) * 100) : 0,
+            revenueByWeek: revenueByWeekResult.map((r: any) => ({ week: r.week, amount: Number(r.amount) })),
+          };
+        }),
+
+        // ---- profitSnapshot (owner/manager only, batched job materials) ----
+        safe('profitSnapshot', async () => {
+          if (!isOwnerOrManager) return { error: 'Access denied - owners and managers only' };
+          const now = new Date();
+          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const tomorrowStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+          const weekStart = new Date(todayStart);
+          weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+          const allInvoices = await storage.getInvoices(uid);
+          const paidInvoices = allInvoices.filter((i: any) => i.status === 'paid' && i.paidAt);
+          const revenueToday = paidInvoices
+            .filter((i: any) => { const d = new Date(i.paidAt!); return d >= todayStart && d < tomorrowStart; })
+            .reduce((sum: number, i: any) => sum + parseFloat(i.total || '0'), 0);
+          const revenueThisWeek = paidInvoices
+            .filter((i: any) => new Date(i.paidAt!) >= weekStart)
+            .reduce((sum: number, i: any) => sum + parseFloat(i.total || '0'), 0);
+          const revenueThisMonth = paidInvoices
+            .filter((i: any) => new Date(i.paidAt!) >= monthStart)
+            .reduce((sum: number, i: any) => sum + parseFloat(i.total || '0'), 0);
+          let labourCostThisMonth = 0;
+          try {
+            const timeEntries = await storage.getTimeEntriesInRange(uid, monthStart, now);
+            labourCostThisMonth = timeEntries
+              .filter((e: any) => e.endTime)
+              .reduce((sum: number, e: any) => {
+                const hours = (new Date(e.endTime!).getTime() - new Date(e.startTime).getTime()) / (1000 * 60 * 60);
+                return sum + (hours * parseFloat(e.hourlyRate?.toString() || '0'));
+              }, 0);
+          } catch {}
+          let materialCostThisMonth = 0;
+          try {
+            const allJobIds = allJobsArr.map((j: any) => j.id);
+            if (allJobIds.length > 0) {
+              const totalRow = await db.select({
+                total: sql<string>`coalesce(sum(${jobMaterials.totalCost}), 0)::numeric`,
+              })
+                .from(jobMaterials)
+                .where(and(
+                  eq(jobMaterials.userId, uid),
+                  inArray(jobMaterials.jobId, allJobIds),
+                ));
+              materialCostThisMonth = parseFloat(totalRow[0]?.total?.toString() || '0');
+            }
+          } catch {}
+          const grossProfit = revenueThisMonth - labourCostThisMonth - materialCostThisMonth;
+          const grossMargin = revenueThisMonth > 0 ? (grossProfit / revenueThisMonth) * 100 : 0;
+          return {
+            revenueToday, revenueThisWeek, revenueThisMonth,
+            labourCostThisMonth, materialCostThisMonth,
+            grossProfit, grossMargin: parseFloat(grossMargin.toFixed(1)),
+            cashCollectedToday: revenueToday,
+          };
+        }),
+
+        // ---- actionCenter (BI insights) ----
+        safe('actionCenter', async () => {
+          const [acQuotes, acInvoices] = await Promise.all([
+            storage.getQuotes(uid),
+            storage.getInvoices(uid),
+          ]);
+          const acJobs = allJobsArr;
+          const actions: any[] = [];
+          const now = new Date();
+          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+          const invoicedJobIds = new Set(acInvoices.filter((i: any) => i.jobId).map((i: any) => i.jobId));
+          const doneNotInvoiced = acJobs.filter((j: any) => j.status === 'done' && !invoicedJobIds.has(j.id));
+          if (doneNotInvoiced.length > 0) {
+            actions.push({
+              id: 'revenue-leak-uninvoiced', priority: 'fix_now',
+              title: `${doneNotInvoiced.length} job${doneNotInvoiced.length > 1 ? 's' : ''} done but not invoiced`,
+              description: 'Completed work without invoices means money left on the table.',
+              impact: 'Revenue at risk', cta: 'Create Invoices',
+              ctaUrl: `/documents?tab=invoices&action=batch_invoice&jobIds=${doneNotInvoiced.map((j: any) => j.id).join(',')}`,
+              metric: `${doneNotInvoiced.length} jobs`, category: 'revenue',
+            });
+          }
+          const overdueInvs = acInvoices.filter((inv: any) => {
+            if (inv.status === 'paid' || inv.status === 'draft') return false;
+            if (!inv.dueDate) return false;
+            return new Date(inv.dueDate) < now;
+          });
+          if (overdueInvs.length > 0) {
+            const overdueTotal = overdueInvs.reduce((s: number, i: any) => s + parseFloat(i.total || '0'), 0);
+            actions.push({
+              id: 'revenue-leak-overdue', priority: 'fix_now',
+              title: `$${overdueTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} overdue across ${overdueInvs.length} invoice${overdueInvs.length > 1 ? 's' : ''}`,
+              description: 'Overdue invoices hurt your cashflow. Send reminders or follow up.',
+              impact: `$${overdueTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} at risk`,
+              cta: 'Chase Payments', ctaUrl: '/documents?tab=invoices&filter=overdue',
+              metric: `$${overdueTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              category: 'revenue',
+            });
+          }
+          const staleQuotes = acQuotes.filter((q: any) => {
+            if (q.status !== 'sent') return false;
+            const sentDate = q.sentAt ? new Date(q.sentAt) : (q.createdAt ? new Date(q.createdAt) : null);
+            return sentDate && sentDate < sevenDaysAgo;
+          });
+          if (staleQuotes.length > 0) {
+            const staleTotal = staleQuotes.reduce((s: number, q: any) => s + parseFloat(q.total || '0'), 0);
+            actions.push({
+              id: 'revenue-leak-stale-quotes',
+              priority: staleQuotes.some((q: any) => {
+                const sd = q.sentAt ? new Date(q.sentAt) : (q.createdAt ? new Date(q.createdAt) : null);
+                return sd && sd < fourteenDaysAgo;
+              }) ? 'fix_now' : 'this_week',
+              title: `${staleQuotes.length} quote${staleQuotes.length > 1 ? 's' : ''} waiting over 7 days`,
+              description: 'Quotes older than a week are much less likely to convert. Follow up or close them.',
+              impact: `$${staleTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} potential revenue`,
+              cta: 'Follow Up', ctaUrl: '/documents?tab=quotes&filter=sent',
+              metric: `${staleQuotes.length} quotes`, category: 'revenue',
+            });
+          }
+          const draftInvs = acInvoices.filter((i: any) => i.status === 'draft');
+          if (draftInvs.length > 0) {
+            const draftTotal = draftInvs.reduce((s: number, i: any) => s + parseFloat(i.total || '0'), 0);
+            actions.push({
+              id: 'revenue-leak-draft-invoices',
+              priority: draftInvs.length >= 3 ? 'this_week' : 'suggestions',
+              title: `${draftInvs.length} draft invoice${draftInvs.length > 1 ? 's' : ''} not sent`,
+              description: "Invoices sitting in draft aren't earning you money. Review and send them.",
+              impact: `$${draftTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} waiting to be sent`,
+              cta: 'Review Drafts', ctaUrl: '/documents?tab=invoices&filter=draft',
+              metric: `$${draftTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              category: 'revenue',
+            });
+          }
+          const draftQuotes = acQuotes.filter((q: any) => q.status === 'draft');
+          if (draftQuotes.length >= 2) {
+            actions.push({
+              id: 'quotes-unsent', priority: 'this_week',
+              title: `${draftQuotes.length} quotes ready to send`,
+              description: 'Unsent quotes delay potential work. Review and send them to start winning jobs.',
+              impact: 'Win more work', cta: 'Review Quotes',
+              ctaUrl: '/documents?tab=quotes&filter=draft',
+              metric: `${draftQuotes.length} drafts`, category: 'revenue',
+            });
+          }
+          actions.sort((a: any, b: any) => {
+            const order: any = { fix_now: 0, this_week: 1, suggestions: 2 };
+            return order[a.priority] - order[b.priority];
+          });
+          const fixNow = actions.filter((a: any) => a.priority === 'fix_now');
+          const thisWeek = actions.filter((a: any) => a.priority === 'this_week');
+          const suggestions = actions.filter((a: any) => a.priority === 'suggestions');
+          return {
+            actions,
+            summary: {
+              fixNowCount: fixNow.length,
+              thisWeekCount: thisWeek.length,
+              suggestionsCount: suggestions.length,
+              totalCount: actions.length,
+            },
+            sections: { fix_now: fixNow, this_week: thisWeek, suggestions },
+          };
+        }),
+
+        // ---- teamMyRole (mirrors /api/team/my-role) ----
+        safe('teamMyRole', async () => {
+          const myMembership = await storage.getTeamMembershipByMemberId(userId);
+          if (!myMembership || myMembership.inviteStatus !== 'accepted') {
+            const u = await storage.getUser(userId);
+            if (u) {
+              return {
+                role: 'owner',
+                permissions: {
+                  canViewDashboard: true, canManageJobs: true, canManageClients: true,
+                  canManageQuotes: true, canManageInvoices: true, canManageTeam: true,
+                  canViewReports: true, canManageSettings: true, canViewMap: true,
+                  canAccessDispatch: true,
+                },
+                ownerId: userId, isOwner: true,
+              };
+            }
+            return { error: 'Not a team member' };
+          }
+          const role = await storage.getUserRole(myMembership.roleId);
+          if (!role) return { error: 'Role not found' };
+          const effectivePermissions = (myMembership.useCustomPermissions && myMembership.customPermissions)
+            ? myMembership.customPermissions
+            : (role.permissions || []);
+          return {
+            roleId: role.id, roleName: role.name,
+            permissions: effectivePermissions,
+            hasCustomPermissions: myMembership.useCustomPermissions || false,
+            customPermissions: myMembership.customPermissions || null,
+            teamMemberId: myMembership.id || null,
+          };
+        }),
+
+        // ---- teamMembers (mirrors /api/team/members lite — no auto-color writes) ----
+        safe('teamMembers', async () => {
+          const tms = await storage.getTeamMembers(userId);
+          const allRoles = await storage.getUserRoles();
+          const roleMap = new Map(allRoles.map((r: any) => [r.id, r]));
+          const enriched = await Promise.all(tms.map(async (member: any) => {
+            let memberUser: any = null;
+            if (member.memberId) memberUser = await storage.getUser(member.memberId);
+            const roleData: any = roleMap.get(member.roleId);
+            const roleName = roleData?.name || 'Team Member';
+            const roleNormalized = roleName.toLowerCase().replace(/\s+/g, '_');
+            const displayName = [member.firstName, member.lastName].filter(Boolean).join(' ')
+              || (memberUser ? [memberUser.firstName, memberUser.lastName].filter(Boolean).join(' ') : '')
+              || memberUser?.email?.split('@')[0]
+              || member.email?.split('@')[0]
+              || '';
+            return {
+              ...member,
+              userId: member.memberId,
+              name: displayName,
+              username: memberUser?.username || memberUser?.email || displayName,
+              email: memberUser?.email || member.email || '',
+              role: roleNormalized,
+              roleName,
+              roleDescription: roleData?.description || '',
+              themeColor: memberUser?.themeColor || null,
+            };
+          }));
+          return enriched;
+        }),
+
+        // ---- integrationsHealth FULL (mirrors /api/integrations/health) ----
+        safe('integrationsHealthFull', async () => {
+          const stripePublicKey = process.env.VITE_STRIPE_PUBLIC_KEY || process.env.TESTING_VITE_STRIPE_PUBLIC_KEY || '';
+          const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.TESTING_STRIPE_SECRET_KEY || '';
+          const isStripeTestMode = stripePublicKey.startsWith('pk_test_') || stripeSecretKey.startsWith('sk_test_');
+          const bs = await storage.getBusinessSettings(userId);
+          const stripeConnectAccountId = bs?.stripeConnectAccountId;
+          let stripeConnectStatus: any = {
+            connected: false, accountId: null, chargesEnabled: false, payoutsEnabled: false,
+            detailsSubmitted: false, businessName: null, email: null,
+          };
+          if (stripeConnectAccountId) {
+            try {
+              const stripe = await getUncachableStripeClient();
+              if (stripe) {
+                const account = await stripe.accounts.retrieve(stripeConnectAccountId);
+                stripeConnectStatus = {
+                  connected: true, accountId: stripeConnectAccountId,
+                  chargesEnabled: account.charges_enabled || false,
+                  payoutsEnabled: account.payouts_enabled || false,
+                  detailsSubmitted: account.details_submitted || false,
+                  businessName: account.business_profile?.name || null,
+                  email: account.email || null,
+                };
+              }
+            } catch {}
+          }
+          let emailVerified = false;
+          let emailError: string | null = null;
+          try {
+            const { getSendGridCredentials } = await import('./emailService');
+            const creds = await getSendGridCredentials();
+            if (creds.apiKey) {
+              const sgRes = await fetch('https://api.sendgrid.com/v3/scopes', {
+                headers: { 'Authorization': `Bearer ${creds.apiKey}` },
+              });
+              if (sgRes.ok) emailVerified = true;
+              else emailError = sgRes.status === 401 ? 'SendGrid API key is expired or invalid' : `SendGrid returned ${sgRes.status}`;
+            }
+          } catch (e: any) { emailError = e.message || 'SendGrid not configured'; }
+          if (!emailVerified) {
+            try { const { isGmailConnected } = await import('./gmailClient'); if (await isGmailConnected()) { emailVerified = true; emailError = null; } } catch {}
+          }
+          if (!emailVerified) {
+            try { const { isOutlookConnected } = await import('./outlookClient'); if (await isOutlookConnected(userId)) { emailVerified = true; emailError = null; } } catch {}
+          }
+          if (!emailVerified) {
+            try {
+              const { getEmailIntegration } = await import('./emailIntegrationService');
+              const integration = await getEmailIntegration(userId);
+              if (integration && integration.status === 'connected') { emailVerified = true; emailError = null; }
+            } catch {}
+          }
+          if (!emailVerified && !emailError) emailError = 'No email service connected';
+          let paymentStatus: 'ready' | 'test' | 'error' | 'not_connected' = 'not_connected';
+          let paymentDescription = 'Connect your Stripe account to accept payments';
+          if (stripeConnectStatus.connected) {
+            if (stripeConnectStatus.chargesEnabled && stripeConnectStatus.payoutsEnabled) {
+              paymentStatus = isStripeTestMode ? 'test' : 'ready';
+              paymentDescription = isStripeTestMode
+                ? 'TEST MODE - Connected but using test credentials'
+                : 'Ready to accept payments directly to your bank';
+            } else {
+              paymentStatus = 'error';
+              paymentDescription = 'Stripe account needs additional verification';
+            }
+          }
+          const allReady = stripeConnectStatus.chargesEnabled && stripeConnectStatus.payoutsEnabled && emailVerified && !isStripeTestMode;
+          const servicesReady = (stripeConnectStatus.connected && stripeConnectStatus.chargesEnabled) || emailVerified;
+          let twilioConfigured = false;
+          try { const tw = await checkTwilioAvailability(); twilioConfigured = tw.verified === true; } catch {}
+          const services = {
+            payments: {
+              name: 'Payment Processing', status: paymentStatus, provider: 'Stripe Connect',
+              managed: false, verified: stripeConnectStatus.chargesEnabled && stripeConnectStatus.payoutsEnabled,
+              testMode: isStripeTestMode, hasLiveKeys: !isStripeTestMode, error: null,
+              description: paymentDescription,
+            },
+            email: {
+              name: 'Email Delivery', status: emailVerified ? 'ready' : 'demo',
+              provider: 'Gmail/SendGrid', managed: true, verified: emailVerified, error: emailError,
+              description: emailVerified ? 'Quotes and invoices delivered via email' : 'Uses Gmail link to compose emails',
+            },
+            sendgrid: {
+              name: 'Email Automation', status: (emailVerified ? 'ready' : 'not_connected'),
+              provider: 'SendGrid', managed: true, verified: emailVerified, error: emailError,
+              description: emailVerified ? 'Automatic email sending enabled' : 'Connect to send emails automatically',
+            },
+            twilio: {
+              name: 'SMS Notifications', status: (twilioConfigured ? 'ready' : 'not_connected'),
+              provider: 'Twilio', managed: true, verified: twilioConfigured, error: null,
+              description: twilioConfigured ? 'SMS notifications enabled' : 'Connect to send SMS reminders',
+            },
+          };
+          const accountingStatus: any = { xero: null, quickbooks: null, myob: null };
+          try {
+            const xs = await xeroService.getConnectionStatus(userId);
+            accountingStatus.xero = { connected: xs?.connected || false, name: xs?.tenantName || null, lastSync: xs?.lastSyncAt || null, needsReconnect: xs?.connected && xs?.status === 'token_expired' ? true : false };
+          } catch { accountingStatus.xero = { connected: false, name: null, lastSync: null, needsReconnect: false }; }
+          try {
+            const qs = await quickbooksService.getConnectionStatus(userId);
+            accountingStatus.quickbooks = { connected: qs?.connected || false, name: qs?.companyName || null, lastSync: qs?.lastSyncAt || null, needsReconnect: false };
+          } catch { accountingStatus.quickbooks = { connected: false, name: null, lastSync: null, needsReconnect: false }; }
+          try {
+            const ms = await myobService.getConnectionStatus(userId);
+            accountingStatus.myob = { connected: ms?.connected || false, name: ms?.companyName || null, lastSync: ms?.lastSyncAt || null, needsReconnect: false };
+          } catch { accountingStatus.myob = { connected: false, name: null, lastSync: null, needsReconnect: false }; }
+          const calendarStatus: any = { googleCalendar: null, outlook: null };
+          try {
+            const { isGoogleCalendarConnected, getConnectionInfo } = await import('./googleCalendarClient');
+            const gc = await isGoogleCalendarConnected(userId);
+            const gci = gc ? await getConnectionInfo(userId) : null;
+            calendarStatus.googleCalendar = { connected: gc, email: gci?.email || null, needsReconnect: false };
+          } catch { calendarStatus.googleCalendar = { connected: false, email: null, needsReconnect: false }; }
+          try {
+            const { isOutlookConnected, getConnectionInfo: getOutlookInfo } = await import('./outlookClient');
+            const ol = await isOutlookConnected(userId);
+            const oli = ol ? await getOutlookInfo(userId) : null;
+            calendarStatus.outlook = { connected: ol, email: oli?.email || null, needsReconnect: false };
+          } catch { calendarStatus.outlook = { connected: false, email: null, needsReconnect: false }; }
+          const needsReconnect = [
+            accountingStatus.xero?.needsReconnect,
+            accountingStatus.quickbooks?.needsReconnect,
+            accountingStatus.myob?.needsReconnect,
+            calendarStatus.googleCalendar?.needsReconnect,
+            calendarStatus.outlook?.needsReconnect,
+          ].some(Boolean);
+          return {
+            allReady, servicesReady,
+            message: allReady
+              ? 'All integrations ready - you can accept payments!'
+              : (stripeConnectStatus.connected ? 'Complete Stripe setup to start accepting payments' : 'Connect Stripe to accept payments'),
+            services, stripeConnect: stripeConnectStatus,
+            accounting: accountingStatus, calendar: calendarStatus,
+            needsReconnect, checkedAt: new Date().toISOString(),
+          };
+        }),
+
+        // ---- myJobs (mirrors /api/jobs/my-jobs) ----
+        safe('myJobs', async () => {
+          const canSeeSensitive = userContext.isOwner || userContext.permissions.includes(PERMISSIONS.READ_CLIENTS_SENSITIVE);
+          const allClients = await storage.getClients(uid);
+          return allJobsArr
+            .filter((job: any) =>
+              job.assignedTo === userContext.teamMemberId ||
+              job.assignedTo === userContext.userId
+            )
+            .map((job: any) => {
+              const client = allClients.find((c: any) => c.id === job.clientId);
+              return {
+                ...job,
+                clientName: client?.name || 'Unknown Client',
+                clientPhone: canSeeSensitive ? (client?.phone || null) : null,
+                clientEmail: canSeeSensitive ? (client?.email || null) : null,
+              };
+            })
+            .sort((a: any, b: any) => {
+              if (a.scheduledAt && b.scheduledAt) return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+              if (a.scheduledAt) return -1;
+              if (b.scheduledAt) return 1;
+              return 0;
+            });
+        }),
+
+        // ---- availableJobs (mirrors /api/jobs/available — privacy-stripped) ----
+        safe('availableJobs', async () => {
+          const hasReqPerm = userContext.permissions.includes('request_job_assignment') || userContext.isOwner;
+          if (!hasReqPerm) return { error: "You don't have permission to view available jobs" };
+          return allJobsArr
+            .filter((job: any) =>
+              !job.assignedTo &&
+              job.status !== 'done' &&
+              job.status !== 'invoiced' &&
+              job.status !== 'cancelled' &&
+              !job.isArchived
+            )
+            .map((job: any) => ({
+              id: job.id, title: job.title,
+              description: job.description ? job.description.substring(0, 100) + (job.description.length > 100 ? '...' : '') : null,
+              status: job.status,
+              scheduledAt: job.scheduledAt, scheduledEndAt: job.scheduledEndAt,
+              estimatedDuration: job.estimatedDuration, priority: job.priority,
+              suburb: job.address ? job.address.split(',').slice(-2, -1)[0]?.trim() : null,
+              createdAt: job.createdAt,
+            }))
+            .sort((a: any, b: any) => {
+              if (a.scheduledAt && b.scheduledAt) return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+              if (a.scheduledAt) return -1;
+              if (b.scheduledAt) return 1;
+              return 0;
+            });
+        }),
+
+        // ---- activeTimeEntry (mirrors /api/time-entries/active/current) ----
+        safe('activeTimeEntry', async () => {
+          const ate = await storage.getActiveTimeEntry(userId);
+          return ate || null;
+        }),
+
+        // ---- timeTrackingDashboard (mirrors /api/time-tracking/dashboard) ----
+        safe('timeTrackingDashboard', async () => {
+          const activeTimer = await storage.getActiveTimeEntry(userId);
+          const now = new Date();
+          const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const endOfDay = new Date(startOfDay); endOfDay.setDate(endOfDay.getDate() + 1);
+          const allEntries = await storage.getTimeEntries(userId);
+          const todayEntries = allEntries.filter((e: any) => {
+            const d = new Date(e.startTime);
+            return d >= startOfDay && d < endOfDay;
+          });
+          const jobIds = Array.from(new Set(todayEntries.filter((e: any) => e.jobId).map((e: any) => e.jobId)));
+          const jobsMap: Record<string, string> = {};
+          for (const jid of jobIds) {
+            if (jid) {
+              const job = await storage.getJob(jid as string);
+              if (job) jobsMap[jid as string] = job.title;
+            }
+          }
+          const entriesWithJobTitle = todayEntries.map((e: any) => ({
+            ...e, jobTitle: e.jobId ? jobsMap[e.jobId] || null : null,
+          }));
+          const todayTotals = todayEntries.reduce((acc: any, e: any) => {
+            const dur = (e.duration || 0) / 60;
+            acc.totalHours += dur;
+            if (!e.isBreak) acc.billableHours += dur;
+            return acc;
+          }, { totalHours: 0, billableHours: 0 });
+          const startOfWeek = new Date(now);
+          startOfWeek.setDate(now.getDate() - now.getDay());
+          startOfWeek.setHours(0, 0, 0, 0);
+          const weekEntries = allEntries.filter((e: any) => new Date(e.startTime) >= startOfWeek);
+          const weekTotals = weekEntries.reduce((acc: any, e: any) => {
+            const dur = (e.duration || 0) / 60;
+            acc.totalHours += dur;
+            if (!e.isBreak) acc.billableHours += dur;
+            return acc;
+          }, { totalHours: 0, billableHours: 0 });
+          let activeTimerJobTitle: string | null = null;
+          if (activeTimer?.jobId) {
+            const aj = await storage.getJob(activeTimer.jobId);
+            activeTimerJobTitle = aj?.title || null;
+          }
+          return {
+            activeTimer: activeTimer ? {
+              id: activeTimer.id, description: activeTimer.description,
+              startTime: activeTimer.startTime, jobId: activeTimer.jobId,
+              jobTitle: activeTimerJobTitle, isPaused: activeTimer.isPaused,
+              pausedDuration: activeTimer.pausedDuration,
+              elapsedMinutes: activeTimer.startTime
+                ? Math.floor((Date.now() - new Date(activeTimer.startTime).getTime()) / (1000 * 60))
+                : 0,
+            } : null,
+            today: {
+              totalHours: parseFloat(todayTotals.totalHours.toFixed(2)),
+              billableHours: parseFloat(todayTotals.billableHours.toFixed(2)),
+              entriesCount: todayEntries.length,
+            },
+            week: {
+              totalHours: parseFloat(weekTotals.totalHours.toFixed(2)),
+              billableHours: parseFloat(weekTotals.billableHours.toFixed(2)),
+              entriesCount: weekEntries.length,
+            },
+            recentEntries: entriesWithJobTitle.slice(0, 5),
+          };
+        }),
+      ]);
 
       res.json({
-        stats: {
-          jobsToday: todaysJobs.length,
-          unpaidInvoicesCount: unpaidResult[0]?.count ?? 0,
-          unpaidInvoicesTotal: Number(unpaidResult[0]?.total ?? 0),
-          quotesAwaiting: quotesResult[0]?.count ?? 0,
-          monthlyEarnings: Number(earningsResult[0]?.total ?? 0),
-          isStaffView,
-        },
-        todaysJobs: todaysJobs.map(job => ({ ...job, client: clientMap.get(job.clientId) })),
-        unassignedJobs: unassignedJobs.map(job => ({ ...job, client: clientMap.get(job.clientId) })),
-        teamMembers: activeTeamMembers.map(m => ({
-          id: m.id,
-          userId: m.memberId,
-          name: m.firstName && m.lastName ? `${m.firstName} ${m.lastName}` : m.email,
-          firstName: m.firstName,
-          lastName: m.lastName,
-          email: m.email,
-          role: m.roleId,
-          status: m.inviteStatus,
-        })),
-        activities,
-        isOwner,
-        canManageTeam,
-        hasActiveTeam: activeTeamMembers.length > 0,
+        user: userResult,
+        businessSettings: businessSettingsResult,
+        kpis: kpisResult,
+        jobsToday: jobsTodayResult,
+        teamPresence: teamPresenceResult,
+        unassignedJobs: unassignedJobsResult,
+        allJobs: allJobsResult,
+        activityFeed: activityFeedResult,
+        integrationsHealth: integrationsHealthResult,
+        integrationsHealthFull: integrationsHealthFullResult,
+        subscriptionUsage: subscriptionUsageResult,
+        cashflow: cashflowResult,
+        profitSnapshot: profitSnapshotResult,
+        actionCenter: actionCenterResult,
+        teamMyRole: teamMyRoleResult,
+        teamMembers: teamMembersResult,
+        myJobs: myJobsResult,
+        availableJobs: availableJobsResult,
+        activeTimeEntry: activeTimeEntryResult,
+        timeTrackingDashboard: timeTrackingDashboardResult,
       });
-    } catch (error) {
-      logger.error('api', 'Unified dashboard failed', { error, userId: req.userId });
-      res.status(500).json({ error: "Failed to fetch dashboard data" });
+    } catch (error: any) {
+      logger.error('api', 'Unified dashboard fatal failure', { error: error?.message, userId });
+      res.status(500).json({ error: error?.message || 'Failed to load dashboard' });
     }
   });
 
@@ -25760,19 +26643,19 @@ Be specific about materials, colors, and features that would be included.`
 
       let materialCostThisMonth = 0;
       try {
-        const monthJobs = allJobs.filter(j => {
-          const created = j.createdAt ? new Date(j.createdAt) : null;
-          return created && created >= monthStart;
-        });
         const allJobIds = allJobs.map(j => j.id);
-        const materialPromises = allJobIds.map(async (jobId) => {
-          try {
-            const materials = await storage.getJobMaterials(jobId, effectiveUserId);
-            return materials.reduce((sum, m) => sum + parseFloat(m.totalCost?.toString() || '0'), 0);
-          } catch { return 0; }
-        });
-        const materialCosts = await Promise.all(materialPromises);
-        materialCostThisMonth = materialCosts.reduce((sum, c) => sum + c, 0);
+        if (allJobIds.length > 0) {
+          // Single batched query — replaces N+1 per-job lookup
+          const totalRow = await db.select({
+            total: sql<string>`coalesce(sum(${jobMaterials.totalCost}), 0)::numeric`,
+          })
+            .from(jobMaterials)
+            .where(and(
+              eq(jobMaterials.userId, effectiveUserId),
+              inArray(jobMaterials.jobId, allJobIds),
+            ));
+          materialCostThisMonth = parseFloat(totalRow[0]?.total?.toString() || '0');
+        }
       } catch (e) { /* no materials */ }
 
       const grossProfit = revenueThisMonth - labourCostThisMonth - materialCostThisMonth;

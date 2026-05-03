@@ -4186,6 +4186,7 @@ export default function TeamOperations() {
                 queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
                 queryClient.invalidateQueries({ queryKey: ["/api/activity-feed"] });
                 queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/dashboard/unified"] });
               }}
               data-testid="button-refresh-all"
             >

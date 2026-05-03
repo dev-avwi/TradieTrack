@@ -726,6 +726,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/bi/action-center"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/unified"] });
     },
     onError: () => {
       toast({ title: "Failed to create invoices", variant: "destructive" });
@@ -759,6 +760,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
       setWorkflowDialog(null);
       queryClient.invalidateQueries({ queryKey: ["/api/bi/action-center"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/unified"] });
     },
     onError: () => {
       toast({ title: "Failed to send invoices", variant: "destructive" });
@@ -792,6 +794,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
       setWorkflowDialog(null);
       queryClient.invalidateQueries({ queryKey: ["/api/bi/action-center"] });
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/unified"] });
     },
     onError: () => {
       toast({ title: "Failed to send quotes", variant: "destructive" });
@@ -812,6 +815,7 @@ export default function ActionCenter({ onNavigate }: ActionCenterProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/job-requests"], exact: false });
       if (variables.status === "accepted") {
         queryClient.invalidateQueries({ queryKey: ["/api/jobs"], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/unified"] });
       }
     },
     onError: () => {

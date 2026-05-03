@@ -1,9 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { useSimpleMode } from "@/hooks/use-simple-mode";
+import { useDashboardUnified, unwrapSection } from "@/hooks/use-dashboard-data";
 import OwnerManagerDashboard from "./OwnerManagerDashboard";
 import TeamOwnerDashboard from "./TeamOwnerDashboard";
-import TradieDashboard from "./TradieDashboard";
 import StaffTradieDashboard from "./StaffTradieDashboard";
 
 interface DashboardProps {
@@ -16,74 +15,76 @@ interface DashboardProps {
   onNavigate?: (path: string) => void;
 }
 
-export default function Dashboard({
+function DashboardLoading() {
+  return (
+    <div className="flex items-center justify-center min-h-screen" data-testid="dashboard-loading">
+      <div className="text-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Loading your workspace...</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Inner component — only mounts AFTER the unified query has resolved
+ * and hydrated per-section sub-caches. This means `useAppMode()` and any
+ * child `useQuery` calls (e.g. `["/api/auth/me"]`, `["/api/business-settings"]`)
+ * will hit the populated cache and skip their network requests on cold start.
+ */
+function DashboardInner({
+  user,
+  businessSettings,
   onCreateJob,
   onCreateQuote,
   onCreateInvoice,
   onViewJobs,
   onViewInvoices,
   onViewQuotes,
-  onNavigate
-}: DashboardProps) {
-  const { data: user } = useQuery({ queryKey: ["/api/auth/me"] });
-  const { data: businessSettings } = useQuery({ queryKey: ["/api/business-settings"] });
-  const { 
-    dashboardType, 
+  onNavigate,
+}: DashboardProps & { user: any; businessSettings: any }) {
+  const {
+    dashboardType,
     isLoading,
     canCreateJobs,
     canCreateQuotes,
     canCreateInvoices,
     hasActiveTeam,
-    isOwner
   } = useAppMode();
   const { isSimpleMode } = useSimpleMode();
 
-  // Get display name - prioritize actual first name over role labels
-  const firstName = (user as any)?.firstName;
-  const fullName = (user as any)?.name;
-  const businessName = (businessSettings as any)?.businessName;
-  
-  // Don't use "Primary", "Owner", "Manager", "Tradie" as names - those are role labels
-  const roleLabels = ['primary', 'owner', 'manager', 'tradie', 'admin'];
+  const firstName = user?.firstName;
+  const fullName = user?.name;
+  const businessName = businessSettings?.businessName;
+
+  const roleLabels = ["primary", "owner", "manager", "tradie", "admin"];
   const isRoleLabel = (name: string) => roleLabels.includes(name?.toLowerCase());
-  
-  // Get a proper greeting name
+
   let userName = "there";
   if (firstName && !isRoleLabel(firstName)) {
     userName = firstName;
   } else if (fullName && !isRoleLabel(fullName)) {
-    userName = fullName.split(" ")[0]; // Use first word of full name
+    userName = fullName.split(" ")[0];
   } else if (businessName) {
-    userName = businessName.split(" ")[0]; // Use first word of business name
+    userName = businessName.split(" ")[0];
   }
 
-  // Show loading state while determining dashboard type
   if (isLoading || dashboardType === "loading") {
-    return (
-      <div className="flex items-center justify-center min-h-screen" data-testid="dashboard-loading">
-        <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading your workspace...</p>
-        </div>
-      </div>
-    );
+    return <DashboardLoading />;
   }
 
-  // Route to appropriate dashboard based on dashboardType
   switch (dashboardType) {
-    // Staff tradie (team member) - limited view, only sees assigned jobs
     case "staff_tradie":
       return (
         <StaffTradieDashboard
           userName={userName}
           onViewJob={(id) => onNavigate?.(`/jobs/${id}`)}
           onViewJobs={onViewJobs}
-          onOpenTeamChat={() => onNavigate?.('/team-chat')}
+          onOpenTeamChat={() => onNavigate?.("/team-chat")}
           onNavigate={onNavigate}
         />
       );
 
-    // Team owner - has team members, shows job scheduler
     case "owner":
       if (hasActiveTeam && !isSimpleMode) {
         return (
@@ -100,7 +101,6 @@ export default function Dashboard({
           />
         );
       }
-      // Owner without team - fall through to manager dashboard
       return (
         <OwnerManagerDashboard
           userName={userName}
@@ -115,7 +115,6 @@ export default function Dashboard({
         />
       );
 
-    // Manager - similar to owner but may have some limitations
     case "manager":
       return (
         <TeamOwnerDashboard
@@ -131,7 +130,6 @@ export default function Dashboard({
         />
       );
 
-    // Office Admin - handles quotes, invoices, clients (no field work)
     case "office_admin":
       return (
         <OwnerManagerDashboard
@@ -146,7 +144,6 @@ export default function Dashboard({
         />
       );
 
-    // Solo tradie/owner - independent, full access to all business features, no team features
     case "solo_tradie":
     default:
       return (
@@ -163,4 +160,29 @@ export default function Dashboard({
         />
       );
   }
+}
+
+/**
+ * Dashboard root — fires exactly ONE aggregate request (`/api/dashboard/unified`)
+ * on cold mount, then renders children only after the response has populated
+ * sub-caches. This collapses the previous 8-10 endpoint fan-out into a single
+ * round-trip on initial load.
+ */
+export default function Dashboard(props: DashboardProps) {
+  const unified = useDashboardUnified();
+
+  if (!unified.data) {
+    return <DashboardLoading />;
+  }
+
+  const user = unwrapSection<any>(unified.data.user, null);
+  const businessSettings = unwrapSection<any>(unified.data.businessSettings, null);
+
+  return (
+    <DashboardInner
+      {...props}
+      user={user}
+      businessSettings={businessSettings}
+    />
+  );
 }

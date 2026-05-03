@@ -51,6 +51,7 @@ export default function VerifyEmail() {
         }
         
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/unified"] });
         
         setTimeout(() => {
           setLocation('/');

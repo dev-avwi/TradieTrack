@@ -119,6 +119,7 @@ export function useCreateJob() {
       safeInvalidateQueries({ queryKey: ["/api/jobs/today"] });
       safeInvalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
       safeInvalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
+      safeInvalidateQueries({ queryKey: ["/api/dashboard/unified"] });
       
       // Invalidate subscription usage to update job counts
       safeInvalidateQueries({ queryKey: ["/api/subscription/usage"] });
@@ -160,6 +161,7 @@ export function useUpdateJob() {
       safeInvalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
       // Refresh next actions when job status changes
       safeInvalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
+      safeInvalidateQueries({ queryKey: ["/api/dashboard/unified"] });
     },
   });
 }
@@ -180,6 +182,7 @@ export function useAssignJob() {
       safeInvalidateQueries({ queryKey: ["/api/jobs/my-jobs"] });
       safeInvalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
       safeInvalidateQueries({ queryKey: ["/api/jobs/next-actions"] });
+      safeInvalidateQueries({ queryKey: ["/api/dashboard/unified"] });
       
       toast({
         title: assignedTo ? "Job Assigned" : "Job Unassigned",
@@ -208,6 +211,8 @@ export function useDeleteJob() {
       safeInvalidateQueries({ queryKey: ["/api/jobs"] });
       safeInvalidateQueries({ queryKey: ["/api/jobs", { archived: true }] });
       safeInvalidateQueries({ queryKey: ["/api/jobs/today"] });
+      safeInvalidateQueries({ queryKey: ["/api/dashboard/kpis"] });
+      safeInvalidateQueries({ queryKey: ["/api/dashboard/unified"] });
     },
   });
 }

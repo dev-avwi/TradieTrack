@@ -204,6 +204,7 @@ export default function TeamOwnerDashboard({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/jobs/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/unified"] });
       setSelectedJob(null);
       toast({
         title: "Job assigned",

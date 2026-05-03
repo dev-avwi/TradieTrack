@@ -1339,6 +1339,7 @@ function AppLayout() {
             queryClient.invalidateQueries({ queryKey: ["/api/jobs"] }),
             queryClient.invalidateQueries({ queryKey: ["/api/quotes"] }),
             queryClient.invalidateQueries({ queryKey: ["/api/invoices"] }),
+            queryClient.invalidateQueries({ queryKey: ["/api/dashboard/unified"] }),
           ]);
         } catch (demoError) {
           console.error('Failed to seed demo data:', demoError);
@@ -1349,6 +1350,7 @@ function AppLayout() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/business-settings"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/unified"] }),
       ]);
       handleLoginSuccess();
     } catch (error) {
@@ -1362,6 +1364,7 @@ function AppLayout() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/business-settings"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/unified"] }),
     ]);
     handleLoginSuccess();
   };

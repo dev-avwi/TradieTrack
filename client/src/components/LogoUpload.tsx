@@ -93,6 +93,7 @@ export function LogoUpload({ currentLogoUrl, onColorsDetected }: LogoUploadProps
       
       // Invalidate business settings cache to refetch updated data
       queryClient.invalidateQueries({ queryKey: ["/api/business-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/unified"] });
       
       // Call the callback with detected colors
       onColorsDetected?.(colors);
