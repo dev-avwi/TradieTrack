@@ -14,6 +14,22 @@ export function initSentry() {
     enableNativeFramesTracking: true,
     release: `com.jobrunner.app@${Constants.expoConfig?.version ?? '1.0.0'}`,
     dist: Constants.expoConfig?.ios?.buildNumber ?? Constants.expoConfig?.android?.versionCode?.toString() ?? '1',
+    ignoreErrors: [
+      /CannotDeliverBroadcastException/i,
+      /RemoteServiceException/i,
+      /DeadSystemException/i,
+      /Context\.startForegroundService\(\) did not then call Service\.startForeground\(\)/i,
+    ],
+    beforeSend(event) {
+      const tags = event.tags as Record<string, unknown> | undefined;
+      if (tags?.isSideLoaded === 'true' || tags?.isSideLoaded === true) {
+        return null;
+      }
+      if (tags && typeof tags['os.build'] === 'string' && /sdk_phone|generic|emulator/i.test(tags['os.build'] as string)) {
+        return null;
+      }
+      return event;
+    },
   });
 }
 
