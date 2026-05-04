@@ -158,6 +158,7 @@ async function ensureDemoBusinessAndTeam(demoUser: any) {
       accountNumber: '12345678',
       accountName: 'Demo Plumbing & Gas Pty Ltd',
       gstEnabled: true,
+      teamSize: 'medium',
       qbccLicense: 'QBCC 1234567',
       insurancePolicy: 'QBE-PLB-987654',
       bookingSlug: 'mike-s-plumbing-services',
@@ -174,6 +175,11 @@ async function ensureDemoBusinessAndTeam(demoUser: any) {
   } else if (!businessSettings.gstEnabled) {
     await storage.updateBusinessSettings(demoUser.id, { gstEnabled: true });
     console.log('✅ Business settings updated: GST enabled');
+  }
+
+  if (businessSettings && (businessSettings as any).teamSize === 'solo') {
+    await storage.updateBusinessSettings(demoUser.id, { teamSize: 'medium' } as any);
+    console.log('✅ Business settings updated: teamSize → medium (demo has team members)');
   }
 
   if (businessSettings && !businessSettings.bookingSlug) {
@@ -420,14 +426,19 @@ export async function createDemoUserAndData() {
         accountNumber: '12345678',
         accountName: 'Demo Plumbing & Gas Pty Ltd',
         gstEnabled: true,
+        teamSize: 'medium',
         qbccLicense: 'QBCC 1234567',
         insurancePolicy: 'QBE-PLB-987654',
       });
       console.log('✅ Business settings created');
     } else if (!businessSettings.gstEnabled) {
-      // Ensure GST is enabled for existing demo business settings
       await storage.updateBusinessSettings(demoUser.id, { gstEnabled: true });
       console.log('✅ Business settings updated: GST enabled');
+    }
+
+    if (businessSettings && (businessSettings as any).teamSize === 'solo') {
+      await storage.updateBusinessSettings(demoUser.id, { teamSize: 'medium' } as any);
+      console.log('✅ Business settings updated: teamSize → medium (demo has team members)');
     }
 
     // ============================================
