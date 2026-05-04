@@ -192,7 +192,7 @@ export default function LandingPage() {
     e.preventDefault();
     const element = document.getElementById(sectionId);
     if (element) {
-      const offset = 80; // Account for fixed header
+      const offset = 64; // Account for fixed header (h-14 = 56px, lg:h-16 = 64px)
       const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
       smoothScrollTo(elementPosition - offset, 800);
     }
@@ -207,28 +207,28 @@ export default function LandingPage() {
           ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100" 
           : "bg-white/80 backdrop-blur-sm"
       }`}>
-        <div className="max-w-7xl mx-auto px-5 lg:px-12">
-          <div className="flex items-center justify-between h-16 lg:h-20">
+        <div className="max-w-7xl mx-auto px-5 lg:px-10">
+          <div className="flex items-center justify-between h-14 lg:h-16">
             {/* Logo */}
             <button 
               onClick={scrollToTop}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity" 
+              className="flex items-center gap-2.5 hover:opacity-80 transition-opacity" 
               data-testid="nav-logo"
             >
               <img 
                 src={jobrunnerLogo} 
                 alt="JobRunner" 
-                className="h-10 w-auto"
+                className="h-8 w-auto"
               />
-              <span className="text-3xl font-bold tracking-tight"><span className="text-brand">Job</span><span className="text-brand-accent">Runner</span></span>
+              <span className="text-2xl font-bold tracking-tight"><span className="text-brand">Job</span><span className="text-brand-accent">Runner</span></span>
             </button>
 
             {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center gap-8">
+            <div className="hidden lg:flex items-center gap-7">
               <a 
                 href="#features" 
                 onClick={(e) => scrollToSection(e, "features")}
-                className="text-lg text-gray-600 hover:text-gray-900 font-medium transition-colors" 
+                className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors" 
                 data-testid="nav-features"
               >
                 Features
@@ -236,7 +236,7 @@ export default function LandingPage() {
               <a 
                 href="#how-it-works" 
                 onClick={(e) => scrollToSection(e, "how-it-works")}
-                className="text-lg text-gray-600 hover:text-gray-900 font-medium transition-colors" 
+                className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors" 
                 data-testid="nav-how-it-works"
               >
                 How It Works
@@ -244,7 +244,7 @@ export default function LandingPage() {
               <a 
                 href="#pricing" 
                 onClick={(e) => scrollToSection(e, "pricing")}
-                className="text-lg text-gray-600 hover:text-gray-900 font-medium transition-colors" 
+                className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors" 
                 data-testid="nav-pricing"
               >
                 Pricing
@@ -252,12 +252,12 @@ export default function LandingPage() {
               <a 
                 href="#download" 
                 onClick={(e) => scrollToSection(e, "download")}
-                className="text-lg text-gray-600 hover:text-gray-900 font-medium transition-colors" 
+                className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors" 
                 data-testid="nav-download"
               >
                 Download
               </a>
-              <Link href="/portal" className="text-lg text-brand hover:text-brand/80 font-medium transition-colors" data-testid="nav-client-portal">
+              <Link href="/portal" className="text-sm text-brand hover:text-brand/80 font-medium transition-colors" data-testid="nav-client-portal">
                 Client Portal
               </Link>
             </div>
@@ -267,20 +267,20 @@ export default function LandingPage() {
               <a 
                 href="tel:+61485013994" 
                 title="Call us — 0485 013 994"
-                className="inline-flex items-center justify-center w-11 h-11 rounded-md text-brand hover:text-brand-accent hover:bg-brand/5 transition-colors"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-md text-brand hover:text-brand-accent hover:bg-brand/5 transition-colors"
                 onClick={() => trackEvent('cta_click', { location: 'nav', button: 'call_support' })}
               >
-                <Phone className="w-5 h-5" />
+                <Phone className="w-4 h-4" />
               </a>
-              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
                 <Link href="/auth?mode=login">
-                  <Button variant="ghost" className="text-base font-medium h-11 px-5 rounded-md hover:bg-white hover:shadow-sm transition-all" data-testid="nav-login">
+                  <Button variant="ghost" className="text-sm font-medium h-9 px-4 rounded-md hover:bg-white hover:shadow-sm transition-all" data-testid="nav-login">
                     Log In
                   </Button>
                 </Link>
                 <Link href="/auth?mode=signup">
                   <Button 
-                    className="bg-brand-accent text-white text-base font-semibold h-11 px-5 rounded-md shadow-sm transition-all" 
+                    className="bg-brand-accent text-white text-sm font-semibold h-9 px-4 rounded-md shadow-sm transition-all" 
                     data-testid="nav-get-started"
                     onClick={() => trackEvent('cta_click', { location: 'nav', button: 'get_started_free' })}
                   >
@@ -336,7 +336,7 @@ export default function LandingPage() {
           <div className="flex flex-col h-full">
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <span className="flex items-center gap-2 text-lg font-bold">
+              <span className="flex items-center gap-2 text-base font-bold">
                 <img src={jobrunnerLogo} alt="JobRunner" className="h-8 w-auto" />
                 <span className="text-brand">Job</span>
                 <span className="text-brand-accent">Runner</span>
@@ -406,7 +406,7 @@ export default function LandingPage() {
             <div className="p-5 border-t border-gray-100 space-y-3">
               <Link href="/auth?mode=signup" onClick={() => setMobileMenuOpen(false)}>
                 <Button 
-                  className="w-full bg-brand-accent text-white h-12 text-[15px] font-semibold rounded-lg" 
+                  className="w-full bg-brand-accent text-white h-10 text-sm font-semibold rounded-lg" 
                   data-testid="mobile-get-started"
                   onClick={() => trackEvent('cta_click', { location: 'mobile_menu', button: 'get_started_free' })}
                 >
@@ -414,7 +414,7 @@ export default function LandingPage() {
                 </Button>
               </Link>
               <Link href="/auth?mode=login" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="outline" className="w-full h-12 text-[15px] font-medium rounded-lg" data-testid="mobile-login">
+                <Button variant="outline" className="w-full h-10 text-sm font-medium rounded-lg" data-testid="mobile-login">
                   Log In
                 </Button>
               </Link>
@@ -432,45 +432,45 @@ export default function LandingPage() {
       </div>
 
       {/* Hero Section */}
-      <section className="pt-20 lg:pt-24 pb-16 lg:pb-24 px-5 lg:px-12">
+      <section className="pt-16 lg:pt-20 pb-12 lg:pb-20 px-5 lg:px-10">
         <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
             {/* Left: Content */}
             <div className="text-center lg:text-left animate-fade-in">
               {/* Tagline Badge */}
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-brand/5 to-brand-accent/5 border border-brand/10 rounded-full px-5 py-2.5 mb-8">
-                <Sparkles className="w-4 h-4 text-brand-accent" />
-                <span className="text-[15px] font-semibold text-gray-700">Start free — upgrade anytime</span>
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-brand/5 to-brand-accent/5 border border-brand/10 rounded-full px-4 py-2 mb-6">
+                <Sparkles className="w-3.5 h-3.5 text-brand-accent" />
+                <span className="text-[13px] font-semibold text-gray-700">Start free — upgrade anytime</span>
               </div>
 
               {/* Main Headline */}
-              <h1 className="text-[2.75rem] sm:text-[3.5rem] lg:text-[4rem] font-extrabold leading-[1.05] tracking-tight mb-6">
+              <h1 className="text-[2.25rem] sm:text-[2.75rem] lg:text-[3.25rem] font-extrabold leading-[1.08] tracking-tight mb-5">
                 Built for how jobs{" "}
                 <span className="text-brand">actually run.</span>
               </h1>
 
               {/* Subheadline */}
-              <p className="text-xl lg:text-[1.375rem] text-gray-600 leading-relaxed mb-10 max-w-xl mx-auto lg:mx-0">
+              <p className="text-base lg:text-lg text-gray-600 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
                 Jobs, quotes, invoices, and payments — all in one place. Track progress, get paid faster, and keep your whole team on the same page from quote to completion.
               </p>
 
               {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-6">
                 <Link href="/auth?mode=signup">
                   <Button 
                     size="lg" 
-                    className="w-full sm:w-auto bg-brand-accent text-white font-semibold h-14 px-8 text-lg rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all" 
+                    className="w-full sm:w-auto bg-brand-accent text-white font-semibold h-11 px-6 text-[15px] rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all" 
                     data-testid="hero-start-trial"
                     onClick={() => trackEvent('cta_click', { location: 'hero', button: 'get_started_free' })}
                   >
                     Get Started Free
-                    <ArrowRight className="ml-2 h-5 w-5" />
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
                 <Button 
                   size="lg" 
                   variant="outline" 
-                  className="w-full sm:w-auto h-14 px-8 text-lg font-medium rounded-lg border-gray-300 hover:bg-gray-50 hover:scale-[1.02] transition-all" 
+                  className="w-full sm:w-auto h-11 px-6 text-[15px] font-medium rounded-lg border-gray-300 hover:bg-gray-50 hover:scale-[1.02] transition-all" 
                   data-testid="hero-try-demo"
                   onClick={() => {
                     trackEvent('cta_click', { location: 'hero', button: 'try_demo' });
@@ -480,12 +480,12 @@ export default function LandingPage() {
                 >
                   {isDemoLoading ? (
                     <>
-                      <Sparkles className="mr-2 h-5 w-5 animate-spin" />
+                      <Sparkles className="mr-2 h-4 w-4 animate-spin" />
                       Loading Demo...
                     </>
                   ) : (
                     <>
-                      <Play className="mr-2 h-5 w-5" />
+                      <Play className="mr-2 h-4 w-4" />
                       Try the Demo
                     </>
                   )}
@@ -493,20 +493,20 @@ export default function LandingPage() {
               </div>
 
               {/* Free tier note */}
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-full px-5 py-2.5">
-                <span className="flex h-2.5 w-2.5 relative">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-full px-4 py-2">
+                <span className="flex h-2 w-2 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-accent"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-accent"></span>
                 </span>
-                <span className="text-[15px] font-medium text-orange-700">
+                <span className="text-[13px] font-medium text-orange-700">
                   Free plan available — no credit card required
                 </span>
               </div>
             </div>
 
             {/* Right: Hero Video */}
-            <div className="relative flex justify-center lg:justify-end animate-fade-in-up lg:-mt-8">
-              <div className="relative w-full max-w-[600px] sm:max-w-[680px] lg:max-w-[740px] animate-float">
+            <div className="relative flex justify-center lg:justify-end animate-fade-in-up lg:-mt-6">
+              <div className="relative w-full max-w-[500px] sm:max-w-[560px] lg:max-w-[620px] animate-float">
                 {/* Raw video — soft radial fade so the off-white background dissolves into the page */}
                 <video
                   src="/videos/hero-demo-muted.mp4"
@@ -535,15 +535,15 @@ export default function LandingPage() {
       </section>
 
       {/* Social Proof Bar */}
-      <section className="py-10 border-y border-gray-100 bg-gray-50/50">
+      <section className="py-8 border-y border-gray-100 bg-gray-50/50">
         <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
           <AnimatedSection>
-            <p className="text-center text-sm text-gray-500 mb-6">Built for trade businesses across Australia</p>
-            <div className="flex flex-wrap justify-center items-center gap-6 lg:gap-12">
+            <p className="text-center text-xs text-gray-500 mb-5">Built for trade businesses across Australia</p>
+            <div className="flex flex-wrap justify-center items-center gap-5 lg:gap-10">
               {["Electricians", "Plumbers", "Builders", "HVAC Techs", "Property Maintenance"].map((trade, i) => (
                 <span 
                   key={trade} 
-                  className="text-gray-400 font-medium text-sm uppercase tracking-wider hover:text-gray-600 transition-colors cursor-default"
+                  className="text-gray-400 font-medium text-xs uppercase tracking-wider hover:text-gray-600 transition-colors cursor-default"
                   style={{ animationDelay: `${i * 100}ms` }}
                 >
                   {trade}
@@ -555,14 +555,14 @@ export default function LandingPage() {
       </section>
 
       {/* Work From Anywhere - Mockup Showcase with Toggle */}
-      <section className="py-20 lg:py-28 bg-gradient-to-b from-white to-gray-50/50">
+      <section className="py-16 lg:py-24 bg-gradient-to-b from-white to-gray-50/50">
         <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
-          <AnimatedSection className="text-center mb-12 lg:mb-16">
-            <span className="inline-block text-sm font-semibold text-brand uppercase tracking-wider mb-4">Work From Anywhere</span>
-            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
+          <AnimatedSection className="text-center mb-10 lg:mb-14">
+            <span className="inline-block text-xs font-semibold text-brand uppercase tracking-wider mb-3">Work From Anywhere</span>
+            <h2 className="text-2xl sm:text-3xl lg:text-[2.25rem] font-bold tracking-tight mb-4">
               Your business, in your pocket
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+            <p className="text-base text-gray-600 max-w-2xl mx-auto mb-7">
               Whether you're on-site with your phone or at your desk with a browser – JobRunner works wherever you do.
             </p>
             
@@ -570,19 +570,19 @@ export default function LandingPage() {
             <div className="inline-flex items-center bg-gray-900 rounded-full p-1.5" data-testid="mockup-toggle-container">
               <button
                 onClick={() => setMockupMode('mobile')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 ${
                   mockupMode === 'mobile' 
                     ? 'bg-white text-gray-900 shadow-sm' 
                     : 'text-gray-400 hover:text-white'
                 }`}
                 data-testid="button-toggle-mobile"
               >
-                <Smartphone className="w-4 h-4" />
+                <Smartphone className="w-3.5 h-3.5" />
                 Mobile App
               </button>
               <button
                 onClick={() => setMockupMode('web')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 ${
                   mockupMode === 'web' 
                     ? 'bg-white text-gray-900 shadow-sm' 
                     : 'text-gray-400 hover:text-white'
@@ -665,29 +665,29 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 lg:py-28 scroll-mt-20">
+      <section id="features" className="py-16 lg:py-24 scroll-mt-16">
         <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
           {/* Section Header */}
-          <AnimatedSection className="text-center mb-16 lg:mb-20">
-            <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-4">Features</span>
-            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
+          <AnimatedSection className="text-center mb-12 lg:mb-16">
+            <span className="inline-block text-xs font-semibold text-brand-accent uppercase tracking-wider mb-3">Features</span>
+            <h2 className="text-2xl sm:text-3xl lg:text-[2.25rem] font-bold tracking-tight mb-4">
               Everything you need to run your business
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-base text-gray-600 max-w-2xl mx-auto">
               From the first call to the final invoice. One app, no paperwork.
             </p>
           </AnimatedSection>
 
           {/* Feature 1: Scheduling */}
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24 lg:mb-32">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center mb-20 lg:mb-28">
             <AnimatedSection animation="fade-right" className="order-2 lg:order-1">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-6">
-                <Calendar className="w-6 h-6 text-brand" />
+              <div className="inline-flex items-center justify-center w-10 h-10 bg-blue-100 rounded-xl mb-5">
+                <Calendar className="w-5 h-5 text-brand" />
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
+              <h3 className="text-xl sm:text-2xl font-bold tracking-tight mb-3">
                 Your schedule. Your way.
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
+              <p className="text-gray-600 text-base leading-relaxed mb-5">
                 See your whole week at a glance. Drag and drop jobs, check team availability, and send reminders to clients — no surprises.
               </p>
               <ul className="space-y-3">
@@ -702,18 +702,18 @@ export default function LandingPage() {
           </div>
 
           {/* Feature 2: Job Map */}
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24 lg:mb-32">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center mb-20 lg:mb-28">
             <AnimatedSection animation="fade-right" className="flex justify-center">
               <PhoneMockup screenshot={jobMapScreenshot} />
             </AnimatedSection>
             <AnimatedSection animation="fade-left" delay={100}>
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-100 rounded-xl mb-6">
-                <MapPin className="w-6 h-6 text-brand-accent" />
+              <div className="inline-flex items-center justify-center w-10 h-10 bg-orange-100 rounded-xl mb-5">
+                <MapPin className="w-5 h-5 text-brand-accent" />
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
+              <h3 className="text-xl sm:text-2xl font-bold tracking-tight mb-3">
                 See all your jobs on a map
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
+              <p className="text-gray-600 text-base leading-relaxed mb-5">
                 Plan your day visually. Track your team's locations in real-time and optimise routes to save time and fuel.
               </p>
               <a 
@@ -728,15 +728,15 @@ export default function LandingPage() {
           </div>
 
           {/* Feature 3: Quotes & Invoices */}
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24 lg:mb-32">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center mb-20 lg:mb-28">
             <AnimatedSection animation="fade-right" className="order-2 lg:order-1">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-xl mb-6">
-                <FileText className="w-6 h-6 text-green-600" />
+              <div className="inline-flex items-center justify-center w-10 h-10 bg-green-100 rounded-xl mb-5">
+                <FileText className="w-5 h-5 text-green-600" />
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
+              <h3 className="text-xl sm:text-2xl font-bold tracking-tight mb-3">
                 Quote on-site. Get paid faster.
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
+              <p className="text-gray-600 text-base leading-relaxed mb-5">
                 Create professional quotes in seconds. Convert to invoice with one tap. Get paid instantly with built-in payment links.
               </p>
               <ul className="space-y-3">
@@ -751,18 +751,18 @@ export default function LandingPage() {
           </div>
 
           {/* Feature 4: Job Management */}
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <AnimatedSection animation="fade-right" className="flex justify-center">
               <PhoneMockup screenshot={jobsListScreenshot} />
             </AnimatedSection>
             <AnimatedSection animation="fade-left" delay={100}>
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-xl mb-6">
-                <Users className="w-6 h-6 text-purple-600" />
+              <div className="inline-flex items-center justify-center w-10 h-10 bg-purple-100 rounded-xl mb-5">
+                <Users className="w-5 h-5 text-purple-600" />
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
+              <h3 className="text-xl sm:text-2xl font-bold tracking-tight mb-3">
                 Never lose track of a job again
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
+              <p className="text-gray-600 text-base leading-relaxed mb-5">
                 Every job from quote to completion in one place. Add photos, notes, and track progress. Know exactly where every project stands.
               </p>
               <ul className="space-y-3">
@@ -776,14 +776,14 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-20 lg:py-28 bg-gray-50 scroll-mt-20">
+      <section id="how-it-works" className="py-16 lg:py-24 bg-gray-50 scroll-mt-16">
         <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
-          <AnimatedSection className="text-center mb-16">
-            <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-4">How It Works</span>
-            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
+          <AnimatedSection className="text-center mb-12">
+            <span className="inline-block text-xs font-semibold text-brand-accent uppercase tracking-wider mb-3">How It Works</span>
+            <h2 className="text-2xl sm:text-3xl lg:text-[2.25rem] font-bold tracking-tight mb-4">
               Get up and running in minutes
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-base text-gray-600 max-w-2xl mx-auto">
               No complicated setup. No training needed. Just sign up and start managing your business.
             </p>
           </AnimatedSection>
@@ -818,14 +818,14 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 lg:py-28 scroll-mt-20">
+      <section id="pricing" className="py-16 lg:py-24 scroll-mt-16">
         <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
-          <AnimatedSection className="text-center mb-16">
-            <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-4">Pricing</span>
-            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
+          <AnimatedSection className="text-center mb-12">
+            <span className="inline-block text-xs font-semibold text-brand-accent uppercase tracking-wider mb-3">Pricing</span>
+            <h2 className="text-2xl sm:text-3xl lg:text-[2.25rem] font-bold tracking-tight mb-4">
               Simple, transparent pricing
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-base text-gray-600 max-w-2xl mx-auto">
               Start free, upgrade when you're ready. All prices in AUD including GST.
             </p>
           </AnimatedSection>
@@ -929,8 +929,8 @@ export default function LandingPage() {
           {/* Power Add-Ons */}
           <AnimatedSection delay={400} className="mt-14">
             <div className="text-center mb-8">
-              <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-3">Power Add-Ons</span>
-              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">
+              <span className="inline-block text-xs font-semibold text-brand-accent uppercase tracking-wider mb-3">Power Add-Ons</span>
+              <h3 className="text-xl sm:text-2xl font-bold tracking-tight mb-3">
                 Supercharge your business
               </h3>
               <p className="text-gray-600 max-w-xl mx-auto">
@@ -1000,8 +1000,8 @@ export default function LandingPage() {
           </AnimatedSection>
 
           <AnimatedSection delay={500} className="text-center mt-10">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-full px-5 py-2.5 mb-4">
-              <span className="text-sm font-semibold text-green-700">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-full px-4 py-2 mb-4">
+              <span className="text-xs font-semibold text-green-700">
                 Start free today. Upgrade when you're ready — cancel anytime.
               </span>
             </div>
@@ -1011,14 +1011,14 @@ export default function LandingPage() {
       </section>
 
       {/* Download Section - Web & Mobile Apps */}
-      <section id="download" className="scroll-mt-20 py-20 lg:py-28 bg-gray-50">
+      <section id="download" className="scroll-mt-16 py-16 lg:py-24 bg-gray-50">
         <div className="max-w-5xl mx-auto px-5 lg:px-8">
-          <AnimatedSection className="text-center mb-14">
-            <span className="inline-block text-sm font-semibold text-brand-accent uppercase tracking-wider mb-4">Get JobRunner</span>
-            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight mb-5">
+          <AnimatedSection className="text-center mb-10">
+            <span className="inline-block text-xs font-semibold text-brand-accent uppercase tracking-wider mb-3">Get JobRunner</span>
+            <h2 className="text-2xl sm:text-3xl lg:text-[2.25rem] font-bold tracking-tight mb-4">
               Use it anywhere — web or mobile
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-base text-gray-600 max-w-2xl mx-auto">
               JobRunner works on any device. Use the web app on your computer or download the mobile app to manage your business on the go.
             </p>
           </AnimatedSection>
@@ -1026,13 +1026,13 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {/* Web App Card */}
             <AnimatedSection animation="fade-right">
-              <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 h-full">
-                <div className="flex items-center gap-4 mb-5">
-                  <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <Monitor className="w-7 h-7 text-brand" />
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 h-full">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <Monitor className="w-5 h-5 text-brand" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900">Web App</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">Web App</h3>
                     <p className="text-sm text-gray-500">Works in any browser</p>
                   </div>
                 </div>
@@ -1040,7 +1040,7 @@ export default function LandingPage() {
                   Access JobRunner from your computer, laptop, or tablet. Perfect for office work, detailed quotes, and managing your business from your desk.
                 </p>
                 <Link href="/auth?mode=signup">
-                  <Button className="w-full bg-brand text-white font-semibold h-12 rounded-lg" data-testid="download-web-app">
+                  <Button className="w-full bg-brand text-white font-semibold h-10 text-sm rounded-lg" data-testid="download-web-app">
                     <Globe className="w-5 h-5 mr-2" />
                     Open Web App
                   </Button>
@@ -1050,13 +1050,13 @@ export default function LandingPage() {
 
             {/* Mobile App Card */}
             <AnimatedSection animation="fade-left" delay={100}>
-              <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 h-full">
-              <div className="flex items-center gap-4 mb-5">
-                <div className="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <Smartphone className="w-7 h-7 text-brand-accent" />
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 h-full">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-11 h-11 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <Smartphone className="w-5 h-5 text-brand-accent" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900">Mobile App</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Mobile App</h3>
                   <p className="text-sm text-gray-500">iOS & Android</p>
                 </div>
               </div>
@@ -1105,23 +1105,23 @@ export default function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-20 lg:py-28 bg-gradient-to-b from-brand to-brand-dark">
+      <section className="py-16 lg:py-24 bg-gradient-to-b from-brand to-brand-dark">
         <AnimatedSection className="max-w-3xl mx-auto px-5 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-white tracking-tight mb-6">
+          <h2 className="text-2xl sm:text-3xl lg:text-[2.25rem] font-bold text-white tracking-tight mb-5">
             Ready to simplify your business?
           </h2>
-          <p className="text-lg lg:text-xl text-blue-100 mb-10 max-w-xl mx-auto">
+          <p className="text-base lg:text-lg text-blue-100 mb-8 max-w-xl mx-auto">
             Join thousands of Australian trade professionals running their business on JobRunner. Start free in under a minute.
           </p>
           <Link href="/auth?mode=signup">
             <Button 
               size="lg" 
-              className="bg-brand-accent text-white font-semibold h-14 px-10 text-lg rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" 
+              className="bg-brand-accent text-white font-semibold h-11 px-8 text-[15px] rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all" 
               data-testid="cta-start-trial"
               onClick={() => trackEvent('cta_click', { location: 'footer_cta', button: 'get_started_free' })}
             >
               Get Started Free
-              <ArrowRight className="ml-2 h-5 w-5" />
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
           <p className="text-sm text-blue-200 mt-5">
@@ -1131,9 +1131,9 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12 lg:py-16">
+      <footer className="bg-gray-900 text-gray-400 py-10 lg:py-14">
         <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
             <div>
               <button 
                 onClick={scrollToTop}
@@ -1144,7 +1144,7 @@ export default function LandingPage() {
                   alt="JobRunner" 
                   className="h-8 w-auto brightness-0 invert"
                 />
-                <span className="text-lg font-bold">
+                <span className="text-base font-bold">
                   <span className="text-blue-400">Job</span>
                   <span className="text-orange-400">Runner</span>
                 </span>
@@ -1333,7 +1333,7 @@ export default function LandingPage() {
               <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 backdrop-blur rounded-2xl mb-4">
                 <Smartphone className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-1">
+              <h3 className="text-lg font-bold text-white mb-1">
                 Get the JobRunner App
               </h3>
               <p className="text-white/90 text-sm">
@@ -1430,7 +1430,7 @@ function PhoneMockup({ screenshot }: { screenshot: string }) {
   }, [screenshot]);
   
   return (
-    <div className="relative w-[260px] sm:w-[280px] group">
+    <div className="relative w-[220px] sm:w-[240px] group">
       <div 
         className="relative bg-gray-900 rounded-[2.5rem] p-[6px] shadow-xl group-hover:shadow-2xl transition-shadow duration-500 will-change-auto"
         style={{ transform: 'translateZ(0)' }}
@@ -1476,15 +1476,15 @@ function StepCard({
   description: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 hover:-translate-y-1">
-      <div className="flex items-center gap-4 mb-5">
-        <div className="w-10 h-10 bg-brand text-white rounded-lg flex items-center justify-center font-bold text-lg">
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 hover:-translate-y-1">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-9 h-9 bg-brand text-white rounded-lg flex items-center justify-center font-bold text-base">
           {number}
         </div>
-        <Icon className="w-6 h-6 text-gray-400" />
+        <Icon className="w-5 h-5 text-gray-400" />
       </div>
-      <h3 className="text-xl font-semibold text-gray-900 mb-3">{title}</h3>
-      <p className="text-gray-600 leading-relaxed">{description}</p>
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+      <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
     </div>
   );
 }
@@ -1517,27 +1517,27 @@ function PricingCard({
   };
 
   return (
-    <div className={`relative bg-white rounded-2xl p-8 shadow-sm border transition-all duration-300 hover:shadow-md ${
+    <div className={`relative bg-white rounded-2xl p-6 shadow-sm border transition-all duration-300 hover:shadow-md ${
       popular ? "border-brand-accent ring-2 ring-brand-accent/20" : "border-gray-100 hover:border-gray-200"
     }`}>
       {popular && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-          <span className="bg-brand-accent text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow-md">
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+          <span className="bg-brand-accent text-white text-[11px] font-semibold px-3.5 py-1 rounded-full shadow-md">
             Most Popular
           </span>
         </div>
       )}
       
-      <div className="text-center mb-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">{name}</h3>
+      <div className="text-center mb-5">
+        <h3 className="text-lg font-bold text-gray-900 mb-1.5">{name}</h3>
         <div className="flex items-baseline justify-center gap-1">
-          <span className="text-4xl font-extrabold text-gray-900">{price}</span>
-          <span className="text-gray-500 text-sm">{period}</span>
+          <span className="text-3xl font-extrabold text-gray-900">{price}</span>
+          <span className="text-gray-500 text-xs">{period}</span>
         </div>
-        <p className="text-gray-600 text-sm mt-2">{description}</p>
+        <p className="text-gray-600 text-xs mt-1.5">{description}</p>
       </div>
 
-      <ul className="space-y-3 mb-8">
+      <ul className="space-y-2.5 mb-6">
         {features.map((feature, i) => (
           <li key={i} className="flex items-start gap-3">
             <div className="flex-shrink-0 w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mt-0.5">
@@ -1555,7 +1555,7 @@ function PricingCard({
             trackEvent('cta_click', { location: 'pricing', button: 'contact_sales', plan: name });
             handleContactSales();
           }}
-          className="w-full h-12 font-semibold rounded-lg"
+          className="w-full h-10 text-sm font-semibold rounded-lg"
           data-testid={`pricing-${name.toLowerCase()}-cta`}
         >
           {buttonText}
@@ -1564,7 +1564,7 @@ function PricingCard({
         <Link href={href || "/auth?mode=signup"}>
           <Button 
             variant={buttonVariant as any}
-            className={`w-full h-12 font-semibold rounded-lg ${
+            className={`w-full h-10 text-sm font-semibold rounded-lg ${
               buttonVariant === "default" 
                 ? "bg-brand-accent text-white" 
                 : ""
