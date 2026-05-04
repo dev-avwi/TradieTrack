@@ -101,3 +101,9 @@ id = "_n_d-0exCELn9qlV1adnz"
 uri = "file://exports/hero-demo-app-preview-886x1920.mp4"
 type = "video"
 title = "App Store Preview — 886×1920, 29.5s, H.264"
+
+[[outputs]]
+id = "fzBHC_Tprb1-9hDpaNT27"
+uri = "file://.local/JOBRUNNER_DEEP_BRIEF.md"
+type = "text"
+title = "JobRunner — Complete Application Deep Brief"
