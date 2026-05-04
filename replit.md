@@ -65,3 +65,7 @@ Core architectural and design decisions include:
 *   **Scheduler Staggering**: Background schedulers (reminders, retry, lifecycle, stale timer, overtime nudge, demo refresh) start with 2-3s staggered delays to prevent connection pool stampede on startup.
 *   **Health Check**: `GET /api/health` returns DB connectivity, latency, pool stats (total/idle/waiting), uptime, and service version.
 *   **Graceful Shutdown**: Properly closes the database pool with logging on SIGTERM/SIGINT.
+*   **Routes Modularization (Phase 1)**: Extracted shared middleware and helpers from the monolithic `server/routes.ts` (originally 52,662 lines, now ~51,773) into:
+    *   `server/routes/middleware.ts` — `requireAuth`, `requireProSubscription`, `requirePaidTierForSms`, `requireDevelopment`, `setupOnboardingGuard`, and rate limiters (`authLimiter`, `loginLimiter`, `passwordResetLimiter`, `registrationLimiter`, `smsLimiter`).
+    *   `server/routes/helpers.ts` — Reusable utility functions: `dbCheckRateLimit`, `checkIdempotency`/`setIdempotency`, `logActivity`, `normalizeAuPhone`, `resolveAssigneeUserId`, `autoUpdateWorkerState`, `gatherAIContext`, `verifyInvoiceCalculation`, `validateAustralianCoords`, `formatCurrency`, `getNextJobNumber`, `getNextInvoiceNumber`, `getNextQuoteNumber`.
+    *   Both modules are imported at the top of `routes.ts` and used throughout. Inline middleware definitions and helper functions that were duplicated inside `registerRoutes` have been removed.
