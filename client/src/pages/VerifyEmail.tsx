@@ -110,17 +110,17 @@ export default function VerifyEmail() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: 'linear-gradient(135deg, #f97316 0%, #2563eb 100%)' }}>
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <img src={logoPath} alt="JobRunner" className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-lg" />
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2 justify-center">
-            <Mail className="h-6 w-6" />
-            Email Verification
-          </h1>
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <img src={logoPath} alt="JobRunner" className="h-8 w-auto" />
+          <span className="text-xl font-bold">
+            <span className="text-foreground">Job</span>
+            <span className="text-primary">Runner</span>
+          </span>
         </div>
 
-        <Card className="shadow-xl">
+        <Card>
           <CardContent className="pt-6 space-y-6">
             {verifyingToken ? (
               <div className="space-y-4">

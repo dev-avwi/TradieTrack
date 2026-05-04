@@ -114,15 +114,14 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="flex flex-col items-center mb-6">
-          <img 
-            src={appIconUrl} 
-            alt="JobRunner" 
-            className="h-12 w-12 mb-4"
-          />
-          <h1 className="text-2xl font-bold text-center">JobRunner</h1>
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <img src={appIconUrl} alt="JobRunner" className="h-8 w-auto" />
+          <span className="text-xl font-bold">
+            <span className="text-foreground">Job</span>
+            <span className="text-primary">Runner</span>
+          </span>
         </div>
 
         <Card>

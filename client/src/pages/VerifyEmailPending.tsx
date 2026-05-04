@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
-import { Mail, Loader2, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Mail, Loader2, Clock, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import logoPath from "@assets/jobrunner-logo-cropped.png";
 
@@ -61,29 +61,30 @@ export default function VerifyEmailPending() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: 'linear-gradient(135deg, #f97316 0%, #2563eb 100%)' }}>
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <img src={logoPath} alt="JobRunner" className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-lg" />
-          <h1 className="text-2xl font-bold text-white">Check Your Email</h1>
-          <p className="text-white/80 text-sm mt-2">
-            We've sent a verification link to your email address.
-          </p>
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <img src={logoPath} alt="JobRunner" className="h-8 w-auto" />
+          <span className="text-xl font-bold">
+            <span className="text-foreground">Job</span>
+            <span className="text-primary">Runner</span>
+          </span>
         </div>
 
-        <Card className="shadow-xl">
+        <Card>
           <CardContent className="pt-6 space-y-6">
             <div className="text-center space-y-3">
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
                 <Mail className="h-8 w-8 text-primary" />
               </div>
+              <h1 className="text-xl font-bold text-foreground">Check Your Email</h1>
               <p className="text-muted-foreground text-sm">
-                Click the link in the email to verify your account and complete setup.
+                We've sent a verification link to your email address. Click the link to verify your account and complete setup.
               </p>
             </div>
             
-            <Alert className="border-blue-200 bg-blue-50 text-blue-800 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-300">
-              <CheckCircle2 className="h-4 w-4" />
+            <Alert>
+              <Clock className="h-4 w-4" />
               <AlertDescription>
                 The verification link will expire in 24 hours.
               </AlertDescription>
