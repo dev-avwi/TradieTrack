@@ -201,12 +201,7 @@ export function setupXeroAuth(app: Express) {
           emailVerified,
         });
 
-        try {
-          const { assignBetaCohort } = await import('./freemiumService');
-          await assignBetaCohort(user.id);
-        } catch (betaErr) {
-          console.error('Failed to assign beta cohort (Xero):', betaErr);
-        }
+        // Beta cohort assignment removed — production mode active.
 
         console.log('Xero Auth: Created new user:', user.email);
       }

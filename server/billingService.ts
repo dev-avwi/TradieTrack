@@ -610,7 +610,6 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
   try {
     const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
     
-    // Determine tier from subscription metadata or stored value
     const subscriptionTier = subscription.metadata?.tier || user.subscriptionTier;
     const isActive = subscription.status === 'active' || subscription.status === 'trialing';
     
@@ -621,9 +620,27 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
       else tier = 'pro';
     }
 
+    const liveStatus = subscription.status as string;
+    const storedStatus = businessSettings?.subscriptionStatus;
+    const storedTier = user.subscriptionTier;
+
+    if (liveStatus !== storedStatus || tier !== storedTier) {
+      try {
+        if (liveStatus !== storedStatus) {
+          await storage.updateBusinessSettings(userId, { subscriptionStatus: liveStatus } as any);
+        }
+        if (tier !== storedTier) {
+          await storage.updateUser(userId, { subscriptionTier: tier } as any);
+        }
+        console.log(`[BillingSync] Persisted live Stripe state for ${userId}: status=${liveStatus} (was ${storedStatus}), tier=${tier} (was ${storedTier})`);
+      } catch (syncErr) {
+        console.error('[BillingSync] Failed to persist Stripe state:', syncErr);
+      }
+    }
+
     return {
       tier,
-      status: subscription.status as 'active' | 'past_due' | 'canceled',
+      status: liveStatus as 'active' | 'past_due' | 'canceled',
       currentPeriodEnd: new Date((subscription.current_period_end || 0) * 1000),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       stripeCustomerId: businessSettings?.stripeCustomerId || undefined,

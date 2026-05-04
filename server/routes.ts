@@ -14,7 +14,7 @@ import { loginSchema, insertUserSchema, type SafeUser, requestLoginCodeSchema, v
 import { sendEmailVerificationEmail, sendLoginCodeEmail, sendJobConfirmationEmail, sendPasswordResetEmail, sendTeamInviteEmail, sendJobAssignmentEmail, sendJobCompletionNotificationEmail, sendWelcomeEmail } from "./emailService";
 import { FreemiumService } from "./freemiumService";
 import { DEMO_USER, VISITOR_USER } from "./demoData";
-import { ownerOnly, ownerOrManagerOnly, requirePermission, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, getWorkerPermissionContext, sanitizeClientData, requireTeamPlan, ownerHasTeamCapability } from "./permissions";
+import { ownerOnly, ownerOrManagerOnly, requirePermission, createPermissionMiddleware, PERMISSIONS, getUserContext, hasPermission, canAssignJobTo, getWorkerPermissionContext, sanitizeClientData, requireTeamPlan, ownerHasTeamCapability, checkTeamSeatLimit, requireOnboarding } from "./permissions";
 import { logTeamActivity } from "./activityService";
 import {
   insertBusinessSettingsSchema,
@@ -3839,14 +3839,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await AuthService.register(cleanUserData);
       
       if (result.success) {
-        // Assign beta cohort number for business owner signups
-        try {
-          const { assignBetaCohort } = await import('./freemiumService');
-          const betaResult = await assignBetaCohort(result.user.id);
-          console.log(`[Beta] New business signup: cohort #${betaResult.cohortNumber}, lifetime: ${betaResult.lifetimeAccess}`);
-        } catch (betaError) {
-          console.error('Failed to assign beta cohort:', betaError);
-        }
+        // Beta cohort assignment removed — production mode active.
+        // Founding member status is granted manually via Admin Dashboard.
 
         // Seed default templates and safety forms for new user (non-blocking)
         try {
@@ -4802,13 +4796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         isNewUser = true;
 
-        // Assign beta cohort for new Google signups
-        try {
-          const { assignBetaCohort } = await import('./freemiumService');
-          await assignBetaCohort(user.id);
-        } catch (betaErr) {
-          console.error('Failed to assign beta cohort (Google):', betaErr);
-        }
+        // Beta cohort assignment removed — production mode active.
       } else {
         // Existing user found - link Google ID if not already linked
         console.log(`✅ Existing Google user found for mobile: ${email}`);
@@ -4958,13 +4946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         isNewUser = true;
 
-        // Assign beta cohort for new Apple signups
-        try {
-          const { assignBetaCohort } = await import('./freemiumService');
-          await assignBetaCohort(user.id);
-        } catch (betaErr) {
-          console.error('Failed to assign beta cohort (Apple):', betaErr);
-        }
+        // Beta cohort assignment removed — production mode active.
       } else {
         // Existing user found
         console.log(`✅ Existing Apple user found: ${user.email}`);
@@ -5153,12 +5135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         isNewUser = true;
 
-        try {
-          const { assignBetaCohort } = await import('./freemiumService');
-          await assignBetaCohort(user.id);
-        } catch (betaErr) {
-          console.error('Failed to assign beta cohort (Apple Web):', betaErr);
-        }
+        // Beta cohort assignment removed — production mode active.
       }
 
       req.session.userId = user.id;
@@ -5380,6 +5357,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   };
+
+  const onboardingExemptPrefixes = [
+    '/api/auth',
+    '/api/onboarding',
+    '/api/billing',
+    '/api/subscription',
+    '/api/subscribe',
+    '/api/business-settings',
+    '/api/user',
+    '/api/usage-status',
+    '/api/admin',
+    '/api/stripe',
+    '/api/demo',
+    '/api/push',
+    '/api/notifications',
+    '/api/health',
+    '/api/team/invite/accept',
+    '/api/team/invite-code/redeem',
+    '/api/mobile',
+    '/api/check-email',
+    '/api/visitor',
+  ];
+
+  app.use('/api', async (req: any, res: any, next: any) => {
+    const path = req.originalUrl.split('?')[0];
+    if (onboardingExemptPrefixes.some(prefix => path.startsWith(prefix))) {
+      return next();
+    }
+
+    let resolvedUserId = req.session?.userId;
+    if (!resolvedUserId) {
+      const authHeader = req.headers?.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const sessionToken = authHeader.substring(7);
+        try {
+          const result = await db.execute(
+            sql`SELECT sess FROM session WHERE sid = ${sessionToken} AND expire > NOW()`
+          );
+          if (result.rows && result.rows.length > 0) {
+            resolvedUserId = (result.rows[0].sess as any)?.userId;
+          }
+        } catch {}
+      }
+    }
+
+    if (!resolvedUserId) {
+      return next();
+    }
+
+    req._onboardingUserId = resolvedUserId;
+    requireOnboarding()(req, res, next);
+  });
 
   app.patch("/api/auth/profile", requireAuth, async (req: any, res) => {
     try {
@@ -32832,6 +32861,18 @@ Respond with JSON in this format:
       // Generate invite token
       const inviteToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       
+      const ownerForSeatCheck = await AuthService.getUserById(userId);
+      const settingsForSeatCheck = await storage.getBusinessSettings(userId);
+      const seatCheck = await checkTeamSeatLimit(userId, ownerForSeatCheck, settingsForSeatCheck);
+      if (!seatCheck.allowed) {
+        return res.status(403).json({
+          error: seatCheck.error,
+          code: seatCheck.code,
+          currentCount: seatCheck.currentCount,
+          limit: seatCheck.limit,
+        });
+      }
+
       const newMember = await storage.createTeamMember({
         ...inviteData,
         businessOwnerId: userId,
@@ -32840,8 +32881,8 @@ Respond with JSON in this format:
         inviteStatus: 'pending',
       });
       
-      const owner = await AuthService.getUserById(userId);
-      const businessSettings = await storage.getBusinessSettings(userId);
+      const owner = ownerForSeatCheck;
+      const businessSettings = settingsForSeatCheck;
       const role = await storage.getUserRole(inviteData.roleId);
       const inviteeName = [inviteData.firstName, inviteData.lastName].filter(Boolean).join(' ') || null;
       const baseUrl = getProductionBaseUrl(req);
@@ -33268,6 +33309,16 @@ Respond with JSON in this format:
         return res.status(500).json({ error: 'Could not determine role for invite code. The business owner needs to set up roles first.' });
       }
 
+      const seatCheck = await checkTeamSeatLimit(inviteCode.businessOwnerId, inviteOwner, inviteOwnerSettings);
+      if (!seatCheck.allowed) {
+        return res.status(403).json({
+          error: seatCheck.error,
+          code: seatCheck.code,
+          currentCount: seatCheck.currentCount,
+          limit: seatCheck.limit,
+        });
+      }
+
       const updateResult = await db.update(inviteCodes)
         .set({ usedCount: sql`used_count + 1` })
         .where(and(
@@ -33518,6 +33569,17 @@ Respond with JSON in this format:
         await storage.updateUser(user.id, { emailVerified: true });
       }
       
+      const seatCheck = await checkTeamSeatLimit(teamMember.businessOwnerId, inviteOwner, inviteOwnerSettings);
+      if (!seatCheck.allowed) {
+        return res.status(403).json({
+          success: false,
+          error: seatCheck.error,
+          code: seatCheck.code,
+          currentCount: seatCheck.currentCount,
+          limit: seatCheck.limit,
+        });
+      }
+
       // Update the team member record to accept the invitation
       await storage.updateTeamMember(teamMember.id, teamMember.businessOwnerId, {
         memberId: user.id,

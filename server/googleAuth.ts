@@ -207,13 +207,7 @@ export function setupGoogleAuth(app: Express) {
         emailVerified: true // Google accounts are pre-verified
       });
 
-      // Assign beta cohort for new Google signups
-      try {
-        const { assignBetaCohort } = await import('./freemiumService');
-        await assignBetaCohort(newUser.id);
-      } catch (betaErr) {
-        console.error('Failed to assign beta cohort (Google Web):', betaErr);
-      }
+      // Beta cohort assignment removed — production mode active.
 
       // Attach isNewUser flag for callback to use
       (newUser as any).isNewUser = isNewUser;

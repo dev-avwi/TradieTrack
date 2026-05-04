@@ -3,6 +3,7 @@ import {
   WORKER_PERMISSIONS, 
   DEFAULT_WORKER_PERMISSIONS, 
   ALL_WORKER_PERMISSIONS,
+  TIER_LIMITS,
   type WorkerPermission,
   type TeamMember,
 } from '@shared/schema';
@@ -287,6 +288,65 @@ export function createPermissionMiddleware(requiredPermission: Permission | Perm
   };
 }
 
+/**
+ * Check whether the owner has reached their team member seat limit.
+ * Returns { allowed: true } if there is room, or { allowed: false, ... }
+ * with a user-facing message when the cap has been hit.
+ *
+ * Counts members with inviteStatus = 'accepted' OR 'pending' (pending
+ * invites reserve a seat so an owner can't over-invite).
+ */
+export async function checkTeamSeatLimit(
+  ownerId: string,
+  owner: any,
+  businessSettings: any,
+): Promise<{ allowed: boolean; error?: string; code?: string; currentCount?: number; limit?: number }> {
+  const tier = (owner?.subscriptionTier as string) || 'free';
+
+  const limits: Record<string, number> = {
+    free: TIER_LIMITS.free.teamMembers,
+    pro: TIER_LIMITS.pro.teamMembers,
+    team: TIER_LIMITS.team.teamMembers,
+    business: TIER_LIMITS.business.teamMembers,
+  };
+
+  let seatLimit = limits[tier] ?? 0;
+
+  if (owner?.betaLifetimeAccess) {
+    seatLimit = TIER_LIMITS.business.teamMembers;
+  }
+
+  const extraSeats = (businessSettings as any)?.seatCount || 0;
+  seatLimit += extraSeats;
+
+  if (seatLimit <= 0) {
+    return {
+      allowed: false,
+      error: 'Your plan does not include team members. Upgrade to a Team or Business plan.',
+      code: 'team_seat_limit',
+      currentCount: 0,
+      limit: 0,
+    };
+  }
+
+  const existingMembers = await storage.getTeamMembers(ownerId);
+  const activeOrPending = existingMembers.filter(
+    (m: any) => m.inviteStatus === 'accepted' || m.inviteStatus === 'pending' || m.inviteStatus === 'invited',
+  );
+
+  if (activeOrPending.length >= seatLimit) {
+    return {
+      allowed: false,
+      error: `You've reached your team member limit of ${seatLimit}. Upgrade your plan or purchase additional seats to add more members.`,
+      code: 'team_seat_limit',
+      currentCount: activeOrPending.length,
+      limit: seatLimit,
+    };
+  }
+
+  return { allowed: true, currentCount: activeOrPending.length, limit: seatLimit };
+}
+
 // Predicate: does this owner currently have a plan that includes team-member
 // seats? Mirrors the logic used in getUserContext to decide
 // `ownerSubscriptionValid` for staff. Returns true when the owner can use
@@ -378,6 +438,39 @@ export function requireTeamPlan() {
     } catch (error) {
       console.error('Team plan check error:', error);
       return res.status(500).json({ error: 'Permission check failed' });
+    }
+  };
+}
+
+export function requireOnboarding() {
+  return async (req: any, res: any, next: any) => {
+    try {
+      const userId = req.userId || req._onboardingUserId;
+      if (!userId) {
+        return next();
+      }
+
+      const userContext = req.userContext || (await getUserContext(userId));
+      req.userContext = userContext;
+      req.effectiveUserId = userContext.effectiveUserId;
+
+      if (!userContext.isOwner) {
+        return next();
+      }
+
+      const settings = await storage.getBusinessSettings(userContext.userId);
+
+      if (!settings || !settings.onboardingCompleted) {
+        return res.status(403).json({
+          error: 'Please complete your business setup before using this feature.',
+          code: 'onboarding_required',
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Onboarding check error:', error);
+      return res.status(500).json({ error: 'Onboarding check failed' });
     }
   };
 }

@@ -1,8 +1,7 @@
 import { storage } from './storage';
 import { TIER_LIMITS } from '@shared/schema';
-import { IS_BETA } from './freemiumService';
 
-export type SubscriptionTier = 'free' | 'pro' | 'team' | 'trial' | 'beta';
+export type SubscriptionTier = 'free' | 'pro' | 'team' | 'trial' | 'beta' | 'business';
 
 export interface UsageStatus {
   tier: SubscriptionTier;
@@ -31,6 +30,14 @@ export interface LimitCheckResult {
 }
 
 async function getEffectiveTier(user: any, subscriptionStatus?: string): Promise<SubscriptionTier> {
+  if (user.betaLifetimeAccess) {
+    const stored = user.subscriptionTier as string | undefined;
+    if (stored === 'business') return 'business';
+    if (stored === 'team') return 'team';
+    if (stored === 'pro') return 'pro';
+    return 'business';
+  }
+
   let status = subscriptionStatus;
   if (!status) {
     try {
@@ -41,32 +48,23 @@ async function getEffectiveTier(user: any, subscriptionStatus?: string): Promise
     }
   }
 
-  const hasActiveStripeSubscription = status === 'active' || status === 'trialing';
-  const isTrialUser = user.trialStatus === 'active' || user.trialStatus === 'expired';
-
   if (status === 'past_due' || status === 'canceled' || status === 'unpaid' || status === 'paused') {
     return 'free';
   }
 
-  if (isTrialUser && !hasActiveStripeSubscription) {
-    if (user.trialStatus === 'active' && user.trialEndsAt && new Date(user.trialEndsAt) > new Date()) {
-      if (user.subscriptionTier === 'business') return 'business';
-      if (user.subscriptionTier === 'team') return 'team';
-      return 'pro';
-    }
-    return 'free';
+  if (status === 'active' || status === 'trialing') {
+    const stored = user.subscriptionTier as string | undefined;
+    if (stored === 'business') return 'business';
+    if (stored === 'team') return 'team';
+    if (stored === 'pro') return 'pro';
+    return 'pro';
   }
 
-  if (hasActiveStripeSubscription) {
-    if (user.subscriptionTier === 'business') return 'business';
-    if (user.subscriptionTier === 'team') return 'team';
-    if (user.subscriptionTier === 'pro') return 'pro';
-  }
-
-  if (!status || status === 'none') {
-    if (user.subscriptionTier === 'business') return 'business';
-    if (user.subscriptionTier === 'team') return 'team';
-    if (user.subscriptionTier === 'pro') return 'pro';
+  if (user.trialStatus === 'active' && user.trialEndsAt && new Date(user.trialEndsAt) > new Date()) {
+    const stored = user.subscriptionTier as string | undefined;
+    if (stored === 'business') return 'business';
+    if (stored === 'team') return 'team';
+    return 'pro';
   }
 
   return 'free';
@@ -86,34 +84,13 @@ function getTierLimits(tier: SubscriptionTier) {
 }
 
 export async function getUserUsageStatus(userId: string): Promise<UsageStatus> {
-  // Beta mode: all features unlocked, no limits
-  if (IS_BETA) {
-    return {
-      tier: 'beta',
-      isTrialActive: false,
-      trialDaysRemaining: null,
-      usage: {
-        jobs: { used: 0, limit: -1, remaining: -1 },
-        invoices: { used: 0, limit: -1, remaining: -1 },
-        quotes: { used: 0, limit: -1, remaining: -1 },
-      },
-      canCreate: {
-        job: true,
-        invoice: true,
-        quote: true,
-      },
-      features: TIER_LIMITS.pro.features as unknown as string[],
-      upgradeRequired: false,
-    };
-  }
-
   const user = await storage.getUser(userId);
   if (!user) {
     throw new Error('User not found');
   }
 
-  // Beta lifetime users get full access forever (even after IS_BETA is turned off)
   if (user.betaLifetimeAccess) {
+    const businessLimits = TIER_LIMITS.business || TIER_LIMITS.team;
     return {
       tier: 'beta' as SubscriptionTier,
       isTrialActive: false,
@@ -124,7 +101,7 @@ export async function getUserUsageStatus(userId: string): Promise<UsageStatus> {
         quotes: { used: 0, limit: -1, remaining: -1 },
       },
       canCreate: { job: true, invoice: true, quote: true },
-      features: TIER_LIMITS.pro.features as unknown as string[],
+      features: businessLimits.features as unknown as string[],
       upgradeRequired: false,
     };
   }
@@ -193,11 +170,6 @@ export async function getUserUsageStatus(userId: string): Promise<UsageStatus> {
 }
 
 export async function checkCanCreateJob(userId: string): Promise<LimitCheckResult> {
-  // Beta mode: always allowed
-  if (IS_BETA) {
-    return { allowed: true };
-  }
-
   const user = await storage.getUser(userId);
   if (!user) {
     return { allowed: false, reason: 'User not found' };
@@ -230,11 +202,6 @@ export async function checkCanCreateJob(userId: string): Promise<LimitCheckResul
 }
 
 export async function checkCanCreateInvoice(userId: string): Promise<LimitCheckResult> {
-  // Beta mode: always allowed
-  if (IS_BETA) {
-    return { allowed: true };
-  }
-
   const user = await storage.getUser(userId);
   if (!user) {
     return { allowed: false, reason: 'User not found' };
@@ -267,11 +234,6 @@ export async function checkCanCreateInvoice(userId: string): Promise<LimitCheckR
 }
 
 export async function checkCanCreateQuote(userId: string): Promise<LimitCheckResult> {
-  // Beta mode: always allowed
-  if (IS_BETA) {
-    return { allowed: true };
-  }
-
   const user = await storage.getUser(userId);
   if (!user) {
     return { allowed: false, reason: 'User not found' };
