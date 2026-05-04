@@ -983,11 +983,12 @@ function GatedFloatingAIChat({ onNavigate }: { onNavigate: (path: string) => voi
 function GatedAIVisualizationPage() {
   const { canUseAIFeatures, isLoading } = useFeatureAccess();
   const [, setLocation] = useLocation();
-  if (isLoading) return null;
-  if (!canUseAIFeatures) {
-    setLocation("/dashboard");
-    return null;
-  }
+  useEffect(() => {
+    if (!isLoading && !canUseAIFeatures) {
+      setLocation("/dashboard");
+    }
+  }, [isLoading, canUseAIFeatures, setLocation]);
+  if (isLoading || !canUseAIFeatures) return null;
   return <AIVisualizationPage />;
 }
 
@@ -1312,6 +1313,12 @@ function AppLayout() {
     }
   }, [businessSettings, startTour, queryClient]);
 
+  useEffect(() => {
+    if (!isLoading && userCheck && !error && (location === '/auth' || location.startsWith('/auth'))) {
+      setLocation('/');
+    }
+  }, [isLoading, userCheck, error, location, setLocation]);
+
   const handleLoginSuccess = () => {
     // Invalidate both auth and business settings queries to refetch fresh data
     queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
@@ -1409,9 +1416,7 @@ function AppLayout() {
     );
   }
 
-  // If authenticated and on /auth route, redirect to dashboard
   if (userCheck && !error && (location === '/auth' || location.startsWith('/auth'))) {
-    setLocation('/');
     return null;
   }
 

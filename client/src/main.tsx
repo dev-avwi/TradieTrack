@@ -12,6 +12,16 @@ if (import.meta.env.VITE_SENTRY_DSN) {
       Sentry.browserTracingIntegration(),
     ],
     tracesSampleRate: 0.2,
+    ignoreErrors: [
+      /Failed to construct 'WebSocket'.*localhost:undefined/,
+    ],
+    beforeSend(event) {
+      const msg = event.exception?.values?.[0]?.value || '';
+      if (msg.includes('localhost:undefined') && msg.includes('WebSocket')) return null;
+      const frames = event.exception?.values?.[0]?.stacktrace?.frames || [];
+      if (frames.some((f: any) => f.filename?.includes('/@vite/client'))) return null;
+      return event;
+    },
   });
 }
 
