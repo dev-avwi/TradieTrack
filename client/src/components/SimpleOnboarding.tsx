@@ -275,7 +275,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
 
   useEffect(() => {
     if (user?.intendedTier === 'team') {
-      setFormData(prev => ({ ...prev, teamSize: 'team' }));
+      setFormData(prev => ({ ...prev, teamSize: 'small' }));
     }
   }, [user?.intendedTier]);
 
@@ -425,7 +425,7 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
           gstEnabled: formData.gstRegistered,
           defaultHourlyRate: parseFloat(formData.hourlyRate) || 85,
           calloutFee: 90,
-          teamSize: isTeamPlan ? 'team' : 'solo',
+          teamSize: isTeamPlan ? 'small' : 'solo',
           onboardingCompleted: false,
           logoUrl: logoPreview || undefined,
         });

@@ -5969,6 +5969,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7-day trial
         });
         
+        if (subscriptionTier === 'team' || subscriptionTier === 'business') {
+          const bs = await storage.getBusinessSettings(userId);
+          if (bs && (!bs.teamSize || bs.teamSize === 'solo')) {
+            await storage.updateBusinessSettings(userId, { teamSize: 'small' });
+          }
+        }
+        
         console.log(`[BETA] Granted ${tier} access to user ${userId} without payment`);
         
         // Return success without Stripe URL - frontend will handle this
@@ -6055,6 +6062,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           betaUser: true,
           trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         });
+        if (subscriptionTier === 'team' || subscriptionTier === 'business') {
+          const bs = await storage.getBusinessSettings(userId);
+          if (bs && (!bs.teamSize || bs.teamSize === 'solo')) {
+            await storage.updateBusinessSettings(userId, { teamSize: 'small' });
+          }
+        }
         emailPaymentLinkCooldown.set(userId, Date.now());
         return res.json({
           success: true,
@@ -6533,6 +6546,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         appleReceiptData: receiptData,
       } as any);
 
+      if (newTier === 'team' || newTier === 'business') {
+        const bs = await storage.getBusinessSettings(userId);
+        if (bs && (!bs.teamSize || bs.teamSize === 'solo')) {
+          await storage.updateBusinessSettings(userId, { teamSize: 'small' });
+        }
+      }
+
       console.log(`[IAP] User ${userId} upgraded to ${newTier} via Apple IAP (product: ${productId})`);
 
       res.json({
@@ -6629,6 +6649,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...(originalTransactionId ? { appleOriginalTransactionId: originalTransactionId } : {}),
       } as any);
 
+      if (newTier === 'team' || newTier === 'business') {
+        const bs = await storage.getBusinessSettings(userId);
+        if (bs && (!bs.teamSize || bs.teamSize === 'solo')) {
+          await storage.updateBusinessSettings(userId, { teamSize: 'small' });
+        }
+      }
+
       console.log(`[IAP] User ${userId} upgraded to ${newTier} via Apple IAP (verified, txn=${originalTransactionId || 'unknown'})`);
 
       res.json({
@@ -6706,6 +6733,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         appleProductId: productId,
         appleReceiptData: receiptData,
       } as any);
+
+      if (newTier === 'team' || newTier === 'business') {
+        const bs = await storage.getBusinessSettings(userId);
+        if (bs && (!bs.teamSize || bs.teamSize === 'solo')) {
+          await storage.updateBusinessSettings(userId, { teamSize: 'small' });
+        }
+      }
 
       console.log(`[IAP] User ${userId} restored to ${newTier} via Apple IAP (verified)`);
 

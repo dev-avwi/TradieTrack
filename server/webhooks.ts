@@ -51,7 +51,7 @@ export function setupStripeWebhooks(app: Express, stripe: any, storage: any) {
           // Update business settings with subscription info
           const businessSettings = await storage.getBusinessSettings(userId);
           if (businessSettings) {
-            await storage.updateBusinessSettings(userId, {
+            const updateData: any = {
               subscriptionTier: plan || 'pro',
               subscriptionStatus: 'active',
               stripeCustomerId: session.customer,
@@ -59,7 +59,11 @@ export function setupStripeWebhooks(app: Express, stripe: any, storage: any) {
               subscriptionCanceledAt: null,
               dataRetentionExpiresAt: null,
               subscriptionPausedAt: null,
-            });
+            };
+            if ((plan === 'team' || plan === 'business') && (!businessSettings.teamSize || businessSettings.teamSize === 'solo')) {
+              updateData.teamSize = 'small';
+            }
+            await storage.updateBusinessSettings(userId, updateData);
 
             // Create notification
             await createNotification(storage, {

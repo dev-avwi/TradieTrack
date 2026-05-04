@@ -351,6 +351,13 @@ export async function startTrial(userId: string, tier?: 'pro' | 'team'): Promise
     trialStatus: 'active',
   });
   
+  if (trialTier === 'team') {
+    const bs = await storage.getBusinessSettings(userId);
+    if (bs && (!bs.teamSize || bs.teamSize === 'solo')) {
+      await storage.updateBusinessSettings(userId, { teamSize: 'small' });
+    }
+  }
+  
   return { success: true, endsAt, tier: trialTier };
 }
 

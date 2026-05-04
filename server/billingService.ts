@@ -425,14 +425,18 @@ export async function createTrialSubscription(
 
     const businessSettings = await storage.getBusinessSettings(userId);
     if (businessSettings) {
-      await storage.updateBusinessSettings(userId, {
+      const bsUpdate: Record<string, any> = {
         stripeSubscriptionId: subscription.id,
         stripeCustomerId: customerId,
         subscriptionStatus: subscription.status,
         trialStartDate: new Date(),
         trialEndDate: trialEnd,
         nextBillingDate: trialEnd,
-      });
+      };
+      if ((tier === 'team' || tier === 'business') && (!businessSettings.teamSize || businessSettings.teamSize === 'solo')) {
+        bsUpdate.teamSize = 'small';
+      }
+      await storage.updateBusinessSettings(userId, bsUpdate);
     }
 
     return {
@@ -1165,12 +1169,16 @@ async function upgradeProToFlatTierTrial(
       trialEndsAt: trialEndsAt,
     });
 
-    await storage.updateBusinessSettings(userId, {
+    const bsUpdate: Record<string, any> = {
       subscriptionTier: targetTier,
       subscriptionStatus: updatedSubscription.status,
       trialStartDate: new Date(),
       trialEndDate: trialEndsAt,
-    });
+    };
+    if (!businessSettings.teamSize || businessSettings.teamSize === 'solo') {
+      bsUpdate.teamSize = 'small';
+    }
+    await storage.updateBusinessSettings(userId, bsUpdate);
 
     return {
       success: true,

@@ -55,6 +55,12 @@ export async function applyAppleNotification(args: {
         subscriptionSource: 'apple',
         appleProductId: productId,
       } as any);
+      if (newTier === 'team' || newTier === 'business') {
+        const bs = await storage.getBusinessSettings(user.id);
+        if (bs && (!bs.teamSize || bs.teamSize === 'solo')) {
+          await storage.updateBusinessSettings(user.id, { teamSize: 'small' });
+        }
+      }
       console.log(`[AppleWebhook] User ${user.id} subscription active: ${newTier}`);
       break;
     }

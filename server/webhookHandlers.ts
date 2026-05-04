@@ -201,12 +201,16 @@ async function handleStripeEvent(event: any, storage: any) {
         if (plan && userId) {
           const businessSettings = await storage.getBusinessSettings(userId);
           if (businessSettings) {
-            await storage.updateBusinessSettings(userId, {
+            const subUpdateData: any = {
               subscriptionTier: plan,
               subscriptionStatus: 'active',
               stripeCustomerId: session.customer,
               stripeSubscriptionId: session.subscription,
-            });
+            };
+            if ((plan === 'team' || plan === 'business') && (!businessSettings.teamSize || businessSettings.teamSize === 'solo')) {
+              subUpdateData.teamSize = 'small';
+            }
+            await storage.updateBusinessSettings(userId, subUpdateData);
 
             await createNotification(storage, {
               userId,
