@@ -56,9 +56,13 @@ function gracefulShutdown(signal: string) {
   });
 
   closeServer
-    .then(() => {
-      if ((storage as any).pool) {
-        return (storage as any).pool.end();
+    .then(async () => {
+      try {
+        const { pool } = await import('./storage');
+        await pool.end();
+        console.log('[Shutdown] Database pool closed');
+      } catch (poolErr) {
+        console.error('[Shutdown] Error closing database pool:', poolErr);
       }
     })
     .then(() => {
@@ -434,6 +438,19 @@ if (process.env.DATABASE_URL) {
   });
 
   app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      const timeout = setTimeout(() => {
+        if (!res.headersSent) {
+          res.status(504).json({ error: 'Request timeout' });
+        }
+      }, 30000);
+      res.on('finish', () => clearTimeout(timeout));
+      res.on('close', () => clearTimeout(timeout));
+    }
+    next();
+  });
+
+  app.use((req, res, next) => {
     const start = Date.now();
     const path = req.path;
     let capturedJsonResponse: Record<string, any> | undefined = undefined;
@@ -535,62 +552,71 @@ if (process.env.DATABASE_URL) {
   }, () => {
     log(`serving on port ${port}`);
     
-    // Start background schedulers after server is ready
-    import('./reminderScheduler').then(({ startAllSchedulers }) => {
-      startAllSchedulers();
-    }).catch(error => {
-      console.error('Failed to start schedulers:', error);
-    });
+    // Start background schedulers with staggered delays to prevent connection pool stampede
+    const stagger = (fn: () => void, delayMs: number) => setTimeout(fn, delayMs);
 
-    import('./retryScheduler').then(({ startRetryScheduler }) => {
-      startRetryScheduler();
-    }).catch(error => {
-      console.error('Failed to start retry scheduler:', error);
-    });
+    stagger(() => {
+      import('./reminderScheduler').then(({ startAllSchedulers }) => {
+        startAllSchedulers();
+      }).catch(error => {
+        console.error('Failed to start schedulers:', error);
+      });
+    }, 2000);
 
-    import('./lifecycleEmailService').then(({ startLifecycleEmailScheduler }) => {
-      startLifecycleEmailScheduler();
-    }).catch(error => {
-      console.error('Failed to start lifecycle email scheduler:', error);
-    });
+    stagger(() => {
+      import('./retryScheduler').then(({ startRetryScheduler }) => {
+        startRetryScheduler();
+      }).catch(error => {
+        console.error('Failed to start retry scheduler:', error);
+      });
+    }, 5000);
 
-    // Start stale timer detection scheduler - runs every 30 minutes
-    import('./staleTimerService').then(({ checkAndAutoStopStaleTimers }) => {
-      const STALE_TIMER_INTERVAL = 30 * 60 * 1000; // 30 minutes
-      setInterval(async () => {
-        try {
-          console.log('[Scheduler] Running stale timer detection...');
-          const result = await checkAndAutoStopStaleTimers();
-          if (result.stopped > 0 || result.errors > 0) {
-            console.log(`[Scheduler] Stale timer check: ${result.stopped} stopped, ${result.errors} errors`);
+    stagger(() => {
+      import('./lifecycleEmailService').then(({ startLifecycleEmailScheduler }) => {
+        startLifecycleEmailScheduler();
+      }).catch(error => {
+        console.error('Failed to start lifecycle email scheduler:', error);
+      });
+    }, 8000);
+
+    stagger(() => {
+      import('./staleTimerService').then(({ checkAndAutoStopStaleTimers }) => {
+        const STALE_TIMER_INTERVAL = 30 * 60 * 1000;
+        setInterval(async () => {
+          try {
+            console.log('[Scheduler] Running stale timer detection...');
+            const result = await checkAndAutoStopStaleTimers();
+            if (result.stopped > 0 || result.errors > 0) {
+              console.log(`[Scheduler] Stale timer check: ${result.stopped} stopped, ${result.errors} errors`);
+            }
+          } catch (error) {
+            console.error('[Scheduler] Stale timer check failed:', error);
           }
-        } catch (error) {
-          console.error('[Scheduler] Stale timer check failed:', error);
-        }
-      }, STALE_TIMER_INTERVAL);
-      console.log('✅ Stale timer detection scheduler started (every 30 minutes)');
-    }).catch(error => {
-      console.error('Failed to start stale timer scheduler:', error);
-    });
+        }, STALE_TIMER_INTERVAL);
+        console.log('✅ Stale timer detection scheduler started (every 30 minutes)');
+      }).catch(error => {
+        console.error('Failed to start stale timer scheduler:', error);
+      });
+    }, 11000);
 
-    // Start overtime nudge scheduler - runs every 15 minutes
-    import('./overtimeNudgeService').then(({ checkOvertimeTimers }) => {
-      const OVERTIME_INTERVAL = 15 * 60 * 1000;
-      setInterval(async () => {
-        try {
-          await checkOvertimeTimers();
-        } catch (error) {
-          console.error('[Scheduler] Overtime nudge check failed:', error);
-        }
-      }, OVERTIME_INTERVAL);
-      console.log('✅ Overtime nudge scheduler started (every 15 minutes)');
-    }).catch(error => {
-      console.error('Failed to start overtime nudge scheduler:', error);
-    });
+    stagger(() => {
+      import('./overtimeNudgeService').then(({ checkOvertimeTimers }) => {
+        const OVERTIME_INTERVAL = 15 * 60 * 1000;
+        setInterval(async () => {
+          try {
+            await checkOvertimeTimers();
+          } catch (error) {
+            console.error('[Scheduler] Overtime nudge check failed:', error);
+          }
+        }, OVERTIME_INTERVAL);
+        console.log('✅ Overtime nudge scheduler started (every 15 minutes)');
+      }).catch(error => {
+        console.error('Failed to start overtime nudge scheduler:', error);
+      });
+    }, 14000);
     
-    // Start demo data refresh scheduler to keep team members "alive"
     if (enableDemoData) {
-      startDemoDataRefreshScheduler();
+      stagger(() => startDemoDataRefreshScheduler(), 17000);
     }
   });
 })();

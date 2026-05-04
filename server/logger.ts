@@ -42,12 +42,12 @@ class Logger {
     lastAlertSent = now;
 
     try {
-      const { sendEmailViaIntegration } = await import('./emailService');
+      const { sendEmail } = await import('./emailService');
       const adminEmail = process.env.ADMIN_ALERT_EMAIL || 'admin@avwebinnovation.com';
       const errorMsg = entry.error instanceof Error ? entry.error.message : String(entry.error || '');
       const stack = entry.error instanceof Error ? entry.error.stack : '';
 
-      await sendEmailViaIntegration({
+      await sendEmail({
         to: adminEmail,
         subject: `[JobRunner ${entry.level.toUpperCase()}] ${entry.category}: ${entry.message.substring(0, 80)}`,
         html: `

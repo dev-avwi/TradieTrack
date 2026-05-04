@@ -1258,10 +1258,22 @@ export interface IStorage {
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL!,
-  max: 30,
-  idleTimeoutMillis: 30000,
+  max: 15,
+  min: 2,
+  idleTimeoutMillis: 20000,
   connectionTimeoutMillis: 10000,
+  allowExitOnIdle: false,
 });
+
+pool.on('error', (err) => {
+  console.error('[Pool] Unexpected pool error on idle client:', err.message);
+});
+
+pool.on('connect', (client) => {
+  client.query('SET statement_timeout = 30000').catch(() => {});
+});
+
+export { pool };
 export const db = drizzle(pool);
 
 export class PostgresStorage implements IStorage {

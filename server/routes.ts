@@ -984,13 +984,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch {}
     const latency = Date.now() - startTime;
     const status = dbOk ? "healthy" : "degraded";
+    const { pool } = await import('./storage');
     res.status(dbOk ? 200 : 503).json({
       status,
       timestamp: new Date().toISOString(),
       version: "1.0.0",
       service: "jobrunner-api",
+      uptime: Math.floor(process.uptime()),
       database: dbOk ? "connected" : "unreachable",
       responseMs: latency,
+      pool: { total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount },
     });
   });
 

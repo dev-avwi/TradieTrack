@@ -57,3 +57,11 @@ Core architectural and design decisions include:
 *   **Tap to Pay (Stripe Terminal)**: `@stripe/stripe-terminal-react-native` SDK
 *   **AI Receptionist (Voice)**: Vapi.ai (enhanced with ElevenLabs)
 *   **Error Tracking**: Sentry
+
+### Production Hardening (May 2026)
+*   **Database Pool**: Reduced max connections from 30 to 15 for Neon serverless compatibility, added min:2, 20s idle timeout, pool error event handler, and 30s per-connection statement_timeout via `pool.on('connect')`.
+*   **Error Alert Fix**: Logger alert emails now correctly import `sendEmail` from `emailService.ts` (was importing non-existent `sendEmailViaIntegration` — the cascading "sendEmailViaIntegration2 is not a function" error in production).
+*   **Request Timeout**: 30s timeout middleware on all `/api` routes returns 504 if handler doesn't respond in time.
+*   **Scheduler Staggering**: Background schedulers (reminders, retry, lifecycle, stale timer, overtime nudge, demo refresh) start with 2-3s staggered delays to prevent connection pool stampede on startup.
+*   **Health Check**: `GET /api/health` returns DB connectivity, latency, pool stats (total/idle/waiting), uptime, and service version.
+*   **Graceful Shutdown**: Properly closes the database pool with logging on SIGTERM/SIGINT.
