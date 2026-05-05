@@ -395,7 +395,8 @@ function ClientSelector({
   );
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal
+      onRequestClose={onClose} visible={visible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
@@ -494,7 +495,8 @@ function StatusSelector({
   ];
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal
+      onRequestClose={onClose} visible={visible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
@@ -1352,7 +1354,8 @@ export default function CreateJobScreen() {
       />
 
       {/* Priority Picker Modal */}
-      <Modal visible={showPriorityPicker} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowPriorityPicker(false)} visible={showPriorityPicker} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -1390,7 +1393,8 @@ export default function CreateJobScreen() {
       </Modal>
 
       {/* Team Member Picker Modal */}
-      <Modal visible={showTeamPicker} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowTeamPicker(false)} visible={showTeamPicker} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -1458,7 +1462,8 @@ export default function CreateJobScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showQuickAddClient} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowQuickAddClient(false)} visible={showQuickAddClient} animationType="slide" transparent>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
@@ -1540,7 +1545,8 @@ export default function CreateJobScreen() {
       </Modal>
 
       {/* Recurrence Options Modal */}
-      <Modal visible={showRecurrenceOptions} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowRecurrenceOptions(false)} visible={showRecurrenceOptions} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>

@@ -2015,7 +2015,12 @@ export default function TimeTrackingScreen() {
               <Text style={styles.pageSubtitle}>Track hours, breaks, and timesheets</Text>
             </View>
             <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.headerButton} onPress={handleOpenAddEntry} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={handleOpenAddEntry}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Feather name="plus" size={16} color={colors.foreground} />
                 <Text style={styles.headerButtonText}>Add</Text>
               </TouchableOpacity>

@@ -222,7 +222,8 @@ export function AIPhotoAnalysisModal({
 
   if (!aiEnabled || !aiPhotoAnalysisEnabled) {
     return (
-      <Modal visible={visible} animationType="slide" transparent>
+      <Modal
+      onRequestClose={onClose} visible={visible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
@@ -247,7 +248,8 @@ export function AIPhotoAnalysisModal({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal
+      onRequestClose={onClose} visible={visible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>

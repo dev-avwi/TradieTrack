@@ -128,7 +128,8 @@ export function TimePicker({ value, onChange, label, disabled }: TimePickerProps
         <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
       </TouchableOpacity>
 
-      <Modal visible={showPicker} transparent animationType="slide">
+      <Modal
+      onRequestClose={() => setShowPicker(false)} visible={showPicker} transparent animationType="slide">
         <TouchableOpacity 
           style={styles.modalOverlay} 
           activeOpacity={1} 

@@ -1418,8 +1418,13 @@ export default function WhsHubScreen() {
           </ScrollView>
 
           {showFab && (
-            <TouchableOpacity style={styles.fab} onPress={fabAction} activeOpacity={0.85}>
-              <Feather name="plus" size={24} color="#fff" />
+            <TouchableOpacity
+              style={styles.fab}
+              onPress={fabAction}
+              activeOpacity={0.85}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Feather name="plus" size={24} color={colors.primaryForeground} />
             </TouchableOpacity>
           )}
         </>

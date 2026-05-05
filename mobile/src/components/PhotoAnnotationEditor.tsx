@@ -543,6 +543,7 @@ export function PhotoAnnotationEditor({
 
   return (
     <Modal
+      onRequestClose={onClose}
       visible={visible}
       animationType="slide"
       presentationStyle="fullScreen"

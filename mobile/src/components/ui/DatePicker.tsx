@@ -281,7 +281,8 @@ export function DatePicker({ value, onChange, minimumDate, label }: DatePickerPr
         <Text style={styles.dateButtonText}>{formatDate(value)}</Text>
       </TouchableOpacity>
 
-      <Modal visible={showPicker} transparent animationType="fade">
+      <Modal
+      onRequestClose={() => setShowPicker(false)} visible={showPicker} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.pickerContainer}>
             <View style={styles.pickerHeader}>

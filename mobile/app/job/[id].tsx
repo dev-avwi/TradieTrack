@@ -10465,7 +10465,8 @@ export default function JobDetailScreen() {
       </View>
 
       {/* FAB Voice Recording Modal */}
-      <Modal visible={showFABVoiceModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowFABVoiceModal(false)} visible={showFABVoiceModal} animationType="slide" transparent>
         <View style={{
           flex: 1,
           backgroundColor: 'rgba(0,0,0,0.5)',
@@ -10534,7 +10535,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Add/Edit Material Modal */}
-      <Modal visible={showAddMaterialModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowAddMaterialModal(false)} visible={showAddMaterialModal} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
@@ -10675,7 +10677,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Cost Prompt Modal */}
-      <Modal visible={showCostPromptModal} animationType="fade" transparent>
+      <Modal
+      onRequestClose={() => setShowCostPromptModal(false)} visible={showCostPromptModal} animationType="fade" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContainer, { maxHeight: 320 }]}>
@@ -10732,7 +10735,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Assign Workers Modal - Multi-select with availability */}
-      <Modal visible={showAssignModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowAssignModal(false)} visible={showAssignModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
             <View style={styles.modalHeader}>
@@ -11017,7 +11021,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Rename Job Modal */}
-      <Modal visible={showRenameModal} animationType="fade" transparent>
+      <Modal
+      onRequestClose={() => setShowRenameModal(false)} visible={showRenameModal} animationType="fade" transparent>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
@@ -11062,7 +11067,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Notes Modal */}
-      <Modal visible={showNotesModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowNotesModal(false)} visible={showNotesModal} animationType="slide" transparent>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
@@ -11103,7 +11109,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Site Update Modal */}
-      <Modal visible={showSiteUpdateModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowSiteUpdateModal(false)} visible={showSiteUpdateModal} animationType="slide" transparent>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
@@ -11211,7 +11218,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Photos Modal */}
-      <Modal visible={showPhotosModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowPhotosModal(false)} visible={showPhotosModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
@@ -11324,7 +11332,8 @@ export default function JobDetailScreen() {
       )}
 
       {/* Full Photo Preview Modal */}
-      <Modal visible={!!selectedPhoto && !showAnnotationEditor} animationType="fade" transparent>
+      <Modal
+      onRequestClose={() => setSelectedPhoto(null)} visible={!!selectedPhoto && !showAnnotationEditor} animationType="fade" transparent>
         <View style={styles.photoPreviewModal}>
           {selectedPhoto && (
             <>
@@ -11449,7 +11458,8 @@ export default function JobDetailScreen() {
       )}
 
       {/* Video Player Modal */}
-      <Modal visible={showVideoPlayer && !!selectedVideo} animationType="fade" transparent>
+      <Modal
+      onRequestClose={() => setShowVideoPlayer(false)} visible={showVideoPlayer && !!selectedVideo} animationType="fade" transparent>
         <View style={styles.videoPlayerModal}>
           {selectedVideo && (
             <>
@@ -11526,7 +11536,8 @@ export default function JobDetailScreen() {
 
       {/* Job Completion Summary Modal */}
       {job && (
-        <Modal visible={showCompletionModal} animationType="slide">
+        <Modal
+      onRequestClose={() => setShowCompletionModal(false)} visible={showCompletionModal} animationType="slide">
           <View style={[styles.completionModal, { paddingTop: insets.top }]}>
             <View style={styles.completionHeader}>
               <Text style={styles.completionTitle}>Complete Job</Text>
@@ -12279,7 +12290,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Template Picker Modal */}
-      <Modal visible={showTemplatePickerModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowTemplatePickerModal(false)} visible={showTemplatePickerModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContainer, { maxHeight: '70%' }]}>
             <View style={styles.modalHeader}>
@@ -12342,7 +12354,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Create SWMS Modal */}
-      <Modal visible={showCreateSwmsModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowCreateSwmsModal(false)} visible={showCreateSwmsModal} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
@@ -12584,7 +12597,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Sign SWMS Modal */}
-      <Modal visible={showSignSwmsModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowSignSwmsModal(false)} visible={showSignSwmsModal} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
@@ -12659,7 +12673,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Proof Pack Section Toggle Modal */}
-      <Modal visible={showProofPackModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowProofPackModal(false)} visible={showProofPackModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
             <View style={styles.modalHeader}>
@@ -12813,7 +12828,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Proof Pack Preview Modal */}
-      <Modal visible={showProofPackPreview} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowProofPackPreview(false)} visible={showProofPackPreview} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContainer, { maxHeight: '90%', flex: 1 }]}>
             <View style={styles.modalHeader}>
@@ -12883,7 +12899,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Add Variation Modal */}
-      <Modal visible={showAddVariationModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowAddVariationModal(false)} visible={showAddVariationModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ justifyContent: 'flex-end' }}>
             <View style={styles.modalContainer}>
@@ -12974,7 +12991,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Approve Variation Modal */}
-      <Modal visible={!!showApproveVariationModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowApproveVariationModal(null)} visible={!!showApproveVariationModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ justifyContent: 'flex-end' }}>
             <View style={styles.modalContainer}>
@@ -13036,7 +13054,8 @@ export default function JobDetailScreen() {
       </Modal>
 
       {/* Reject Variation Modal */}
-      <Modal visible={!!showRejectVariationModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowRejectVariationModal(null)} visible={!!showRejectVariationModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ justifyContent: 'flex-end' }}>
             <View style={styles.modalContainer}>

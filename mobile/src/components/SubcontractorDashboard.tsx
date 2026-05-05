@@ -830,7 +830,8 @@ export function SubcontractorDashboard() {
       </ScrollView>
 
       {/* Decline Modal */}
-      <Modal visible={showDeclineModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowDeclineModal(false)} visible={showDeclineModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
@@ -872,7 +873,8 @@ export function SubcontractorDashboard() {
       </Modal>
 
       {/* Create Invoice Modal */}
-      <Modal visible={showInvoiceCreate} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowInvoiceCreate(false)} visible={showInvoiceCreate} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '85%' }]}>
             <View style={styles.modalHeader}>
@@ -1139,7 +1141,8 @@ export function SubcontractorDashboard() {
       </Modal>
 
       {/* Invoice List Modal */}
-      <Modal visible={showInvoices} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowInvoices(false)} visible={showInvoices} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '85%' }]}>
             <View style={styles.modalHeader}>

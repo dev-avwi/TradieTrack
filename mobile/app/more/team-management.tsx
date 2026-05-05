@@ -2483,7 +2483,8 @@ export default function TeamManagementScreen() {
         )}
 
         {/* Unified Invite Modal */}
-        <Modal visible={showInviteModal} animationType="slide" transparent>
+        <Modal
+      onRequestClose={() => setShowInviteModal(false)} visible={showInviteModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
             <View testID="modal-invite" style={styles.modalContent}>
               <View style={styles.modalHeader}>
@@ -2699,7 +2700,8 @@ export default function TeamManagementScreen() {
         </Modal>
 
         {/* Member Detail Modal */}
-        <Modal visible={showDetailModal} animationType="slide" transparent>
+        <Modal
+      onRequestClose={() => setShowDetailModal(false)} visible={showDetailModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
@@ -2925,7 +2927,8 @@ export default function TeamManagementScreen() {
         </Modal>
 
         {/* Edit Member Modal */}
-        <Modal visible={showEditModal} animationType="slide" transparent>
+        <Modal
+      onRequestClose={() => setShowEditModal(false)} visible={showEditModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
             <View testID="modal-edit" style={styles.modalContent}>
               <View style={styles.modalHeader}>
@@ -3013,7 +3016,8 @@ export default function TeamManagementScreen() {
         </Modal>
 
         {/* Permissions Modal */}
-        <Modal visible={showPermissionsModal} animationType="slide" transparent>
+        <Modal
+      onRequestClose={() => setShowPermissionsModal(false)} visible={showPermissionsModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
             <View testID="modal-permissions" style={styles.modalContent}>
               <View style={styles.modalHeader}>
@@ -3244,7 +3248,8 @@ export default function TeamManagementScreen() {
         </Modal>
 
         {/* Assign Job Modal */}
-        <Modal visible={showAssignJobModal} animationType="slide" transparent>
+        <Modal
+      onRequestClose={() => setShowAssignJobModal(false)} visible={showAssignJobModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
             <View testID="modal-assign-job" style={styles.modalContent}>
               <View style={styles.modalHeader}>

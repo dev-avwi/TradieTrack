@@ -972,7 +972,8 @@ export default function DispatchBoardScreen() {
   };
 
   const renderAssignModal = () => (
-    <Modal visible={showAssignModal} animationType="slide" transparent>
+    <Modal
+      onRequestClose={() => setShowAssignModal(false)} visible={showAssignModal} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHandle} />

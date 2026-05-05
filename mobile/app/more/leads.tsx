@@ -505,7 +505,8 @@ export default function LeadsScreen() {
         </View>
       </ScrollView>
 
-      <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet">
+      <Modal
+      onRequestClose={() => setShowForm(false)} visible={showForm} animationType="slide" presentationStyle="pageSheet">
         <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.background }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => { setShowForm(false); setEditingLead(null); resetForm(); }}>
@@ -577,7 +578,8 @@ export default function LeadsScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={showConvertModal} animationType="slide" transparent>
+      <Modal
+      onRequestClose={() => setShowConvertModal(false)} visible={showConvertModal} animationType="slide" transparent>
         <View style={styles.convertOverlay}>
           <View style={styles.convertModal}>
             <Text style={styles.convertTitle}>Convert Lead to Client</Text>
