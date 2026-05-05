@@ -80,7 +80,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
   },
   actionButtonText: {
     ...typography.body,
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: '700',
   },
   warningBanner: {
@@ -205,7 +205,7 @@ export default function ApiDebugScreen() {
             onPress={() => copy('API host', API_URL)}
             activeOpacity={0.8}
           >
-            <Feather name="copy" size={16} color="#FFFFFF" />
+            <Feather name="copy" size={16} color={colors.white} />
             <Text style={styles.actionButtonText}>Copy API host</Text>
           </TouchableOpacity>
         </View>
@@ -288,7 +288,7 @@ export default function ApiDebugScreen() {
                 }}
                 activeOpacity={0.8}
               >
-                <Feather name="rotate-ccw" size={16} color="#FFFFFF" />
+                <Feather name="rotate-ccw" size={16} color={colors.white} />
                 <Text style={styles.actionButtonText}>Reset review lock (dev)</Text>
               </TouchableOpacity>
               <TouchableOpacity

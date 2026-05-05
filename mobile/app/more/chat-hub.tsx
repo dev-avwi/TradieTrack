@@ -222,7 +222,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   quickActionTextSuccess: {
-    color: '#FFFFFF',
+    color: colors.white,
   },
   searchContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
@@ -288,7 +288,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   filterBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
   },
   subFilterContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
@@ -545,7 +545,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   twilioSetupButtonText: {
     ...typography.button,
-    color: '#FFFFFF',
+    color: colors.white,
   },
   twilioConnectedBanner: {
     flexDirection: 'row',
@@ -1371,7 +1371,7 @@ export default function ChatHubScreen() {
           activeOpacity={0.8}
         >
           <View style={styles.twilioConnectedIcon}>
-            <Feather name="check" size={16} color="#FFFFFF" />
+            <Feather name="check" size={16} color={colors.white} />
           </View>
           <Text style={styles.twilioConnectedText}>
             {twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'SMS connected'}
@@ -1384,7 +1384,7 @@ export default function ChatHubScreen() {
     return (
       <View style={styles.twilioSetupBanner}>
         <View style={styles.twilioSetupIcon}>
-          <Feather name="alert-triangle" size={16} color="#FFFFFF" />
+          <Feather name="alert-triangle" size={16} color={colors.white} />
         </View>
         <View style={styles.twilioSetupContent}>
           <Text style={styles.twilioSetupTitle}>Business Number Not Set Up</Text>
@@ -1467,7 +1467,7 @@ export default function ChatHubScreen() {
             style={[styles.quickActionButton, styles.quickActionButtonSuccess]}
             onPress={() => router.push('/more/new-sms-conversation' as any)}
           >
-            <Feather name="edit-3" size={18} color="#FFFFFF" />
+            <Feather name="edit-3" size={18} color={colors.white} />
             <Text style={[styles.quickActionText, styles.quickActionTextSuccess]}>New SMS</Text>
           </TouchableOpacity>
           <TouchableOpacity

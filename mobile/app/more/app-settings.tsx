@@ -229,7 +229,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   colorAvatarInitials: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
   },
   colorInfo: {
     flex: 1,
@@ -250,7 +250,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   },
   colorOptionSelected: {
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: colors.white,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -428,7 +428,7 @@ function MapsPreferenceSection() {
                 <Feather
                   name={icon as any}
                   size={22}
-                  color={mapsPreference === value ? '#fff' : colors.mutedForeground}
+                  color={mapsPreference === value ? colors.white : colors.mutedForeground}
                 />
               </View>
               <Text style={[
@@ -651,7 +651,7 @@ export default function AppSettingsScreen() {
                       <Feather 
                         name={icon as any} 
                         size={22} 
-                        color={themeMode === mode ? '#fff' : colors.mutedForeground} 
+                        color={themeMode === mode ? colors.white : colors.mutedForeground} 
                       />
                     </View>
                     <Text style={[
@@ -715,10 +715,10 @@ export default function AppSettingsScreen() {
                         disabled={isTaken || isSavingColor}
                         activeOpacity={0.7}
                       >
-                        {isSelected && <Feather name="check" size={18} color="#fff" />}
+                        {isSelected && <Feather name="check" size={18} color={colors.white} />}
                         {isTaken && (
                           <View style={styles.takenOverlay}>
-                            <Feather name="x" size={14} color="#fff" />
+                            <Feather name="x" size={14} color={colors.white} />
                           </View>
                         )}
                       </TouchableOpacity>

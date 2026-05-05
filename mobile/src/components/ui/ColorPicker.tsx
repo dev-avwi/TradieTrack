@@ -117,7 +117,7 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             <View style={styles.previewSection}>
               <View style={[styles.previewSwatch, { backgroundColor: selectedColor }]}>
-                <Feather name="check" size={32} color="#fff" />
+                <Feather name="check" size={32} color={colors.white} />
               </View>
               <Text style={styles.previewHex}>{selectedColor.toUpperCase()}</Text>
             </View>
@@ -150,7 +150,7 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
                     activeOpacity={0.7}
                   >
                     {selectedColor.toLowerCase() === color.hex.toLowerCase() && (
-                      <Feather name="check" size={20} color="#fff" />
+                      <Feather name="check" size={20} color={colors.white} />
                     )}
                   </TouchableOpacity>
                 ))}

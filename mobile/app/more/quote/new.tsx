@@ -1826,7 +1826,7 @@ export default function NewQuoteScreen() {
                         }}
                         onPress={() => handleRemoveAIPhoto(index)}
                       >
-                        <Feather name="x" size={12} color="#fff" />
+                        <Feather name="x" size={12} color={colors.white} />
                       </TouchableOpacity>
                     </View>
                   ))}

@@ -119,7 +119,7 @@ function createStyles(colors: ThemeColors) {
       borderRadius: 20,
     },
     selectedDayText: {
-      color: colors.primaryForeground || '#ffffff',
+      color: colors.primaryForeground || colors.white,
       fontWeight: '600',
     },
     todayDay: {

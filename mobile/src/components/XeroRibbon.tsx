@@ -39,7 +39,7 @@ export function XeroRibbon({ size = 'small' }: XeroRibbonProps) {
       elevation: 2,
     },
     ribbonText: {
-      color: '#FFFFFF',
+      color: colors.white,
       fontSize: fontSize,
       fontWeight: '700',
       letterSpacing: 0.5,

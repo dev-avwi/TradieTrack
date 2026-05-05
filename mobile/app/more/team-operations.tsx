@@ -519,7 +519,7 @@ export default function TeamOperationsScreen() {
             onPress={() => setActiveTab(tab.key)}
             activeOpacity={0.7}
           >
-            <Feather name={tab.icon} size={tabIconSize} color={isActive ? '#ffffff' : colors.mutedForeground} />
+            <Feather name={tab.icon} size={tabIconSize} color={isActive ? colors.white : colors.mutedForeground} />
             <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>{tab.label}</Text>
           </TouchableOpacity>
         );
@@ -1543,7 +1543,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   avatarText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
+    color: colors.white,
   },
   statusDot: {
     position: 'absolute',
@@ -1749,7 +1749,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#ffffff',
+    borderColor: colors.white,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -1759,7 +1759,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   teamMarkerText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#ffffff',
+    color: colors.white,
     textShadowColor: 'rgba(0,0,0,0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -1772,7 +1772,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     height: 13,
     borderRadius: 6.5,
     borderWidth: 2.5,
-    borderColor: '#ffffff',
+    borderColor: colors.white,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,

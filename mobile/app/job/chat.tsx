@@ -372,7 +372,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   avatarText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#ffffff',
+    color: colors.white,
   },
   avatarSpacer: {
     width: 32,
@@ -407,7 +407,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     lineHeight: 22,
   },
   messageTextOwn: {
-    color: '#ffffff',
+    color: colors.white,
   },
   messageTextOther: {
     color: colors.isDark ? '#e4e6ea' : '#1c1e21',
@@ -463,7 +463,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderBottomLeftRadius: 4,
   },
   smsTextOwn: {
-    color: '#ffffff',
+    color: colors.white,
   },
   smsTextOther: {
     color: colors.isDark ? '#d4e8c0' : '#1c1e21',

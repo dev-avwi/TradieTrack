@@ -163,7 +163,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   categoryTabTextActive: {
-    color: colors.primaryForeground || '#fff',
+    color: colors.primaryForeground || colors.white,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -691,7 +691,7 @@ export default function MoreScreen() {
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <Feather name={pendingInviteCount > 0 ? 'mail' : 'repeat'} size={18} color={pendingInviteCount > 0 ? '#fff' : colors.primaryForeground} />
+            <Feather name={pendingInviteCount > 0 ? 'mail' : 'repeat'} size={18} color={pendingInviteCount > 0 ? colors.white : colors.primaryForeground} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ ...typography.body, fontWeight: '600', color: colors.foreground }}>
@@ -782,11 +782,11 @@ export default function MoreScreen() {
                   <Feather 
                     name={meta.icon} 
                     size={14} 
-                    color={isActive ? '#fff' : colors.mutedForeground} 
+                    color={isActive ? colors.white : colors.mutedForeground} 
                   />
                   <Text style={[
                     styles.categoryTabText, 
-                    isActive && { color: '#fff' },
+                    isActive && { color: colors.white },
                   ]}>
                     {meta.label}
                   </Text>

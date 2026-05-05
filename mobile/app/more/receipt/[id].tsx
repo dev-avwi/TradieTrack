@@ -659,7 +659,7 @@ ${businessName}`;
           <View style={styles.summaryHeader}>
             <Text style={styles.receiptNumberLarge}>{receipt.receiptNumber}</Text>
             <View style={styles.paidBadgeLarge}>
-              <Feather name="check-circle" size={14} color="#ffffff" />
+              <Feather name="check-circle" size={14} color={colors.white} />
               <Text style={styles.paidBadgeLargeText}>PAID</Text>
             </View>
           </View>
@@ -703,10 +703,10 @@ ${businessName}`;
             data-testid="button-download-pdf"
           >
             {isDownloadingPdf ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <>
-                <Feather name="download" size={18} color="#ffffff" />
+                <Feather name="download" size={18} color={colors.white} />
                 <Text style={styles.actionButtonPrimaryText}>PDF</Text>
               </>
             )}
@@ -1015,7 +1015,7 @@ ${businessName}`;
                     <Text style={{ fontSize: 20, fontWeight: '700', color: brandColor, letterSpacing: 2 }}>RECEIPT</Text>
                     <Text style={{ fontSize: 14, color: '#1a1a1a', fontWeight: '600', marginTop: 4 }}>{receipt.receiptNumber}</Text>
                     <View style={{ backgroundColor: '#22c55e', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, marginTop: 6 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#ffffff' }}>PAID</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: colors.white }}>PAID</Text>
                     </View>
                   </View>
                 </View>
@@ -1186,7 +1186,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   paidBadgeLargeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#ffffff',
+    color: colors.white,
   },
   amountLarge: {
     fontSize: 36,
@@ -1272,7 +1272,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   actionButtonPrimaryText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.white,
   },
   actionButtonTextDisabled: {
     color: colors.mutedForeground,
@@ -1415,7 +1415,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   paidBadgeText: {
     ...typography.caption,
-    color: '#ffffff',
+    color: colors.white,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
@@ -1478,7 +1478,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   paidBadgeSmallText: {
     ...typography.captionSmall,
-    color: '#ffffff',
+    color: colors.white,
     fontWeight: '600',
     textTransform: 'uppercase',
   },

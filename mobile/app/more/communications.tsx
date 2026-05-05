@@ -154,7 +154,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   filterChipTextActive: {
-    color: '#fff',
+    color: colors.white,
     fontWeight: '600',
   },
   filterBadge: {
@@ -174,7 +174,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   filterBadgeTextActive: {
-    color: '#fff',
+    color: colors.white,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -724,7 +724,7 @@ export default function CommunicationsScreen() {
                 <Feather
                   name={iconName as any}
                   size={13}
-                  color={isActive ? '#fff' : colors.mutedForeground}
+                  color={isActive ? colors.white : colors.mutedForeground}
                 />
                 <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
                   {tab === 'all' ? 'All' : tab === 'email' ? 'Email' : 'SMS'}

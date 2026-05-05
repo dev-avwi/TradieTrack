@@ -336,7 +336,7 @@ export default function DocumentsScreen() {
           }}
           activeOpacity={0.7}
         >
-          <Feather name="plus" size={18} color="#fff" />
+          <Feather name="plus" size={18} color={colors.white} />
         </TouchableOpacity>
       </View>
     </View>
@@ -482,7 +482,7 @@ export default function DocumentsScreen() {
               onPress={() => setQuoteFilter(filter)}
               activeOpacity={0.7}
             >
-              {config && <Feather name={config.icon} size={14} color={quoteFilter === filter ? '#fff' : config.color} />}
+              {config && <Feather name={config.icon} size={14} color={quoteFilter === filter ? colors.white : config.color} />}
               <Text style={[styles.filterText, quoteFilter === filter && styles.activeFilterText]}>
                 {filter.charAt(0).toUpperCase() + filter.slice(1)}
               </Text>
@@ -511,7 +511,7 @@ export default function DocumentsScreen() {
               onPress={() => setInvoiceFilter(filter)}
               activeOpacity={0.7}
             >
-              {config && <Feather name={config.icon} size={14} color={invoiceFilter === filter ? '#fff' : config.color} />}
+              {config && <Feather name={config.icon} size={14} color={invoiceFilter === filter ? colors.white : config.color} />}
               <Text style={[styles.filterText, invoiceFilter === filter && styles.activeFilterText]}>
                 {filter.charAt(0).toUpperCase() + filter.slice(1)}
               </Text>
@@ -1167,7 +1167,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   tabBadgeText: {
     ...typography.captionSmall,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.white,
     fontSize: 10,
   },
   viewAllButton: {
@@ -1220,7 +1220,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     color: colors.foreground,
   },
   activeFilterText: {
-    color: '#fff',
+    color: colors.white,
   },
   filterBadge: {
     backgroundColor: colors.muted,
@@ -1240,7 +1240,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     fontSize: 10,
   },
   activeFilterBadgeText: {
-    color: '#fff',
+    color: colors.white,
   },
   gridContainer: {
     flexDirection: 'row',

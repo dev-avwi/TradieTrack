@@ -239,7 +239,7 @@ export default function ResetPasswordScreen() {
                     testID="button-reset-password"
                   >
                     {isLoading ? (
-                      <ActivityIndicator color="#FFFFFF" />
+                      <ActivityIndicator color={colors.white} />
                     ) : (
                       <Text style={styles.primaryButtonText}>Reset Password</Text>
                     )}
@@ -382,7 +382,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     opacity: 0.6,
   },
   primaryButtonText: {
-    color: colors.primaryForeground || '#FFFFFF',
+    color: colors.primaryForeground || colors.white,
     fontSize: 16,
     fontWeight: '600',
   },

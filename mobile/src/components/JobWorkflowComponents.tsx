@@ -74,7 +74,7 @@ export function JobProgressBar({ status }: JobProgressBarProps) {
                 ]}
               >
                 {isPassed ? (
-                  <Feather name="check" size={14} color="#FFFFFF" />
+                  <Feather name="check" size={14} color={colors.white} />
                 ) : (
                   <View style={[
                     styles.stepDot,
@@ -798,10 +798,10 @@ export function NextActionCard(props: NextActionCardProps) {
                     activeOpacity={0.8}
                   >
                     {isSendingSms ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={colors.white} />
                     ) : (
                       <>
-                        <Feather name="send" size={14} color="#FFFFFF" />
+                        <Feather name="send" size={14} color={colors.white} />
                         <Text style={styles.smsSendButtonText}>Send</Text>
                       </>
                     )}
@@ -1006,7 +1006,7 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
   smsSendButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.white,
   },
 });
 
@@ -1096,7 +1096,7 @@ export function PaymentCollectionCard({
           data-testid="button-payment-link"
         >
           <View style={[styles.paymentIcon, { backgroundColor: colors.warning }]}>
-            <Feather name="link" size={18} color="#FFFFFF" />
+            <Feather name="link" size={18} color={colors.white} />
           </View>
           <Text style={[styles.paymentLabel, { color: colors.warning }]}>Send Link</Text>
         </TouchableOpacity>
@@ -1107,7 +1107,7 @@ export function PaymentCollectionCard({
           data-testid="button-record-cash"
         >
           <View style={[styles.paymentIcon, { backgroundColor: colors.success }]}>
-            <Feather name="dollar-sign" size={18} color="#FFFFFF" />
+            <Feather name="dollar-sign" size={18} color={colors.white} />
           </View>
           <Text style={[styles.paymentLabel, { color: colors.success }]}>Record Cash</Text>
         </TouchableOpacity>
@@ -1397,10 +1397,10 @@ export function SmsContactCard({
         activeOpacity={0.8}
       >
         {isSending ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
+          <ActivityIndicator size="small" color={colors.white} />
         ) : (
           <>
-            <Feather name="message-square" size={14} color="#FFFFFF" />
+            <Feather name="message-square" size={14} color={colors.white} />
             <Text style={styles.actionButtonText}>{buttonLabel}</Text>
           </>
         )}
@@ -1489,10 +1489,10 @@ export function SmsContactCard({
                     activeOpacity={0.8}
                   >
                     {isSending ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={colors.white} />
                     ) : (
                       <>
-                        <Feather name="send" size={14} color="#FFFFFF" />
+                        <Feather name="send" size={14} color={colors.white} />
                         <Text style={styles.sendButtonText}>Send</Text>
                       </>
                     )}
@@ -1551,7 +1551,7 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
   actionButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.white,
   },
   modalOverlay: {
     flex: 1,
@@ -1667,7 +1667,7 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
   sendButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.white,
   },
 });
 
@@ -1815,7 +1815,7 @@ export function WorkerStateQuickActions({ jobId, jobStatus }: WorkerStateQuickAc
               }}
               onPress={confirmSetState}
             >
-              <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Confirm</Text>
+              <Text style={{ color: colors.white, fontWeight: '600' }}>Confirm</Text>
             </TouchableOpacity>
           </View>
         </View>

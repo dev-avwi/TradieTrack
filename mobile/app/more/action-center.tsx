@@ -402,7 +402,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   batchCreateText: {
     fontSize: typographySizes.md,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.white,
   },
 });
 
@@ -784,7 +784,7 @@ export default function ActionCenterScreen() {
                 activeOpacity={0.7}
               >
                 <View style={[styles.batchCheckbox, { borderColor: job.selected ? colors.primary : colors.border, backgroundColor: job.selected ? colors.primary : 'transparent' }]}>
-                  {job.selected && <Feather name="check" size={14} color="#FFFFFF" />}
+                  {job.selected && <Feather name="check" size={14} color={colors.white} />}
                 </View>
                 <View style={styles.batchJobInfo}>
                   <Text style={[styles.batchJobTitle, { color: colors.foreground }]} numberOfLines={1}>
@@ -814,10 +814,10 @@ export default function ActionCenterScreen() {
               activeOpacity={0.7}
             >
               {isBatchCreating ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <>
-                  <Feather name="file-text" size={16} color="#FFFFFF" />
+                  <Feather name="file-text" size={16} color={colors.white} />
                   <Text style={styles.batchCreateText}>
                     Create {selectedCount} Invoice{selectedCount !== 1 ? 's' : ''}
                   </Text>

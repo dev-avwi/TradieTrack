@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Image } from 'react-native';
 import { getAvatarColor, getAvatarColorByHex } from '../lib/avatar-colors';
+import { colors as staticColors } from '../lib/colors';
 
 interface TeamAvatarProps {
   name?: string;
@@ -74,7 +75,7 @@ export function TeamAvatar({ name, firstName, lastName, email, userId, profileIm
 
   return (
     <View style={containerStyle}>
-      <Text style={{ color: '#ffffff', fontSize, fontWeight: '600', letterSpacing: 0.3 }}>
+      <Text style={{ color: staticColors.white, fontSize, fontWeight: '600', letterSpacing: 0.3 }}>
         {initials}
       </Text>
     </View>

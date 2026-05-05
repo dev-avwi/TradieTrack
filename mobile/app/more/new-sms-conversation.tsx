@@ -149,7 +149,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   clientAvatarText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
   },
   clientInfo: {
     flex: 1,
@@ -283,7 +283,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     lineHeight: 18,
   },
   templateChipTextActive: {
-    color: '#fff',
+    color: colors.white,
   },
   templatesContainer: {
     flexDirection: 'row',
@@ -340,7 +340,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   sendButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.white,
   },
 });
 
@@ -547,10 +547,10 @@ export default function NewSmsConversation() {
               activeOpacity={0.7}
             >
               {isSending ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color={colors.white} size="small" />
               ) : (
                 <>
-                  <Feather name="send" size={18} color="#fff" />
+                  <Feather name="send" size={18} color={colors.white} />
                   <Text style={styles.sendButtonText}>Send SMS</Text>
                 </>
               )}
@@ -578,7 +578,7 @@ export default function NewSmsConversation() {
 
         <View style={styles.smsBanner}>
           <View style={styles.smsBannerIcon}>
-            <Feather name="alert-circle" size={14} color="#fff" />
+            <Feather name="alert-circle" size={14} color={colors.white} />
           </View>
           <Text style={styles.smsBannerText}>
             SMS messages are sent via Twilio to the client's phone. Standard carrier rates may apply to the recipient.

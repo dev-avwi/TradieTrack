@@ -168,7 +168,7 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
               onPress={() => setCustomPrimaryColor(color.hex)}
             >
               {activePalette.primary === color.hex && (
-                <Feather name="check" size={16} color="#ffffff" />
+                <Feather name="check" size={16} color={colors.white} />
               )}
             </TouchableOpacity>
           ))}

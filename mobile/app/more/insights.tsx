@@ -126,7 +126,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
     fontWeight: '600',
   },
   tabTextActive: {
-    color: colors.primaryForeground || '#fff',
+    color: colors.primaryForeground || colors.white,
   },
   tabTextInactive: {
     color: colors.mutedForeground,
@@ -297,7 +297,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   },
   retryButtonText: {
     ...typography.button,
-    color: colors.primaryForeground || '#fff',
+    color: colors.primaryForeground || colors.white,
   },
 });
 
@@ -896,7 +896,7 @@ export default function InsightsScreen() {
                   <Feather
                     name={tab.icon as any}
                     size={iconSizes.sm}
-                    color={isActive ? (colors.primaryForeground || '#fff') : colors.mutedForeground}
+                    color={isActive ? (colors.primaryForeground || colors.white) : colors.mutedForeground}
                   />
                   <Text style={[styles.tabText, isActive ? styles.tabTextActive : styles.tabTextInactive]}>
                     {tab.label}

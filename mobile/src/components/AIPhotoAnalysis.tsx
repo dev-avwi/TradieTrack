@@ -294,7 +294,7 @@ export function AIPhotoAnalysisModal({
                         resizeMode="cover"
                       />
                       <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                        {isSelected && <Feather name="check" size={14} color="#fff" />}
+                        {isSelected && <Feather name="check" size={14} color={colors.white} />}
                       </View>
                     </TouchableOpacity>
                   );

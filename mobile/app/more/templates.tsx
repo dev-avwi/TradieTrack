@@ -1866,7 +1866,7 @@ export default function TemplatesScreen() {
         disabled={isCreating}
         activeOpacity={0.7}
       >
-        <Feather name="check" size={18} color="#FFFFFF" />
+        <Feather name="check" size={18} color={colors.white} />
         <Text style={styles.saveButtonText}>
           {isCreating ? 'Saving...' : (editingTemplate ? 'Update Template' : 'Create Template')}
         </Text>
@@ -2762,7 +2762,7 @@ export default function TemplatesScreen() {
                 onPress={() => setShowPresetsModal(false)}
                 activeOpacity={0.7}
               >
-                <Feather name="check" size={18} color="#FFFFFF" />
+                <Feather name="check" size={18} color={colors.white} />
                 <Text style={styles.saveButtonText}>Done</Text>
               </TouchableOpacity>
             </ScrollView>

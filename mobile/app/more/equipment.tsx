@@ -412,7 +412,7 @@ export default function EquipmentScreen() {
                 <Feather
                   name={config.icon}
                   size={iconSizes.sm}
-                  color={isActive ? '#fff' : config.color}
+                  color={isActive ? colors.white : config.color}
                 />
               )}
               <Text style={[styles.filterText, isActive && styles.activeFilterText]}>
@@ -529,7 +529,7 @@ export default function EquipmentScreen() {
       </Text>
       {activeFilter === 'all' && (
         <TouchableOpacity style={styles.emptyButton} onPress={openCreate} activeOpacity={0.7}>
-          <Feather name="plus" size={iconSizes.md} color="#fff" />
+          <Feather name="plus" size={iconSizes.md} color={colors.white} />
           <Text style={styles.emptyButtonText}>Add Equipment</Text>
         </TouchableOpacity>
       )}
@@ -842,7 +842,7 @@ export default function EquipmentScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Feather name="plus" size={14} color="#fff" />
+                  <Feather name="plus" size={14} color={colors.white} />
                   <Text style={styles.addMaintenanceBtnText}>Add</Text>
                 </TouchableOpacity>
               </View>
@@ -1021,7 +1021,7 @@ export default function EquipmentScreen() {
               activeOpacity={0.7}
             >
               {isCreatingCategory ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <Text style={styles.categoryModalSaveText}>Create</Text>
               )}
@@ -1060,7 +1060,7 @@ export default function EquipmentScreen() {
                 <Text style={styles.pageSubtitle}>{equipment.length} total items</Text>
               </View>
               <TouchableOpacity style={styles.addButton} onPress={openCreate} activeOpacity={0.7}>
-                <Feather name="plus" size={18} color="#fff" />
+                <Feather name="plus" size={18} color={colors.white} />
                 <Text style={styles.addButtonText}>Add</Text>
               </TouchableOpacity>
             </View>
@@ -1189,7 +1189,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
     color: colors.mutedForeground,
   },
   activeFilterBadgeText: {
-    color: '#fff',
+    color: colors.white,
   },
   statsRow: {
     flexDirection: 'row',

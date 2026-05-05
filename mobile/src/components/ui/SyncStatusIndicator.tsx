@@ -194,8 +194,8 @@ export function OfflineBanner() {
       justifyContent: 'center',
       gap: spacing.sm,
     }}>
-      <Feather name="wifi-off" size={14} color="#FFF" />
-      <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '500' }}>
+      <Feather name="wifi-off" size={14} color={colors.white} />
+      <Text style={{ color: colors.white, fontSize: 13, fontWeight: '500' }}>
         You're offline
         {pendingSyncCount > 0 && ` (${pendingSyncCount} changes pending)`}
       </Text>

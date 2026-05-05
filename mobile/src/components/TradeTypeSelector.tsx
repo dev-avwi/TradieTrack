@@ -245,7 +245,7 @@ export function TradeTypeSelector({
                 style={styles.submitButton}
                 onPress={handleRequestSubmit}
               >
-                <Feather name="send" size={16} color="#FFFFFF" />
+                <Feather name="send" size={16} color={colors.white} />
                 <Text style={styles.submitButtonText}>Submit Request</Text>
               </TouchableOpacity>
             </View>
@@ -436,6 +436,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   submitButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.white,
   },
 });

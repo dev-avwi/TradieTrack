@@ -626,7 +626,7 @@ export function EmailComposeModal({
                 onPress={() => openEmailInApp('gmail')}
               >
                 <View style={[styles.emailAppIcon, { backgroundColor: '#EA4335' }]}>
-                  <Feather name="mail" size={20} color="#ffffff" />
+                  <Feather name="mail" size={20} color={colors.white} />
                 </View>
                 <Text style={styles.emailAppLabel}>Gmail</Text>
               </TouchableOpacity>
@@ -636,7 +636,7 @@ export function EmailComposeModal({
                 onPress={() => openEmailInApp('outlook')}
               >
                 <View style={[styles.emailAppIcon, { backgroundColor: '#0078D4' }]}>
-                  <Feather name="mail" size={20} color="#ffffff" />
+                  <Feather name="mail" size={20} color={colors.white} />
                 </View>
                 <Text style={styles.emailAppLabel}>Outlook</Text>
               </TouchableOpacity>

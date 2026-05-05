@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { useTheme } from '../lib/theme';
+import { colors as staticColors } from '../lib/colors';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { api } from '../lib/api';
@@ -439,7 +440,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
                 style={[styles.button, styles.primaryButton]}
                 onPress={startRecording}
               >
-                <Ionicons name="mic" size={20} color="#ffffff" />
+                <Ionicons name="mic" size={20} color={staticColors.white} />
                 <Text style={styles.buttonTextWhite}>Start Recording</Text>
               </TouchableOpacity>
             ) : (
@@ -458,7 +459,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
                   style={[styles.button, styles.stopButton]}
                   onPress={stopRecording}
                 >
-                  <Ionicons name="stop" size={20} color="#ffffff" />
+                  <Ionicons name="stop" size={20} color={staticColors.white} />
                   <Text style={styles.buttonTextWhite}>Stop</Text>
                 </TouchableOpacity>
               </>
@@ -514,12 +515,12 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
             >
               {isUploading ? (
                 <>
-                  <ActivityIndicator size="small" color="#ffffff" />
+                  <ActivityIndicator size="small" color={staticColors.white} />
                   <Text style={styles.buttonTextWhite}>Saving...</Text>
                 </>
               ) : (
                 <>
-                  <Ionicons name="save" size={20} color="#ffffff" />
+                  <Ionicons name="save" size={20} color={staticColors.white} />
                   <Text style={styles.buttonTextWhite}>Save</Text>
                 </>
               )}
@@ -1025,7 +1026,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
   buttonTextWhite: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#ffffff',
+    color: staticColors.white,
   },
   disabledText: {
     opacity: 0.6,

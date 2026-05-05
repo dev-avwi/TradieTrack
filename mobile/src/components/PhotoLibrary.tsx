@@ -258,7 +258,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   thumbCategoryText: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
   },
   thumbSelectOverlay: {
     position: 'absolute',
@@ -577,11 +577,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   lightboxBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
   },
   lightboxCaption: {
     ...typography.body,
-    color: '#fff',
+    color: colors.white,
     marginBottom: spacing.sm,
   },
   lightboxTagsRow: {
@@ -645,7 +645,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    color: '#fff',
+    color: colors.white,
     ...typography.caption,
     marginBottom: spacing.sm,
   },
@@ -1135,7 +1135,7 @@ export default function PhotoLibrary() {
         {selectionMode && (
           <View style={styles.thumbSelectOverlay}>
             <View style={[styles.thumbCheckbox, isSelected && styles.thumbCheckboxSelected]}>
-              {isSelected && <Feather name="check" size={14} color="#fff" />}
+              {isSelected && <Feather name="check" size={14} color={colors.white} />}
             </View>
           </View>
         )}
@@ -1240,7 +1240,7 @@ export default function PhotoLibrary() {
                   <View key={i} style={styles.previewThumb}>
                     <Image source={{ uri: img.uri }} style={styles.previewImage} />
                     <TouchableOpacity style={styles.previewRemove} onPress={() => removeUploadImage(i)}>
-                      <Feather name="x" size={12} color="#fff" />
+                      <Feather name="x" size={12} color={colors.white} />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -1318,14 +1318,14 @@ export default function PhotoLibrary() {
         <View style={styles.lightboxOverlay}>
           <View style={styles.lightboxHeader}>
             <TouchableOpacity style={styles.lightboxClose} onPress={closeLightbox}>
-              <Feather name="x" size={24} color="#fff" />
+              <Feather name="x" size={24} color={colors.white} />
             </TouchableOpacity>
             <View style={styles.lightboxActions}>
               <TouchableOpacity
                 style={styles.lightboxActionBtn}
                 onPress={() => setLightboxEditing(!lightboxEditing)}
               >
-                <Feather name={lightboxEditing ? 'x-circle' : 'edit-2'} size={20} color="#fff" />
+                <Feather name={lightboxEditing ? 'x-circle' : 'edit-2'} size={20} color={colors.white} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.lightboxActionBtn}
@@ -1340,12 +1340,12 @@ export default function PhotoLibrary() {
 
           {idx > 0 && (
             <TouchableOpacity style={[styles.lightboxNav, styles.lightboxNavLeft]} onPress={() => navigateLightbox(-1)}>
-              <Feather name="chevron-left" size={28} color="#fff" />
+              <Feather name="chevron-left" size={28} color={colors.white} />
             </TouchableOpacity>
           )}
           {idx < flatPhotos.length - 1 && (
             <TouchableOpacity style={[styles.lightboxNav, styles.lightboxNavRight]} onPress={() => navigateLightbox(1)}>
-              <Feather name="chevron-right" size={28} color="#fff" />
+              <Feather name="chevron-right" size={28} color={colors.white} />
             </TouchableOpacity>
           )}
 

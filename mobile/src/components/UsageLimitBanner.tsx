@@ -89,7 +89,7 @@ export default function UsageLimitBanner({ variant = 'compact' }: UsageLimitBann
         activeOpacity={0.7}
       >
         <Text style={styles.upgradeButtonText}>View Plan</Text>
-        <Feather name="arrow-right" size={12} color="#fff" />
+        <Feather name="arrow-right" size={12} color={colors.white} />
       </TouchableOpacity>
     </View>
   );
@@ -151,7 +151,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.error,
   },
   upgradeButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: typography.sizes.xs,
     fontWeight: '600',
   },

@@ -125,7 +125,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   uploadText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#FFFFFF',
+    color: colors.white,
     marginTop: spacing.md,
   },
   progressBar: {
@@ -393,7 +393,7 @@ export function LogoPicker({ value, onChange, label }: LogoPickerProps) {
               
               {uploading && (
                 <View style={styles.uploadOverlay}>
-                  <ActivityIndicator size="large" color="#FFFFFF" />
+                  <ActivityIndicator size="large" color={colors.white} />
                   <Text style={styles.uploadText}>Uploading... {uploadProgress}%</Text>
                   <View style={styles.progressBar}>
                     <View style={[styles.progressFill, { width: `${uploadProgress}%` }]} />

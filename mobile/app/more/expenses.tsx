@@ -581,7 +581,7 @@ export default function ExpensesScreen() {
                       setShowExpenseModal(true);
                     }}
                   >
-                    <Feather name="plus" size={14} color="#FFFFFF" />
+                    <Feather name="plus" size={14} color={colors.white} />
                     <Text style={styles.emptyButtonText}>Record Expense</Text>
                   </TouchableOpacity>
                 )}
@@ -1168,7 +1168,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) =>
     emptyButtonText: {
       fontSize: 14,
       fontWeight: '600',
-      color: '#FFFFFF',
+      color: colors.white,
     },
     expensesList: {
       gap: spacing.xs,

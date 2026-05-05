@@ -143,7 +143,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
   },
   deleteButtonText: {
     ...typography.subtitle,
-    color: '#ffffff',
+    color: colors.white,
     fontWeight: '700',
   },
   deleteButtonTextDisabled: {
@@ -343,7 +343,7 @@ export default function DeleteAccountScreen() {
             testID="button-delete-account"
           >
             {isDeleting ? (
-              <ActivityIndicator color="#ffffff" size="small" />
+              <ActivityIndicator color={colors.white} size="small" />
             ) : (
               <Text style={[
                 styles.deleteButtonText,

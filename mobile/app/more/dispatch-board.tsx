@@ -627,9 +627,9 @@ export default function DispatchBoardScreen() {
         <Feather
           name={actionIcon as any}
           size={16}
-          color="#fff"
+          color={colors.white}
         />
-        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600', textAlign: 'center', marginTop: 2 }} numberOfLines={1}>
+        <Text style={{ color: colors.white, fontSize: 10, fontWeight: '600', textAlign: 'center', marginTop: 2 }} numberOfLines={1}>
           {actionLabel}
         </Text>
       </View>
@@ -949,8 +949,8 @@ export default function DispatchBoardScreen() {
                     onPress={() => router.push(`/job/${selectedMapJob.id}`)}
                     activeOpacity={0.7}
                   >
-                    <Feather name="eye" size={14} color={colors.primaryForeground || '#fff'} />
-                    <Text style={[styles.mapJobDetailBtnText, { color: colors.primaryForeground || '#fff' }]}>View Job</Text>
+                    <Feather name="eye" size={14} color={colors.primaryForeground || colors.white} />
+                    <Text style={[styles.mapJobDetailBtnText, { color: colors.primaryForeground || colors.white }]}>View Job</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.mapJobDetailBtn, { backgroundColor: colors.muted }]}
@@ -1001,7 +1001,7 @@ export default function DispatchBoardScreen() {
                 activeOpacity={0.7}
               >
                 <View style={[styles.modalMemberAvatar, { backgroundColor: colors.destructive }]}>
-                  <Feather name="user-x" size={16} color={colors.destructiveForeground || '#fff'} />
+                  <Feather name="user-x" size={16} color={colors.destructiveForeground || colors.white} />
                 </View>
                 <Text style={[styles.modalMemberName, { color: colors.destructive }]}>Unassign</Text>
               </TouchableOpacity>
@@ -1340,7 +1340,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   memberAvatarText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
   },
   emptyMemberCard: {
     flexDirection: 'row',
@@ -1430,7 +1430,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   miniAvatarText: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
   },
   assignedName: {
     ...typography.captionSmall,
@@ -1602,7 +1602,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   kanbanMiniAvatarText: {
     fontSize: 8,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.white,
   },
   kanbanAssignedName: {
     fontSize: 11,
@@ -1862,12 +1862,12 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   },
   calloutDetail: {
     fontSize: 12,
-    color: '#555',
+    color: colors.mutedForeground,
     marginTop: 2,
   },
   calloutAssigned: {
     fontSize: 12,
-    color: '#333',
+    color: colors.foreground,
     fontWeight: '500',
     marginTop: 4,
   },

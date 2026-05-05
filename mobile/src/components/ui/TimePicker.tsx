@@ -83,7 +83,7 @@ function createStyles(colors: ThemeColors) {
     confirmButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: colors.primaryForeground || '#ffffff',
+      color: colors.primaryForeground || colors.white,
     },
   });
 }

@@ -316,7 +316,7 @@ export default function SubcontractorsScreen() {
             }
             testID={`button-upgrade-sub-${sub.id}`}
           >
-            <Feather name="arrow-up-circle" size={14} color="#FFFFFF" />
+            <Feather name="arrow-up-circle" size={14} color={colors.white} />
             <Text style={styles.upgradeButtonText}>Upgrade</Text>
           </TouchableOpacity>
         )}
@@ -421,7 +421,7 @@ export default function SubcontractorsScreen() {
                 accessibilityRole="button"
                 testID="button-subs-retry"
               >
-                <Feather name="refresh-cw" size={14} color="#FFFFFF" />
+                <Feather name="refresh-cw" size={14} color={colors.white} />
                 <Text style={styles.retryButtonText}>Retry</Text>
               </TouchableOpacity>
             </View>
@@ -446,7 +446,7 @@ export default function SubcontractorsScreen() {
                   accessibilityRole="button"
                   testID="button-go-to-jobs"
                 >
-                  <Feather name="briefcase" size={14} color="#FFFFFF" />
+                  <Feather name="briefcase" size={14} color={colors.white} />
                   <Text style={styles.retryButtonText}>Open Jobs</Text>
                 </TouchableOpacity>
               )}
@@ -584,10 +584,10 @@ export default function SubcontractorsScreen() {
                   testID="button-upgrade-submit"
                 >
                   {isUpgrading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator size="small" color={colors.white} />
                   ) : (
                     <>
-                      <Feather name="arrow-up-circle" size={16} color="#FFFFFF" />
+                      <Feather name="arrow-up-circle" size={16} color={colors.white} />
                       <Text style={styles.modalBtnPrimaryText}>Send invite</Text>
                     </>
                   )}
@@ -698,7 +698,7 @@ const createStyles = (colors: ThemeColors) =>
       borderRadius: 8,
       marginTop: 16,
     },
-    retryButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
+    retryButtonText: { color: colors.white, fontSize: 13, fontWeight: '600' },
 
     list: { paddingHorizontal: 16, gap: 10 },
     subCard: {
@@ -754,7 +754,7 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.primary,
     },
     upgradeButtonDisabled: { opacity: 0.55 },
-    upgradeButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
+    upgradeButtonText: { color: colors.white, fontSize: 13, fontWeight: '600' },
 
     modalOverlay: {
       flex: 1,
@@ -844,5 +844,5 @@ const createStyles = (colors: ThemeColors) =>
     modalBtnGhostText: { color: colors.foreground, fontSize: 14, fontWeight: '600' },
     modalBtnPrimary: { backgroundColor: colors.primary },
     modalBtnDisabled: { opacity: 0.6 },
-    modalBtnPrimaryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+    modalBtnPrimaryText: { color: colors.white, fontSize: 14, fontWeight: '600' },
   });

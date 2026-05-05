@@ -171,7 +171,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   statusText: { ...typography.caption, fontWeight: '600' },
   phoneNumber: { ...typography.body, fontWeight: '700', color: colors.primary, fontSize: 18 },
   saveButton: { backgroundColor: colors.primary, borderRadius: radius.xl, padding: spacing.lg, alignItems: 'center', justifyContent: 'center', marginTop: spacing.lg },
-  saveButtonText: { ...typography.body, fontWeight: '700', color: '#fff' },
+  saveButtonText: { ...typography.body, fontWeight: '700', color: colors.white },
   transferRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, gap: spacing.sm },
   transferName: { ...typography.body, fontWeight: '600', color: colors.foreground, flex: 1 },
   transferPhone: { ...typography.caption, color: colors.mutedForeground },
@@ -1270,10 +1270,10 @@ export default function AIReceptionistScreen() {
               activeOpacity={0.8}
             >
               {isTestingCall ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                  <Feather name="phone-outgoing" size={16} color="#fff" />
+                  <Feather name="phone-outgoing" size={16} color={colors.white} />
                   <Text style={styles.saveButtonText}>Call Me</Text>
                 </View>
               )}
@@ -1726,7 +1726,7 @@ export default function AIReceptionistScreen() {
           activeOpacity={0.8}
         >
           {isSaving ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <Text style={styles.saveButtonText}>
               {config?.dedicatedPhoneNumber ? 'Save Settings' : 'Save & Request Setup'}
@@ -1829,7 +1829,7 @@ export default function AIReceptionistScreen() {
             activeOpacity={0.8}
           >
             {isSavingKB ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={styles.saveButtonText}>Save Knowledge Bank</Text>
             )}
@@ -1902,10 +1902,10 @@ export default function AIReceptionistScreen() {
               {['all', 'negative', 'neutral', 'positive'].map((s) => {
                 const isActive = sentimentFilter === s;
                 const filterColors: Record<string, { bg: string; text: string }> = {
-                  all: { bg: colors.primary, text: '#fff' },
-                  negative: { bg: '#ef4444', text: '#fff' },
-                  neutral: { bg: '#6b7280', text: '#fff' },
-                  positive: { bg: '#22c55e', text: '#fff' },
+                  all: { bg: colors.primary, text: colors.white },
+                  negative: { bg: '#ef4444', text: colors.white },
+                  neutral: { bg: '#6b7280', text: colors.white },
+                  positive: { bg: '#22c55e', text: colors.white },
                 };
                 const fc = filterColors[s] || filterColors.all;
                 return (
@@ -1941,8 +1941,8 @@ export default function AIReceptionistScreen() {
                   gap: 4,
                 }}
               >
-                <Feather name="alert-triangle" size={12} color={sentimentSort ? '#fff' : colors.mutedForeground} />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: sentimentSort ? '#fff' : colors.mutedForeground }}>Urgent First</Text>
+                <Feather name="alert-triangle" size={12} color={sentimentSort ? colors.white : colors.mutedForeground} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: sentimentSort ? colors.white : colors.mutedForeground }}>Urgent First</Text>
               </TouchableOpacity>
             </View>
 
@@ -2001,7 +2001,7 @@ export default function AIReceptionistScreen() {
                           activeOpacity={0.7}
                           style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: isPlaying ? colors.primary : colors.cardBorder, alignItems: 'center', justifyContent: 'center' }}
                         >
-                          <Feather name={isPlaying ? 'pause' : 'play'} size={14} color={isPlaying ? '#fff' : colors.foreground} />
+                          <Feather name={isPlaying ? 'pause' : 'play'} size={14} color={isPlaying ? colors.white : colors.foreground} />
                         </TouchableOpacity>
                       )}
                       <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.mutedForeground} />
@@ -2038,7 +2038,7 @@ export default function AIReceptionistScreen() {
                           style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs }}
                         >
                           <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-                            <Feather name="play" size={14} color="#fff" />
+                            <Feather name="play" size={14} color={colors.white} />
                           </View>
                           <Text style={{ ...typography.body, color: colors.primary, fontSize: 13 }}>Play Recording</Text>
                         </TouchableOpacity>

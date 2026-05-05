@@ -499,11 +499,11 @@ export function MobileSendModal({
                 disabled={isSendingSms || isUploadingPhoto || !smsMessage.trim()}
               >
                 {(isSendingSms || isUploadingPhoto) ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.white} />
                 ) : (
-                  <Feather name="send" size={18} color="#fff" />
+                  <Feather name="send" size={18} color={colors.white} />
                 )}
-                <Text style={[styles.sendButtonText, { color: '#fff' }]}>
+                <Text style={[styles.sendButtonText, { color: colors.white }]}>
                   {isUploadingPhoto ? 'Uploading photo...' : isSendingSms ? 'Sending...' : attachedPhoto ? 'Send MMS' : 'Send SMS'}
                 </Text>
               </TouchableOpacity>

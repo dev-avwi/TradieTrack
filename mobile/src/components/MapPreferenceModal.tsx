@@ -171,7 +171,7 @@ export function MapPreferenceModal() {
                 data-testid="button-maps-apple"
               >
                 <View style={[styles.optionIconContainer, styles.appleIconBg]}>
-                  <Feather name="map" size={24} color="#fff" />
+                  <Feather name="map" size={24} color={colors.white} />
                 </View>
                 <View style={styles.optionTextContainer}>
                   <Text style={styles.optionTitle}>Apple Maps</Text>
@@ -188,7 +188,7 @@ export function MapPreferenceModal() {
               data-testid="button-maps-google"
             >
               <View style={[styles.optionIconContainer, styles.googleIconBg]}>
-                <Feather name="map-pin" size={24} color="#fff" />
+                <Feather name="map-pin" size={24} color={colors.white} />
               </View>
               <View style={styles.optionTextContainer}>
                 <Text style={styles.optionTitle}>Google Maps</Text>

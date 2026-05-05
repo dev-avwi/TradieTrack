@@ -207,7 +207,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
   },
   manageButtonText: {
     ...typography.body,
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: '700',
   },
   manageDescription: {
@@ -384,7 +384,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
     justifyContent: 'center' as const,
   },
   upgradePlanButtonText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: '600' as const,
     fontSize: 15,
   },
@@ -890,10 +890,10 @@ export default function SubscriptionPage() {
             activeOpacity={0.8}
           >
             {managingSubscription ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
+              <ActivityIndicator color={colors.white} size="small" />
             ) : (
               <>
-                <Feather name="settings" size={18} color="#FFFFFF" />
+                <Feather name="settings" size={18} color={colors.white} />
                 <Text style={styles.manageButtonText}>
                   {subscriptionStatus?.subscriptionSource === 'apple' ? 'Manage in App Store' : 'Manage Billing'}
                 </Text>
@@ -945,7 +945,7 @@ export default function SubscriptionPage() {
                   activeOpacity={0.8}
                   disabled={purchasingTier !== null}
                 >
-                  {purchasingTier === 'pro' ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Pro</Text>}
+                  {purchasingTier === 'pro' ? <ActivityIndicator color={colors.white} size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Pro</Text>}
                 </TouchableOpacity>
               </View>
             )}
@@ -976,7 +976,7 @@ export default function SubscriptionPage() {
                   activeOpacity={0.8}
                   disabled={purchasingTier !== null}
                 >
-                  {purchasingTier === 'team' ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Team</Text>}
+                  {purchasingTier === 'team' ? <ActivityIndicator color={colors.white} size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Team</Text>}
                 </TouchableOpacity>
               </View>
             )}
@@ -1007,7 +1007,7 @@ export default function SubscriptionPage() {
                   activeOpacity={0.8}
                   disabled={purchasingTier !== null}
                 >
-                  {purchasingTier === 'business' ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Business</Text>}
+                  {purchasingTier === 'business' ? <ActivityIndicator color={colors.white} size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Business</Text>}
                 </TouchableOpacity>
               </View>
             )}

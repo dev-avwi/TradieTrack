@@ -356,15 +356,15 @@ export default function CustomWebsitePage() {
                     {tier.features.map((feat, j) => (
                       <View key={j} style={styles.tierFeatureRow}>
                         <View style={styles.tierFeatureCheck}>
-                          <Feather name="check" size={10} color="#fff" />
+                          <Feather name="check" size={10} color={colors.white} />
                         </View>
                         <Text style={styles.tierFeatureText}>{feat}</Text>
                       </View>
                     ))}
                   </View>
                   <View style={[styles.tierCta, tier.popular && styles.tierCtaPopular]}>
-                    <Text style={[styles.tierCtaText, tier.popular && { color: '#fff' }]}>Get Started</Text>
-                    <Feather name="arrow-right" size={14} color={tier.popular ? '#fff' : colors.primary} />
+                    <Text style={[styles.tierCtaText, tier.popular && { color: colors.white }]}>Get Started</Text>
+                    <Feather name="arrow-right" size={14} color={tier.popular ? colors.white : colors.primary} />
                   </View>
                 </TouchableOpacity>
               ))}
@@ -417,7 +417,7 @@ export default function CustomWebsitePage() {
                 <View style={styles.chipRow}>
                   {FEATURE_OPTIONS.map(feat => (
                     <TouchableOpacity key={feat} style={[styles.chip, selectedFeatures.includes(feat) && styles.chipActive]} onPress={() => toggleFeature(feat)} activeOpacity={0.7}>
-                      {selectedFeatures.includes(feat) && <Feather name="check" size={11} color="#fff" style={{ marginRight: 3 }} />}
+                      {selectedFeatures.includes(feat) && <Feather name="check" size={11} color={colors.white} style={{ marginRight: 3 }} />}
                       <Text style={[styles.chipText, selectedFeatures.includes(feat) && styles.chipTextActive]}>{feat}</Text>
                     </TouchableOpacity>
                   ))}
@@ -444,7 +444,7 @@ export default function CustomWebsitePage() {
                 <TextInput style={[styles.input, { minHeight: 60, textAlignVertical: 'top' }]} value={additionalNotes} onChangeText={setAdditionalNotes} placeholder="Branding, logo, colours, anything else..." placeholderTextColor={colors.mutedForeground} multiline numberOfLines={2} />
 
                 <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]} onPress={handleSubmit} disabled={submitting} activeOpacity={0.7}>
-                  {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="send" size={16} color="#fff" />}
+                  {submitting ? <ActivityIndicator size="small" color={colors.white} /> : <Feather name="send" size={16} color={colors.white} />}
                   <Text style={styles.submitBtnText}>{submitting ? 'Submitting...' : 'Submit Request'}</Text>
                 </TouchableOpacity>
 
@@ -480,7 +480,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
   tierCard: { backgroundColor: colors.card, borderRadius: radius['2xl'], padding: spacing.lg, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.cardBorder, ...shadows.sm },
   tierCardPopular: { borderColor: colors.primary, borderWidth: 1.5 },
   popularBadge: { position: 'absolute', top: -10, alignSelf: 'center', left: '30%', backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 3, borderRadius: radius.full, zIndex: 1 },
-  popularBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
+  popularBadgeText: { fontSize: 10, fontWeight: '700', color: colors.white, letterSpacing: 0.5 },
   tierHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
   tierIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' },
   tierName: { fontSize: 16, fontWeight: '700', color: colors.foreground },
@@ -505,11 +505,11 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
   chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.full, backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.border },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 12, fontWeight: '500', color: colors.foreground },
-  chipTextActive: { color: '#fff' },
+  chipTextActive: { color: colors.white },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.md, marginBottom: spacing.xs },
   switchLabel: { fontSize: 14, color: colors.foreground, flex: 1, marginRight: spacing.sm },
   submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: 14, marginTop: spacing.lg },
-  submitBtnText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+  submitBtnText: { fontSize: 16, fontWeight: '600', color: colors.white },
   successCard: { backgroundColor: colors.card, borderRadius: radius['2xl'], padding: spacing.xl, alignItems: 'center', borderWidth: 1, borderColor: `${colors.success}30`, ...shadows.sm, marginTop: spacing.md },
   successIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#22c55e12', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
   successTitle: { fontSize: 20, fontWeight: '700', color: colors.foreground, marginBottom: spacing.xs },

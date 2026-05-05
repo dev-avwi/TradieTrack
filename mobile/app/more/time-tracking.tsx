@@ -21,7 +21,7 @@ import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/store';
 import { useUserRole } from '../../src/hooks/use-user-role';
 import api from '../../src/lib/api';
-import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes } from '../../src/lib/design-tokens';
@@ -241,13 +241,13 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
     backgroundColor: colors.primary,
   },
   timerButtonStop: {
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.destructive,
   },
   timerButtonPause: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: colors.warning,
   },
   timerButtonResume: {
-    backgroundColor: '#22c55e',
+    backgroundColor: colors.success,
   },
   timerButtonText: {
     fontSize: 15,
@@ -258,7 +258,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: '#f59e0b18',
+    backgroundColor: colorWithOpacity(colors.warning, 0.09),
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: radius.pill,
@@ -266,7 +266,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
   },
   breakBadgeText: {
     ...typography.badge,
-    color: '#f59e0b',
+    color: colors.warning,
     fontWeight: '600',
   },
   currentTime: {
@@ -763,8 +763,22 @@ function getWeekDates(): { start: Date; end: Date } {
   return { start, end };
 }
 
+function buildTimeTrackingConfig(colors: ThemeColors) {
+  return {
+    breakBadgeBg: colorWithOpacity(colors.warning, 0.08),
+    billableBadgeBg: colorWithOpacity(colors.success, 0.08),
+    disputeBadgeBg: colorWithOpacity(colors.destructive, 0.08),
+    statusColors: {
+      active: colors.success,
+      break: colors.warning,
+      late: colors.destructive,
+    },
+  };
+}
+
 export default function TimeTrackingScreen() {
   const { colors } = useTheme();
+  const ttConfig = useMemo(() => buildTimeTrackingConfig(colors), [colors]);
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
@@ -1252,7 +1266,7 @@ export default function TimeTrackingScreen() {
       <View style={styles.timerCard}>
         <View style={styles.timerHeader}>
           {isTimerRunning && (
-            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: isOnBreak ? '#f59e0b' : '#22c55e', marginRight: 4 }} />
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: isOnBreak ? ttConfig.statusColors.break : ttConfig.statusColors.active, marginRight: 4 }} />
           )}
           <Feather name="clock" size={20} color={colors.foreground} />
           <Text style={styles.timerHeaderText}>
@@ -1260,7 +1274,7 @@ export default function TimeTrackingScreen() {
           </Text>
         </View>
         
-        <Text style={[styles.timerDisplay, isOnBreak && { color: '#f59e0b' }]}>
+        <Text style={[styles.timerDisplay, isOnBreak && { color: ttConfig.statusColors.break }]}>
           {formatTime(timerSeconds)}
         </Text>
         
@@ -1284,7 +1298,7 @@ export default function TimeTrackingScreen() {
           const earned = (timerSeconds / 3600) * rate;
           return (
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs, marginTop: -spacing.xs }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: '#22c55e', fontVariant: ['tabular-nums'] as any }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: ttConfig.statusColors.active, fontVariant: ['tabular-nums'] as any }}>
                 {formatCurrency(earned)}
               </Text>
               <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
@@ -1296,7 +1310,7 @@ export default function TimeTrackingScreen() {
 
         {isOnBreak && (
           <View style={styles.breakBadge}>
-            <Feather name="coffee" size={12} color="#f59e0b" />
+            <Feather name="coffee" size={12} color={ttConfig.statusColors.break} />
             <Text style={styles.breakBadgeText}>Break Time</Text>
           </View>
         )}
@@ -1534,7 +1548,7 @@ export default function TimeTrackingScreen() {
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={styles.dayTotalValue}>{formatDurationHM(dayTotalMinutes)}</Text>
                 {dayEarnings > 0 && (
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#22c55e', marginTop: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: ttConfig.statusColors.active, marginTop: 1 }}>
                     {formatCurrency(dayEarnings)}
                   </Text>
                 )}
@@ -1616,7 +1630,7 @@ export default function TimeTrackingScreen() {
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={{ fontSize: 16, fontWeight: '700', color: colors.foreground }}>{formatDurationHM(totalMinutes)}</Text>
                       {wg.totalBreakMinutes > 0 && (
-                        <Text style={{ fontSize: 10, color: '#f59e0b', fontWeight: '500', marginTop: 1 }}>
+                        <Text style={{ fontSize: 10, color: ttConfig.statusColors.break, fontWeight: '500', marginTop: 1 }}>
                           {formatDurationHM(wg.totalBreakMinutes)} break
                         </Text>
                       )}
@@ -1634,25 +1648,25 @@ export default function TimeTrackingScreen() {
                     return (
                       <View key={entry.id}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: idx < sortedEntries.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border + '30' }}>
-                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isBreakEntry ? '#f59e0b' : colors.primary, marginRight: spacing.sm }} />
+                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isBreakEntry ? ttConfig.statusColors.break : colors.primary, marginRight: spacing.sm }} />
                           <View style={{ flex: 1 }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' }}>
                               <Text style={{ fontSize: 12, color: colors.foreground, fontWeight: '500' }} numberOfLines={1}>
                                 {isBreakEntry ? 'Break' : jobTitle}
                               </Text>
                               {isBreakEntry ? (
-                                <View style={{ backgroundColor: '#f59e0b15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                                  <Feather name="coffee" size={9} color="#f59e0b" />
+                                <View style={{ backgroundColor: ttConfig.breakBadgeBg, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                  <Feather name="coffee" size={9} color={ttConfig.statusColors.break} />
                                 </View>
                               ) : isBillable ? (
-                                <View style={{ backgroundColor: '#22c55e15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                                  <Text style={{ fontSize: 9, color: '#22c55e', fontWeight: '600' }}>$</Text>
+                                <View style={{ backgroundColor: ttConfig.billableBadgeBg, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                  <Text style={{ fontSize: 9, color: ttConfig.statusColors.active, fontWeight: '600' }}>$</Text>
                                 </View>
                               ) : null}
                               {entry.isDisputed && (
-                                <View style={{ backgroundColor: '#ef444415', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                                  <Feather name="alert-triangle" size={8} color="#ef4444" />
-                                  <Text style={{ fontSize: 9, color: '#ef4444', fontWeight: '600' }}>
+                                <View style={{ backgroundColor: ttConfig.disputeBadgeBg, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                                  <Feather name="alert-triangle" size={8} color={ttConfig.statusColors.late} />
+                                  <Text style={{ fontSize: 9, color: ttConfig.statusColors.late, fontWeight: '600' }}>
                                     {entry.disputeResolvedAt ? 'Resolved' : 'Disputed'}
                                   </Text>
                                 </View>
@@ -1662,7 +1676,7 @@ export default function TimeTrackingScreen() {
                               {startStr} — {endStr}
                             </Text>
                           </View>
-                          <Text style={{ fontSize: 13, fontWeight: '600', color: isBreakEntry ? '#f59e0b' : colors.foreground, marginRight: spacing.sm }}>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: isBreakEntry ? ttConfig.statusColors.break : colors.foreground, marginRight: spacing.sm }}>
                             {durationStr}
                           </Text>
                           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
@@ -1673,24 +1687,24 @@ export default function TimeTrackingScreen() {
                             )}
                             {!entry.isDisputed && !isBreakEntry && (
                               <TouchableOpacity onPress={() => handleOpenDispute(entry.id)} activeOpacity={0.7} hitSlop={8}>
-                                <Feather name="flag" size={14} color="#f59e0b" />
+                                <Feather name="flag" size={14} color={ttConfig.statusColors.break} />
                               </TouchableOpacity>
                             )}
                             <TouchableOpacity onPress={() => handleDeleteEntry(entry)} activeOpacity={0.7} hitSlop={8}>
-                              <Feather name="trash-2" size={14} color={colors.destructive || '#ef4444'} />
+                              <Feather name="trash-2" size={14} color={ttConfig.statusColors.late} />
                             </TouchableOpacity>
                           </View>
                         </View>
                         {entry.isDisputed && entry.disputeReason && !entry.disputeResolvedAt && (
                           <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
-                            <Text style={{ fontSize: 11, color: '#ef4444' }} numberOfLines={2}>
+                            <Text style={{ fontSize: 11, color: ttConfig.statusColors.late }} numberOfLines={2}>
                               Reason: {entry.disputeReason}
                             </Text>
                           </View>
                         )}
                         {entry.isDisputed && entry.disputeResolution && (
                           <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
-                            <Text style={{ fontSize: 11, color: '#22c55e' }} numberOfLines={2}>
+                            <Text style={{ fontSize: 11, color: ttConfig.statusColors.active }} numberOfLines={2}>
                               Resolution: {entry.disputeResolution}
                             </Text>
                           </View>
@@ -1768,7 +1782,7 @@ export default function TimeTrackingScreen() {
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={{ fontSize: 15, fontWeight: '700', color: colors.foreground }}>{formatDurationHM(totalMinutes)}</Text>
                       {group.breakEntries.length > 0 && (
-                        <Text style={{ fontSize: 10, color: '#f59e0b', fontWeight: '500', marginTop: 1 }}>
+                        <Text style={{ fontSize: 10, color: ttConfig.statusColors.break, fontWeight: '500', marginTop: 1 }}>
                           {formatDurationHM(group.totalBreakMinutes)} break
                         </Text>
                       )}
@@ -1784,25 +1798,25 @@ export default function TimeTrackingScreen() {
                     return (
                       <View key={entry.id}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: idx < allEntries.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border + '30' }}>
-                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isBreakEntry ? '#f59e0b' : colors.primary, marginRight: spacing.sm }} />
+                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isBreakEntry ? ttConfig.statusColors.break : colors.primary, marginRight: spacing.sm }} />
                           <View style={{ flex: 1 }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' }}>
                               <Text style={{ fontSize: 12, color: colors.foreground, fontWeight: '500' }}>
                                 {isBreakEntry ? 'Break' : 'Work'}
                               </Text>
                               {isBreakEntry ? (
-                                <View style={{ backgroundColor: '#f59e0b15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                                  <Feather name="coffee" size={9} color="#f59e0b" />
+                                <View style={{ backgroundColor: ttConfig.breakBadgeBg, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                  <Feather name="coffee" size={9} color={ttConfig.statusColors.break} />
                                 </View>
                               ) : isBillable ? (
-                                <View style={{ backgroundColor: '#22c55e15', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                                  <Text style={{ fontSize: 9, color: '#22c55e', fontWeight: '600' }}>$</Text>
+                                <View style={{ backgroundColor: ttConfig.billableBadgeBg, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                  <Text style={{ fontSize: 9, color: ttConfig.statusColors.active, fontWeight: '600' }}>$</Text>
                                 </View>
                               ) : null}
                               {entry.isDisputed && (
-                                <View style={{ backgroundColor: '#ef444415', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                                  <Feather name="alert-triangle" size={8} color="#ef4444" />
-                                  <Text style={{ fontSize: 9, color: '#ef4444', fontWeight: '600' }}>
+                                <View style={{ backgroundColor: ttConfig.disputeBadgeBg, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                                  <Feather name="alert-triangle" size={8} color={ttConfig.statusColors.late} />
+                                  <Text style={{ fontSize: 9, color: ttConfig.statusColors.late, fontWeight: '600' }}>
                                     {entry.disputeResolvedAt ? 'Resolved' : 'Disputed'}
                                   </Text>
                                 </View>
@@ -1812,7 +1826,7 @@ export default function TimeTrackingScreen() {
                               {startStr} — {endStr}
                             </Text>
                           </View>
-                          <Text style={{ fontSize: 13, fontWeight: '600', color: isBreakEntry ? '#f59e0b' : colors.foreground, marginRight: spacing.sm }}>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: isBreakEntry ? ttConfig.statusColors.break : colors.foreground, marginRight: spacing.sm }}>
                             {durationStr}
                           </Text>
                           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
@@ -1823,24 +1837,24 @@ export default function TimeTrackingScreen() {
                             )}
                             {!entry.isDisputed && !isBreakEntry && (
                               <TouchableOpacity onPress={() => handleOpenDispute(entry.id)} activeOpacity={0.7} hitSlop={8}>
-                                <Feather name="flag" size={14} color="#f59e0b" />
+                                <Feather name="flag" size={14} color={ttConfig.statusColors.break} />
                               </TouchableOpacity>
                             )}
                             <TouchableOpacity onPress={() => handleDeleteEntry(entry)} activeOpacity={0.7} hitSlop={8}>
-                              <Feather name="trash-2" size={14} color={colors.destructive || '#ef4444'} />
+                              <Feather name="trash-2" size={14} color={ttConfig.statusColors.late} />
                             </TouchableOpacity>
                           </View>
                         </View>
                         {entry.isDisputed && entry.disputeReason && !entry.disputeResolvedAt && (
                           <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
-                            <Text style={{ fontSize: 11, color: '#ef4444' }} numberOfLines={2}>
+                            <Text style={{ fontSize: 11, color: ttConfig.statusColors.late }} numberOfLines={2}>
                               Reason: {entry.disputeReason}
                             </Text>
                           </View>
                         )}
                         {entry.isDisputed && entry.disputeResolution && (
                           <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xs }}>
-                            <Text style={{ fontSize: 11, color: '#22c55e' }} numberOfLines={2}>
+                            <Text style={{ fontSize: 11, color: ttConfig.statusColors.active }} numberOfLines={2}>
                               Resolution: {entry.disputeResolution}
                             </Text>
                           </View>
@@ -1884,14 +1898,14 @@ export default function TimeTrackingScreen() {
     return (
       <View style={styles.statsSection}>
         {weeklyEarnings > 0 && (
-          <View style={[styles.statsCard, { backgroundColor: '#22c55e12', borderColor: '#22c55e30' }]}>
+          <View style={[styles.statsCard, { backgroundColor: colorWithOpacity(ttConfig.statusColors.active, 0.07), borderColor: colorWithOpacity(ttConfig.statusColors.active, 0.19) }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#22c55e20', alignItems: 'center', justifyContent: 'center' }}>
-                <Feather name="dollar-sign" size={18} color="#22c55e" />
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colorWithOpacity(ttConfig.statusColors.active, 0.13), alignItems: 'center', justifyContent: 'center' }}>
+                <Feather name="dollar-sign" size={18} color={ttConfig.statusColors.active} />
               </View>
               <Text style={{ ...typography.cardTitle, color: colors.foreground }}>Weekly Earnings</Text>
             </View>
-            <Text style={{ fontSize: 32, fontWeight: '700', color: '#22c55e', marginBottom: spacing.xs }}>
+            <Text style={{ fontSize: 32, fontWeight: '700', color: ttConfig.statusColors.active, marginBottom: spacing.xs }}>
               {formatCurrency(weeklyEarnings)}
             </Text>
             <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
@@ -1937,11 +1951,11 @@ export default function TimeTrackingScreen() {
           </View>
           <View style={styles.statsMetricRow}>
             <Text style={styles.statsMetricLabel}>Billable Hours</Text>
-            <Text style={[styles.statsMetricValue, { color: '#22c55e' }]}>{timeStats.billableHours}h</Text>
+            <Text style={[styles.statsMetricValue, { color: ttConfig.statusColors.active }]}>{timeStats.billableHours}h</Text>
           </View>
           <View style={styles.statsMetricRow}>
             <Text style={styles.statsMetricLabel}>Break Time</Text>
-            <Text style={[styles.statsMetricValue, { color: '#f59e0b' }]}>{timeStats.breakHours}h</Text>
+            <Text style={[styles.statsMetricValue, { color: ttConfig.statusColors.break }]}>{timeStats.breakHours}h</Text>
           </View>
           <View style={styles.statsMetricRow}>
             <Text style={styles.statsMetricLabel}>Total Entries</Text>
@@ -1954,7 +1968,7 @@ export default function TimeTrackingScreen() {
           {weeklyEarnings > 0 && (
             <View style={[styles.statsMetricRow, { borderBottomWidth: 0, borderTopWidth: 1, borderTopColor: colors.border + '40', marginTop: spacing.xs }]}>
               <Text style={[styles.statsMetricLabel, { fontWeight: '600' }]}>Est. Earnings</Text>
-              <Text style={[styles.statsMetricValue, { color: '#22c55e' }]}>{formatCurrency(weeklyEarnings)}</Text>
+              <Text style={[styles.statsMetricValue, { color: ttConfig.statusColors.active }]}>{formatCurrency(weeklyEarnings)}</Text>
             </View>
           )}
         </View>
@@ -1966,10 +1980,10 @@ export default function TimeTrackingScreen() {
             <Text style={styles.statsMetricLabel}>of hours are billable</Text>
           </View>
           <View style={styles.statsProgressBarContainer}>
-            <View style={[styles.statsProgressBar, { width: `${billablePercent}%`, backgroundColor: '#22c55e' }]} />
+            <View style={[styles.statsProgressBar, { width: `${billablePercent}%`, backgroundColor: ttConfig.statusColors.active }]} />
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm }}>
-            <Text style={{ fontSize: 11, color: '#22c55e', fontWeight: '600' }}>
+            <Text style={{ fontSize: 11, color: ttConfig.statusColors.active, fontWeight: '600' }}>
               {timeStats.billableHours}h billable
             </Text>
             <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
@@ -2047,9 +2061,9 @@ export default function TimeTrackingScreen() {
               <StatCard
                 title="EARNED"
                 value={formatCurrency(timeStats.weeklyEarnings)}
-                icon={<Feather name="dollar-sign" size={18} color="#22c55e" />}
+                icon={<Feather name="dollar-sign" size={18} color={ttConfig.statusColors.active} />}
                 colors={colors}
-                accentColor="#22c55e"
+                accentColor={ttConfig.statusColors.active}
               />
               <StatCard
                 title="ENTRIES"
@@ -2216,7 +2230,7 @@ export default function TimeTrackingScreen() {
                 <Feather 
                   name={entryIsBillable ? 'check-square' : 'square'} 
                   size={22} 
-                  color={entryIsBillable ? '#22c55e' : colors.mutedForeground} 
+                  color={entryIsBillable ? ttConfig.statusColors.active : colors.mutedForeground} 
                 />
               </TouchableOpacity>
             </View>
@@ -2295,9 +2309,9 @@ export default function TimeTrackingScreen() {
           <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}>
             <View style={{ 
               flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-              backgroundColor: '#f59e0b18', padding: spacing.md, borderRadius: radius.xl, marginBottom: spacing.lg 
+              backgroundColor: colorWithOpacity(ttConfig.statusColors.break, 0.09), padding: spacing.md, borderRadius: radius.xl, marginBottom: spacing.lg 
             }}>
-              <Feather name="alert-triangle" size={18} color="#f59e0b" />
+              <Feather name="alert-triangle" size={18} color={ttConfig.statusColors.break} />
               <Text style={{ flex: 1, color: colors.foreground, fontSize: 13, lineHeight: 18 }}>
                 Flag this entry if you believe it was edited incorrectly. Your employer will be notified to review it.
               </Text>

@@ -287,7 +287,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   },
   tabBadgeText: {
     ...typography.badge,
-    color: '#fff',
+    color: colors.white,
   },
   sectionTitle: {
     ...typography.label,
@@ -395,7 +395,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   },
   enableButtonText: {
     ...typography.button,
-    color: colors.primaryForeground || '#fff',
+    color: colors.primaryForeground || colors.white,
   },
   loadingContainer: {
     flex: 1,
@@ -438,7 +438,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   },
   retryButtonText: {
     ...typography.button,
-    color: colors.primaryForeground || '#fff',
+    color: colors.primaryForeground || colors.white,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -486,7 +486,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   },
   emptyCtaText: {
     ...typography.button,
-    color: colors.primaryForeground || '#fff',
+    color: colors.primaryForeground || colors.white,
   },
   templateGrid: {
     gap: spacing.md,
@@ -1292,11 +1292,11 @@ export default function AutopilotScreen() {
                     activeOpacity={0.7}
                   >
                     {isSaving ? (
-                      <ActivityIndicator size="small" color={colors.primaryForeground || '#fff'} />
+                      <ActivityIndicator size="small" color={colors.primaryForeground || colors.white} />
                     ) : (
                       <>
-                        <Feather name="check" size={iconSizes.md} color={colors.primaryForeground || '#fff'} />
-                        <Text style={[styles.footerButtonText, { color: colors.primaryForeground || '#fff' }]}>
+                        <Feather name="check" size={iconSizes.md} color={colors.primaryForeground || colors.white} />
+                        <Text style={[styles.footerButtonText, { color: colors.primaryForeground || colors.white }]}>
                           {editingId ? 'Update' : 'Create'}
                         </Text>
                       </>
@@ -1309,8 +1309,8 @@ export default function AutopilotScreen() {
                     disabled={!canGoNext}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.footerButtonText, { color: canGoNext ? (colors.primaryForeground || '#fff') : colors.mutedForeground }]}>Next</Text>
-                    <Feather name="arrow-right" size={iconSizes.md} color={canGoNext ? (colors.primaryForeground || '#fff') : colors.mutedForeground} />
+                    <Text style={[styles.footerButtonText, { color: canGoNext ? (colors.primaryForeground || colors.white) : colors.mutedForeground }]}>Next</Text>
+                    <Feather name="arrow-right" size={iconSizes.md} color={canGoNext ? (colors.primaryForeground || colors.white) : colors.mutedForeground} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -1453,10 +1453,10 @@ export default function AutopilotScreen() {
           activeOpacity={0.7}
         >
           {isEnabling ? (
-            <ActivityIndicator size="small" color={colors.primaryForeground || '#fff'} />
+            <ActivityIndicator size="small" color={colors.primaryForeground || colors.white} />
           ) : (
             <>
-              <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground || '#fff'} />
+              <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground || colors.white} />
               <Text style={styles.enableButtonText}>Enable</Text>
             </>
           )}
@@ -1485,7 +1485,7 @@ export default function AutopilotScreen() {
             onPress={openCreateEditor}
             activeOpacity={0.7}
           >
-            <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground || '#fff'} />
+            <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground || colors.white} />
             <Text style={styles.emptyCtaText}>Create Automation</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -1594,7 +1594,7 @@ export default function AutopilotScreen() {
                 onPress={() => { setIsLoading(true); fetchData(); }}
                 activeOpacity={0.7}
               >
-                <Feather name="refresh-cw" size={iconSizes.sm} color={colors.primaryForeground || '#fff'} />
+                <Feather name="refresh-cw" size={iconSizes.sm} color={colors.primaryForeground || colors.white} />
                 <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
             </View>

@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../lib/theme';
+import { colors as staticColors } from '../../lib/colors';
 import { spacing, radius } from '../../lib/design-tokens';
 
 interface XeroBadgeProps {
@@ -44,7 +45,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   text: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontWeight: '700',
   },
   textSm: {

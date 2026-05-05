@@ -13,6 +13,7 @@ import {
 import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useTheme } from '../lib/theme';
+import { colors as staticColors } from '../lib/colors';
 import { spacing, radius } from '../lib/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -30,7 +31,7 @@ const COLORS = [
   { name: 'red', value: '#ef4444' },
   { name: 'blue', value: '#3b82f6' },
   { name: 'yellow', value: '#eab308' },
-  { name: 'white', value: '#ffffff' },
+  { name: 'white', value: staticColors.white },
   { name: 'black', value: '#1f2937' },
 ];
 
@@ -62,7 +63,7 @@ export function PhotoAnnotationEditor({
   const [isPreparingImage, setIsPreparingImage] = useState(true);
 
   const bgColor = isDark ? '#0f172a' : '#f1f5f9';
-  const toolbarBg = isDark ? '#1e293b' : '#ffffff';
+  const toolbarBg = isDark ? '#1e293b' : colors.white;
   const textColor = isDark ? '#f1f5f9' : '#1e293b';
   const borderColor = isDark ? '#334155' : '#e2e8f0';
 
@@ -526,12 +527,12 @@ export function PhotoAnnotationEditor({
       <Ionicons
         name={icon}
         size={24}
-        color={selectedTool === tool ? '#ffffff' : textColor}
+        color={selectedTool === tool ? colors.white : textColor}
       />
       <Text
         style={[
           styles.toolLabel,
-          { color: selectedTool === tool ? '#ffffff' : textColor },
+          { color: selectedTool === tool ? colors.white : textColor },
         ]}
       >
         {label}
@@ -573,9 +574,9 @@ export function PhotoAnnotationEditor({
             data-testid="button-save-annotation"
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
-              <Ionicons name="checkmark" size={24} color="#ffffff" />
+              <Ionicons name="checkmark" size={24} color={colors.white} />
             )}
           </TouchableOpacity>
         </View>
@@ -600,7 +601,7 @@ export function PhotoAnnotationEditor({
                 onPress={handleRetry}
                 data-testid="button-retry-load"
               >
-                <Ionicons name="refresh" size={20} color="#ffffff" />
+                <Ionicons name="refresh" size={20} color={colors.white} />
                 <Text style={styles.retryButtonText}>Retry</Text>
               </TouchableOpacity>
             </View>
@@ -772,7 +773,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   retryButtonText: {
-    color: '#ffffff',
+    color: staticColors.white,
     fontSize: 16,
     fontWeight: '600',
   },

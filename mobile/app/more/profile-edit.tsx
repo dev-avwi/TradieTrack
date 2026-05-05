@@ -48,7 +48,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   avatarText: {
     fontSize: 28,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.white,
     textTransform: 'uppercase',
   },
   emailDisplay: {
@@ -113,7 +113,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.white,
   },
 });
 

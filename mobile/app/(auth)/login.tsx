@@ -435,7 +435,7 @@ export default function LoginScreen() {
                 <View style={styles.appleButtonContainer}>
                   {appleLoading ? (
                     <View style={styles.appleLoadingContainer}>
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={colors.white} />
                     </View>
                   ) : (
                     <AppleAuthentication.AppleAuthenticationButton

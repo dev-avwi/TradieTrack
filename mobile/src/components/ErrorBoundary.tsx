@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import { captureException } from '../lib/sentry';
+import { colors as staticColors } from '../lib/colors';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   restartButtonText: {
-    color: '#ffffff',
+    color: staticColors.white,
     fontSize: 16,
     fontWeight: '600',
   },

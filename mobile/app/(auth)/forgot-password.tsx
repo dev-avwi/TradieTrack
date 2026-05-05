@@ -135,7 +135,7 @@ export default function ForgotPasswordScreen() {
                     testID="button-send-reset"
                   >
                     {isLoading ? (
-                      <ActivityIndicator color="#FFFFFF" />
+                      <ActivityIndicator color={colors.white} />
                     ) : (
                       <Text style={styles.primaryButtonText}>Send Reset Link</Text>
                     )}
@@ -233,7 +233,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: 8,
   },
   primaryButtonText: {
-    color: colors.primaryForeground || '#FFFFFF',
+    color: colors.primaryForeground || colors.white,
     fontSize: 16,
     fontWeight: '600',
   },

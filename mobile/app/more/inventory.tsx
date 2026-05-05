@@ -545,7 +545,7 @@ export default function InventoryScreen() {
               <Feather
                 name={tab.icon}
                 size={iconSizes.sm}
-                color={isActive ? '#fff' : colors.mutedForeground}
+                color={isActive ? colors.white : colors.mutedForeground}
               />
               <Text style={[styles.tabText, isActive && styles.activeTabText]}>
                 {tab.label}
@@ -718,7 +718,7 @@ export default function InventoryScreen() {
           </Text>
           {!searchQuery && !filterCategoryId && (
             <TouchableOpacity style={styles.emptyButton} onPress={openCreateItem} activeOpacity={0.7}>
-              <Feather name="plus" size={iconSizes.md} color="#fff" />
+              <Feather name="plus" size={iconSizes.md} color={colors.white} />
               <Text style={styles.emptyButtonText}>Add Item</Text>
             </TouchableOpacity>
           )}
@@ -747,7 +747,7 @@ export default function InventoryScreen() {
             Create categories to organize your inventory items.
           </Text>
           <TouchableOpacity style={styles.emptyButton} onPress={() => setShowCategoryModal(true)} activeOpacity={0.7}>
-            <Feather name="plus" size={iconSizes.md} color="#fff" />
+            <Feather name="plus" size={iconSizes.md} color={colors.white} />
             <Text style={styles.emptyButtonText}>Add Category</Text>
           </TouchableOpacity>
         </View>
@@ -838,7 +838,7 @@ export default function InventoryScreen() {
             Create purchase orders to track your supply orders.
           </Text>
           <TouchableOpacity style={styles.emptyButton} onPress={() => setShowPOModal(true)} activeOpacity={0.7}>
-            <Feather name="plus" size={iconSizes.md} color="#fff" />
+            <Feather name="plus" size={iconSizes.md} color={colors.white} />
             <Text style={styles.emptyButtonText}>New Order</Text>
           </TouchableOpacity>
         </View>
@@ -1380,7 +1380,7 @@ export default function InventoryScreen() {
 
     return (
       <TouchableOpacity style={styles.fab} onPress={onPress} activeOpacity={0.8} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Feather name={icon} size={24} color="#fff" />
+        <Feather name={icon} size={24} color={colors.white} />
       </TouchableOpacity>
     );
   };
@@ -1554,7 +1554,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
     color: colors.mutedForeground,
   },
   activeTabText: {
-    color: colors.primaryForeground || '#fff',
+    color: colors.primaryForeground || colors.white,
   },
   tabBadge: {
     backgroundColor: colors.border,
@@ -1572,7 +1572,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
     color: colors.mutedForeground,
   },
   activeTabBadgeText: {
-    color: '#fff',
+    color: colors.white,
   },
   searchContainer: {
     marginBottom: spacing.md,
@@ -1848,7 +1848,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   },
   emptyButtonText: {
     ...typography.button,
-    color: colors.primaryForeground || '#fff',
+    color: colors.primaryForeground || colors.white,
   },
   errorContainer: {
     flex: 1,
@@ -1872,7 +1872,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
   },
   retryButtonText: {
     ...typography.button,
-    color: colors.primaryForeground || '#fff',
+    color: colors.primaryForeground || colors.white,
   },
   fab: {
     position: 'absolute',

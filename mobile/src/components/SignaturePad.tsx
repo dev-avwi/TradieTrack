@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-nati
 import { WebView } from 'react-native-webview';
 import { useRef, useState } from 'react';
 import { useTheme } from '../lib/theme';
+import { colors as staticColors } from '../lib/colors';
 
 interface SignaturePadProps {
   onSave: (signatureData: string) => void;
@@ -297,7 +298,7 @@ const styles = StyleSheet.create({
     flex: 2,
   },
   saveButtonText: {
-    color: '#ffffff',
+    color: staticColors.white,
     fontWeight: '600',
   },
 });

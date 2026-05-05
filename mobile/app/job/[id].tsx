@@ -1470,7 +1470,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
   },
   photoToolbarButtonText: {
     fontSize: 11,
-    color: '#fff',
+    color: colors.white,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -1536,7 +1536,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
     justifyContent: 'center',
   },
   photoCategoryBadgeText: {
-    color: '#ffffff',
+    color: colors.white,
     fontSize: 10,
     fontWeight: '700',
   },
@@ -6043,8 +6043,8 @@ export default function JobDetailScreen() {
         </Text>
         <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
           <TouchableOpacity onPress={loadJob} style={[styles.errorButton, { backgroundColor: colors.primary }]}>
-            <Feather name="refresh-cw" size={16} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={[styles.errorButtonText, { color: '#fff' }]}>Retry</Text>
+            <Feather name="refresh-cw" size={16} color={colors.white} style={{ marginRight: 6 }} />
+            <Text style={[styles.errorButtonText, { color: colors.white }]}>Retry</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.back()} style={styles.errorButton}>
             <Text style={styles.errorButtonText}>Go back</Text>
@@ -10343,7 +10343,7 @@ export default function JobDetailScreen() {
                     justifyContent: 'center',
                     paddingHorizontal: 3,
                   }}>
-                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: colors.white }}>
                       {badgeCount > 99 ? '99+' : badgeCount}
                     </Text>
                   </View>
@@ -11158,7 +11158,7 @@ export default function JobDetailScreen() {
                           justifyContent: 'center',
                         }}
                       >
-                        <Feather name="x" size={18} color="#fff" />
+                        <Feather name="x" size={18} color={colors.white} />
                       </TouchableOpacity>
                     </View>
                   ) : (
@@ -11349,7 +11349,7 @@ export default function JobDetailScreen() {
                 onPress={() => setSelectedPhoto(null)}
                 data-testid="button-close-photo"
               >
-                <Feather name="x" size={24} color="#fff" />
+                <Feather name="x" size={24} color={colors.white} />
               </TouchableOpacity>
               
               {/* Bottom toolbar with all actions */}
@@ -11415,7 +11415,7 @@ export default function JobDetailScreen() {
                     disabled={isSavingMedia}
                     data-testid="button-share-photo"
                   >
-                    <Feather name={isSavingMedia ? "loader" : "share"} size={22} color="#fff" />
+                    <Feather name={isSavingMedia ? "loader" : "share"} size={22} color={colors.white} />
                     <Text style={styles.photoToolbarButtonText}>Share</Text>
                   </TouchableOpacity>
                   
@@ -11426,7 +11426,7 @@ export default function JobDetailScreen() {
                     onPress={() => setShowAnnotationEditor(true)}
                     data-testid="button-markup-photo"
                   >
-                    <Feather name="edit-2" size={22} color="#fff" />
+                    <Feather name="edit-2" size={22} color={colors.white} />
                     <Text style={styles.photoToolbarButtonText}>Markup</Text>
                   </TouchableOpacity>
                   

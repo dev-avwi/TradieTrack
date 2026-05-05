@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useOfflineStore } from '../lib/offline-storage';
 import offlineStorage from '../lib/offline-storage';
+import { colors as staticColors } from '../lib/colors';
 
 export function OfflineIndicator() {
   const { isOnline, isSyncing, pendingSyncCount, lastSyncTime } = useOfflineStore();
@@ -129,7 +130,7 @@ export function OfflineBanner() {
   
   return (
     <View style={styles.banner}>
-      <Ionicons name="cloud-offline" size={18} color="#ffffff" />
+      <Ionicons name="cloud-offline" size={18} color={staticColors.white} />
       <View style={styles.bannerTextContainer}>
         <Text style={styles.bannerTitle}>You're offline</Text>
         <Text style={styles.bannerSubtitle}>
@@ -276,7 +277,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bannerTitle: {
-    color: '#ffffff',
+    color: staticColors.white,
     fontSize: 14,
     fontWeight: '600',
   },
