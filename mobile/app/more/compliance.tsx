@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, A
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useTheme } from '../../src/lib/theme';
+import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { api, API_URL } from '../../src/lib/api';
 import { format } from 'date-fns';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
@@ -41,44 +41,47 @@ const DOCUMENT_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
+type StatusConfigEntry = { label: string; color: string; bgColor: string };
+type TypeConfigEntry = { icon: keyof typeof Feather.glyphMap; label: string; color: string };
+
+const buildStatusConfig = (colors: ThemeColors): Record<string, StatusConfigEntry> => ({
   valid: {
     label: 'Valid',
-    color: '#22c55e',
-    bgColor: 'rgba(34,197,94,0.12)',
+    color: colors.success,
+    bgColor: colorWithOpacity(colors.success, 0.12),
   },
   expiring_soon: {
     label: 'Expiring Soon',
-    color: '#f59e0b',
-    bgColor: 'rgba(245,158,11,0.12)',
+    color: colors.warning,
+    bgColor: colorWithOpacity(colors.warning, 0.12),
   },
   expired: {
     label: 'Expired',
-    color: '#ef4444',
-    bgColor: 'rgba(239,68,68,0.12)',
+    color: colors.destructive,
+    bgColor: colorWithOpacity(colors.destructive, 0.12),
   },
   pending: {
     label: 'Pending',
-    color: '#6b7280',
-    bgColor: 'rgba(107,114,128,0.12)',
+    color: colors.mutedForeground,
+    bgColor: colorWithOpacity(colors.mutedForeground, 0.12),
   },
-};
+});
 
-const TYPE_CONFIG: Record<string, { icon: keyof typeof Feather.glyphMap; label: string; color: string }> = {
-  licence: { icon: 'shield', label: 'Licence', color: '#3b82f6' },
-  license: { icon: 'shield', label: 'Licence', color: '#3b82f6' },
-  insurance: { icon: 'file-text', label: 'Insurance', color: '#8b5cf6' },
-  certification: { icon: 'award', label: 'Certification', color: '#f59e0b' },
-  certificate: { icon: 'award', label: 'Certificate', color: '#f59e0b' },
-  white_card: { icon: 'credit-card', label: 'White Card', color: '#10b981' },
-  vehicle_rego: { icon: 'truck', label: 'Vehicle Rego', color: '#6366f1' },
-  permit: { icon: 'clipboard', label: 'Permit', color: '#ec4899' },
-  other: { icon: 'file', label: 'Other', color: '#6b7280' },
-};
+const buildTypeConfig = (colors: ThemeColors): Record<string, TypeConfigEntry> => ({
+  licence: { icon: 'shield', label: 'Licence', color: colors.info },
+  license: { icon: 'shield', label: 'Licence', color: colors.info },
+  insurance: { icon: 'file-text', label: 'Insurance', color: colors.primary },
+  certification: { icon: 'award', label: 'Certification', color: colors.warning },
+  certificate: { icon: 'award', label: 'Certificate', color: colors.warning },
+  white_card: { icon: 'credit-card', label: 'White Card', color: colors.success },
+  vehicle_rego: { icon: 'truck', label: 'Vehicle Rego', color: colors.info },
+  permit: { icon: 'clipboard', label: 'Permit', color: colors.destructive },
+  other: { icon: 'file', label: 'Other', color: colors.mutedForeground },
+});
 
-const getTypeConfig = (type: string) => {
-  return TYPE_CONFIG[type.toLowerCase()] || { icon: 'file' as keyof typeof Feather.glyphMap, label: type, color: '#6b7280' };
-};
+const makeGetTypeConfig = (typeConfig: Record<string, TypeConfigEntry>, fallbackColor: string) =>
+  (type: string): TypeConfigEntry =>
+    typeConfig[type.toLowerCase()] || { icon: 'file' as keyof typeof Feather.glyphMap, label: type, color: fallbackColor };
 
 const computeStatus = (doc: ComplianceDocument): string => {
   if (doc.status) return doc.status;
@@ -102,7 +105,7 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'expired', label: 'Expired' },
 ];
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -146,7 +149,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: spacing.xs,
   },
   addButtonText: {
-    color: '#fff',
+    color: colors.primaryForeground,
     ...typography.button,
   },
   statsRow: {
@@ -214,7 +217,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.mutedForeground,
   },
   filterTabTextActive: {
-    color: '#fff',
+    color: colors.primaryForeground,
   },
   documentCard: {
     backgroundColor: colors.card,
@@ -333,7 +336,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   editButtonText: {
     ...typography.button,
-    color: '#fff',
+    color: colors.primaryForeground,
   },
   deleteButton: {
     flexDirection: 'row',
@@ -343,11 +346,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.xl,
-    backgroundColor: 'rgba(239,68,68,0.12)',
+    backgroundColor: colorWithOpacity(colors.destructive, 0.12),
   },
   deleteButtonText: {
     ...typography.button,
-    color: '#ef4444',
+    color: colors.destructive,
   },
   loadingContainer: {
     flex: 1,
@@ -375,7 +378,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(107,114,128,0.10)',
+    backgroundColor: colorWithOpacity(colors.mutedForeground, 0.10),
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
@@ -401,7 +404,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     gap: spacing.xs,
   },
   emptyAddButtonText: {
-    color: '#fff',
+    color: colors.primaryForeground,
     ...typography.button,
   },
   errorContainer: {
@@ -431,7 +434,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   retryButtonText: {
     ...typography.button,
-    color: '#fff',
+    color: colors.primaryForeground,
   },
   modalOverlay: {
     flex: 1,
@@ -536,12 +539,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: radius.xl,
-    backgroundColor: 'rgba(34,197,94,0.12)',
+    backgroundColor: colorWithOpacity(colors.success, 0.12),
   },
   uploadedText: {
     ...typography.caption,
     fontWeight: '500',
-    color: '#22c55e',
+    color: colors.success,
     flex: 1,
   },
   removeUploadButton: {
@@ -582,7 +585,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   saveButtonText: {
     ...typography.body,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.primaryForeground,
   },
 });
 
@@ -615,6 +618,9 @@ const emptyForm: FormData = {
 export default function ComplianceScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
+  const STATUS_CONFIG = buildStatusConfig(colors);
+  const TYPE_CONFIG = buildTypeConfig(colors);
+  const getTypeConfig = makeGetTypeConfig(TYPE_CONFIG, colors.mutedForeground);
 
   const [documents, setDocuments] = useState<ComplianceDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1016,7 +1022,7 @@ export default function ComplianceScreen() {
                 onPress={() => openEditModal(doc)}
                 activeOpacity={0.7}
               >
-                <Feather name="edit-2" size={14} color="#fff" />
+                <Feather name="edit-2" size={14} color={colors.primaryForeground} />
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1037,7 +1043,7 @@ export default function ComplianceScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Feather name="shield" size={40} color="#6b7280" />
+        <Feather name="shield" size={40} color={colors.mutedForeground} />
       </View>
       <Text style={styles.emptyTitle}>No Documents</Text>
       <Text style={styles.emptySubtitle}>
@@ -1047,7 +1053,7 @@ export default function ComplianceScreen() {
       </Text>
       {activeFilter === 'all' && (
         <TouchableOpacity style={styles.emptyAddButton} onPress={openCreateModal} activeOpacity={0.7}>
-          <Feather name="plus" size={16} color="#fff" />
+          <Feather name="plus" size={16} color={colors.primaryForeground} />
           <Text style={styles.emptyAddButtonText}>Add Document</Text>
         </TouchableOpacity>
       )}
@@ -1258,7 +1264,7 @@ export default function ComplianceScreen() {
               activeOpacity={0.7}
             >
               {isSaving ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
                 <Text style={styles.saveButtonText}>{editingDoc ? 'Update' : 'Add Document'}</Text>
               )}
@@ -1297,7 +1303,7 @@ export default function ComplianceScreen() {
                 <Text style={styles.pageSubtitle}>Licences, insurance & certifications</Text>
               </View>
               <TouchableOpacity style={styles.addButton} onPress={openCreateModal} activeOpacity={0.7}>
-                <Feather name="plus" size={16} color="#fff" />
+                <Feather name="plus" size={16} color={colors.primaryForeground} />
                 <Text style={styles.addButtonText}>Add</Text>
               </TouchableOpacity>
             </View>

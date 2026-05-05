@@ -467,7 +467,9 @@ export default function SmsConversationScreen() {
             key={i}
             style={{
               textDecorationLine: 'underline',
-              color: isOutbound ? colors.primaryForeground : colors.primary,
+              color: isOutbound
+                ? (colors.isDark ? colors.primaryForeground : colors.primary)
+                : colors.primary,
               fontWeight: '600',
             }}
             onPress={() => Linking.openURL(part)}

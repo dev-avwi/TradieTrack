@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   View, 
   Text, 
@@ -1007,6 +1008,7 @@ function GpsPrivacyCard() {
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const { user, refreshUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('account');
@@ -3083,8 +3085,12 @@ export default function SettingsScreen() {
           visible={showCreateModal}
           animationType="slide"
           presentationStyle="pageSheet"
+          onRequestClose={() => {
+            setShowCreateModal(false);
+            resetTemplateForm();
+          }}
         >
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { paddingBottom: insets.bottom }]}>
             <View style={styles.modalHeader}>
               <TouchableOpacity 
                 onPress={() => {
@@ -3272,7 +3278,7 @@ export default function SettingsScreen() {
                 onPress={handleCreateTemplate}
                 disabled={isCreatingTemplate}
               >
-                <Feather name="check" size={18} color="#FFFFFF" />
+                <Feather name="check" size={18} color={colors.primaryForeground} />
                 <Text style={styles.modalSaveButtonText}>
                   {isCreatingTemplate ? 'Saving...' : (editingTemplate ? 'Update Template' : 'Create Template')}
                 </Text>

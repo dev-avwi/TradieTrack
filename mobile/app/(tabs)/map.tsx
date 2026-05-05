@@ -285,7 +285,7 @@ const createStyles = (colors: ThemeColors) => {
         color: colors.foreground,
       },
       toggleButtonTextActive: {
-        color: '#fff',
+        color: colors.primaryForeground,
       },
       legendButton: {
         flexDirection: 'row',
@@ -457,7 +457,7 @@ const createStyles = (colors: ThemeColors) => {
       calloutBadgeText: {
         fontSize: 10,
         fontWeight: '600',
-        color: '#fff',
+        color: colors.white,
       },
       calloutHint: {
         fontSize: 10,
@@ -528,7 +528,7 @@ const createStyles = (colors: ThemeColors) => {
         zIndex: 25,
       },
       assignModeBannerText: {
-        color: '#fff',
+        color: colors.primaryForeground,
         fontSize: 14,
         fontWeight: '600',
         flex: 1,
@@ -547,7 +547,7 @@ const createStyles = (colors: ThemeColors) => {
         borderColor: 'rgba(255,255,255,0.3)',
       },
       cancelButtonText: {
-        color: '#fff',
+        color: colors.primaryForeground,
         fontWeight: '600',
         fontSize: 14,
       },
@@ -609,7 +609,7 @@ const createStyles = (colors: ThemeColors) => {
         color: colors.foreground,
       },
       modalButtonTextConfirm: {
-        color: '#fff',
+        color: colors.primaryForeground,
       },
       // Life360-style name label - compact pill below marker
       nameLabel: {
@@ -1569,7 +1569,7 @@ export default function MapScreen() {
         onPress={() => router.push('/(tabs)/jobs')}
         activeOpacity={0.8}
       >
-        <Text style={{ color: '#fff', fontWeight: '600' }}>View Jobs</Text>
+        <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>View Jobs</Text>
       </TouchableOpacity>
     </View>
   );
@@ -1626,7 +1626,7 @@ export default function MapScreen() {
                     borderRadius: 18,
                   }
                 ]}>
-                  <Feather name="file-text" size={14} color="#fff" />
+                  <Feather name="file-text" size={14} color={colors.white} />
                 </View>
                 {jobInRoute && (
                   <View style={{
@@ -1640,9 +1640,9 @@ export default function MapScreen() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 2,
-                    borderColor: '#fff',
+                    borderColor: colors.white,
                   }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primaryForeground }}>
                       {routeJobs.findIndex(j => j.id === job.id) + 1}
                     </Text>
                   </View>
@@ -1873,7 +1873,7 @@ export default function MapScreen() {
               <Feather 
                 name="briefcase" 
                 size={14} 
-                color={showJobs ? '#fff' : colors.foreground} 
+                color={showJobs ? colors.primaryForeground : colors.foreground} 
               />
               <Text style={[
                 styles.toggleButtonText,
@@ -1894,7 +1894,7 @@ export default function MapScreen() {
                 <Feather 
                   name="users" 
                   size={14} 
-                  color={showTeamMembers ? '#fff' : colors.foreground} 
+                  color={showTeamMembers ? colors.white : colors.foreground} 
                 />
                 <Text style={[
                   styles.toggleButtonText,
@@ -1944,7 +1944,7 @@ export default function MapScreen() {
                     justifyContent: 'center',
                     paddingHorizontal: 3,
                   }}>
-                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: colors.destructiveForeground }}>
                       {unreadAlerts.length > 9 ? '9+' : unreadAlerts.length}
                     </Text>
                   </View>
@@ -2064,7 +2064,7 @@ export default function MapScreen() {
                 <Feather name="bell" size={14} color={colors.foreground} />
                 <Text style={{ fontSize: 14, fontWeight: '700', color: colors.foreground }}>Activity</Text>
                 <View style={{ backgroundColor: colors.destructive, borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1, marginLeft: 2 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>{unreadAlerts.length}</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: colors.destructiveForeground }}>{unreadAlerts.length}</Text>
                 </View>
               </View>
               <TouchableOpacity 
@@ -2367,7 +2367,7 @@ export default function MapScreen() {
                 activeOpacity={0.7}
               >
                 {isAssigning ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
                 ) : (
                   <Text style={[styles.modalButtonText, styles.modalButtonTextConfirm]}>Assign</Text>
                 )}
@@ -2456,7 +2456,7 @@ export default function MapScreen() {
                     borderRadius: radius.sm,
                     backgroundColor: getMarkerColor(selectedJob.status),
                   }}>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.white }}>
                       {STATUS_LABELS[selectedJob.status]}
                     </Text>
                   </View>
@@ -2467,7 +2467,7 @@ export default function MapScreen() {
                       borderRadius: radius.sm,
                       backgroundColor: colors.primary,
                     }}>
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#fff' }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: colors.primaryForeground }}>
                         In Route
                       </Text>
                     </View>
@@ -2498,7 +2498,7 @@ export default function MapScreen() {
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <Feather name="file-text" size={20} color="#fff" />
+                  <Feather name="file-text" size={20} color={colors.primaryForeground} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 16, fontWeight: '600', color: colors.foreground }}>
@@ -2533,7 +2533,7 @@ export default function MapScreen() {
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <Feather name="plus-circle" size={20} color="#fff" />
+                  <Feather name="plus-circle" size={20} color={colors.successForeground} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 16, fontWeight: '600', color: colors.foreground }}>
@@ -2566,7 +2566,7 @@ export default function MapScreen() {
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <Feather name="navigation" size={20} color="#fff" />
+                  <Feather name="navigation" size={20} color={colors.infoForeground} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 16, fontWeight: '600', color: colors.foreground }}>
@@ -2655,7 +2655,7 @@ export default function MapScreen() {
                 onPress={handleStartRoute}
                 activeOpacity={0.7}
               >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Start</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primaryForeground }}>Start</Text>
               </TouchableOpacity>
               <View style={{
                 width: 32,
@@ -2704,7 +2704,7 @@ export default function MapScreen() {
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primaryForeground }}>
                         {index + 1}
                       </Text>
                     </View>
@@ -2802,8 +2802,8 @@ export default function MapScreen() {
                   onPress={handleStartRoute}
                   activeOpacity={0.7}
                 >
-                  <Feather name="navigation" size={14} color="#fff" />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>
+                  <Feather name="navigation" size={14} color={colors.primaryForeground} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primaryForeground }}>
                     Start
                   </Text>
                 </TouchableOpacity>

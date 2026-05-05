@@ -368,7 +368,7 @@ function createStyles(colors: ThemeColors) {
     submitButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: '#FFFFFF',
+      color: colors.primaryForeground,
     },
     modalContainer: {
       flex: 1,

@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuthStore, useJobsStore, useDashboardStore, useClientsStore, useTimeTrackingStore } from '../../src/lib/store';
@@ -115,6 +116,7 @@ interface WeatherSettings {
 function WeatherWidget() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -217,9 +219,9 @@ function WeatherWidget() {
 
   function renderSettingsModal() {
     return (
-      <Modal visible={showSettings} animationType="slide" transparent>
+      <Modal visible={showSettings} animationType="slide" transparent onRequestClose={() => setShowSettings(false)}>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, maxHeight: '70%' }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.lg + insets.bottom, maxHeight: '70%' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: colors.foreground }}>Weather Settings</Text>
               <TouchableOpacity onPress={() => setShowSettings(false)} style={{ padding: spacing.xs }}>
@@ -1361,7 +1363,7 @@ function OperationalAlertsCard() {
                 <Text style={{
                   fontSize: 11,
                   fontWeight: '600',
-                  color: alert.severity === 'urgent' ? '#fff' : colors.primary,
+                  color: alert.severity === 'urgent' ? colors.primaryForeground : colors.primary,
                 }}>{alert.actionLabel}</Text>
               </TouchableOpacity>
               <TouchableOpacity

@@ -319,7 +319,7 @@ const createStyles = (colors: ThemeColors, isPad: boolean = false) => StyleSheet
     zIndex: 10,
   },
   badgeText: {
-    color: '#ffffff',
+    color: colors.destructiveForeground,
     fontSize: 10,
     fontWeight: '700' as const,
     textAlign: 'center' as const,
