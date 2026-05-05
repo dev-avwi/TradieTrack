@@ -19,7 +19,9 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 import { format, isThisWeek, parseISO } from 'date-fns';
 import { useStripeTerminal } from '../../src/hooks/useServices';
 import { isTapToPayAvailable } from '../../src/lib/stripe-terminal';
@@ -42,7 +44,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   contentContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingTop: pageShell.paddingTop,
-    paddingBottom: 100,
   },
   heroSection: {
     marginBottom: spacing.md,
@@ -795,6 +796,8 @@ interface SelectedInvoice {
 
 export default function CollectScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { invoiceId } = useLocalSearchParams<{ invoiceId?: string }>();
   const [amount, setAmount] = useState('');
@@ -3229,7 +3232,7 @@ export default function CollectScreen() {
       <View style={styles.container}>
         <ScrollView 
           style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomNavHeight + 24 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl

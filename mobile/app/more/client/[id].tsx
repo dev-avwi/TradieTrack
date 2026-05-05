@@ -11,7 +11,9 @@ import {
   Image
 } from 'react-native';
 import { Stack, router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { getBottomNavHeight } from '../../../src/components/BottomNav';
 import { useClientsStore, useJobsStore, useQuotesStore, useInvoicesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../../../src/lib/design-tokens';
@@ -42,6 +44,8 @@ export default function ClientDetailScreen() {
   const [isLoadingSignature, setIsLoadingSignature] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   useEffect(() => {
@@ -670,6 +674,7 @@ export default function ClientDetailScreen() {
     <>
       <Stack.Screen 
         options={{ 
+          headerShown: false,
           title: 'Client Details',
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -683,7 +688,7 @@ export default function ClientDetailScreen() {
           ),
         }} 
       />
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={{ paddingBottom: bottomNavHeight + 24 }}>
         <View style={styles.content}>
           {/* Profile Header Card */}
           <View style={styles.profileCard}>
@@ -846,7 +851,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,

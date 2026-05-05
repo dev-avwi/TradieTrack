@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 import { 
   View, 
   Text, 
@@ -165,7 +166,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   contentContainer: {
     padding: spacing.lg,
-    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
@@ -1625,7 +1625,7 @@ export default function SettingsScreen() {
       <View style={styles.container}>
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[styles.contentContainer, { paddingBottom: getBottomNavHeight(insets.bottom) + 24 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl

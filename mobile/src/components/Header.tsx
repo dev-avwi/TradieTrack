@@ -299,7 +299,7 @@ export function Header({
           ) : null}
           
           {displayTitle && (showBackButton || !showMenuButton) && (
-            <Text style={styles.pageTitleWithBack} numberOfLines={1}>{displayTitle}</Text>
+            <Text style={styles.pageTitleWithBack} numberOfLines={2} ellipsizeMode="tail">{displayTitle}</Text>
           )}
         </View>
 
@@ -439,6 +439,8 @@ const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.creat
     color: colors.foreground,
     letterSpacing: -0.3,
     flex: 1,
+    flexShrink: 1,
+    lineHeight: 22,
   },
   businessBadge: {
     flexDirection: 'row',

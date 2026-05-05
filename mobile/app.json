@@ -164,7 +164,20 @@
       "runtimeVersion": {
         "policy": "appVersion"
       },
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            { "scheme": "jobrunner", "host": "verify-email" },
+            { "scheme": "jobrunner", "host": "accept-invite" },
+            { "scheme": "jobrunner", "host": "reset-password" },
+            { "scheme": "jobrunner", "host": "xero-callback" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",

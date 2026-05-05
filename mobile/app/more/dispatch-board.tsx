@@ -24,8 +24,10 @@ if (Platform.OS !== 'web') {
 }
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography, shadows, usePageShell } from '../../src/lib/design-tokens';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { useIsTablet, useContentWidth } from '../../src/lib/device';
@@ -116,6 +118,8 @@ export default function DispatchBoardScreen() {
   const responsiveShell = usePageShell();
   const contentWidth = useContentWidth();
   const isTabletDevice = useIsTablet();
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal, isTabletDevice, isDark), [colors, contentWidth, responsiveShell.paddingHorizontal, isTabletDevice, isDark]);
   const { user } = useAuthStore();
 
@@ -1043,10 +1047,10 @@ export default function DispatchBoardScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomNavHeight + 24 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
@@ -1116,7 +1120,6 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   contentContainer: {
     paddingHorizontal: responsivePadding,
     paddingTop: spacing.md,
-    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
