@@ -15,6 +15,7 @@ import {
   TouchableWithoutFeedback,
   Dimensions,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -1338,7 +1339,10 @@ export default function JobsScreen() {
   }, [viewMode, handleQuickAction, handleDeleteJob, clients, batchMode, selectedJobIds, toggleJobSelection]);
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <FlatList
         ref={scrollRef}
         key={viewMode}
@@ -1352,6 +1356,8 @@ export default function JobsScreen() {
         style={styles.scrollView}
         contentContainerStyle={responsiveContentStyle}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
@@ -1485,7 +1491,7 @@ export default function JobsScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

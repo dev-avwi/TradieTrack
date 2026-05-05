@@ -9,7 +9,9 @@ import {
   ActivityIndicator,
   RefreshControl,
   Linking,
-  Alert
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -1440,7 +1442,10 @@ export default function ChatHubScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <View style={styles.headerCard}>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Chat Hub</Text>
@@ -1599,7 +1604,7 @@ export default function ChatHubScreen() {
             </>
           )}
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </>
   );
 }

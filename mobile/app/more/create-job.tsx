@@ -968,12 +968,12 @@ export default function CreateJobScreen() {
         </View>
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
         >
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={[styles.content, { paddingBottom: 100 }]}
+            contentContainerStyle={[styles.content, { paddingBottom: bottomNavHeight + 24 }]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >

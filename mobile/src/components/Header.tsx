@@ -83,6 +83,8 @@ function HeaderIconButton({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      android_ripple={{ color: 'transparent', borderless: true, radius: 22 }}
     >
       <Animated.View 
         style={{

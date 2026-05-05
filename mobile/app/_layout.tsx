@@ -818,7 +818,11 @@ function RootLayoutContent() {
       <DeepLinkHandler />
       <InviteAutoPrompt />
       <ServicesInitializer />
-      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <StatusBar
+        style={isDark ? 'light' : 'dark'}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
       <MapPreferenceModal />
       <WhatYouMissedPopup />
       <AuthenticatedLayout>
