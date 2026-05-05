@@ -14,15 +14,17 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
 import { useLocationStore } from '../../src/lib/location-store';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   heroSection: {
     alignItems: 'center',
@@ -225,7 +227,9 @@ function FeatureItem({ icon, title, description, colors, styles }: FeatureItemPr
 
 export default function LocationPermissionScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const { enableTracking, permissionGranted } = useLocationStore();
   
   const [isRequesting, setIsRequesting] = useState(false);

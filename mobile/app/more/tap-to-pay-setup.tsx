@@ -21,6 +21,8 @@ import { Badge } from '../../src/components/ui/Badge';
 import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius } from '../../src/lib/design-tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -74,7 +76,7 @@ const TUTORIAL_SLIDES = [
   }
 ];
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -84,7 +86,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   contentContainer: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   header: {
     marginBottom: spacing.lg,
@@ -482,7 +484,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
 export default function TapToPaySetupScreen() {
   const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = createStyles(colors, bottomNavHeight);
   const { user } = useAuthStore();
   const { isReady: stripeTerminalReady } = useStripeTerminal();
 

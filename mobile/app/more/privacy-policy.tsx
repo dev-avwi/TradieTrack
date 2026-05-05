@@ -8,15 +8,17 @@ import {
 import { Stack } from 'expo-router';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   card: {
     backgroundColor: colors.card,
@@ -109,7 +111,9 @@ function BulletItem({ text, colors, styles }: BulletItemProps) {
 
 export default function PrivacyPolicyScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
 
   return (
     <>

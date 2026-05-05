@@ -18,6 +18,8 @@ import { useReportsStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -42,7 +44,7 @@ const REPORT_TABS: { key: ReportTab; label: string; icon: string }[] = [
   { key: 'export', label: 'Export', icon: 'share' },
 ];
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -53,7 +55,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   contentContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingTop: pageShell.paddingTop,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   header: {
     flexDirection: 'row',
@@ -859,7 +861,9 @@ function SVGDonutChart({ segments, colors, size }: { segments: { label: string; 
 
 export default function ReportsScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   
   const { 
     summary, 

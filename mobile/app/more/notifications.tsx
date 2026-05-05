@@ -5,15 +5,17 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { useNotificationsStore } from '../../src/lib/notifications-store';
 import * as Notifications from 'expo-notifications';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   content: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   sectionTitle: {
     fontSize: 13,
@@ -133,7 +135,9 @@ const createStyles = (colors: any) => StyleSheet.create({
 
 export default function NotificationsScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const { unreadCount, pushPermissionGranted } = useNotificationsStore();
   
   const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');

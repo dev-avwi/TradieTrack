@@ -320,7 +320,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     height: 40,
   },
   logoText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -392,7 +392,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     height: 36,
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontSize: 12,
     fontWeight: '600',
   },

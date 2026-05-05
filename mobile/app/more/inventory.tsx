@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 type TabType = 'items' | 'categories' | 'lowStock' | 'purchaseOrders';
 type TransactionType = 'in' | 'out' | 'adjustment';
@@ -156,7 +157,8 @@ const defaultPOForm = {
 export default function InventoryScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
 
   const [activeTab, setActiveTab] = useState<TabType>('items');
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -1478,7 +1480,7 @@ export default function InventoryScreen() {
   );
 }
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1492,7 +1494,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   scrollContent: {
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingTop: pageShell.paddingTop,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   statsRow: {
     flexDirection: 'row',

@@ -23,6 +23,8 @@ import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { MobileSendModal } from '../../../src/components/MobileSendModal';
 import { API_URL, api } from '../../../src/lib/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../../src/components/BottomNav';
 
 interface LinkedInvoice {
   id: string;
@@ -60,7 +62,9 @@ export default function QuoteDetailScreen() {
   const { clients, fetchClients } = useClientsStore();
   const { user, businessSettings } = useAuthStore();
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   
   const STATUS_CONFIG = useMemo(() => ({
     draft: { label: 'Draft', color: colors.warning, bg: colors.warningLight },
@@ -2106,14 +2110,14 @@ ${businessName}`;
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   content: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   loadingContainer: {
     flex: 1,

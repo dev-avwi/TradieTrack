@@ -17,6 +17,8 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes } from '../../src/lib/design-tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 type RebateStatus = 'pending' | 'submitted' | 'approved' | 'received' | 'rejected';
 type RebateType = 'manufacturer' | 'government' | 'other';
@@ -136,7 +138,7 @@ const getTypeLabel = (type: RebateType): string => {
   }
 };
 
-function createStyles(colors: ThemeColors) {
+function createStyles(colors: ThemeColors, bottomNavHeight: number = 0) {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -145,7 +147,7 @@ function createStyles(colors: ThemeColors) {
     scrollContent: {
       paddingHorizontal: pageShell.paddingHorizontal,
       paddingTop: pageShell.paddingTop,
-      paddingBottom: 100,
+      paddingBottom: bottomNavHeight,
     },
     summaryRow: {
       flexDirection: 'row',
@@ -638,7 +640,9 @@ function createStyles(colors: ThemeColors) {
 
 export default function RebatesScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
 
   const [rebates, setRebates] = useState<Rebate[]>([]);
   const [summary, setSummary] = useState<RebatesSummary>({ pending: 0, submitted: 0, approved: 0, received: 0, rejected: 0 });

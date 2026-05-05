@@ -17,6 +17,8 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes } from '../../src/lib/design-tokens';
 import { useAuthStore } from '../../src/lib/store';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 type CalculatorId = 'baluster' | 'concrete' | 'tile' | 'paint' | 'roof' | 'pipe_sizing' | 'water_flow' | 'drain_fall';
 
@@ -107,7 +109,7 @@ const calculators: CalculatorInfo[] = [
   },
 ];
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -115,7 +117,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   contentContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingTop: pageShell.paddingTop,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   header: {
     flexDirection: 'row',
@@ -1858,7 +1860,9 @@ function ResultRow({ label, value, highlight, last, styles }: { label: string; v
 
 export default function CalculatorsScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const [activeCalc, setActiveCalc] = useState<CalculatorId | null>(null);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const { businessSettings } = useAuthStore();

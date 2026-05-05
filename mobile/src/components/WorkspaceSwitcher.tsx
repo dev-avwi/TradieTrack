@@ -19,6 +19,8 @@ import { useNotificationsStore } from '../lib/notifications-store';
 import { clearRoleCache } from '../lib/role-cache';
 import offlineStorage from '../lib/offline-storage';
 import locationTracking from '../lib/location-tracking';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from './BottomNav';
 
 interface Business {
   businessOwnerId: string;
@@ -51,7 +53,9 @@ interface WorkspaceSwitcherProps {
 
 export function WorkspaceSwitcher({ visible, onClose, onSwitch }: WorkspaceSwitcherProps) {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const { forceRefreshAuth } = useAuthStore();
   const fetchNotifications = useNotificationsStore(s => s.fetchNotifications);
 
@@ -356,7 +360,7 @@ export function WorkspaceBadge({ onPress }: { onPress: () => void }) {
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -397,7 +401,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   section: {
     marginBottom: spacing.xl,

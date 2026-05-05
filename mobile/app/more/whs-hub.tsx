@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, A
 import { Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, componentStyles, iconSizes, typographySizes, sizes } from '../../src/lib/design-tokens';
@@ -66,7 +67,7 @@ const REPORTED_TO_ROLES = [
   { value: 'hsr', label: 'HSR' },
 ];
 
-const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean, bottomNavHeight: number = 0) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   heroSection: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
   pageTitle: { fontSize: 28, fontWeight: '800', color: colors.foreground, letterSpacing: -0.5 },
@@ -90,7 +91,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
   filterChipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   filterChipText: { fontSize: 13, color: colors.mutedForeground, fontWeight: '500' },
   filterChipTextActive: { color: colors.primary, fontWeight: '600' },
-  listSection: { paddingHorizontal: spacing.lg, paddingBottom: 100 },
+  listSection: { paddingHorizontal: spacing.lg, paddingBottom: bottomNavHeight },
   card: { backgroundColor: colors.card, borderRadius: radius['2xl'], padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.cardBorder, ...shadows.sm },
   cardTitle: { fontSize: 15, fontWeight: '600', color: colors.foreground },
   cardSubtext: { fontSize: 12, color: colors.mutedForeground, marginTop: 2, lineHeight: 17 },
@@ -136,7 +137,8 @@ export default function WhsHubScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, isDark, bottomNavHeight), [colors, isDark, bottomNavHeight]);
   const [activeTab, setActiveTab] = useState<TabKey>('incidents');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -1307,7 +1309,7 @@ export default function WhsHubScreen() {
         <>
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: 100 }}
+            contentContainerStyle={{ paddingBottom: bottomNavHeight }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
             keyboardShouldPersistTaps="handled"
           >

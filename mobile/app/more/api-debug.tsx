@@ -28,10 +28,12 @@ import {
 } from '../../src/lib/store-review';
 import { useAuthStore } from '../../src/lib/store';
 import { getExpoExtras } from '../../src/lib/expo-extra';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingBottom: 100 },
+  content: { padding: spacing.lg, paddingBottom: bottomNavHeight },
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,
@@ -95,7 +97,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
 export default function ApiDebugScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const user = useAuthStore((s) => s.user);
   const isAuthorized = Boolean(user?.isPlatformAdmin);
 

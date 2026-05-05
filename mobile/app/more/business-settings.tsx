@@ -20,15 +20,17 @@ import { validateABN, formatABN } from '../../src/lib/format';
 import { SignaturePad } from '../../src/components/SignaturePad';
 import { TradeTypeSelector } from '../../src/components/TradeTypeSelector';
 import { api } from '../../src/lib/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   headerButton: {
     padding: spacing.sm,
@@ -139,7 +141,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
 export default function BusinessSettingsScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const { businessSettings, updateBusinessSettings } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState({

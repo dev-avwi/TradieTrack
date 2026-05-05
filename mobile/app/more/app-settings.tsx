@@ -10,6 +10,8 @@ import { useAuthStore } from '../../src/lib/store';
 import api from '../../src/lib/api';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import { useMapsStore, MapsPreference } from '../../src/lib/maps-store';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 const MAP_COLORS = [
   { name: 'Blue', hex: '#3b82f6' },
@@ -39,13 +41,13 @@ interface ColorAvailabilityResponse {
   availableCount: number;
 }
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   header: {
     flexDirection: 'row',
@@ -391,7 +393,9 @@ const createStyles = (colors: any) => StyleSheet.create({
 
 function MapsPreferenceSection() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const { mapsPreference, setMapsPreference } = useMapsStore();
 
   const options: { value: MapsPreference; icon: string; label: string; bgColor: string }[] = [
@@ -449,7 +453,9 @@ function MapsPreferenceSection() {
 
 export default function AppSettingsScreen() {
   const { colors, themeMode, setThemeMode, isDark, brandColor } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const { user, setUser, businessSettings } = useAuthStore();
   
   const { 

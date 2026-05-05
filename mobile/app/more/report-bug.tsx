@@ -19,6 +19,8 @@ import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { API_URL } from '../../src/lib/api';
 import { spacing, radius, typography, iconSizes } from '../../src/lib/design-tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 const CATEGORIES = [
   { id: 'crash', label: 'App Crash', icon: 'alert-triangle' },
@@ -35,14 +37,14 @@ const SEVERITY_LEVELS = [
   { id: 'high', label: 'High', description: 'Blocking my work', color: '#ef4444' },
 ] as const;
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   header: {
     alignItems: 'center',
@@ -231,7 +233,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
 export default function ReportBugScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const params = useLocalSearchParams();
   const { user, businessSettings } = useAuthStore();
   

@@ -597,7 +597,7 @@ export default function OnboardingSetupScreen() {
           setOwnerStep('trade');
         }} activeOpacity={0.8}>
           <Text style={styles.ctaText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
+          <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -642,7 +642,7 @@ export default function OnboardingSetupScreen() {
           setOwnerStep('teamSize');
         }} activeOpacity={0.8}>
           <Text style={styles.ctaText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
+          <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -687,11 +687,11 @@ export default function OnboardingSetupScreen() {
           handleOwnerComplete();
         }} disabled={isLoading} activeOpacity={0.8}>
           {isLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.primaryForeground} />
           ) : (
             <>
               <Text style={styles.ctaText}>Get Started</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
+              <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
             </>
           )}
         </TouchableOpacity>
@@ -748,7 +748,7 @@ export default function OnboardingSetupScreen() {
           activeOpacity={0.8}
         >
           <Text style={styles.ctaText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
+          <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -810,11 +810,11 @@ export default function OnboardingSetupScreen() {
           activeOpacity={0.8}
         >
           {isLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.primaryForeground} />
           ) : (
             <>
               <Text style={styles.ctaText}>Join Team</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
+              <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
             </>
           )}
         </TouchableOpacity>
@@ -909,10 +909,10 @@ export default function OnboardingSetupScreen() {
           disabled={isLoading}
           activeOpacity={0.8}
         >
-          {isLoading ? <ActivityIndicator color="#FFFFFF" /> : (
+          {isLoading ? <ActivityIndicator color={colors.primaryForeground} /> : (
             <>
               <Text style={styles.ctaText}>Continue</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
+              <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
             </>
           )}
         </TouchableOpacity>
@@ -968,10 +968,10 @@ export default function OnboardingSetupScreen() {
           disabled={isLoading || (!subInviteValidation?.valid && subInviteCode.length > 0)}
           activeOpacity={0.8}
         >
-          {isLoading ? <ActivityIndicator color="#FFFFFF" /> : (
+          {isLoading ? <ActivityIndicator color={colors.primaryForeground} /> : (
             <>
               <Text style={styles.ctaText}>Connect & Continue</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
+              <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
             </>
           )}
         </TouchableOpacity>
@@ -1026,7 +1026,7 @@ export default function OnboardingSetupScreen() {
       <View style={styles.ctaWrap}>
         <TouchableOpacity style={styles.ctaButton} onPress={handleSubPrivacyAcknowledge} activeOpacity={0.8}>
           <Text style={styles.ctaText}>I Understand</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
+          <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -1040,7 +1040,7 @@ export default function OnboardingSetupScreen() {
       <View style={[styles.stepContainer, styles.doneContainer]}>
         <View style={styles.doneContent}>
           <View style={styles.doneBadge}>
-            <Ionicons name="checkmark" size={36} color="#fff" />
+            <Ionicons name="checkmark" size={36} color={colors.primaryForeground} />
           </View>
           
           <Text style={styles.doneTitle}>
@@ -1080,7 +1080,7 @@ export default function OnboardingSetupScreen() {
             <Text style={styles.ctaText}>
               {isWorkerPath ? 'View My Jobs' : isSubPath ? 'Get Started' : 'Start Using JobRunner'}
             </Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+            <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
           </TouchableOpacity>
         </View>
       </View>
@@ -1419,7 +1419,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 8,
   },
   ctaText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontSize: 15,
     fontWeight: '600',
   },

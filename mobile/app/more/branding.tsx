@@ -25,6 +25,7 @@ import {
   PRESET_THEMES,
 } from '../../src/lib/advanced-theme-store';
 import api from '../../src/lib/api';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 const PRESET_COLORS = [
   { name: 'Blue', hex: '#3b82f6' },
@@ -69,14 +70,14 @@ const HEADING_WEIGHT_OPTIONS: { value: TypographySettings['headingWeight']; labe
   { value: 'bold', label: 'Bold' },
 ];
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: 120,
+    paddingBottom: bottomNavHeight,
   },
   sectionTitle: {
     ...typography.label,
@@ -412,7 +413,8 @@ export default function BrandingScreen() {
   const { colors, brandColor } = useTheme();
   const { businessSettings, updateBusinessSettings } = useAuthStore();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   
   const [customColor, setCustomColor] = useState('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);

@@ -29,8 +29,10 @@ import {
 import { useIntegrationHealth } from '../../src/hooks/useIntegrationHealth';
 import { openEmailClient, getAvailableEmailClients, renderTemplatePreview } from '../../src/lib/emailClients';
 import { useAuthStore } from '../../src/lib/store';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -40,7 +42,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   contentContainer: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   header: {
     marginBottom: spacing.lg,
@@ -592,7 +594,9 @@ const FAMILY_ICONS: Record<BusinessTemplateFamily, string> = {
 
 export default function BusinessTemplatesScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const router = useRouter();
   
   const {

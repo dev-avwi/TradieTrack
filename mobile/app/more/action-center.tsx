@@ -5,6 +5,8 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme, colorWithOpacity } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, typographySizes, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 interface ActionItem {
   id: string;
@@ -82,7 +84,7 @@ const getCategoryIcon = (category: string): string => {
   return iconMap[category.toLowerCase()] || 'activity';
 };
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -93,7 +95,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   contentContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingTop: pageShell.paddingTop,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   header: {
     marginBottom: spacing.sm,
@@ -406,7 +408,9 @@ const createStyles = (colors: any) => StyleSheet.create({
 
 export default function ActionCenterScreen() {
   const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = createStyles(colors, bottomNavHeight);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const sectionYPositions = useRef<Record<string, number>>({});

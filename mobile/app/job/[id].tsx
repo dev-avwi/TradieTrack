@@ -59,6 +59,7 @@ import { PhotoAnnotationEditor } from '../../src/components/PhotoAnnotationEdito
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { getJobUrgency } from '../../src/lib/jobUrgency';
 import { useIntegrationHealth } from '../../src/hooks/useIntegrationHealth';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 interface Job {
   id: string;
@@ -328,7 +329,7 @@ const STATUS_ACTIONS = {
   invoiced: null,
 };
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1663,7 +1664,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   completionScrollContent: {
     padding: spacing.lg,
-    paddingBottom: 120,
+    paddingBottom: bottomNavHeight,
   },
   completionSection: {
     backgroundColor: colors.card,
@@ -1855,8 +1856,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 export default function JobDetailScreen() {
   const { id, action: navAction } = useLocalSearchParams<{ id: string; action?: string }>();
   const { colors, isDark } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   
   const [job, setJob] = useState<Job | null>(null);
   const [client, setClient] = useState<Client | null>(null);

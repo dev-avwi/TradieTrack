@@ -17,6 +17,8 @@ import {
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 import { api } from '../../src/lib/api';
 import { spacing, radius, typography, iconSizes, sizes } from '../../src/lib/design-tokens';
 
@@ -285,6 +287,8 @@ export default function LeadsScreen() {
     }
   };
 
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = createStyles(colors);
 
   const FILTERS: { key: FilterType; label: string }[] = [
@@ -315,7 +319,7 @@ export default function LeadsScreen() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: bottomNavHeight }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         keyboardShouldPersistTaps="handled"
       >

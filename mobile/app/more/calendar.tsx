@@ -16,6 +16,8 @@ import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, usePageShell } from '../../src/lib/design-tokens';
 import { useIsTablet } from '../../src/lib/device';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -34,7 +36,7 @@ const handleScheduleJob = () => {
   router.push('/more/create-job');
 };
 
-const createStyles = (colors: ThemeColors, isTabletDevice: boolean = false, responsivePadding: number = spacing.lg) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, isTabletDevice: boolean = false, responsivePadding: number = spacing.lg, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -44,7 +46,7 @@ const createStyles = (colors: ThemeColors, isTabletDevice: boolean = false, resp
   },
   contentContainer: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
     paddingHorizontal: responsivePadding,
   },
   header: {
@@ -472,7 +474,9 @@ export default function CalendarScreen() {
   const { colors } = useTheme();
   const isTabletDevice = useIsTablet();
   const responsiveShell = usePageShell();
-  const styles = useMemo(() => createStyles(colors, isTabletDevice, responsiveShell.paddingHorizontal), [colors, isTabletDevice, responsiveShell.paddingHorizontal]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, isTabletDevice, responsiveShell.paddingHorizontal, bottomNavHeight), [colors, isTabletDevice, responsiveShell.paddingHorizontal, bottomNavHeight]);
   
   const { jobs, fetchJobs, isLoading } = useJobsStore();
   const { clients, fetchClients } = useClientsStore();

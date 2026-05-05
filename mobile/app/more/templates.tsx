@@ -21,6 +21,8 @@ import { API_URL } from '../../src/lib/api';
 import { spacing, radius, shadows } from '../../src/lib/design-tokens';
 import LiveDocumentPreview from '../../src/components/LiveDocumentPreview';
 import { TemplateId, DOCUMENT_TEMPLATES, TemplateCustomization, DOCUMENT_ACCENT_COLOR } from '../../src/lib/document-templates';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 interface StylePreset {
   id: string;
@@ -93,7 +95,7 @@ const templateStyles: { id: TemplateId; name: string; description: string }[] = 
   { id: 'minimal', name: 'Minimal', description: 'Ultra-clean with subtle styling' },
 ];
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -103,7 +105,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   contentContainer: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   header: {
     flexDirection: 'row',
@@ -984,7 +986,9 @@ function StatCard({
   icon: React.ReactNode;
   colors: ThemeColors;
 }) {
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   
   return (
     <View style={styles.statCard}>
@@ -1044,7 +1048,9 @@ function formatCurrency(amount: number): string {
 
 export default function TemplatesScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const { token, businessSettings, fetchBusinessSettings } = useAuthStore();
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [stylePresets, setStylePresets] = useState<StylePreset[]>([]);

@@ -22,6 +22,8 @@ import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/
 import { useUserRole } from '../../src/hooks/use-user-role';
 import api from '../../src/lib/api';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes } from '../../src/lib/design-tokens';
 
 type TabKey = 'timer' | 'sheet' | 'stats';
@@ -60,7 +62,7 @@ interface WeeklyStats {
   hours: number;
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -71,7 +73,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   contentContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingTop: pageShell.paddingTop,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   header: {
     flexDirection: 'row',
@@ -763,7 +765,9 @@ function getWeekDates(): { start: Date; end: Date } {
 
 export default function TimeTrackingScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const { jobs, fetchJobs, isLoading: isLoadingJobs } = useJobsStore();
   const { activeTimer, isLoading: isTimerLoading, startTimer, stopTimer, pauseTimer, resumeTimer, fetchActiveTimer } = useTimeTrackingStore();
   const [activeTab, setActiveTab] = useState<TabKey>('timer');
@@ -2111,7 +2115,7 @@ export default function TimeTrackingScreen() {
             </TouchableOpacity>
           </View>
           
-          <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 100 }}>
+          <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}>
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Date</Text>
               <TouchableOpacity 
@@ -2283,7 +2287,7 @@ export default function TimeTrackingScreen() {
             </TouchableOpacity>
           </View>
           
-          <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 100 }}>
+          <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}>
             <View style={{ 
               flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
               backgroundColor: '#f59e0b18', padding: spacing.md, borderRadius: radius.xl, marginBottom: spacing.lg 

@@ -7,6 +7,8 @@ import { useTheme } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { spacing, radius, shadows, typography, pageShell } from '../../src/lib/design-tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
 
@@ -136,10 +138,10 @@ const MODE_OPTIONS: { id: string; label: string; icon: FeatherIconName; descript
   { id: 'selective', label: 'Selective', icon: 'filter', description: 'AI answers when you choose not to pick up' },
 ];
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scrollView: { flex: 1 },
-  contentContainer: { paddingHorizontal: pageShell.paddingHorizontal, paddingTop: pageShell.paddingTop, paddingBottom: 100 },
+  contentContainer: { paddingHorizontal: pageShell.paddingHorizontal, paddingTop: pageShell.paddingTop, paddingBottom: bottomNavHeight },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg, gap: spacing.md },
   pageTitle: { ...typography.largeTitle, color: colors.foreground, flex: 1 },
   card: { backgroundColor: colors.card, borderRadius: radius['2xl'], padding: spacing.lg, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.cardBorder, ...shadows.sm },
@@ -189,7 +191,9 @@ interface MultiNumberConfig {
 
 export default function AIReceptionistScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const { user, businessSettings, fetchBusinessSettings } = useAuthStore();
   const { configId: urlConfigId } = useLocalSearchParams<{ configId?: string }>();
   const hasDedicatedNumber = !!businessSettings?.dedicatedPhoneNumber;

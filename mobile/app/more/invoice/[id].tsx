@@ -14,6 +14,8 @@ import {
   Linking,
   TextInput,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../../src/components/BottomNav';
 // Note: expo-clipboard requires a native build - using Share API as fallback for Expo Go
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -52,7 +54,9 @@ export default function InvoiceDetailScreen() {
   const { clients, fetchClients } = useClientsStore();
   const { user, businessSettings } = useAuthStore();
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   
   const STATUS_CONFIG = useMemo(() => ({
     draft: { label: 'Draft', color: colors.warning, bg: colors.warningLight },
@@ -3753,14 +3757,14 @@ ${businessName}`;
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   loadingContainer: {
     flex: 1,

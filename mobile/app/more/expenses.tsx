@@ -23,6 +23,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { format } from 'date-fns';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 interface Expense {
   id: string;
@@ -135,7 +136,8 @@ function ExpenseCard({
 export default function ExpensesScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const { jobId: routeJobId } = useLocalSearchParams<{ jobId?: string }>();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -960,7 +962,7 @@ export default function ExpensesScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors) =>
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -970,7 +972,7 @@ const createStyles = (colors: ThemeColors) =>
       flex: 1,
     },
     contentContainer: {
-      paddingBottom: 100,
+      paddingBottom: bottomNavHeight,
     },
     heroSection: {
       paddingHorizontal: spacing.lg,

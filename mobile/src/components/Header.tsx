@@ -113,7 +113,7 @@ function HeaderIconButton({
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-              <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>
+              <Text style={{ fontSize: 9, fontWeight: '700', color: colors.destructiveForeground }}>
                 {badge > 9 ? '9+' : badge}
               </Text>
             </View>

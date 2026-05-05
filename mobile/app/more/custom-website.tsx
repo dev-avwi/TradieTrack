@@ -16,6 +16,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, iconSizes } from '../../src/lib/design-tokens';
 import { useAuthStore } from '../../src/lib/store';
@@ -89,6 +90,7 @@ export default function CustomWebsitePage() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { user, businessSettings } = useAuthStore();
   const [showForm, setShowForm] = useState(false);
@@ -194,7 +196,7 @@ export default function CustomWebsitePage() {
       <View style={styles.container}>
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: bottomNavHeight }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >

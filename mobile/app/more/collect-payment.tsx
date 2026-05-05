@@ -33,7 +33,7 @@ import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -615,7 +615,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   invoicePickerContent: {
     padding: spacing.md,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   invoicePickerItem: {
     flexDirection: 'row',
@@ -798,7 +798,7 @@ export default function CollectScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const { invoiceId } = useLocalSearchParams<{ invoiceId?: string }>();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');

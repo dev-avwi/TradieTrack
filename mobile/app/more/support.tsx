@@ -24,6 +24,8 @@ import Constants from 'expo-constants';
 import { useOfflineStore } from '../../src/lib/offline-storage';
 import { useAuthStore } from '../../src/lib/store';
 import api from '../../src/lib/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -186,14 +188,14 @@ const FAQ_CATEGORIES: FAQCategory[] = [
   },
 ];
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   header: {
     alignItems: 'center',
@@ -539,7 +541,9 @@ function FAQItemComponent({ item, isExpanded, onToggle, isLast, colors, styles }
 
 export default function SupportScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   const [showTour, setShowTour] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());

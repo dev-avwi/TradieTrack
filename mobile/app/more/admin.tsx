@@ -17,6 +17,8 @@ import api from '../../src/lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { Skeleton } from '../../src/components/Skeleton';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 interface AdminStats {
   kpis: {
@@ -117,6 +119,8 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function AdminDashboard() {
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const { colors, isDark } = useTheme();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -814,7 +818,7 @@ export default function AdminDashboard() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomNavHeight }]}
           refreshControl={
             <RefreshControl 
               refreshing={refreshing} 
@@ -892,7 +896,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 100,
   },
   header: {
     marginBottom: 20,

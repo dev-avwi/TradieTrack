@@ -7,6 +7,8 @@ import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { api, API_URL } from '../../src/lib/api';
 import { format } from 'date-fns';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 interface ComplianceDocument {
   id: string;
@@ -105,7 +107,7 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'expired', label: 'Expired' },
 ];
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -116,7 +118,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   contentContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingTop: pageShell.paddingTop,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   header: {
     flexDirection: 'row',
@@ -357,7 +359,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.md,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   loadingText: {
     ...typography.caption,
@@ -417,7 +419,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.cardBorder,
     ...shadows.sm,
     marginBottom: spacing.md,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   errorText: {
     ...typography.caption,
@@ -617,7 +619,9 @@ const emptyForm: FormData = {
 
 export default function ComplianceScreen() {
   const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = createStyles(colors, bottomNavHeight);
   const STATUS_CONFIG = buildStatusConfig(colors);
   const TYPE_CONFIG = buildTypeConfig(colors);
   const getTypeConfig = makeGetTypeConfig(TYPE_CONFIG, colors.mutedForeground);

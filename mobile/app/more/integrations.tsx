@@ -16,6 +16,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomNavHeight } from '../../src/components/BottomNav';
 
 interface StripeConnectStatus {
   connected: boolean;
@@ -107,7 +109,7 @@ interface GoogleCalendarStatus {
   lastSyncAt?: string;
 }
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -117,7 +119,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: bottomNavHeight,
   },
   header: {
     marginBottom: 20,
@@ -384,7 +386,9 @@ const createStyles = (colors: any) => StyleSheet.create({
 
 export default function IntegrationsScreen() {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const bottomNavHeight = getBottomNavHeight(insets.bottom);
+  const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
   
   const { businessSettings, fetchBusinessSettings } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
