@@ -4,7 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
-import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, componentStyles, iconSizes, typographySizes, sizes } from '../../src/lib/design-tokens';
 
@@ -52,12 +52,37 @@ const INCIDENT_TYPES = [
   { value: 'notifiable_incident', label: 'Notifiable Incident' },
 ];
 
-const SEVERITIES = [
-  { value: 'minor', label: 'Minor', color: '#f59e0b' },
-  { value: 'moderate', label: 'Moderate', color: '#f97316' },
-  { value: 'serious', label: 'Serious', color: '#ef4444' },
-  { value: 'critical', label: 'Critical', color: '#dc2626' },
-];
+const buildWhsConfig = (colors: ThemeColors) => ({
+  severities: [
+    { value: 'minor', label: 'Minor', color: colors.warning },
+    { value: 'moderate', label: 'Moderate', color: colors.destructive },
+    { value: 'serious', label: 'Serious', color: colors.destructive },
+    { value: 'critical', label: 'Critical', color: colors.destructive },
+  ],
+  riskColor: (level: string) => {
+    if (level === 'low') return colors.success;
+    if (level === 'medium') return colors.warning;
+    return colors.destructive;
+  },
+  statusColor: (status: string) =>
+    status === 'open' ? colors.info : status === 'resolved' || status === 'closed' ? colors.success : colors.info,
+  trainingStatusColor: (status: string) =>
+    status === 'current' ? colors.success : status === 'expired' ? colors.destructive : colors.warning,
+  emergency: colors.destructive,
+  installed: colors.info,
+  emergencyAccent: colors.success,
+  firstAidKit: colors.info,
+  firstAider: colors.primary,
+  hospital: colors.destructive,
+  ppeYes: colors.success,
+  ppeNo: colors.destructive,
+  notifiable: colors.destructive,
+  signInstalled: colors.success,
+  attentionWarning: colors.warning,
+  attentionDestructive: colors.destructive,
+  attentionInfo: colors.info,
+  attentionPrimary: colors.primary,
+});
 
 const REPORTED_TO_ROLES = [
   { value: 'supervisor', label: 'Supervisor' },
@@ -85,7 +110,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean, bottomNavHeight: num
   actionItemText: { flex: 1, fontSize: 13, color: colors.foreground },
   actionMoreText: { fontSize: 12, color: colors.mutedForeground, textAlign: 'center', marginTop: spacing.xs },
   complianceBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.md, marginTop: spacing.md, borderWidth: 1, borderColor: colors.cardBorder },
-  complianceBannerText: { fontSize: 14, fontWeight: '500', color: '#22c55e' },
+  complianceBannerText: { fontSize: 14, fontWeight: '500', color: colors.success },
   filterScroll: { paddingHorizontal: spacing.lg, gap: spacing.xs, paddingBottom: spacing.sm },
   filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.full, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center', gap: 4 },
   filterChipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
@@ -103,7 +128,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean, bottomNavHeight: num
   emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.foreground },
   emptyDesc: { fontSize: 14, color: colors.mutedForeground, textAlign: 'center' as const, lineHeight: 20 },
   emptyButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: radius.lg, marginTop: spacing.sm },
-  emptyButtonText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
+  emptyButtonText: { fontSize: 14, fontWeight: '600', color: colors.primaryForeground },
   fab: { position: 'absolute', bottom: spacing.xl, right: spacing.lg, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', ...shadows.lg },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
@@ -111,10 +136,10 @@ const createStyles = (colors: ThemeColors, isDark: boolean, bottomNavHeight: num
   metaChipText: { fontSize: 11, color: colors.mutedForeground },
   stepCard: { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: radius.lg, padding: spacing.sm, marginBottom: spacing.sm },
   stepHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  hazardBadge: { backgroundColor: 'rgba(239,68,68,0.12)', paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.sm, marginRight: 4, marginBottom: 4 },
-  hazardBadgeText: { fontSize: 10, color: '#ef4444', fontWeight: '600' },
-  ppeBadge: { backgroundColor: 'rgba(59,130,246,0.12)', paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.sm, marginRight: 4, marginBottom: 4 },
-  ppeBadgeText: { fontSize: 10, color: '#3b82f6', fontWeight: '600' },
+  hazardBadge: { backgroundColor: colorWithOpacity(colors.destructive, 0.12), paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.sm, marginRight: 4, marginBottom: 4 },
+  hazardBadgeText: { fontSize: 10, color: colors.destructive, fontWeight: '600' },
+  ppeBadge: { backgroundColor: colorWithOpacity(colors.info, 0.12), paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.sm, marginRight: 4, marginBottom: 4 },
+  ppeBadgeText: { fontSize: 10, color: colors.info, fontWeight: '600' },
   checkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs + 2, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   sectionTitle: { fontSize: 14, fontWeight: '600', color: colors.foreground, marginBottom: spacing.sm, marginTop: spacing.sm },
   modalContainer: { flex: 1, backgroundColor: colors.background },
@@ -128,7 +153,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean, bottomNavHeight: num
   optionChip: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
   optionChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   optionChipText: { fontSize: 12, color: colors.foreground },
-  optionChipTextActive: { color: '#fff' },
+  optionChipTextActive: { color: colors.primaryForeground },
   chipButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.lg, borderWidth: 1 },
   saveButton: { fontSize: 16, fontWeight: '600' },
 });
@@ -139,6 +164,8 @@ export default function WhsHubScreen() {
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = useMemo(() => createStyles(colors, isDark, bottomNavHeight), [colors, isDark, bottomNavHeight]);
+  const whsConfig = useMemo(() => buildWhsConfig(colors), [colors]);
+  const SEVERITIES = whsConfig.severities;
   const [activeTab, setActiveTab] = useState<TabKey>('incidents');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -372,13 +399,13 @@ export default function WhsHubScreen() {
 
   const actionItems = useMemo(() => {
     const items: { icon: keyof typeof Feather.glyphMap; text: string; color: string; tab: TabKey }[] = [];
-    if (openIncidents > 0) items.push({ icon: 'alert-triangle', text: `${openIncidents} open incident${openIncidents > 1 ? 's' : ''} to resolve`, color: '#ef4444', tab: 'incidents' });
-    if (openHazards > 0) items.push({ icon: 'alert-circle', text: `${openHazards} hazard${openHazards > 1 ? 's' : ''} need attention`, color: '#f97316', tab: 'hazard_reports' });
-    if (expiredTraining > 0) items.push({ icon: 'award', text: `${expiredTraining} expired training record${expiredTraining > 1 ? 's' : ''}`, color: '#ef4444', tab: 'training' });
-    if (expiringSoonTraining > 0) items.push({ icon: 'clock', text: `${expiringSoonTraining} training expiring soon`, color: '#f59e0b', tab: 'training' });
-    if (signsNotInstalled > 0) items.push({ icon: 'eye', text: `${signsNotInstalled} sign${signsNotInstalled > 1 ? 's' : ''} not yet installed`, color: '#3b82f6', tab: 'signage' });
-    if (ppeFailCount > 0) items.push({ icon: 'check-square', text: `${ppeFailCount} incomplete PPE check-in${ppeFailCount > 1 ? 's' : ''}`, color: '#f59e0b', tab: 'ppe' });
-    if (emergencyInfo.length === 0) items.push({ icon: 'phone', text: 'No emergency plan set up', color: '#8b5cf6', tab: 'emergency' });
+    if (openIncidents > 0) items.push({ icon: 'alert-triangle', text: `${openIncidents} open incident${openIncidents > 1 ? 's' : ''} to resolve`, color: colors.destructive, tab: 'incidents' });
+    if (openHazards > 0) items.push({ icon: 'alert-circle', text: `${openHazards} hazard${openHazards > 1 ? 's' : ''} need attention`, color: colors.destructive, tab: 'hazard_reports' });
+    if (expiredTraining > 0) items.push({ icon: 'award', text: `${expiredTraining} expired training record${expiredTraining > 1 ? 's' : ''}`, color: colors.destructive, tab: 'training' });
+    if (expiringSoonTraining > 0) items.push({ icon: 'clock', text: `${expiringSoonTraining} training expiring soon`, color: colors.warning, tab: 'training' });
+    if (signsNotInstalled > 0) items.push({ icon: 'eye', text: `${signsNotInstalled} sign${signsNotInstalled > 1 ? 's' : ''} not yet installed`, color: colors.info, tab: 'signage' });
+    if (ppeFailCount > 0) items.push({ icon: 'check-square', text: `${ppeFailCount} incomplete PPE check-in${ppeFailCount > 1 ? 's' : ''}`, color: colors.warning, tab: 'ppe' });
+    if (emergencyInfo.length === 0) items.push({ icon: 'phone', text: 'No emergency plan set up', color: colors.primary, tab: 'emergency' });
     if (jsaDocs.length === 0 && incidents.length + hazardReports.length + environments.length > 0) items.push({ icon: 'clipboard', text: 'No JSAs created for active sites', color: colors.primary, tab: 'jsa' });
     return items;
   }, [openIncidents, openHazards, expiredTraining, expiringSoonTraining, signsNotInstalled, ppeFailCount, emergencyInfo.length, jsaDocs.length, incidents.length, hazardReports.length, environments.length, colors.primary]);
@@ -411,7 +438,7 @@ export default function WhsHubScreen() {
           <Text style={styles.emptyTitle}>No Incident Reports</Text>
           <Text style={styles.emptyDesc}>Report incidents to keep your site safe and maintain compliance.</Text>
           <TouchableOpacity style={styles.emptyButton} onPress={() => setShowIncidentForm(true)}>
-            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Report Incident</Text>
           </TouchableOpacity>
         </View>
@@ -425,19 +452,19 @@ export default function WhsHubScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.cardTitle}>{report.title}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                <View style={[styles.badge, { backgroundColor: (severity?.color || '#f59e0b') + '20' }]}>
-                  <Text style={[styles.badgeText, { color: severity?.color || '#f59e0b' }]}>{report.severity}</Text>
+                <View style={[styles.badge, { backgroundColor: colorWithOpacity(severity?.color || colors.warning, 0.12) }]}>
+                  <Text style={[styles.badgeText, { color: severity?.color || colors.warning }]}>{report.severity}</Text>
                 </View>
                 <View style={[styles.badge, { backgroundColor: colors.border }]}>
                   <Text style={[styles.badgeText, { color: colors.mutedForeground }]}>{INCIDENT_TYPES.find(t => t.value === report.incidentType)?.label || report.incidentType}</Text>
                 </View>
                 {report.isNotifiable && (
-                  <View style={[styles.badge, { backgroundColor: '#ef444420' }]}>
-                    <Text style={[styles.badgeText, { color: '#ef4444' }]}>Notifiable</Text>
+                  <View style={[styles.badge, { backgroundColor: colorWithOpacity(colors.destructive, 0.12) }]}>
+                    <Text style={[styles.badgeText, { color: colors.destructive }]}>Notifiable</Text>
                   </View>
                 )}
-                <View style={[styles.badge, { backgroundColor: report.status === 'open' ? '#3b82f620' : '#22c55e20' }]}>
-                  <Text style={[styles.badgeText, { color: report.status === 'open' ? '#3b82f6' : '#22c55e' }]}>{report.status}</Text>
+                <View style={[styles.badge, { backgroundColor: colorWithOpacity(whsConfig.statusColor(report.status), 0.12) }]}>
+                  <Text style={[styles.badgeText, { color: whsConfig.statusColor(report.status) }]}>{report.status}</Text>
                 </View>
               </View>
               <Text numberOfLines={2} style={[styles.cardSubtext, { marginTop: 6 }]}>{report.description}</Text>
@@ -446,7 +473,7 @@ export default function WhsHubScreen() {
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {report.status === 'open' && (
                 <TouchableOpacity onPress={() => closeIncident(report.id)}>
-                  <Feather name="check-circle" size={20} color="#22c55e" />
+                  <Feather name="check-circle" size={20} color={colors.success} />
                 </TouchableOpacity>
               )}
               <TouchableOpacity onPress={() => deleteItem('/api/whs/incidents', report.id)}>
@@ -469,7 +496,7 @@ export default function WhsHubScreen() {
           <Text style={styles.emptyTitle}>No Emergency Plans</Text>
           <Text style={styles.emptyDesc}>Set up emergency info for your sites including assembly points and first aid.</Text>
           <TouchableOpacity style={styles.emptyButton} onPress={() => setShowEmergencyForm(true)}>
-            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Add Plan</Text>
           </TouchableOpacity>
         </View>
@@ -492,31 +519,31 @@ export default function WhsHubScreen() {
         <View style={{ marginTop: spacing.sm, gap: spacing.xs }}>
           {info.assemblyPoint && (
             <View style={styles.row}>
-              <Feather name="map-pin" size={14} color="#22c55e" />
+              <Feather name="map-pin" size={14} color={whsConfig.emergencyAccent} />
               <Text style={{ fontSize: 13, color: colors.foreground }}>Assembly: {info.assemblyPoint}</Text>
             </View>
           )}
           {info.firstAidLocation && (
             <View style={styles.row}>
-              <Feather name="plus-circle" size={14} color="#3b82f6" />
+              <Feather name="plus-circle" size={14} color={whsConfig.firstAidKit} />
               <Text style={{ fontSize: 13, color: colors.foreground }}>First Aid: {info.firstAidLocation}</Text>
             </View>
           )}
           {info.firstAidOfficer && (
             <View style={styles.row}>
-              <Feather name="user" size={14} color="#8b5cf6" />
+              <Feather name="user" size={14} color={whsConfig.firstAider} />
               <Text style={{ fontSize: 13, color: colors.foreground }}>First Aid Officer: {info.firstAidOfficer} {info.firstAidOfficerPhone ? `(${info.firstAidOfficerPhone})` : ''}</Text>
             </View>
           )}
           {info.nearestHospital && (
             <View style={styles.row}>
-              <Feather name="activity" size={14} color="#ef4444" />
+              <Feather name="activity" size={14} color={whsConfig.hospital} />
               <Text style={{ fontSize: 13, color: colors.foreground }}>Hospital: {info.nearestHospital}</Text>
             </View>
           )}
           <View style={[styles.row, { marginTop: spacing.xs }]}>
-            <View style={[styles.badge, { backgroundColor: '#ef444420' }]}>
-              <Text style={[styles.badgeText, { color: '#ef4444' }]}>Emergency: {info.emergencyNumber || '000'}</Text>
+            <View style={[styles.badge, { backgroundColor: colorWithOpacity(colors.destructive, 0.12) }]}>
+              <Text style={[styles.badgeText, { color: colors.destructive }]}>Emergency: {info.emergencyNumber || '000'}</Text>
             </View>
           </View>
         </View>
@@ -534,7 +561,7 @@ export default function WhsHubScreen() {
           <Text style={styles.emptyTitle}>No JSAs Created</Text>
           <Text style={styles.emptyDesc}>Create a Job Safety Analysis before starting work on site.</Text>
           <TouchableOpacity style={styles.emptyButton} onPress={() => setShowJsaForm(true)}>
-            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Create JSA</Text>
           </TouchableOpacity>
         </View>
@@ -546,8 +573,8 @@ export default function WhsHubScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>{doc.title}</Text>
             <View style={{ flexDirection: 'row', gap: 4, marginTop: 4 }}>
-              <View style={[styles.badge, { backgroundColor: doc.status === 'active' ? '#22c55e20' : colors.border }]}>
-                <Text style={[styles.badgeText, { color: doc.status === 'active' ? '#22c55e' : colors.mutedForeground }]}>{doc.status}</Text>
+              <View style={[styles.badge, { backgroundColor: doc.status === 'active' ? colorWithOpacity(colors.success, 0.12) : colors.border }]}>
+                <Text style={[styles.badgeText, { color: doc.status === 'active' ? colors.success : colors.mutedForeground }]}>{doc.status}</Text>
               </View>
             </View>
             {doc.siteAddress && <Text style={styles.cardSubtext}>{doc.siteAddress}</Text>}
@@ -561,7 +588,7 @@ export default function WhsHubScreen() {
           <View style={{ marginTop: spacing.sm }}>
             <Text style={{ fontSize: 12, fontWeight: '600', color: colors.mutedForeground, marginBottom: 4 }}>STEPS ({doc.steps.length})</Text>
             {doc.steps.map((step: any, i: number) => {
-              const riskColor = step.riskLevel === 'low' ? '#22c55e' : step.riskLevel === 'medium' ? '#f59e0b' : step.riskLevel === 'high' ? '#f97316' : '#ef4444';
+              const riskColor = whsConfig.riskColor(step.riskLevel);
               return (
                 <View key={step.id || i} style={styles.stepCard}>
                   <View style={styles.stepHeader}>
@@ -591,7 +618,7 @@ export default function WhsHubScreen() {
           <Text style={styles.emptyTitle}>No Hazardous Environments</Text>
           <Text style={styles.emptyDesc}>Track hazardous environments and required PPE for your work sites.</Text>
           <TouchableOpacity style={styles.emptyButton} onPress={() => setShowEnvForm(true)}>
-            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Add Environment</Text>
           </TouchableOpacity>
         </View>
@@ -642,7 +669,7 @@ export default function WhsHubScreen() {
           <Text style={styles.emptyTitle}>No Safety Signage</Text>
           <Text style={styles.emptyDesc}>Track safety signage requirements for your work sites.</Text>
           <TouchableOpacity style={styles.emptyButton} onPress={() => setShowSignForm(true)}>
-            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Add Sign</Text>
           </TouchableOpacity>
         </View>
@@ -651,13 +678,13 @@ export default function WhsHubScreen() {
     const installed = signs.filter(s => s.isInstalled).length;
     return (
       <>
-        <View style={[styles.badge, { backgroundColor: '#3b82f620', alignSelf: 'flex-start', marginBottom: spacing.sm }]}>
-          <Text style={[styles.badgeText, { color: '#3b82f6' }]}>{installed}/{signs.length} Installed</Text>
+        <View style={[styles.badge, { backgroundColor: colorWithOpacity(colors.info, 0.12), alignSelf: 'flex-start', marginBottom: spacing.sm }]}>
+          <Text style={[styles.badgeText, { color: colors.info }]}>{installed}/{signs.length} Installed</Text>
         </View>
         {signs.map(sign => (
           <TouchableOpacity key={sign.id} onPress={() => toggleSignInstalled(sign)} style={styles.checkRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: spacing.sm }}>
-              <Feather name={sign.isInstalled ? 'check-circle' : 'circle'} size={20} color={sign.isInstalled ? '#22c55e' : colors.mutedForeground} />
+              <Feather name={sign.isInstalled ? 'check-circle' : 'circle'} size={20} color={sign.isInstalled ? colors.success : colors.mutedForeground} />
               <View>
                 <Text style={[{ fontSize: 14, color: colors.foreground }, sign.isInstalled && { textDecorationLine: 'line-through', color: colors.mutedForeground }]}>{sign.signType}</Text>
                 {sign.location && <Text style={{ fontSize: 11, color: colors.mutedForeground }}>{sign.location}</Text>}
@@ -816,7 +843,7 @@ export default function WhsHubScreen() {
                 <TextInput style={[styles.input, styles.textArea]} value={step.controlMeasures} onChangeText={v => { const s = [...jsaForm.steps]; s[i] = { ...s[i], controlMeasures: v }; setJsaForm(p => ({ ...p, steps: s })); }} placeholder="Control measures *" placeholderTextColor={colors.mutedForeground} multiline />
                 <View style={styles.optionRow}>
                   {['low', 'medium', 'high', 'extreme'].map(level => {
-                    const riskColor = level === 'low' ? '#22c55e' : level === 'medium' ? '#f59e0b' : level === 'high' ? '#f97316' : '#ef4444';
+                    const riskColor = whsConfig.riskColor(level);
                     return (
                       <TouchableOpacity key={level} style={[styles.optionChip, step.riskLevel === level && { backgroundColor: riskColor + '30', borderColor: riskColor }]} onPress={() => { const s = [...jsaForm.steps]; s[i] = { ...s[i], riskLevel: level }; setJsaForm(p => ({ ...p, steps: s })); }}>
                         <Text style={[styles.optionChipText, step.riskLevel === level && { color: riskColor, fontWeight: '600' }]}>{level}</Text>
@@ -944,7 +971,7 @@ export default function WhsHubScreen() {
   }
 
   function renderHazardReports() {
-    const riskColors: Record<string, string> = { low: '#22c55e', medium: '#f59e0b', high: '#f97316', critical: '#ef4444' };
+    const riskColors: Record<string, string> = { low: colors.success, medium: colors.warning, high: colors.destructive, critical: colors.destructive };
     const statusLabels: Record<string, string> = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
     if (hazardReports.length === 0) {
       return (
@@ -955,7 +982,7 @@ export default function WhsHubScreen() {
           <Text style={styles.emptyTitle}>No Hazard Reports</Text>
           <Text style={styles.emptyDesc}>Spot a hazard? Report it before someone gets hurt.</Text>
           <TouchableOpacity style={styles.emptyButton} onPress={() => setShowHazardForm(true)}>
-            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Report Hazard</Text>
           </TouchableOpacity>
         </View>
@@ -966,10 +993,10 @@ export default function WhsHubScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
-              <View style={[styles.badge, { backgroundColor: riskColors[h.riskLevel] || '#f59e0b' }]}>
+              <View style={[styles.badge, { backgroundColor: riskColors[h.riskLevel] || colors.warning }]}>
                 <Text style={styles.badgeText}>{h.riskLevel?.toUpperCase()}</Text>
               </View>
-              <View style={[styles.badge, { backgroundColor: h.status === 'open' ? '#ef4444' : h.status === 'resolved' ? '#22c55e' : '#3b82f6' }]}>
+              <View style={[styles.badge, { backgroundColor: h.status === 'open' ? colors.destructive : h.status === 'resolved' ? colors.success : colors.info }]}>
                 <Text style={styles.badgeText}>{statusLabels[h.status] || h.status}</Text>
               </View>
             </View>
@@ -982,7 +1009,7 @@ export default function WhsHubScreen() {
             <Text style={[styles.cardMeta, { color: colors.mutedForeground, marginTop: 2 }]}>By: {h.reportedBy}</Text>
           </View>
           <TouchableOpacity onPress={() => deleteHazardReport(h.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Feather name="trash-2" size={18} color={colors.error || '#ef4444'} />
+            <Feather name="trash-2" size={18} color={colors.destructive} />
           </TouchableOpacity>
         </View>
       </View>
@@ -1094,7 +1121,7 @@ export default function WhsHubScreen() {
           <Text style={styles.emptyTitle}>No PPE Check-ins</Text>
           <Text style={styles.emptyDesc}>Start a daily PPE check-in to verify workers have proper safety gear.</Text>
           <TouchableOpacity style={styles.emptyButton} onPress={() => setShowPpeForm(true)}>
-            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Start Check-in</Text>
           </TouchableOpacity>
         </View>
@@ -1109,8 +1136,8 @@ export default function WhsHubScreen() {
               <Text style={styles.cardTitle}>{c.workerName}</Text>
               <Text style={styles.cardSubtext}>{c.date}{c.supervisorName ? ` — ${c.supervisorName}` : ''}</Text>
             </View>
-            <View style={[styles.badge, { backgroundColor: c.allCorrect ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)' }]}>
-              <Text style={[styles.badgeText, { color: c.allCorrect ? '#22c55e' : '#ef4444' }]}>{count}/{PPE_ITEMS.length}</Text>
+            <View style={[styles.badge, { backgroundColor: c.allCorrect ? colorWithOpacity(colors.success, 0.15) : colorWithOpacity(colors.destructive, 0.15) }]}>
+              <Text style={[styles.badgeText, { color: c.allCorrect ? colors.success : colors.destructive }]}>{count}/{PPE_ITEMS.length}</Text>
             </View>
             <TouchableOpacity onPress={() => deletePpeChecklist(c.id)} style={{ marginLeft: spacing.sm }}>
               <Feather name="trash-2" size={16} color={colors.mutedForeground} />
@@ -1118,8 +1145,8 @@ export default function WhsHubScreen() {
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.xs }}>
             {PPE_ITEMS.map(p => (
-              <View key={p.key} style={[styles.ppeBadge, { backgroundColor: c[p.key] ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.08)' }]}>
-                <Text style={[styles.ppeBadgeText, { color: c[p.key] ? '#22c55e' : '#ef4444' }]}>
+              <View key={p.key} style={[styles.ppeBadge, { backgroundColor: c[p.key] ? colorWithOpacity(colors.success, 0.12) : colorWithOpacity(colors.destructive, 0.08) }]}>
+                <Text style={[styles.ppeBadgeText, { color: c[p.key] ? colors.success : colors.destructive }]}>
                   {c[p.key] ? '\u2713' : '\u2717'} {p.label}
                 </Text>
               </View>
@@ -1183,14 +1210,14 @@ export default function WhsHubScreen() {
           <Text style={styles.emptyTitle}>No Training Records</Text>
           <Text style={styles.emptyDesc}>Track White Cards, licences, first aid certs, and other qualifications.</Text>
           <TouchableOpacity style={styles.emptyButton} onPress={() => setShowTrainingForm(true)}>
-            <Feather name="plus" size={14} color="#FFFFFF" />
+            <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Add Record</Text>
           </TouchableOpacity>
         </View>
       );
     }
     return trainingRecords.map((r: any) => {
-      const statusColor = r.status === 'current' ? '#22c55e' : r.status === 'expired' ? '#ef4444' : '#f59e0b';
+      const statusColor = whsConfig.trainingStatusColor(r.status);
       const statusLabel = r.status === 'current' ? 'Current' : r.status === 'expired' ? 'Expired' : 'Expiring Soon';
       return (
         <View key={r.id} style={styles.card}>
@@ -1326,8 +1353,8 @@ export default function WhsHubScreen() {
 
               <View style={styles.statsRow}>
                 {[
-                  { icon: 'alert-triangle' as const, value: openIncidents, label: 'Open', color: openIncidents > 0 ? '#ef4444' : colors.success, tab: 'incidents' as TabKey },
-                  { icon: 'phone' as const, value: emergencyInfo.length, label: 'Plans', color: '#8b5cf6', tab: 'emergency' as TabKey },
+                  { icon: 'alert-triangle' as const, value: openIncidents, label: 'Open', color: openIncidents > 0 ? colors.destructive : colors.success, tab: 'incidents' as TabKey },
+                  { icon: 'phone' as const, value: emergencyInfo.length, label: 'Plans', color: colors.primary, tab: 'emergency' as TabKey },
                   { icon: 'clipboard' as const, value: jsaDocs.length, label: 'JSAs', color: colors.primary, tab: 'jsa' as TabKey },
                   { icon: 'award' as const, value: trainingRecords.length, label: 'Training', color: colors.info, tab: 'training' as TabKey },
                 ].map((stat, idx) => (
@@ -1365,10 +1392,10 @@ export default function WhsHubScreen() {
               )}
 
               {!hasComplianceBaseline && (
-                <View style={[styles.actionBanner, { borderColor: '#f59e0b40' }]}>
+                <View style={[styles.actionBanner, { borderColor: colorWithOpacity(colors.warning, 0.25) }]}>
                   <View style={styles.actionBannerHeader}>
-                    <View style={[styles.actionBannerIcon, { backgroundColor: '#f59e0b15' }]}>
-                      <Feather name="alert-circle" size={14} color="#f59e0b" />
+                    <View style={[styles.actionBannerIcon, { backgroundColor: colorWithOpacity(colors.warning, 0.12) }]}>
+                      <Feather name="alert-circle" size={14} color={colors.warning} />
                     </View>
                     <Text style={styles.actionBannerTitle}>
                       Setup needed — {setupCategoriesPopulated}/{SETUP_CATEGORIES_TOTAL} safety categories started
@@ -1382,8 +1409,8 @@ export default function WhsHubScreen() {
 
               {hasComplianceBaseline && actionItems.length === 0 && (
                 <View style={styles.complianceBanner}>
-                  <View style={[styles.actionBannerIcon, { backgroundColor: '#22c55e15' }]}>
-                    <Feather name="check-circle" size={14} color="#22c55e" />
+                  <View style={[styles.actionBannerIcon, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
+                    <Feather name="check-circle" size={14} color={colors.success} />
                   </View>
                   <Text style={styles.complianceBannerText}>
                     All clear — {complianceScore}% compliant, no outstanding items

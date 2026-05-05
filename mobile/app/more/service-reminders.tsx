@@ -1035,7 +1035,7 @@ export default function ServiceRemindersScreen() {
         {renderContent()}
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={openCreateModal} activeOpacity={0.8}>
+      <TouchableOpacity style={styles.fab} onPress={openCreateModal} activeOpacity={0.8} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <Feather name="plus" size={iconSizes['2xl']} color={colors.primaryForeground} />
       </TouchableOpacity>
 

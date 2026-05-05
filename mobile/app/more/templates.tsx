@@ -11,7 +11,9 @@ import {
   Modal,
   ActivityIndicator,
   Dimensions,
-  Switch
+  Switch,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -2574,6 +2576,10 @@ export default function TemplatesScreen() {
             resetForm();
           }}
         >
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <TouchableOpacity
@@ -2626,6 +2632,7 @@ export default function TemplatesScreen() {
 
             {activeTab === 'edit' ? renderEditTab() : renderPreviewTab()}
           </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Style Presets Modal */}

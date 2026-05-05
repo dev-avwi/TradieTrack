@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Switch,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -264,7 +266,11 @@ export default function BusinessSettingsScreen() {
           ),
         }} 
       />
-      <ScrollView style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.content}>
           <Text style={styles.sectionTitle}>Business Details</Text>
           
@@ -496,6 +502,7 @@ export default function BusinessSettingsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </>
   );
 }

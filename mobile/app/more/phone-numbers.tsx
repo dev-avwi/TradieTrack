@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Linking,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -1054,6 +1056,10 @@ export default function PhoneNumbersPage() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowReleaseModal(false)}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
         <View style={{ flex: 1, backgroundColor: colors.background, padding: spacing.lg, paddingTop: spacing.xl }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xl }}>
             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.foreground }}>Revert to Shared</Text>
@@ -1114,14 +1120,15 @@ export default function PhoneNumbersPage() {
             activeOpacity={0.7}
           >
             {releasing ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
-              <Text style={{ fontSize: 15, fontWeight: '700', color: releaseConfirmText === 'REVERT' ? '#fff' : colors.mutedForeground }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: releaseConfirmText === 'REVERT' ? colors.white : colors.mutedForeground }}>
                 Revert to Shared
               </Text>
             )}
           </TouchableOpacity>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );

@@ -12,6 +12,7 @@ import {
   Modal,
   FlatList,
   TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -1258,6 +1259,7 @@ export default function RecurringJobsScreen() {
         onPress={() => setEditModalVisible(false)}
       >
         <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
@@ -1385,6 +1387,7 @@ export default function RecurringJobsScreen() {
               <View style={{ height: spacing.xl }} />
             </ScrollView>
           </View>
+          </KeyboardAvoidingView>
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
@@ -1544,6 +1547,7 @@ export default function RecurringJobsScreen() {
           style={styles.fab}
           onPress={() => setFabMenuVisible(!fabMenuVisible)}
           activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Feather name={fabMenuVisible ? 'x' : 'plus'} size={iconSizes['2xl']} color={colors.primaryForeground} />
         </TouchableOpacity>

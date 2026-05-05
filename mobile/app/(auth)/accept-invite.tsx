@@ -319,13 +319,13 @@ export default function AcceptInviteScreen() {
               disabled={submitting}
             >
               {submitting ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={colors.primaryForeground} />
               ) : (
                 <>
                   <Text style={styles.submitButtonText}>
                     {mode === 'register' ? 'Create Account & Join' : 'Login & Join'}
                   </Text>
-                  <Feather name="arrow-right" size={18} color="#FFFFFF" />
+                  <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
                 </>
               )}
             </TouchableOpacity>
@@ -375,7 +375,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: 8,
   },
   backButtonText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontWeight: '600',
     fontSize: 15,
   },
@@ -532,7 +532,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     opacity: 0.6,
   },
   submitButtonText: {
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontSize: 16,
     fontWeight: '600',
   },

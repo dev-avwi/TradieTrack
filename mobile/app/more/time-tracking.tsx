@@ -252,7 +252,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
   timerButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.white,
   },
   breakBadge: {
     flexDirection: 'row',
@@ -1309,10 +1309,10 @@ export default function TimeTrackingScreen() {
             activeOpacity={0.7}
           >
             {isStarting ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <>
-                <Feather name="play" size={20} color="#fff" />
+                <Feather name="play" size={20} color={colors.white} />
                 <Text style={styles.timerButtonText}>Start Timer</Text>
               </>
             )}
@@ -1327,10 +1327,10 @@ export default function TimeTrackingScreen() {
                 activeOpacity={0.7}
               >
                 {isPausing ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.white} />
                 ) : (
                   <>
-                    <Feather name="play" size={18} color="#fff" />
+                    <Feather name="play" size={18} color={colors.white} />
                     <Text style={styles.timerButtonText}>Resume</Text>
                   </>
                 )}
@@ -1343,10 +1343,10 @@ export default function TimeTrackingScreen() {
                 activeOpacity={0.7}
               >
                 {isPausing ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.white} />
                 ) : (
                   <>
-                    <Feather name="coffee" size={18} color="#fff" />
+                    <Feather name="coffee" size={18} color={colors.white} />
                     <Text style={styles.timerButtonText}>Break</Text>
                   </>
                 )}
@@ -1359,10 +1359,10 @@ export default function TimeTrackingScreen() {
               activeOpacity={0.7}
             >
               {isStopping ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <>
-                  <Feather name="square" size={18} color="#fff" />
+                  <Feather name="square" size={18} color={colors.white} />
                   <Text style={styles.timerButtonText}>Stop</Text>
                 </>
               )}

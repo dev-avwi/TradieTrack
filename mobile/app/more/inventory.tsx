@@ -1379,7 +1379,7 @@ export default function InventoryScreen() {
     }
 
     return (
-      <TouchableOpacity style={styles.fab} onPress={onPress} activeOpacity={0.8}>
+      <TouchableOpacity style={styles.fab} onPress={onPress} activeOpacity={0.8} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <Feather name={icon} size={24} color="#fff" />
       </TouchableOpacity>
     );

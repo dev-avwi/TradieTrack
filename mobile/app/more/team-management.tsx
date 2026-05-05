@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   Modal,
   Linking,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -567,7 +569,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   roleBadgeText: {
     ...typography.captionSmall,
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: '600',
   },
   roleDescription: {
@@ -632,7 +634,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   emptyStateButtonText: {
     ...typography.body,
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontWeight: '600',
   },
   modalOverlay: {
@@ -779,7 +781,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   saveButtonText: {
     ...typography.body,
-    color: '#FFFFFF',
+    color: colors.primaryForeground,
     fontWeight: '600',
   },
   deleteButton: {
@@ -1202,7 +1204,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   memberDetailRoleText: {
     ...typography.caption,
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: '600',
   },
   upgradeContainer: {
@@ -2014,7 +2016,7 @@ export default function TeamManagementScreen() {
         <View style={styles.memberDetails}>
           <View style={styles.roleRow}>
             <View style={[styles.roleBadge, { backgroundColor: roleConfig.color }]}>
-              <Feather name={roleConfig.icon as any} size={12} color="#FFFFFF" />
+              <Feather name={roleConfig.icon as any} size={12} color={colors.white} />
               <Text style={styles.roleBadgeText}>{roleConfig.label}</Text>
             </View>
             {member.useCustomPermissions && (
@@ -2184,7 +2186,7 @@ export default function TeamManagementScreen() {
               backgroundColor: isSelected ? config.color : 'transparent',
             }
           ]}>
-            {isSelected && <Feather name="check" size={12} color="#FFFFFF" />}
+            {isSelected && <Feather name="check" size={12} color={colors.white} />}
           </View>
         </View>
         <Text style={styles.roleOptionDesc}>{config.description}</Text>
@@ -2486,6 +2488,7 @@ export default function TeamManagementScreen() {
         <Modal
       onRequestClose={() => setShowInviteModal(false)} visible={showInviteModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View testID="modal-invite" style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Add Team Member</Text>
@@ -2696,6 +2699,7 @@ export default function TeamManagementScreen() {
                 </View>
               )}
             </View>
+            </KeyboardAvoidingView>
           </View>
         </Modal>
 
@@ -2703,6 +2707,7 @@ export default function TeamManagementScreen() {
         <Modal
       onRequestClose={() => setShowDetailModal(false)} visible={showDetailModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Team Member Details</Text>
@@ -2923,6 +2928,7 @@ export default function TeamManagementScreen() {
                 )}
               </View>
             </View>
+            </KeyboardAvoidingView>
           </View>
         </Modal>
 
@@ -2930,6 +2936,7 @@ export default function TeamManagementScreen() {
         <Modal
       onRequestClose={() => setShowEditModal(false)} visible={showEditModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View testID="modal-edit" style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Edit Team Member</Text>
@@ -3012,6 +3019,7 @@ export default function TeamManagementScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            </KeyboardAvoidingView>
           </View>
         </Modal>
 
@@ -3019,6 +3027,7 @@ export default function TeamManagementScreen() {
         <Modal
       onRequestClose={() => setShowPermissionsModal(false)} visible={showPermissionsModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View testID="modal-permissions" style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle} numberOfLines={1}>
@@ -3244,6 +3253,7 @@ export default function TeamManagementScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            </KeyboardAvoidingView>
           </View>
         </Modal>
 
@@ -3251,6 +3261,7 @@ export default function TeamManagementScreen() {
         <Modal
       onRequestClose={() => setShowAssignJobModal(false)} visible={showAssignJobModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View testID="modal-assign-job" style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle} numberOfLines={1}>
@@ -3308,7 +3319,7 @@ export default function TeamManagementScreen() {
                                 backgroundColor: isSelected ? colors.primary : 'transparent',
                               }
                             ]}>
-                              {isSelected && <Feather name="check" size={12} color="#FFFFFF" />}
+                              {isSelected && <Feather name="check" size={12} color={colors.white} />}
                             </View>
                           </View>
                           <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs }}>
@@ -3356,6 +3367,7 @@ export default function TeamManagementScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            </KeyboardAvoidingView>
           </View>
         </Modal>
       </View>

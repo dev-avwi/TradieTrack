@@ -7,7 +7,9 @@ import {
   StyleSheet,
   TextInput,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -185,7 +187,11 @@ export default function ProfileEditScreen() {
           ),
         }} 
       />
-      <ScrollView style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.content}>
           <View style={styles.avatarSection}>
             <View style={styles.avatar}>
@@ -279,16 +285,17 @@ export default function ProfileEditScreen() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={colors.primaryForeground} />
             ) : (
               <>
-                <Feather name="save" size={20} color="#FFFFFF" />
+                <Feather name="save" size={20} color={colors.primaryForeground} />
                 <Text style={styles.saveButtonText}>Save Changes</Text>
               </>
             )}
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </>
   );
 }
