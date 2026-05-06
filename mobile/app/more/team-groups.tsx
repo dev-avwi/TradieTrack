@@ -15,6 +15,7 @@ import {
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { api } from '../../src/lib/api';
 import { TeamAvatar } from '../../src/components/TeamAvatar';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes } from '../../src/lib/design-tokens';
@@ -785,8 +786,14 @@ export default function TeamGroupsScreen() {
         </TouchableOpacity>
       </Modal>
 
-      <Modal visible={formModalVisible} transparent animationType="slide" onRequestClose={() => { setFormModalVisible(false); resetForm(); }}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => { setFormModalVisible(false); resetForm(); }}>
+      <AppBottomSheet
+        visible={formModalVisible}
+        onDismiss={() => { setFormModalVisible(false); resetForm(); }}
+        snapPoints={['85%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => { setFormModalVisible(false); resetForm(); }}>
           <TouchableOpacity activeOpacity={1} onPress={() => {}}>
             <View style={styles.modalContent}>
               <View style={styles.modalHandle} />
@@ -863,15 +870,16 @@ export default function TeamGroupsScreen() {
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
-      </Modal>
+      </AppBottomSheet>
 
-      <Modal
+      <AppBottomSheet
         visible={viewModalVisible && !manageMembersVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => { setViewModalVisible(false); setViewingGroup(null); }}
+        onDismiss={() => { setViewModalVisible(false); setViewingGroup(null); }}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => { setViewModalVisible(false); setViewingGroup(null); }}>
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => { setViewModalVisible(false); setViewingGroup(null); }}>
           <TouchableOpacity activeOpacity={1} onPress={() => {}}>
             <View style={styles.modalContent}>
               <View style={styles.modalHandle} />
@@ -935,15 +943,16 @@ export default function TeamGroupsScreen() {
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
-      </Modal>
+      </AppBottomSheet>
 
-      <Modal
+      <AppBottomSheet
         visible={manageMembersVisible && viewingGroup !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setManageMembersVisible(false)}
+        onDismiss={() => setManageMembersVisible(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setManageMembersVisible(false)}>
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setManageMembersVisible(false)}>
           <TouchableOpacity activeOpacity={1} onPress={() => {}}>
             <View style={styles.modalContent}>
               <View style={styles.modalHandle} />
@@ -1037,7 +1046,7 @@ export default function TeamGroupsScreen() {
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
-      </Modal>
+      </AppBottomSheet>
     </View>
   );
 }

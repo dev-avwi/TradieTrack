@@ -16,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../lib/api';
 import { useTheme, ThemeColors } from '../lib/theme';
+import { AppBottomSheet } from './ui/AppBottomSheet';
 import { spacing, radius, shadows, iconSizes, typography } from '../lib/design-tokens';
 import { SignaturePad } from './SignaturePad';
 
@@ -557,11 +558,12 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
         </View>
       )}
 
-      <Modal
+      <AppBottomSheet
         visible={showFormSelector}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowFormSelector(false)}
+        onDismiss={() => setShowFormSelector(false)}
+        snapPoints={['85%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={styles.modalHeader}>
@@ -599,13 +601,14 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
             )}
           />
         </View>
-      </Modal>
+      </AppBottomSheet>
 
-      <Modal
+      <AppBottomSheet
         visible={showSignaturePad !== null}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowSignaturePad(null)}
+        onDismiss={() => setShowSignaturePad(null)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={styles.modalHeader}>
@@ -627,7 +630,7 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
             />
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     </View>
   );
 }

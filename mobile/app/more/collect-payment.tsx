@@ -31,6 +31,7 @@ import { Card, CardContent } from '../../src/components/ui/Card';
 import { Badge } from '../../src/components/ui/Badge';
 import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 import { showToast } from '../../src/lib/toast';
 
@@ -2122,11 +2123,12 @@ export default function CollectScreen() {
   };
 
   const renderTapToPayModal = () => (
-    <Modal
+    <AppBottomSheet
       visible={showTapToPayModal}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleCancelPayment}
+      onDismiss={handleCancelPayment}
+      snapPoints={['90%']}
+      scrollable={false}
+      contentPadding={0}
     >
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
@@ -2220,16 +2222,17 @@ export default function CollectScreen() {
           </View>
         )}
       </View>
-    </Modal>
+    </AppBottomSheet>
   );
 
   const renderQRModal = () => (
-    <Modal
-      visible={showQRModal}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleCloseQRModal}
-    >
+    <AppBottomSheet
+        visible={showQRModal}
+        onDismiss={handleCloseQRModal}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Payment QR Code</Text>
@@ -2314,16 +2317,17 @@ export default function CollectScreen() {
           </Button>
         </View>
       </View>
-    </Modal>
+    </AppBottomSheet>
   );
 
   const renderPaymentLinkModal = () => (
-    <Modal
-      visible={showPaymentLinkModal}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleClosePaymentLinkModal}
-    >
+    <AppBottomSheet
+        visible={showPaymentLinkModal}
+        onDismiss={handleClosePaymentLinkModal}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Send Payment Link</Text>
@@ -2445,7 +2449,7 @@ export default function CollectScreen() {
           </Button>
         </View>
       </View>
-    </Modal>
+    </AppBottomSheet>
   );
 
   const renderResendModal = () => {
@@ -2454,11 +2458,12 @@ export default function CollectScreen() {
     const hasSent = notifications.length > 0;
     
     return (
-      <Modal
+      <AppBottomSheet
         visible={showResendModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={handleCloseResendModal}
+        onDismiss={handleCloseResendModal}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -2555,7 +2560,7 @@ export default function CollectScreen() {
             </Button>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   };
 
@@ -2569,11 +2574,12 @@ export default function CollectScreen() {
     const filteredInvoices = getFilteredInvoices();
 
     return (
-      <Modal
+      <AppBottomSheet
         visible={showRecordPaymentModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={handleCloseRecordPaymentModal}
+        onDismiss={handleCloseRecordPaymentModal}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -2862,7 +2868,7 @@ export default function CollectScreen() {
             </View>
           )}
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   };
 
@@ -2894,11 +2900,12 @@ export default function CollectScreen() {
     };
 
     return (
-      <Modal
+      <AppBottomSheet
         visible={showInvoicePickerModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={handleCloseInvoicePickerModal}
+        onDismiss={handleCloseInvoicePickerModal}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -3110,7 +3117,7 @@ export default function CollectScreen() {
 
           </ScrollView>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   };
   
@@ -3118,11 +3125,12 @@ export default function CollectScreen() {
     const canContinue = customAmountValue && parseFloat(customAmountValue) >= 0.50;
     
     return (
-      <Modal
+      <AppBottomSheet
         visible={showCustomAmountModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={handleCloseCustomAmountModal}
+        onDismiss={handleCloseCustomAmountModal}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -3223,7 +3231,7 @@ export default function CollectScreen() {
             </ScrollView>
           </KeyboardAvoidingView>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   };
 
@@ -3572,11 +3580,12 @@ export default function CollectScreen() {
     const instructions = smsStatus?.setupInstructions;
     
     return (
-      <Modal
+      <AppBottomSheet
         visible={showSmsSetupModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowSmsSetupModal(false)}
+        onDismiss={() => setShowSmsSetupModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -3661,17 +3670,18 @@ export default function CollectScreen() {
             </Button>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   }
 
   function renderReceiptModal() {
     return (
-      <Modal
+      <AppBottomSheet
         visible={showReceiptModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={handleCloseReceiptModal}
+        onDismiss={handleCloseReceiptModal}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -3790,7 +3800,7 @@ export default function CollectScreen() {
             </Button>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   }
 }

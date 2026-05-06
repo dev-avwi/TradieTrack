@@ -18,6 +18,7 @@ import { useAuthStore } from '../lib/store';
 import { api } from '../lib/api';
 import { formatCurrency as formatCurrencyUtil } from '../lib/format';
 import { useTheme, ThemeColors, colorWithOpacity } from '../lib/theme';
+import { AppBottomSheet } from './ui/AppBottomSheet';
 import { spacing, radius, shadows, typography, pageShell, usePageShell } from '../lib/design-tokens';
 import { useScrollToTop } from '../contexts/ScrollContext';
 
@@ -830,9 +831,14 @@ export function SubcontractorDashboard() {
       </ScrollView>
 
       {/* Decline Modal */}
-      <Modal
-      onRequestClose={() => setShowDeclineModal(false)} visible={showDeclineModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <AppBottomSheet
+        visible={showDeclineModal}
+        onDismiss={() => setShowDeclineModal(false)}
+        snapPoints={['60%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+        <View style={{ flex: 1 }}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Decline Job</Text>
@@ -870,12 +876,17 @@ export function SubcontractorDashboard() {
             </View>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Create Invoice Modal */}
-      <Modal
-      onRequestClose={() => setShowInvoiceCreate(false)} visible={showInvoiceCreate} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <AppBottomSheet
+        visible={showInvoiceCreate}
+        onDismiss={() => setShowInvoiceCreate(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+        <View style={{ flex: 1 }}>
           <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '85%' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create Tax Invoice</Text>
@@ -1138,12 +1149,17 @@ export function SubcontractorDashboard() {
             )}
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Invoice List Modal */}
-      <Modal
-      onRequestClose={() => setShowInvoices(false)} visible={showInvoices} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <AppBottomSheet
+        visible={showInvoices}
+        onDismiss={() => setShowInvoices(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+        <View style={{ flex: 1 }}>
           <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '85%' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>My Invoices</Text>
@@ -1218,7 +1234,7 @@ export function SubcontractorDashboard() {
             )}
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     </>
   );
 }

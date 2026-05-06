@@ -18,6 +18,7 @@ import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/lib/theme';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
@@ -884,7 +885,13 @@ export default function InventoryScreen() {
     const stockColor = getStockColor(stock, min, reorder);
 
     return (
-      <Modal visible={showDetailModal} animationType="slide" onRequestClose={() => setShowDetailModal(false)}>
+      <AppBottomSheet
+        visible={showDetailModal}
+        onDismiss={() => setShowDetailModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
         <View style={styles.modalContainer}>
           <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
             <TouchableOpacity onPress={() => setShowDetailModal(false)} activeOpacity={0.7}>
@@ -1043,12 +1050,12 @@ export default function InventoryScreen() {
             </View>
           </ScrollView>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   };
 
   const renderItemFormModal = () => (
-    <Modal visible={showItemModal} animationType="slide" onRequestClose={() => setShowItemModal(false)}>
+    <AppBottomSheet visible={showItemModal} onDismiss={() => setShowItemModal(false)} snapPoints={['92%']} scrollable={false} contentPadding={0}>
       <KeyboardAvoidingView
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1191,11 +1198,17 @@ export default function InventoryScreen() {
           />
         </ScrollView>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppBottomSheet>
   );
 
   const renderAdjustmentModal = () => (
-    <Modal visible={showAdjustmentModal} animationType="slide" onRequestClose={() => setShowAdjustmentModal(false)}>
+    <AppBottomSheet
+        visible={showAdjustmentModal}
+        onDismiss={() => setShowAdjustmentModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
       <KeyboardAvoidingView
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1257,7 +1270,7 @@ export default function InventoryScreen() {
           />
         </ScrollView>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppBottomSheet>
   );
 
   const renderCategoryModal = () => (
@@ -1298,7 +1311,13 @@ export default function InventoryScreen() {
   );
 
   const renderPOModal = () => (
-    <Modal visible={showPOModal} animationType="slide" onRequestClose={() => setShowPOModal(false)}>
+    <AppBottomSheet
+        visible={showPOModal}
+        onDismiss={() => setShowPOModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
       <KeyboardAvoidingView
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1359,7 +1378,7 @@ export default function InventoryScreen() {
           />
         </ScrollView>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppBottomSheet>
   );
 
   const renderFab = () => {

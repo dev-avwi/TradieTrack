@@ -20,6 +20,7 @@ import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { useTheme, ThemeColors } from '../lib/theme';
+import { AppBottomSheet } from './ui/AppBottomSheet';
 import { api } from '../lib/api';
 import { format, isToday, isYesterday, isThisWeek, isThisMonth } from 'date-fns';
 import { spacing, radius, shadows, typography, iconSizes, sizes } from '../lib/design-tokens';
@@ -1214,9 +1215,15 @@ export default function PhotoLibrary() {
   };
 
   const renderUploadModal = () => (
-    <Modal visible={showUploadModal} animationType="slide" transparent onRequestClose={() => !isUploading && setShowUploadModal(false)}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => !isUploading && setShowUploadModal(false)} />
+    <AppBottomSheet
+      visible={showUploadModal}
+      onDismiss={() => !isUploading && setShowUploadModal(false)}
+      snapPoints={['85%']}
+      scrollable={false}
+      contentPadding={0}
+    >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Upload Photos</Text>
@@ -1306,7 +1313,7 @@ export default function PhotoLibrary() {
           </View>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </AppBottomSheet>
   );
 
   const renderLightbox = () => {
@@ -1473,9 +1480,15 @@ export default function PhotoLibrary() {
   };
 
   const renderBulkCategoryPicker = () => (
-    <Modal visible={showBulkCategoryPicker} animationType="slide" transparent onRequestClose={() => setShowBulkCategoryPicker(false)}>
-      <View style={styles.modalOverlay}>
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowBulkCategoryPicker(false)} />
+    <AppBottomSheet
+        visible={showBulkCategoryPicker}
+        onDismiss={() => setShowBulkCategoryPicker(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+      <View style={{ flex: 1 }}>
+        
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Set Category</Text>
@@ -1498,13 +1511,19 @@ export default function PhotoLibrary() {
           </View>
         </View>
       </View>
-    </Modal>
+    </AppBottomSheet>
   );
 
   const renderBulkJobPicker = () => (
-    <Modal visible={showBulkJobPicker} animationType="slide" transparent onRequestClose={() => setShowBulkJobPicker(false)}>
-      <View style={styles.modalOverlay}>
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowBulkJobPicker(false)} />
+    <AppBottomSheet
+        visible={showBulkJobPicker}
+        onDismiss={() => setShowBulkJobPicker(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+      <View style={{ flex: 1 }}>
+        
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Attach to Job</Text>
@@ -1534,7 +1553,7 @@ export default function PhotoLibrary() {
           </ScrollView>
         </View>
       </View>
-    </Modal>
+    </AppBottomSheet>
   );
 
   if (isLoading) {

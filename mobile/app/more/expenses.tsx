@@ -20,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { spacing, radius, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { showToast } from '../../src/lib/toast';
@@ -607,14 +608,15 @@ export default function ExpensesScreen() {
           </View>
         </ScrollView>
 
-        <Modal
+        <AppBottomSheet
           visible={showExpenseModal}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => {
+          onDismiss={() => {
             setShowExpenseModal(false);
             resetForm();
           }}
+          snapPoints={['92%']}
+          scrollable={false}
+          contentPadding={0}
         >
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -788,14 +790,15 @@ export default function ExpensesScreen() {
               )}
             </ScrollView>
           </KeyboardAvoidingView>
-        </Modal>
+        </AppBottomSheet>
 
-        <Modal
-          visible={showCategoryModal}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowCategoryModal(false)}
-        >
+        <AppBottomSheet
+        visible={showCategoryModal}
+        onDismiss={() => setShowCategoryModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
           <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
               <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
@@ -833,14 +836,15 @@ export default function ExpensesScreen() {
               </View>
             </View>
           </View>
-        </Modal>
+        </AppBottomSheet>
 
-        <Modal
-          visible={showCategoryPicker}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowCategoryPicker(false)}
-        >
+        <AppBottomSheet
+        visible={showCategoryPicker}
+        onDismiss={() => setShowCategoryPicker(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
           <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
               <TouchableOpacity onPress={() => setShowCategoryPicker(false)}>
@@ -896,14 +900,15 @@ export default function ExpensesScreen() {
               )}
             </ScrollView>
           </View>
-        </Modal>
+        </AppBottomSheet>
 
-        <Modal
-          visible={showJobPicker}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowJobPicker(false)}
-        >
+        <AppBottomSheet
+        visible={showJobPicker}
+        onDismiss={() => setShowJobPicker(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
           <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
               <TouchableOpacity onPress={() => setShowJobPicker(false)}>
@@ -957,7 +962,7 @@ export default function ExpensesScreen() {
               ))}
             </ScrollView>
           </View>
-        </Modal>
+        </AppBottomSheet>
       </View>
     </>
   );

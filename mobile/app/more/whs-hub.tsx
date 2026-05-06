@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, componentStyles, iconSizes, typographySizes, sizes } from '../../src/lib/design-tokens';
 
@@ -701,7 +702,7 @@ export default function WhsHubScreen() {
 
   function renderIncidentModal() {
     return (
-      <Modal visible={showIncidentForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowIncidentForm(false)}>
+      <AppBottomSheet visible={showIncidentForm} onDismiss={() => setShowIncidentForm(false)} snapPoints={['90%']} scrollable={false} contentPadding={0}>
         <KeyboardAvoidingView style={styles.modalContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowIncidentForm(false)}>
@@ -757,13 +758,19 @@ export default function WhsHubScreen() {
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
-      </Modal>
+      </AppBottomSheet>
     );
   }
 
   function renderEmergencyModal() {
     return (
-      <Modal visible={showEmergencyForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEmergencyForm(false)}>
+      <AppBottomSheet
+        visible={showEmergencyForm}
+        onDismiss={() => setShowEmergencyForm(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
         <KeyboardAvoidingView style={styles.modalContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowEmergencyForm(false)}>
@@ -800,13 +807,19 @@ export default function WhsHubScreen() {
             <TextInput style={styles.input} value={emergencyForm.nearestHospital} onChangeText={v => setEmergencyForm(p => ({ ...p, nearestHospital: v }))} placeholder="Hospital name" placeholderTextColor={colors.mutedForeground} />
           </ScrollView>
         </KeyboardAvoidingView>
-      </Modal>
+      </AppBottomSheet>
     );
   }
 
   function renderJsaModal() {
     return (
-      <Modal visible={showJsaForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowJsaForm(false)}>
+      <AppBottomSheet
+        visible={showJsaForm}
+        onDismiss={() => setShowJsaForm(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
         <KeyboardAvoidingView style={styles.modalContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowJsaForm(false)}>
@@ -858,14 +871,20 @@ export default function WhsHubScreen() {
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
-      </Modal>
+      </AppBottomSheet>
     );
   }
 
   function renderEnvModal() {
     const envType = envTypes.find((t: any) => t.type === selectedEnvType);
     return (
-      <Modal visible={showEnvForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEnvForm(false)}>
+      <AppBottomSheet
+        visible={showEnvForm}
+        onDismiss={() => setShowEnvForm(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => { setShowEnvForm(false); setSelectedEnvType(''); }}>
@@ -902,13 +921,19 @@ export default function WhsHubScreen() {
             )}
           </ScrollView>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   }
 
   function renderSignModal() {
     return (
-      <Modal visible={showSignForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowSignForm(false)}>
+      <AppBottomSheet
+        visible={showSignForm}
+        onDismiss={() => setShowSignForm(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowSignForm(false)}>
@@ -944,7 +969,7 @@ export default function WhsHubScreen() {
             <TextInput style={styles.input} value={signForm.location} onChangeText={v => setSignForm(p => ({ ...p, location: v }))} placeholder="Where should this sign be?" placeholderTextColor={colors.mutedForeground} />
           </ScrollView>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   }
 
@@ -1022,7 +1047,13 @@ export default function WhsHubScreen() {
       { value: 'high', label: 'High' }, { value: 'critical', label: 'Critical' },
     ];
     return (
-      <Modal visible={showHazardForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowHazardForm(false)}>
+      <AppBottomSheet
+        visible={showHazardForm}
+        onDismiss={() => setShowHazardForm(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.cardBorder }]}>
             <TouchableOpacity onPress={() => setShowHazardForm(false)}>
@@ -1076,7 +1107,7 @@ export default function WhsHubScreen() {
             </View>
           </ScrollView>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   }
 
@@ -1160,7 +1191,13 @@ export default function WhsHubScreen() {
 
   function renderPpeModal() {
     return (
-      <Modal visible={showPpeForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowPpeForm(false)}>
+      <AppBottomSheet
+        visible={showPpeForm}
+        onDismiss={() => setShowPpeForm(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowPpeForm(false)}><Feather name="x" size={24} color={colors.foreground} /></TouchableOpacity>
@@ -1196,7 +1233,7 @@ export default function WhsHubScreen() {
             </ScrollView>
           </KeyboardAvoidingView>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   }
 
@@ -1248,7 +1285,13 @@ export default function WhsHubScreen() {
 
   function renderTrainingModal() {
     return (
-      <Modal visible={showTrainingForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowTrainingForm(false)}>
+      <AppBottomSheet
+        visible={showTrainingForm}
+        onDismiss={() => setShowTrainingForm(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowTrainingForm(false)}><Feather name="x" size={24} color={colors.foreground} /></TouchableOpacity>
@@ -1305,7 +1348,7 @@ export default function WhsHubScreen() {
             </ScrollView>
           </KeyboardAvoidingView>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   }
 

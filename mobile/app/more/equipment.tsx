@@ -16,6 +16,7 @@ import {
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -582,7 +583,7 @@ export default function EquipmentScreen() {
   );
 
   const renderFormModal = () => (
-    <Modal visible={showFormModal} animationType="slide" onRequestClose={() => setShowFormModal(false)}>
+    <AppBottomSheet visible={showFormModal} onDismiss={() => setShowFormModal(false)} snapPoints={['92%']} scrollable={false} contentPadding={0}>
       <KeyboardAvoidingView
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -729,7 +730,7 @@ export default function EquipmentScreen() {
         formData.categoryId,
         (val) => setFormData({ ...formData, categoryId: val }),
       )}
-    </Modal>
+    </AppBottomSheet>
   );
 
   const renderDetailModal = () => {
@@ -738,7 +739,13 @@ export default function EquipmentScreen() {
     const categoryName = getCategoryName(selectedItem.categoryId);
 
     return (
-      <Modal visible={showDetailModal} animationType="slide" onRequestClose={() => setShowDetailModal(false)}>
+      <AppBottomSheet
+        visible={showDetailModal}
+        onDismiss={() => setShowDetailModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowDetailModal(false)} activeOpacity={0.7}>
@@ -892,12 +899,18 @@ export default function EquipmentScreen() {
             </View>
           </ScrollView>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   };
 
   const renderMaintenanceModal = () => (
-    <Modal visible={showMaintenanceModal} animationType="slide" onRequestClose={() => setShowMaintenanceModal(false)}>
+    <AppBottomSheet
+        visible={showMaintenanceModal}
+        onDismiss={() => setShowMaintenanceModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
       <KeyboardAvoidingView
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -990,7 +1003,7 @@ export default function EquipmentScreen() {
         maintenanceForm.type,
         (val) => setMaintenanceForm({ ...maintenanceForm, type: val as MaintenanceType }),
       )}
-    </Modal>
+    </AppBottomSheet>
   );
 
   const renderCategoryModal = () => (

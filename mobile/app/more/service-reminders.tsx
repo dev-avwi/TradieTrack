@@ -16,6 +16,7 @@ import {
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes } from '../../src/lib/design-tokens';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1039,9 +1040,15 @@ export default function ServiceRemindersScreen() {
         <Feather name="plus" size={iconSizes['2xl']} color={colors.primaryForeground} />
       </TouchableOpacity>
 
-      <Modal visible={formModalVisible} animationType="slide" transparent onRequestClose={() => setFormModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setFormModalVisible(false)} />
+      <AppBottomSheet
+        visible={formModalVisible}
+        onDismiss={() => setFormModalVisible(false)}
+        snapPoints={['85%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+        <View style={{ flex: 1 }}>
+          
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
@@ -1151,16 +1158,17 @@ export default function ServiceRemindersScreen() {
             </ScrollView>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
-      <Modal
+      <AppBottomSheet
         visible={serviceTypePickerVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setServiceTypePickerVisible(false)}
+        onDismiss={() => setServiceTypePickerVisible(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setServiceTypePickerVisible(false)} />
+        <View style={{ flex: 1 }}>
+          
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
@@ -1191,16 +1199,17 @@ export default function ServiceRemindersScreen() {
             />
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
-      <Modal
+      <AppBottomSheet
         visible={clientPickerVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setClientPickerVisible(false)}
+        onDismiss={() => setClientPickerVisible(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setClientPickerVisible(false)} />
+        <View style={{ flex: 1 }}>
+          
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
@@ -1240,16 +1249,17 @@ export default function ServiceRemindersScreen() {
             />
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
-      <Modal
+      <AppBottomSheet
         visible={intervalPickerVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setIntervalPickerVisible(false)}
+        onDismiss={() => setIntervalPickerVisible(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setIntervalPickerVisible(false)} />
+        <View style={{ flex: 1 }}>
+          
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
@@ -1279,16 +1289,17 @@ export default function ServiceRemindersScreen() {
             />
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
-      <Modal
+      <AppBottomSheet
         visible={reminderDaysPickerVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setReminderDaysPickerVisible(false)}
+        onDismiss={() => setReminderDaysPickerVisible(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setReminderDaysPickerVisible(false)} />
+        <View style={{ flex: 1 }}>
+          
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
@@ -1318,16 +1329,17 @@ export default function ServiceRemindersScreen() {
             />
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
-      <Modal
+      <AppBottomSheet
         visible={completeModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setCompleteModalVisible(false)}
+        onDismiss={() => setCompleteModalVisible(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setCompleteModalVisible(false)} />
+        <View style={{ flex: 1 }}>
+          
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
@@ -1379,7 +1391,7 @@ export default function ServiceRemindersScreen() {
             </View>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     </View>
   );
 }

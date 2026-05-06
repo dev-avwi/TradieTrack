@@ -19,6 +19,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useQuotesStore, useClientsStore, useAuthStore, useJobsStore, useInvoicesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
+import { AppBottomSheet } from '../../../src/components/ui/AppBottomSheet';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
 import { MobileSendModal } from '../../../src/components/MobileSendModal';
@@ -1720,11 +1721,12 @@ ${businessName}`;
       </ScrollView>
 
       {/* Version History Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showVersionHistory}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowVersionHistory(false)}
+        onDismiss={() => setShowVersionHistory(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
@@ -1785,14 +1787,15 @@ ${businessName}`;
             )}
           </ScrollView>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Document Preview Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showPreview}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowPreview(false)}
+        onDismiss={() => setShowPreview(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.previewModalContainer}>
           <View style={styles.previewModalHeader}>
@@ -1911,7 +1914,7 @@ ${businessName}`;
             afterPhotos={includeAfterPhotos ? jobPhotos.filter((p: any) => p.category === 'after') : []}
           />
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Email Compose Modal */}
       <EmailComposeModal
@@ -1929,13 +1932,14 @@ ${businessName}`;
       />
 
       {/* Template Selector Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showTemplateSelector}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowTemplateSelector(false)}
+        onDismiss={() => setShowTemplateSelector(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <View style={styles.modalOverlay}>
+        <View style={{ flex: 1 }}>
           <View style={styles.templateModalContent}>
             <View style={styles.templateModalHeader}>
               <Text style={styles.templateModalTitle}>Select Template</Text>
@@ -1966,17 +1970,18 @@ ${businessName}`;
             ))}
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Share Action Sheet Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showShareSheet}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowShareSheet(false)}
+        onDismiss={() => setShowShareSheet(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <TouchableOpacity 
-          style={styles.modalOverlay}
+          style={{ flex: 1 }}
           activeOpacity={1}
           onPress={() => setShowShareSheet(false)}
         >
@@ -2053,7 +2058,7 @@ ${businessName}`;
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
-      </Modal>
+      </AppBottomSheet>
 
       <MobileSendModal
         visible={showSendModal}

@@ -22,6 +22,7 @@ import { useJobsStore, useTimeTrackingStore, useAuthStore } from '../../src/lib/
 import { useUserRole } from '../../src/hooks/use-user-role';
 import api from '../../src/lib/api';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes } from '../../src/lib/design-tokens';
@@ -2104,11 +2105,12 @@ export default function TimeTrackingScreen() {
         </ScrollView>
       </View>
       
-      <Modal
+      <AppBottomSheet
         visible={showAddEntryModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => { setShowAddEntryModal(false); setEditingEntry(null); }}
+        onDismiss={() => { setShowAddEntryModal(false); setEditingEntry(null); }}
+        snapPoints={['92%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={[styles.container, { paddingTop: spacing.lg }]}>
           <View style={styles.modalHeader}>
@@ -2278,13 +2280,14 @@ export default function TimeTrackingScreen() {
             </View>
           </ScrollView>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
-      <Modal
+      <AppBottomSheet
         visible={showDisputeModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowDisputeModal(false)}
+        onDismiss={() => setShowDisputeModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={[styles.container, { paddingTop: spacing.lg }]}>
           <View style={styles.modalHeader}>
@@ -2331,7 +2334,7 @@ export default function TimeTrackingScreen() {
             </View>
           </ScrollView>
         </View>
-      </Modal>
+      </AppBottomSheet>
     </>
   );
 }

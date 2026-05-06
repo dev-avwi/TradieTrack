@@ -22,6 +22,7 @@ import { VoiceRecorder } from '../../../src/components/VoiceRecorder';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore, useClientsStore, useQuotesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors, getVisibleButtonColors } from '../../../src/lib/theme';
+import { AppBottomSheet } from '../../../src/components/ui/AppBottomSheet';
 import api from '../../../src/lib/api';
 import offlineStorage, { useOfflineStore } from '../../../src/lib/offline-storage';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
@@ -1493,15 +1494,16 @@ export default function NewQuoteScreen() {
       </View>
 
       {/* Client Picker Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showClientPicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => {
+        onDismiss={() => {
           setShowClientPicker(false);
           setShowQuickAddClient(false);
           setQuickAddForm({ name: '', email: '', phone: '' });
         }}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -1632,14 +1634,15 @@ export default function NewQuoteScreen() {
             </ScrollView>
           )}
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Line Item Editor Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showLineItemEditor}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowLineItemEditor(false)}
+        onDismiss={() => setShowLineItemEditor(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -1704,14 +1707,15 @@ export default function NewQuoteScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* AI Generator Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showAIGenerator}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => { setShowAIGenerator(false); setShowVoiceRecorder(false); }}
+        onDismiss={() => { setShowAIGenerator(false); setShowVoiceRecorder(false); }}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -1865,14 +1869,15 @@ export default function NewQuoteScreen() {
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Catalog Picker Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showCatalog}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => { setShowCatalog(false); setCatalogSearch(''); }}
+        onDismiss={() => { setShowCatalog(false); setCatalogSearch(''); }}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -2000,7 +2005,7 @@ export default function NewQuoteScreen() {
             })()}
           </ScrollView>
         </View>
-      </Modal>
+      </AppBottomSheet>
     </>
   );
 }

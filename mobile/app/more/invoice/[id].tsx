@@ -23,6 +23,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useInvoicesStore, useClientsStore, useAuthStore, useQuotesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors } from '../../../src/lib/theme';
+import { AppBottomSheet } from '../../../src/components/ui/AppBottomSheet';
 import { spacing, radius } from '../../../src/lib/design-tokens';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { EmailComposeModal } from '../../../src/components/EmailComposeModal';
@@ -2998,11 +2999,12 @@ ${businessName}`;
       </ScrollView>
 
       {/* Document Preview Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showPreview}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowPreview(false)}
+        onDismiss={() => setShowPreview(false)}
+        snapPoints={['95%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.previewModalContainer}>
           <View style={styles.previewModalHeader}>
@@ -3124,7 +3126,7 @@ ${businessName}`;
             afterPhotos={includeAfterPhotos ? jobPhotos.filter((p: any) => p.category === 'after') : []}
           />
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Email Compose Modal for Invoice */}
       <EmailComposeModal
@@ -3191,13 +3193,14 @@ ${businessName}`;
       />
 
       {/* Template Selector Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showTemplateSelector}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowTemplateSelector(false)}
+        onDismiss={() => setShowTemplateSelector(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <View style={styles.modalOverlay}>
+        <View style={{ flex: 1 }}>
           <View style={styles.templateModalContent}>
             <View style={styles.templateModalHeader}>
               <Text style={styles.templateModalTitle}>Select Template</Text>
@@ -3228,17 +3231,18 @@ ${businessName}`;
             ))}
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Share Action Sheet Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showShareSheet}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowShareSheet(false)}
+        onDismiss={() => setShowShareSheet(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <TouchableOpacity 
-          style={styles.modalOverlay}
+          style={{ flex: 1 }}
           activeOpacity={1}
           onPress={() => setShowShareSheet(false)}
         >
@@ -3314,16 +3318,17 @@ ${businessName}`;
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Milestones & Retention Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showMilestonesModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowMilestonesModal(false)}
+        onDismiss={() => setShowMilestonesModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <View style={styles.modalOverlay}>
+        <View style={{ flex: 1 }}>
           <View style={styles.paymentMethodModalContent}>
             <View style={styles.shareSheetHandle} />
             <Text style={styles.shareSheetTitle}>Payment Milestones</Text>
@@ -3607,16 +3612,17 @@ ${businessName}`;
             </View>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Payment Method Selection Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showPaymentMethodModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowPaymentMethodModal(false)}
+        onDismiss={() => setShowPaymentMethodModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <View style={styles.modalOverlay}>
+        <View style={{ flex: 1 }}>
           <View style={styles.paymentMethodModalContent}>
             <View style={styles.shareSheetHandle} />
             <Text style={styles.shareSheetTitle}>Record Payment</Text>
@@ -3715,7 +3721,7 @@ ${businessName}`;
             </View>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     </>
   );
 }

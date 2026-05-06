@@ -58,6 +58,11 @@ Core architectural and design decisions include:
 *   **AI Receptionist (Voice)**: Vapi.ai (enhanced with ElevenLabs)
 *   **Error Tracking**: Sentry
 
+### Mobile Bottom Sheet Migration (May 2026)
+*   **@gorhom/bottom-sheet@^5.2.13**: Installed in `mobile/`. `GestureHandlerRootView` + `BottomSheetModalProvider` mounted at app root in `mobile/app/_layout.tsx`.
+*   **`AppBottomSheet`** (`mobile/src/components/ui/AppBottomSheet.tsx`): Themed wrapper around `BottomSheetModal` with rounded top corners, themed handle/backdrop, `BottomSheetScrollView`, `keyboardBehavior="interactive"`. Exposes both an imperative API (via `useAppBottomSheet()` hook + ref) and a declarative `visible` prop (drives present/dismiss via `useEffect`) so legacy `<Modal visible={x}>` call-sites swap with minimal change. Props: `snapPoints`, `enableDynamicSizing` (default true), `enablePanDownToClose`, `onDismiss`, `title`, `showCloseButton`, `scrollable` (default true), `contentPadding` (default `spacing.lg`), `visible`.
+*   **Round-9 Migration**: All `<Modal animationType="slide">` instances across the 20 target files converted to `AppBottomSheet` (98 modals total). `<Modal animationType="fade">` centered dialogs and full-screen photo/video viewers are intentionally retained as native modals. Files: `app/more/create-job.tsx`, `whs-hub.tsx`, `team-management.tsx`, `inventory.tsx`, `equipment.tsx`, `expenses.tsx`, `team-groups.tsx`, `time-tracking.tsx`, `service-reminders.tsx`, `collect-payment.tsx`, `invoice/[id].tsx`, `quote/new.tsx`, `quote/[id].tsx`, `invoice/new.tsx`, `app/job/[id].tsx`, and components `SubcontractorDashboard`, `CustomFormBuilder`, `FormRenderer`, `PhotoLibrary`, `AIPhotoAnalysis`.
+
 ### Production Hardening (May 2026)
 *   **Database Pool**: Reduced max connections from 30 to 15 for Neon serverless compatibility, added min:2, 20s idle timeout, pool error event handler, and 30s per-connection statement_timeout via `pool.on('connect')`.
 *   **Error Alert Fix**: Logger alert emails now correctly import `sendEmail` from `emailService.ts` (was importing non-existent `sendEmailViaIntegration` — the cascading "sendEmailViaIntegration2 is not a function" error in production).

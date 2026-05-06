@@ -19,6 +19,7 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore, useClientsStore, useInvoicesStore } from '../../../src/lib/store';
 import { useTheme, ThemeColors, getVisibleButtonColors } from '../../../src/lib/theme';
+import { AppBottomSheet } from '../../../src/components/ui/AppBottomSheet';
 import api from '../../../src/lib/api';
 import offlineStorage, { useOfflineStore } from '../../../src/lib/offline-storage';
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
@@ -1621,15 +1622,16 @@ export default function NewInvoiceScreen() {
       </View>
 
       {/* Client Picker Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showClientPicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => {
+        onDismiss={() => {
           setShowClientPicker(false);
           setShowQuickAddClient(false);
           setQuickAddForm({ name: '', email: '', phone: '' });
         }}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -1760,14 +1762,15 @@ export default function NewInvoiceScreen() {
             </ScrollView>
           )}
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Line Item Editor Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showLineItemEditor}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowLineItemEditor(false)}
+        onDismiss={() => setShowLineItemEditor(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -1832,14 +1835,15 @@ export default function NewInvoiceScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Catalog Picker Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showCatalog}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => { setShowCatalog(false); setCatalogSearch(''); }}
+        onDismiss={() => { setShowCatalog(false); setCatalogSearch(''); }}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -1967,14 +1971,15 @@ export default function NewInvoiceScreen() {
             })()}
           </ScrollView>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Recurrence Frequency Picker Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showRecurrenceOptions}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowRecurrenceOptions(false)}
+        onDismiss={() => setShowRecurrenceOptions(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
         <TouchableOpacity 
           style={styles.frequencyModalOverlay}
@@ -2022,7 +2027,7 @@ export default function NewInvoiceScreen() {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
-      </Modal>
+      </AppBottomSheet>
     </>
   );
 }

@@ -17,6 +17,7 @@ import {
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
@@ -2480,9 +2481,14 @@ export default function TeamManagementScreen() {
         )}
 
         {/* Unified Invite Modal */}
-        <Modal
-      onRequestClose={() => setShowInviteModal(false)} visible={showInviteModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
+        <AppBottomSheet
+          visible={showInviteModal}
+          onDismiss={() => setShowInviteModal(false)}
+          snapPoints={['85%']}
+          scrollable={false}
+          contentPadding={0}
+        >
+          <View style={{ flex: 1 }}>
             <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View testID="modal-invite" style={styles.modalContent}>
               <View style={styles.modalHeader}>
@@ -2696,12 +2702,17 @@ export default function TeamManagementScreen() {
             </View>
             </KeyboardAvoidingView>
           </View>
-        </Modal>
+        </AppBottomSheet>
 
         {/* Member Detail Modal */}
-        <Modal
-      onRequestClose={() => setShowDetailModal(false)} visible={showDetailModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
+        <AppBottomSheet
+        visible={showDetailModal}
+        onDismiss={() => setShowDetailModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+          <View style={{ flex: 1 }}>
             <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
@@ -2925,12 +2936,17 @@ export default function TeamManagementScreen() {
             </View>
             </KeyboardAvoidingView>
           </View>
-        </Modal>
+        </AppBottomSheet>
 
         {/* Edit Member Modal */}
-        <Modal
-      onRequestClose={() => setShowEditModal(false)} visible={showEditModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
+        <AppBottomSheet
+        visible={showEditModal}
+        onDismiss={() => setShowEditModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+          <View style={{ flex: 1 }}>
             <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View testID="modal-edit" style={styles.modalContent}>
               <View style={styles.modalHeader}>
@@ -3016,12 +3032,17 @@ export default function TeamManagementScreen() {
             </View>
             </KeyboardAvoidingView>
           </View>
-        </Modal>
+        </AppBottomSheet>
 
         {/* Permissions Modal */}
-        <Modal
-      onRequestClose={() => setShowPermissionsModal(false)} visible={showPermissionsModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
+        <AppBottomSheet
+        visible={showPermissionsModal}
+        onDismiss={() => setShowPermissionsModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+          <View style={{ flex: 1 }}>
             <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View testID="modal-permissions" style={styles.modalContent}>
               <View style={styles.modalHeader}>
@@ -3250,12 +3271,17 @@ export default function TeamManagementScreen() {
             </View>
             </KeyboardAvoidingView>
           </View>
-        </Modal>
+        </AppBottomSheet>
 
         {/* Assign Job Modal */}
-        <Modal
-      onRequestClose={() => setShowAssignJobModal(false)} visible={showAssignJobModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
+        <AppBottomSheet
+        visible={showAssignJobModal}
+        onDismiss={() => setShowAssignJobModal(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+          <View style={{ flex: 1 }}>
             <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View testID="modal-assign-job" style={styles.modalContent}>
               <View style={styles.modalHeader}>
@@ -3364,7 +3390,7 @@ export default function TeamManagementScreen() {
             </View>
             </KeyboardAvoidingView>
           </View>
-        </Modal>
+        </AppBottomSheet>
       </View>
     </>
   );

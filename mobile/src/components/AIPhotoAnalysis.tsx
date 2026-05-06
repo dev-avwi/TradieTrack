@@ -14,6 +14,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import api from '../lib/api';
 import { useTheme, ThemeColors } from '../lib/theme';
+import { AppBottomSheet } from './ui/AppBottomSheet';
 import { spacing, radius, typography } from '../lib/design-tokens';
 
 interface Photo {
@@ -222,9 +223,14 @@ export function AIPhotoAnalysisModal({
 
   if (!aiEnabled || !aiPhotoAnalysisEnabled) {
     return (
-      <Modal
-      onRequestClose={onClose} visible={visible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <AppBottomSheet
+        visible={visible}
+        onDismiss={onClose}
+        snapPoints={['60%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+        <View style={{ flex: 1 }}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <View style={styles.headerLeft}>
@@ -243,14 +249,19 @@ export function AIPhotoAnalysisModal({
             </View>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   }
 
   return (
-    <Modal
-      onRequestClose={onClose} visible={visible} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
+    <AppBottomSheet
+        visible={visible}
+        onDismiss={onClose}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+      <View style={{ flex: 1 }}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <View style={styles.headerLeft}>
@@ -379,7 +390,7 @@ export function AIPhotoAnalysisModal({
           )}
         </View>
       </View>
-    </Modal>
+    </AppBottomSheet>
   );
 }
 

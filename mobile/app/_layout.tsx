@@ -38,6 +38,8 @@ import { CustomAlertProvider } from '../src/components/CustomAlert';
 import { initGlobalIAP } from '../src/lib/iap-global';
 import Toast from 'react-native-toast-message';
 import { buildToastConfig } from '../src/lib/toast';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -859,21 +861,25 @@ function RootLayoutContent() {
 
 export default function RootLayout() {
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider>
-          <ThemeProvider>
-              <ScrollProvider>
-                <TerminalProvider>
-                  <CustomAlertProvider>
-                    <RootLayoutContent />
-                  </CustomAlertProvider>
-                </TerminalProvider>
-              </ScrollProvider>
-          </ThemeProvider>
-        </SafeAreaProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <SafeAreaProvider>
+            <ThemeProvider>
+                <ScrollProvider>
+                  <TerminalProvider>
+                    <CustomAlertProvider>
+                      <BottomSheetModalProvider>
+                        <RootLayoutContent />
+                      </BottomSheetModalProvider>
+                    </CustomAlertProvider>
+                  </TerminalProvider>
+                </ScrollProvider>
+            </ThemeProvider>
+          </SafeAreaProvider>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }
 

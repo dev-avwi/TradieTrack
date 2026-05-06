@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
+import { AppBottomSheet } from './ui/AppBottomSheet';
 import { spacing, radius, shadows, typography } from '../lib/design-tokens';
 import { api } from '../lib/api';
 
@@ -545,13 +546,14 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
       )}
 
       {/* Field Type Picker Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showFieldPicker}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowFieldPicker(false)}
+        onDismiss={() => setShowFieldPicker(false)}
+        snapPoints={['75%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <View style={styles.modalOverlay}>
+        <View style={{ flex: 1 }}>
           <View style={styles.bottomSheet}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Add Field</Text>
@@ -581,7 +583,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Field Editor Modal */}
       <FieldEditorModal
@@ -596,13 +598,14 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
       />
 
       {/* Category Picker Modal */}
-      <Modal
+      <AppBottomSheet
         visible={showCategoryPicker}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowCategoryPicker(false)}
+        onDismiss={() => setShowCategoryPicker(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
       >
-        <View style={styles.modalOverlay}>
+        <View style={{ flex: 1 }}>
           <View style={styles.bottomSheet}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Select Category</Text>
@@ -638,7 +641,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
             ))}
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     </View>
   );
 }
@@ -693,13 +696,14 @@ function FieldEditorModal({ visible, field, onSave, onClose, colors }: FieldEdit
   if (!field) return null;
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
+    <AppBottomSheet
+        visible={visible}
+        onDismiss={onClose}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+      <View style={{ flex: 1 }}>
         <View style={styles.editorSheet}>
           <View style={styles.sheetHeader}>
             <TouchableOpacity onPress={onClose}>
@@ -790,7 +794,7 @@ function FieldEditorModal({ visible, field, onSave, onClose, colors }: FieldEdit
           </ScrollView>
         </View>
       </View>
-    </Modal>
+    </AppBottomSheet>
   );
 }
 

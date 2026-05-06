@@ -20,6 +20,7 @@ import { TimePicker } from '../../src/components/ui/TimePicker';
 import { useClientsStore, useJobsStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import api from '../../src/lib/api';
 import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 
@@ -395,9 +396,14 @@ function ClientSelector({
   );
 
   return (
-    <Modal
-      onRequestClose={onClose} visible={visible} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
+    <AppBottomSheet
+        visible={visible}
+        onDismiss={onClose}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+      <View style={{ flex: 1 }}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Select Client (Optional)</Text>
@@ -467,7 +473,7 @@ function ClientSelector({
           </ScrollView>
         </View>
       </View>
-    </Modal>
+    </AppBottomSheet>
   );
 }
 
@@ -495,9 +501,14 @@ function StatusSelector({
   ];
 
   return (
-    <Modal
-      onRequestClose={onClose} visible={visible} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
+    <AppBottomSheet
+        visible={visible}
+        onDismiss={onClose}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+      <View style={{ flex: 1 }}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Select Status</Text>
@@ -529,7 +540,7 @@ function StatusSelector({
           </ScrollView>
         </View>
       </View>
-    </Modal>
+    </AppBottomSheet>
   );
 }
 
@@ -1354,9 +1365,14 @@ export default function CreateJobScreen() {
       />
 
       {/* Priority Picker Modal */}
-      <Modal
-      onRequestClose={() => setShowPriorityPicker(false)} visible={showPriorityPicker} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <AppBottomSheet
+        visible={showPriorityPicker}
+        onDismiss={() => setShowPriorityPicker(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+        <View style={{ flex: 1 }}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Priority</Text>
@@ -1390,20 +1406,19 @@ export default function CreateJobScreen() {
             </ScrollView>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Team Member Picker Modal */}
-      <Modal
-      onRequestClose={() => setShowTeamPicker(false)} visible={showTeamPicker} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Assign Team Member</Text>
-              <TouchableOpacity onPress={() => setShowTeamPicker(false)}>
-                <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
-            </View>
-
+      <AppBottomSheet
+        visible={showTeamPicker}
+        onDismiss={() => setShowTeamPicker(false)}
+        title="Assign Team Member"
+        scrollable={false}
+        contentPadding={0}
+      >
+        <View>
+          <View>
+            <View style={{ height: 0 }} />
             <ScrollView style={styles.modalList}>
               <TouchableOpacity
                 style={[styles.clientItem, !assignedToId && styles.clientItemSelected]}
@@ -1460,15 +1475,20 @@ export default function CreateJobScreen() {
             </ScrollView>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
-      <Modal
-      onRequestClose={() => setShowQuickAddClient(false)} visible={showQuickAddClient} animationType="slide" transparent>
+      <AppBottomSheet
+        visible={showQuickAddClient}
+        onDismiss={() => setShowQuickAddClient(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
         >
-          <View style={styles.modalOverlay}>
+          <View style={{ flex: 1 }}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Quick Add Client</Text>
@@ -1542,12 +1562,17 @@ export default function CreateJobScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
-      </Modal>
+      </AppBottomSheet>
 
       {/* Recurrence Options Modal */}
-      <Modal
-      onRequestClose={() => setShowRecurrenceOptions(false)} visible={showRecurrenceOptions} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <AppBottomSheet
+        visible={showRecurrenceOptions}
+        onDismiss={() => setShowRecurrenceOptions(false)}
+        snapPoints={['90%']}
+        scrollable={false}
+        contentPadding={0}
+      >
+        <View style={{ flex: 1 }}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Frequency</Text>
@@ -1588,7 +1613,7 @@ export default function CreateJobScreen() {
             </ScrollView>
           </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     </>
   );
 }
