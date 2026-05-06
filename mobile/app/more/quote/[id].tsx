@@ -25,6 +25,8 @@ import { MobileSendModal } from '../../../src/components/MobileSendModal';
 import { API_URL, api } from '../../../src/lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBottomNavHeight } from '../../../src/components/BottomNav';
+import { showToast } from '../../../src/lib/toast';
+import { Button } from '../../../src/components/ui/Button';
 
 interface LinkedInvoice {
   id: string;
@@ -141,11 +143,11 @@ export default function QuoteDetailScreen() {
             setIsDeleting(true);
             try {
               await api.delete(`/api/quotes/${quote.id}`);
-              Alert.alert('Success', 'Quote deleted successfully');
+              showToast({ type: 'success', message: 'Success', description: 'Quote deleted successfully' });
               router.back();
             } catch (error) {
               console.error('Error deleting quote:', error);
-              Alert.alert('Error', 'Failed to delete quote');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to delete quote' });
             } finally {
               setIsDeleting(false);
             }
@@ -344,11 +346,7 @@ export default function QuoteDetailScreen() {
     const recipientEmail = client?.email;
     
     if (!recipientEmail) {
-      Alert.alert(
-        'No Email Address',
-        'This client does not have an email address on file.',
-        [{ text: 'OK' }]
-      );
+      showToast({ type: 'info', message: 'No Email Address', description: 'This client does not have an email address on file.' });
       return;
     }
     
@@ -366,17 +364,14 @@ export default function QuoteDetailScreen() {
 
       if (response.ok) {
         await loadData();
-        Alert.alert(
-          'Quote Sent!', 
-          `Email sent to ${recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email, PDF preview and delivery status.`
-        );
+        showToast({ type: 'info', message: 'Quote Sent!', description: `Email sent to ${recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email, PDF preview and delivery status.` });
       } else {
         const error = await response.json();
-        Alert.alert('Error', error.error || 'Failed to send quote');
+        showToast({ type: 'error', message: error.error || 'Failed to send quote' });
       }
     } catch (error) {
       if (__DEV__) console.log('Error sending quote:', error);
-      Alert.alert('Error', 'Failed to send quote. Please try again.');
+      showToast({ type: 'error', message: 'Failed to send quote. Please try again.' });
     } finally {
       setIsSendingQuote(false);
     }
@@ -474,11 +469,11 @@ ${businessName}`;
       } else {
         // Fallback: copy link to clipboard
         await Clipboard.setStringAsync(publicUrl);
-        Alert.alert('Email Not Available', `Quote link copied to clipboard:\n${publicUrl}`);
+        showToast({ type: 'info', message: 'Email Not Available', description: `Quote link copied to clipboard:\n${publicUrl}` });
       }
     } catch (error: any) {
       if (__DEV__) console.log('Error composing email:', error);
-      Alert.alert('Error', 'Failed to compose email. Please try again.');
+      showToast({ type: 'error', message: 'Failed to compose email. Please try again.' });
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -542,11 +537,11 @@ ${businessName}`;
           ]
         );
       } else {
-        Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
+        showToast({ type: 'info', message: 'Sharing Not Available', description: 'Sharing is not available on this device.' });
       }
     } catch (error: any) {
       if (__DEV__) console.log('Error sharing as image:', error);
-      Alert.alert('Error', 'Failed to generate image. Try sharing as PDF instead.');
+      showToast({ type: 'error', message: 'Failed to generate image. Try sharing as PDF instead.' });
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -613,18 +608,14 @@ ${businessName}`;
         const canOpen = await Linking.canOpenURL(mailtoUrl);
         if (canOpen) {
           await Linking.openURL(mailtoUrl);
-          Alert.alert(
-            'Note',
-            'Your device doesn\'t support file sharing. Please use "Use JobRunner" option to send with PDF attached.',
-            [{ text: 'OK' }]
-          );
+          showToast({ type: 'info', message: 'Note', description: 'Your device doesn\'t support file sharing. Please use "Use JobRunner" option to send with PDF attached.' });
         } else {
-          Alert.alert('Error', 'Unable to open email app. Please check your email settings.');
+          showToast({ type: 'error', message: 'Unable to open email app. Please check your email settings.' });
         }
       }
     } catch (error: any) {
       if (__DEV__) console.log('Error preparing email:', error);
-      Alert.alert('Error', error.message || 'Failed to prepare email with PDF. Please try "Use JobRunner" option instead.');
+      showToast({ type: 'error', message: error.message || 'Failed to prepare email with PDF. Please try "Use JobRunner" option instead.' });
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -656,10 +647,7 @@ ${businessName}`;
 
       if (!response.ok) {
         // Show tradie-friendly error message from backend
-        Alert.alert(
-          result.title || "Couldn't send email",
-          result.fix || result.message || "Please try again or use your email app instead."
-        );
+        showToast({ type: 'info', message: result.title || "Couldn't send email", description: result.fix || result.message || "Please try again or use your email app instead." });
         return;
       }
 
@@ -667,10 +655,7 @@ ${businessName}`;
       if (result.sent) {
         await loadData();
         setShowEmailCompose(false);
-        Alert.alert(
-          'Quote Sent!',
-          `Email sent to ${result.recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email and delivery status.`
-        );
+        showToast({ type: 'info', message: 'Quote Sent!', description: `Email sent to ${result.recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email and delivery status.` });
         return;
       }
 
@@ -683,15 +668,9 @@ ${businessName}`;
         const canOpen = await Linking.canOpenURL(result.draftUrl);
         if (canOpen) {
           await Linking.openURL(result.draftUrl);
-          Alert.alert(
-            'Gmail Draft Created!',
-            'PDF attached automatically. Review and click Send in Gmail.'
-          );
+          showToast({ type: 'info', message: 'Gmail Draft Created!', description: 'PDF attached automatically. Review and click Send in Gmail.' });
         } else {
-          Alert.alert(
-            'Draft Created',
-            'Your email draft has been created. Open Gmail to review and send.'
-          );
+          showToast({ type: 'info', message: 'Draft Created', description: 'Your email draft has been created. Open Gmail to review and send.' });
         }
         return;
       }
@@ -699,7 +678,7 @@ ${businessName}`;
       // Fallback - status updated successfully even if email mechanism unclear
       await loadData();
       setShowEmailCompose(false);
-      Alert.alert('Quote Updated', 'Quote has been processed.');
+      showToast({ type: 'info', message: 'Quote Updated', description: 'Quote has been processed.' });
 
     } catch (networkError) {
       if (__DEV__) console.log('Network error sending quote:', networkError);
@@ -722,7 +701,7 @@ ${businessName}`;
               const success = await updateQuoteStatus(id!, 'accepted');
               if (success) {
                 await loadData();
-                Alert.alert('Success', 'Quote marked as accepted');
+                showToast({ type: 'success', message: 'Success', description: 'Quote marked as accepted' });
               }
             } finally {
               setIsMarkingAccepted(false);
@@ -786,11 +765,11 @@ ${businessName}`;
                 ]);
               } else {
                 const error = await response.json();
-                Alert.alert('Error', error.error || 'Failed to create invoice');
+                showToast({ type: 'error', message: 'Error', description: error.error || 'Failed to create invoice' });
               }
             } catch (error) {
               if (__DEV__) console.log('Error creating invoice from quote:', error);
-              Alert.alert('Error', 'Failed to create invoice. Please try again.');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to create invoice. Please try again.' });
             } finally {
               setIsCreatingInvoice(false);
             }
@@ -842,11 +821,11 @@ ${businessName}`;
                 ]);
               } else {
                 const error = await response.json();
-                Alert.alert('Error', error.error || 'Failed to create job');
+                showToast({ type: 'error', message: 'Error', description: error.error || 'Failed to create job' });
               }
             } catch (error) {
               if (__DEV__) console.log('Error creating job from quote:', error);
-              Alert.alert('Error', 'Failed to create job. Please try again.');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to create job. Please try again.' });
             } finally {
               setIsCreatingJob(false);
             }
@@ -864,13 +843,13 @@ ${businessName}`;
       const success = await updateQuoteStatus(id!, 'sent');
       if (success) {
         await loadData();
-        Alert.alert('Success', 'Quote marked as sent');
+        showToast({ type: 'success', message: 'Quote marked as sent' });
       } else {
-        Alert.alert('Error', 'Failed to update quote status');
+        showToast({ type: 'error', message: 'Failed to update quote status' });
       }
     } catch (error) {
       if (__DEV__) console.log('Error marking quote as sent:', error);
-      Alert.alert('Error', 'Failed to update quote status');
+      showToast({ type: 'error', message: 'Failed to update quote status' });
     } finally {
       setIsMarkingSent(false);
     }
@@ -995,12 +974,12 @@ ${businessName}`;
         const fileName = `${quote?.quoteNumber || 'quote'}.pdf`;
         const destUri = `${FileSystem.documentDirectory}${fileName}`;
         await FileSystem.copyAsync({ from: uri, to: destUri });
-        Alert.alert('Saved', `PDF saved to app documents: ${fileName}`);
+        showToast({ type: 'success', message: `PDF saved to app documents: ${fileName}` });
       }
     } catch (error: any) {
       if (__DEV__) console.log('PDF download error:', error);
       const message = error?.message || 'Failed to download PDF. Please try again.';
-      Alert.alert('PDF Download', message);
+      showToast({ type: 'info', message: 'PDF Download', description: message });
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -1023,11 +1002,11 @@ ${businessName}`;
           UTI: 'com.adobe.pdf',
         });
       } else {
-        Alert.alert('Sharing Not Available', 'Sharing is not available on this device. Try saving to device instead.');
+        showToast({ type: 'info', message: 'Sharing Not Available', description: 'Sharing is not available on this device. Try saving to device instead.' });
       }
     } catch (error) {
       if (__DEV__) console.log('Share PDF error:', error);
-      Alert.alert('Error', 'Failed to share PDF. Please try again.');
+      showToast({ type: 'error', message: 'Failed to share PDF. Please try again.' });
     }
   };
 
@@ -1054,11 +1033,11 @@ ${businessName}`;
         const fileName = `${quote?.quoteNumber || 'quote'}.pdf`;
         const destUri = `${FileSystem.documentDirectory}${fileName}`;
         await FileSystem.copyAsync({ from: uri, to: destUri });
-        Alert.alert('Saved', `PDF saved to app documents: ${fileName}`);
+        showToast({ type: 'success', message: `PDF saved to app documents: ${fileName}` });
       }
     } catch (error) {
       if (__DEV__) console.log('Save to device error:', error);
-      Alert.alert('Error', 'Failed to save PDF. Please try again.');
+      showToast({ type: 'error', message: 'Failed to save PDF. Please try again.' });
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -1076,17 +1055,17 @@ ${businessName}`;
         const response = await api.post(`/api/quotes/${quote?.id}/generate-token`);
         token = response.data?.acceptanceToken;
         if (!token) {
-          Alert.alert('Error', 'Could not generate a shareable link. Please try again.');
+          showToast({ type: 'error', message: 'Could not generate a shareable link. Please try again.' });
           return;
         }
       }
       
       const publicUrl = `${API_URL.replace('/api', '')}/q/${token}`;
       await Clipboard.setStringAsync(publicUrl);
-      Alert.alert('Link Copied', 'The quote link has been copied to your clipboard. Share it with your client so they can view and accept the quote online.');
+      showToast({ type: 'info', message: 'Link Copied', description: 'The quote link has been copied to your clipboard. Share it with your client so they can view and accept the quote online.' });
     } catch (error) {
       console.error('Failed to copy link:', error);
-      Alert.alert('Error', 'Failed to copy link to clipboard');
+      showToast({ type: 'error', message: 'Failed to copy link to clipboard' });
     }
   };
 
@@ -1147,12 +1126,12 @@ ${businessName}`;
           title: quote.quoteNumber || 'Quote',
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity 
+              <Button
+                size="icon"
+                variant="ghost"
                 onPress={() => setShowPreview(true)}
-                style={styles.headerButton}
-              >
-                <Feather name="eye" size={22} color={colors.primary} />
-              </TouchableOpacity>
+                icon={<Feather name="eye" size={22} color={colors.primary} />}
+              >{null}</Button>
               <TouchableOpacity 
                 onPress={handleDeleteQuote}
                 style={styles.headerButton}
@@ -1652,106 +1631,88 @@ ${businessName}`;
           {/* Actions */}
           {quote.status === 'draft' && (
             <View style={styles.actionButtonsContainer}>
-              <TouchableOpacity 
-                style={[styles.primaryButton, isSendingQuote && { opacity: 0.6 }]} 
-                onPress={handleSend}
+              <Button
+                size="xl"
+                variant="default"
+                fullWidth
+                loading={isSendingQuote}
                 disabled={isSendingQuote || isMarkingSent}
-                data-testid="button-send-quote-bottom"
+                onPress={handleSend}
+                icon={!isSendingQuote ? <Feather name="send" size={18} color={colors.primaryForeground} /> : undefined}
               >
-                {isSendingQuote ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Feather name="send" size={20} color={colors.white} />
-                )}
-                <Text style={styles.primaryButtonText}>
-                  {isSendingQuote ? 'Sending...' : 'Send to Client'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.secondaryButton, { marginTop: 12 }, isMarkingSent && { opacity: 0.6 }]} 
-                onPress={handleMarkAsSent}
+                {isSendingQuote ? 'Sending...' : 'Send to Client'}
+              </Button>
+              <View style={{ height: 12 }} />
+              <Button
+                size="xl"
+                variant="outline"
+                fullWidth
+                loading={isMarkingSent}
                 disabled={isMarkingSent || isSendingQuote}
-                data-testid="button-mark-sent-bottom"
+                onPress={handleMarkAsSent}
+                icon={!isMarkingSent ? <Feather name="check" size={18} color={colors.foreground} /> : undefined}
               >
-                {isMarkingSent ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Feather name="check" size={20} color={colors.primary} />
-                )}
-                <Text style={styles.secondaryButtonText}>
-                  {isMarkingSent ? 'Updating...' : 'Mark as Sent'}
-                </Text>
-              </TouchableOpacity>
+                {isMarkingSent ? 'Updating...' : 'Mark as Sent'}
+              </Button>
             </View>
           )}
           
           {quote.status === 'sent' && (
             <View style={styles.actionButtonsContainer}>
-              <TouchableOpacity 
-                style={[styles.primaryButton, isSendingQuote && { opacity: 0.6 }]} 
-                onPress={handleSend}
+              <Button
+                size="xl"
+                variant="default"
+                fullWidth
+                loading={isSendingQuote}
                 disabled={isSendingQuote}
+                onPress={handleSend}
+                icon={!isSendingQuote ? <Feather name="send" size={18} color={colors.primaryForeground} /> : undefined}
               >
-                {isSendingQuote ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Feather name="send" size={20} color={colors.white} />
-                )}
-                <Text style={styles.primaryButtonText}>
-                  {isSendingQuote ? 'Sending...' : 'Resend to Client'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.successButton, { marginTop: 12 }, isMarkingAccepted && { opacity: 0.6 }]} 
-                onPress={handleAccept}
+                {isSendingQuote ? 'Sending...' : 'Resend to Client'}
+              </Button>
+              <View style={{ height: 12 }} />
+              <Button
+                size="xl"
+                variant="default"
+                fullWidth
+                loading={isMarkingAccepted}
                 disabled={isMarkingAccepted}
+                onPress={handleAccept}
+                icon={!isMarkingAccepted ? <Feather name="check-circle" size={18} color={colors.primaryForeground} /> : undefined}
               >
-                {isMarkingAccepted ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Feather name="check-circle" size={20} color={colors.white} />
-                )}
-                <Text style={styles.primaryButtonText}>
-                  {isMarkingAccepted ? 'Updating...' : 'Mark as Accepted'}
-                </Text>
-              </TouchableOpacity>
+                {isMarkingAccepted ? 'Updating...' : 'Mark as Accepted'}
+              </Button>
             </View>
           )}
 
           {quote.status === 'accepted' && !linkedJob && (
-            <TouchableOpacity 
-              style={[styles.primaryButton, linkedInvoice && { marginBottom: 0 }]} 
-              onPress={handleConvertToJob}
+            <Button
+              size="xl"
+              variant="default"
+              fullWidth
+              loading={isCreatingJob}
               disabled={isCreatingJob}
-              data-testid="button-create-job-bottom"
+              onPress={handleConvertToJob}
+              icon={!isCreatingJob ? <Feather name="briefcase" size={18} color={colors.primaryForeground} /> : undefined}
             >
-              {isCreatingJob ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <Feather name="briefcase" size={20} color={colors.white} />
-              )}
-              <Text style={styles.primaryButtonText}>
-                {isCreatingJob ? 'Creating Job...' : 'Create Job from Quote'}
-              </Text>
-            </TouchableOpacity>
+              {isCreatingJob ? 'Creating Job...' : 'Create Job from Quote'}
+            </Button>
           )}
           
           {quote.status === 'accepted' && !linkedInvoice && (
-            <TouchableOpacity 
-              style={[styles.primaryButton, { marginTop: linkedJob ? 0 : 12 }]} 
-              onPress={handleConvertToInvoice}
-              disabled={isCreatingInvoice}
-              data-testid="button-create-invoice-bottom"
-            >
-              {isCreatingInvoice ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <Feather name="file-text" size={20} color={colors.white} />
-              )}
-              <Text style={styles.primaryButtonText}>
+            <View style={{ marginTop: linkedJob ? 0 : 12 }}>
+              <Button
+                size="xl"
+                variant="default"
+                fullWidth
+                loading={isCreatingInvoice}
+                disabled={isCreatingInvoice}
+                onPress={handleConvertToInvoice}
+                icon={!isCreatingInvoice ? <Feather name="file-text" size={18} color={colors.primaryForeground} /> : undefined}
+              >
                 {isCreatingInvoice ? 'Creating Invoice...' : 'Convert to Invoice'}
-              </Text>
-            </TouchableOpacity>
+              </Button>
+            </View>
           )}
 
           <View style={{ height: 40 }} />

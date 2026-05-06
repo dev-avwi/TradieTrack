@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
+import { showToast } from '../../src/lib/toast';
 import { format } from 'date-fns';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
 
@@ -266,16 +267,16 @@ export default function ExpensesScreen() {
           }
           if (data.date) setFormDate(new Date(data.date));
 
-          Alert.alert('Receipt Scanned', 'Fields pre-filled from receipt. Review and save.');
+          showToast({ type: 'info', message: 'Receipt Scanned', description: 'Fields pre-filled from receipt. Review and save.' });
         }
       } catch (err: any) {
-        Alert.alert('Scan Failed', err.message || 'Could not read receipt. Fill in manually.');
+        showToast({ type: 'error', message: 'Scan Failed', description: err.message || 'Could not read receipt. Fill in manually.' });
       } finally {
         setIsScanning(false);
       }
     } catch (err) {
       setIsScanning(false);
-      Alert.alert('Error', 'Failed to capture image');
+      showToast({ type: 'error', message: 'Error', description: 'Failed to capture image' });
     }
   };
 
@@ -310,9 +311,9 @@ export default function ExpensesScreen() {
       setShowExpenseModal(false);
       resetForm();
       fetchData();
-      Alert.alert('Success', 'Expense recorded');
+      showToast({ type: 'success', message: 'Success', description: 'Expense recorded' });
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to record expense');
+      showToast({ type: 'error', message: 'Error', description: err.message || 'Failed to record expense' });
     } finally {
       setIsSubmitting(false);
     }
@@ -334,9 +335,9 @@ export default function ExpensesScreen() {
       setNewCategoryName('');
       setNewCategoryDescription('');
       fetchData();
-      Alert.alert('Success', 'Category created');
+      showToast({ type: 'success', message: 'Success', description: 'Category created' });
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to create category');
+      showToast({ type: 'error', message: 'Error', description: err.message || 'Failed to create category' });
     } finally {
       setIsSubmitting(false);
     }
@@ -353,7 +354,7 @@ export default function ExpensesScreen() {
             await api.delete(`/api/expenses/${id}`);
             fetchData();
           } catch (err: any) {
-            Alert.alert('Error', err.message || 'Failed to delete expense');
+            showToast({ type: 'error', message: 'Error', description: err.message || 'Failed to delete expense' });
           }
         },
       },

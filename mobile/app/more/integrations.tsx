@@ -18,6 +18,7 @@ import { useTheme } from '../../src/lib/theme';
 import api from '../../src/lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
+import { showToast } from '../../src/lib/toast';
 
 interface StripeConnectStatus {
   connected: boolean;
@@ -468,18 +469,18 @@ export default function IntegrationsScreen() {
         if (response.data?.url) {
           await Linking.openURL(response.data.url);
         } else if (response.error) {
-          Alert.alert('Connection Error', response.error);
+          showToast({ type: 'info', message: 'Connection Error', description: response.error });
         }
       } else if (!stripeStatus.chargesEnabled) {
         const response = await api.post<{ url: string }>('/api/stripe-connect/account-link', { type: 'account_onboarding' });
         if (response.data?.url) {
           await Linking.openURL(response.data.url);
         } else if (response.error) {
-          Alert.alert('Setup Error', response.error);
+          showToast({ type: 'info', message: 'Setup Error', description: response.error });
         }
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to connect Stripe');
+      showToast({ type: 'error', message: error.message || 'Failed to connect Stripe' });
     } finally {
       setIsConnecting(false);
     }
@@ -505,7 +506,7 @@ export default function IntegrationsScreen() {
       // Get auth URL from backend (this creates a mobile-specific state)
       const response = await api.post<{ authUrl: string; state: string }>('/api/integrations/xero/mobile-connect');
       if (!response.data?.authUrl) {
-        Alert.alert('Error', response.error || 'Could not initiate Xero connection');
+        showToast({ type: 'error', message: response.error || 'Could not initiate Xero connection' });
         return;
       }
       
@@ -522,16 +523,16 @@ export default function IntegrationsScreen() {
         const error = url.searchParams.get('error');
         
         if (success) {
-          Alert.alert('Success', 'Xero account connected successfully!');
+          showToast({ type: 'success', message: 'Xero account connected successfully!' });
           fetchIntegrationStatus();
         } else {
-          Alert.alert('Connection Failed', error || 'Failed to connect Xero account');
+          showToast({ type: 'info', message: 'Connection Failed', description: error || 'Failed to connect Xero account' });
         }
       } else if (result.type === 'cancel') {
         // User cancelled - no alert needed
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to connect Xero');
+      showToast({ type: 'error', message: error.message || 'Failed to connect Xero' });
     } finally {
       setIsConnecting(false);
     }
@@ -549,10 +550,10 @@ export default function IntegrationsScreen() {
           onPress: async () => {
             try {
               await api.post('/api/integrations/xero/disconnect');
-              Alert.alert('Success', 'Xero has been disconnected');
+              showToast({ type: 'success', message: 'Success', description: 'Xero has been disconnected' });
               fetchIntegrationStatus();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to disconnect Xero');
+              showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to disconnect Xero' });
             }
           }
         }
@@ -573,16 +574,13 @@ export default function IntegrationsScreen() {
       
       if (response.data?.success) {
         const { imported = 0, updated = 0, skipped = 0 } = response.data;
-        Alert.alert(
-          'Contacts Synced',
-          `Successfully synced contacts from Xero.\n\n${imported} imported\n${updated} updated\n${skipped} skipped (duplicates)`
-        );
+        showToast({ type: 'info', message: 'Contacts Synced', description: `Successfully synced contacts from Xero.\n\n${imported} imported\n${updated} updated\n${skipped} skipped (duplicates)` });
       } else {
-        Alert.alert('Sync Complete', response.data?.message || 'Contacts synced from Xero');
+        showToast({ type: 'info', message: 'Sync Complete', description: response.data?.message || 'Contacts synced from Xero' });
       }
       fetchIntegrationStatus();
     } catch (error: any) {
-      Alert.alert('Sync Failed', error.response?.data?.error || error.message || 'Failed to sync contacts from Xero');
+      showToast({ type: 'info', message: 'Sync Failed', description: error.response?.data?.error || error.message || 'Failed to sync contacts from Xero' });
     } finally {
       setIsSyncingContacts(false);
     }
@@ -601,16 +599,13 @@ export default function IntegrationsScreen() {
       
       if (response.data?.success) {
         const { pushed = 0, skipped = 0, failed = 0 } = response.data;
-        Alert.alert(
-          'Invoices Pushed',
-          `Successfully pushed invoices to Xero.\n\n${pushed} pushed\n${skipped} skipped (already synced)\n${failed} failed`
-        );
+        showToast({ type: 'info', message: 'Invoices Pushed', description: `Successfully pushed invoices to Xero.\n\n${pushed} pushed\n${skipped} skipped (already synced)\n${failed} failed` });
       } else {
-        Alert.alert('Push Complete', response.data?.message || 'Invoices pushed to Xero');
+        showToast({ type: 'info', message: 'Push Complete', description: response.data?.message || 'Invoices pushed to Xero' });
       }
       fetchIntegrationStatus();
     } catch (error: any) {
-      Alert.alert('Push Failed', error.response?.data?.error || error.message || 'Failed to push invoices to Xero');
+      showToast({ type: 'info', message: 'Push Failed', description: error.response?.data?.error || error.message || 'Failed to push invoices to Xero' });
     } finally {
       setIsPushingInvoices(false);
     }
@@ -621,7 +616,7 @@ export default function IntegrationsScreen() {
       setIsConnectingMyob(true);
       const response = await api.post<{ authUrl: string; state: string }>('/api/integrations/myob/mobile-connect');
       if (!response.data?.authUrl) {
-        Alert.alert('Error', response.error || 'Could not initiate MYOB connection');
+        showToast({ type: 'error', message: response.error || 'Could not initiate MYOB connection' });
         return;
       }
       const result = await WebBrowser.openAuthSessionAsync(
@@ -633,14 +628,14 @@ export default function IntegrationsScreen() {
         const success = url.searchParams.get('success') === 'true';
         const error = url.searchParams.get('error');
         if (success) {
-          Alert.alert('Success', 'MYOB account connected successfully!');
+          showToast({ type: 'success', message: 'MYOB account connected successfully!' });
           fetchIntegrationStatus();
         } else {
-          Alert.alert('Connection Failed', error || 'Failed to connect MYOB account');
+          showToast({ type: 'info', message: 'Connection Failed', description: error || 'Failed to connect MYOB account' });
         }
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to connect MYOB');
+      showToast({ type: 'error', message: error.message || 'Failed to connect MYOB' });
     } finally {
       setIsConnectingMyob(false);
     }
@@ -658,10 +653,10 @@ export default function IntegrationsScreen() {
           onPress: async () => {
             try {
               await api.post('/api/integrations/myob/disconnect');
-              Alert.alert('Success', 'MYOB has been disconnected');
+              showToast({ type: 'success', message: 'Success', description: 'MYOB has been disconnected' });
               fetchIntegrationStatus();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to disconnect MYOB');
+              showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to disconnect MYOB' });
             }
           }
         }
@@ -681,16 +676,13 @@ export default function IntegrationsScreen() {
       }>('/api/integrations/myob/sync');
       if (response.data?.success) {
         const { synced = 0, skipped = 0, failed = 0 } = response.data;
-        Alert.alert(
-          'MYOB Sync Complete',
-          `Successfully synced data with MYOB.\n\n${synced} synced\n${skipped} skipped\n${failed} failed`
-        );
+        showToast({ type: 'info', message: 'MYOB Sync Complete', description: `Successfully synced data with MYOB.\n\n${synced} synced\n${skipped} skipped\n${failed} failed` });
       } else {
-        Alert.alert('Sync Complete', response.data?.message || 'Data synced with MYOB');
+        showToast({ type: 'info', message: 'Sync Complete', description: response.data?.message || 'Data synced with MYOB' });
       }
       fetchIntegrationStatus();
     } catch (error: any) {
-      Alert.alert('Sync Failed', error.response?.data?.error || error.message || 'Failed to sync with MYOB');
+      showToast({ type: 'info', message: 'Sync Failed', description: error.response?.data?.error || error.message || 'Failed to sync with MYOB' });
     } finally {
       setIsSyncingMyob(false);
     }
@@ -701,7 +693,7 @@ export default function IntegrationsScreen() {
       setIsConnectingQuickBooks(true);
       const response = await api.post<{ authUrl: string; state: string }>('/api/integrations/quickbooks/mobile-connect');
       if (!response.data?.authUrl) {
-        Alert.alert('Error', response.error || 'Could not initiate QuickBooks connection');
+        showToast({ type: 'error', message: response.error || 'Could not initiate QuickBooks connection' });
         return;
       }
       const result = await WebBrowser.openAuthSessionAsync(
@@ -713,14 +705,14 @@ export default function IntegrationsScreen() {
         const success = url.searchParams.get('success') === 'true';
         const error = url.searchParams.get('error');
         if (success) {
-          Alert.alert('Success', 'QuickBooks account connected successfully!');
+          showToast({ type: 'success', message: 'QuickBooks account connected successfully!' });
           fetchIntegrationStatus();
         } else {
-          Alert.alert('Connection Failed', error || 'Failed to connect QuickBooks account');
+          showToast({ type: 'info', message: 'Connection Failed', description: error || 'Failed to connect QuickBooks account' });
         }
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to connect QuickBooks');
+      showToast({ type: 'error', message: error.message || 'Failed to connect QuickBooks' });
     } finally {
       setIsConnectingQuickBooks(false);
     }
@@ -738,10 +730,10 @@ export default function IntegrationsScreen() {
           onPress: async () => {
             try {
               await api.post('/api/integrations/quickbooks/disconnect');
-              Alert.alert('Success', 'QuickBooks has been disconnected');
+              showToast({ type: 'success', message: 'Success', description: 'QuickBooks has been disconnected' });
               fetchIntegrationStatus();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to disconnect QuickBooks');
+              showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to disconnect QuickBooks' });
             }
           }
         }
@@ -761,16 +753,13 @@ export default function IntegrationsScreen() {
       }>('/api/integrations/quickbooks/sync');
       if (response.data?.success) {
         const { synced = 0, skipped = 0, failed = 0 } = response.data;
-        Alert.alert(
-          'QuickBooks Sync Complete',
-          `Successfully synced data with QuickBooks.\n\n${synced} synced\n${skipped} skipped\n${failed} failed`
-        );
+        showToast({ type: 'info', message: 'QuickBooks Sync Complete', description: `Successfully synced data with QuickBooks.\n\n${synced} synced\n${skipped} skipped\n${failed} failed` });
       } else {
-        Alert.alert('Sync Complete', response.data?.message || 'Data synced with QuickBooks');
+        showToast({ type: 'info', message: 'Sync Complete', description: response.data?.message || 'Data synced with QuickBooks' });
       }
       fetchIntegrationStatus();
     } catch (error: any) {
-      Alert.alert('Sync Failed', error.response?.data?.error || error.message || 'Failed to sync with QuickBooks');
+      showToast({ type: 'info', message: 'Sync Failed', description: error.response?.data?.error || error.message || 'Failed to sync with QuickBooks' });
     } finally {
       setIsSyncingQuickBooks(false);
     }
@@ -782,19 +771,17 @@ export default function IntegrationsScreen() {
       const response = await api.post<{ success: boolean; message: string; preview?: any }>('/api/integrations/test-sms-preview');
       if (response.data?.success) {
         setShowSmsPreview(true);
-        Alert.alert(
-          'SMS Preview',
-          `This is how your SMS notifications will appear:\n\n"Hi [Client Name], reminder: Your appointment with ${businessSettings?.businessName || 'Your Business'} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm."\n\nNote: Connect your Twilio account to send real SMS messages.`,
-          [{ text: 'Got it', onPress: () => setShowSmsPreview(false) }]
-        );
+        showToast({
+          type: 'info',
+          message: 'SMS Preview',
+          description: `Hi [Client Name], reminder: Your appointment with ${businessSettings?.businessName || 'Your Business'} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm. Note: Connect Twilio to send real SMS.`,
+        });
+        setShowSmsPreview(false);
       } else {
-        Alert.alert('SMS Preview', response.data?.message || 'SMS preview shown');
+        showToast({ type: 'info', message: 'SMS Preview', description: response.data?.message || 'SMS preview shown' });
       }
     } catch (error: any) {
-      Alert.alert(
-        'SMS Preview',
-        `This is how your SMS notifications will appear:\n\n"Hi [Client Name], reminder: Your appointment with ${businessSettings?.businessName || 'Your Business'} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm."\n\nNote: Connect your Twilio credentials to send real messages.`
-      );
+      showToast({ type: 'info', message: 'SMS Preview', description: `This is how your SMS notifications will appear:\n\n"Hi [Client Name], reminder: Your appointment with ${businessSettings?.businessName || 'Your Business'} is scheduled for tomorrow at 9:00 AM. Reply YES to confirm."\n\nNote: Connect your Twilio credentials to send real messages.` });
     } finally {
       setIsSendingTestSms(false);
     }
@@ -823,19 +810,19 @@ export default function IntegrationsScreen() {
             if (statusCheck.data?.connected) {
               setGoogleCalendarStatus(statusCheck.data);
             }
-            Alert.alert('Success', 'Google Calendar connected successfully!');
+            showToast({ type: 'success', message: 'Google Calendar connected successfully!' });
             fetchIntegrationStatus();
           } else {
-            Alert.alert('Connection Failed', error || 'Failed to connect Google Calendar');
+            showToast({ type: 'info', message: 'Connection Failed', description: error || 'Failed to connect Google Calendar' });
           }
         } else if (result.type === 'dismiss' || result.type === 'cancel') {
           // User cancelled OAuth flow - no action needed
         }
       } else {
-        Alert.alert('Error', 'Could not initiate Google Calendar connection');
+        showToast({ type: 'error', message: 'Could not initiate Google Calendar connection' });
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to connect Google Calendar');
+      showToast({ type: 'error', message: error.message || 'Failed to connect Google Calendar' });
     } finally {
       setIsConnectingCalendar(false);
     }
@@ -853,10 +840,10 @@ export default function IntegrationsScreen() {
           onPress: async () => {
             try {
               await api.post('/api/integrations/google-calendar/disconnect');
-              Alert.alert('Success', 'Google Calendar has been disconnected');
+              showToast({ type: 'success', message: 'Success', description: 'Google Calendar has been disconnected' });
               fetchIntegrationStatus();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to disconnect Google Calendar');
+              showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to disconnect Google Calendar' });
             }
           }
         }
@@ -877,16 +864,13 @@ export default function IntegrationsScreen() {
       
       if (response.data?.success) {
         const { synced = 0, skipped = 0, failed = 0 } = response.data;
-        Alert.alert(
-          'Jobs Synced to Calendar',
-          `Successfully synced your jobs to Google Calendar.\n\n${synced} synced\n${skipped} skipped (already synced or no date)\n${failed} failed`
-        );
+        showToast({ type: 'info', message: 'Jobs Synced to Calendar', description: `Successfully synced your jobs to Google Calendar.\n\n${synced} synced\n${skipped} skipped (already synced or no date)\n${failed} failed` });
       } else {
-        Alert.alert('Sync Complete', response.data?.message || 'Jobs synced to Google Calendar');
+        showToast({ type: 'info', message: 'Sync Complete', description: response.data?.message || 'Jobs synced to Google Calendar' });
       }
       fetchIntegrationStatus();
     } catch (error: any) {
-      Alert.alert('Sync Failed', error.response?.data?.error || error.message || 'Failed to sync jobs to Google Calendar');
+      showToast({ type: 'info', message: 'Sync Failed', description: error.response?.data?.error || error.message || 'Failed to sync jobs to Google Calendar' });
     } finally {
       setIsSyncingAllJobs(false);
     }

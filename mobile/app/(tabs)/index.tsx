@@ -35,6 +35,8 @@ import { TrustBanner } from '../../src/components/ui/TrustBanner';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import UsageLimitBanner from '../../src/components/UsageLimitBanner';
 import { SubcontractorDashboard } from '../../src/components/SubcontractorDashboard';
+import { showToast } from '../../src/lib/toast';
+import { Button } from '../../src/components/ui/Button';
 
 interface WeatherData {
   temperature: number;
@@ -224,9 +226,12 @@ function WeatherWidget() {
           <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.lg + insets.bottom, maxHeight: '70%' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: colors.foreground }}>Weather Settings</Text>
-              <TouchableOpacity onPress={() => setShowSettings(false)} style={{ padding: spacing.xs }}>
-                <Feather name="x" size={22} color={colors.foreground} />
-              </TouchableOpacity>
+              <Button
+                size="icon"
+                variant="ghost"
+                onPress={() => setShowSettings(false)}
+                icon={<Feather name="x" size={22} color={colors.foreground} />}
+              >{null}</Button>
             </View>
 
             <TouchableOpacity
@@ -316,9 +321,12 @@ function WeatherWidget() {
             </View>
           </View>
         </View>
-        <TouchableOpacity onPress={() => setShowSettings(true)} style={{ padding: spacing.xs }} activeOpacity={0.7}>
-          <Feather name="settings" size={16} color={colors.mutedForeground} />
-        </TouchableOpacity>
+        <Button
+          size="icon"
+          variant="ghost"
+          onPress={() => setShowSettings(true)}
+          icon={<Feather name="settings" size={16} color={colors.mutedForeground} />}
+        >{null}</Button>
       </View>
       {settings.mode === 'manual' && settings.manualCity && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.xs }}>
@@ -571,14 +579,14 @@ function TimeTrackingWidget() {
       }
       const success = await storeStartTimer(job.id, job.title);
       if (success) {
-        Alert.alert('Job Started', `Now tracking time for "${job.title}"`);
+        showToast({ type: 'info', message: 'Job Started', description: `Now tracking time for "${job.title}"` });
         loadDashboardData();
         loadTodaysJobs();
       } else {
-        Alert.alert('Error', 'Failed to start timer');
+        showToast({ type: 'error', message: 'Failed to start timer' });
       }
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to start job');
+      showToast({ type: 'error', message: 'Failed to start job' });
     } finally {
       setIsStartingTimer(null);
     }
@@ -593,10 +601,10 @@ function TimeTrackingWidget() {
       if (!isOnline) {
         const success = await storeStartTimer(job.id, job.title);
         if (success) {
-          Alert.alert('Timer Started Offline', `Tracking time for "${job.title}". Will sync when back online.`);
+          showToast({ type: 'info', message: 'Timer Started Offline', description: `Tracking time for "${job.title}". Will sync when back online.` });
           loadDashboardData();
         } else {
-          Alert.alert('Error', 'Failed to start timer');
+          showToast({ type: 'error', message: 'Failed to start timer' });
         }
         setIsStartingTimer(null);
         return;
@@ -605,10 +613,10 @@ function TimeTrackingWidget() {
       if (job.status === 'in_progress') {
         const success = await storeStartTimer(job.id, job.title);
         if (success) {
-          Alert.alert('Timer Started', `Tracking time for "${job.title}"`);
+          showToast({ type: 'info', message: 'Timer Started', description: `Tracking time for "${job.title}"` });
           loadDashboardData();
         } else {
-          Alert.alert('Error', 'Failed to start timer');
+          showToast({ type: 'error', message: 'Failed to start timer' });
         }
         setIsStartingTimer(null);
         return;
@@ -653,7 +661,7 @@ function TimeTrackingWidget() {
         ]
       );
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to start job');
+      showToast({ type: 'error', message: 'Failed to start job' });
       setIsStartingTimer(null);
     }
   };
@@ -738,10 +746,10 @@ function TimeTrackingWidget() {
     try {
       const success = await storePauseTimer();
       if (!success) {
-        Alert.alert('Error', 'Failed to start break');
+        showToast({ type: 'error', message: 'Failed to start break' });
       }
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to start break');
+      showToast({ type: 'error', message: 'Failed to start break' });
     } finally {
       setIsPausing(false);
     }
@@ -754,10 +762,10 @@ function TimeTrackingWidget() {
       
       const success = await storeResumeTimer();
       if (!success) {
-        Alert.alert('Error', 'Failed to resume work');
+        showToast({ type: 'error', message: 'Failed to resume work' });
       }
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to resume work');
+      showToast({ type: 'error', message: 'Failed to resume work' });
     } finally {
       setIsPausing(false);
     }
@@ -784,14 +792,14 @@ function TimeTrackingWidget() {
                 await offlineStorage.discardLocalTimeEntry(activeTimer.id);
                 useTimeTrackingStore.setState({ activeTimer: null });
                 fetchActiveTimer();
-                Alert.alert('Timer Cancelled', 'Time was not recorded');
+                showToast({ type: 'success', message: 'Timer Cancelled', description: 'Time was not recorded' });
                 loadDashboardData();
                 setIsCancelling(false);
                 return;
               }
 
               if (!isOnline) {
-                Alert.alert('Offline', 'Cannot cancel a synced timer while offline. Stop it instead — you can edit or delete the entry once back online.');
+                showToast({ type: 'info', message: 'Offline', description: 'Cannot cancel a synced timer while offline. Stop it instead — you can edit or delete the entry once back online.' });
                 setIsCancelling(false);
                 return;
               }
@@ -801,10 +809,10 @@ function TimeTrackingWidget() {
               
               // Refresh from store to clear activeTimer
               fetchActiveTimer();
-              Alert.alert('Timer Cancelled', 'Time was not recorded');
+              showToast({ type: 'success', message: 'Timer Cancelled', description: 'Time was not recorded' });
               loadDashboardData();
             } catch (error: any) {
-              Alert.alert('Error', 'Failed to cancel timer');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to cancel timer' });
             } finally {
               setIsCancelling(false);
             }
@@ -824,7 +832,7 @@ function TimeTrackingWidget() {
         await offlineStorage.stopTimeEntryOffline(activeTimer.id);
         // Refresh from store to update state
         fetchActiveTimer();
-        Alert.alert('Saved Offline', 'Time entry will sync when online');
+        showToast({ type: 'info', message: 'Saved Offline', description: 'Time entry will sync when online' });
         loadDashboardData();
         return;
       }
@@ -833,19 +841,19 @@ function TimeTrackingWidget() {
       const success = await storeStopTimer();
       
       if (success) {
-        Alert.alert('Timer Stopped', 'Time has been recorded');
+        showToast({ type: 'info', message: 'Timer Stopped', description: 'Time has been recorded' });
         loadDashboardData();
       } else {
-        Alert.alert('Error', 'Failed to stop timer');
+        showToast({ type: 'error', message: 'Failed to stop timer' });
       }
     } catch (error: any) {
       if (error.message?.includes('Network')) {
         await offlineStorage.stopTimeEntryOffline(activeTimer.id);
         fetchActiveTimer();
-        Alert.alert('Saved Offline', 'Changes will sync when connection restored');
+        showToast({ type: 'info', message: 'Saved Offline', description: 'Changes will sync when connection restored' });
         loadDashboardData();
       } else {
-        Alert.alert('Error', 'Failed to stop timer');
+        showToast({ type: 'error', message: 'Failed to stop timer' });
       }
     } finally {
       setIsStopping(false);
@@ -1069,22 +1077,19 @@ function TimeTrackingWidget() {
           </TouchableOpacity>
         )}
         
-        <TouchableOpacity
-          style={[styles.timerControlButton, styles.stopButton]}
-          onPress={handleStopTimer}
-          disabled={isStopping}
-          activeOpacity={0.8}
-          data-testid="button-stop-timer"
-        >
-          {isStopping ? (
-            <ActivityIndicator size="small" color={colors.white} />
-          ) : (
-            <>
-              <Feather name="check-circle" size={16} color={colors.white} />
-              <Text style={styles.stopButtonText}>Save</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Button
+            size="default"
+            variant="default"
+            fullWidth
+            loading={isStopping}
+            disabled={isStopping}
+            onPress={handleStopTimer}
+            icon={!isStopping ? <Feather name="check-circle" size={16} color={colors.primaryForeground} /> : undefined}
+          >
+            Save
+          </Button>
+        </View>
         
         <TouchableOpacity
           style={[styles.timerControlButton, styles.cancelButton]}
@@ -1509,13 +1514,13 @@ function TodayJobCard({
                 text: 'Open SMS App',
                 onPress: () => {
                   const url = `sms:${client.phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
-                  Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+                  Linking.openURL(url).catch(() => showToast({ type: 'error', message: 'Error', description: 'Could not open SMS app' }));
                 },
               },
             ]
           );
         } else {
-          Alert.alert('SMS Sent', `Message sent to ${client.name || client.phone}`);
+          showToast({ type: 'success', message: 'SMS Sent', description: `Message sent to ${client.name || client.phone}` });
         }
       } catch {
         Alert.alert(
@@ -1527,7 +1532,7 @@ function TodayJobCard({
               text: 'Open SMS App',
               onPress: () => {
                 const url = `sms:${client.phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
-                Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+                Linking.openURL(url).catch(() => showToast({ type: 'error', message: 'Error', description: 'Could not open SMS app' }));
               },
             },
           ]
@@ -2412,7 +2417,7 @@ function OwnerDashboardScreen() {
   // Nearest-neighbor route optimization
   const optimizeRoute = async () => {
     if (jobsWithCoords.length < 2) {
-      Alert.alert('Not Enough Jobs', 'You need at least 2 jobs with addresses to optimize the route.');
+      showToast({ type: 'info', message: 'Not Enough Jobs', description: 'You need at least 2 jobs with addresses to optimize the route.' });
       return;
     }
 
@@ -2465,10 +2470,10 @@ function OwnerDashboardScreen() {
       const jobsWithoutCoords = todaysJobs.filter((job: any) => !job.latitude || !job.longitude);
       setOptimizedJobs([...route, ...jobsWithoutCoords]);
       setIsRouteOptimized(true);
-      Alert.alert('Route Optimized', `Your ${route.length} jobs have been reordered for the most efficient route.`);
+      showToast({ type: 'info', message: 'Route Optimized', description: `Your ${route.length} jobs have been reordered for the most efficient route.` });
     } catch (error) {
       if (__DEV__) console.log('Error optimizing route:', error);
-      Alert.alert('Error', 'Failed to optimize route. Please try again.');
+      showToast({ type: 'error', message: 'Failed to optimize route. Please try again.' });
     } finally {
       setIsOptimizing(false);
     }
@@ -2487,7 +2492,7 @@ function OwnerDashboardScreen() {
         const { openMapsWithAddress } = require('../../src/lib/maps-store');
         openMapsWithAddress(job.address);
       } else {
-        Alert.alert('No Address', 'This job has no address to navigate to.');
+        showToast({ type: 'info', message: 'No Address', description: 'This job has no address to navigate to.' });
       }
       return;
     }
@@ -2502,7 +2507,7 @@ function OwnerDashboardScreen() {
     const validJobs = jobs.filter((job: any) => job.latitude && job.longitude);
     
     if (validJobs.length === 0) {
-      Alert.alert('No Valid Jobs', 'No jobs with valid coordinates to create a route.');
+      showToast({ type: 'info', message: 'No Valid Jobs', description: 'No jobs with valid coordinates to create a route.' });
       return;
     }
 
@@ -2679,7 +2684,7 @@ function OwnerDashboardScreen() {
       
       if (!isOnline) {
         await offlineStorage.updateJobOffline(jobId, { assignedTo: userId });
-        Alert.alert('Saved Offline', 'Assignment will sync when online');
+        showToast({ type: 'info', message: 'Saved Offline', description: 'Assignment will sync when online' });
         setSelectedJob(null);
         await Promise.all([
           fetchTeamData(),
@@ -2691,7 +2696,7 @@ function OwnerDashboardScreen() {
       
       const { default: api } = await import('../../src/lib/api');
       await api.post(`/api/jobs/${jobId}/assign`, { assignedTo: userId });
-      Alert.alert('Success', 'Job assigned successfully');
+      showToast({ type: 'success', message: 'Job assigned successfully' });
       setSelectedJob(null);
       // Refresh all job data across screens for proper sync
       await Promise.all([
@@ -2702,7 +2707,7 @@ function OwnerDashboardScreen() {
     } catch (error: any) {
       if (error.message?.includes('Network')) {
         await offlineStorage.updateJobOffline(jobId, { assignedTo: userId });
-        Alert.alert('Saved Offline', 'Changes will sync when connection restored');
+        showToast({ type: 'info', message: 'Saved Offline', description: 'Changes will sync when connection restored' });
         setSelectedJob(null);
         await Promise.all([
           fetchTeamData(),
@@ -2710,7 +2715,7 @@ function OwnerDashboardScreen() {
           fetchJobs(),
         ]);
       } else {
-        Alert.alert('Error', 'Failed to assign job');
+        showToast({ type: 'error', message: 'Failed to assign job' });
       }
     } finally {
       setIsAssigning(false);
@@ -2733,7 +2738,7 @@ function OwnerDashboardScreen() {
               
               if (!isOnline) {
                 await offlineStorage.updateJobOffline(job.id, { assignedTo: undefined });
-                Alert.alert('Saved Offline', 'Unassignment will sync when online');
+                showToast({ type: 'success', message: 'Saved Offline', description: 'Unassignment will sync when online' });
                 await Promise.all([
                   fetchTeamData(),
                   fetchTodaysJobs(),
@@ -2744,7 +2749,7 @@ function OwnerDashboardScreen() {
               
               const { default: api } = await import('../../src/lib/api');
               await api.post(`/api/jobs/${job.id}/assign`, { assignedTo: null });
-              Alert.alert('Success', 'Job unassigned');
+              showToast({ type: 'success', message: 'Success', description: 'Job unassigned' });
               await Promise.all([
                 fetchTeamData(),
                 fetchTodaysJobs(),
@@ -2753,14 +2758,14 @@ function OwnerDashboardScreen() {
             } catch (error: any) {
               if (error.message?.includes('Network')) {
                 await offlineStorage.updateJobOffline(job.id, { assignedTo: undefined });
-                Alert.alert('Saved Offline', 'Changes will sync when connection restored');
+                showToast({ type: 'success', message: 'Saved Offline', description: 'Changes will sync when connection restored' });
                 await Promise.all([
                   fetchTeamData(),
                   fetchTodaysJobs(),
                   fetchJobs(),
                 ]);
               } else {
-                Alert.alert('Error', 'Failed to unassign job');
+                showToast({ type: 'error', message: 'Error', description: 'Failed to unassign job' });
               }
             } finally {
               setIsAssigning(false);
@@ -2815,7 +2820,7 @@ function OwnerDashboardScreen() {
               await updateJobStatus(jobId, 'in_progress');
               router.push(`/job/${jobId}`);
             } catch (error) {
-              Alert.alert('Error', 'Failed to start job');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to start job' });
             } finally {
               setIsUpdating(false);
             }
@@ -2846,7 +2851,7 @@ function OwnerDashboardScreen() {
               if (!isOnline) {
                 if (clientId) {
                   await offlineStorage.queueOnMyWayNotification(jobId);
-                  Alert.alert('Saved Offline', 'On my way notification will be sent when online');
+                  showToast({ type: 'success', message: 'Saved Offline', description: 'On my way notification will be sent when online' });
                 }
                 router.push(`/job/${jobId}`);
                 return;
@@ -2855,19 +2860,15 @@ function OwnerDashboardScreen() {
               if (clientId) {
                 const response = await api.post(`/api/jobs/${jobId}/on-my-way`);
                 if ((response.data as any)?.demoMode) {
-                  Alert.alert(
-                    'SMS Not Configured',
-                    'Twilio SMS is not set up. The "On My Way" action was logged but no message was sent to the client.\n\nSet up Twilio in Settings > Integrations to enable real SMS notifications.',
-                    [{ text: 'OK', onPress: () => router.push(`/job/${jobId}`) }]
-                  );
+                  showToast({ type: 'info', message: 'SMS Not Configured', description: 'Twilio SMS is not set up. The "On My Way" action was logged but no message was sent to the client.\n\nSet up Twilio in Settings > Integrations to enable real SMS notifications.' });
+                  router.push(`/job/${jobId}`);
                 } else {
                   const eta = (response.data as any)?.estimatedMinutes;
                   const dist = (response.data as any)?.distanceKm;
                   const etaSource = (response.data as any)?.etaSource;
                   const etaInfo = (eta && etaSource !== 'default') ? `\nETA: ~${eta} min${dist ? ` (${dist.toFixed(1)} km)` : ''}` : '';
-                  Alert.alert('En Route', `Client has been notified you're on your way.${etaInfo}`, [
-                    { text: 'OK', onPress: () => router.push(`/job/${jobId}`) }
-                  ]);
+                  showToast({ type: 'success', message: 'En Route', description: `Client has been notified you're on your way.${etaInfo}` });
+                  router.push(`/job/${jobId}`);
                 }
               } else {
                 router.push(`/job/${jobId}`);
@@ -2875,7 +2876,7 @@ function OwnerDashboardScreen() {
             } catch (error: any) {
               if (error.message?.includes('Network') && clientId) {
                 await offlineStorage.queueOnMyWayNotification(jobId);
-                Alert.alert('Saved Offline', 'Notification will be sent when connection restored');
+                showToast({ type: 'success', message: 'Saved Offline', description: 'Notification will be sent when connection restored' });
               }
               router.push(`/job/${jobId}`);
             } finally {
@@ -2903,7 +2904,7 @@ function OwnerDashboardScreen() {
               // Navigate to job detail page for final review
               router.push(`/job/${jobId}`);
             } catch (error) {
-              Alert.alert('Error', 'Failed to complete job');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to complete job' });
             } finally {
               setIsUpdating(false);
             }
@@ -3078,7 +3079,7 @@ function OwnerDashboardScreen() {
                       await api.post('/api/worker/state', { state: btn.state });
                       setWorkerState({ state: btn.state, note: null });
                     } catch {
-                      Alert.alert('Error', 'Failed to update status');
+                      showToast({ type: 'error', message: 'Failed to update status' });
                     }
                   }}
                 >
@@ -3145,13 +3146,13 @@ function OwnerDashboardScreen() {
                         try {
                           const response = await api.post('/api/onboarding/clear-demo-data');
                           if (response.error) {
-                            Alert.alert('Error', response.error);
+                            showToast({ type: 'error', message: 'Error', description: response.error });
                           } else {
                             await refreshUser();
                             refreshData();
                           }
                         } catch (error: any) {
-                          Alert.alert('Error', error.message || 'Failed to clear sample data');
+                          showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to clear sample data' });
                         } finally {
                           setIsClearingDemo(false);
                         }

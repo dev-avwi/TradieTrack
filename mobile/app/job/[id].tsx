@@ -60,6 +60,7 @@ import offlineStorage, { useOfflineStore } from '../../src/lib/offline-storage';
 import { getJobUrgency } from '../../src/lib/jobUrgency';
 import { useIntegrationHealth } from '../../src/hooks/useIntegrationHealth';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
+import { showToast } from '../../src/lib/toast';
 
 interface Job {
   id: string;
@@ -2294,7 +2295,7 @@ export default function JobDetailScreen() {
 
   useEffect(() => {
     if (timerError) {
-      Alert.alert('Timer Error', timerError);
+      showToast({ type: 'info', message: 'Timer Error', description: timerError });
     }
   }, [timerError]);
 
@@ -2394,11 +2395,11 @@ export default function JobDetailScreen() {
   const handleInviteSubcontractor = async () => {
     if (!id) return;
     if (!subcontractorForm.contactName.trim()) {
-      Alert.alert('Error', 'Please enter a name');
+      Alert.alert('Please enter a name');
       return;
     }
     if (!subcontractorForm.contactPhone.trim() && !subcontractorForm.contactEmail.trim()) {
-      Alert.alert('Error', 'Please enter a phone number or email');
+      Alert.alert('Please enter a phone number or email');
       return;
     }
 
@@ -2420,9 +2421,9 @@ export default function JobDetailScreen() {
       });
 
       if (res.error) {
-        Alert.alert('Error', res.error);
+        showToast({ type: 'error', message: res.error });
       } else {
-        Alert.alert('Success', 'Subcontractor invite sent successfully');
+        showToast({ type: 'success', message: 'Subcontractor invite sent successfully' });
         setShowSubcontractorModal(false);
         setSubcontractorForm({
           contactName: '',
@@ -2436,7 +2437,7 @@ export default function JobDetailScreen() {
         loadSubcontractorTokens();
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to send invite');
+      showToast({ type: 'error', message: 'Failed to send invite' });
     } finally {
       setIsSavingSubcontractor(false);
     }
@@ -2456,7 +2457,7 @@ export default function JobDetailScreen() {
               await api.delete(`/api/jobs/${id}/subcontractor-tokens/${tokenId}`);
               loadSubcontractorTokens();
             } catch (e) {
-              Alert.alert('Error', 'Failed to revoke access');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to revoke access' });
             }
           },
         },
@@ -2562,10 +2563,10 @@ export default function JobDetailScreen() {
         throw new Error(err.error || 'Upload failed');
       }
 
-      Alert.alert('Success', 'Document uploaded');
+      showToast({ type: 'success', message: 'Document uploaded' });
       loadUploadedDocuments();
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to upload document');
+      showToast({ type: 'error', message: e.message || 'Failed to upload document' });
     } finally {
       setIsUploadingDocument(false);
     }
@@ -2584,12 +2585,12 @@ export default function JobDetailScreen() {
             try {
               const res = await api.delete(`/api/jobs/${id}/documents/${doc.id}`);
               if (res.error) {
-                Alert.alert('Error', res.error);
+                showToast({ type: 'error', message: 'Error', description: res.error });
               } else {
                 setUploadedDocuments(prev => prev.filter(d => d.id !== doc.id));
               }
             } catch (e) {
-              Alert.alert('Error', 'Failed to delete document');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to delete document' });
             }
           },
         },
@@ -2601,7 +2602,7 @@ export default function JobDetailScreen() {
     if (doc.fileUrl) {
       Linking.openURL(doc.fileUrl);
     } else {
-      Alert.alert('Error', 'Document URL not available');
+      showToast({ type: 'error', message: 'Document URL not available' });
     }
   }, []);
 
@@ -2651,15 +2652,15 @@ export default function JobDetailScreen() {
         additionalAmount: amount.toFixed(2),
       });
       if (res.error) {
-        Alert.alert('Error', res.error);
+        showToast({ type: 'error', message: res.error });
       } else {
         setShowAddVariationModal(false);
         setVariationForm({ title: '', description: '', reason: '', amount: '' });
         loadVariations();
-        Alert.alert('Success', 'Variation created');
+        showToast({ type: 'success', message: 'Variation created' });
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to create variation');
+      showToast({ type: 'error', message: 'Failed to create variation' });
     } finally {
       setIsSavingVariation(false);
     }
@@ -2669,13 +2670,13 @@ export default function JobDetailScreen() {
     try {
       const res = await api.post(`/api/variations/${variationId}/send`, {});
       if (res.error) {
-        Alert.alert('Error', res.error);
+        showToast({ type: 'error', message: res.error });
       } else {
         loadVariations();
-        Alert.alert('Success', 'Variation sent to client');
+        showToast({ type: 'success', message: 'Variation sent to client' });
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to send variation');
+      showToast({ type: 'error', message: 'Failed to send variation' });
     }
   }, [loadVariations]);
 
@@ -2688,16 +2689,16 @@ export default function JobDetailScreen() {
         approvedBySignature: approveVariationSignature || undefined,
       });
       if (res.error) {
-        Alert.alert('Error', res.error);
+        showToast({ type: 'error', message: res.error });
       } else {
         setShowApproveVariationModal(null);
         setApproveVariationName('');
         setApproveVariationSignature(null);
         loadVariations();
-        Alert.alert('Success', 'Variation approved');
+        showToast({ type: 'success', message: 'Variation approved' });
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to approve variation');
+      showToast({ type: 'error', message: 'Failed to approve variation' });
     } finally {
       setIsApprovingVariation(false);
     }
@@ -2711,15 +2712,15 @@ export default function JobDetailScreen() {
         rejectionReason: rejectVariationReason.trim() || undefined,
       });
       if (res.error) {
-        Alert.alert('Error', res.error);
+        showToast({ type: 'error', message: res.error });
       } else {
         setShowRejectVariationModal(null);
         setRejectVariationReason('');
         loadVariations();
-        Alert.alert('Success', 'Variation rejected');
+        showToast({ type: 'success', message: 'Variation rejected' });
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to reject variation');
+      showToast({ type: 'error', message: 'Failed to reject variation' });
     } finally {
       setIsRejectingVariation(false);
     }
@@ -2811,12 +2812,12 @@ export default function JobDetailScreen() {
           ppeRequirements: [], emergencyContact: '', firstAidLocation: '', hazards: [],
         });
         loadSwmsDocuments();
-        Alert.alert('Success', 'SWMS created successfully');
+        showToast({ type: 'success', message: 'SWMS created successfully' });
       } else if (res.error) {
-        Alert.alert('Error', res.error);
+        showToast({ type: 'error', message: res.error });
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to create SWMS');
+      showToast({ type: 'error', message: 'Failed to create SWMS' });
     } finally {
       setIsSavingSwms(false);
     }
@@ -2870,9 +2871,9 @@ export default function JobDetailScreen() {
           setSignWorkerName('');
           setSwmsSignatureData(null);
           setSigningSwmsId(null);
-          Alert.alert('Saved offline', 'Your SWMS signature will sync automatically when you reconnect.');
+          showToast({ type: 'info', message: 'Saved offline', description: 'Your SWMS signature will sync automatically when you reconnect.' });
         } catch (offErr) {
-          Alert.alert('Error', 'Could not save signature offline.');
+          showToast({ type: 'error', message: 'Could not save signature offline.' });
         }
         setIsSigningSwms(false);
         return;
@@ -2886,17 +2887,17 @@ export default function JobDetailScreen() {
         address,
       });
       if (res.error) {
-        Alert.alert('Error', res.error);
+        showToast({ type: 'error', message: res.error });
       } else {
         setShowSignSwmsModal(false);
         setSignWorkerName('');
         setSwmsSignatureData(null);
         setSigningSwmsId(null);
         loadSwmsDocuments();
-        Alert.alert('Success', 'SWMS signed successfully');
+        showToast({ type: 'success', message: 'SWMS signed successfully' });
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to sign SWMS');
+      showToast({ type: 'error', message: 'Failed to sign SWMS' });
     } finally {
       setIsSigningSwms(false);
     }
@@ -2929,15 +2930,15 @@ export default function JobDetailScreen() {
               UTI: 'com.adobe.pdf',
             });
           } else {
-            Alert.alert('Success', 'PDF saved to device');
+            showToast({ type: 'success', message: 'PDF saved to device' });
           }
         } catch (e) {
-          Alert.alert('Error', 'Failed to save PDF');
+          showToast({ type: 'error', message: 'Failed to save PDF' });
         }
       };
       reader.readAsDataURL(blob);
     } catch (e) {
-      Alert.alert('Error', 'Could not download PDF');
+      showToast({ type: 'error', message: 'Could not download PDF' });
     }
   }, []);
 
@@ -3048,7 +3049,7 @@ export default function JobDetailScreen() {
       }
       setNewMessage('');
     } catch (e) {
-      Alert.alert('Error', 'Failed to send message');
+      showToast({ type: 'error', message: 'Failed to send message' });
     } finally {
       setIsSendingMessage(false);
     }
@@ -3081,7 +3082,7 @@ export default function JobDetailScreen() {
       setEditingMaterial(null);
       setMaterialForm({ name: '', quantity: '1', unitCost: '', unitPrice: '', markupPercent: '', supplier: '', description: '' });
     } catch (e) {
-      Alert.alert('Error', 'Failed to save material');
+      showToast({ type: 'error', message: 'Failed to save material' });
     } finally {
       setIsSavingMaterial(false);
     }
@@ -3101,7 +3102,7 @@ export default function JobDetailScreen() {
               await api.delete(`/api/materials/${material.id}`);
               await loadMaterials();
             } catch (e) {
-              Alert.alert('Error', 'Failed to delete material');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to delete material' });
             }
           },
         },
@@ -3139,7 +3140,7 @@ export default function JobDetailScreen() {
       await api.patch(`/api/materials/${materialId}`, body);
       await loadMaterials();
     } catch (e) {
-      Alert.alert('Error', 'Failed to update material status');
+      showToast({ type: 'error', message: 'Failed to update material status' });
     }
   };
 
@@ -3192,7 +3193,7 @@ export default function JobDetailScreen() {
       setShowAssignModal(false);
       setSelectedWorkerIds(new Set());
     } catch (e) {
-      Alert.alert('Error', 'Failed to assign workers');
+      showToast({ type: 'error', message: 'Failed to assign workers' });
     } finally {
       setIsAssigning(false);
     }
@@ -3213,7 +3214,7 @@ export default function JobDetailScreen() {
               await api.delete(`/api/jobs/${id}/assignments/${workerId}/remove`);
               await Promise.all([loadJob(), loadJobAssignments()]);
             } catch (e) {
-              Alert.alert('Error', 'Failed to remove worker');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to remove worker' });
             }
           },
         },
@@ -3226,9 +3227,9 @@ export default function JobDetailScreen() {
     setIsNudging(workerId);
     try {
       await api.post(`/api/jobs/${id}/nudge-worker`, { workerId });
-      Alert.alert('Sent', 'Heads up notification sent to worker');
+      showToast({ type: 'success', message: 'Heads up notification sent to worker' });
     } catch (e) {
-      Alert.alert('Error', 'Failed to send notification');
+      showToast({ type: 'error', message: 'Failed to send notification' });
     } finally {
       setIsNudging(null);
     }
@@ -3242,7 +3243,7 @@ export default function JobDetailScreen() {
       await Promise.all([loadJob(), loadJobAssignments()]);
       setShowAssignModal(false);
     } catch (e) {
-      Alert.alert('Error', 'Failed to assign worker');
+      showToast({ type: 'error', message: 'Failed to assign worker' });
     } finally {
       setIsAssigning(false);
     }
@@ -3251,11 +3252,11 @@ export default function JobDetailScreen() {
   const handleQuickMagicLink = async () => {
     if (!id) return;
     if (!magicLinkName.trim()) {
-      Alert.alert('Error', 'Please enter a name');
+      Alert.alert('Please enter a name');
       return;
     }
     if (!magicLinkPhone.trim()) {
-      Alert.alert('Error', 'Please enter a phone number');
+      Alert.alert('Please enter a phone number');
       return;
     }
     setIsSendingMagicLink(true);
@@ -3271,15 +3272,12 @@ export default function JobDetailScreen() {
         expiresAt,
       });
       if (res.error) {
-        Alert.alert('Error', res.error);
+        showToast({ type: 'error', message: res.error });
       } else {
         const smsStatus = res.data?.sendResults?.sms;
-        Alert.alert(
-          'Invite Sent',
-          smsStatus !== false
+        showToast({ type: 'info', message: 'Invite Sent', description: smsStatus !== false
             ? `Magic link sent to ${magicLinkName.trim()} via SMS`
-            : `Invite created for ${magicLinkName.trim()}. SMS delivery may be pending.`
-        );
+            : `Invite created for ${magicLinkName.trim()}. SMS delivery may be pending.` });
         setShowAssignModal(false);
         setShowMagicLinkInAssign(false);
         setMagicLinkName('');
@@ -3288,7 +3286,7 @@ export default function JobDetailScreen() {
         loadSubcontractorTokens();
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to send magic link');
+      showToast({ type: 'error', message: 'Failed to send magic link' });
     } finally {
       setIsSendingMagicLink(false);
     }
@@ -3357,9 +3355,9 @@ export default function JobDetailScreen() {
                 const subject = `Invoice ${invoiceNumber}${total ? ` - ${total}` : ''}`;
                 const body = `G'day ${client.name || 'there'},\n\nPlease find your invoice for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and pay your invoice here:\n${API_URL.replace('/api', '')}/invoices/${invoice.id}/pay\n\nThanks for your business!`;
                 await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-                Alert.alert('Email Ready', 'Your email app has opened with the invoice details. Review and send when ready.');
+                showToast({ type: 'info', message: 'Email Ready', description: 'Your email app has opened with the invoice details. Review and send when ready.' });
               } else {
-                Alert.alert('Email Sent', `Invoice email sent to ${client.email}`);
+                showToast({ type: 'success', message: 'Email Sent', description: `Invoice email sent to ${client.email}` });
               }
             } catch {
               const invoiceNumber = (invoice as any)?.number || (invoice.id || '').slice(0, 8);
@@ -3367,12 +3365,12 @@ export default function JobDetailScreen() {
               const subject = `Invoice ${invoiceNumber}${total ? ` - ${total}` : ''}`;
               const body = `G'day ${client.name || 'there'},\n\nPlease find your invoice for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and pay your invoice here:\n${API_URL.replace('/api', '')}/invoices/${invoice.id}/pay\n\nThanks for your business!`;
               await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-              Alert.alert('Email Ready', 'Your email app has opened with the invoice details. Review and send when ready.');
+              showToast({ type: 'info', message: 'Email Ready', description: 'Your email app has opened with the invoice details. Review and send when ready.' });
             }
           } else if (client?.email) {
             await Linking.openURL(`mailto:${client.email}?subject=Invoice for ${job.title}`);
           } else {
-            Alert.alert('No Email', 'This client doesn\'t have an email address on file.');
+            showToast({ type: 'info', message: 'No Email', description: 'This client doesn\'t have an email address on file.' });
           }
           return true;
 
@@ -3389,7 +3387,7 @@ export default function JobDetailScreen() {
               if (smsResponse.error) {
                 fallbackToNativeSms(client.phone, invoiceSmsMessage);
               } else {
-                Alert.alert('SMS Sent', `Invoice SMS sent to ${client.name || client.phone}`);
+                showToast({ type: 'success', message: 'SMS Sent', description: `Invoice SMS sent to ${client.name || client.phone}` });
               }
             } catch {
               fallbackToNativeSms(client.phone, invoiceSmsMessage);
@@ -3409,9 +3407,9 @@ export default function JobDetailScreen() {
                 const subject = `Quote ${quoteNumber}${total ? ` - ${total}` : ''}`;
                 const body = `G'day ${client.name || 'there'},\n\nPlease find your quote for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and accept this quote here:\n${API_URL.replace('/api', '')}/q/${(quote as any)?.acceptanceToken || quote.id}\n\nLet me know if you have any questions!`;
                 await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-                Alert.alert('Email Ready', 'Your email app has opened with the quote details. Review and send when ready.');
+                showToast({ type: 'info', message: 'Email Ready', description: 'Your email app has opened with the quote details. Review and send when ready.' });
               } else {
-                Alert.alert('Email Sent', `Quote email sent to ${client.email}`);
+                showToast({ type: 'success', message: 'Email Sent', description: `Quote email sent to ${client.email}` });
               }
             } catch {
               const quoteNumber = (quote as any)?.number || (quote.id || '').slice(0, 8);
@@ -3419,12 +3417,12 @@ export default function JobDetailScreen() {
               const subject = `Quote ${quoteNumber}${total ? ` - ${total}` : ''}`;
               const body = `G'day ${client.name || 'there'},\n\nPlease find your quote for ${job.title}${total ? ` totalling ${total}` : ''}.\n\nYou can view and accept this quote here:\n${API_URL.replace('/api', '')}/q/${(quote as any)?.acceptanceToken || quote.id}\n\nLet me know if you have any questions!`;
               await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-              Alert.alert('Email Ready', 'Your email app has opened with the quote details. Review and send when ready.');
+              showToast({ type: 'info', message: 'Email Ready', description: 'Your email app has opened with the quote details. Review and send when ready.' });
             }
           } else if (client?.email) {
             await Linking.openURL(`mailto:${client.email}?subject=Quote for ${job.title}`);
           } else {
-            Alert.alert('No Email', 'This client doesn\'t have an email address on file.');
+            showToast({ type: 'info', message: 'No Email', description: 'This client doesn\'t have an email address on file.' });
           }
           return true;
 
@@ -3432,7 +3430,7 @@ export default function JobDetailScreen() {
           if (client?.email) {
             try {
               await api.post(`/api/jobs/${job.id}/send-confirmation`, {});
-              Alert.alert('Success', 'Confirmation email sent');
+              showToast({ type: 'success', message: 'Confirmation email sent' });
             } catch {
               await Linking.openURL(`mailto:${client.email}?subject=Booking Confirmed: ${job.title}`);
             }
@@ -3443,9 +3441,9 @@ export default function JobDetailScreen() {
           if (invoice?.id) {
             try {
               await api.post(`/api/invoices/${invoice.id}/reminder`, {});
-              Alert.alert('Success', 'Payment reminder sent');
+              showToast({ type: 'success', message: 'Payment reminder sent' });
             } catch {
-              Alert.alert('Error', 'Failed to send reminder');
+              showToast({ type: 'error', message: 'Failed to send reminder' });
             }
           }
           return true;
@@ -3458,7 +3456,7 @@ export default function JobDetailScreen() {
           if (invoice?.id) {
             router.push(`/more/collect-payment?invoiceId=${invoice.id}&jobId=${job?.id}`);
           } else {
-            Alert.alert('No Invoice', 'Please create an invoice first to collect payment.');
+            showToast({ type: 'info', message: 'No Invoice', description: 'Please create an invoice first to collect payment.' });
           }
           return true;
 
@@ -3484,7 +3482,7 @@ export default function JobDetailScreen() {
                   if (smsResp.error) {
                     fallbackToNativeSms(client.phone, smsMsg);
                   } else {
-                    Alert.alert('SMS Sent', `Message sent to ${client.name || client.phone}`);
+                    showToast({ type: 'success', message: 'SMS Sent', description: `Message sent to ${client.name || client.phone}` });
                   }
                 } catch {
                   fallbackToNativeSms(client.phone, smsMsg);
@@ -3540,7 +3538,7 @@ export default function JobDetailScreen() {
         }
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to execute actions');
+      showToast({ type: 'error', message: 'Failed to execute actions' });
     } finally {
       setIsExecutingActions(false);
     }
@@ -3699,10 +3697,10 @@ export default function JobDetailScreen() {
       
       await loadVoiceNotes();
       setShowVoiceRecorder(false);
-      Alert.alert('Success', 'Voice note saved');
+      showToast({ type: 'success', message: 'Voice note saved' });
     } catch (error) {
       console.error('Error uploading voice note:', error);
-      Alert.alert('Error', 'Failed to upload voice note');
+      showToast({ type: 'error', message: 'Failed to upload voice note' });
     } finally {
       setIsUploadingVoiceNote(false);
     }
@@ -3759,20 +3757,20 @@ export default function JobDetailScreen() {
               await api.patch(`/api/jobs/${job.id}`, { notes: newNotes });
             }
             
-            Alert.alert('Voice Note Saved', 'Recording transcribed and added to job notes.');
+            showToast({ type: 'info', message: 'Voice Note Saved', description: 'Recording transcribed and added to job notes.' });
           } else {
-            Alert.alert('Voice Note Saved', 'Recording saved. Transcription unavailable.');
+            showToast({ type: 'info', message: 'Voice Note Saved', description: 'Recording saved. Transcription unavailable.' });
           }
         } catch (transcribeError) {
           console.error('Transcription failed:', transcribeError);
-          Alert.alert('Voice Note Saved', 'Recording saved but transcription failed.');
+          showToast({ type: 'info', message: 'Voice Note Saved', description: 'Recording saved but transcription failed.' });
         }
       } else {
-        Alert.alert('Success', 'Voice note saved');
+        showToast({ type: 'success', message: 'Voice note saved' });
       }
     } catch (error) {
       console.error('Error uploading FAB voice note:', error);
-      Alert.alert('Error', 'Failed to upload voice note');
+      showToast({ type: 'error', message: 'Failed to upload voice note' });
     } finally {
       setIsUploadingFABVoice(false);
     }
@@ -3795,7 +3793,7 @@ export default function JobDetailScreen() {
               setVoiceNotes(voiceNotes.filter(v => v.id !== voiceNoteId));
             } catch (error) {
               console.error('Error deleting voice note:', error);
-              Alert.alert('Error', 'Failed to delete voice note');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to delete voice note' });
             }
           },
         },
@@ -3818,11 +3816,11 @@ export default function JobDetailScreen() {
             setIsDeletingJob(true);
             try {
               await api.delete(`/api/jobs/${job.id}`);
-              Alert.alert('Job Deleted', 'The job has been permanently deleted');
+              showToast({ type: 'success', message: 'Job Deleted', description: 'The job has been permanently deleted' });
               router.back();
             } catch (error) {
               console.error('Error deleting job:', error);
-              Alert.alert('Error', 'Failed to delete job');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to delete job' });
             } finally {
               setIsDeletingJob(false);
             }
@@ -3839,12 +3837,12 @@ export default function JobDetailScreen() {
       const response = await api.post(`/api/jobs/${job.id}/clone`);
       if (response.data) {
         const newJob = response.data as Job;
-        Alert.alert('Job Duplicated', `"${newJob.title}" has been created`);
+        showToast({ type: 'info', message: 'Job Duplicated', description: `"${newJob.title}" has been created` });
         router.replace(`/job/${newJob.id}`);
       }
     } catch (error) {
       console.error('Error cloning job:', error);
-      Alert.alert('Error', 'Failed to duplicate job');
+      showToast({ type: 'error', message: 'Failed to duplicate job' });
     } finally {
       setIsCloningJob(false);
     }
@@ -3922,10 +3920,10 @@ export default function JobDetailScreen() {
       setShowSignaturePad(false);
       setSignerRole('client');
       setSaveToClient(true);
-      Alert.alert('Success', 'Signature captured successfully');
+      showToast({ type: 'success', message: 'Signature captured successfully' });
     } catch (error) {
       console.error('Error saving signature:', error);
-      Alert.alert('Error', 'Failed to save signature');
+      showToast({ type: 'error', message: 'Failed to save signature' });
     } finally {
       setIsSavingSignature(false);
     }
@@ -3941,7 +3939,7 @@ export default function JobDetailScreen() {
       return true;
     } catch (error) {
       console.error('Error deleting signature:', error);
-      Alert.alert('Error', 'Failed to delete signature. Please try again.');
+      showToast({ type: 'error', message: 'Failed to delete signature. Please try again.' });
       return false;
     }
   };
@@ -4127,11 +4125,11 @@ export default function JobDetailScreen() {
     try {
       const response = await api.post(`/api/quotes/${quote.id}/convert-to-invoice`, {});
       if (response.data) {
-        Alert.alert('Success', 'Quote converted to invoice successfully');
+        showToast({ type: 'success', message: 'Quote converted to invoice successfully' });
         router.push(`/more/invoice/${response.data.id}`);
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to convert quote to invoice');
+      showToast({ type: 'error', message: error.message || 'Failed to convert quote to invoice' });
     } finally {
       setIsConvertingToInvoice(false);
     }
@@ -4211,14 +4209,14 @@ export default function JobDetailScreen() {
             dialogTitle: 'Share Proof Pack',
           });
         } else {
-          Alert.alert('Success', 'Proof Pack PDF downloaded successfully');
+          showToast({ type: 'success', message: 'Proof Pack PDF downloaded successfully' });
         }
       } else {
-        Alert.alert('Error', 'Failed to generate Proof Pack PDF');
+        showToast({ type: 'error', message: 'Failed to generate Proof Pack PDF' });
       }
     } catch (error: any) {
       console.error('Proof pack error:', error);
-      Alert.alert('Error', error.message || 'Failed to generate Proof Pack');
+      showToast({ type: 'error', message: error.message || 'Failed to generate Proof Pack' });
     } finally {
       setIsGeneratingProofPack(false);
     }
@@ -4244,7 +4242,7 @@ export default function JobDetailScreen() {
         }
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to toggle client portal');
+      showToast({ type: 'error', message: 'Failed to toggle client portal' });
     } finally {
       setIsTogglingPortal(false);
     }
@@ -4257,12 +4255,12 @@ export default function JobDetailScreen() {
       const res = await api.post<any>(`/api/jobs/${job.id}/portal-links`, {});
       if (res.data) {
         setPortalLinks(prev => [...prev, res.data!]);
-        Alert.alert('Success', 'Portal link generated');
+        showToast({ type: 'success', message: 'Portal link generated' });
       } else {
-        Alert.alert('Error', res.error || 'Failed to generate portal link');
+        showToast({ type: 'error', message: res.error || 'Failed to generate portal link' });
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to generate portal link');
+      showToast({ type: 'error', message: 'Failed to generate portal link' });
     } finally {
       setIsGeneratingPortalLink(false);
     }
@@ -4271,9 +4269,9 @@ export default function JobDetailScreen() {
   const handleCopyPortalLink = async (url: string) => {
     try {
       await Clipboard.setStringAsync(url);
-      Alert.alert('Copied', 'Portal link copied to clipboard');
+      showToast({ type: 'success', message: 'Portal link copied to clipboard' });
     } catch {
-      Alert.alert('Share Link', url);
+      showToast({ type: 'info', message: 'Share Link', description: url });
     }
   };
 
@@ -4319,7 +4317,7 @@ export default function JobDetailScreen() {
               const separator = Platform.OS === 'ios' ? '&' : '?';
               await Linking.openURL(`sms:${client.phone}${separator}body=${encodeURIComponent(message)}`);
             } catch {
-              Alert.alert('Error', 'Could not open SMS app');
+              showToast({ type: 'error', message: 'Error', description: 'Could not open SMS app' });
             }
           },
         },
@@ -4351,7 +4349,7 @@ export default function JobDetailScreen() {
             try {
               await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
             } catch {
-              Alert.alert('Error', 'Could not open email app');
+              showToast({ type: 'error', message: 'Error', description: 'Could not open email app' });
             }
           },
         },
@@ -4380,10 +4378,10 @@ export default function JobDetailScreen() {
         setShowProofPackPreview(true);
         setShowProofPackModal(false);
       } else {
-        Alert.alert('Error', 'Failed to load proof pack preview');
+        showToast({ type: 'error', message: 'Failed to load proof pack preview' });
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to load preview');
+      showToast({ type: 'error', message: error.message || 'Failed to load preview' });
     } finally {
       setIsLoadingProofPackPreview(false);
     }
@@ -4421,12 +4419,12 @@ export default function JobDetailScreen() {
                 const { fetchJobs, fetchTodaysJobs } = useJobsStore.getState();
                 fetchJobs();
                 fetchTodaysJobs();
-                Alert.alert('Success', `Status rolled back to "${statusLabels[previousStatus]}"`);
+                showToast({ type: 'success', message: 'Success', description: `Status rolled back to "${statusLabels[previousStatus]}"` });
               } else {
-                Alert.alert('Error', 'Failed to rollback status');
+                showToast({ type: 'error', message: 'Error', description: 'Failed to rollback status' });
               }
             } catch (error) {
-              Alert.alert('Error', 'Failed to rollback status');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to rollback status' });
             }
           },
         },
@@ -4454,7 +4452,7 @@ export default function JobDetailScreen() {
 
   // Payment collection handlers
   const handleTapToPay = () => {
-    Alert.alert('Coming Soon', 'Tap to Pay will be available in a future update. Use QR Code or Payment Link to collect payments now.');
+    showToast({ type: 'info', message: 'Coming Soon', description: 'Tap to Pay will be available in a future update. Use QR Code or Payment Link to collect payments now.' });
   };
 
   const handleQRCode = () => {
@@ -4507,10 +4505,10 @@ export default function JobDetailScreen() {
                 paidAmount: total,
               });
               
-              Alert.alert('Success', 'Cash payment recorded successfully');
+              showToast({ type: 'success', message: 'Success', description: 'Cash payment recorded successfully' });
               handleRefresh();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to record payment');
+              showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to record payment' });
             }
           },
         },
@@ -4561,7 +4559,7 @@ export default function JobDetailScreen() {
     const total = getQuickCollectTotal();
     
     if (total <= 0) {
-      Alert.alert('No Amount', 'Add materials with pricing or a quote to use quick collect.');
+      showToast({ type: 'info', message: 'No Amount', description: 'Add materials with pricing or a quote to use quick collect.' });
       return;
     }
 
@@ -4601,7 +4599,7 @@ export default function JobDetailScreen() {
               const response = await api.post<{ receiptId: string; invoiceId: string }>(`/api/jobs/${job.id}/quick-collect`, body);
               
               if (response.error) {
-                Alert.alert('Error', response.error);
+                showToast({ type: 'error', message: 'Error', description: response.error });
                 return;
               }
               
@@ -4618,7 +4616,7 @@ export default function JobDetailScreen() {
               );
               handleRefresh();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to collect payment');
+              showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to collect payment' });
             } finally {
               setIsQuickCollecting(false);
             }
@@ -4686,7 +4684,7 @@ export default function JobDetailScreen() {
             const url = message 
               ? `sms:${phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`
               : `sms:${phone}`;
-            Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+            Linking.openURL(url).catch(() => showToast({ type: 'error', message: 'Error', description: 'Could not open SMS app' }));
           },
         },
       ]
@@ -4698,7 +4696,7 @@ export default function JobDetailScreen() {
       const phone = client.phone.replace(/\s/g, '');
       const message = `Hi${client.name ? ` ${client.name.split(' ')[0]}` : ''}, just reaching out about ${job?.title || 'your job'}.`;
       const url = `sms:${phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
-      Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+      Linking.openURL(url).catch(() => showToast({ type: 'error', message: 'Could not open SMS app' }));
     }
   };
 
@@ -4734,7 +4732,7 @@ export default function JobDetailScreen() {
       });
 
       if (uploadResult.status !== 200) {
-        Alert.alert('Upload Failed', 'Could not upload the photo. Please try again.');
+        showToast({ type: 'info', message: 'Upload Failed', description: 'Could not upload the photo. Please try again.' });
         return;
       }
 
@@ -4751,10 +4749,10 @@ export default function JobDetailScreen() {
       if (response.error) {
         fallbackToNativeSms(phone, message);
       } else {
-        Alert.alert('MMS Sent', `Photo message sent to ${client.name || phone}`);
+        showToast({ type: 'info', message: 'MMS Sent', description: `Photo message sent to ${client.name || phone}` });
       }
     } catch {
-      Alert.alert('Error', 'Could not send photo message. Please try again.');
+      showToast({ type: 'error', message: 'Could not send photo message. Please try again.' });
     } finally {
       setIsSendingSms(false);
     }
@@ -4820,11 +4818,11 @@ export default function JobDetailScreen() {
                   },
                 ]);
               } else {
-                Alert.alert('Error', 'Failed to duplicate job');
+                showToast({ type: 'error', message: 'Error', description: 'Failed to duplicate job' });
               }
             } catch (error) {
               console.error('Error duplicating job:', error);
-              Alert.alert('Error', 'Failed to duplicate job');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to duplicate job' });
             }
           }
         }
@@ -4852,7 +4850,7 @@ export default function JobDetailScreen() {
             
             if (!isOnline) {
               await offlineStorage.updateJobOffline(job.id, updates);
-              Alert.alert('Saved Offline', 'Changes will sync when online');
+              showToast({ type: 'success', message: 'Saved Offline', description: 'Changes will sync when online' });
               return;
             }
             
@@ -4860,21 +4858,21 @@ export default function JobDetailScreen() {
               const response = await api.patch(`/api/jobs/${job.id}`, updates);
               
               if (response.data) {
-                Alert.alert('Success', 'Recurring schedule stopped');
+                showToast({ type: 'success', message: 'Success', description: 'Recurring schedule stopped' });
               } else {
                 // Revert on failure
                 setJob(job);
-                Alert.alert('Error', 'Failed to stop recurring schedule');
+                showToast({ type: 'error', message: 'Error', description: 'Failed to stop recurring schedule' });
               }
             } catch (error: any) {
               if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
                 await offlineStorage.updateJobOffline(job.id, updates);
-                Alert.alert('Saved Offline', 'Changes will sync when connection is restored');
+                showToast({ type: 'success', message: 'Saved Offline', description: 'Changes will sync when connection is restored' });
               } else {
                 // Revert on error
                 setJob(job);
                 console.error('Error stopping recurring:', error);
-                Alert.alert('Error', 'Failed to stop recurring schedule');
+                showToast({ type: 'error', message: 'Error', description: 'Failed to stop recurring schedule' });
               }
             }
           }
@@ -4893,7 +4891,7 @@ export default function JobDetailScreen() {
       }
       loadTeamTimers();
     } else {
-      Alert.alert('Error', 'Failed to start timer. Please try again.');
+      showToast({ type: 'error', message: 'Failed to start timer. Please try again.' });
     }
   };
 
@@ -4911,7 +4909,7 @@ export default function JobDetailScreen() {
             onPress: async () => {
               const stopped = await stopTimer();
               if (!stopped) {
-                Alert.alert('Error', 'Failed to stop the existing timer. Please try again.');
+                showToast({ type: 'error', message: 'Error', description: 'Failed to stop the existing timer. Please try again.' });
                 return;
               }
               await proceedWithTimerStart();
@@ -4953,7 +4951,7 @@ export default function JobDetailScreen() {
               await loadTimeEntries();
               await loadTeamTimers();
             } else {
-              Alert.alert('Error', 'Failed to stop timer. Please try again.');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to stop timer. Please try again.' });
             }
           }
         }
@@ -4964,14 +4962,14 @@ export default function JobDetailScreen() {
   const handleTakeBreak = async () => {
     const success = await pauseTimer();
     if (!success) {
-      Alert.alert('Error', 'Failed to start break. Please try again.');
+      showToast({ type: 'error', message: 'Failed to start break. Please try again.' });
     }
   };
 
   const handleResumeWork = async () => {
     const success = await resumeTimer();
     if (!success) {
-      Alert.alert('Error', 'Failed to resume work. Please try again.');
+      showToast({ type: 'error', message: 'Failed to resume work. Please try again.' });
     }
   };
 
@@ -5228,7 +5226,7 @@ export default function JobDetailScreen() {
       });
 
       if (response.error) {
-        Alert.alert('Could Not Notify', response.error || 'Failed to send notification to client. You can still navigate manually.');
+        showToast({ type: 'info', message: 'Could Not Notify', description: response.error || 'Failed to send notification to client. You can still navigate manually.' });
         setIsHeadingToNext(false);
         return;
       }
@@ -5257,7 +5255,7 @@ export default function JobDetailScreen() {
         router.push(`/job/${nextJob.id}`);
       }, 500);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to start transition. Please try again.');
+      showToast({ type: 'error', message: error.message || 'Failed to start transition. Please try again.' });
     } finally {
       setIsHeadingToNext(false);
     }
@@ -5272,27 +5270,15 @@ export default function JobDetailScreen() {
       try {
         await offlineStorage.queueOnMyWayNotification(job.id);
         setJob((prev: any) => prev ? { ...prev, workerStatus: 'on_my_way' } : prev);
-        Alert.alert(
-          'Queued',
-          'You\'re offline — the "On My Way" SMS will be sent automatically as soon as you reconnect.',
-          [{ text: 'OK' }]
-        );
+        showToast({ type: 'info', message: 'Queued', description: 'You\'re offline — the "On My Way" SMS will be sent automatically as soon as you reconnect.' });
       } catch (queueErr) {
-        Alert.alert(
-          'Could not queue',
-          'Failed to save "On My Way" for later. Please try again when online.',
-          [{ text: 'OK' }]
-        );
+        showToast({ type: 'info', message: 'Could not queue', description: 'Failed to save "On My Way" for later. Please try again when online.' });
       }
       return;
     }
     
     if (!isSmsReady) {
-      Alert.alert(
-        'SMS Not Configured',
-        'SMS notifications require Twilio setup. Configure in Settings > Integrations.',
-        [{ text: 'OK' }]
-      );
+      showToast({ type: 'info', message: 'SMS Not Configured', description: 'SMS notifications require Twilio setup. Configure in Settings > Integrations.' });
       return;
     }
     
@@ -5319,13 +5305,9 @@ export default function JobDetailScreen() {
       
       if (response.error) {
         if (response.data?.notConfigured) {
-          Alert.alert(
-            'SMS Not Configured',
-            'Twilio SMS is not set up. Set up Twilio in Settings > Integrations to send SMS notifications to clients.',
-            [{ text: 'OK' }]
-          );
+          showToast({ type: 'info', message: 'SMS Not Configured', description: 'Twilio SMS is not set up. Set up Twilio in Settings > Integrations to send SMS notifications to clients.' });
         } else {
-          Alert.alert('Error', response.error);
+          showToast({ type: 'error', message: response.error });
         }
       } else {
         const eta = response.data?.estimatedMinutes;
@@ -5333,11 +5315,11 @@ export default function JobDetailScreen() {
         const etaSource = response.data?.etaSource;
         const etaInfo = (eta && etaSource !== 'default') ? `\nETA: ~${eta} min${dist ? ` (${dist.toFixed(1)} km)` : ''}` : '';
         setJob((prev: any) => prev ? { ...prev, workerStatus: 'on_my_way' } : prev);
-        Alert.alert('En Route', `Client has been notified you're on your way.${etaInfo}`);
+        showToast({ type: 'info', message: 'En Route', description: `Client has been notified you're on your way.${etaInfo}` });
       }
     } catch (error: any) {
       const message = error.response?.data?.message || error.message || 'Failed to send notification. Please try again.';
-      Alert.alert('Error', message);
+      showToast({ type: 'error', message: message });
     } finally {
       setIsSendingOnMyWay(false);
     }
@@ -5424,7 +5406,7 @@ export default function JobDetailScreen() {
         }
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to complete job. Please try again.');
+      showToast({ type: 'error', message: 'Failed to complete job. Please try again.' });
     }
     setIsCompletingJob(false);
   };
@@ -5450,7 +5432,7 @@ export default function JobDetailScreen() {
     if (!isOnline) {
       await offlineStorage.updateJobStatusOffline(job.id, 'scheduled', previousStatus);
       await offlineStorage.updateJobOffline(job.id, { scheduledAt: scheduledAtISO });
-      Alert.alert('Saved Offline', 'Job will be scheduled when online');
+      showToast({ type: 'info', message: 'Saved Offline', description: 'Job will be scheduled when online' });
       return;
     }
     
@@ -5466,23 +5448,23 @@ export default function JobDetailScreen() {
         fetchJobs();
         fetchTodaysJobs();
         
-        Alert.alert('Success', 'Job scheduled successfully');
+        showToast({ type: 'success', message: 'Job scheduled successfully' });
       } else {
         // Revert on failure
         setJob({ ...job, status: previousStatus });
         setShowScheduleModal(true);
-        Alert.alert('Error', 'Failed to schedule job');
+        showToast({ type: 'error', message: 'Failed to schedule job' });
       }
     } catch (error: any) {
       if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
         await offlineStorage.updateJobStatusOffline(job.id, 'scheduled', previousStatus);
         await offlineStorage.updateJobOffline(job.id, { scheduledAt: scheduledAtISO });
-        Alert.alert('Saved Offline', 'Job will be scheduled when connection is restored');
+        showToast({ type: 'info', message: 'Saved Offline', description: 'Job will be scheduled when connection is restored' });
       } else {
         // Revert on error
         setJob({ ...job, status: previousStatus });
         setShowScheduleModal(true);
-        Alert.alert('Error', 'Failed to schedule job. Please try again.');
+        showToast({ type: 'error', message: 'Failed to schedule job. Please try again.' });
       }
     }
   };
@@ -5501,12 +5483,12 @@ export default function JobDetailScreen() {
       const response = await api.patch(`/api/jobs/${job.id}`, { title: newJobTitle.trim() });
       if (response.data) {
         setJob(response.data);
-        Alert.alert('Success', 'Job title updated');
+        showToast({ type: 'success', message: 'Job title updated' });
       }
     } catch (error) {
       // Revert on error
       setJob({ ...job, title: previousTitle });
-      Alert.alert('Error', 'Failed to update job title');
+      showToast({ type: 'error', message: 'Failed to update job title' });
     } finally {
       setIsSavingTitle(false);
     }
@@ -5525,7 +5507,7 @@ export default function JobDetailScreen() {
     
     if (!isOnline) {
       await offlineStorage.updateJobOffline(job.id, { notes: editedNotes });
-      Alert.alert('Saved Offline', 'Notes will sync when online');
+      showToast({ type: 'info', message: 'Saved Offline', description: 'Notes will sync when online' });
       setIsSavingNotes(false);
       return;
     }
@@ -5533,22 +5515,22 @@ export default function JobDetailScreen() {
     try {
       const response = await api.patch(`/api/jobs/${job.id}`, { notes: editedNotes });
       if (response.data) {
-        Alert.alert('Saved', 'Notes updated successfully');
+        showToast({ type: 'success', message: 'Notes updated successfully' });
       } else {
         // Revert on failure
         setJob({ ...job, notes: previousNotes });
         setShowNotesModal(true);
-        Alert.alert('Error', 'Failed to save notes');
+        showToast({ type: 'error', message: 'Failed to save notes' });
       }
     } catch (error: any) {
       if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
         await offlineStorage.updateJobOffline(job.id, { notes: editedNotes });
-        Alert.alert('Saved Offline', 'Notes will sync when connection is restored');
+        showToast({ type: 'info', message: 'Saved Offline', description: 'Notes will sync when connection is restored' });
       } else {
         // Revert on error
         setJob({ ...job, notes: previousNotes });
         setShowNotesModal(true);
-        Alert.alert('Error', 'Failed to save notes. Please try again.');
+        showToast({ type: 'error', message: 'Failed to save notes. Please try again.' });
       }
     }
     setIsSavingNotes(false);
@@ -5599,7 +5581,7 @@ export default function JobDetailScreen() {
           content: `[Site Update] ${siteUpdateNote.trim()}`,
         });
         if (noteRes.error) {
-          Alert.alert('Error', noteRes.error);
+          showToast({ type: 'error', message: noteRes.error });
           setIsSendingSiteUpdate(false);
           return;
         }
@@ -5626,7 +5608,7 @@ export default function JobDetailScreen() {
           },
         });
         if (uploadResult.status < 200 || uploadResult.status >= 300) {
-          Alert.alert('Error', 'Failed to upload photo');
+          showToast({ type: 'error', message: 'Failed to upload photo' });
           setIsSendingSiteUpdate(false);
           return;
         }
@@ -5637,10 +5619,10 @@ export default function JobDetailScreen() {
       setSiteUpdateNote('');
       setSiteUpdatePhotoUri(null);
       loadJob();
-      Alert.alert('Sent', 'Site update posted successfully.');
+      showToast({ type: 'success', message: 'Site update posted successfully.' });
     } catch (error: any) {
       console.error('Site update error:', error);
-      Alert.alert('Error', error.message || 'Failed to post site update. Please try again.');
+      showToast({ type: 'error', message: error.message || 'Failed to post site update. Please try again.' });
     }
     setIsSendingSiteUpdate(false);
   };
@@ -5818,19 +5800,19 @@ export default function JobDetailScreen() {
               await loadPhotos();
             }, 3000);
           }
-          Alert.alert('Success', `${mediaType === 'video' ? 'Video' : 'Photo'} uploaded successfully`);
+          showToast({ type: 'success', message: `${mediaType === 'video' ? 'Video' : 'Photo'} uploaded successfully` });
         } else {
           setPhotos(prev => prev.filter(p => p.id !== tempId));
-          Alert.alert('Error', responseData.error || `Failed to upload ${mediaType}. Please try again.`);
+          showToast({ type: 'error', message: responseData.error || `Failed to upload ${mediaType}. Please try again.` });
         }
       } else {
         setPhotos(prev => prev.filter(p => p.id !== tempId));
-        Alert.alert('Error', `Failed to upload ${mediaType}. Server returned status ${uploadResult.status}`);
+        showToast({ type: 'error', message: `Failed to upload ${mediaType}. Server returned status ${uploadResult.status}` });
       }
     } catch (error: any) {
       console.error('Upload error:', error);
       setPhotos(prev => prev.filter(p => p.id !== tempId));
-      Alert.alert('Error', `Failed to upload ${mediaType}. ${error.message || 'Please try again.'}`);
+      showToast({ type: 'error', message: `Failed to upload ${mediaType}. ${error.message || 'Please try again.'}` });
     }
     setIsUploadingPhoto(false);
   };
@@ -5865,13 +5847,13 @@ export default function JobDetailScreen() {
         if (selectedPhoto?.id === photo.id) {
           setSelectedPhoto({ ...selectedPhoto, category: newCategory });
         }
-        Alert.alert('Success', `Photo category changed to "${newCategory}"`);
+        showToast({ type: 'success', message: `Photo category changed to "${newCategory}"` });
       } else {
-        Alert.alert('Error', 'Failed to update photo category');
+        showToast({ type: 'error', message: 'Failed to update photo category' });
       }
     } catch (error: any) {
       console.error('Update category error:', error);
-      Alert.alert('Error', 'Failed to update photo category');
+      showToast({ type: 'error', message: 'Failed to update photo category' });
     }
   };
 
@@ -5912,7 +5894,7 @@ export default function JobDetailScreen() {
     try {
       const isSharingAvailable = await Sharing.isAvailableAsync();
       if (!isSharingAvailable) {
-        Alert.alert('Not Available', 'Sharing is not available on this device');
+        showToast({ type: 'info', message: 'Not Available', description: 'Sharing is not available on this device' });
         setIsSavingMedia(false);
         return;
       }
@@ -5929,11 +5911,11 @@ export default function JobDetailScreen() {
           dialogTitle: `Save ${isVideo ? 'Video' : 'Photo'} to...`,
         });
       } else {
-        Alert.alert('Error', 'Failed to download media. Please try again.');
+        showToast({ type: 'error', message: 'Failed to download media. Please try again.' });
       }
     } catch (error: any) {
       console.error('Save media error:', error);
-      Alert.alert('Error', `Failed to save ${isVideo ? 'video' : 'photo'}. ${error.message || 'Please try again.'}`);
+      showToast({ type: 'error', message: `Failed to save ${isVideo ? 'video' : 'photo'}. ${error.message || 'Please try again.'}` });
     } finally {
       setIsSavingMedia(false);
     }
@@ -5981,14 +5963,14 @@ export default function JobDetailScreen() {
       if (uploadResult.status >= 200 && uploadResult.status < 300) {
         await loadPhotos();
         setSelectedPhoto(null);
-        Alert.alert('Success', 'Annotated photo saved successfully');
+        showToast({ type: 'success', message: 'Annotated photo saved successfully' });
       } else {
         console.error('Upload failed:', uploadResult.status, uploadResult.body);
-        Alert.alert('Error', 'Failed to save annotated photo. Please try again.');
+        showToast({ type: 'error', message: 'Failed to save annotated photo. Please try again.' });
       }
     } catch (error: any) {
       console.error('Annotated photo upload error:', error);
-      Alert.alert('Error', error.message || 'Failed to upload annotated photo. Please try again.');
+      showToast({ type: 'error', message: error.message || 'Failed to upload annotated photo. Please try again.' });
     }
     setIsUploadingPhoto(false);
   };
@@ -6042,13 +6024,15 @@ export default function JobDetailScreen() {
           {loadError || 'The job may have been deleted or you don\'t have access.'}
         </Text>
         <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-          <TouchableOpacity onPress={loadJob} style={[styles.errorButton, { backgroundColor: colors.primary }]}>
-            <Feather name="refresh-cw" size={16} color={colors.white} style={{ marginRight: 6 }} />
-            <Text style={[styles.errorButtonText, { color: colors.white }]}>Retry</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.back()} style={styles.errorButton}>
-            <Text style={styles.errorButtonText}>Go back</Text>
-          </TouchableOpacity>
+          <Button
+            variant="default"
+            onPress={loadJob}
+            icon={<Feather name="refresh-cw" size={16} color={colors.white} />}
+          >Retry</Button>
+          <Button
+            variant="outline"
+            onPress={() => router.back()}
+          >Go back</Button>
         </View>
       </View>
     );
@@ -6613,12 +6597,12 @@ export default function JobDetailScreen() {
           if (quote?.id && client?.email) {
             try {
               await api.post(`/api/quotes/${quote.id}/send`, { method: 'email' });
-              Alert.alert('Email Sent', `Quote sent to ${client.email}`);
+              showToast({ type: 'success', message: 'Email Sent', description: `Quote sent to ${client.email}` });
             } catch {
-              Alert.alert('Error', 'Could not send quote. Please try again.');
+              showToast({ type: 'error', message: 'Could not send quote. Please try again.' });
             }
           } else {
-            Alert.alert('Cannot Send', client?.email ? 'No quote found' : 'Client has no email address on file.');
+            showToast({ type: 'info', message: 'Cannot Send', description: client?.email ? 'No quote found' : 'Client has no email address on file.' });
           }
         }}
         onSchedule={handleStatusChange}
@@ -6628,24 +6612,24 @@ export default function JobDetailScreen() {
           if (invoice?.id && client?.email) {
             try {
               await api.post(`/api/invoices/${invoice.id}/send`, { method: 'email' });
-              Alert.alert('Email Sent', `Invoice sent to ${client.email}`);
+              showToast({ type: 'success', message: 'Email Sent', description: `Invoice sent to ${client.email}` });
             } catch {
-              Alert.alert('Error', 'Could not send invoice. Please try again.');
+              showToast({ type: 'error', message: 'Could not send invoice. Please try again.' });
             }
           } else {
-            Alert.alert('Cannot Send', client?.email ? 'No invoice found' : 'Client has no email address on file.');
+            showToast({ type: 'info', message: 'Cannot Send', description: client?.email ? 'No invoice found' : 'Client has no email address on file.' });
           }
         }}
         onSendReminder={async () => {
           if (invoice?.id && client?.email) {
             try {
               await api.post(`/api/invoices/${invoice.id}/send`, { method: 'email' });
-              Alert.alert('Reminder Sent', `Payment reminder sent to ${client.email}`);
+              showToast({ type: 'success', message: 'Reminder Sent', description: `Payment reminder sent to ${client.email}` });
             } catch {
-              Alert.alert('Error', 'Could not send reminder. Please try again.');
+              showToast({ type: 'error', message: 'Could not send reminder. Please try again.' });
             }
           } else {
-            Alert.alert('Cannot Send', 'Client has no email address on file.');
+            showToast({ type: 'info', message: 'Cannot Send', description: 'Client has no email address on file.' });
           }
         }}
       />
@@ -7633,9 +7617,9 @@ export default function JobDetailScreen() {
                     const url = portalLinks[0].url;
                     if (url) {
                       Clipboard.setStringAsync(url).then(() => {
-                        Alert.alert('Copied', 'Portal link copied to clipboard');
+                        showToast({ type: 'success', message: 'Portal link copied to clipboard' });
                       }).catch(() => {
-                        Alert.alert('Link', url);
+                        showToast({ type: 'info', message: 'Link', description: url });
                       });
                     }
                   }}
@@ -9452,7 +9436,7 @@ export default function JobDetailScreen() {
               <SignaturePad
                 onSave={(signatureData) => {
                   if (!signerName.trim()) {
-                    Alert.alert('Error', `Please enter the ${signerRole}'s name`);
+                    showToast({ type: 'error', message: `Please enter the ${signerRole}'s name` });
                     return;
                   }
                   handleSaveSignature({
@@ -9888,10 +9872,10 @@ export default function JobDetailScreen() {
                   try {
                     if (!isOnline) {
                       await offlineStorage.updateJobOffline(job!.id, { notes: newNotes });
-                      Alert.alert('Saved Offline', 'Transcription added to notes - will sync when online');
+                      showToast({ type: 'info', message: 'Saved Offline', description: 'Transcription added to notes - will sync when online' });
                     } else {
                       await api.patch(`/api/jobs/${job?.id}`, { notes: newNotes });
-                      Alert.alert('Added', 'Transcription added to job notes');
+                      showToast({ type: 'success', message: 'Transcription added to job notes' });
                     }
                   } catch (error: any) {
                     // Revert on error
@@ -9900,9 +9884,9 @@ export default function JobDetailScreen() {
                     }
                     if (error.message?.includes('Network')) {
                       await offlineStorage.updateJobOffline(job!.id, { notes: newNotes });
-                      Alert.alert('Saved Offline', 'Will sync when connection is restored');
+                      showToast({ type: 'info', message: 'Saved Offline', description: 'Will sync when connection is restored' });
                     } else {
-                      Alert.alert('Error', 'Failed to add transcription to notes');
+                      showToast({ type: 'error', message: 'Failed to add transcription to notes' });
                     }
                   }
                 }}
@@ -10026,7 +10010,7 @@ export default function JobDetailScreen() {
                   
                   if (!isOnline) {
                     await offlineStorage.updateJobOffline(job.id, { geofenceEnabled: value });
-                    Alert.alert('Saved Offline', 'Settings will sync when online');
+                    showToast({ type: 'info', message: 'Saved Offline', description: 'Settings will sync when online' });
                     return;
                   }
                   
@@ -10035,7 +10019,7 @@ export default function JobDetailScreen() {
                   } catch (e: any) {
                     if (e.message?.includes('Network') || e.code === 'ECONNABORTED') {
                       await offlineStorage.updateJobOffline(job.id, { geofenceEnabled: value });
-                      Alert.alert('Saved Offline', 'Settings will sync when connection is restored');
+                      showToast({ type: 'info', message: 'Saved Offline', description: 'Settings will sync when connection is restored' });
                     } else {
                       // Rollback the native geofence too
                       if (value) {
@@ -10044,7 +10028,7 @@ export default function JobDetailScreen() {
                         await locationTracking.addJobGeofence(job.id, job.latitude, job.longitude, job.geofenceRadius || 100);
                       }
                       setJob({ ...job, geofenceEnabled: previousValue });
-                      Alert.alert('Error', 'Failed to update geofence settings');
+                      showToast({ type: 'error', message: 'Failed to update geofence settings' });
                     }
                   }
                 }}
@@ -10080,7 +10064,7 @@ export default function JobDetailScreen() {
                       
                       if (!isOnline) {
                         await offlineStorage.updateJobOffline(job.id, { geofenceRadius: value });
-                        Alert.alert('Saved Offline', 'Radius will sync when online');
+                        showToast({ type: 'info', message: 'Saved Offline', description: 'Radius will sync when online' });
                         return;
                       }
                       
@@ -10089,7 +10073,7 @@ export default function JobDetailScreen() {
                       } catch (e: any) {
                         if (e.message?.includes('Network') || e.code === 'ECONNABORTED') {
                           await offlineStorage.updateJobOffline(job.id, { geofenceRadius: value });
-                          Alert.alert('Saved Offline', 'Radius will sync when connection is restored');
+                          showToast({ type: 'info', message: 'Saved Offline', description: 'Radius will sync when connection is restored' });
                         } else {
                           // Rollback native geofence
                           if (job.geofenceEnabled && job.latitude && job.longitude) {
@@ -10098,7 +10082,7 @@ export default function JobDetailScreen() {
                           }
                           setJob({ ...job, geofenceRadius: previousValue });
                           setSliderRadius(previousValue || 100);
-                          Alert.alert('Error', 'Failed to update radius');
+                          showToast({ type: 'error', message: 'Failed to update radius' });
                         }
                       }
                     }}
@@ -10127,7 +10111,7 @@ export default function JobDetailScreen() {
                       
                       if (!isOnline) {
                         await offlineStorage.updateJobOffline(job.id, { geofenceAutoClockIn: value });
-                        Alert.alert('Saved Offline', 'Settings will sync when online');
+                        showToast({ type: 'info', message: 'Saved Offline', description: 'Settings will sync when online' });
                         return;
                       }
                       
@@ -10136,10 +10120,10 @@ export default function JobDetailScreen() {
                       } catch (e: any) {
                         if (e.message?.includes('Network') || e.code === 'ECONNABORTED') {
                           await offlineStorage.updateJobOffline(job.id, { geofenceAutoClockIn: value });
-                          Alert.alert('Saved Offline', 'Settings will sync when connection is restored');
+                          showToast({ type: 'info', message: 'Saved Offline', description: 'Settings will sync when connection is restored' });
                         } else {
                           setJob({ ...job, geofenceAutoClockIn: previousValue });
-                          Alert.alert('Error', 'Failed to update setting');
+                          showToast({ type: 'error', message: 'Failed to update setting' });
                         }
                       }
                     }}
@@ -10167,7 +10151,7 @@ export default function JobDetailScreen() {
                       
                       if (!isOnline) {
                         await offlineStorage.updateJobOffline(job.id, { geofenceAutoClockOut: value });
-                        Alert.alert('Saved Offline', 'Settings will sync when online');
+                        showToast({ type: 'info', message: 'Saved Offline', description: 'Settings will sync when online' });
                         return;
                       }
                       
@@ -10176,10 +10160,10 @@ export default function JobDetailScreen() {
                       } catch (e: any) {
                         if (e.message?.includes('Network') || e.code === 'ECONNABORTED') {
                           await offlineStorage.updateJobOffline(job.id, { geofenceAutoClockOut: value });
-                          Alert.alert('Saved Offline', 'Settings will sync when connection is restored');
+                          showToast({ type: 'info', message: 'Saved Offline', description: 'Settings will sync when connection is restored' });
                         } else {
                           setJob({ ...job, geofenceAutoClockOut: previousValue });
-                          Alert.alert('Error', 'Failed to update setting');
+                          showToast({ type: 'error', message: 'Failed to update setting' });
                         }
                       }
                     }}
@@ -11091,17 +11075,16 @@ export default function JobDetailScreen() {
                   multiline
                   autoFocus
                 />
-                <TouchableOpacity
-                  style={styles.saveButton}
-                  onPress={handleSaveNotes}
+                <Button
+                  size="lg"
+                  variant="default"
+                  fullWidth
+                  loading={isSavingNotes}
                   disabled={isSavingNotes}
+                  onPress={handleSaveNotes}
                 >
-                  {isSavingNotes ? (
-                    <ActivityIndicator size="small" color={colors.primaryForeground} />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Save Notes</Text>
-                  )}
-                </TouchableOpacity>
+                  Save Notes
+                </Button>
               </View>
             </View>
           </View>
@@ -11200,17 +11183,16 @@ export default function JobDetailScreen() {
                     </View>
                   )}
                 </View>
-                <TouchableOpacity
-                  style={[styles.saveButton, isSendingSiteUpdate && { opacity: 0.7 }]}
-                  onPress={handleSubmitSiteUpdate}
+                <Button
+                  size="lg"
+                  variant="default"
+                  fullWidth
+                  loading={isSendingSiteUpdate}
                   disabled={isSendingSiteUpdate}
+                  onPress={handleSubmitSiteUpdate}
                 >
-                  {isSendingSiteUpdate ? (
-                    <ActivityIndicator size="small" color={colors.primaryForeground} />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Post Update</Text>
-                  )}
-                </TouchableOpacity>
+                  Post Update
+                </Button>
               </ScrollView>
             </View>
           </View>
@@ -12270,18 +12252,16 @@ export default function JobDetailScreen() {
                   ))}
                 </View>
 
-                <TouchableOpacity
-                  style={[styles.saveButton, { opacity: isSavingSubcontractor ? 0.6 : 1 }]}
-                  onPress={handleInviteSubcontractor}
+                <Button
+                  size="lg"
+                  variant="default"
+                  fullWidth
+                  loading={isSavingSubcontractor}
                   disabled={isSavingSubcontractor}
-                  activeOpacity={0.8}
+                  onPress={handleInviteSubcontractor}
                 >
-                  {isSavingSubcontractor ? (
-                    <ActivityIndicator color={colors.primaryForeground} />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Send Invite</Text>
-                  )}
-                </TouchableOpacity>
+                  Send Invite
+                </Button>
                 <View style={{ height: spacing.xl }} />
               </ScrollView>
             </View>

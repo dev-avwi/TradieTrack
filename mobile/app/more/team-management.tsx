@@ -21,6 +21,7 @@ import { spacing, radius, shadows, typography } from '../../src/lib/design-token
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { TeamAvatar } from '../../src/components/TeamAvatar';
+import { showToast } from '../../src/lib/toast';
 
 interface SubscriptionStatus {
   tier: 'free' | 'pro' | 'team' | 'trial';
@@ -266,11 +267,11 @@ function SubcontractorInvoicesSection({ colors }: { colors: Record<string, strin
         paidMethod: status === 'paid' ? 'bank_transfer' : undefined,
         paidAt: status === 'paid' ? new Date().toISOString() : undefined,
       });
-      Alert.alert('Updated', `Invoice marked as ${status}`);
+      showToast({ type: 'success', message: `Invoice marked as ${status}` });
       loadInvoices();
     } catch (error: unknown) {
       const errMsg = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to update invoice';
-      Alert.alert('Error', errMsg);
+      showToast({ type: 'error', message: errMsg });
     } finally {
       setUpdatingId(null);
     }
@@ -1578,12 +1579,12 @@ export default function TeamManagementScreen() {
       if (res.data) {
         setInviteCodes(prev => [res.data, ...prev]);
         setShowInviteModal(false);
-        Alert.alert('Code Generated', `Share code ${res.data.code} with your team member.`);
+        showToast({ type: 'info', message: 'Code Generated', description: `Share code ${res.data.code} with your team member.` });
       } else {
-        Alert.alert('Error', res.error || 'Failed to generate code');
+        showToast({ type: 'error', message: res.error || 'Failed to generate code' });
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to generate invite code');
+      showToast({ type: 'error', message: error.message || 'Failed to generate invite code' });
     }
     setIsGeneratingCode(false);
   };
@@ -1599,7 +1600,7 @@ export default function TeamManagementScreen() {
             await api.delete(`/api/team/invite-codes/${codeId}`);
             setInviteCodes(prev => prev.map(c => c.id === codeId ? { ...c, isActive: false } : c));
           } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to revoke code');
+            showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to revoke code' });
           }
         },
       },
@@ -1737,10 +1738,10 @@ export default function TeamManagementScreen() {
         )
       );
       
-      Alert.alert('Success', 'Permissions updated successfully');
+      showToast({ type: 'success', message: 'Permissions updated successfully' });
       setShowPermissionsModal(false);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update permissions');
+      showToast({ type: 'error', message: error.message || 'Failed to update permissions' });
     }
     setIsSavingPermissions(false);
   }, [selectedMember, selectedPermissions, useCustomPermissions]);
@@ -1767,7 +1768,7 @@ export default function TeamManagementScreen() {
       const roleObj = roles.find(r => possibleNames.includes(r.name.toLowerCase()));
       
       if (!roleObj) {
-        Alert.alert('Error', `No matching role found for ${inviteRole}. Please try again.`);
+        showToast({ type: 'error', message: `No matching role found for ${inviteRole}. Please try again.` });
         setIsSending(false);
         return;
       }
@@ -1784,7 +1785,7 @@ export default function TeamManagementScreen() {
       if (invitePhone.trim()) {
         sentVia = result.data?.smsSent ? 'email and SMS' : 'email (SMS could not be sent)';
       }
-      Alert.alert('Invite Sent', `Invitation sent via ${sentVia} to ${inviteFirstName}`);
+      showToast({ type: 'info', message: 'Invite Sent', description: `Invitation sent via ${sentVia} to ${inviteFirstName}` });
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteFirstName('');
@@ -1794,7 +1795,7 @@ export default function TeamManagementScreen() {
       setInvitePhone('');
       fetchTeam();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send invitation');
+      showToast({ type: 'error', message: error.message || 'Failed to send invitation' });
     }
     setIsSending(false);
   };
@@ -1824,10 +1825,10 @@ export default function TeamManagementScreen() {
         )
       );
       
-      Alert.alert('Success', 'Member details updated');
+      showToast({ type: 'success', message: 'Member details updated' });
       setShowEditModal(false);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update member');
+      showToast({ type: 'error', message: error.message || 'Failed to update member' });
     }
     setIsSavingEdit(false);
   };
@@ -1842,9 +1843,9 @@ export default function TeamManagementScreen() {
       setTeamMembers(prev => 
         prev.map(m => m.id === memberId ? { ...m, role: newRole as any, roleId: roleObj?.id || m.roleId } : m)
       );
-      Alert.alert('Updated', 'Role changed successfully');
+      showToast({ type: 'success', message: 'Role changed successfully' });
     } catch (error) {
-      Alert.alert('Error', 'Failed to update role');
+      showToast({ type: 'error', message: 'Failed to update role' });
     }
   };
 
@@ -1867,9 +1868,9 @@ export default function TeamManagementScreen() {
             try {
               await api.delete(`/api/team/members/${member.id}`);
               setTeamMembers(prev => prev.filter(m => m.id !== member.id));
-              Alert.alert('Removed', 'Team member has been removed');
+              showToast({ type: 'success', message: 'Removed', description: 'Team member has been removed' });
             } catch (error) {
-              Alert.alert('Error', 'Failed to remove member');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to remove member' });
             }
           },
         },
@@ -1887,12 +1888,9 @@ export default function TeamManagementScreen() {
       setTeamMembers(prev =>
         prev.map(m => m.id === member.id ? { ...m, locationEnabledByOwner: enabled } : m)
       );
-      Alert.alert(
-        enabled ? 'Location Enabled' : 'Location Disabled',
-        `Location tracking has been ${enabled ? 'enabled' : 'disabled'} for this team member.`
-      );
+      showToast({ type: 'info', message: enabled ? 'Location Enabled' : 'Location Disabled', description: `Location tracking has been ${enabled ? 'enabled' : 'disabled'} for this team member.` });
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update location settings');
+      showToast({ type: 'error', message: error.message || 'Failed to update location settings' });
     }
     setIsTogglingLocation(null);
   };
@@ -1902,9 +1900,9 @@ export default function TeamManagementScreen() {
     setIsResendingInvite(member.id);
     try {
       await api.post(`/api/team/members/${member.id}/resend-invite`);
-      Alert.alert('Invite Sent', `Invitation has been resent to ${member.email}`);
+      showToast({ type: 'info', message: 'Invite Sent', description: `Invitation has been resent to ${member.email}` });
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to resend invite');
+      showToast({ type: 'error', message: error.message || 'Failed to resend invite' });
     }
     setIsResendingInvite(null);
   };
@@ -1947,14 +1945,11 @@ export default function TeamManagementScreen() {
       await api.post(`/api/jobs/${selectedJobId}/assign`, {
         assignedTo: selectedMember.userId,
       });
-      Alert.alert(
-        'Job Assigned',
-        `Job has been assigned to ${getMemberName(selectedMember)}`
-      );
+      showToast({ type: 'info', message: 'Job Assigned', description: `Job has been assigned to ${getMemberName(selectedMember)}` });
       setShowAssignJobModal(false);
       setSelectedJobId('');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to assign job');
+      showToast({ type: 'error', message: error.message || 'Failed to assign job' });
     }
     setIsAssigningJob(false);
   };

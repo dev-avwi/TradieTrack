@@ -32,6 +32,7 @@ import { Badge } from '../../src/components/ui/Badge';
 import { Button } from '../../src/components/ui/Button';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
+import { showToast } from '../../src/lib/toast';
 
 const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => StyleSheet.create({
   container: {
@@ -902,7 +903,7 @@ export default function CollectScreen() {
       }
     } catch (error) {
       console.error('Failed to fetch payments data:', error);
-      Alert.alert('Loading Error', 'Could not load recent payments. Please try again.');
+      showToast({ type: 'info', message: 'Loading Error', description: 'Could not load recent payments. Please try again.' });
     } finally {
       setReceiptsLoading(false);
     }
@@ -1135,7 +1136,7 @@ export default function CollectScreen() {
         const initialized = await terminal.initialize();
         if (!initialized) {
           if (!useNativeSDK) setPaymentStep('error');
-          else Alert.alert('Terminal Error', 'Failed to initialize Tap to Pay. Please try again.');
+          else showToast({ type: 'info', message: 'Terminal Error', description: 'Failed to initialize Tap to Pay. Please try again.' });
           return;
         }
       }
@@ -1144,7 +1145,7 @@ export default function CollectScreen() {
         const connected = await terminal.connectReader();
         if (!connected) {
           if (!useNativeSDK) setPaymentStep('error');
-          else Alert.alert('Connection Error', 'Failed to connect to reader. Please try again.');
+          else showToast({ type: 'info', message: 'Connection Error', description: 'Failed to connect to reader. Please try again.' });
           return;
         }
       }
@@ -1169,12 +1170,12 @@ export default function CollectScreen() {
               notes: 'Tap to Pay contactless payment',
             });
             if (recordRes.error) {
-              Alert.alert('Recording Error', recordRes.error);
+              showToast({ type: 'info', message: 'Recording Error', description: recordRes.error });
             }
             fetchInvoices();
           } catch (err: any) {
             const msg = err?.message || 'Payment was successful but we could not update the invoice record. Please update it manually.';
-            Alert.alert('Recording Error', msg);
+            showToast({ type: 'info', message: 'Recording Error', description: msg });
           }
         }
         
@@ -1233,7 +1234,7 @@ export default function CollectScreen() {
         if (!useNativeSDK) {
           setPaymentStep('error');
         } else {
-          Alert.alert('Payment Cancelled', 'The payment was not completed.');
+          showToast({ type: 'info', message: 'Payment Cancelled', description: 'The payment was not completed.' });
         }
       }
     } catch (error: any) {
@@ -1241,7 +1242,7 @@ export default function CollectScreen() {
       if (!useNativeSDK) {
         setPaymentStep('error');
       } else {
-        Alert.alert('Payment Error', error?.message || 'The payment could not be processed. Please try again.');
+        showToast({ type: 'info', message: 'Payment Error', description: error?.message || 'The payment could not be processed. Please try again.' });
       }
     }
   };
@@ -1249,7 +1250,7 @@ export default function CollectScreen() {
   const handleTapToPayWithAmount = async (amountDollars: number) => {
     const amountCents = Math.round(amountDollars * 100);
     if (amountCents < 50) {
-      Alert.alert('Invalid Amount', 'Please enter an amount of at least $0.50');
+      showToast({ type: 'info', message: 'Invalid Amount', description: 'Please enter an amount of at least $0.50' });
       return;
     }
 
@@ -1265,7 +1266,7 @@ export default function CollectScreen() {
         const initialized = await terminal.initialize();
         if (!initialized) {
           if (!useNativeSDK) setPaymentStep('error');
-          else Alert.alert('Terminal Error', 'Failed to initialize Tap to Pay. Please try again.');
+          else showToast({ type: 'info', message: 'Terminal Error', description: 'Failed to initialize Tap to Pay. Please try again.' });
           return;
         }
       }
@@ -1274,7 +1275,7 @@ export default function CollectScreen() {
         const connected = await terminal.connectReader();
         if (!connected) {
           if (!useNativeSDK) setPaymentStep('error');
-          else Alert.alert('Connection Error', 'Failed to connect to reader. Please try again.');
+          else showToast({ type: 'info', message: 'Connection Error', description: 'Failed to connect to reader. Please try again.' });
           return;
         }
       }
@@ -1296,12 +1297,12 @@ export default function CollectScreen() {
               notes: 'Tap to Pay contactless payment',
             });
             if (recordRes.error) {
-              Alert.alert('Recording Error', recordRes.error);
+              showToast({ type: 'info', message: 'Recording Error', description: recordRes.error });
             }
             fetchInvoices();
           } catch (err: any) {
             const msg = err?.message || 'Payment was successful but we could not update the invoice record. Please update it manually.';
-            Alert.alert('Recording Error', msg);
+            showToast({ type: 'info', message: 'Recording Error', description: msg });
           }
         }
         
@@ -1359,7 +1360,7 @@ export default function CollectScreen() {
         if (!useNativeSDK) {
           setPaymentStep('error');
         } else {
-          Alert.alert('Payment Cancelled', 'The payment was not completed.');
+          showToast({ type: 'info', message: 'Payment Cancelled', description: 'The payment was not completed.' });
         }
       }
     } catch (error: any) {
@@ -1367,7 +1368,7 @@ export default function CollectScreen() {
       if (!useNativeSDK) {
         setPaymentStep('error');
       } else {
-        Alert.alert('Payment Error', error?.message || 'The payment could not be processed. Please try again.');
+        showToast({ type: 'info', message: 'Payment Error', description: error?.message || 'The payment could not be processed. Please try again.' });
       }
     }
   };
@@ -1378,7 +1379,7 @@ export default function CollectScreen() {
     try {
       const recipientEmail = manualEmail || selectedInvoice?.clientEmail;
       if (!recipientEmail) {
-        Alert.alert('No Email', 'Please enter an email address to send the receipt.');
+        showToast({ type: 'info', message: 'No Email', description: 'Please enter an email address to send the receipt.' });
         setSendingReceipt(false);
         return;
       }
@@ -1393,11 +1394,11 @@ export default function CollectScreen() {
         method: 'email',
       });
 
-      Alert.alert('Receipt Sent', `Receipt emailed to ${recipientEmail}`);
+      showToast({ type: 'info', message: 'Receipt Sent', description: `Receipt emailed to ${recipientEmail}` });
       handleCloseReceiptModal();
     } catch (error) {
       console.error('Failed to send receipt:', error);
-      Alert.alert('Error', 'Failed to send receipt. Please try again.');
+      showToast({ type: 'error', message: 'Failed to send receipt. Please try again.' });
     } finally {
       setSendingReceipt(false);
     }
@@ -1415,7 +1416,7 @@ export default function CollectScreen() {
     try {
       const recipientPhone = manualPhone || selectedInvoice?.clientPhone;
       if (!recipientPhone) {
-        Alert.alert('No Phone', 'Please enter a phone number to send the receipt.');
+        showToast({ type: 'info', message: 'No Phone', description: 'Please enter a phone number to send the receipt.' });
         setSendingReceipt(false);
         return;
       }
@@ -1430,16 +1431,16 @@ export default function CollectScreen() {
         method: 'sms',
       });
 
-      Alert.alert('Receipt Sent', `Receipt SMS sent to ${recipientPhone}`);
+      showToast({ type: 'info', message: 'Receipt Sent', description: `Receipt SMS sent to ${recipientPhone}` });
       handleCloseReceiptModal();
     } catch (error: any) {
       console.error('Failed to send SMS receipt:', error);
       if (error?.message?.includes('disabled') || error?.message?.includes('not configured')) {
         setShowSmsSetupModal(true);
       } else if (error?.message?.includes('disabled')) {
-        Alert.alert('SMS Unavailable', 'SMS is not configured. Use email instead.');
+        showToast({ type: 'info', message: 'SMS Unavailable', description: 'SMS is not configured. Use email instead.' });
       } else {
-        Alert.alert('Error', 'Failed to send SMS. Please try again.');
+        showToast({ type: 'error', message: 'Failed to send SMS. Please try again.' });
       }
     } finally {
       setSendingReceipt(false);
@@ -1471,7 +1472,7 @@ export default function CollectScreen() {
   const handleQRCodeDirect = async () => {
     const amountCents = getAmountInCents();
     if (amountCents <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid payment amount');
+      showToast({ type: 'info', message: 'Invalid Amount', description: 'Please enter a valid payment amount' });
       return;
     }
 
@@ -1494,7 +1495,7 @@ export default function CollectScreen() {
       });
 
       if (response.error) {
-        Alert.alert('Error', response.error);
+        showToast({ type: 'error', message: response.error });
         setShowQRModal(false);
         return;
       }
@@ -1505,7 +1506,7 @@ export default function CollectScreen() {
     } catch (error: any) {
       console.error('Failed to generate QR code:', error);
       const msg = error?.message || 'Failed to generate QR code';
-      Alert.alert('Error', msg);
+      showToast({ type: 'error', message: msg });
       setShowQRModal(false);
     } finally {
       setQrLoading(false);
@@ -1516,9 +1517,9 @@ export default function CollectScreen() {
     if (qrPaymentUrl) {
       try {
         await Clipboard.setStringAsync(qrPaymentUrl);
-        Alert.alert('Copied!', 'Payment link copied to clipboard');
+        showToast({ type: 'info', message: 'Copied!', description: 'Payment link copied to clipboard' });
       } catch (error) {
-        Alert.alert('Payment Link', qrPaymentUrl, [{ text: 'OK' }]);
+        showToast({ type: 'info', message: 'Payment Link', description: qrPaymentUrl });
       }
     }
   };
@@ -1553,7 +1554,7 @@ export default function CollectScreen() {
   const handlePaymentLinkDirect = async () => {
     const amountCents = getAmountInCents();
     if (amountCents <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid payment amount');
+      showToast({ type: 'info', message: 'Invalid Amount', description: 'Please enter a valid payment amount' });
       return;
     }
 
@@ -1580,7 +1581,7 @@ export default function CollectScreen() {
       });
 
       if (response.error) {
-        Alert.alert('Error', response.error);
+        showToast({ type: 'error', message: response.error });
         return;
       }
       if (response.data) {
@@ -1590,7 +1591,7 @@ export default function CollectScreen() {
     } catch (error: any) {
       console.error('Failed to create payment request:', error);
       const msg = error?.message || 'Failed to create payment link';
-      Alert.alert('Error', msg);
+      showToast({ type: 'error', message: msg });
     } finally {
       setSendingLink(false);
     }
@@ -1601,7 +1602,7 @@ export default function CollectScreen() {
     
     const email = linkRecipientEmail.trim();
     if (!email) {
-      Alert.alert('Email Required', 'Please enter an email address');
+      showToast({ type: 'info', message: 'Email Required', description: 'Please enter an email address' });
       return;
     }
     
@@ -1611,11 +1612,11 @@ export default function CollectScreen() {
         email,
       });
       
-      Alert.alert('Success', `Payment link sent to ${email}`);
+      showToast({ type: 'success', message: `Payment link sent to ${email}` });
       handleClosePaymentLinkModal();
     } catch (error) {
       console.error('Failed to send email:', error);
-      Alert.alert('Error', 'Failed to send payment link via email');
+      showToast({ type: 'error', message: 'Failed to send payment link via email' });
     } finally {
       setSendingLink(false);
     }
@@ -1632,7 +1633,7 @@ export default function CollectScreen() {
     
     const phone = linkRecipientPhone.trim();
     if (!phone) {
-      Alert.alert('Phone Required', 'Please enter a phone number');
+      showToast({ type: 'info', message: 'Phone Required', description: 'Please enter a phone number' });
       return;
     }
     
@@ -1642,16 +1643,16 @@ export default function CollectScreen() {
         phone,
       });
       
-      Alert.alert('Success', `Payment link sent to ${phone}`);
+      showToast({ type: 'success', message: `Payment link sent to ${phone}` });
       handleClosePaymentLinkModal();
     } catch (error: any) {
       console.error('Failed to send SMS:', error);
       if (error?.message?.includes('not configured')) {
         setShowSmsSetupModal(true);
       } else if (error?.message?.includes('disabled')) {
-        Alert.alert('SMS Unavailable', 'SMS is not configured. Use email instead, or copy the link to share manually.');
+        showToast({ type: 'info', message: 'SMS Unavailable', description: 'SMS is not configured. Use email instead, or copy the link to share manually.' });
       } else {
-        Alert.alert('Error', error?.message || 'Failed to send payment link via SMS');
+        showToast({ type: 'error', message: error?.message || 'Failed to send payment link via SMS' });
       }
     } finally {
       setSendingLink(false);
@@ -1662,9 +1663,9 @@ export default function CollectScreen() {
     if (paymentLinkRequest?.paymentUrl) {
       try {
         await Clipboard.setStringAsync(paymentLinkRequest.paymentUrl);
-        Alert.alert('Copied!', 'Payment link copied to clipboard');
+        showToast({ type: 'info', message: 'Copied!', description: 'Payment link copied to clipboard' });
       } catch (error) {
-        Alert.alert('Payment Link', paymentLinkRequest.paymentUrl, [{ text: 'OK' }]);
+        showToast({ type: 'info', message: 'Payment Link', description: paymentLinkRequest.paymentUrl });
       }
     }
   };
@@ -1709,21 +1710,21 @@ export default function CollectScreen() {
     
     const email = resendEmail.trim();
     if (!email) {
-      Alert.alert('Email Required', 'Please enter an email address');
+      showToast({ type: 'info', message: 'Email Required', description: 'Please enter an email address' });
       return;
     }
     
     setResendingLink(true);
     try {
       await api.post(`/api/payment-requests/${resendRequest.id}/send-email`, { email });
-      Alert.alert('Success', `Payment link sent to ${email}`);
+      showToast({ type: 'success', message: `Payment link sent to ${email}` });
       setShowResendModal(false);
       setResendRequest(null);
       // Refresh using the existing pattern
       fetchReceipts();
     } catch (error) {
       console.error('Failed to send email:', error);
-      Alert.alert('Error', 'Failed to send payment link via email');
+      showToast({ type: 'error', message: 'Failed to send payment link via email' });
     } finally {
       setResendingLink(false);
     }
@@ -1741,14 +1742,14 @@ export default function CollectScreen() {
     
     const phone = resendPhone.trim();
     if (!phone) {
-      Alert.alert('Phone Required', 'Please enter a phone number');
+      showToast({ type: 'info', message: 'Phone Required', description: 'Please enter a phone number' });
       return;
     }
     
     setResendingLink(true);
     try {
       await api.post(`/api/payment-requests/${resendRequest.id}/send-sms`, { phone });
-      Alert.alert('Success', `Payment link sent to ${phone}`);
+      showToast({ type: 'success', message: `Payment link sent to ${phone}` });
       setShowResendModal(false);
       setResendRequest(null);
       // Refresh using the existing pattern
@@ -1759,7 +1760,7 @@ export default function CollectScreen() {
         setShowSmsSetupModal(true);
       } else {
         const errorMsg = error?.message || 'Failed to send payment link via SMS';
-        Alert.alert('Error', errorMsg);
+        showToast({ type: 'error', message: errorMsg });
       }
     } finally {
       setResendingLink(false);
@@ -1808,7 +1809,7 @@ export default function CollectScreen() {
   const handleSubmitRecordPayment = async () => {
     const amountNum = parseFloat(recordAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid payment amount');
+      showToast({ type: 'info', message: 'Invalid Amount', description: 'Please enter a valid payment amount' });
       return;
     }
 
@@ -1833,7 +1834,7 @@ export default function CollectScreen() {
       });
 
       if (response.error) {
-        Alert.alert('Error', response.error);
+        showToast({ type: 'error', message: response.error });
         return;
       }
       if (response.data) {
@@ -1849,7 +1850,7 @@ export default function CollectScreen() {
     } catch (error: any) {
       console.error('Failed to record payment:', error);
       const msg = error?.message || 'Failed to record payment. Please try again.';
-      Alert.alert('Error', msg);
+      showToast({ type: 'error', message: msg });
     } finally {
       setRecordingPayment(false);
     }
@@ -1863,28 +1864,28 @@ export default function CollectScreen() {
     if (method === 'email') {
       const email = client?.email;
       if (!email) {
-        Alert.alert('No Email', 'No email address found for this client');
+        showToast({ type: 'info', message: 'No Email', description: 'No email address found for this client' });
         return;
       }
       
       try {
         await api.post(`/api/receipts/${recordPaymentSuccess.receiptId}/send-email`, { email });
-        Alert.alert('Success', `Receipt sent to ${email}`);
+        showToast({ type: 'success', message: `Receipt sent to ${email}` });
       } catch (error) {
-        Alert.alert('Error', 'Failed to send receipt email');
+        showToast({ type: 'error', message: 'Failed to send receipt email' });
       }
     } else {
       const phone = client?.phone;
       if (!phone) {
-        Alert.alert('No Phone', 'No phone number found for this client');
+        showToast({ type: 'info', message: 'No Phone', description: 'No phone number found for this client' });
         return;
       }
       
       try {
         await api.post(`/api/receipts/${recordPaymentSuccess.receiptId}/send-sms`, { phone });
-        Alert.alert('Success', `Receipt sent to ${phone}`);
+        showToast({ type: 'success', message: `Receipt sent to ${phone}` });
       } catch (error) {
-        Alert.alert('Error', 'Failed to send receipt SMS');
+        showToast({ type: 'error', message: 'Failed to send receipt SMS' });
       }
     }
   };
@@ -1984,7 +1985,7 @@ export default function CollectScreen() {
   const handleSubmitCustomAmount = () => {
     const amountNum = parseFloat(customAmountValue);
     if (isNaN(amountNum) || amountNum < 0.50) {
-      Alert.alert('Invalid Amount', 'Please enter an amount of at least $0.50');
+      showToast({ type: 'info', message: 'Invalid Amount', description: 'Please enter an amount of at least $0.50' });
       return;
     }
     
@@ -2039,7 +2040,7 @@ export default function CollectScreen() {
       });
 
       if (response.error) {
-        Alert.alert('Error', response.error);
+        showToast({ type: 'error', message: response.error });
         setShowQRModal(false);
         return;
       }
@@ -2050,7 +2051,7 @@ export default function CollectScreen() {
     } catch (error: any) {
       console.error('Failed to generate QR code:', error);
       const msg = error?.message || 'Failed to generate QR code';
-      Alert.alert('Error', msg);
+      showToast({ type: 'error', message: msg });
       setShowQRModal(false);
     } finally {
       setQrLoading(false);
@@ -2073,7 +2074,7 @@ export default function CollectScreen() {
       });
 
       if (response.error) {
-        Alert.alert('Error', response.error);
+        showToast({ type: 'error', message: response.error });
         return;
       }
       if (response.data) {
@@ -2083,7 +2084,7 @@ export default function CollectScreen() {
     } catch (error: any) {
       console.error('Failed to create payment request:', error);
       const msg = error?.message || 'Failed to create payment link';
-      Alert.alert('Error', msg);
+      showToast({ type: 'error', message: msg });
     } finally {
       setSendingLink(false);
     }
@@ -3375,7 +3376,7 @@ export default function CollectScreen() {
                             [
                               { text: 'Close', style: 'cancel' },
                               { text: notifications.length > 0 ? 'Resend' : 'Send', onPress: () => handleResendPaymentRequest(request, clientName) },
-                              paymentUrl ? { text: 'Copy', onPress: () => Clipboard.setStringAsync(paymentUrl).then(() => Alert.alert('Copied!', 'Payment link copied to clipboard')) } : null,
+                              paymentUrl ? { text: 'Copy', onPress: () => Clipboard.setStringAsync(paymentUrl).then(() => showToast({ type: 'success', message: 'Copied!', description: 'Payment link copied to clipboard' })) } : null,
                             ].filter(Boolean) as any
                           );
                         }}
@@ -3422,11 +3423,7 @@ export default function CollectScreen() {
                         style={styles.recentPaymentItem}
                         activeOpacity={0.7}
                         onPress={() => {
-                          Alert.alert(
-                            'Payment Complete',
-                            `${clientName}\n${formatCurrency(requestAmount)}\n\nPaid via ${isQR ? 'QR Code' : 'Payment Link'}${requestDate ? ` on ${requestDate}` : ''}`,
-                            [{ text: 'OK' }]
-                          );
+                          showToast({ type: 'info', message: 'Payment Complete', description: `${clientName}\n${formatCurrency(requestAmount)}\n\nPaid via ${isQR ? 'QR Code' : 'Payment Link'}${requestDate ? ` on ${requestDate}` : ''}` });
                         }}
                       >
                         <View style={styles.recentPaymentLeft}>
@@ -3511,11 +3508,7 @@ export default function CollectScreen() {
                         style={[styles.recentPaymentItem, { opacity: 0.6 }]}
                         activeOpacity={0.7}
                         onPress={() => {
-                          Alert.alert(
-                            request.status === 'expired' ? 'Payment Expired' : 'Payment Cancelled',
-                            `${clientName}\n${formatCurrency(requestAmount)}\n\n${isQR ? 'QR Code' : 'Payment Link'} ${request.status === 'expired' ? 'expired' : 'was cancelled'}${requestDate ? ` on ${requestDate}` : ''}`,
-                            [{ text: 'OK' }]
-                          );
+                          showToast({ type: 'info', message: request.status === 'expired' ? 'Payment Expired' : 'Payment Cancelled', description: `${clientName}\n${formatCurrency(requestAmount)}\n\n${isQR ? 'QR Code' : 'Payment Link'} ${request.status === 'expired' ? 'expired' : 'was cancelled'}${requestDate ? ` on ${requestDate}` : ''}` });
                         }}
                       >
                         <View style={styles.recentPaymentLeft}>

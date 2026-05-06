@@ -36,6 +36,8 @@ import { WhatYouMissedPopup } from '../src/components/WhatYouMissedPopup';
 import ErrorBoundary from '../src/components/ErrorBoundary';
 import { CustomAlertProvider } from '../src/components/CustomAlert';
 import { initGlobalIAP } from '../src/lib/iap-global';
+import Toast from 'react-native-toast-message';
+import { buildToastConfig } from '../src/lib/toast';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -850,6 +852,7 @@ function RootLayoutContent() {
           <LoadingScreen colors={colors} />
         </View>
       )}
+      <Toast config={buildToastConfig()} />
     </View>
   );
 }

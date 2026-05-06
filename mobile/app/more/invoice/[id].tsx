@@ -31,6 +31,8 @@ import { API_URL, api } from '../../../src/lib/api';
 import { maybeRequestReview } from '../../../src/lib/store-review';
 import { getEmailPreference, setEmailPreference, EmailAppPreference } from '../../../src/lib/email-preference';
 import { format } from 'date-fns';
+import { showToast } from '../../../src/lib/toast';
+import { Button } from '../../../src/components/ui/Button';
 
 interface Signature {
   id: string;
@@ -169,11 +171,11 @@ export default function InvoiceDetailScreen() {
             setIsDeleting(true);
             try {
               await api.delete(`/api/invoices/${invoice.id}`);
-              Alert.alert('Success', 'Invoice deleted successfully');
+              showToast({ type: 'success', message: 'Success', description: 'Invoice deleted successfully' });
               router.back();
             } catch (error) {
               console.error('Error deleting invoice:', error);
-              Alert.alert('Error', 'Failed to delete invoice');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to delete invoice' });
             } finally {
               setIsDeleting(false);
             }
@@ -498,11 +500,11 @@ ${businessName}`;
       } else {
         // Fallback: copy link to clipboard
         await Clipboard.setStringAsync(publicUrl);
-        Alert.alert('Email Not Available', `Payment link copied to clipboard:\n${publicUrl}`);
+        showToast({ type: 'info', message: 'Email Not Available', description: `Payment link copied to clipboard:\n${publicUrl}` });
       }
     } catch (error: any) {
       if (__DEV__) console.log('Error composing email:', error);
-      Alert.alert('Error', 'Failed to compose email. Please try again.');
+      showToast({ type: 'error', message: 'Failed to compose email. Please try again.' });
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -566,11 +568,11 @@ ${businessName}`;
           ]
         );
       } else {
-        Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
+        showToast({ type: 'info', message: 'Sharing Not Available', description: 'Sharing is not available on this device.' });
       }
     } catch (error: any) {
       if (__DEV__) console.log('Error sharing as image:', error);
-      Alert.alert('Error', 'Failed to generate image. Try sharing as PDF instead.');
+      showToast({ type: 'error', message: 'Failed to generate image. Try sharing as PDF instead.' });
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -621,11 +623,11 @@ ${businessName}`;
           ]
         );
       } else {
-        Alert.alert('Sharing Not Available', 'Please use "JobRunner" option to send with PDF attached.');
+        showToast({ type: 'info', message: 'Sharing Not Available', description: 'Please use "JobRunner" option to send with PDF attached.' });
       }
     } catch (error: any) {
       if (__DEV__) console.log('Error preparing PDF:', error);
-      Alert.alert('Error', error.message || 'Failed to prepare PDF. Please try "JobRunner" option instead.');
+      showToast({ type: 'error', message: error.message || 'Failed to prepare PDF. Please try "JobRunner" option instead.' });
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -638,11 +640,7 @@ ${businessName}`;
     const recipientEmail = client?.email;
     
     if (!recipientEmail) {
-      Alert.alert(
-        'No Email Address',
-        'This client does not have an email address on file.',
-        [{ text: 'OK' }]
-      );
+      showToast({ type: 'info', message: 'No Email Address', description: 'This client does not have an email address on file.' });
       return;
     }
     
@@ -660,17 +658,14 @@ ${businessName}`;
 
       if (response.ok) {
         await loadData();
-        Alert.alert(
-          'Invoice Sent!', 
-          `Email sent to ${recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email, PDF preview and delivery status.`
-        );
+        showToast({ type: 'info', message: 'Invoice Sent!', description: `Email sent to ${recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email, PDF preview and delivery status.` });
       } else {
         const error = await response.json();
-        Alert.alert('Error', error.error || 'Failed to send invoice');
+        showToast({ type: 'error', message: error.error || 'Failed to send invoice' });
       }
     } catch (error) {
       if (__DEV__) console.log('Error sending invoice:', error);
-      Alert.alert('Error', 'Failed to send invoice. Please try again.');
+      showToast({ type: 'error', message: 'Failed to send invoice. Please try again.' });
     } finally {
       setIsSendingInvoice(false);
     }
@@ -702,10 +697,7 @@ ${businessName}`;
 
       if (!response.ok) {
         // Show tradie-friendly error message from backend
-        Alert.alert(
-          result.title || "Couldn't send email",
-          result.fix || result.message || "Please try again or use your email app instead."
-        );
+        showToast({ type: 'info', message: result.title || "Couldn't send email", description: result.fix || result.message || "Please try again or use your email app instead." });
         return;
       }
 
@@ -713,10 +705,7 @@ ${businessName}`;
       if (result.sent) {
         await loadData();
         setShowEmailCompose(false);
-        Alert.alert(
-          'Invoice Sent!',
-          `Email sent to ${result.recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email and delivery status.`
-        );
+        showToast({ type: 'info', message: 'Invoice Sent!', description: `Email sent to ${result.recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email and delivery status.` });
         return;
       }
 
@@ -729,15 +718,9 @@ ${businessName}`;
         const canOpen = await Linking.canOpenURL(result.draftUrl);
         if (canOpen) {
           await Linking.openURL(result.draftUrl);
-          Alert.alert(
-            'Gmail Draft Created!',
-            'PDF attached automatically. Review and click Send in Gmail.'
-          );
+          showToast({ type: 'info', message: 'Gmail Draft Created!', description: 'PDF attached automatically. Review and click Send in Gmail.' });
         } else {
-          Alert.alert(
-            'Draft Created',
-            'Your email draft has been created. Open Gmail to review and send.'
-          );
+          showToast({ type: 'info', message: 'Draft Created', description: 'Your email draft has been created. Open Gmail to review and send.' });
         }
         return;
       }
@@ -745,7 +728,7 @@ ${businessName}`;
       // Fallback - status updated successfully even if email mechanism unclear
       await loadData();
       setShowEmailCompose(false);
-      Alert.alert('Invoice Updated', 'Invoice has been processed.');
+      showToast({ type: 'info', message: 'Invoice Updated', description: 'Invoice has been processed.' });
 
     } catch (networkError) {
       if (__DEV__) console.log('Network error sending invoice:', networkError);
@@ -777,21 +760,18 @@ ${businessName}`;
 
       if (response.ok) {
         await loadData();
-        Alert.alert(
-          'Success',
-          newValue 
+        showToast({ type: 'success', message: newValue 
             ? 'Online payment enabled - clients can pay with card' 
-            : 'Online payment disabled for this invoice'
-        );
+            : 'Online payment disabled for this invoice' });
       } else {
         setInvoice(prev => prev ? { ...prev, allowOnlinePayment: previousValue } : prev);
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error || 'Failed to update payment settings';
-        Alert.alert('Error', errorMessage);
+        showToast({ type: 'error', message: errorMessage });
       }
     } catch (error) {
       setInvoice(prev => prev ? { ...prev, allowOnlinePayment: previousValue } : prev);
-      Alert.alert('Error', 'Failed to update payment settings');
+      showToast({ type: 'error', message: 'Failed to update payment settings' });
     } finally {
       setIsTogglingPayment(false);
     }
@@ -838,10 +818,7 @@ ${businessName}`;
         };
         
         if (createReceiptOnPayment && result.receiptId) {
-          Alert.alert(
-            'Payment Recorded',
-            `${formatCurrency(invoice.total)} received via ${methodLabels[selectedPaymentMethod]}. Receipt created.`
-          );
+          showToast({ type: 'info', message: 'Payment Recorded', description: `${formatCurrency(invoice.total)} received via ${methodLabels[selectedPaymentMethod]}. Receipt created.` });
         } else {
           Alert.alert(
             'Payment Recorded',
@@ -860,11 +837,11 @@ ${businessName}`;
         }
       } else {
         const error = await response.json();
-        Alert.alert('Error', error.error || 'Failed to record payment');
+        showToast({ type: 'error', message: error.error || 'Failed to record payment' });
       }
     } catch (error) {
       if (__DEV__) console.log('Error recording payment:', error);
-      Alert.alert('Error', 'Failed to record payment. Please try again.');
+      showToast({ type: 'error', message: 'Failed to record payment. Please try again.' });
     } finally {
       setIsRecordingPayment(false);
     }
@@ -900,15 +877,15 @@ ${businessName}`;
 
               if (response.ok) {
                 await loadData();
-                Alert.alert('Payment Recorded', 'On-site payment has been recorded successfully');
+                showToast({ type: 'info', message: 'Payment Recorded', description: 'On-site payment has been recorded successfully' });
                 maybeRequestReview('invoice_paid_on_site').catch(() => {});
               } else {
                 const error = await response.json();
-                Alert.alert('Error', error.error || 'Failed to record payment');
+                showToast({ type: 'error', message: 'Error', description: error.error || 'Failed to record payment' });
               }
             } catch (error) {
               if (__DEV__) console.log('Error recording on-site payment:', error);
-              Alert.alert('Error', 'Failed to record payment. Please try again.');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to record payment. Please try again.' });
             } finally {
               setIsRecordingOnSitePayment(false);
             }
@@ -924,11 +901,7 @@ ${businessName}`;
     const client = getClient(invoice.clientId);
     
     if (!client?.email && !client?.phone) {
-      Alert.alert(
-        'No Contact Info',
-        'This client does not have an email address or phone number on file. Please add at least one to the client record first.',
-        [{ text: 'OK' }]
-      );
+      showToast({ type: 'info', message: 'No Contact Info', description: 'This client does not have an email address or phone number on file. Please add at least one to the client record first.' });
       return;
     }
     
@@ -1093,11 +1066,11 @@ ${businessName}`;
       if (canOpen) {
         await Linking.openURL(emailUrl);
       } else {
-        Alert.alert('Email Not Available', 'Unable to open email app. Please send manually.');
+        showToast({ type: 'info', message: 'Email Not Available', description: 'Unable to open email app. Please send manually.' });
       }
     } catch (error: any) {
       if (__DEV__) console.log('Error composing receipt email:', error);
-      Alert.alert('Error', 'Failed to compose email. Please try again.');
+      showToast({ type: 'error', message: 'Failed to compose email. Please try again.' });
     } finally {
       setIsSendingReceipt(false);
     }
@@ -1146,11 +1119,11 @@ ${businessName}`;
           UTI: 'public.png',
         });
       } else {
-        Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
+        showToast({ type: 'info', message: 'Sharing Not Available', description: 'Sharing is not available on this device.' });
       }
     } catch (error: any) {
       if (__DEV__) console.log('Error sharing receipt as image:', error);
-      Alert.alert('Error', 'Failed to generate image. Try sharing as PDF instead.');
+      showToast({ type: 'error', message: 'Failed to generate image. Try sharing as PDF instead.' });
     } finally {
       setIsSendingReceipt(false);
     }
@@ -1162,7 +1135,7 @@ ${businessName}`;
     const client = getClient(invoice.clientId);
     
     if (!linkedReceipt) {
-      Alert.alert('No Receipt', 'No receipt found for this invoice. Please generate a receipt first.');
+      showToast({ type: 'info', message: 'No Receipt', description: 'No receipt found for this invoice. Please generate a receipt first.' });
       return;
     }
     
@@ -1182,12 +1155,12 @@ ${businessName}`;
           UTI: 'com.adobe.pdf',
         });
       } else {
-        Alert.alert('Sharing Not Available', 'Please use "JobRunner" to send with PDF attached.');
+        showToast({ type: 'info', message: 'Sharing Not Available', description: 'Please use "JobRunner" to send with PDF attached.' });
       }
     } catch (error: any) {
       if (__DEV__) console.log('Share receipt PDF error:', error);
       const message = error?.message || 'Failed to share PDF. Please try again.';
-      Alert.alert('Error', message);
+      showToast({ type: 'error', message: message });
     } finally {
       setIsSendingReceipt(false);
     }
@@ -1200,11 +1173,7 @@ ${businessName}`;
     const recipientEmail = client?.email;
     
     if (!recipientEmail) {
-      Alert.alert(
-        'No Email Address',
-        'This client does not have an email address on file.',
-        [{ text: 'OK' }]
-      );
+      showToast({ type: 'info', message: 'No Email Address', description: 'This client does not have an email address on file.' });
       return;
     }
     
@@ -1221,17 +1190,14 @@ ${businessName}`;
       });
 
       if (response.ok) {
-        Alert.alert(
-          'Receipt Sent!', 
-          `Email sent to ${recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email and delivery status.`
-        );
+        showToast({ type: 'info', message: 'Receipt Sent!', description: `Email sent to ${recipientEmail} with PDF attached.\n\nView it in Communications Hub to see the full email and delivery status.` });
       } else {
         const error = await response.json();
-        Alert.alert('Error', error.error || 'Failed to send receipt');
+        showToast({ type: 'error', message: error.error || 'Failed to send receipt' });
       }
     } catch (error) {
       if (__DEV__) console.log('Error sending receipt:', error);
-      Alert.alert('Error', 'Failed to send receipt. Please try again.');
+      showToast({ type: 'error', message: 'Failed to send receipt. Please try again.' });
     } finally {
       setIsSendingReceipt(false);
     }
@@ -1271,7 +1237,7 @@ ${businessName}`;
       // Refresh data to show updated status
       loadData();
       setShowReceiptEmailCompose(false);
-      Alert.alert('Receipt Sent!', `Email sent to ${client.email} with PDF attached.`);
+      showToast({ type: 'info', message: 'Receipt Sent!', description: `Email sent to ${client.email} with PDF attached.` });
     } catch (error: any) {
       console.error('Error sending receipt email:', error);
       const message = error?.message || 'Failed to send receipt email';
@@ -1297,15 +1263,15 @@ ${businessName}`;
       if (response.ok) {
         const data = await response.json();
         await loadData();
-        Alert.alert('Success', 'Payment link generated successfully');
+        showToast({ type: 'success', message: 'Payment link generated successfully' });
         return data.paymentUrl;
       } else {
         const error = await response.json();
-        Alert.alert('Error', error.error || 'Failed to generate payment link');
+        showToast({ type: 'error', message: error.error || 'Failed to generate payment link' });
       }
     } catch (error) {
       if (__DEV__) console.log('Error generating payment link:', error);
-      Alert.alert('Error', 'Failed to generate payment link. Please try again.');
+      showToast({ type: 'error', message: 'Failed to generate payment link. Please try again.' });
     } finally {
       setIsGeneratingPaymentLink(false);
     }
@@ -1345,14 +1311,14 @@ ${businessName}`;
       });
     } catch (error) {
       if (__DEV__) console.log('Error sharing payment link:', error);
-      Alert.alert('Error', 'Failed to share link');
+      showToast({ type: 'error', message: 'Failed to share link' });
     }
   };
 
   const copyPaymentLinkToClipboard = async () => {
     const paymentUrl = getPaymentLinkUrl();
     if (!paymentUrl) {
-      Alert.alert('Error', 'No payment link available. Please generate one first.');
+      showToast({ type: 'error', message: 'No payment link available. Please generate one first.' });
       return;
     }
     
@@ -1362,7 +1328,7 @@ ${businessName}`;
         title: 'Payment Link',
       });
     } catch (error) {
-      Alert.alert('Share Payment Link', paymentUrl);
+      showToast({ type: 'info', message: 'Share Payment Link', description: paymentUrl });
     }
   };
 
@@ -1371,7 +1337,7 @@ ${businessName}`;
     
     const paymentUrl = getPaymentLinkUrl();
     if (!paymentUrl) {
-      Alert.alert('No Payment Link', 'Please generate a payment link first before emailing it.');
+      showToast({ type: 'info', message: 'No Payment Link', description: 'Please generate a payment link first before emailing it.' });
       return;
     }
     
@@ -1380,14 +1346,14 @@ ${businessName}`;
       const response = await api.post<{ message?: string }>(`/api/invoices/${id}/send-payment-link`);
       
       if (response.error) {
-        Alert.alert('Error', response.error);
+        showToast({ type: 'error', message: response.error });
       } else {
         const message = response.data?.message || `Payment link emailed to ${client.email}`;
-        Alert.alert('Payment Link Sent', message);
+        showToast({ type: 'info', message: 'Payment Link Sent', description: message });
       }
     } catch (error) {
       if (__DEV__) console.log('Error sending payment link email:', error);
-      Alert.alert('Error', 'Failed to send payment link. Please try again.');
+      showToast({ type: 'error', message: 'Failed to send payment link. Please try again.' });
     } finally {
       setIsSendingPaymentLinkEmail(false);
     }
@@ -1426,10 +1392,10 @@ ${businessName}`;
       
       setShowMilestonesModal(false);
       await loadData();
-      Alert.alert('Success', 'Payment milestones and retention settings saved.');
+      showToast({ type: 'success', message: 'Payment milestones and retention settings saved.' });
     } catch (error: any) {
       if (__DEV__) console.log('Error saving milestones:', error);
-      Alert.alert('Error', error.message || 'Failed to save milestones');
+      showToast({ type: 'error', message: error.message || 'Failed to save milestones' });
     } finally {
       setIsSavingMilestones(false);
     }
@@ -1579,12 +1545,12 @@ ${businessName}`;
         const fileName = `${invoice?.invoiceNumber || 'invoice'}.pdf`;
         const destUri = `${FileSystem.documentDirectory}${fileName}`;
         await FileSystem.copyAsync({ from: uri, to: destUri });
-        Alert.alert('Saved', `PDF saved to app documents: ${fileName}`);
+        showToast({ type: 'success', message: `PDF saved to app documents: ${fileName}` });
       }
     } catch (error: any) {
       if (__DEV__) console.log('PDF download error:', error);
       const message = error?.message || 'Failed to download PDF. Please try again.';
-      Alert.alert('PDF Download', message);
+      showToast({ type: 'info', message: 'PDF Download', description: message });
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -1608,7 +1574,7 @@ ${businessName}`;
           UTI: 'com.adobe.pdf',
         });
       } else {
-        Alert.alert('Sharing Not Available', 'Sharing is not available on this device. Try saving to device instead.');
+        showToast({ type: 'info', message: 'Sharing Not Available', description: 'Sharing is not available on this device. Try saving to device instead.' });
       }
     } catch (error: any) {
       if (__DEV__) console.log('Share PDF error:', error);
@@ -1649,7 +1615,7 @@ ${businessName}`;
         const fileName = `${invoice?.invoiceNumber || 'invoice'}.pdf`;
         const destUri = `${FileSystem.documentDirectory}${fileName}`;
         await FileSystem.copyAsync({ from: uri, to: destUri });
-        Alert.alert('Saved', `PDF saved to app documents: ${fileName}`);
+        showToast({ type: 'success', message: `PDF saved to app documents: ${fileName}` });
       }
     } catch (error: any) {
       if (__DEV__) console.log('Save to device error:', error);
@@ -1675,7 +1641,7 @@ ${businessName}`;
   const handleCopyPaymentLink = async () => {
     const paymentUrl = getPaymentLinkUrl();
     if (!paymentUrl) {
-      Alert.alert('No Payment Link', 'Generate a payment link first to share it.');
+      showToast({ type: 'info', message: 'No Payment Link', description: 'Generate a payment link first to share it.' });
       return;
     }
     
@@ -1686,7 +1652,7 @@ ${businessName}`;
         title: 'Payment Link',
       });
     } catch (error) {
-      Alert.alert('Share Payment Link', paymentUrl);
+      showToast({ type: 'info', message: 'Share Payment Link', description: paymentUrl });
     }
   };
 
@@ -1788,13 +1754,13 @@ ${businessName}`;
           title: invoice.invoiceNumber || 'Invoice',
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity 
+              <Button
+                size="icon"
+                variant="ghost"
                 onPress={handleDownloadPdf}
-                style={styles.headerButton}
                 disabled={isDownloadingPdf}
-              >
-                <Feather name="file-text" size={22} color={colors.primary} />
-              </TouchableOpacity>
+                icon={<Feather name="file-text" size={22} color={colors.primary} />}
+              >{null}</Button>
               <TouchableOpacity 
                 onPress={handleDeleteInvoice}
                 style={styles.headerButton}
@@ -2471,11 +2437,7 @@ ${businessName}`;
                   <TouchableOpacity 
                     style={styles.recurringEditButton}
                     onPress={() => {
-                      Alert.alert(
-                        'Edit Schedule',
-                        'To change the schedule, stop this recurring invoice and create a new one with your preferred settings.',
-                        [{ text: 'OK' }]
-                      );
+                      showToast({ type: 'info', message: 'Edit Schedule', description: 'To change the schedule, stop this recurring invoice and create a new one with your preferred settings.' });
                     }}
                   >
                     <Feather name="edit-2" size={16} color={colors.primary} />
@@ -2500,9 +2462,9 @@ ${businessName}`;
                                   nextRecurrenceDate: null,
                                 });
                                 await fetchInvoices();
-                                Alert.alert('Success', 'Recurring schedule has been stopped.');
+                                showToast({ type: 'success', message: 'Success', description: 'Recurring schedule has been stopped.' });
                               } catch (error) {
-                                Alert.alert('Error', 'Failed to stop recurring invoice.');
+                                showToast({ type: 'error', message: 'Error', description: 'Failed to stop recurring invoice.' });
                               }
                             }
                           }
@@ -2993,40 +2955,41 @@ ${businessName}`;
 
           {/* Actions */}
           {invoice.status === 'draft' && (
-            <TouchableOpacity 
-              style={[styles.primaryButton, isSendingInvoice && styles.buttonDisabled]} 
-              onPress={handleSend}
+            <Button
+              size="xl"
+              variant="default"
+              fullWidth
+              loading={isSendingInvoice}
               disabled={isSendingInvoice}
+              onPress={handleSend}
+              icon={!isSendingInvoice ? <Feather name="send" size={18} color={colors.primaryForeground} /> : undefined}
             >
-              {isSendingInvoice ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <Feather name="send" size={20} color={colors.white} />
-              )}
-              <Text style={styles.primaryButtonText}>
-                {isSendingInvoice ? 'Sending...' : 'Send to Client'}
-              </Text>
-            </TouchableOpacity>
+              {isSendingInvoice ? 'Sending...' : 'Send to Client'}
+            </Button>
           )}
           
           {(invoice.status === 'sent' || invoice.status === 'overdue') && (
             <View style={styles.actionsColumn}>
-              <TouchableOpacity style={styles.primaryButton} onPress={handleCollectPayment}>
-                <Feather name="credit-card" size={20} color={colors.white} />
-                <Text style={styles.primaryButtonText}>Collect Payment</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.secondaryButton, isRecordingPayment && styles.buttonDisabled]} 
-                onPress={handleMarkPaid}
-                disabled={isRecordingPayment}
+              <Button
+                size="xl"
+                variant="default"
+                fullWidth
+                onPress={handleCollectPayment}
+                icon={<Feather name="credit-card" size={18} color={colors.primaryForeground} />}
               >
-                {isRecordingPayment ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Feather name="dollar-sign" size={20} color={colors.primary} />
-                )}
-                <Text style={styles.secondaryButtonText}>Record Payment</Text>
-              </TouchableOpacity>
+                Collect Payment
+              </Button>
+              <Button
+                size="xl"
+                variant="outline"
+                fullWidth
+                loading={isRecordingPayment}
+                disabled={isRecordingPayment}
+                onPress={handleMarkPaid}
+                icon={!isRecordingPayment ? <Feather name="dollar-sign" size={18} color={colors.foreground} /> : undefined}
+              >
+                Record Payment
+              </Button>
             </View>
           )}
 

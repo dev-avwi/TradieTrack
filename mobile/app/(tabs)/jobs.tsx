@@ -16,6 +16,7 @@ import {
   Dimensions,
   Platform,
   KeyboardAvoidingView,
+  Pressable,
 } from 'react-native';
 
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -32,6 +33,8 @@ import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import { getJobUrgency, type JobUrgency } from '../../src/lib/jobUrgency';
 import UsageLimitBanner from '../../src/components/UsageLimitBanner';
 import { QuickActionSheet, type QuickAction } from '../../src/components/QuickActionSheet';
+import { showToast } from '../../src/lib/toast';
+import { Button } from '../../src/components/ui/Button';
 
 interface AdvancedFilters {
   statuses: string[];
@@ -139,13 +142,12 @@ function JobListRow({
         <Text style={styles.jobListRowDate}>
           {formatDate(job.scheduledAt)}
         </Text>
-        <TouchableOpacity 
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        <Button
+          size="icon"
+          variant="ghost"
           onPress={handleMorePress}
-          style={styles.jobListRowAction}
-        >
-          <Feather name="more-vertical" size={iconSizes.md} color={colors.mutedForeground} />
-        </TouchableOpacity>
+          icon={<Feather name="more-vertical" size={iconSizes.md} color={colors.mutedForeground} />}
+        >{null}</Button>
       </View>
     </AnimatedCardPressable>
   );
@@ -235,13 +237,12 @@ function JobCard({
               </Text>
             </View>
           )}
-          <TouchableOpacity 
-            style={styles.moreButton}
+          <Button
+            size="icon"
+            variant="ghost"
             onPress={handleMorePress}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Feather name="more-horizontal" size={16} color={colors.mutedForeground} />
-          </TouchableOpacity>
+            icon={<Feather name="more-horizontal" size={16} color={colors.mutedForeground} />}
+          >{null}</Button>
         </View>
 
         <Text style={styles.jobTitle} numberOfLines={2}>{job.title || 'Untitled Job'}</Text>
@@ -274,17 +275,19 @@ function JobCard({
         </View>
 
         {job.status === 'done' && (
-          <TouchableOpacity
-            style={styles.invoiceBtn}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              router.push(`/more/invoice/new?jobId=${job.id}`);
-            }}
-            activeOpacity={0.8}
+          <Pressable
+            style={{ alignSelf: 'flex-start', marginTop: spacing.sm }}
+            onPress={(e) => e.stopPropagation()}
           >
-            <Feather name="file-text" size={iconSizes.sm} color={colors.white} />
-            <Text style={styles.invoiceBtnText}>Invoice</Text>
-          </TouchableOpacity>
+            <Button
+              size="sm"
+              variant="default"
+              icon={<Feather name="file-text" size={iconSizes.sm} color={colors.primaryForeground} />}
+              onPress={() => router.push(`/more/invoice/new?jobId=${job.id}`)}
+            >
+              Invoice
+            </Button>
+          </Pressable>
         )}
       </View>
     </AnimatedCardPressable>
@@ -394,9 +397,9 @@ export default function JobsScreen() {
     });
     if (response.data) {
       setSavedFilters(prev => [...prev, response.data!]);
-      Alert.alert('Saved', `"${saveFilterName}" has been saved.`);
+      showToast({ type: 'success', message: `"${saveFilterName}" has been saved.` });
     } else {
-      Alert.alert('Error', 'Failed to save filter.');
+      showToast({ type: 'error', message: 'Failed to save filter.' });
     }
     setSavingFilter(false);
     setSaveDialogOpen(false);
@@ -496,20 +499,20 @@ export default function JobsScreen() {
         { jobIds: Array.from(selectedJobIds) }
       );
       if (response.error) {
-        Alert.alert('Error', response.error);
+        showToast({ type: 'error', message: response.error });
       } else {
         const data = response.data;
         const msg = data
           ? `${data.created} invoice${data.created !== 1 ? 's' : ''} created${data.skipped ? `, ${data.skipped} skipped` : ''}.`
           : 'Invoices created successfully.';
-        Alert.alert('Batch Invoicing Complete', msg);
+        showToast({ type: 'info', message: 'Batch Invoicing Complete', description: msg });
         setBatchMode(false);
         setSelectedJobIds(new Set());
         setBatchConfirmVisible(false);
         refreshData();
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to create batch invoices. Please try again.');
+      showToast({ type: 'error', message: 'Failed to create batch invoices. Please try again.' });
     } finally {
       setBatchProcessing(false);
     }
@@ -564,12 +567,12 @@ export default function JobsScreen() {
     try {
       const response = await api.delete(`/api/jobs/${jobId}`);
       if (response.error) {
-        Alert.alert('Error', 'Failed to delete job. Please try again.');
+        showToast({ type: 'error', message: 'Failed to delete job. Please try again.' });
         return;
       }
       refreshData();
     } catch (error) {
-      Alert.alert('Error', 'Failed to delete job. Please try again.');
+      showToast({ type: 'error', message: 'Failed to delete job. Please try again.' });
     }
   }, [refreshData]);
 
@@ -780,38 +783,34 @@ export default function JobsScreen() {
         </View>
         <View style={styles.headerRight}>
           {completedJobs.length > 0 && (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.batchToggleBtn, batchMode && styles.batchToggleBtnActive]}
+            <Button
+              size="icon"
+              variant={batchMode ? 'default' : 'ghost'}
               onPress={toggleBatchMode}
-            >
-              <Feather name="check-square" size={iconSizes.md} color={batchMode ? colors.white : colors.mutedForeground} />
-            </TouchableOpacity>
+              icon={<Feather name="check-square" size={iconSizes.md} color={batchMode ? colors.white : colors.mutedForeground} />}
+            >{null}</Button>
           )}
           <View style={styles.viewToggle}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.viewToggleBtn, viewMode === 'grid' && styles.viewToggleBtnActive]}
+            <Button
+              size="icon"
+              variant="ghost"
               onPress={() => setViewMode('grid')}
-            >
-              <Feather name="grid" size={iconSizes.md} color={viewMode === 'grid' ? colors.primary : colors.mutedForeground} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
+              icon={<Feather name="grid" size={iconSizes.md} color={viewMode === 'grid' ? colors.primary : colors.mutedForeground} />}
+            >{null}</Button>
+            <Button
+              size="icon"
+              variant="ghost"
               onPress={() => setViewMode('list')}
-            >
-              <Feather name="list" size={iconSizes.md} color={viewMode === 'list' ? colors.primary : colors.mutedForeground} />
-            </TouchableOpacity>
+              icon={<Feather name="list" size={iconSizes.md} color={viewMode === 'list' ? colors.primary : colors.mutedForeground} />}
+            >{null}</Button>
           </View>
           {canWriteJobs && (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.newJobButton}
+            <Button
+              size="icon"
+              variant="default"
               onPress={navigateToCreateJob}
-            >
-              <Feather name="plus" size={iconSizes.lg} color={colors.white} />
-            </TouchableOpacity>
+              icon={<Feather name="plus" size={iconSizes.lg} color={colors.white} />}
+            >{null}</Button>
           )}
         </View>
       </View>
@@ -1197,14 +1196,14 @@ export default function JobsScreen() {
           </View>
           <View style={styles.batchBarRight}>
             {selectedJobIds.size > 0 && (
-              <TouchableOpacity
-                style={styles.batchInvoiceBtn}
+              <Button
+                size="sm"
+                variant="default"
+                icon={<Feather name="file-text" size={iconSizes.sm} color={colors.primaryForeground} />}
                 onPress={() => setBatchConfirmVisible(true)}
-                activeOpacity={0.7}
               >
-                <Feather name="file-text" size={iconSizes.sm} color={colors.white} />
-                <Text style={styles.batchInvoiceBtnText}>Create Invoices</Text>
-              </TouchableOpacity>
+                Create Invoices
+              </Button>
             )}
           </View>
         </View>
@@ -1398,25 +1397,22 @@ export default function JobsScreen() {
                   onSubmitEditing={handleSaveFilter}
                 />
                 <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={styles.modalCancelBtn}
-                    onPress={() => setSaveDialogOpen(false)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.modalCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalSaveBtn, (!saveFilterName.trim() || savingFilter) && { opacity: 0.5 }]}
-                    onPress={handleSaveFilter}
-                    disabled={!saveFilterName.trim() || savingFilter}
-                    activeOpacity={0.7}
-                  >
-                    {savingFilter ? (
-                      <ActivityIndicator size="small" color={colors.white} />
-                    ) : (
-                      <Text style={styles.modalSaveText}>Save Filter</Text>
-                    )}
-                  </TouchableOpacity>
+                  <View style={{ flex: 1 }}>
+                    <Button variant="outline" onPress={() => setSaveDialogOpen(false)} fullWidth>
+                      Cancel
+                    </Button>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      variant="default"
+                      onPress={handleSaveFilter}
+                      disabled={!saveFilterName.trim() || savingFilter}
+                      loading={savingFilter}
+                      fullWidth
+                    >
+                      Save Filter
+                    </Button>
+                  </View>
                 </View>
               </View>
             </TouchableWithoutFeedback>
@@ -1465,26 +1461,16 @@ export default function JobsScreen() {
                 </Text>
 
                 <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={styles.modalCancelBtn}
-                    onPress={() => setBatchConfirmVisible(false)}
-                    disabled={batchProcessing}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.modalCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalSaveBtn, batchProcessing && { opacity: 0.5 }]}
-                    onPress={handleBatchInvoice}
-                    disabled={batchProcessing}
-                    activeOpacity={0.7}
-                  >
-                    {batchProcessing ? (
-                      <ActivityIndicator size="small" color={colors.white} />
-                    ) : (
-                      <Text style={styles.modalSaveText}>Create {selectedJobIds.size} Invoice{selectedJobIds.size !== 1 ? 's' : ''}</Text>
-                    )}
-                  </TouchableOpacity>
+                  <View style={{ flex: 1 }}>
+                    <Button variant="outline" onPress={() => setBatchConfirmVisible(false)} disabled={batchProcessing} fullWidth>
+                      Cancel
+                    </Button>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Button variant="default" onPress={handleBatchInvoice} disabled={batchProcessing} loading={batchProcessing} fullWidth>
+                      {`Create ${selectedJobIds.size} Invoice${selectedJobIds.size !== 1 ? 's' : ''}`}
+                    </Button>
+                  </View>
                 </View>
               </View>
             </TouchableWithoutFeedback>

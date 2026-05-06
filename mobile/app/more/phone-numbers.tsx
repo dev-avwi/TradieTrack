@@ -20,6 +20,7 @@ import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { showToast } from '../../src/lib/toast';
 
 function getLastNumberKey(businessId?: string | number) {
   const id = businessId || 'default';
@@ -115,12 +116,12 @@ export default function PhoneNumbersPage() {
           smsSenderAttribution: mode,
         });
         if (res.error) {
-          Alert.alert('Could not save', res.error);
+          showToast({ type: 'info', message: 'Could not save', description: res.error });
         } else {
           await fetchBusinessSettings();
         }
       } catch (e: any) {
-        Alert.alert('Could not save', e?.message || 'Please try again.');
+        showToast({ type: 'info', message: 'Could not save', description: e?.message || 'Please try again.' });
       } finally {
         setSavingAttribution(false);
       }
@@ -151,10 +152,10 @@ export default function PhoneNumbersPage() {
         const smsNumbers = response.data.numbers.filter(n => n.capabilities?.sms !== false);
         setNumbers(smsNumbers);
       } else if (response.error) {
-        Alert.alert('Error', response.error);
+        showToast({ type: 'error', message: response.error });
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to search for numbers');
+      showToast({ type: 'error', message: e?.message || 'Failed to search for numbers' });
     } finally {
       setLoading(false);
     }
@@ -171,16 +172,13 @@ export default function PhoneNumbersPage() {
     try {
       const response = await api.post('/api/sms/release-number', {});
       if (response.error) {
-        Alert.alert('Error', response.error);
+        showToast({ type: 'error', message: response.error });
       } else {
         await fetchBusinessSettings();
-        Alert.alert(
-          'Reverted to Shared', 
-          'Your dedicated number has been archived. You can re-apply it anytime from this screen without losing it.'
-        );
+        showToast({ type: 'info', message: 'Reverted to Shared', description: 'Your dedicated number has been archived. You can re-apply it anytime from this screen without losing it.' });
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to archive number');
+      showToast({ type: 'error', message: e?.message || 'Failed to archive number' });
     } finally {
       setReleasing(false);
     }
@@ -201,10 +199,7 @@ export default function PhoneNumbersPage() {
               const response = await api.post('/api/sms/purchase-number', { phoneNumber: lastOwnedNumber });
               if (response.error) {
                 if (response.error.includes('not available') || response.error.includes('not found')) {
-                  Alert.alert(
-                    'Number Unavailable',
-                    `${formatPhone(lastOwnedNumber)} is no longer available. You can search for a new number instead.`
-                  );
+                  showToast({ type: 'info', message: 'Number Unavailable', description: `${formatPhone(lastOwnedNumber)} is no longer available. You can search for a new number instead.` });
                   AsyncStorage.removeItem(storageKey);
                   setLastOwnedNumber(null);
                 } else if (response.error.includes('address') || response.error.includes('Address')) {
@@ -217,7 +212,7 @@ export default function PhoneNumbersPage() {
                     ]
                   );
                 } else {
-                  Alert.alert('Error', response.error);
+                  showToast({ type: 'error', message: 'Error', description: response.error });
                 }
               } else if (response.data && (response.data as any).requiresPayment) {
                 const checkoutUrl = (response.data as any).checkoutUrl;
@@ -234,14 +229,14 @@ export default function PhoneNumbersPage() {
                     ]
                   );
                 } else {
-                  Alert.alert('Payment Required', 'Dedicated phone numbers are $10/month. Please contact admin@avwebinnovation.com for assistance.');
+                  showToast({ type: 'error', message: 'Payment Required', description: 'Dedicated phone numbers are $10/month. Please contact admin@avwebinnovation.com for assistance.' });
                 }
               } else {
                 await fetchBusinessSettings();
-                Alert.alert('Number Reactivated!', `${formatPhone(lastOwnedNumber)} is your dedicated number again.`);
+                showToast({ type: 'info', message: 'Number Reactivated!', description: `${formatPhone(lastOwnedNumber)} is your dedicated number again.` });
               }
             } catch (e: any) {
-              Alert.alert('Error', e?.message || 'Failed to re-acquire number');
+              showToast({ type: 'error', message: 'Error', description: e?.message || 'Failed to re-acquire number' });
             } finally {
               setReacquiring(false);
             }
@@ -287,10 +282,10 @@ export default function PhoneNumbersPage() {
                     ]
                   );
                 } else if (response.error.includes('already has')) {
-                  Alert.alert('Already Have a Number', response.error);
+                  showToast({ type: 'info', message: 'Already Have a Number', description: response.error });
                   await fetchBusinessSettings();
                 } else {
-                  Alert.alert('Error', response.error);
+                  showToast({ type: 'error', message: 'Error', description: response.error });
                 }
               } else if (response.data && (response.data as any).requiresPayment) {
                 const checkoutUrl = (response.data as any).checkoutUrl;
@@ -307,11 +302,7 @@ export default function PhoneNumbersPage() {
                     ]
                   );
                 } else {
-                  Alert.alert(
-                    'Payment Required',
-                    'Dedicated phone numbers are available as a $10/month add-on. Please contact admin@avwebinnovation.com for assistance.',
-                    [{ text: 'OK' }]
-                  );
+                  showToast({ type: 'error', message: 'Payment Required', description: 'Dedicated phone numbers are available as a $10/month add-on. Please contact admin@avwebinnovation.com for assistance.' });
                 }
               } else {
                 await fetchBusinessSettings();
@@ -325,7 +316,7 @@ export default function PhoneNumbersPage() {
                 );
               }
             } catch (e: any) {
-              Alert.alert('Error', e?.message || 'Failed to set up number. Please try again.');
+              showToast({ type: 'error', message: 'Error', description: e?.message || 'Failed to set up number. Please try again.' });
             } finally {
               setPurchasing(null);
             }
@@ -355,7 +346,7 @@ export default function PhoneNumbersPage() {
       return;
     }
     if (!portLoaAgreed) {
-      Alert.alert('Authorisation Required', 'You must agree to the Letter of Authorisation to proceed.');
+      showToast({ type: 'info', message: 'Authorisation Required', description: 'You must agree to the Letter of Authorisation to proceed.' });
       return;
     }
     setSubmittingPort(true);
@@ -367,12 +358,9 @@ export default function PhoneNumbersPage() {
         authorisationAgreed: true,
       });
       if (response.error) {
-        Alert.alert('Error', response.error);
+        showToast({ type: 'error', message: response.error });
       } else {
-        Alert.alert(
-          'Port Request Submitted',
-          'Your number porting request has been submitted. Australian number ports typically take 5\u201310 business days. You can track the status on this screen.',
-        );
+        showToast({ type: 'info', message: 'Port Request Submitted', description: 'Your number porting request has been submitted. Australian number ports typically take 5\u201310 business days. You can track the status on this screen.' });
         setShowPortForm(false);
         setPortPhone('');
         setPortCarrier('');
@@ -381,7 +369,7 @@ export default function PhoneNumbersPage() {
         fetchPortRequests();
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to submit port request.');
+      showToast({ type: 'error', message: e?.message || 'Failed to submit port request.' });
     } finally {
       setSubmittingPort(false);
     }
@@ -408,7 +396,7 @@ export default function PhoneNumbersPage() {
       setEditingLabel(null);
       fetchAiConfigs();
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to update label');
+      showToast({ type: 'error', message: e?.message || 'Failed to update label' });
     }
   };
 

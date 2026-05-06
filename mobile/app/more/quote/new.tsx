@@ -27,6 +27,7 @@ import offlineStorage, { useOfflineStore } from '../../../src/lib/offline-storag
 import LiveDocumentPreview from '../../../src/components/LiveDocumentPreview';
 import { getBottomNavHeight } from '../../../src/components/BottomNav';
 import { DatePicker } from '../../../src/components/ui/DatePicker';
+import { showToast } from '../../../src/lib/toast';
 
 const formatLocalDate = (d: Date): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -692,7 +693,7 @@ export default function NewQuoteScreen() {
         }
       } catch (error) {
         console.error('Failed to load quote for editing:', error);
-        Alert.alert('Error', 'Could not load quote for editing');
+        showToast({ type: 'error', message: 'Could not load quote for editing' });
       }
     };
     if (params.editQuoteId) {
@@ -731,7 +732,7 @@ export default function NewQuoteScreen() {
 
   const handleSaveLineItem = () => {
     if (!editForm.description.trim()) {
-      Alert.alert('Error', 'Please enter a description for this item');
+      Alert.alert('Please enter a description for this item');
       return;
     }
 
@@ -781,7 +782,7 @@ export default function NewQuoteScreen() {
 
   const handleQuickAddClient = async () => {
     if (!quickAddForm.name.trim()) {
-      Alert.alert('Error', 'Please enter a client name');
+      Alert.alert('Please enter a client name');
       return;
     }
 
@@ -805,10 +806,10 @@ export default function NewQuoteScreen() {
       setShowClientPicker(false);
       setQuickAddForm({ name: '', email: '', phone: '' });
       
-      Alert.alert('Success', `${response.data.name} has been added and selected`);
+      showToast({ type: 'success', message: `${response.data.name} has been added and selected` });
     } catch (error: any) {
       console.error('Failed to create client:', error);
-      Alert.alert('Error', error.response?.data?.error || 'Failed to create client');
+      showToast({ type: 'error', message: error.response?.data?.error || 'Failed to create client' });
     } finally {
       setIsCreatingClient(false);
     }
@@ -818,17 +819,17 @@ export default function NewQuoteScreen() {
 
   const handleSave = async () => {
     if (!form.clientId) {
-      Alert.alert('Error', 'Please select a client');
+      Alert.alert('Please select a client');
       return;
     }
 
     if (!form.title.trim()) {
-      Alert.alert('Error', 'Please enter a quote title');
+      Alert.alert('Please enter a quote title');
       return;
     }
 
     if (lineItems.length === 0) {
-      Alert.alert('Error', 'Please add at least one line item');
+      Alert.alert('Please add at least one line item');
       return;
     }
 
@@ -861,14 +862,11 @@ export default function NewQuoteScreen() {
     if (!isOnline) {
       try {
         await offlineStorage.saveQuoteOffline(quoteData);
-        Alert.alert(
-          'Saved Offline', 
-          'Quote saved locally and will sync when you\'re back online.',
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
+        showToast({ type: 'success', message: 'Saved Offline', description: 'Quote saved locally and will sync when you\'re back online.' });
+        router.back();
       } catch (error) {
         console.error('Failed to save quote offline:', error);
-        Alert.alert('Error', 'Failed to save quote offline. Please try again.');
+        showToast({ type: 'error', message: 'Failed to save quote offline. Please try again.' });
       }
       setIsLoading(false);
       return;
@@ -880,31 +878,27 @@ export default function NewQuoteScreen() {
         : await api.post('/api/quotes', quoteData);
 
       if (response.error) {
-        Alert.alert('Error', response.error || `Failed to ${isEditing ? 'update' : 'create'} quote`);
+        showToast({ type: 'error', message: response.error || `Failed to ${isEditing ? 'update' : 'create'} quote` });
       } else if (response.data) {
         await fetchQuotes();
-        Alert.alert('Success', isEditing ? 'Quote updated successfully' : 'Quote created successfully', [
-          { text: 'OK', onPress: () => router.back() }
-        ]);
+        showToast({ type: 'success', message: 'Success', description: isEditing ? 'Quote updated successfully' : 'Quote created successfully' });
+        router.back();
       } else {
-        Alert.alert('Error', `Failed to ${isEditing ? 'update' : 'create'} quote`);
+        showToast({ type: 'error', message: `Failed to ${isEditing ? 'update' : 'create'} quote` });
       }
     } catch (error: any) {
       // Network error - save offline
       if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
         try {
           await offlineStorage.saveQuoteOffline(quoteData);
-          Alert.alert(
-            'Saved Offline', 
-            'Quote saved locally and will sync when connection is restored.',
-            [{ text: 'OK', onPress: () => router.back() }]
-          );
+          showToast({ type: 'success', message: 'Saved Offline', description: 'Quote saved locally and will sync when connection is restored.' });
+          router.back();
         } catch (offlineError) {
           console.error('Failed to save quote offline:', offlineError);
-          Alert.alert('Error', 'Failed to save quote. Please try again.');
+          showToast({ type: 'error', message: 'Failed to save quote. Please try again.' });
         }
       } else {
-        Alert.alert('Error', 'Failed to create quote. Please try again.');
+        showToast({ type: 'error', message: 'Failed to create quote. Please try again.' });
       }
     }
     setIsLoading(false);
@@ -942,7 +936,7 @@ export default function NewQuoteScreen() {
       }
     } catch (error) {
       if (__DEV__) console.error('Error picking photo:', error);
-      Alert.alert('Error', 'Could not pick photo. Please try again.');
+      showToast({ type: 'error', message: 'Could not pick photo. Please try again.' });
     }
   };
 
@@ -968,18 +962,18 @@ export default function NewQuoteScreen() {
         if (transcribeResponse.data?.transcription) {
           setAiDescription(prev => prev ? `${prev}\n${transcribeResponse.data!.transcription}` : transcribeResponse.data!.transcription);
         } else {
-          Alert.alert('Note', 'Voice was recorded but could not be transcribed. Please type your description instead.');
+          showToast({ type: 'info', message: 'Note', description: 'Voice was recorded but could not be transcribed. Please type your description instead.' });
         }
       }
     } catch (error) {
       if (__DEV__) console.error('Voice transcription error:', error);
-      Alert.alert('Error', 'Could not process voice recording. Please type your description instead.');
+      showToast({ type: 'error', message: 'Could not process voice recording. Please type your description instead.' });
     }
   };
 
   const handleGenerateAI = async () => {
     if (!aiDescription.trim() && aiPhotos.length === 0) {
-      Alert.alert('Error', 'Please describe the job or add photos');
+      Alert.alert('Please describe the job or add photos');
       return;
     }
     setIsGeneratingAI(true);
@@ -1024,12 +1018,12 @@ export default function NewQuoteScreen() {
         setShowAIGenerator(false);
         setAiDescription('');
         setAiPhotos([]);
-        Alert.alert('Success', `Added ${aiItems.length} items from AI`);
+        showToast({ type: 'success', message: `Added ${aiItems.length} items from AI` });
       } else {
-        Alert.alert('Error', response.data?.notes?.[0] || 'Could not generate quote');
+        showToast({ type: 'error', message: response.data?.notes?.[0] || 'Could not generate quote' });
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to generate quote. Please try again.');
+      showToast({ type: 'error', message: 'Failed to generate quote. Please try again.' });
     } finally {
       setIsGeneratingAI(false);
       setIsUploadingPhotos(false);
@@ -1045,7 +1039,7 @@ export default function NewQuoteScreen() {
         setCatalogItems(response.data);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to load catalog');
+      showToast({ type: 'error', message: 'Failed to load catalog' });
     }
     setIsLoadingCatalog(false);
   };

@@ -30,6 +30,7 @@ import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import { useLocationStore } from '../../src/lib/location-store';
 import AppTour from '../../src/components/AppTour';
 import { Slider } from '../../src/components/ui/Slider';
+import { showToast } from '../../src/lib/toast';
 
 const PLAN_FEATURES = [
   { icon: 'briefcase', text: 'Unlimited jobs, quotes & invoices', pro: true },
@@ -1238,12 +1239,12 @@ export default function SettingsScreen() {
         workerWeekendRate: paymentData.workerWeekendRate,
       });
       if (response.error) {
-        Alert.alert('Error', response.error);
+        showToast({ type: 'error', message: response.error });
       } else {
-        Alert.alert('Saved', 'Payment settings updated successfully');
+        showToast({ type: 'success', message: 'Payment settings updated successfully' });
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to save payment settings');
+      showToast({ type: 'error', message: error.message || 'Failed to save payment settings' });
     }
     setPaymentSaving(false);
   }, [paymentData]);
@@ -1303,10 +1304,7 @@ export default function SettingsScreen() {
   const updateAiSetting = useCallback((key: string, value: boolean) => {
     // Tier guard: block flipping AI on for tiers that don't include it.
     if (!aiTierAllowed && value === true) {
-      Alert.alert(
-        'AI not included on your plan',
-        'AI features are available on Pro, Trial, and Team plans. Upgrade to enable them.',
-      );
+      showToast({ type: 'info', message: 'AI not included on your plan', description: 'AI features are available on Pro, Trial, and Team plans. Upgrade to enable them.' });
       return;
     }
     setAiSettings(prev => {
@@ -1319,15 +1317,15 @@ export default function SettingsScreen() {
   // Password change
   const handleChangePassword = useCallback(async () => {
     if (!passwordData.currentPassword || !passwordData.newPassword) {
-      Alert.alert('Error', 'Please fill in all password fields');
+      Alert.alert('Please fill in all password fields');
       return;
     }
     if (passwordData.newPassword.length < 6) {
-      Alert.alert('Error', 'New password must be at least 6 characters');
+      showToast({ type: 'error', message: 'New password must be at least 6 characters' });
       return;
     }
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      Alert.alert('Error', 'New passwords do not match');
+      showToast({ type: 'error', message: 'New passwords do not match' });
       return;
     }
     setPasswordSaving(true);
@@ -1337,14 +1335,14 @@ export default function SettingsScreen() {
         newPassword: passwordData.newPassword,
       });
       if (response.error) {
-        Alert.alert('Error', response.error);
+        showToast({ type: 'error', message: response.error });
       } else {
-        Alert.alert('Success', 'Password changed successfully');
+        showToast({ type: 'success', message: 'Password changed successfully' });
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         setShowPasswordSection(false);
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to change password');
+      showToast({ type: 'error', message: error.message || 'Failed to change password' });
     }
     setPasswordSaving(false);
   }, [passwordData]);
@@ -1369,13 +1367,13 @@ export default function SettingsScreen() {
             UTI: 'public.comma-separated-values-text',
           });
         } else {
-          Alert.alert('Exported', `File saved to ${filename}`);
+          showToast({ type: 'success', message: `File saved to ${filename}` });
         }
       } else {
-        Alert.alert('Error', 'Failed to download export file');
+        showToast({ type: 'error', message: 'Failed to download export file' });
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Could not export data');
+      showToast({ type: 'error', message: error.message || 'Could not export data' });
     }
     setExportingKey(null);
   }, []);
@@ -1423,7 +1421,7 @@ export default function SettingsScreen() {
 
   const handleCreateTemplate = async () => {
     if (!newTemplate.name.trim()) {
-      Alert.alert('Error', 'Template name is required');
+      showToast({ type: 'error', message: 'Template name is required' });
       return;
     }
 
@@ -1463,13 +1461,13 @@ export default function SettingsScreen() {
         await loadTemplates();
         setShowCreateModal(false);
         resetTemplateForm();
-        Alert.alert('Success', editingTemplate ? 'Template updated successfully' : 'Template created successfully');
+        showToast({ type: 'success', message: editingTemplate ? 'Template updated successfully' : 'Template created successfully' });
       } else {
         const error = await response.text();
-        Alert.alert('Error', error || 'Failed to save template');
+        showToast({ type: 'error', message: error || 'Failed to save template' });
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again.');
+      showToast({ type: 'error', message: 'Network error. Please try again.' });
     }
     setIsCreatingTemplate(false);
   };
@@ -1515,12 +1513,12 @@ export default function SettingsScreen() {
 
       if (response.ok) {
         await loadTemplates();
-        Alert.alert('Success', 'Template duplicated successfully');
+        showToast({ type: 'success', message: 'Template duplicated successfully' });
       } else {
-        Alert.alert('Error', 'Failed to duplicate template');
+        showToast({ type: 'error', message: 'Failed to duplicate template' });
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again.');
+      showToast({ type: 'error', message: 'Network error. Please try again.' });
     }
   };
 
@@ -1544,10 +1542,10 @@ export default function SettingsScreen() {
               });
               if (response.ok) {
                 await loadTemplates();
-                Alert.alert('Success', 'Template deleted');
+                showToast({ type: 'success', message: 'Success', description: 'Template deleted' });
               }
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete template');
+              showToast({ type: 'error', message: 'Error', description: 'Failed to delete template' });
             }
           }
         }
@@ -1899,13 +1897,13 @@ export default function SettingsScreen() {
                               try {
                                 const response = await api.post('/api/onboarding/clear-demo-data');
                                 if (response.error) {
-                                  Alert.alert('Error', response.error);
+                                  showToast({ type: 'error', message: 'Error', description: response.error });
                                 } else {
                                   await refreshUser();
-                                  Alert.alert('Done', response.data?.message || 'Sample data cleared successfully!');
+                                  showToast({ type: 'success', message: 'Done', description: response.data?.message || 'Sample data cleared successfully!' });
                                 }
                               } catch (error: any) {
-                                Alert.alert('Error', error.message || 'Failed to clear sample data');
+                                showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to clear sample data' });
                               } finally {
                                 setIsLoading(false);
                               }
@@ -1989,9 +1987,9 @@ export default function SettingsScreen() {
                       try {
                         await api.patch('/api/business-settings', { gstEnabled: value });
                         setBusinessSettings((prev: any) => prev ? { ...prev, gstEnabled: value } : prev);
-                        Alert.alert('Updated', `GST ${value ? 'enabled' : 'disabled'} on documents`);
+                        showToast({ type: 'success', message: `GST ${value ? 'enabled' : 'disabled'} on documents` });
                       } catch (e) {
-                        Alert.alert('Error', 'Failed to update GST setting');
+                        showToast({ type: 'error', message: 'Failed to update GST setting' });
                       }
                     }}
                     trackColor={{ false: colors.border, true: colors.success }}
@@ -2068,9 +2066,9 @@ export default function SettingsScreen() {
                         try {
                           await api.patch('/api/business-settings', { simpleMode: value });
                           setBusinessSettings((prev: any) => prev ? { ...prev, simpleMode: value } : prev);
-                          Alert.alert('Updated', `Solo Operator Mode ${value ? 'enabled' : 'disabled'}`);
+                          showToast({ type: 'success', message: `Solo Operator Mode ${value ? 'enabled' : 'disabled'}` });
                         } catch (e) {
-                          Alert.alert('Error', 'Failed to update mode');
+                          showToast({ type: 'error', message: 'Failed to update mode' });
                         }
                       }}
                       trackColor={{ false: colors.border, true: colors.success }}
