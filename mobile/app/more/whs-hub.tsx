@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal, TextInput, Alert, Platform, KeyboardAvoidingView } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import { Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -438,10 +439,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No Incident Reports</Text>
           <Text style={styles.emptyDesc}>Report incidents to keep your site safe and maintain compliance.</Text>
-          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowIncidentForm(true)}>
+          <PressableRow style={styles.emptyButton} onPress={() => setShowIncidentForm(true)}>
             <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Report Incident</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       );
     }
@@ -496,10 +497,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No Emergency Plans</Text>
           <Text style={styles.emptyDesc}>Set up emergency info for your sites including assembly points and first aid.</Text>
-          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowEmergencyForm(true)}>
+          <PressableRow style={styles.emptyButton} onPress={() => setShowEmergencyForm(true)}>
             <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Add Plan</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       );
     }
@@ -561,10 +562,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No JSAs Created</Text>
           <Text style={styles.emptyDesc}>Create a Job Safety Analysis before starting work on site.</Text>
-          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowJsaForm(true)}>
+          <PressableRow style={styles.emptyButton} onPress={() => setShowJsaForm(true)}>
             <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Create JSA</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       );
     }
@@ -618,10 +619,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No Hazardous Environments</Text>
           <Text style={styles.emptyDesc}>Track hazardous environments and required PPE for your work sites.</Text>
-          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowEnvForm(true)}>
+          <PressableRow style={styles.emptyButton} onPress={() => setShowEnvForm(true)}>
             <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Add Environment</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       );
     }
@@ -669,10 +670,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No Safety Signage</Text>
           <Text style={styles.emptyDesc}>Track safety signage requirements for your work sites.</Text>
-          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowSignForm(true)}>
+          <PressableRow style={styles.emptyButton} onPress={() => setShowSignForm(true)}>
             <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Add Sign</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       );
     }
@@ -1006,10 +1007,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No Hazard Reports</Text>
           <Text style={styles.emptyDesc}>Spot a hazard? Report it before someone gets hurt.</Text>
-          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowHazardForm(true)}>
+          <PressableRow style={styles.emptyButton} onPress={() => setShowHazardForm(true)}>
             <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Report Hazard</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       );
     }
@@ -1151,10 +1152,10 @@ export default function WhsHubScreen() {
           </View>
           <Text style={styles.emptyTitle}>No PPE Check-ins</Text>
           <Text style={styles.emptyDesc}>Start a daily PPE check-in to verify workers have proper safety gear.</Text>
-          <TouchableOpacity style={styles.emptyButton} onPress={() => setShowPpeForm(true)}>
+          <PressableRow style={styles.emptyButton} onPress={() => setShowPpeForm(true)}>
             <Feather name="plus" size={14} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Start Check-in</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       );
     }

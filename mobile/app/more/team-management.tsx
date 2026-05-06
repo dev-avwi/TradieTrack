@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -1981,12 +1982,12 @@ export default function TeamManagementScreen() {
     const _unused_getInitials = null;
 
     return (
-      <TouchableOpacity 
+      <PressableRow 
         key={member.id} 
         testID={`card-member-${member.id}`}
         style={styles.memberCard}
         onPress={() => openDetailModal(member)}
-        activeOpacity={0.7}
+
       >
         <View style={styles.memberHeader}>
           <TeamAvatar
@@ -2150,7 +2151,7 @@ export default function TeamManagementScreen() {
             </TouchableOpacity>
           </View>
         )}
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 

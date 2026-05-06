@@ -14,6 +14,7 @@ import {
   Platform,
   FlatList,
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -603,10 +604,10 @@ export default function InventoryScreen() {
     const categoryName = getCategoryName(item.categoryId);
 
     return (
-      <TouchableOpacity
+      <PressableRow
         style={styles.card}
         onPress={() => openDetail(item)}
-        activeOpacity={0.7}
+
       >
         <View style={styles.cardTopRow}>
           <View style={styles.cardNameRow}>
@@ -650,7 +651,7 @@ export default function InventoryScreen() {
             ) : null}
           </View>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 

@@ -14,6 +14,7 @@ import {
   Linking,
   TextInput,
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBottomNavHeight } from '../../../src/components/BottomNav';
 // Note: expo-clipboard requires a native build - using Share API as fallback for Expo Go
@@ -1827,7 +1828,7 @@ ${businessName}`;
           <View style={styles.primaryActionsRow}>
             {/* Send Email - for draft/sent/overdue */}
             {(invoice.status === 'draft' || invoice.status === 'sent' || invoice.status === 'overdue') && (
-              <TouchableOpacity 
+              <PressableRow 
                 style={[styles.primaryActionButton, { backgroundColor: colors.info }]}
                 onPress={handleSend}
                 disabled={isSendingInvoice}
@@ -1840,12 +1841,12 @@ ${businessName}`;
                 <Text style={styles.primaryActionText}>
                   {isSendingInvoice ? 'Sending...' : 'Send Email'}
                 </Text>
-              </TouchableOpacity>
+              </PressableRow>
             )}
             
             {/* Payment Link - for sent/overdue */}
             {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-              <TouchableOpacity 
+              <PressableRow 
                 style={[styles.primaryActionButton, { backgroundColor: colors.success }]}
                 onPress={sharePaymentLink}
                 disabled={isGeneratingPaymentLink}
@@ -1856,25 +1857,25 @@ ${businessName}`;
                   <Feather name="link" size={20} color={colors.white} />
                 )}
                 <Text style={styles.primaryActionText}>Payment Link</Text>
-              </TouchableOpacity>
+              </PressableRow>
             )}
             
             {/* Record Payment - for sent/overdue */}
             {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-              <TouchableOpacity 
+              <PressableRow 
                 style={[styles.primaryActionButton, { backgroundColor: colors.warning }]}
                 onPress={handleMarkPaid}
               >
                 <Feather name="dollar-sign" size={20} color={colors.warningForeground} />
                 <Text style={[styles.primaryActionText, { color: colors.warningForeground }]}>Record Paid</Text>
-              </TouchableOpacity>
+              </PressableRow>
             )}
 
             {/* Paid invoice actions */}
             {isPaid && (
               <>
                 {/* Send Receipt - for paid invoices */}
-                <TouchableOpacity 
+                <PressableRow 
                   style={[styles.primaryActionButton, { backgroundColor: colors.info }]}
                   onPress={handleSendReceipt}
                   disabled={isSendingReceipt || !client?.email}
@@ -1887,28 +1888,28 @@ ${businessName}`;
                   <Text style={styles.primaryActionText}>
                     {isSendingReceipt ? 'Sending...' : 'Send Receipt'}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
 
                 {/* View Receipt - for paid invoices with linked receipt */}
                 {linkedReceipt && (
-                  <TouchableOpacity 
+                  <PressableRow 
                     style={[styles.primaryActionButton, { backgroundColor: colors.success }]}
                     onPress={() => router.push(`/more/receipt/${linkedReceipt.id}`)}
                   >
                     <Feather name="file-text" size={20} color={colors.white} />
                     <Text style={styles.primaryActionText}>View Receipt</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 )}
 
                 {/* Create Receipt - for paid invoices without linked receipt */}
                 {!linkedReceipt && (
-                  <TouchableOpacity 
+                  <PressableRow 
                     style={[styles.primaryActionButton, { backgroundColor: colors.success }]}
                     onPress={() => router.push(`/more/receipt/new?invoiceId=${id}`)}
                   >
                     <Feather name="plus" size={20} color={colors.white} />
                     <Text style={styles.primaryActionText}>Create Receipt</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 )}
               </>
             )}
@@ -1916,7 +1917,7 @@ ${businessName}`;
 
           {/* Secondary Quick Actions */}
           <View style={styles.quickActions}>
-            <TouchableOpacity 
+            <PressableRow 
               style={styles.quickAction}
               onPress={handleDownloadPdf}
               disabled={isDownloadingPdf}
@@ -1927,27 +1928,27 @@ ${businessName}`;
                 <Feather name="file-text" size={20} color={colors.primary} />
               )}
               <Text style={styles.quickActionText}>{isDownloadingPdf ? 'Generating...' : 'PDF'}</Text>
-            </TouchableOpacity>
+            </PressableRow>
             {/* Only show Template for non-paid invoices - receipt viewing is in primary actions */}
             {!isPaid && (
-              <TouchableOpacity 
+              <PressableRow 
                 style={styles.quickAction}
                 onPress={() => setShowTemplateSelector(true)}
               >
                 <Feather name="layout" size={20} color={colors.primary} />
                 <Text style={styles.quickActionText}>Template</Text>
-              </TouchableOpacity>
+              </PressableRow>
             )}
             {invoice.status === 'draft' && (
-              <TouchableOpacity 
+              <PressableRow 
                 style={styles.quickAction}
                 onPress={() => router.push(`/more/invoice/new?editInvoiceId=${id}`)}
               >
                 <Feather name="edit-2" size={20} color={colors.primary} />
                 <Text style={styles.quickActionText}>Edit</Text>
-              </TouchableOpacity>
+              </PressableRow>
             )}
-            <TouchableOpacity 
+            <PressableRow 
               style={styles.quickAction}
               onPress={handleDeleteInvoice}
               disabled={isDeleting}
@@ -1958,7 +1959,7 @@ ${businessName}`;
                 <Feather name="trash-2" size={20} color={colors.destructive} />
               )}
               <Text style={[styles.quickActionText, { color: colors.destructive }]}>Delete</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           {/* Payment Options - Only show if not paid - MOVED TO TOP for tradie visibility */}

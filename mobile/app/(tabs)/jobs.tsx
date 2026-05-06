@@ -18,6 +18,7 @@ import {
   KeyboardAvoidingView,
   Pressable,
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useContentWidth, useIsTablet } from '../../src/lib/device';
@@ -828,8 +829,8 @@ export default function JobsScreen() {
             onChangeText={setSearchQuery}
           />
         </View>
-        <TouchableOpacity
-          activeOpacity={0.7}
+        <PressableRow
+
           style={[
             styles.advancedFilterBtn,
             (advancedOpen || hasAdvancedFilters) && styles.advancedFilterBtnActive,
@@ -842,7 +843,7 @@ export default function JobsScreen() {
               <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
             </View>
           )}
-        </TouchableOpacity>
+        </PressableRow>
       </View>
 
       {savedFilters.length > 0 && (
@@ -857,15 +858,15 @@ export default function JobsScreen() {
             <Text style={{ ...typography.captionSmall, color: colors.mutedForeground }}>Saved:</Text>
           </View>
           {savedFilters.map((sf) => (
-            <TouchableOpacity
+            <PressableRow
               key={sf.id}
-              activeOpacity={0.7}
+
               style={styles.savedFilterChip}
               onPress={() => handleLoadSavedFilter(sf)}
               onLongPress={() => handleDeleteSavedFilter(sf.id, sf.name)}
             >
               <Text style={styles.savedFilterChipText} numberOfLines={1}>{sf.name}</Text>
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </ScrollView>
       )}
@@ -894,25 +895,25 @@ export default function JobsScreen() {
               const labels: Record<string, string> = { pending: 'Pending', scheduled: 'Scheduled', in_progress: 'In Progress', done: 'Completed', invoiced: 'Invoiced' };
               const isSelected = advancedFilters.statuses.includes(s);
               return (
-                <TouchableOpacity
+                <PressableRow
                   key={s}
-                  activeOpacity={0.7}
+
                   style={[styles.advancedStatusChip, isSelected && styles.advancedStatusChipActive]}
                   onPress={() => toggleStatus(s)}
                 >
                   <Text style={[styles.advancedStatusChipText, isSelected && styles.advancedStatusChipTextActive]}>
                     {labels[s]}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               );
             })}
           </View>
 
           <Text style={styles.advancedLabel}>Date Range</Text>
           <View style={styles.advancedDateRow}>
-            <TouchableOpacity
+            <PressableRow
               style={[styles.advancedDateInput, { flex: 1 }]}
-              activeOpacity={0.7}
+
               onPress={() => {
                 const today = new Date().toISOString().split('T')[0];
                 setAdvancedFilters(prev => ({ ...prev, dateFrom: prev.dateFrom ? '' : today }));
@@ -927,11 +928,11 @@ export default function JobsScreen() {
                   <Feather name="x" size={12} color={colors.mutedForeground} />
                 </TouchableOpacity>
               ) : null}
-            </TouchableOpacity>
+            </PressableRow>
             <Text style={{ color: colors.mutedForeground }}>-</Text>
-            <TouchableOpacity
+            <PressableRow
               style={[styles.advancedDateInput, { flex: 1 }]}
-              activeOpacity={0.7}
+
               onPress={() => {
                 const nextWeek = new Date();
                 nextWeek.setDate(nextWeek.getDate() + 7);
@@ -947,30 +948,30 @@ export default function JobsScreen() {
                   <Feather name="x" size={12} color={colors.mutedForeground} />
                 </TouchableOpacity>
               ) : null}
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <Text style={styles.advancedLabel}>Assigned To</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
             <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-              <TouchableOpacity
+              <PressableRow
                 style={[styles.advancedStatusChip, !advancedFilters.assignedTo && styles.advancedStatusChipActive]}
-                activeOpacity={0.7}
+
                 onPress={() => setAdvancedFilters(prev => ({ ...prev, assignedTo: '' }))}
               >
                 <Text style={[styles.advancedStatusChipText, !advancedFilters.assignedTo && styles.advancedStatusChipTextActive]}>All</Text>
-              </TouchableOpacity>
+              </PressableRow>
               {teamMembers.map((m: any) => (
-                <TouchableOpacity
+                <PressableRow
                   key={m.id}
                   style={[styles.advancedStatusChip, advancedFilters.assignedTo === m.id && styles.advancedStatusChipActive]}
-                  activeOpacity={0.7}
+
                   onPress={() => setAdvancedFilters(prev => ({ ...prev, assignedTo: prev.assignedTo === m.id ? '' : m.id }))}
                 >
                   <Text style={[styles.advancedStatusChipText, advancedFilters.assignedTo === m.id && styles.advancedStatusChipTextActive]} numberOfLines={1}>
                     {m.name || m.email || 'Unnamed'}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
           </ScrollView>
@@ -978,24 +979,24 @@ export default function JobsScreen() {
           <Text style={styles.advancedLabel}>Client</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
             <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-              <TouchableOpacity
+              <PressableRow
                 style={[styles.advancedStatusChip, !advancedFilters.clientId && styles.advancedStatusChipActive]}
-                activeOpacity={0.7}
+
                 onPress={() => setAdvancedFilters(prev => ({ ...prev, clientId: '' }))}
               >
                 <Text style={[styles.advancedStatusChipText, !advancedFilters.clientId && styles.advancedStatusChipTextActive]}>All</Text>
-              </TouchableOpacity>
+              </PressableRow>
               {clients.map((c: any) => (
-                <TouchableOpacity
+                <PressableRow
                   key={c.id}
                   style={[styles.advancedStatusChip, advancedFilters.clientId === c.id && styles.advancedStatusChipActive]}
-                  activeOpacity={0.7}
+
                   onPress={() => setAdvancedFilters(prev => ({ ...prev, clientId: prev.clientId === c.id ? '' : c.id }))}
                 >
                   <Text style={[styles.advancedStatusChipText, advancedFilters.clientId === c.id && styles.advancedStatusChipTextActive]} numberOfLines={1}>
                     {c.name || 'Unnamed'}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
           </ScrollView>

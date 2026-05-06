@@ -15,6 +15,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -462,11 +463,11 @@ function ActivityFeed({
         const isClickable = activity.navigationPath || activity.entityId;
         
         return (
-          <TouchableOpacity 
+          <PressableRow 
             key={activity.id || index} 
             style={styles.activityItem}
             onPress={() => isClickable && onActivityPress?.(activity)}
-            activeOpacity={isClickable ? 0.7 : 1}
+
             disabled={!isClickable}
           >
             <View style={[styles.activityIcon, { backgroundColor: `${getActivityColor(activity.type)}12` }]}>
@@ -484,7 +485,7 @@ function ActivityFeed({
             {isClickable && (
               <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
             )}
-          </TouchableOpacity>
+          </PressableRow>
         );
       })}
     </View>
@@ -1418,10 +1419,10 @@ function KPICard({
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   return (
-    <TouchableOpacity
+    <PressableRow
       style={styles.kpiCard}
       onPress={onPress}
-      activeOpacity={0.95}
+
     >
       <View style={styles.kpiCardContent}>
         <View style={[styles.kpiIconContainer, { backgroundColor: iconBg }]}>
@@ -1432,7 +1433,7 @@ function KPICard({
           <Text style={styles.kpiTitle}>{title}</Text>
         </View>
       </View>
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 
@@ -1579,49 +1580,49 @@ function TodayJobCard({
     if (job.status === 'scheduled') {
       return (
         <View style={styles.actionButtonsRow}>
-          <TouchableOpacity 
+          <PressableRow 
             style={[styles.secondaryActionButton, { backgroundColor: colors.info }]}
             onPress={() => onOnMyWay(job.id, job.clientId)}
             disabled={isUpdating}
-            activeOpacity={0.8}
+
           >
             <Feather name="navigation" size={iconSizes.sm} color={colors.white} />
             <Text style={styles.secondaryActionButtonText}>On My Way</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
+          </PressableRow>
+          <PressableRow 
             style={styles.primaryActionButton}
             onPress={() => onStartJob(job.id)}
             disabled={isUpdating}
-            activeOpacity={0.8}
+
           >
             <Feather name="play" size={iconSizes.sm} color={colors.white} />
             <Text style={styles.primaryActionButtonText}>Start Job</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       );
     } else if (job.status === 'pending') {
       return (
-        <TouchableOpacity 
+        <PressableRow 
           style={styles.primaryActionButton}
           onPress={() => onStartJob(job.id)}
           disabled={isUpdating}
-          activeOpacity={0.8}
+
         >
           <Feather name="play" size={iconSizes.lg} color={colors.white} />
           <Text style={styles.primaryActionButtonText}>Start Job</Text>
-        </TouchableOpacity>
+        </PressableRow>
       );
     } else if (job.status === 'in_progress') {
       return (
-        <TouchableOpacity 
+        <PressableRow 
           style={[styles.primaryActionButton, styles.completeActionButton]}
           onPress={() => onCompleteJob(job.id)}
           disabled={isUpdating}
-          activeOpacity={0.8}
+
         >
           <Feather name="check-circle" size={iconSizes.lg} color={colors.white} />
           <Text style={styles.primaryActionButtonText}>Complete Job</Text>
-        </TouchableOpacity>
+        </PressableRow>
       );
     }
     return (
@@ -1647,9 +1648,9 @@ function TodayJobCard({
   };
 
   return (
-    <TouchableOpacity
+    <PressableRow
       onPress={onPress}
-      activeOpacity={0.9}
+
       style={[styles.jobCard, job.isXeroImport && { overflow: 'visible' }]}
     >
       {job.isXeroImport && <XeroBadge size="sm" />}
@@ -1753,7 +1754,7 @@ function TodayJobCard({
         {/* Primary Action Button */}
         {getActionButton()}
       </View>
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 

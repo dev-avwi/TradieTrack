@@ -15,6 +15,7 @@ import {
   FlatList,
   Switch,
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -848,10 +849,10 @@ export default function FormBuilderScreen() {
     const fieldCount = (item.fields || []).length;
 
     return (
-      <TouchableOpacity
+      <PressableRow
         style={styles.formCard}
         onPress={() => openEdit(item)}
-        activeOpacity={0.7}
+
       >
         <View style={styles.formCardHeader}>
           <View style={[styles.formTypeIcon, { backgroundColor: typeConfig.bgColor }]}>
@@ -887,7 +888,7 @@ export default function FormBuilderScreen() {
             <Text style={styles.statusText}>{item.isActive ? 'Active' : 'Inactive'}</Text>
           </View>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -917,10 +918,10 @@ export default function FormBuilderScreen() {
               <Feather name="chevron-down" size={14} color={index === fields.length - 1 ? colors.border : colors.mutedForeground} />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity
+          <PressableRow
             style={styles.fieldInfo}
             onPress={() => setEditingFieldIndex(isExpanded ? null : index)}
-            activeOpacity={0.7}
+
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
               <Feather name={typeConfig.icon} size={iconSizes.sm} color={colors.mutedForeground} />
@@ -928,7 +929,7 @@ export default function FormBuilderScreen() {
               {field.required && <Text style={styles.fieldItemBadge}>*</Text>}
             </View>
             <Text style={styles.fieldItemType}>{typeConfig.label}</Text>
-          </TouchableOpacity>
+          </PressableRow>
           <TouchableOpacity
             style={styles.deleteFieldBtn}
             onPress={() => removeField(index)}

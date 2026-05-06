@@ -61,6 +61,7 @@ export interface ThemeColors {
   badgeOutline: string;
   promoBorder: string;
   white: string;
+  ripple: string;
   isDark: boolean;
 }
 
@@ -398,6 +399,7 @@ const lightColors: ThemeColors = {
   badgeOutline: 'rgba(0, 0, 0, 0.05)',
   promoBorder: '#c7d2fe',
   white: '#ffffff',
+  ripple: 'rgba(0, 0, 0, 0.08)',
   isDark: false,
 };
 
@@ -456,6 +458,7 @@ const darkColors: ThemeColors = {
   badgeOutline: 'rgba(255, 255, 255, 0.05)',
   promoBorder: '#3d4260',
   white: '#ffffff',
+  ripple: 'rgba(255, 255, 255, 0.10)',
   isDark: true,
 };
 

@@ -58,6 +58,7 @@ import { useUserRole } from '../../src/hooks/use-user-role';
 import { api, API_URL } from '../../src/lib/api';
 import { statusColors, spacing, radius, shadows } from '../../src/lib/design-tokens';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 
 // Real-time polling interval for team locations (10 seconds)
 const LOCATION_POLL_INTERVAL = 10000;
@@ -2098,7 +2099,7 @@ export default function MapScreen() {
                                    alert.alertType === 'late' ? 'late for' : 'speeding near';
                 
                 return (
-                  <TouchableOpacity
+                  <PressableRow
                     key={alert.id}
                     style={{
                       flexDirection: 'row',
@@ -2111,7 +2112,6 @@ export default function MapScreen() {
                     onPress={() => {
                       alert.ids.forEach(id => markAlertRead(id));
                     }}
-                    activeOpacity={0.7}
                   >
                     <View style={{
                       width: 26,
@@ -2148,7 +2148,7 @@ export default function MapScreen() {
                         {alert.address ? ` \u00B7 ${alert.address.split(',')[0]}` : ''}
                       </Text>
                     </View>
-                  </TouchableOpacity>
+                  </PressableRow>
                 );
               })}
             </ScrollView>
@@ -2240,7 +2240,7 @@ export default function MapScreen() {
               const speed = member.lastLocation?.speed;
               
               return (
-                <TouchableOpacity
+                <PressableRow
                   key={member.id}
                   style={{
                     flexDirection: 'row',
@@ -2257,7 +2257,6 @@ export default function MapScreen() {
                     elevation: 3,
                   }}
                   onPress={() => handleWorkerTap(member)}
-                  activeOpacity={0.8}
                 >
                   {/* Compact avatar with activity dot */}
                   <View style={{ position: 'relative' }}>
@@ -2298,7 +2297,7 @@ export default function MapScreen() {
                           : formatLastSeen(member.lastLocation?.timestamp)}
                     </Text>
                   </View>
-                </TouchableOpacity>
+                </PressableRow>
               );
             })}
           </ScrollView>

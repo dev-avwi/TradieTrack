@@ -12,6 +12,7 @@ import {
   Linking,
   Image,
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -1167,21 +1168,21 @@ ${businessName}`;
 
           {/* Quick Actions Row 1 */}
           <View style={styles.quickActions}>
-            <TouchableOpacity 
+            <PressableRow 
               style={styles.quickAction}
               onPress={() => router.push(`/more/quote/new?editQuoteId=${id}`)}
             >
               <Feather name="edit-2" size={20} color={colors.primary} />
               <Text style={styles.quickActionText}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
+            </PressableRow>
+            <PressableRow 
               style={styles.quickAction}
               onPress={() => setShowPreview(true)}
             >
               <Feather name="eye" size={20} color={colors.primary} />
               <Text style={styles.quickActionText}>Preview</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
+            </PressableRow>
+            <PressableRow 
               style={styles.quickAction}
               onPress={handleDownloadPdf}
               disabled={isDownloadingPdf}
@@ -1192,22 +1193,22 @@ ${businessName}`;
                 <Feather name="download" size={20} color={colors.primary} />
               )}
               <Text style={styles.quickActionText}>{isDownloadingPdf ? 'Generating...' : 'PDF'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
+            </PressableRow>
+            <PressableRow 
               style={styles.quickAction}
               onPress={handleCopyLink}
             >
               <Feather name="link" size={20} color={colors.primary} />
               <Text style={styles.quickActionText}>Copy Link</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
+            </PressableRow>
+            <PressableRow 
               style={styles.quickAction}
               onPress={() => setShowTemplateSelector(true)}
             >
               <Feather name="layout" size={20} color={colors.primary} />
               <Text style={styles.quickActionText}>Template</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
+            </PressableRow>
+            <PressableRow 
               style={styles.quickAction}
               onPress={handleDeleteQuote}
               disabled={isDeleting}
@@ -1218,13 +1219,13 @@ ${businessName}`;
                 <Feather name="trash-2" size={20} color={colors.destructive} />
               )}
               <Text style={[styles.quickActionText, { color: colors.destructive }]}>Delete</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           
           {/* Quick Actions Row 2 - Draft status: Mark as Sent */}
           {quote.status === 'draft' && (
             <View style={[styles.quickActions, { marginTop: 8 }]}>
-              <TouchableOpacity 
+              <PressableRow 
                 style={[styles.quickAction, styles.quickActionPrimary, isSendingQuote && { opacity: 0.6 }]}
                 onPress={handleSend}
                 disabled={isSendingQuote || isMarkingSent}
@@ -1238,8 +1239,8 @@ ${businessName}`;
                 <Text style={[styles.quickActionText, { color: colors.white }]}>
                   {isSendingQuote ? 'Sending...' : 'Send to Client'}
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
+              </PressableRow>
+              <PressableRow 
                 style={[styles.quickAction, { backgroundColor: colors.info }, isMarkingSent && { opacity: 0.6 }]}
                 onPress={handleMarkAsSent}
                 disabled={isMarkingSent || isSendingQuote}
@@ -1253,14 +1254,14 @@ ${businessName}`;
                 <Text style={[styles.quickActionText, { color: colors.white }]}>
                   {isMarkingSent ? 'Updating...' : 'Mark as Sent'}
                 </Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
           
           {/* Quick Actions Row 2 - Sent status: Resend */}
           {quote.status === 'sent' && (
             <View style={[styles.quickActions, { marginTop: 8 }]}>
-              <TouchableOpacity 
+              <PressableRow 
                 style={[styles.quickAction, styles.quickActionPrimary, isSendingQuote && { opacity: 0.6 }]}
                 onPress={handleSend}
                 disabled={isSendingQuote}
@@ -1273,8 +1274,8 @@ ${businessName}`;
                 <Text style={[styles.quickActionText, { color: colors.white }]}>
                   {isSendingQuote ? 'Sending...' : 'Resend to Client'}
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
+              </PressableRow>
+              <PressableRow 
                 style={[styles.quickAction, { backgroundColor: colors.success }, isMarkingAccepted && { opacity: 0.6 }]}
                 onPress={handleAccept}
                 disabled={isMarkingAccepted}
@@ -1287,14 +1288,14 @@ ${businessName}`;
                 <Text style={[styles.quickActionText, { color: colors.white }]}>
                   {isMarkingAccepted ? 'Updating...' : 'Mark Accepted'}
                 </Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
           
           {/* Quick Actions Row 2 - Accepted status: Create Invoice/Job */}
           {quote.status === 'accepted' && !linkedInvoice && !linkedJob && (
             <View style={[styles.quickActions, { marginTop: 8 }]}>
-              <TouchableOpacity 
+              <PressableRow 
                 style={[styles.quickAction, styles.quickActionPrimary]}
                 onPress={handleConvertToInvoice}
                 disabled={isCreatingInvoice}
@@ -1308,8 +1309,8 @@ ${businessName}`;
                 <Text style={[styles.quickActionText, { color: colors.white }]}>
                   {isCreatingInvoice ? 'Creating...' : 'Create Invoice'}
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
+              </PressableRow>
+              <PressableRow 
                 style={[styles.quickAction, { backgroundColor: colors.success }]}
                 onPress={handleConvertToJob}
                 disabled={isCreatingJob}
@@ -1323,7 +1324,7 @@ ${businessName}`;
                 <Text style={[styles.quickActionText, { color: colors.white }]}>
                   {isCreatingJob ? 'Creating...' : 'Create Job'}
                 </Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
           
@@ -1331,7 +1332,7 @@ ${businessName}`;
           {quote.status === 'accepted' && (linkedInvoice || linkedJob) && (!linkedInvoice || !linkedJob) && (
             <View style={[styles.quickActions, { marginTop: 8 }]}>
               {!linkedInvoice && (
-                <TouchableOpacity 
+                <PressableRow 
                   style={[styles.quickAction, styles.quickActionPrimary, { flex: 1 }]}
                   onPress={handleConvertToInvoice}
                   disabled={isCreatingInvoice}
@@ -1345,10 +1346,10 @@ ${businessName}`;
                   <Text style={[styles.quickActionText, { color: colors.white }]}>
                     {isCreatingInvoice ? 'Creating...' : 'Create Invoice'}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
               {!linkedJob && (
-                <TouchableOpacity 
+                <PressableRow 
                   style={[styles.quickAction, { backgroundColor: colors.success, flex: 1 }]}
                   onPress={handleConvertToJob}
                   disabled={isCreatingJob}
@@ -1362,7 +1363,7 @@ ${businessName}`;
                   <Text style={[styles.quickActionText, { color: colors.white }]}>
                     {isCreatingJob ? 'Creating...' : 'Create Job'}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
           )}

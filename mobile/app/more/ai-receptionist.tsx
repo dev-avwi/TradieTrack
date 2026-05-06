@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert, TextInput, Linking, Platform } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -1063,11 +1064,11 @@ export default function AIReceptionistScreen() {
 
         <Text style={styles.sectionTitle}>Mode</Text>
         {MODE_OPTIONS.map(opt => (
-          <TouchableOpacity
+          <PressableRow
             key={opt.id}
             style={[styles.modeOption, { borderColor: mode === opt.id ? colors.primary : colors.cardBorder, backgroundColor: mode === opt.id ? colors.primary + '08' : colors.card }]}
             onPress={() => setMode(opt.id)}
-            activeOpacity={0.7}
+
           >
             <View style={[styles.modeIconContainer, { backgroundColor: mode === opt.id ? colors.primary + '20' : colors.muted }]}>
               <Feather name={opt.icon} size={20} color={mode === opt.id ? colors.primary : colors.mutedForeground} />
@@ -1077,7 +1078,7 @@ export default function AIReceptionistScreen() {
               <Text style={styles.modeDescription}>{opt.description}</Text>
             </View>
             {mode === opt.id && <Feather name="check" size={20} color={colors.primary} />}
-          </TouchableOpacity>
+          </PressableRow>
         ))}
 
 
@@ -1143,11 +1144,11 @@ export default function AIReceptionistScreen() {
             const isSelected = aiModel === m.id;
             const latencyColor = m.estimatedLatency <= 800 ? colors.success : m.estimatedLatency <= 1000 ? '#f59e0b' : '#ef4444';
             return (
-              <TouchableOpacity
+              <PressableRow
                 key={m.id}
                 style={[styles.modeOption, { borderColor: isSelected ? colors.primary : colors.cardBorder, backgroundColor: isSelected ? colors.primary + '08' : colors.card }]}
                 onPress={() => setAiModel(m.id)}
-                activeOpacity={0.7}
+
               >
                 <View style={[styles.modeIconContainer, { backgroundColor: isSelected ? colors.primary + '20' : colors.muted }]}>
                   <Feather name="cpu" size={18} color={isSelected ? colors.primary : colors.mutedForeground} />
@@ -1162,7 +1163,7 @@ export default function AIReceptionistScreen() {
                   <Text style={styles.modeDescription}>{m.description}</Text>
                 </View>
                 {isSelected && <Feather name="check" size={20} color={colors.primary} />}
-              </TouchableOpacity>
+              </PressableRow>
             );
           })}
         </View>

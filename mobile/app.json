@@ -3,6 +3,7 @@
     "name": "JobRunner",
     "slug": "tradietrack",
     "version": "1.1.2",
+    "jsEngine": "hermes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "jobrunner",
@@ -139,14 +140,16 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#ffffff",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png"
       },
       "package": "com.jobrunner.app",
-      "versionCode": 29,
+      "versionCode": 30,
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
@@ -211,7 +214,23 @@
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "buildToolsVersion": "35.0.0",
-            "minSdkVersion": 26
+            "minSdkVersion": 26,
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "-keep class com.stripe.stripeterminal.** { *; }\n-keep interface com.stripe.stripeterminal.** { *; }\n-dontwarn com.stripe.stripeterminal.**\n-keep class io.sentry.** { *; }\n-keep interface io.sentry.** { *; }\n-dontwarn io.sentry.**\n-keep class com.swmansion.reanimated.** { *; }\n-dontwarn com.swmansion.reanimated.**\n-keep class com.facebook.hermes.** { *; }\n-keep class com.facebook.jni.** { *; }\n-dontwarn com.facebook.hermes.**\n-keep class okhttp3.** { *; }\n-keep interface okhttp3.** { *; }\n-keep class okio.** { *; }\n-dontwarn okhttp3.**\n-dontwarn okio.**\n-keep class com.gorhom.bottomsheet.** { *; }\n-dontwarn com.gorhom.bottomsheet.**\n-keep class expo.modules.** { *; }\n-keep interface expo.modules.** { *; }\n-dontwarn expo.modules.**"
+          }
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/jobrunner-logo.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#fafafa",
+          "dark": {
+            "image": "./assets/jobrunner-logo.png",
+            "backgroundColor": "#121417"
           }
         }
       ],

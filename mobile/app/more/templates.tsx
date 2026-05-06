@@ -15,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
@@ -1622,7 +1623,7 @@ export default function TemplatesScreen() {
       <Text style={styles.sectionHeader}>Document Style</Text>
       
       {templateStyles.map((style) => (
-        <TouchableOpacity
+        <PressableRow
           key={style.id}
           style={[
             styles.styleCard,
@@ -1632,7 +1633,7 @@ export default function TemplatesScreen() {
             ...newTemplate,
             styling: { ...newTemplate.styling, templateStyle: style.id }
           })}
-          activeOpacity={0.7}
+
         >
           <View style={styles.styleCardHeader}>
             <Text style={styles.styleName}>{style.name}</Text>
@@ -1641,7 +1642,7 @@ export default function TemplatesScreen() {
             )}
           </View>
           <Text style={styles.styleDescription}>{style.description}</Text>
-        </TouchableOpacity>
+        </PressableRow>
       ))}
 
       <Text style={styles.sectionHeader}>Brand Color</Text>
@@ -2023,13 +2024,13 @@ export default function TemplatesScreen() {
                 </View>
               </View>
             ) : selectedPreset ? (
-              <TouchableOpacity
+              <PressableRow
                 style={[
                   styles.stylePresetCard,
                   selectedPreset.isDefault && styles.stylePresetCardActive
                 ]}
                 onPress={() => setShowPresetsModal(true)}
-                activeOpacity={0.7}
+
               >
                 <View style={styles.stylePresetHeader}>
                   <View style={styles.stylePresetInfo}>
@@ -2100,7 +2101,7 @@ export default function TemplatesScreen() {
                     templateCustomization={templateCustomization}
                   />
                 </View>
-              </TouchableOpacity>
+              </PressableRow>
             ) : null}
           </View>
 
@@ -2665,14 +2666,14 @@ export default function TemplatesScreen() {
 
               <View style={styles.stylePresetList}>
                 {stylePresets.map((preset) => (
-                  <TouchableOpacity
+                  <PressableRow
                     key={preset.id}
                     style={[
                       styles.stylePresetCard,
                       selectedPreset?.id === preset.id && styles.stylePresetCardActive
                     ]}
                     onPress={() => setSelectedPreset(preset)}
-                    activeOpacity={0.7}
+
                   >
                     <View style={styles.stylePresetHeader}>
                       <View style={styles.stylePresetInfo}>
@@ -2753,7 +2754,7 @@ export default function TemplatesScreen() {
                         />
                       </View>
                     )}
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))}
               </View>
 

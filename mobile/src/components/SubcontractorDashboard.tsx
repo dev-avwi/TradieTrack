@@ -12,6 +12,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../lib/store';
@@ -1264,7 +1265,7 @@ function JobCard({
   const status = statusConfig[job.status] || { label: job.status, color: colors.mutedForeground };
 
   return (
-    <TouchableOpacity style={styles.jobCard} onPress={onPress} activeOpacity={0.7}>
+    <PressableRow style={styles.jobCard} onPress={onPress}>
       <View style={[styles.jobCardBorder, { backgroundColor: job.businessColor }]} />
       <View style={styles.jobCardContent}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
@@ -1299,7 +1300,7 @@ function JobCard({
           )}
         </View>
       </View>
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 

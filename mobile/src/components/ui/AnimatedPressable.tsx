@@ -1,30 +1,6 @@
 import { ReactNode, useRef, useCallback } from 'react';
 import { Pressable, Animated, Easing, ViewStyle, PressableProps } from 'react-native';
-import * as Haptics from 'expo-haptics';
-
-type HapticType = 'light' | 'medium' | 'selection' | 'success' | 'none';
-
-const triggerHaptic = async (type: HapticType) => {
-  if (type === 'none') return;
-  try {
-    switch (type) {
-      case 'light':
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        break;
-      case 'medium':
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        break;
-      case 'selection':
-        await Haptics.selectionAsync();
-        break;
-      case 'success':
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        break;
-    }
-  } catch {
-    // Haptics not available
-  }
-};
+import { triggerHaptic, HapticType } from '../../lib/haptics';
 
 interface AnimatedPressableProps extends Omit<PressableProps, 'style'> {
   children: ReactNode;
@@ -150,4 +126,5 @@ export function AnimatedListItemPressable({
 }
 
 export { triggerHaptic };
+export type { HapticType };
 export default AnimatedPressable;

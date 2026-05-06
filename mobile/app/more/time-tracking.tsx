@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Switch
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, useFocusEffect, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -1393,30 +1394,30 @@ export default function TimeTrackingScreen() {
       <View style={styles.quickActionsSection}>
         <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
         <View style={styles.quickActionsGrid}>
-          <TouchableOpacity 
+          <PressableRow 
             style={styles.quickActionCard} 
-            activeOpacity={0.7}
+
             onPress={handleOpenAddEntry}
           >
             <Feather name="plus-circle" size={20} color={colors.primary} />
             <Text style={styles.quickActionText}>Add Entry</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
+          </PressableRow>
+          <PressableRow 
             style={styles.quickActionCard} 
-            activeOpacity={0.7}
+
             onPress={() => setActiveTab('sheet')}
           >
             <Feather name="file-text" size={20} color={colors.primary} />
             <Text style={styles.quickActionText}>View Sheet</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
+          </PressableRow>
+          <PressableRow 
             style={styles.quickActionCard} 
-            activeOpacity={0.7}
+
             onPress={() => setActiveTab('stats')}
           >
             <Feather name="bar-chart-2" size={20} color={colors.primary} />
             <Text style={styles.quickActionText}>Stats</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
 

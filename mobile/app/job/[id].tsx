@@ -24,6 +24,7 @@ import {
   AppStateStatus,
   ActionSheetIOS,
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { WebView } from 'react-native-webview';
@@ -6185,17 +6186,17 @@ export default function JobDetailScreen() {
                 </TouchableOpacity>
               )}
               
-              <TouchableOpacity
+              <PressableRow
                 style={[styles.mainActionButton, { backgroundColor: statusColor, flex: 1 }]}
                 onPress={handleStatusChange}
-                activeOpacity={0.8}
+
                 data-testid="button-main-action"
               >
                 <View style={styles.mainActionButtonIcon}>
                   <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
                 </View>
                 <Text style={styles.mainActionText}>{action.label}</Text>
-              </TouchableOpacity>
+              </PressableRow>
               </View>
               {job.workerStatus === 'on_my_way' && (
                 <TouchableOpacity
@@ -6224,17 +6225,17 @@ export default function JobDetailScreen() {
               )}
             </View>
           ) : (
-            <TouchableOpacity
+            <PressableRow
               style={[styles.mainActionButton, { backgroundColor: statusColor }]}
               onPress={handleStatusChange}
-              activeOpacity={0.8}
+
               data-testid="button-main-action"
             >
               <View style={styles.mainActionButtonIcon}>
                 <Feather name={action.icon} size={action.iconSize} color={colors.primaryForeground} />
               </View>
               <Text style={styles.mainActionText}>{action.label}</Text>
-            </TouchableOpacity>
+            </PressableRow>
           )
         ) : job.status === 'invoiced' && !invoice && (
           <Text style={styles.invoicedMessage}>This job has been invoiced</Text>
@@ -6243,8 +6244,8 @@ export default function JobDetailScreen() {
 
       {/* Scheduled Date Card - right after action buttons */}
       {job.scheduledAt && (
-        <TouchableOpacity 
-          activeOpacity={0.7} 
+        <PressableRow 
+ 
           style={styles.card}
           onPress={() => {
             setScheduleDate(new Date(job.scheduledAt!));
@@ -6266,7 +6267,7 @@ export default function JobDetailScreen() {
             color={colors.primary} 
             style={styles.cardActionIcon}
           />
-        </TouchableOpacity>
+        </PressableRow>
       )}
 
       {/* Safety & Compliance Section - Prominent before work starts */}
@@ -6554,8 +6555,8 @@ export default function JobDetailScreen() {
 
       {/* Site Update Quick Action - visible during in_progress - positioned prominently */}
       {job.status === 'in_progress' && (
-        <TouchableOpacity
-          activeOpacity={0.7}
+        <PressableRow
+
           style={[styles.card, { borderColor: colors.primary + '40' }]}
           onPress={() => {
             setSiteUpdateNote('');
@@ -6571,7 +6572,7 @@ export default function JobDetailScreen() {
             <Text style={[styles.cardValue, { color: colors.primary, fontWeight: '600' }]}>Post Site Update</Text>
           </View>
           <Feather name="chevron-right" size={iconSizes.lg} color={colors.primary} style={styles.cardActionIcon} />
-        </TouchableOpacity>
+        </PressableRow>
       )}
 
       {/* Smart Next Action Card - guides tradie through workflow (hidden for subcontractors) */}
@@ -6638,8 +6639,8 @@ export default function JobDetailScreen() {
 
       {/* Address Card */}
       {job.address && (
-        <TouchableOpacity 
-          activeOpacity={0.7} 
+        <PressableRow 
+ 
           style={styles.card}
           onPress={handleNavigate}
         >
@@ -6656,17 +6657,17 @@ export default function JobDetailScreen() {
             color={colors.primary} 
             style={styles.cardActionIcon}
           />
-        </TouchableOpacity>
+        </PressableRow>
       )}
 
 
       {/* Client Card */}
       {client && (
         <View style={styles.clientCard}>
-          <TouchableOpacity 
+          <PressableRow 
             style={styles.clientHeader}
             onPress={handleViewClient}
-            activeOpacity={0.7}
+
           >
             <TeamAvatar
               name={client?.name}
@@ -6680,7 +6681,7 @@ export default function JobDetailScreen() {
               )}
             </View>
             <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
           
           <View style={styles.clientActions}>
             {client.phone && (
@@ -6927,10 +6928,10 @@ export default function JobDetailScreen() {
         </View>
       )}
       {!job.description && !job.notes && (
-        <TouchableOpacity
+        <PressableRow
           style={styles.card}
           onPress={() => setShowNotesModal(true)}
-          activeOpacity={0.7}
+
         >
           <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
             <Feather name="edit-3" size={iconSizes.xl} color={colors.primary} />
@@ -6940,7 +6941,7 @@ export default function JobDetailScreen() {
             <Text style={[styles.cardValue, { color: colors.primary }]}>Add private notes</Text>
           </View>
           <Feather name="plus" size={iconSizes.lg} color={colors.primary} />
-        </TouchableOpacity>
+        </PressableRow>
       )}
 
       {/* Time Tracking Card - for scheduled jobs only (in_progress shown at top) */}
@@ -9677,7 +9678,7 @@ export default function JobDetailScreen() {
               contentContainerStyle={styles.photosScrollContent}
             >
               {photos.map((photo) => (
-                <TouchableOpacity 
+                <PressableRow 
                   key={photo.id}
                   style={styles.inlinePhotoItem}
                   onPress={() => {
@@ -9689,7 +9690,7 @@ export default function JobDetailScreen() {
                     }
                   }}
                   onLongPress={() => handleChangePhotoCategory(photo)}
-                  activeOpacity={0.8}
+
                 >
                   <Image 
                     source={{ uri: photo.signedUrl || photo.thumbnailUrl || photo.url || '' }} 
@@ -9715,7 +9716,7 @@ export default function JobDetailScreen() {
                       </Text>
                     </View>
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               ))}
               {/* Tap any photo to view full gallery */}
               <TouchableOpacity 
@@ -10187,10 +10188,10 @@ export default function JobDetailScreen() {
 
       {/* Activity Log Link - Full log is now in More tab */}
       {activityLog.length > 0 && (
-        <TouchableOpacity
+        <PressableRow
           style={styles.card}
           onPress={() => setActiveTab('manage')}
-          activeOpacity={0.7}
+
         >
           <View style={[styles.cardIconContainer, { backgroundColor: `${colors.inProgress}15` }]}>
             <Feather name="activity" size={iconSizes.xl} color={colors.inProgress} />
@@ -10200,7 +10201,7 @@ export default function JobDetailScreen() {
             <Text style={styles.cardValue}>{activityLog.length} activit{activityLog.length === 1 ? 'y' : 'ies'} recorded</Text>
           </View>
           <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
-        </TouchableOpacity>
+        </PressableRow>
       )}
     </>
   );
@@ -11256,7 +11257,7 @@ export default function JobDetailScreen() {
               ) : (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
                   {photos.map((photo) => (
-                    <TouchableOpacity 
+                    <PressableRow 
                       key={photo.id}
                       style={styles.photoItem}
                       onPress={() => {
@@ -11294,7 +11295,7 @@ export default function JobDetailScreen() {
                           </Text>
                         </View>
                       )}
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
               )}
@@ -12325,10 +12326,10 @@ export default function JobDetailScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalContent}>
-              <TouchableOpacity
+              <PressableRow
                 style={[styles.card, { marginBottom: spacing.sm }]}
                 onPress={handleStartBlankSwms}
-                activeOpacity={0.7}
+
               >
                 <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
                   <Feather name="file-plus" size={iconSizes.lg} color={colors.primary} />
@@ -12338,7 +12339,7 @@ export default function JobDetailScreen() {
                   <Text style={{ fontSize: 13, color: colors.mutedForeground }}>Start from scratch</Text>
                 </View>
                 <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
               {isLoadingTemplates ? (
                 <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
@@ -12346,11 +12347,11 @@ export default function JobDetailScreen() {
                 </View>
               ) : (
                 swmsTemplates.map((template) => (
-                  <TouchableOpacity
+                  <PressableRow
                     key={template.id}
                     style={[styles.card, { marginBottom: spacing.sm }]}
                     onPress={() => handleSelectTemplate(template)}
-                    activeOpacity={0.7}
+
                   >
                     <View style={[styles.cardIconContainer, { backgroundColor: `${colors.warning}15` }]}>
                       <Feather name="clipboard" size={iconSizes.lg} color={colors.warning} />
@@ -12364,7 +12365,7 @@ export default function JobDetailScreen() {
                       )}
                     </View>
                     <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))
               )}
             </ScrollView>

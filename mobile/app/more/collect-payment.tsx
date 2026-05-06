@@ -17,6 +17,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -729,10 +730,10 @@ function PaymentMethodCard({
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   return (
-    <TouchableOpacity
+    <PressableRow
       onPress={onPress}
       disabled={disabled}
-      activeOpacity={0.7}
+
       style={[styles.paymentMethodCard, disabled && styles.paymentMethodCardDisabled]}
     >
       <View style={styles.paymentMethodIcon}>
@@ -752,7 +753,7 @@ function PaymentMethodCard({
         </Text>
       </View>
       <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 
@@ -3717,14 +3718,14 @@ export default function CollectScreen() {
 
             <View style={{ marginTop: spacing.md, width: '100%', gap: spacing.sm }}>
               <View>
-                <TouchableOpacity
+                <PressableRow
                   style={[
                     styles.paymentMethodCard,
                     sendingReceipt && styles.paymentMethodCardDisabled
                   ]}
                   onPress={sendReceiptEmail}
                   disabled={sendingReceipt}
-                  activeOpacity={0.7}
+
                 >
                   <View style={[styles.paymentMethodIcon, { backgroundColor: colors.infoLight }]}>
                     <Feather name="mail" size={24} color={colors.info} />
@@ -3740,7 +3741,7 @@ export default function CollectScreen() {
                   ) : (
                     <Feather name="send" size={20} color={colors.mutedForeground} />
                   )}
-                </TouchableOpacity>
+                </PressableRow>
                 {!selectedInvoice?.clientEmail && (
                   <TextInput
                     style={styles.receiptInput}
@@ -3756,14 +3757,14 @@ export default function CollectScreen() {
               </View>
 
               <View>
-                <TouchableOpacity
+                <PressableRow
                   style={[
                     styles.paymentMethodCard,
                     sendingReceipt && styles.paymentMethodCardDisabled
                   ]}
                   onPress={sendReceiptSMS}
                   disabled={sendingReceipt}
-                  activeOpacity={0.7}
+
                 >
                   <View style={[styles.paymentMethodIcon, { backgroundColor: colors.successLight }]}>
                     <Feather name="message-circle" size={24} color={colors.success} />
@@ -3779,7 +3780,7 @@ export default function CollectScreen() {
                   ) : (
                     <Feather name="send" size={20} color={colors.mutedForeground} />
                   )}
-                </TouchableOpacity>
+                </PressableRow>
                 {!selectedInvoice?.clientPhone && (
                   <TextInput
                     style={styles.receiptInput}

@@ -18,6 +18,7 @@ import {
   UIManager,
   Platform,
 } from 'react-native';
+import { PressableRow } from '@/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -983,7 +984,7 @@ function GpsPrivacyCard() {
 
       {!gpsOptOut && (
         <View style={{ marginTop: spacing.md }}>
-          <TouchableOpacity
+          <PressableRow
             style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm }}
             onPress={() => Linking.openSettings()}
           >
@@ -991,7 +992,7 @@ function GpsPrivacyCard() {
             <Text style={[styles.planDescription, { color: colors.info }]}>
               Manage iOS location permissions
             </Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       )}
 
@@ -1778,7 +1779,7 @@ export default function SettingsScreen() {
                 )}
               </View>
 
-              <TouchableOpacity 
+              <PressableRow 
                 style={styles.settingsCard}
                 onPress={() => router.push('/more/profile-edit')}
                 data-testid="button-profile-settings"
@@ -1791,9 +1792,9 @@ export default function SettingsScreen() {
                   </View>
                 </View>
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity 
+              <PressableRow 
                 style={styles.settingsCard}
                 onPress={() => router.push('/more/app-settings')}
                 data-testid="button-app-settings"
@@ -1806,7 +1807,7 @@ export default function SettingsScreen() {
                   </View>
                 </View>
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
               <View style={styles.subscriptionCard}>
                 <TouchableOpacity
@@ -1881,7 +1882,7 @@ export default function SettingsScreen() {
                   <Text style={[styles.planDescription, { marginBottom: spacing.md }]}>
                     You have sample data loaded to help you explore the app. Clear it when you're ready to add your real business data.
                   </Text>
-                  <TouchableOpacity
+                  <PressableRow
                     style={[styles.settingsCard, { backgroundColor: colors.muted, borderColor: colors.destructive }]}
                     onPress={() => {
                       Alert.alert(
@@ -1926,7 +1927,7 @@ export default function SettingsScreen() {
                     ) : (
                       <Feather name="chevron-right" size={18} color={colors.destructive} />
                     )}
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               )}
             </View>
@@ -2005,17 +2006,17 @@ export default function SettingsScreen() {
                   <Text style={styles.subscriptionTitle}>Business SMS Number</Text>
                 </View>
                 {businessSettings?.dedicatedPhoneNumber ? (
-                  <TouchableOpacity 
+                  <PressableRow 
                     style={styles.businessInfoRow}
                     onPress={() => router.push('/more/phone-numbers')}
-                    activeOpacity={0.7}
+
                   >
                     <Text style={styles.businessInfoLabel}>Active Number</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                       <Text style={[styles.businessInfoValue, { color: colors.success, fontWeight: '600' }]}>{businessSettings.dedicatedPhoneNumber}</Text>
                       <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
                     </View>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ) : (
                   <>
                     <Text style={[styles.planDescription, { marginBottom: spacing.sm }]}>
@@ -2031,7 +2032,7 @@ export default function SettingsScreen() {
                 )}
               </View>
 
-              <TouchableOpacity 
+              <PressableRow 
                 style={styles.settingsCard}
                 onPress={() => router.push('/more/branding')}
                 data-testid="button-branding-settings"
@@ -2044,7 +2045,7 @@ export default function SettingsScreen() {
                   </View>
                 </View>
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
 
               {businessSettings?.simpleMode !== undefined && (
@@ -2790,7 +2791,7 @@ export default function SettingsScreen() {
                 )}
               </View>
 
-              <TouchableOpacity 
+              <PressableRow 
                 style={styles.settingsCard}
                 onPress={() => router.push('/more/notifications')}
                 data-testid="button-notification-settings"
@@ -2803,7 +2804,7 @@ export default function SettingsScreen() {
                   </View>
                 </View>
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
               <View style={styles.settingsInfoCard}>
                 <Text style={styles.settingsInfoTitle}>Stay Informed</Text>
@@ -2937,7 +2938,7 @@ export default function SettingsScreen() {
 
           {activeTab === 'help' && (
             <View style={styles.tabContentSection}>
-              <TouchableOpacity 
+              <PressableRow 
                 style={[styles.settingsCard, { borderColor: colors.primary, borderWidth: 2 }]}
                 onPress={() => setShowTour(true)}
                 data-testid="button-start-tour"
@@ -2950,7 +2951,7 @@ export default function SettingsScreen() {
                   </View>
                 </View>
                 <Feather name="play-circle" size={18} color={colors.primary} />
-              </TouchableOpacity>
+              </PressableRow>
 
               <Text style={styles.sectionLabel}>TAP TO PAY ON IPHONE</Text>
 
@@ -2971,7 +2972,7 @@ export default function SettingsScreen() {
 
               <Text style={styles.sectionLabel}>SUPPORT</Text>
 
-              <TouchableOpacity 
+              <PressableRow 
                 style={[styles.settingsCard, { borderColor: colors.destructive, borderWidth: 1 }]}
                 onPress={() => router.push('/more/report-bug')}
                 data-testid="button-report-bug"
@@ -2984,9 +2985,9 @@ export default function SettingsScreen() {
                   </View>
                 </View>
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity 
+              <PressableRow 
                 style={styles.settingsCard}
                 onPress={() => Linking.openURL('mailto:admin@avwebinnovation.com')}
                 data-testid="button-contact-support"
@@ -2999,9 +3000,9 @@ export default function SettingsScreen() {
                   </View>
                 </View>
                 <Feather name="external-link" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity 
+              <PressableRow 
                 style={styles.settingsCard}
                 onPress={() => router.push('/more/support')}
                 data-testid="button-help-centre"
@@ -3014,7 +3015,7 @@ export default function SettingsScreen() {
                   </View>
                 </View>
                 <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
               <Text style={styles.sectionLabel}>DATA EXPORT</Text>
 
