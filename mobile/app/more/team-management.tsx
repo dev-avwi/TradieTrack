@@ -2489,9 +2489,8 @@ export default function TeamManagementScreen() {
           scrollable={false}
           contentPadding={0}
         >
-          <View style={{ flex: 1 }}>
-            <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <View testID="modal-invite" style={styles.modalContent}>
+          <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View testID="modal-invite">
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Add Team Member</Text>
                 <TouchableOpacity testID="button-close-invite-modal" onPress={() => setShowInviteModal(false)}>
@@ -2701,8 +2700,7 @@ export default function TeamManagementScreen() {
                 </View>
               )}
             </View>
-            </KeyboardAvoidingView>
-          </View>
+          </KeyboardAvoidingView>
         </AppBottomSheet>
 
         {/* Member Detail Modal */}
@@ -2713,9 +2711,8 @@ export default function TeamManagementScreen() {
         scrollable={false}
         contentPadding={0}
       >
-          <View style={{ flex: 1 }}>
-            <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <View style={styles.modalContent}>
+          <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Team Member Details</Text>
                 <TouchableOpacity onPress={() => setShowDetailModal(false)}>
@@ -2935,8 +2932,7 @@ export default function TeamManagementScreen() {
                 )}
               </View>
             </View>
-            </KeyboardAvoidingView>
-          </View>
+          </KeyboardAvoidingView>
         </AppBottomSheet>
 
         {/* Edit Member Modal */}
@@ -2947,9 +2943,8 @@ export default function TeamManagementScreen() {
         scrollable={false}
         contentPadding={0}
       >
-          <View style={{ flex: 1 }}>
-            <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <View testID="modal-edit" style={styles.modalContent}>
+          <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View testID="modal-edit">
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Edit Team Member</Text>
                 <TouchableOpacity testID="button-close-edit-modal" onPress={() => setShowEditModal(false)}>
@@ -3031,8 +3026,7 @@ export default function TeamManagementScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            </KeyboardAvoidingView>
-          </View>
+          </KeyboardAvoidingView>
         </AppBottomSheet>
 
         {/* Permissions Modal */}
@@ -3043,9 +3037,8 @@ export default function TeamManagementScreen() {
         scrollable={false}
         contentPadding={0}
       >
-          <View style={{ flex: 1 }}>
-            <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <View testID="modal-permissions" style={styles.modalContent}>
+          <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View testID="modal-permissions">
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle} numberOfLines={1}>
                   Permissions: {getMemberName(selectedMember)}
@@ -3270,8 +3263,7 @@ export default function TeamManagementScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            </KeyboardAvoidingView>
-          </View>
+          </KeyboardAvoidingView>
         </AppBottomSheet>
 
         {/* Assign Job Modal */}
@@ -3282,9 +3274,8 @@ export default function TeamManagementScreen() {
         scrollable={false}
         contentPadding={0}
       >
-          <View style={{ flex: 1 }}>
-            <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <View testID="modal-assign-job" style={styles.modalContent}>
+          <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View testID="modal-assign-job">
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle} numberOfLines={1}>
                   Assign Job to {getMemberName(selectedMember)}
@@ -3389,8 +3380,7 @@ export default function TeamManagementScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            </KeyboardAvoidingView>
-          </View>
+          </KeyboardAvoidingView>
         </AppBottomSheet>
       </View>
     </>

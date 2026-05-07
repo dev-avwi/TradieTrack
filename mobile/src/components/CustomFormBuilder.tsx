@@ -553,9 +553,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          <View style={styles.bottomSheet}>
-            <View style={styles.sheetHandle} />
+        <View>
             <Text style={styles.sheetTitle}>Add Field</Text>
             <ScrollView style={styles.fieldTypeList}>
               {FIELD_TYPES.map((fieldType) => (
@@ -581,7 +579,6 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
             >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-          </View>
         </View>
       </AppBottomSheet>
 
@@ -605,9 +602,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          <View style={styles.bottomSheet}>
-            <View style={styles.sheetHandle} />
+        <View>
             <Text style={styles.sheetTitle}>Select Category</Text>
             {CATEGORIES.map((cat) => (
               <TouchableOpacity
@@ -639,7 +634,6 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
                 )}
               </TouchableOpacity>
             ))}
-          </View>
         </View>
       </AppBottomSheet>
     </View>
@@ -703,8 +697,7 @@ function FieldEditorModal({ visible, field, onSave, onClose, colors }: FieldEdit
         scrollable={false}
         contentPadding={0}
       >
-      <View style={{ flex: 1 }}>
-        <View style={styles.editorSheet}>
+      <View>
           <View style={styles.sheetHeader}>
             <TouchableOpacity onPress={onClose}>
               <Feather name="x" size={24} color={colors.foreground} />
@@ -792,7 +785,6 @@ function FieldEditorModal({ visible, field, onSave, onClose, colors }: FieldEdit
               </View>
             )}
           </ScrollView>
-        </View>
       </View>
     </AppBottomSheet>
   );

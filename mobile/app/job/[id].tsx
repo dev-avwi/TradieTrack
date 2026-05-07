@@ -10738,8 +10738,7 @@ export default function JobDetailScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
+        <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Assign Workers</Text>
               <TouchableOpacity onPress={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }}>
@@ -11017,7 +11016,6 @@ export default function JobDetailScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
         </View>
       </AppBottomSheet>
 

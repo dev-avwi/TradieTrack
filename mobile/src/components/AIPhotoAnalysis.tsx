@@ -230,8 +230,7 @@ export function AIPhotoAnalysisModal({
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          <View style={styles.modalContainer}>
+        <View>
             <View style={styles.modalHeader}>
               <View style={styles.headerLeft}>
                 <Feather name="zap" size={20} color={colors.mutedForeground} />
@@ -247,7 +246,6 @@ export function AIPhotoAnalysisModal({
                 AI photo analysis is disabled. Enable it in Settings to use this feature.
               </Text>
             </View>
-          </View>
         </View>
       </AppBottomSheet>
     );
@@ -261,8 +259,7 @@ export function AIPhotoAnalysisModal({
         scrollable={false}
         contentPadding={0}
       >
-      <View style={{ flex: 1 }}>
-        <View style={styles.modalContainer}>
+      <View>
           <View style={styles.modalHeader}>
             <View style={styles.headerLeft}>
               <Feather name="zap" size={20} color={colors.primary} />
@@ -388,7 +385,6 @@ export function AIPhotoAnalysisModal({
               </View>
             </View>
           )}
-        </View>
       </View>
     </AppBottomSheet>
   );

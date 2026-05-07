@@ -839,8 +839,7 @@ export function SubcontractorDashboard() {
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+        <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Decline Job</Text>
               <TouchableOpacity onPress={() => setShowDeclineModal(false)} style={{ padding: spacing.xs }}>
@@ -875,7 +874,6 @@ export function SubcontractorDashboard() {
                 <Text style={[styles.modalButtonText, { color: colors.white }]}>Decline Job</Text>
               </TouchableOpacity>
             </View>
-          </View>
         </View>
       </AppBottomSheet>
 
@@ -887,8 +885,7 @@ export function SubcontractorDashboard() {
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '85%' }]}>
+        <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create Tax Invoice</Text>
               <TouchableOpacity onPress={() => setShowInvoiceCreate(false)} style={{ padding: spacing.xs }}>
@@ -1148,7 +1145,6 @@ export function SubcontractorDashboard() {
                 </View>
               </>
             )}
-          </View>
         </View>
       </AppBottomSheet>
 
@@ -1160,8 +1156,7 @@ export function SubcontractorDashboard() {
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '85%' }]}>
+        <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>My Invoices</Text>
               <TouchableOpacity onPress={() => setShowInvoices(false)} style={{ padding: spacing.xs }}>
@@ -1233,7 +1228,6 @@ export function SubcontractorDashboard() {
                 })()}
               </ScrollView>
             )}
-          </View>
         </View>
       </AppBottomSheet>
     </>

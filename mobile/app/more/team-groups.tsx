@@ -793,10 +793,7 @@ export default function TeamGroupsScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => { setFormModalVisible(false); resetForm(); }}>
-          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHandle} />
+        <View>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>
                   {editingGroup ? 'Edit Group' : 'Create New Group'}
@@ -867,9 +864,7 @@ export default function TeamGroupsScreen() {
                   <Text style={styles.modalCancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
               </ScrollView>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
+        </View>
       </AppBottomSheet>
 
       <AppBottomSheet
@@ -879,10 +874,7 @@ export default function TeamGroupsScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => { setViewModalVisible(false); setViewingGroup(null); }}>
-          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHandle} />
+        <View>
               <View style={styles.modalHeader}>
                 <View style={styles.viewHeaderRow}>
                   <View style={[styles.viewColorDot, { backgroundColor: viewingGroup?.color || '#3b82f6' }]} />
@@ -940,9 +932,7 @@ export default function TeamGroupsScreen() {
                   ))
                 )}
               </ScrollView>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
+        </View>
       </AppBottomSheet>
 
       <AppBottomSheet
@@ -952,10 +942,7 @@ export default function TeamGroupsScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setManageMembersVisible(false)}>
-          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHandle} />
+        <View>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Manage Members - {viewingGroup?.name}</Text>
                 <TouchableOpacity onPress={() => setManageMembersVisible(false)}>
@@ -1043,9 +1030,7 @@ export default function TeamGroupsScreen() {
                   <Text style={styles.doneButtonText}>Done</Text>
                 </TouchableOpacity>
               </ScrollView>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
+        </View>
       </AppBottomSheet>
     </View>
   );

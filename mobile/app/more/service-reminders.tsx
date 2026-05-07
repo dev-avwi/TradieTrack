@@ -1047,10 +1047,7 @@ export default function ServiceRemindersScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
+        <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {editingReminder ? 'Edit Service Reminder' : 'New Service Reminder'}
@@ -1156,7 +1153,6 @@ export default function ServiceRemindersScreen() {
 
               <View style={{ height: 40 }} />
             </ScrollView>
-          </View>
         </View>
       </AppBottomSheet>
 
@@ -1167,10 +1163,7 @@ export default function ServiceRemindersScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
+        <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Service Type</Text>
               <TouchableOpacity onPress={() => setServiceTypePickerVisible(false)}>
@@ -1197,7 +1190,6 @@ export default function ServiceRemindersScreen() {
                 );
               }}
             />
-          </View>
         </View>
       </AppBottomSheet>
 
@@ -1208,10 +1200,7 @@ export default function ServiceRemindersScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
+        <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Client</Text>
               <TouchableOpacity onPress={() => setClientPickerVisible(false)}>
@@ -1247,7 +1236,6 @@ export default function ServiceRemindersScreen() {
                 );
               }}
             />
-          </View>
         </View>
       </AppBottomSheet>
 
@@ -1258,10 +1246,7 @@ export default function ServiceRemindersScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
+        <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Repeat Interval</Text>
               <TouchableOpacity onPress={() => setIntervalPickerVisible(false)}>
@@ -1287,7 +1272,6 @@ export default function ServiceRemindersScreen() {
                 );
               }}
             />
-          </View>
         </View>
       </AppBottomSheet>
 
@@ -1298,10 +1282,7 @@ export default function ServiceRemindersScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
+        <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Remind Before</Text>
               <TouchableOpacity onPress={() => setReminderDaysPickerVisible(false)}>
@@ -1327,7 +1308,6 @@ export default function ServiceRemindersScreen() {
                 );
               }}
             />
-          </View>
         </View>
       </AppBottomSheet>
 
@@ -1338,10 +1318,7 @@ export default function ServiceRemindersScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
+        <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Complete Service</Text>
               <TouchableOpacity onPress={() => setCompleteModalVisible(false)}>
@@ -1389,7 +1366,6 @@ export default function ServiceRemindersScreen() {
                 </TouchableOpacity>
               )}
             </View>
-          </View>
         </View>
       </AppBottomSheet>
     </View>

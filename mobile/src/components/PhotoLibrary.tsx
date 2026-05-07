@@ -1222,9 +1222,7 @@ export default function PhotoLibrary() {
       scrollable={false}
       contentPadding={0}
     >
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        
-        <View style={styles.modalContent}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Upload Photos</Text>
             <TouchableOpacity style={styles.modalClose} onPress={() => !isUploading && setShowUploadModal(false)}>
@@ -1311,7 +1309,6 @@ export default function PhotoLibrary() {
               )}
             </TouchableOpacity>
           </View>
-        </View>
       </KeyboardAvoidingView>
     </AppBottomSheet>
   );
@@ -1487,9 +1484,7 @@ export default function PhotoLibrary() {
         scrollable={false}
         contentPadding={0}
       >
-      <View style={{ flex: 1 }}>
-        
-        <View style={styles.modalContent}>
+      <View>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Set Category</Text>
             <TouchableOpacity style={styles.modalClose} onPress={() => setShowBulkCategoryPicker(false)}>
@@ -1509,7 +1504,6 @@ export default function PhotoLibrary() {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
       </View>
     </AppBottomSheet>
   );
@@ -1522,9 +1516,7 @@ export default function PhotoLibrary() {
         scrollable={false}
         contentPadding={0}
       >
-      <View style={{ flex: 1 }}>
-        
-        <View style={styles.modalContent}>
+      <View>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Attach to Job</Text>
             <TouchableOpacity style={styles.modalClose} onPress={() => setShowBulkJobPicker(false)}>
@@ -1551,7 +1543,6 @@ export default function PhotoLibrary() {
               ))
             )}
           </ScrollView>
-        </View>
       </View>
     </AppBottomSheet>
   );
